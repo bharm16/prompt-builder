@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ChevronRight } from "lucide-react"
+import { CaretRight } from "@promptstudio/system/components/ui/icons"
 
 import { cn } from "@promptstudio/system/lib/utils"
 
@@ -23,9 +23,10 @@ const Section = ({ title, action, children }: SectionProps) => {
           onClick={() => setIsOpen((prev) => !prev)}
           className="group flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <ChevronRight
+          <CaretRight
+            size={16}
             className={cn(
-              "h-4 w-4 text-muted transition-transform duration-fast ease-out",
+              "text-muted transition-transform duration-fast ease-out",
               isOpen ? "rotate-90" : "rotate-0"
             )}
           />

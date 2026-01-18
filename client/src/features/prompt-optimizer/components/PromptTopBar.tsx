@@ -1,10 +1,10 @@
 import React from 'react';
-import { PanelLeft, Plus, Settings2, Command, Share2, Download } from 'lucide-react';
 import { usePromptState } from '../context/PromptStateContext';
 import { useShareLink } from '../hooks/useShareLink';
 import { usePromptExport } from '../PromptCanvas/hooks/usePromptExport';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
+import { Command as CommandIcon, Download, Gear, Icon, Plus, Share, SidebarSimple } from '@promptstudio/system/components/ui';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { cn } from '@/utils/cn';
 
@@ -93,7 +93,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
             variant="ghost"
             size="icon"
           >
-            <PanelLeft size={16} />
+            <Icon icon={SidebarSimple} size="sm" weight="bold" aria-hidden="true" />
           </Button>
 
           <div className="hidden flex-col gap-0.5 px-1.5 lg:flex">
@@ -135,7 +135,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
             onClick={() => setShowShortcuts(!showShortcuts)}
             variant="ghost"
           >
-            <Command size={14} />
+            <Icon icon={CommandIcon} size="sm" weight="bold" aria-hidden="true" />
             <span className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted">
               ⌘K
             </span>
@@ -148,7 +148,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
             aria-label="Create new prompt"
             variant="ghost"
           >
-            <Plus size={16} />
+            <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
             New
           </Button>
 
@@ -166,7 +166,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
             variant="ghost"
             size="icon"
           >
-            <Share2 size={16} />
+            <Icon icon={Share} size="sm" weight="bold" aria-hidden="true" />
           </Button>
 
           <div className="relative" ref={exportMenuRef}>
@@ -179,7 +179,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
               variant="ghost"
               size="icon"
             >
-              <Download size={16} />
+              <Icon icon={Download} size="sm" weight="bold" aria-hidden="true" />
             </Button>
             {showExportMenu && (
               <div
@@ -226,7 +226,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
             variant="ghost"
             size="icon"
           >
-            <Settings2 size={16} />
+            <Icon icon={Gear} size="sm" weight="bold" aria-hidden="true" />
           </Button>
         </div>
       </div>

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Sparkles, X } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Checkbox } from '@promptstudio/system/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTitle } from '@promptstudio/system/components/ui/dialog';
+import { Icon, Sparkle, WarningCircle, X } from '@promptstudio/system/components/ui';
 import type { CoherenceFinding, CoherenceRecommendation, CoherenceReviewData } from '../types/coherence';
 import { cn } from '@/utils/cn';
 
@@ -188,7 +188,11 @@ export function CoherenceReviewModal({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
-            {kind === 'conflict' ? <AlertTriangle size={16} /> : <Sparkles size={16} />}
+            {kind === 'conflict' ? (
+              <Icon icon={WarningCircle} size="sm" weight="bold" aria-hidden="true" />
+            ) : (
+              <Icon icon={Sparkle} size="sm" weight="bold" aria-hidden="true" />
+            )}
             <span>{finding.message}</span>
           </div>
           {finding.severity && kind === 'conflict' && (
@@ -251,7 +255,7 @@ export function CoherenceReviewModal({
               variant="ghost"
               size="icon"
             >
-              <X size={18} />
+              <Icon icon={X} size="md" weight="bold" aria-hidden="true" />
             </Button>
           </header>
 

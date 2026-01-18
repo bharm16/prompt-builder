@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Video } from 'lucide-react';
+import { VideoCamera } from '@promptstudio/system/components/ui';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
@@ -55,7 +55,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     {
       id: 'video',
       name: 'Video Prompt',
-      icon: Video,
+      icon: VideoCamera,
       description: 'Generate AI video prompts',
     },
   ], []);

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { CSSProperties } from 'react';
-import { Info, X } from 'lucide-react';
+import { Icon, Info, X } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../SpanBentoGrid/config/bentoConfig';
 import type { CategoryLegendProps } from '../types';
@@ -60,7 +60,7 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
       <div className="flex items-start justify-between gap-3 border-b border-border p-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
-            <Info className="h-3.5 w-3.5" aria-hidden="true" />
+            <Icon icon={Info} size="sm" weight="bold" aria-hidden="true" />
             Highlight categories
           </div>
           <div className="mt-1 text-label-12 text-muted">
@@ -82,7 +82,7 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
           variant="ghost"
           size="icon"
         >
-          <X className="h-4 w-4" aria-hidden="true" />
+          <Icon icon={X} size="sm" weight="bold" aria-hidden="true" />
         </Button>
       </div>
 

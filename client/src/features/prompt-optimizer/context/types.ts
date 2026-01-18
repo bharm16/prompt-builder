@@ -4,7 +4,7 @@
 
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import type { LucideIcon } from 'lucide-react';
+import type { IconProps } from '@promptstudio/system/components/ui';
 import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
@@ -23,7 +23,7 @@ export interface User {
 export interface Mode {
   id: string;
   name: string;
-  icon: LucideIcon;
+  icon: IconProps['icon'];
   description: string;
 }
 

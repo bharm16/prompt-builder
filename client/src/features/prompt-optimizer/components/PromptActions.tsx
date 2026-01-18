@@ -1,15 +1,16 @@
 import { memo, useRef, useEffect } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  ArrowSquareOut,
+  Check,
   Copy,
   Download,
-  ExternalLink,
   FileText,
-  Check,
-  Share2,
-  RotateCcw,
-  RotateCw,
-} from 'lucide-react';
-import { Button } from '@promptstudio/system/components/ui/button';
+  Icon,
+  Share,
+} from '@promptstudio/system/components/ui';
 import type { FloatingToolbarProps } from '../types';
 import { usePromptState } from '../context/PromptStateContext';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
@@ -87,7 +88,11 @@ export const PromptActions = memo<FloatingToolbarProps>(({
             aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
             title="Copy"
           >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? (
+              <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+            ) : (
+              <Icon icon={Copy} size="sm" weight="bold" aria-hidden="true" />
+            )}
             <span className="text-body-sm font-medium">{copied ? 'Copied' : 'Copy'}</span>
           </Button>
 
@@ -99,7 +104,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
             title={generateButtonTitle}
             disabled={!selectedModelId}
           >
-            <ExternalLink className="h-4 w-4" />
+            <Icon icon={ArrowSquareOut} size="sm" weight="bold" aria-hidden="true" />
             <span className="text-body-sm font-medium">{generateButtonLabel}</span>
           </Button>
         </>
@@ -116,7 +121,11 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
       >
-        {shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+        {shared ? (
+          <Icon icon={Check} size="xs" weight="bold" aria-hidden="true" />
+        ) : (
+          <Icon icon={Share} size="xs" weight="bold" aria-hidden="true" />
+        )}
       </Button>
 
       <div className="relative" ref={exportMenuRef}>
@@ -128,7 +137,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
           aria-expanded={showExportMenu}
           title="Export"
         >
-          <Download className="h-3 w-3" />
+          <Icon icon={Download} size="xs" weight="bold" aria-hidden="true" />
         </Button>
         {showExportMenu && (
           <div className="absolute bottom-full right-0 mb-2 w-36 bg-app border border-border rounded-lg shadow-md py-1 z-30">
@@ -137,7 +146,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
               variant="ghost"
               className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               Text (.txt)
             </Button>
             <Button
@@ -145,7 +154,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
               variant="ghost"
               className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               Markdown (.md)
             </Button>
             <Button
@@ -153,7 +162,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
               variant="ghost"
               className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               JSON (.json)
             </Button>
           </div>
@@ -170,7 +179,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Undo"
       >
-        <RotateCcw className="h-3 w-3" />
+        <Icon icon={ArrowCounterClockwise} size="xs" weight="bold" aria-hidden="true" />
       </Button>
       <Button
         onClick={onRedo}
@@ -180,7 +189,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Redo"
       >
-        <RotateCw className="h-3 w-3" />
+        <Icon icon={ArrowClockwise} size="xs" weight="bold" aria-hidden="true" />
       </Button>
     </div>
   );

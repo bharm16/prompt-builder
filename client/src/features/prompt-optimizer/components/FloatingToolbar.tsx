@@ -1,16 +1,17 @@
 import { memo, useRef, useEffect } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  Check,
   Copy,
   Download,
-  Plus,
   FileText,
-  Check,
+  Icon,
   Info,
-  Share2,
-  RotateCcw,
-  RotateCw,
-} from 'lucide-react';
-import { Button } from '@promptstudio/system/components/ui/button';
+  Plus,
+  Share,
+} from '@promptstudio/system/components/ui';
 import type { FloatingToolbarProps } from '../types';
 
 /**
@@ -66,7 +67,11 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
           title="Copy"
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+          ) : (
+            <Icon icon={Copy} size="sm" weight="bold" aria-hidden="true" />
+          )}
           {copied && <span className="text-label-12">Copied</span>}
         </Button>
 
@@ -81,7 +86,11 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           aria-label={shared ? 'Link copied' : 'Share prompt'}
           title="Share"
         >
-          {shared ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+          {shared ? (
+            <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+          ) : (
+            <Icon icon={Share} size="sm" weight="bold" aria-hidden="true" />
+          )}
           {shared && <span className="text-label-12">Shared!</span>}
         </Button>
 
@@ -96,7 +105,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           aria-label="Toggle highlight legend"
           title="Highlight Legend"
         >
-          <Info className="h-3.5 w-3.5" />
+          <Icon icon={Info} size="sm" weight="bold" aria-hidden="true" />
         </Button>
 
         <div className="relative" ref={exportMenuRef}>
@@ -107,7 +116,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
             aria-expanded={showExportMenu}
             title="Export"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Icon icon={Download} size="sm" weight="bold" aria-hidden="true" />
           </Button>
           {showExportMenu && (
             <div className="absolute top-full left-0 mt-2 w-36 ps-glass-card rounded-lg py-1 z-30">
@@ -116,7 +125,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
                 variant="ghost"
                 className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 Text (.txt)
               </Button>
               <Button
@@ -124,7 +133,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
                 variant="ghost"
                 className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 Markdown (.md)
               </Button>
               <Button
@@ -132,7 +141,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
                 variant="ghost"
                 className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 JSON (.json)
               </Button>
             </div>
@@ -151,7 +160,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           }`}
           title="Undo"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <Icon icon={ArrowCounterClockwise} size="sm" weight="bold" aria-hidden="true" />
         </Button>
         <Button
           onClick={onRedo}
@@ -163,7 +172,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           }`}
           title="Redo"
         >
-          <RotateCw className="h-3.5 w-3.5" />
+          <Icon icon={ArrowClockwise} size="sm" weight="bold" aria-hidden="true" />
         </Button>
         <Button
           onClick={onCreateNew}
@@ -171,7 +180,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
           className="gap-2 px-3 py-1 text-button-12 text-foreground border border-border bg-transparent rounded-md transition-colors hover:bg-surface-1"
           title="New prompt"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
           <span className="text-label-12">New</span>
         </Button>
       </div>

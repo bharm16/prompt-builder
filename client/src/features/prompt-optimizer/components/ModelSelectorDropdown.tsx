@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Check, Video } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
+import { CaretDown, Check, Icon, VideoCamera } from '@promptstudio/system/components/ui';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
 import { useModelRegistry } from '../hooks/useModelRegistry';
 import { cn } from '@/utils/cn';
@@ -194,13 +194,13 @@ export const ModelSelectorDropdown = memo<{
             {prefixLabel}
           </span>
         )}
-        <Video className="h-3.5 w-3.5 text-muted" />
+        <Icon icon={VideoCamera} size="sm" weight="bold" className="text-muted" aria-hidden="true" />
         <span className="max-w-56 truncate">{isLoading ? 'Loading…' : displayLabel}</span>
-        <ChevronDown
-          className={cn(
-            'h-3.5 w-3.5 text-muted transition-transform',
-            isOpen && 'rotate-180'
-          )}
+        <Icon
+          icon={CaretDown}
+          size="sm"
+          weight="bold"
+          className={cn('text-muted transition-transform', isOpen && 'rotate-180')}
           aria-hidden="true"
         />
       </Button>
@@ -239,7 +239,7 @@ export const ModelSelectorDropdown = memo<{
                 </div>
               </div>
               {!selectedModel && (
-                <Check className="h-4 w-4" aria-hidden="true" />
+                <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
               )}
             </Button>
 
@@ -272,7 +272,7 @@ export const ModelSelectorDropdown = memo<{
                     </div>
                   </div>
                   {isSelected && (
-                    <Check className="h-4 w-4" aria-hidden="true" />
+                    <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
                   )}
                 </Button>
               );

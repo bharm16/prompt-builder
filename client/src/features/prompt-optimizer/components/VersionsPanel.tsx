@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Image as ImageIcon, Play } from 'lucide-react';
+import { Icon, Image, Play } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
@@ -162,12 +162,12 @@ export const VersionsPanel = (): React.ReactElement => {
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-2">
       <div className="px-4 pb-3 pt-4">
-        <div className="text-body-lg font-semibold text-foreground">Sessions</div>
-        <div className="mt-1 text-label-12 text-muted">Versions &amp; runs</div>
+        <div className="text-body-lg font-semibold text-foreground">Versions</div>
+        <div className="mt-1 text-label-12 text-muted">Prompt snapshots</div>
       </div>
       {orderedVersions.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-label-12 text-muted">
-          No sessions yet
+          No versions yet
         </div>
       ) : (
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 pb-3">
@@ -214,12 +214,12 @@ export const VersionsPanel = (): React.ReactElement => {
                   <div className="inline-flex flex-shrink-0 items-center gap-2">
                     {hasPreview ? (
                       <div className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-3 text-faint">
-                        <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                        <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" />
                       </div>
                     ) : null}
                     {hasVideo ? (
                       <div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-3 px-2 text-label-sm font-semibold text-muted">
-                        <Play className="w-4 h-4" aria-hidden="true" />
+                        <Icon icon={Play} size="sm" weight="bold" aria-hidden="true" />
                         <span>Video</span>
                       </div>
                     ) : null}

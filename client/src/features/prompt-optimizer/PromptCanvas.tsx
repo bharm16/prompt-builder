@@ -1,30 +1,32 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import {
-  Pencil,
-  X,
-  Check,
-  Copy,
-  Diff,
-  Lock,
-  Unlock,
-  LayoutGrid,
-  Share2,
-  RotateCcw,
-  RotateCw,
-  Sparkles,
-  Play,
-  Pause,
-  Download,
-  ExternalLink,
-  MoreHorizontal,
-} from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 import { Button, type ButtonProps } from '@promptstudio/system/components/ui/button';
 import { Checkbox } from '@promptstudio/system/components/ui/checkbox';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
+import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@promptstudio/system/components/ui/select';
 import { Slider } from '@promptstudio/system/components/ui/slider';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
+import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  ArrowSquareOut,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  Check,
+  Copy,
+  DotsThree,
+  Download,
+  GridFour,
+  Icon,
+  Lock,
+  LockOpen,
+  Pause,
+  Pencil,
+  Play,
+  X,
+} from '@promptstudio/system/components/ui';
 
 // External libraries
 import { useToast } from '@components/Toast';
@@ -86,10 +88,10 @@ const RUN_ARTIFACTS = {
     { id: 'preview-keyframe-1', label: 'Keyframe 1', kind: 'keyframe' },
     { id: 'preview-keyframe-2', label: 'Keyframe 2', kind: 'keyframe' },
     { id: 'preview-keyframe-3', label: 'Keyframe 3', kind: 'keyframe' },
-    { id: 'preview-variant-1', label: 'Frame 1 (Base)', kind: 'variant' },
-    { id: 'preview-variant-2', label: 'Frame 2 (Edit 1)', kind: 'variant' },
-    { id: 'preview-variant-3', label: 'Frame 3 (Edit 2)', kind: 'variant' },
-    { id: 'preview-variant-4', label: 'Frame 4 (Edit 3)', kind: 'variant' },
+    { id: 'preview-variant-1', label: 'Frame 1', kind: 'variant' },
+    { id: 'preview-variant-2', label: 'Frame 2', kind: 'variant' },
+    { id: 'preview-variant-3', label: 'Frame 3', kind: 'variant' },
+    { id: 'preview-variant-4', label: 'Frame 4', kind: 'variant' },
   ],
   final: [
     { id: 'final-render', label: 'Final render', kind: 'preview' },
@@ -172,6 +174,9 @@ export function PromptCanvas({
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
   const [openRunMenu, setOpenRunMenu] = useState<'preview' | 'final' | null>(null);
+  const [runsCollapsed, setRunsCollapsed] = useState(true);
+  const [stageCollapsed, setStageCollapsed] = useState(false);
+  const [stageSheetOpen, setStageSheetOpen] = useState(false);
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [videoInputReference, setVideoInputReference] = useState('');
   const [stageTab, setStageTab] = useState<'preview' | 'final'>('preview');
@@ -1096,6 +1101,16 @@ export function PromptCanvas({
   const finalMetaDetail = 'ETA ~45s';
   const hasVideoPreviewSource = Boolean(videoPreviewPrompt.trim());
   const durationValue = generationParams?.duration_s;
+  const durationSeconds = (() => {
+    if (typeof durationValue === 'number') {
+      return Number.isFinite(durationValue) ? durationValue : null;
+    }
+    if (typeof durationValue === 'string') {
+      const parsed = Number.parseFloat(durationValue);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  })();
   const fpsValue = generationParams?.fps;
   const seedValue = generationParams?.seed;
   const durationLabel = typeof durationValue === 'number' ? `${durationValue}s` : '—';
@@ -1109,6 +1124,22 @@ export function PromptCanvas({
     typeof fpsValue === 'number' || typeof fpsValue === 'string' ? `FPS ${fpsValue}` : 'FPS —';
   const seedLabel =
     typeof seedValue === 'number' || typeof seedValue === 'string' ? String(seedValue) : 'Auto';
+  const storyboardStepSeconds = durationSeconds !== null ? durationSeconds / 4 : null;
+  const storyboardFrameMeta = useMemo(
+    () =>
+      Array.from({ length: 4 }, (_, index) => {
+        const timestampSeconds = storyboardStepSeconds !== null ? storyboardStepSeconds * index : null;
+        const timestampLabel = timestampSeconds !== null ? `${timestampSeconds.toFixed(1)}s` : '—';
+        const subtitle = index === 0 ? '(opening)' : index === 3 ? '(closing)' : null;
+        const title = `Frame ${index + 1} — ${timestampLabel}`;
+        return {
+          title,
+          subtitle,
+          timestampLabel,
+        };
+      }),
+    [storyboardStepSeconds]
+  );
   const previewStatusState = isVisualPreviewGenerating
     ? 'generating'
     : visualLastGeneratedAt || seedImageUrl
@@ -1176,6 +1207,7 @@ export function PromptCanvas({
     storyboardFrames[storyboardSelectedIndex] && typeof storyboardFrames[storyboardSelectedIndex] === 'string'
       ? (storyboardFrames[storyboardSelectedIndex] as string)
       : null;
+  const selectedStoryboardMeta = storyboardFrameMeta[storyboardSelectedIndex] ?? null;
 
   useEffect(() => {
     if (stageTab !== 'preview') {
@@ -1689,15 +1721,389 @@ export function PromptCanvas({
     'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-gradient-to-r from-accent to-accent-2 px-4 text-label-sm font-semibold text-app shadow-md transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0';
   const statusPillClass =
     'inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2 py-1 text-label-sm font-semibold uppercase tracking-wide';
+  // NOTE: Phosphor icons require numeric size values, not CSS variables.
+  // CSS variables like 'var(--ps-icon-md)' cause icons to render as dots.
+  const iconSizes = {
+    xs: 12,
+    sm: 16,
+    md: 20,
+    lg: 24,
+  } as const;
 
-  // Render the component
-  return (
-    <div
-      className={cn('relative flex min-h-0 flex-1 flex-col', isPreviewGenerating && 'cursor-progress')}
-      data-mode={selectedMode}
-      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
-      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
-      aria-busy={isPreviewGenerating ? 'true' : 'false'}
+  const renderStagePanel = (variant: 'desktop' | 'sheet'): React.ReactElement => (
+	    <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
+	      <div className="flex items-start justify-between gap-3">
+	        <div className="flex items-center gap-2">
+	          <div className="text-body-lg font-semibold text-foreground">Stage</div>
+	          {variant === 'desktop' && (
+	            <CanvasButton
+	              type="button"
+	              className={iconButtonClass}
+	              onClick={() => setStageCollapsed(true)}
+	              aria-label="Collapse stage panel"
+	            >
+              <CaretRight weight="bold" size={iconSizes.md} aria-hidden="true" />
+	            </CanvasButton>
+	          )}
+	        </div>
+	        <div className="flex items-center gap-2">
+	          <div className="flex h-9 items-center rounded-full border border-border bg-surface-1 p-0.5">
+	            <CanvasButton
+	              type="button"
+	              onClick={() => setStageTab('preview')}
+	              aria-selected={stageTab === 'preview'}
+	              className={cn(
+	                'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
+	                stageTab === 'preview'
+	                  ? 'bg-surface-2 text-foreground shadow-sm'
+	                  : 'text-muted hover:text-foreground'
+	              )}
+	            >
+	              Preview
+	            </CanvasButton>
+	            <CanvasButton
+	              type="button"
+	              onClick={() => setStageTab('final')}
+	              aria-selected={stageTab === 'final'}
+	              className={cn(
+	                'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
+	                stageTab === 'final'
+	                  ? 'bg-surface-2 text-foreground shadow-sm'
+	                  : 'text-muted hover:text-foreground'
+	              )}
+	            >
+	              Final
+	            </CanvasButton>
+	          </div>
+	          {variant === 'sheet' && (
+	            <CanvasButton
+	              type="button"
+	              className={iconButtonClass}
+	              onClick={() => setStageSheetOpen(false)}
+	              aria-label="Close stage"
+	            >
+              <X weight="bold" size={iconSizes.md} aria-hidden="true" />
+	            </CanvasButton>
+	          )}
+	        </div>
+	      </div>
+	
+	      <div className="relative mt-4 flex min-h-72 flex-1 flex-col gap-3">
+	        {stageTab === 'preview' ? (
+	          <>
+	            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+	              <div className="flex items-center gap-2">
+	                <span className="text-label-sm font-semibold uppercase tracking-wide text-muted">Provider</span>
+	                <Select value={visualProvider} onValueChange={(value) => setVisualProvider(value as PreviewProvider)}>
+	                  <SelectTrigger
+	                    className={cn(
+	                      'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+	                      'hover:border-border-strong hover:bg-surface-3'
+	                    )}
+	                    aria-label="Preview provider"
+	                  >
+	                    <SelectValue />
+	                  </SelectTrigger>
+	                  <SelectContent>
+	                    <SelectItem value="replicate-flux-kontext-fast">Kontext</SelectItem>
+	                    <SelectItem value="replicate-flux-schnell">Schnell</SelectItem>
+	                  </SelectContent>
+	                </Select>
+	              </div>
+	
+	              <div className="ml-auto flex items-center gap-2">
+	                {visualProvider === 'replicate-flux-kontext-fast' && hasStoryboardFrames && (
+	                  <label className="inline-flex items-center gap-2 text-label-sm font-semibold text-muted">
+	                    <Checkbox
+	                      checked={useSelectedFrameAsBase}
+	                      onCheckedChange={(checked) => setUseSelectedFrameAsBase(Boolean(checked))}
+	                    />
+	                    <span>Use selected frame as base</span>
+	                  </label>
+	                )}
+	              </div>
+	            </div>
+	
+	            {visualProvider === 'replicate-flux-kontext-fast' ? (
+	              <div className="flex flex-1 flex-col gap-3">
+	                <div className="rounded-lg border border-border bg-surface-2">
+	                  <div className="border-b border-border px-3 py-2 text-label-sm font-semibold text-foreground">
+	                    Frame {storyboardSelectedIndex + 1}{' '}
+	                    <span className="text-muted">
+	                      — {selectedStoryboardMeta?.timestampLabel ?? '—'}
+	                      {selectedStoryboardMeta?.subtitle ? ` ${selectedStoryboardMeta.subtitle}` : ''}
+	                    </span>
+	                  </div>
+	                  <div className="relative h-36 bg-surface-3">
+	                    {selectedStoryboardFrameUrl ? (
+	                      <img
+	                        src={selectedStoryboardFrameUrl}
+	                        alt={`Frame ${storyboardSelectedIndex + 1}`}
+	                        className="h-full w-full object-cover"
+	                      />
+	                    ) : (
+	                      <div className="h-full w-full bg-surface-3" />
+	                    )}
+	                    {hasStoryboardFrames && (
+	                                            <CanvasButton
+	                                              type="button"
+	                                              className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-md transition-colors hover:bg-surface-2"
+	                                              onClick={() => setStoryboardPlaying((prev) => !prev)}
+	                                              aria-label={storyboardPlaying ? 'Pause storyboard playback' : 'Play storyboard'}
+	                                            >	                        {storyboardPlaying ? (
+                          <Pause weight="bold" size={iconSizes.sm} aria-hidden="true" />
+	                        ) : (
+                          <Play weight="bold" size={iconSizes.sm} aria-hidden="true" />
+	                        )}
+	                      </CanvasButton>
+	                    )}
+	                    {!isVisualPreviewGenerating && !hasStoryboardFrames && (
+	                      <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
+                          <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                        </div>
+	                        <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+	                        <div className="text-label-sm text-muted">
+	                          Generate a preview to validate framing, lighting, and mood.
+	                        </div>
+	                      </div>
+	                    )}
+	                  </div>
+	                </div>
+	
+	                <div className="flex flex-col gap-3">
+	                  {storyboardFrameMeta.map((frame, index) => {
+	                    const thumb = storyboardFrames[index];
+	                    const isSelected = storyboardSelectedIndex === index;
+	                    return (
+	                      <CanvasButton
+	                        key={frame.title}
+	                        type="button"
+	                        className={cn(
+	                          'flex w-full items-start justify-start gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
+	                          'hover:border-border-strong hover:bg-surface-3',
+	                          isSelected && 'border-accent/60 bg-accent/10'
+	                        )}
+	                        data-selected={isSelected ? 'true' : 'false'}
+	                        onClick={() => {
+	                          setStoryboardPlaying(false);
+	                          setStoryboardSelectedIndex(index);
+	                        }}
+	                        role="listitem"
+	                      >
+	                        <span className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-surface-3">
+	                          {typeof thumb === 'string' && thumb ? (
+	                            <img src={thumb} alt="" className="h-full w-full object-cover" />
+	                          ) : (
+	                            <span className="block h-full w-full" />
+	                          )}
+	                        </span>
+	                        <span className="flex min-w-0 flex-col">
+	                          <span className="text-body-sm font-semibold text-foreground">{frame.title}</span>
+	                          {frame.subtitle ? (
+	                            <span className="text-label-sm text-muted">{frame.subtitle}</span>
+	                          ) : null}
+	                        </span>
+	                      </CanvasButton>
+	                    );
+	                  })}
+	                </div>
+	
+	                <div className="hidden" aria-hidden="true">
+	                  <VisualPreview
+	                    prompt={previewSource}
+	                    aspectRatio={effectiveAspectRatio}
+	                    isVisible={true}
+	                    provider={visualProvider}
+	                    seedImageUrl={useSelectedFrameAsBase ? selectedStoryboardFrameUrl : null}
+	                    useReferenceImage={useSelectedFrameAsBase}
+	                    generateRequestId={visualGenerateRequestId}
+	                    lastGeneratedAt={visualLastGeneratedAt}
+	                    onPreviewGenerated={handleVisualPreviewGenerated}
+	                    onLoadingChange={setVisualPreviewGenerating}
+	                    onPreviewStateChange={handleVisualPreviewStateChange}
+	                  />
+	                </div>
+	              </div>
+	            ) : (
+	              <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1">
+	                <div className="h-full w-full" aria-label="Image preview surface">
+	                  <VisualPreview
+	                    prompt={previewSource}
+	                    aspectRatio={effectiveAspectRatio}
+	                    isVisible={true}
+	                    provider={visualProvider}
+	                    seedImageUrl={seedImageUrl}
+	                    generateRequestId={visualGenerateRequestId}
+	                    lastGeneratedAt={visualLastGeneratedAt}
+	                    onPreviewGenerated={handleVisualPreviewGenerated}
+	                    onLoadingChange={setVisualPreviewGenerating}
+	                    onPreviewStateChange={handleVisualPreviewStateChange}
+	                  />
+	                </div>
+	                {!isVisualPreviewGenerating && !stageHasOutput && (
+	                  <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
+                      <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                    </div>
+	                    <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+	                    <div className="text-label-sm text-muted">
+	                      Generate a preview to validate framing, lighting, and mood.
+	                    </div>
+	                  </div>
+	                )}
+	              </div>
+	            )}
+	          </>
+	        ) : (
+	          <>
+	            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+	              <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
+	                <span className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)} aria-hidden="true" />
+	                {finalStatusState === 'generating'
+	                  ? 'Generating'
+	                  : finalStatusState === 'ready'
+	                    ? 'Ready'
+	                    : 'Idle'}
+	              </span>
+	              <span className="text-label-sm font-semibold text-muted">Model: WAN 2.2</span>
+	              <span className="ml-auto" aria-hidden="true" />
+	              {finalStatusState === 'ready' && stageFinalVideoUrl && (
+	                <div className="flex items-center gap-2" role="group" aria-label="Final quick actions">
+	                  <CanvasButton
+	                    type="button"
+	                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
+	                    onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
+	                  >
+	                    <Download size={iconSizes.sm} aria-hidden="true" />
+	                    Download
+	                  </CanvasButton>
+	                  <CanvasButton
+	                    type="button"
+	                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
+	                    onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
+	                  >
+	                    <ArrowSquareOut size={iconSizes.sm} aria-hidden="true" />
+	                    Open
+	                  </CanvasButton>
+	                </div>
+	              )}
+	            </div>
+	
+	            <div className="flex flex-1 flex-col gap-2">
+	              <div
+	                className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1"
+	                onClick={() => {
+	                  const el = finalVideoElRef.current;
+	                  if (!el) return;
+	                  if (el.paused) void el.play();
+	                  else el.pause();
+	                }}
+	                role="button"
+	                tabIndex={0}
+	                aria-label="Video preview surface"
+	                onKeyDown={(event) => {
+	                  if (event.key !== 'Enter' && event.key !== ' ') return;
+	                  event.preventDefault();
+	                  const el = finalVideoElRef.current;
+	                  if (!el) return;
+	                  if (el.paused) void el.play();
+	                  else el.pause();
+	                }}
+	              >
+	                <VideoPreview
+	                  prompt={videoPreviewPrompt}
+	                  aspectRatio={effectiveAspectRatio}
+	                  model={RAIL_VIDEO_PREVIEW_MODEL}
+	                  generationParams={generationParams}
+	                  {...(resolvedVideoInputReference ? { inputReference: resolvedVideoInputReference } : {})}
+	                  isVisible={showVideoPreview}
+	                  seedVideoUrl={seedVideoUrl}
+	                  generateRequestId={railVideoGenerateRequestId}
+	                  lastGeneratedAt={railVideoLastGeneratedAt}
+	                  videoRef={finalVideoElRef}
+	                  onPreviewGenerated={handleRailVideoPreviewGenerated}
+	                  onLoadingChange={setRailVideoPreviewGenerating}
+	                  onPreviewStateChange={handleVideoPreviewStateChange}
+	                />
+	                {!stageFinalVideoUrl && <div className="h-full w-full bg-surface-3" />}
+	                <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+	                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-sm">
+                    <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                  </div>
+	                </div>
+	                {!isRailVideoPreviewGenerating && !stageFinalVideoUrl && (
+	                  <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
+                      <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                    </div>
+	                    <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+	                    <div className="text-label-sm text-muted">Generate the final render when you are ready.</div>
+	                  </div>
+	                )}
+	              </div>
+	
+	              <div className="rounded-lg border border-border bg-surface-1 px-3 py-2" aria-label="Timeline scrub">
+	                <Slider min={0} max={100} defaultValue={[0]} disabled={!stageFinalVideoUrl} />
+	              </div>
+	            </div>
+	          </>
+	        )}
+	
+	        {stageTab === 'preview' && visualPreviewState?.error && !isVisualPreviewGenerating && (
+	          <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
+	            Preview failed. Try again.
+	          </div>
+	        )}
+	        {stageTab === 'final' && videoPreviewState?.error && !isRailVideoPreviewGenerating && (
+	          <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
+	            Final preview failed. Try again.
+	          </div>
+	        )}
+	        {stageIsGenerating && (
+	          <div
+	            className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-muted"
+	            aria-label="Generating"
+	          >
+	            <LoadingDots size={3} className="text-faint" />
+	          </div>
+	        )}
+	      </div>
+	
+	      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+	        <div className="text-label-sm text-muted">{stageFooterMeta}</div>
+	        {stageTab === 'final' && (
+	          <CanvasButton
+	            type="button"
+	            className="h-9 rounded-lg border border-border bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	            onClick={() => setShowSettings(true)}
+	          >
+	            Edit settings
+	          </CanvasButton>
+	        )}
+	        <CanvasButton
+	          type="button"
+	          onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
+	          disabled={stageCtaDisabled}
+	          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
+	        >
+	          {stageCtaLabel}
+	        </CanvasButton>
+	      </div>
+	    </section>
+	  );
+
+	  // Render the component
+		  return (
+		    <div
+		      className={cn(
+		        'relative flex min-h-0 flex-1 flex-col pb-20 xl:pb-0',
+	        isPreviewGenerating && 'cursor-progress'
+	      )}
+	      data-mode={selectedMode}
+	      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
+	      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
+	      aria-busy={isPreviewGenerating ? 'true' : 'false'}
     >
       {/* Category Legend */}
       <CategoryLegend
@@ -1770,7 +2176,7 @@ export function PromptCanvas({
                 aria-label="Open outline"
                 title="Open outline"
               >
-                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
               </CanvasButton>
             </div>
           )}
@@ -1801,7 +2207,7 @@ export function PromptCanvas({
                           aria-label="Edit prompt"
                           title="Edit prompt"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil size={iconSizes.sm} />
                           <span>Edit</span>
                         </CanvasButton>
                       ) : (
@@ -1814,7 +2220,7 @@ export function PromptCanvas({
                             aria-label="Cancel editing"
                             title="Cancel editing"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X size={iconSizes.sm} />
                             <span>Cancel</span>
                           </CanvasButton>
                           <CanvasButton
@@ -1825,7 +2231,7 @@ export function PromptCanvas({
                             aria-label="Update prompt"
                             title="Update and re-optimize (Cmd/Ctrl+Enter)"
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <Check size={iconSizes.sm} />
                             <span>Update</span>
                           </CanvasButton>
                         </div>
@@ -1922,92 +2328,109 @@ export function PromptCanvas({
                         title={copied ? 'Copied' : 'Copy'}
                       >
                         {copied ? (
-                          <Check className="h-4 w-4" aria-hidden="true" />
+                          <Icon icon={Check} size="md" weight="bold" aria-hidden="true" />
                         ) : (
-                          <Copy className="h-4 w-4" aria-hidden="true" />
+                          <Icon icon={Copy} size="md" weight="bold" aria-hidden="true" />
                         )}
-                      </CanvasButton>
-                      <CanvasButton
-                        type="button"
-                        className={iconButtonClass}
-                        onClick={() => setShowDiff(true)}
-                        aria-label="Open diff"
-                        title="Diff"
-                      >
-                        <Diff className="h-4 w-4" aria-hidden="true" />
-                      </CanvasButton>
-                      <div className="relative" ref={exportMenuRef}>
-                        <CanvasButton
-                          type="button"
-                          className={iconButtonClass}
-                          onClick={() => setShowExportMenu(!showExportMenu)}
-                          aria-expanded={showExportMenu}
-                          aria-label="Export"
-                          title="Export"
-                        >
-                          <Download className="h-4 w-4" aria-hidden="true" />
-                        </CanvasButton>
-                        {showExportMenu && (
-                          <div
-                            className="absolute right-0 top-full z-20 mt-2 w-40 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
-                            role="menu"
-                          >
-                            <CanvasButton
-                              type="button"
-                              onClick={() => handleExport('text')}
-                              role="menuitem"
-                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                            >
-                              Export .txt
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              onClick={() => handleExport('markdown')}
-                              role="menuitem"
-                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                            >
-                              Export .md
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              onClick={() => handleExport('json')}
-                              role="menuitem"
-                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                            >
-                              Export .json
-                            </CanvasButton>
-                          </div>
-                        )}
-                      </div>
-                      <CanvasButton
-                        type="button"
-                        className={iconButtonClass}
-                        onClick={handleShare}
-                        aria-label="Share prompt"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </CanvasButton>
-                      <CanvasButton
-                        type="button"
-                        className={iconButtonClass}
-                        onClick={onUndo}
+	                      </CanvasButton>
+	                      <CanvasButton
+	                        type="button"
+	                        className={iconButtonClass}
+	                        onClick={onUndo}
                         disabled={!canUndo}
                         aria-label="Undo"
                       >
-                        <RotateCcw className="h-4 w-4" />
+                        <Icon icon={ArrowCounterClockwise} size="md" weight="bold" aria-hidden="true" />
                       </CanvasButton>
                       <CanvasButton
                         type="button"
                         className={iconButtonClass}
                         onClick={onRedo}
                         disabled={!canRedo}
-                        aria-label="Redo"
-                      >
-                        <RotateCw className="h-4 w-4" />
-                      </CanvasButton>
-                    </div>
-                  </div>
-                </div>
+	                        aria-label="Redo"
+	                      >
+	                        <Icon icon={ArrowClockwise} size="md" weight="bold" aria-hidden="true" />
+	                      </CanvasButton>
+	                      <div className="relative" ref={exportMenuRef}>
+	                        <CanvasButton
+	                          type="button"
+	                          className={iconButtonClass}
+	                          onClick={() => setShowExportMenu(!showExportMenu)}
+	                          aria-expanded={showExportMenu}
+	                          aria-haspopup="menu"
+	                          aria-label="More actions"
+	                          title="More"
+	                        >
+	                          <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
+	                        </CanvasButton>
+	                        {showExportMenu && (
+	                          <div
+	                            className="absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
+	                            role="menu"
+	                          >
+	                            <CanvasButton
+	                              type="button"
+	                              onClick={() => {
+	                                setShowDiff(true);
+	                                setShowExportMenu(false);
+	                              }}
+	                              role="menuitem"
+	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	                            >
+	                              Compare versions
+	                            </CanvasButton>
+	                            <div className="my-1 h-px bg-border" aria-hidden="true" />
+	                            <CanvasButton
+	                              type="button"
+	                              onClick={() => {
+	                                handleExport('text');
+	                                setShowExportMenu(false);
+	                              }}
+	                              role="menuitem"
+	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	                            >
+	                              Export .txt
+	                            </CanvasButton>
+	                            <CanvasButton
+	                              type="button"
+	                              onClick={() => {
+	                                handleExport('markdown');
+	                                setShowExportMenu(false);
+	                              }}
+	                              role="menuitem"
+	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	                            >
+	                              Export .md
+	                            </CanvasButton>
+	                            <CanvasButton
+	                              type="button"
+	                              onClick={() => {
+	                                handleExport('json');
+	                                setShowExportMenu(false);
+	                              }}
+	                              role="menuitem"
+	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	                            >
+	                              Export .json
+	                            </CanvasButton>
+	                            <div className="my-1 h-px bg-border" aria-hidden="true" />
+	                            <CanvasButton
+	                              type="button"
+	                              onClick={() => {
+	                                handleShare();
+	                                setShowExportMenu(false);
+	                              }}
+	                              role="menuitem"
+	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	                            >
+	                              Share
+	                            </CanvasButton>
+	                          </div>
+	                        )}
+	                      </div>
+	                    </div>
+	                  </div>
+	                </div>
 
                 <div className="p-3">
                   <div className="flex min-h-0 flex-col gap-4 xl:flex-row">
@@ -2064,9 +2487,9 @@ export function PromptCanvas({
                             aria-pressed={isHoveredLocked}
                           >
                             {isHoveredLocked ? (
-                              <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                              <Icon icon={LockOpen} size="sm" weight="bold" aria-hidden="true" />
                             ) : (
-                              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                              <Icon icon={Lock} size="sm" weight="bold" aria-hidden="true" />
                             )}
                           </CanvasButton>
                         )}
@@ -2082,11 +2505,11 @@ export function PromptCanvas({
                       )}
                     </div>
 
-                    {selectedSpanId ? (
-                      <aside
-                        className="flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-border bg-surface-2 shadow-sm xl:w-80"
-                        aria-label="Suggestions"
-                      >
+	                    {selectedSpanId ? (
+	                      <aside
+	                        className="flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-accent/30 bg-surface-2 shadow-sm ring-2 ring-accent/10 xl:w-96"
+	                        aria-label="Suggestions"
+	                      >
                       <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
                         <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
                           Suggestions
@@ -2240,22 +2663,96 @@ export function PromptCanvas({
                 </div>
               </div>
 
-              <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-body-lg font-semibold text-foreground">Runs</div>
-                  </div>
-                  <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
-                    <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
-                    Queue
-                  </span>
-                </div>
+	              <section
+	                className={cn(
+	                  'rounded-xl border border-border bg-surface-2 p-3 shadow-sm transition-all duration-200',
+	                  runsCollapsed ? 'flex items-center justify-between gap-4' : 'flex min-h-0 flex-col gap-3'
+	                )}
+	                role={runsCollapsed ? 'button' : undefined}
+	                tabIndex={runsCollapsed ? 0 : undefined}
+	                aria-expanded={runsCollapsed ? 'false' : 'true'}
+	                aria-label={runsCollapsed ? 'Expand runs' : undefined}
+	                onClick={runsCollapsed ? () => setRunsCollapsed(false) : undefined}
+	                onKeyDown={
+	                  runsCollapsed
+	                    ? (event) => {
+	                        if (event.key === 'Enter' || event.key === ' ') {
+	                          event.preventDefault();
+	                          setRunsCollapsed(false);
+	                        }
+	                      }
+	                    : undefined
+	                }
+	              >
+		                {runsCollapsed ? (
+		                  <>
+		                    <div className="flex min-w-0 items-center gap-4">
+		                      <div className="text-body-lg font-semibold text-foreground">Runs</div>
+		                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-label-sm text-muted">
+		                        <span className="inline-flex items-center gap-1.5">
+		                          <span
+		                            className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
+		                            aria-hidden="true"
+		                          />
+		                          Preview: {previewStatusLabel}
+		                        </span>
+		                        <span className="text-muted" aria-hidden="true">
+		                          ·
+		                        </span>
+		                        <span className="inline-flex items-center gap-1.5">
+		                          <span
+		                            className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
+		                            aria-hidden="true"
+		                          />
+		                          Final: {finalStatusLabel}
+		                        </span>
+		                      </div>
+		                    </div>
+		                    <div className="flex items-center gap-2">
+		                      <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
+		                        <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
+		                        Queue
+	                      </span>
+	                      <CanvasButton
+	                        type="button"
+	                        className={cn(iconButtonClass, 'transition-transform duration-200')}
+	                        onClick={(event) => {
+	                          event.stopPropagation();
+	                          setRunsCollapsed(false);
+	                        }}
+	                        aria-label="Expand runs"
+	                      >
+	                        <CaretDown weight="bold" size={iconSizes.md} aria-hidden="true" />
+	                      </CanvasButton>
+	                    </div>
+	                  </>
+	                ) : (
+	                  <>
+	                    <div className="flex items-start justify-between gap-4">
+	                      <div>
+	                        <div className="text-body-lg font-semibold text-foreground">Runs</div>
+	                      </div>
+	                      <div className="flex items-center gap-2">
+	                        <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
+	                          <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
+	                          Queue
+	                        </span>
+	                        <CanvasButton
+	                          type="button"
+	                          className={cn(iconButtonClass, 'transition-transform duration-200 rotate-180')}
+	                          onClick={() => setRunsCollapsed(true)}
+	                          aria-label="Collapse runs"
+	                        >
+	                          <CaretDown weight="bold" size={iconSizes.md} aria-hidden="true" />
+	                        </CanvasButton>
+	                      </div>
+	                    </div>
 
-                <div className="flex flex-col gap-3">
-                  <div
-                    className={cn(
-                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm',
-                      previewStatusState === 'ready' && 'border-accent/50'
+	                    <div className="flex flex-col gap-3">
+	                  <div
+	                    className={cn(
+	                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm',
+	                      previewStatusState === 'ready' && 'border-accent/50'
                     )}
                     data-status={previewStatusState}
                   >
@@ -2263,9 +2760,9 @@ export function PromptCanvas({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-body-sm font-semibold text-foreground">Preview Run</div>
-                          {runMetaLabel && (
-                            <div className="text-label-sm text-faint">{runMetaLabel}</div>
-                          )}
+	                          {runMetaLabel && (
+	                            <div className="text-label-sm text-muted">{runMetaLabel}</div>
+	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={cn(statusPillClass, previewStatusStyles.text, 'normal-case tracking-normal')}>
@@ -2275,7 +2772,7 @@ export function PromptCanvas({
                             />
                             {previewStatusLabel}
                           </span>
-                          {previewEta && <span className="text-label-sm text-faint">{previewEta}</span>}
+	                          {previewEta && <span className="text-label-sm text-muted">{previewEta}</span>}
                           <div className="relative" ref={previewRunMenuRef}>
                             <CanvasButton
                               type="button"
@@ -2287,7 +2784,7 @@ export function PromptCanvas({
                               aria-haspopup="menu"
                               aria-expanded={openRunMenu === 'preview'}
                             >
-                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                              <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
                             </CanvasButton>
                             {openRunMenu === 'preview' && (
                               <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-lg border border-border bg-surface-2 p-2 shadow-md" role="menu">
@@ -2327,16 +2824,16 @@ export function PromptCanvas({
                     </div>
                     <div className="rounded-lg border border-border bg-surface-1 p-3">
                       <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
-                        <span className="font-semibold text-faint">Metrics:</span>
+	                        <span className="font-semibold text-muted">Metrics:</span>
                         <span>Tokens {RUN_METRICS.preview.tokens}</span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span>Est. cost {RUN_METRICS.preview.cost}</span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
                           Quality: {RUN_METRICS.preview.quality}
                         </span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
                           Safety: {RUN_METRICS.preview.safety}
@@ -2344,7 +2841,7 @@ export function PromptCanvas({
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-surface-1 p-3">
-                      <div className="text-label-sm text-faint">Artifacts</div>
+	                      <div className="text-label-sm text-muted">Artifacts</div>
                       <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.preview.map((artifact) => (
                           <CanvasButton
@@ -2421,9 +2918,9 @@ export function PromptCanvas({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-body-sm font-semibold text-foreground">Final Render</div>
-                          {runMetaLabel && (
-                            <div className="text-label-sm text-faint">{runMetaLabel}</div>
-                          )}
+	                          {runMetaLabel && (
+	                            <div className="text-label-sm text-muted">{runMetaLabel}</div>
+	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
@@ -2433,7 +2930,7 @@ export function PromptCanvas({
                             />
                             {finalStatusLabel}
                           </span>
-                          {finalEta && <span className="text-label-sm text-faint">{finalEta}</span>}
+	                          {finalEta && <span className="text-label-sm text-muted">{finalEta}</span>}
                           <div className="relative" ref={finalRunMenuRef}>
                             <CanvasButton
                               type="button"
@@ -2445,7 +2942,7 @@ export function PromptCanvas({
                               aria-haspopup="menu"
                               aria-expanded={openRunMenu === 'final'}
                             >
-                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                              <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
                             </CanvasButton>
                             {openRunMenu === 'final' && (
                               <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-lg border border-border bg-surface-2 p-2 shadow-md" role="menu">
@@ -2485,16 +2982,16 @@ export function PromptCanvas({
                     </div>
                     <div className="rounded-lg border border-border bg-surface-1 p-3">
                       <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
-                        <span className="font-semibold text-faint">Metrics:</span>
+	                        <span className="font-semibold text-muted">Metrics:</span>
                         <span>Tokens {RUN_METRICS.final.tokens}</span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span>Est. cost {RUN_METRICS.final.cost}</span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
                           Quality: {RUN_METRICS.final.quality}
                         </span>
-                        <span className="text-faint">·</span>
+	                        <span className="text-muted">·</span>
                         <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
                           Safety: {RUN_METRICS.final.safety}
@@ -2502,7 +2999,7 @@ export function PromptCanvas({
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-surface-1 p-3">
-                      <div className="text-label-sm text-faint">Artifacts</div>
+	                      <div className="text-label-sm text-muted">Artifacts</div>
                       <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.final.map((artifact) => (
                           <CanvasButton
@@ -2569,371 +3066,77 @@ export function PromptCanvas({
                         </CanvasButton>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </section>
+	                  </div>
+	                </div>
+	                  </>
+	                )}
+	              </section>
             </div>
           </div>
         </div>
 
-        {/* Right Rail - Stage + Inspector */}
-        <div className="flex min-h-0 flex-col gap-6 xl:w-96 xl:flex-shrink-0">
-          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-body-lg font-semibold text-foreground">Stage</div>
-              </div>
-              <div className="flex h-9 items-center rounded-full border border-border bg-surface-1 p-0.5">
-                <CanvasButton
-                  type="button"
-                  onClick={() => setStageTab('preview')}
-                  aria-selected={stageTab === 'preview'}
-                  className={cn(
-                    'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
-                    stageTab === 'preview'
-                      ? 'bg-surface-2 text-foreground shadow-sm'
-                      : 'text-muted hover:text-foreground'
-                  )}
-                >
-                  Preview
-                </CanvasButton>
-                <CanvasButton
-                  type="button"
-                  onClick={() => setStageTab('final')}
-                  aria-selected={stageTab === 'final'}
-                  className={cn(
-                    'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
-                    stageTab === 'final'
-                      ? 'bg-surface-2 text-foreground shadow-sm'
-                      : 'text-muted hover:text-foreground'
-                  )}
-                >
-                  Final
-                </CanvasButton>
-              </div>
-            </div>
-
-            <div className="relative mt-4 flex min-h-72 flex-1 flex-col gap-3">
-              {stageTab === 'preview' ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-label-sm font-semibold uppercase tracking-wide text-muted">Provider</span>
-                      <Select
-                        value={visualProvider}
-                        onValueChange={(value) => setVisualProvider(value as PreviewProvider)}
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
-                            'hover:border-border-strong hover:bg-surface-3'
-                          )}
-                          aria-label="Preview provider"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="replicate-flux-kontext-fast">Kontext</SelectItem>
-                          <SelectItem value="replicate-flux-schnell">Schnell</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="ml-auto flex items-center gap-2">
-                      {visualProvider === 'replicate-flux-kontext-fast' && hasStoryboardFrames && (
-                        <label className="inline-flex items-center gap-2 text-label-sm font-semibold text-muted">
-                          <Checkbox
-                            checked={useSelectedFrameAsBase}
-                            onCheckedChange={(checked) => setUseSelectedFrameAsBase(Boolean(checked))}
-                          />
-                          <span>Use selected frame as base</span>
-                        </label>
-                      )}
-                    </div>
-                  </div>
-
-                  {visualProvider === 'replicate-flux-kontext-fast' ? (
-                    <div className="flex flex-1 flex-col gap-3">
-                      <div className="rounded-lg border border-border bg-surface-2">
-                        <div className="border-b border-border px-3 py-2 text-label-sm font-semibold text-foreground">
-                          Frame {storyboardSelectedIndex + 1}{' '}
-                          <span className="text-muted">
-                            — {storyboardSelectedIndex === 0 ? 'Base' : `Edit ${storyboardSelectedIndex}`}
-                          </span>
-                        </div>
-                        <div className="relative h-36 bg-surface-3">
-                          {selectedStoryboardFrameUrl ? (
-                            <img
-                              src={selectedStoryboardFrameUrl}
-                              alt={`Frame ${storyboardSelectedIndex + 1}`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-surface-3" />
-                          )}
-                          {hasStoryboardFrames && (
-                            <CanvasButton
-                              type="button"
-                              className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-md transition-colors hover:bg-surface-2"
-                              onClick={() => setStoryboardPlaying((prev) => !prev)}
-                              aria-label={storyboardPlaying ? 'Pause storyboard playback' : 'Play storyboard'}
-                            >
-                              {storyboardPlaying ? (
-                                <Pause className="h-4 w-4" aria-hidden="true" />
-                              ) : (
-                                <Play className="h-4 w-4" aria-hidden="true" />
-                              )}
-                            </CanvasButton>
-                          )}
-                          {!isVisualPreviewGenerating && !hasStoryboardFrames && (
-                            <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
-                              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
-                                <Play className="h-5 w-5" />
-                              </div>
-                              <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-                              <div className="text-label-sm text-muted">
-                                Generate a preview to validate framing, lighting, and mood.
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        {[
-                          { title: '1. Base', delta: '(generated or seeded)' },
-                          { title: '2. Edit 1', delta: 'pose / gesture' },
-                          { title: '3. Edit 2', delta: 'lighting / skyline' },
-                          { title: '4. Edit 3', delta: 'final polish / tone' },
-                        ].map((step, index) => {
-                          const thumb = storyboardFrames[index];
-                          const isSelected = storyboardSelectedIndex === index;
-                          return (
-                            <CanvasButton
-                              key={step.title}
-                              type="button"
-                              className={cn(
-                                'flex w-full items-start justify-start gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
-                                'hover:border-border-strong hover:bg-surface-3',
-                                isSelected && 'border-accent/60 bg-accent/10'
-                              )}
-                              data-selected={isSelected ? 'true' : 'false'}
-                              onClick={() => {
-                                setStoryboardPlaying(false);
-                                setStoryboardSelectedIndex(index);
-                              }}
-                              role="listitem"
-                            >
-                              <span className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-surface-3">
-                                {typeof thumb === 'string' && thumb ? (
-                                  <img src={thumb} alt="" className="h-full w-full object-cover" />
-                                ) : (
-                                  <span className="block h-full w-full" />
-                                )}
-                              </span>
-                              <span className="flex min-w-0 flex-col">
-                                <span className="text-body-sm font-semibold text-foreground">{step.title}</span>
-                                <span className="text-label-sm text-muted">{step.delta}</span>
-                              </span>
-                            </CanvasButton>
-                          );
-                        })}
-                      </div>
-
-                      <div className="hidden" aria-hidden="true">
-                        <VisualPreview
-                          prompt={previewSource}
-                          aspectRatio={effectiveAspectRatio}
-                          isVisible={true}
-                          provider={visualProvider}
-                          seedImageUrl={useSelectedFrameAsBase ? selectedStoryboardFrameUrl : null}
-                          useReferenceImage={useSelectedFrameAsBase}
-                          generateRequestId={visualGenerateRequestId}
-                          lastGeneratedAt={visualLastGeneratedAt}
-                          onPreviewGenerated={handleVisualPreviewGenerated}
-                          onLoadingChange={setVisualPreviewGenerating}
-                          onPreviewStateChange={handleVisualPreviewStateChange}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1">
-                      <div className="h-full w-full" aria-label="Image preview surface">
-                        <VisualPreview
-                          prompt={previewSource}
-                          aspectRatio={effectiveAspectRatio}
-                          isVisible={true}
-                          provider={visualProvider}
-                          seedImageUrl={seedImageUrl}
-                          generateRequestId={visualGenerateRequestId}
-                          lastGeneratedAt={visualLastGeneratedAt}
-                          onPreviewGenerated={handleVisualPreviewGenerated}
-                          onLoadingChange={setVisualPreviewGenerating}
-                          onPreviewStateChange={handleVisualPreviewStateChange}
-                        />
-                      </div>
-                      {!isVisualPreviewGenerating && !stageHasOutput && (
-                        <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
-                            <Play className="h-5 w-5" />
-                          </div>
-                          <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-                          <div className="text-label-sm text-muted">
-                            Generate a preview to validate framing, lighting, and mood.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
-                    <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
-                      <span
-                        className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
-                        aria-hidden="true"
-                      />
-                      {finalStatusState === 'generating'
-                        ? 'Generating'
-                        : finalStatusState === 'ready'
-                          ? 'Ready'
-                          : 'Idle'}
-                    </span>
-                    <span className="text-label-sm font-semibold text-muted">Model: WAN 2.2</span>
-                    <span className="ml-auto" aria-hidden="true" />
-                    {finalStatusState === 'ready' && stageFinalVideoUrl && (
-                      <div className="flex items-center gap-2" role="group" aria-label="Final quick actions">
-                        <CanvasButton
-                          type="button"
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
-                          onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
-                        >
-                          <Download className="h-4 w-4" aria-hidden="true" />
-                          Download
-                        </CanvasButton>
-                        <CanvasButton
-                          type="button"
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
-                          onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
-                        >
-                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                          Open
-                        </CanvasButton>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-1 flex-col gap-2">
-                    <div
-                      className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1"
-                      onClick={() => {
-                        const el = finalVideoElRef.current;
-                        if (!el) return;
-                        if (el.paused) void el.play();
-                        else el.pause();
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label="Video preview surface"
-                      onKeyDown={(event) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return;
-                        event.preventDefault();
-                        const el = finalVideoElRef.current;
-                        if (!el) return;
-                        if (el.paused) void el.play();
-                        else el.pause();
-                      }}
-                    >
-                      <VideoPreview
-                        prompt={videoPreviewPrompt}
-                        aspectRatio={effectiveAspectRatio}
-                        model={RAIL_VIDEO_PREVIEW_MODEL}
-                        generationParams={generationParams}
-                        {...(resolvedVideoInputReference
-                          ? { inputReference: resolvedVideoInputReference }
-                          : {})}
-                        isVisible={showVideoPreview}
-                        seedVideoUrl={seedVideoUrl}
-                        generateRequestId={railVideoGenerateRequestId}
-                        lastGeneratedAt={railVideoLastGeneratedAt}
-                        videoRef={finalVideoElRef}
-                        onPreviewGenerated={handleRailVideoPreviewGenerated}
-                        onLoadingChange={setRailVideoPreviewGenerating}
-                        onPreviewStateChange={handleVideoPreviewStateChange}
-                      />
-                      {!stageFinalVideoUrl && <div className="h-full w-full bg-surface-3" />}
-                      <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-sm">
-                          <Play className="h-5 w-5" aria-hidden="true" />
-                        </div>
-                      </div>
-                      {!isRailVideoPreviewGenerating && !stageFinalVideoUrl && (
-                        <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
-                            <Play className="h-5 w-5" />
-                          </div>
-                          <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-                          <div className="text-label-sm text-muted">
-                            Generate the final render when you are ready.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-surface-1 px-3 py-2" aria-label="Timeline scrub">
-                      <Slider min={0} max={100} defaultValue={[0]} disabled={!stageFinalVideoUrl} />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {stageTab === 'preview' && visualPreviewState?.error && !isVisualPreviewGenerating && (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
-                  Preview failed. Try again.
-                </div>
-              )}
-              {stageTab === 'final' && videoPreviewState?.error && !isRailVideoPreviewGenerating && (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
-                  Final preview failed. Try again.
-                </div>
-              )}
-              {stageIsGenerating && (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-muted" aria-label="Generating">
-                  <LoadingDots size={3} className="text-faint" />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-label-sm text-muted">{stageFooterMeta}</div>
-              {stageTab === 'final' && (
-                <CanvasButton
-                  type="button"
-                  className="h-9 rounded-lg border border-border bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                  onClick={() => setShowSettings(true)}
-                >
-                  Edit settings
-                </CanvasButton>
-              )}
-              <CanvasButton
-                type="button"
-                onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
-                disabled={stageCtaDisabled}
-                className={cn(primaryButtonClass, 'min-w-40 justify-center')}
-              >
-                {stageCtaLabel}
-              </CanvasButton>
-            </div>
-          </section>
-
-          {/* Settings live with the Prompt panel (Stage shows read-only summaries). */}
-        </div>
-      </div>
-      {showDiff && (
-        <Dialog open={showDiff} onOpenChange={setShowDiff}>
-          <DialogContent className="w-full max-w-5xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
-            <div className="flex items-center justify-between border-b border-border p-4">
+	        {/* Right Rail - Stage + Inspector */}
+	        <div
+	          className={cn(
+	            'hidden min-h-0 flex-col gap-6 transition-all duration-200 xl:flex xl:flex-shrink-0',
+	            stageCollapsed ? 'xl:w-14' : 'xl:w-96'
+	          )}
+	        >
+	          {stageCollapsed ? (
+	            <section className="flex flex-1 flex-col items-center justify-start gap-4 rounded-xl border border-border bg-surface-2 py-4 shadow-sm">
+	              <CanvasButton
+	                type="button"
+	                className={iconButtonClass}
+	                onClick={() => setStageCollapsed(false)}
+	                aria-label="Expand stage panel"
+	              >
+	                <CaretLeft weight="bold" size={iconSizes.md} aria-hidden="true" />
+	              </CanvasButton>
+	              <div className="text-body-sm font-semibold text-muted rotate-90 whitespace-nowrap">Stage</div>
+	            </section>
+	          ) : (
+	            renderStagePanel('desktop')
+	          )}
+	
+	          {/* Settings live with the Prompt panel (Stage shows read-only summaries). */}
+	        </div>
+	      </div>
+	
+	      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-3 xl:hidden">
+	        <div className="flex items-center gap-3">
+	          <CanvasButton
+	            type="button"
+	            className={cn(primaryButtonClass, 'flex-1 justify-center')}
+	            onClick={() => setStageSheetOpen(true)}
+	          >
+	            Open Stage
+	          </CanvasButton>
+	          <div className="hidden items-center gap-2 text-label-sm text-muted sm:flex" aria-label="Stage status">
+	            <span className="inline-flex items-center gap-1.5">
+	              <span className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)} aria-hidden="true" />
+	              Preview: {previewStatusLabel}
+	            </span>
+	            <span aria-hidden="true">·</span>
+	            <span className="inline-flex items-center gap-1.5">
+	              <span className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)} aria-hidden="true" />
+	              Final: {finalStatusLabel}
+	            </span>
+	          </div>
+	        </div>
+	      </div>
+	
+	      <Sheet open={stageSheetOpen} onOpenChange={setStageSheetOpen}>
+	        <SheetContent
+	          side="bottom"
+	          className="h-[85vh] overflow-auto border-0 bg-transparent p-3 shadow-none [&>button]:hidden"
+	        >
+	          {renderStagePanel('sheet')}
+	        </SheetContent>
+	      </Sheet>
+	      {showDiff && (
+	        <Dialog open={showDiff} onOpenChange={setShowDiff}>
+	          <DialogContent className="w-full max-w-5xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
+	            <div className="flex items-center justify-between border-b border-border p-4">
               <div>
                 <div className="text-body-lg font-semibold text-foreground">Diff</div>
                 <div className="mt-1 text-label-sm text-muted">Input vs optimized output</div>
@@ -2944,7 +3147,7 @@ export function PromptCanvas({
                 onClick={() => setShowDiff(false)}
                 aria-label="Close diff"
               >
-                <X className="h-4 w-4" />
+                <X weight="bold" size={iconSizes.md} />
               </CanvasButton>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-2">
