@@ -5,7 +5,6 @@ import { useShareLink } from '../hooks/useShareLink';
 import { usePromptExport } from '../PromptCanvas/hooks/usePromptExport';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import { Input } from '@promptstudio/system/components/ui/input';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { cn } from '@/utils/cn';
 
@@ -25,7 +24,6 @@ export const PromptTopBar = (): React.ReactElement | null => {
     showShortcuts,
     setShowShortcuts,
     handleCreateNew,
-    showResults,
     promptOptimizer,
     currentPromptUuid,
     outputSaveState,
@@ -42,28 +40,6 @@ export const PromptTopBar = (): React.ReactElement | null => {
   const { shared, share } = useShareLink();
   const exportMenuRef = React.useRef<HTMLDivElement>(null);
   const [showExportMenu, setShowExportMenu] = React.useState(false);
-  const [isTitleDirty, setIsTitleDirty] = React.useState(false);
-
-  const titleSource = (promptOptimizer.inputPrompt || promptOptimizer.displayedPrompt || '').trim();
-  const derivedTitle =
-    titleSource.length > 0
-      ? titleSource.split('\n')[0]!.slice(0, 64)
-      : currentPromptUuid
-        ? `Prompt ${currentPromptUuid.slice(0, 8)}`
-        : 'Untitled prompt';
-
-  const [titleValue, setTitleValue] = React.useState<string>(derivedTitle);
-
-  React.useEffect(() => {
-    if (!isTitleDirty) {
-      setTitleValue(derivedTitle);
-    }
-  }, [derivedTitle, isTitleDirty]);
-
-  React.useEffect(() => {
-    setIsTitleDirty(false);
-    setTitleValue(derivedTitle);
-  }, [currentPromptUuid, derivedTitle]);
 
   const timeLabel =
     typeof outputLastSavedAt === 'number'
@@ -104,20 +80,10 @@ export const PromptTopBar = (): React.ReactElement | null => {
     return undefined;
   }, [showExportMenu]);
 
-  const isOptimizing = Boolean(promptOptimizer.isProcessing || promptOptimizer.isRefining);
-  const activeStep = !showResults ? 'compose' : isOptimizing ? 'optimize' : 'preview';
-
-  const steps = [
-    { id: 'compose', label: 'Compose' },
-    { id: 'optimize', label: 'Optimize' },
-    { id: 'preview', label: 'Preview' },
-    { id: 'render', label: 'Render' },
-  ] as const;
-
   return (
     <header className="sticky top-0 z-40 px-4 pt-4" role="banner">
-      <div className="flex h-14 items-center gap-4 rounded-xl border border-border bg-surface-1/80 px-4 py-3 shadow-sm backdrop-blur">
-        <div className="flex min-w-0 flex-1 items-center gap-5">
+      <div className="flex h-14 items-center justify-between gap-4 rounded-xl border border-border bg-surface-1/80 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-4">
           <Button
             type="button"
             className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
@@ -133,51 +99,6 @@ export const PromptTopBar = (): React.ReactElement | null => {
           <div className="hidden flex-col gap-0.5 px-1.5 lg:flex">
             <div className="text-body font-bold uppercase tracking-widest text-foreground">VIDRA</div>
             <div className="text-label-12 text-faint">Prompt Studio</div>
-          </div>
-
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 shadow-inset">
-            <span className="h-2 w-2 rounded-full bg-accent ring-2 ring-accent/10" aria-hidden="true" />
-            <Input
-              type="text"
-              value={titleValue}
-              onChange={(event) => {
-                const next = event.target.value;
-                setTitleValue(next);
-                setIsTitleDirty(next.trim().length > 0 && next !== derivedTitle);
-              }}
-              onBlur={() => {
-                if (!titleValue.trim()) {
-                  setIsTitleDirty(false);
-                  setTitleValue(derivedTitle);
-                }
-              }}
-              className="flex-1 border-none bg-transparent p-0 text-body font-medium text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-              aria-label="Prompt title"
-            />
-          </div>
-        </div>
-
-        <div className="hidden xl:flex" aria-label="Workflow steps">
-          <div className="inline-flex h-10 items-center rounded-lg border border-border bg-surface-2 shadow-inset">
-            {steps.map((step) => {
-              const isActive = step.id === activeStep;
-              return (
-                <div
-                  key={step.id}
-                  aria-current={isActive ? 'step' : undefined}
-                >
-                  <span
-                    className={cn(
-                      'flex h-10 items-center rounded-lg border border-transparent px-3.5 text-body-sm text-muted transition-all duration-150',
-                      isActive && 'border-border-strong bg-surface-3 text-foreground -translate-y-px'
-                    )}
-                    aria-selected={isActive}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
           </div>
         </div>
 
