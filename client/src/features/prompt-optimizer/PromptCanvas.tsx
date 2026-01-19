@@ -170,6 +170,7 @@ export function PromptCanvas({
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
   const [openRunMenu, setOpenRunMenu] = useState<'preview' | 'final' | null>(null);
+  const [versionsCollapsed, setVersionsCollapsed] = useState(false);
   const [runsCollapsed, setRunsCollapsed] = useState(true);
   const [stageCollapsed, setStageCollapsed] = useState(false);
   const [stageSheetOpen, setStageSheetOpen] = useState(false);
@@ -938,6 +939,9 @@ export function PromptCanvas({
       ? (storyboardFrames[storyboardSelectedIndex] as string)
       : null;
   const selectedStoryboardMeta = storyboardFrameMeta[storyboardSelectedIndex] ?? null;
+  const isStoryboardEmpty = !isVisualPreviewGenerating && !hasStoryboardFrames;
+  const isPreviewEmpty = !isVisualPreviewGenerating && !stageHasOutput;
+  const isFinalEmpty = !isRailVideoPreviewGenerating && !stageFinalVideoUrl;
 
   useEffect(() => {
     if (stageTab !== 'preview') {
@@ -1557,7 +1561,7 @@ export function PromptCanvas({
 	                      {selectedStoryboardMeta?.subtitle ? ` ${selectedStoryboardMeta.subtitle}` : ''}
 	                    </span>
 	                  </div>
-	                  <div className="relative h-36 bg-surface-3">
+	                  <div className={cn('relative h-36 bg-surface-3', isStoryboardEmpty && 'px-6 py-8')}>
 	                    {selectedStoryboardFrameUrl ? (
 	                      <img
 	                        src={selectedStoryboardFrameUrl}
@@ -1580,8 +1584,8 @@ export function PromptCanvas({
 	                        )}
 	                      </CanvasButton>
 	                    )}
-	                    {!isVisualPreviewGenerating && !hasStoryboardFrames && (
-	                      <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                    {isStoryboardEmpty && (
+	                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
 	                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
                           <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                        </div>
@@ -1650,7 +1654,12 @@ export function PromptCanvas({
 	                </div>
 	              </div>
 	            ) : (
-	              <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1">
+	              <div
+	                className={cn(
+	                  'relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1',
+	                  isPreviewEmpty && 'px-6 py-8'
+	                )}
+	              >
 	                <div className="h-full w-full" aria-label="Image preview surface">
 	                  <VisualPreview
 	                    prompt={previewSource}
@@ -1665,8 +1674,8 @@ export function PromptCanvas({
 	                    onPreviewStateChange={handleVisualPreviewStateChange}
 	                  />
 	                </div>
-	                {!isVisualPreviewGenerating && !stageHasOutput && (
-	                  <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                {isPreviewEmpty && (
+	                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
 	                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
                       <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                    </div>
@@ -1716,7 +1725,10 @@ export function PromptCanvas({
 	
 	            <div className="flex flex-1 flex-col gap-2">
 	              <div
-	                className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1"
+	                className={cn(
+	                  'relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1',
+	                  isFinalEmpty && 'px-6 py-8'
+	                )}
 	                onClick={() => {
 	                  const el = finalVideoElRef.current;
 	                  if (!el) return;
@@ -1751,13 +1763,15 @@ export function PromptCanvas({
 	                  onPreviewStateChange={handleVideoPreviewStateChange}
 	                />
 	                {!stageFinalVideoUrl && <div className="h-full w-full bg-surface-3" />}
-	                <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-	                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-sm">
-                    <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                {stageFinalVideoUrl && (
+	                  <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+	                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-sm">
+                      <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
+	                    </div>
 	                  </div>
-	                </div>
-	                {!isRailVideoPreviewGenerating && !stageFinalVideoUrl && (
-	                  <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+	                )}
+	                {isFinalEmpty && (
+	                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
 	                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
                       <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                    </div>
@@ -1824,7 +1838,7 @@ export function PromptCanvas({
 		  return (
 		    <div
 		      className={cn(
-		        'relative flex min-h-0 flex-1 flex-col pb-20 xl:pb-0',
+		        'relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0',
 	        isPreviewGenerating && 'cursor-progress'
 	      )}
 	      data-mode={selectedMode}
@@ -1873,7 +1887,7 @@ export function PromptCanvas({
 	      {/* Main Content Container */}
 	      <div
 	        className={cn(
-	          'relative flex min-h-0 flex-1 flex-col gap-ps-4 p-ps-page xl:flex-row',
+	          'relative flex min-h-0 flex-1 flex-col gap-ps-3 p-ps-3 lg:flex-row',
 	          outlineOverlayActive && 'pointer-events-none opacity-60'
 	        )}
 	      >
@@ -1884,36 +1898,46 @@ export function PromptCanvas({
           />
         )}
 
-        {/* Context gutter (xl+ only) */}
-        <div className="hidden min-h-0 flex-shrink-0 xl:flex xl:w-80">
-          <VersionsPanel />
+        {/* Context gutter (lg+ only) */}
+        <div
+          className={cn(
+            'hidden min-h-0 flex-col lg:flex',
+            versionsCollapsed
+              ? 'lg:flex-[0_0_56px] lg:min-w-[56px] lg:max-w-[56px] lg:items-center lg:gap-3 lg:overflow-hidden lg:rounded-xl lg:border lg:border-border lg:bg-surface-2 lg:px-4 lg:py-4 lg:shadow-sm'
+              : 'lg:flex-[0_0_25%] lg:min-w-0'
+          )}
+        >
+          {versionsCollapsed ? (
+            <CanvasButton
+              type="button"
+              size="icon-xs"
+              onClick={() => setVersionsCollapsed(false)}
+              aria-label="Expand versions panel"
+            >
+              <CaretRight weight="bold" size={iconSizes.sm} aria-hidden="true" />
+            </CanvasButton>
+          ) : (
+            <VersionsPanel onCollapse={() => setVersionsCollapsed(true)} />
+          )}
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
         <div
           ref={editorColumnRef}
-          className="flex min-h-0 min-w-0 flex-1 flex-col"
-        >
-          {!outlineOverlayActive && (
-            <div className="mx-auto flex w-full max-w-5xl">
-              <CanvasButton
-                type="button"
-                onClick={openOutlineOverlay}
-                className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-2 text-muted shadow-sm transition hover:border-border-strong hover:text-foreground"
-                aria-label="Open outline"
-                title="Open outline"
-              >
-                <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
-              </CanvasButton>
-            </div>
+          className={cn(
+            'flex min-h-0 min-w-0 flex-1 flex-col',
+            !versionsCollapsed && !stageCollapsed && 'lg:flex-[0_0_48%]'
           )}
-
+        >
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-	            <div className="mx-auto flex w-full max-w-5xl flex-col gap-ps-4 pb-ps-card">
+	            <div className="flex min-h-0 flex-1 w-full flex-col gap-ps-4 px-0 pb-ps-card">
 	              <Panel
 	                padding="none"
 	                surface="3"
-	                className={cn('transition-opacity', isOutputLoading && 'opacity-80')}
+	                className={cn(
+	                  'flex min-h-0 flex-1 flex-col transition-opacity',
+	                  isOutputLoading && 'opacity-80'
+	                )}
 	              >
 	                <div className="border-b border-border p-ps-card">
 	                  <div className="flex flex-wrap items-baseline justify-between gap-ps-3">
@@ -1924,6 +1948,17 @@ export function PromptCanvas({
 	                      )}
 	                    </div>
 	                    <div className="flex flex-wrap items-center gap-2">
+                        {!outlineOverlayActive && (
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            onClick={openOutlineOverlay}
+                            aria-label="Open outline"
+                            title="Open outline"
+                          >
+                            <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
+                          </CanvasButton>
+                        )}
                       <Badge casing="upper" className={outputStatusStyles.text}>
                         <span
                           className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
@@ -2043,16 +2078,16 @@ export function PromptCanvas({
 	                  </div>
 	                </div>
 
-	                <div className="p-ps-card">
-	                  <div className="flex min-h-0 flex-col gap-ps-4 xl:flex-row">
+	                <div className="flex min-h-0 flex-1 flex-col p-ps-card">
+	                  <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-ps-4 xl:flex-row">
 	                    <div
-	                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-ps-3"
+	                      className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
 	                      aria-busy={isOutputLoading}
 	                      ref={editorWrapperRef}
 	                    >
                       <PromptEditor
                         ref={editorRef as React.RefObject<HTMLDivElement>}
-                        className="min-h-44 w-full whitespace-pre-wrap font-sans text-body text-foreground outline-none"
+                        className="min-h-44 w-full flex-1 min-h-0 overflow-y-auto whitespace-pre-wrap px-ps-3 py-ps-4 text-body-xl text-foreground-warm outline-none"
                         onTextSelection={handleTextSelection}
                         onHighlightClick={handleHighlightClick}
                         onHighlightMouseDown={handleHighlightMouseDown}
@@ -2106,7 +2141,7 @@ export function PromptCanvas({
                         )}
                       {isOutputLoading && (
                         <div
-                          className="absolute inset-0 flex items-start justify-start rounded-lg bg-surface-1/80 p-4 backdrop-blur-sm"
+                          className="absolute inset-0 flex items-start justify-start bg-surface-3/80 p-ps-4 backdrop-blur-sm"
                           role="status"
                           aria-live="polite"
                           aria-label="Optimizing prompt"
@@ -2118,7 +2153,7 @@ export function PromptCanvas({
 
 	                    {selectedSpanId ? (
 	                      <aside
-	                        className="flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-accent/30 bg-surface-2 shadow-sm ring-2 ring-accent/10 xl:w-96"
+	                        className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-lg border border-accent/30 bg-surface-2 shadow-sm ring-2 ring-accent/10 xl:w-96"
 	                        aria-label="Suggestions"
 	                      >
                       <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
@@ -2694,22 +2729,21 @@ export function PromptCanvas({
 	        {/* Right Rail - Stage + Inspector */}
 	        <div
 	          className={cn(
-	            'hidden min-h-0 flex-col gap-6 transition-all duration-200 xl:flex xl:flex-shrink-0',
-	            stageCollapsed ? 'xl:w-14' : 'xl:w-96'
+	            'hidden min-h-0 flex-col transition-all duration-200 lg:flex',
+	            stageCollapsed
+	              ? 'lg:flex-[0_0_56px] lg:min-w-[56px] lg:max-w-[56px] lg:items-center lg:gap-3 lg:overflow-hidden lg:rounded-xl lg:border lg:border-border lg:bg-surface-2 lg:px-4 lg:py-4 lg:shadow-sm'
+	              : 'lg:flex-[0_0_25%] lg:min-w-0 lg:gap-6'
 	          )}
 	        >
 	          {stageCollapsed ? (
-	            <section className="flex flex-1 flex-col items-center justify-start gap-4 rounded-xl border border-border bg-surface-2 py-4 shadow-sm">
-	              <CanvasButton
-	                type="button"
-	                size="icon-sm"
-	                onClick={() => setStageCollapsed(false)}
-	                aria-label="Expand stage panel"
-	              >
-	                <CaretLeft weight="bold" size={iconSizes.md} aria-hidden="true" />
-	              </CanvasButton>
-	              <div className="text-body-sm font-semibold text-muted rotate-90 whitespace-nowrap">Stage</div>
-	            </section>
+	            <CanvasButton
+	              type="button"
+	              size="icon-xs"
+	              onClick={() => setStageCollapsed(false)}
+	              aria-label="Expand stage panel"
+	            >
+	              <CaretLeft weight="bold" size={iconSizes.sm} aria-hidden="true" />
+	            </CanvasButton>
 	          ) : (
 	            renderStagePanel('desktop')
 	          )}
@@ -2718,7 +2752,7 @@ export function PromptCanvas({
 	        </div>
 	      </div>
 	
-	      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-ps-3 xl:hidden">
+	      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-ps-3 lg:hidden">
 	        <div className="flex items-center gap-3">
 	          <CanvasButton
 	            type="button"

@@ -104,6 +104,21 @@
   .ps-line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ps-line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
+  .ps-highlight-pill {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    padding: var(--ps-highlight-pill-padding-y) var(--ps-highlight-pill-padding-x) !important;
+    margin-inline: var(--ps-highlight-pill-margin-x) !important;
+    line-height: var(--ps-highlight-pill-line-height) !important;
+    border-radius: var(--ps-highlight-pill-radius) !important;
+  }
+
+  .ps-paragraph-gap {
+    display: block;
+    height: var(--ps-space-paragraph);
+    pointer-events: none;
+  }
+
   /* ===== LOADING ===== */
   .ps-spinner {
     display: inline-block;

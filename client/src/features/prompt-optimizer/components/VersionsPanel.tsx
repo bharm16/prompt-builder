@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Icon, Image, Play } from '@promptstudio/system/components/ui';
+import { CaretLeft, Icon, Image, Play } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
@@ -82,7 +82,11 @@ const resolveVersionLabel = (entry: VersionEntry, index: number, total: number):
   return `v${total - index}`;
 };
 
-export const VersionsPanel = (): React.ReactElement => {
+type VersionsPanelProps = {
+  onCollapse?: () => void;
+};
+
+export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactElement => {
   const {
     promptHistory,
     currentPromptUuid,
@@ -162,8 +166,23 @@ export const VersionsPanel = (): React.ReactElement => {
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-2">
       <div className="px-4 pb-3 pt-4">
-        <div className="text-body-lg font-semibold text-foreground">Versions</div>
-        <div className="mt-1 text-label-12 text-muted">Prompt snapshots</div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-body-lg font-semibold text-foreground">Versions</div>
+            <div className="mt-1 text-label-12 text-muted">Prompt snapshots</div>
+          </div>
+          {onCollapse ? (
+            <Button
+              type="button"
+              variant="canvas"
+              size="icon-sm"
+              onClick={onCollapse}
+              aria-label="Collapse versions panel"
+            >
+              <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
       </div>
       {orderedVersions.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-label-12 text-muted">

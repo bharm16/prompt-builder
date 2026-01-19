@@ -26,7 +26,13 @@ const escapeHtml = (str: string | null | undefined = ''): string =>
 export function escapeHTMLForMLHighlighting(text: string): string {
   const escaped = escapeHtml(text || '');
 
-  return `<div class="whitespace-pre-wrap break-words font-sans text-body text-foreground">${escaped}</div>`;
+  const paragraphBreakPattern = /(\r?\n){2,}/g;
+  const withParagraphGaps = escaped.replace(
+    paragraphBreakPattern,
+    (match) => `${match}<span class="ps-paragraph-gap" aria-hidden="true" contenteditable="false"></span>`
+  );
+
+  return `<div class="whitespace-pre-wrap break-words text-body-xl text-foreground-warm">${withParagraphGaps}</div>`;
 }
 
 /**

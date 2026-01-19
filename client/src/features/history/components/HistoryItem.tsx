@@ -87,9 +87,9 @@ export const HistoryItem = memo<HistoryItemProps>(({
   if (showDeleteConfirm) {
     return (
       <li>
-        <div className="rounded-lg border border-error/40 bg-error/10 p-4">
-          <p className="mb-3 text-body-sm text-foreground">Delete this session?</p>
-          <div className="flex gap-3">
+        <div className="rounded-lg border border-error/40 bg-error/10 p-ps-4">
+          <p className="mb-ps-3 text-body text-foreground">Delete this session?</p>
+          <div className="flex gap-ps-3">
             <Button
               onClick={handleDelete}
               size="sm"
@@ -120,15 +120,15 @@ export const HistoryItem = memo<HistoryItemProps>(({
     <li>
       <div
         className={cn(
-          'group relative flex items-center rounded-lg border border-transparent bg-transparent transition-all duration-150',
-          'hover:-translate-y-px hover:border-border-strong hover:bg-surface-1',
+          'group relative flex items-center rounded-md border border-border/40 bg-transparent transition-all duration-150',
+          'hover:-translate-y-px hover:border-border-strong hover:bg-surface-2/60',
           isSelected && 'border-accent-2/40 bg-accent-2/10 shadow-sm'
         )}
         data-stage={stage}
       >
         <span
           className={cn(
-            'absolute left-1.5 top-2 bottom-2 w-1 rounded-full opacity-0 transition-opacity duration-150',
+            'absolute left-ps-2 top-ps-2 bottom-ps-2 w-1 rounded-full opacity-0 transition-opacity duration-150',
             stageColorClass,
             showAccentBar && 'opacity-100',
             'group-hover:opacity-100'
@@ -139,24 +139,24 @@ export const HistoryItem = memo<HistoryItemProps>(({
           type="button"
           onClick={handleLoad}
           variant="ghost"
-          className="flex w-full min-w-0 items-center gap-3 py-2.5 pl-4 pr-3 text-left"
+          className="flex w-full min-w-0 items-center gap-ps-3 py-ps-3 pl-ps-4 pr-ps-3 text-left"
           aria-label={`Load prompt: ${title}`}
           title={title}
         >
           <span className={cn('h-2 w-2 flex-shrink-0 rounded-full', stageColorClass)} />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <div className="flex items-center justify-between gap-3">
-              {versionLabel ? <span className="text-body-sm font-semibold text-foreground">{versionLabel}</span> : <span />}
+          <div className="flex min-w-0 flex-1 flex-col gap-ps-1">
+            <div className="flex items-center justify-between gap-ps-3">
+              {versionLabel ? <span className="text-body-lg font-semibold text-foreground">{versionLabel}</span> : <span />}
               {processingLabel ? (
                 <span
-                  className="rounded-full border border-accent/50 bg-surface-2 px-2 py-0.5 text-label-sm uppercase tracking-widest text-foreground"
+                  className="rounded-full border border-accent/50 bg-surface-2 px-ps-2 py-0.5 text-label uppercase tracking-widest text-foreground"
                   data-state="processing"
                 >
                   {processingLabel}
                 </span>
               ) : (
                 <span
-                  className="rounded-full border border-border bg-surface-2 px-2 py-0.5 text-label-sm uppercase tracking-widest text-faint"
+                  className="rounded-full border border-border bg-surface-2 px-ps-2 py-0.5 text-label uppercase tracking-widest text-faint"
                   data-state={stage}
                 >
                   {stage === 'generated'
@@ -169,7 +169,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
                 </span>
               )}
             </div>
-            <div className="truncate text-label-sm text-faint">{processingLabel ?? meta}</div>
+            <div className="truncate text-body-lg text-muted">{processingLabel ?? meta}</div>
           </div>
         </Button>
 

@@ -14,6 +14,13 @@
     background: var(--ps-bg);
   }
 
+  [contenteditable="true"] {
+    font-size: var(--ps-editor-font-size) !important;
+    line-height: var(--ps-editor-line-height) !important;
+    letter-spacing: var(--ps-editor-letter-spacing) !important;
+    padding: var(--ps-editor-padding-y) var(--ps-editor-padding-x) !important;
+  }
+
   *:focus-visible {
     outline: 2px solid var(--ps-focus-ring);
     outline-offset: 2px;

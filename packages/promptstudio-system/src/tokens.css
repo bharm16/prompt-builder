@@ -20,10 +20,12 @@
     --ps-lh-snug: 1.25;
     --ps-lh-normal: 1.45;
     --ps-lh-relaxed: 1.65;
+    --ps-lh-reading: 1.75;
 
     --ps-ls-tight: -0.01em;
     --ps-ls-normal: 0em;
     --ps-ls-label: 0.14em;
+    --ps-ls-reading: 0.015em;
 
     /* Dense UI guideline: primary sizes 12px, 13px, 14px, 16px, 18px, 22px. */
     --ps-fs-10: 10px;
@@ -73,6 +75,7 @@
     /* Common semantic names */
     --ps-space-page: var(--ps-s-6); /* default page padding / section rhythm */
     --ps-space-card: var(--ps-s-4);
+    --ps-space-paragraph: 1.5em;
 
     /* =========================
        Radius
@@ -108,6 +111,7 @@
     /* =========================
        Layout sizing
        ========================= */
+    --ps-sidebar-width: 260px;
     --ps-container-sm: 640px;
     --ps-container-md: 768px;
     --ps-container-lg: 1024px;
@@ -144,6 +148,7 @@
     --ps-text: #e7ebf3;
     --ps-text-muted: #b1bbd2;
     --ps-text-faint: #93a0be;
+    --ps-text-warm: rgba(255, 255, 255, 0.95);
 
     --ps-accent: #6886ff;
     --ps-accent-2: #8b66ff;
@@ -291,6 +296,18 @@
     --ps-input-disabled-bg: #f9fafb;
     --ps-input-disabled-text: #9ca3af;
 
+    /* Editor + highlight tokens */
+    --ps-editor-font-size: var(--ps-fs-16);
+    --ps-editor-line-height: 32px;
+    --ps-editor-letter-spacing: 0.01em;
+    --ps-editor-padding-y: var(--ps-space-7);
+    --ps-editor-padding-x: 28px;
+    --ps-highlight-pill-padding-y: 6px;
+    --ps-highlight-pill-padding-x: 10px;
+    --ps-highlight-pill-margin-x: 3px;
+    --ps-highlight-pill-line-height: 1;
+    --ps-highlight-pill-radius: var(--ps-r-xs);
+
     /* =========================
        Shadows (dark-tuned)
        ========================= */
@@ -373,6 +390,7 @@
     --text-secondary: var(--ps-text-muted);
     --text-faint: var(--ps-text-faint);
     --text-tertiary: var(--ps-text-faint);
+    --text-warm: var(--ps-text-warm);
 
     --accent: var(--ps-accent);
     --accent-2: var(--ps-accent-2);

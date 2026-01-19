@@ -41,8 +41,8 @@ export const PromptResultsSection = ({
     <>
       {/* Refinement indicator banner - floats absolutely */}
       {promptOptimizer.isRefining && (
-        <div className="absolute top-0 left-0 right-0 z-10 px-4 pt-4">
-          <div className="mx-auto max-w-5xl">
+        <div className="absolute top-0 left-0 right-0 z-10 pt-4">
+          <div className="w-[90%] px-[15px]">
             <div className="flex items-center gap-3 rounded-lg border border-info-100 bg-info-50 p-3 shadow-md">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 animate-spin text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

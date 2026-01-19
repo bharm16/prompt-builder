@@ -349,8 +349,9 @@ export function HistorySidebar({
     <aside
       id="history-sidebar"
       className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden border-r border-border bg-surface-1 transition-all duration-150',
-        isCollapsed ? 'w-20' : 'w-96'
+        'flex h-full min-h-0 flex-none flex-col overflow-hidden border-r border-border bg-surface-1 transition-all duration-150',
+        // Enforce a hard cap so the sidebar can't expand due to missing/overridden token CSS.
+        isCollapsed ? 'w-20' : 'w-[260px] min-w-0 max-w-[260px] basis-[260px]'
       )}
       aria-label="Prompt history"
       onMouseEnter={handleSidebarMouseEnter}
@@ -474,8 +475,8 @@ export function HistorySidebar({
         </div>
       ) : (
         <div className="flex h-full flex-col">
-          <header className="border-b border-border px-6 py-6">
-            <div className="mb-4 flex items-center justify-between">
+          <header className="border-b border-border px-ps-5 py-ps-6">
+            <div className="mb-ps-4 flex items-center justify-between">
               <h1 className="text-h3 font-bold tracking-tight text-foreground">Vidra</h1>
               <Button
                 onClick={() => {
@@ -492,12 +493,12 @@ export function HistorySidebar({
             </div>
           </header>
 
-          <section className="mt-4 px-4" aria-label="Active prompt">
-            <div className="flex items-center gap-3 text-label-sm uppercase tracking-widest text-faint">
+          <section className="mt-ps-5 border-b border-border px-ps-5 pb-ps-5" aria-label="Active prompt">
+            <div className="flex items-center gap-ps-3 text-label uppercase tracking-widest text-faint">
               <span>Active Prompt</span>
               <span className="h-px flex-1 bg-border" aria-hidden="true" />
             </div>
-            <div className="mt-3 flex items-start gap-4 rounded-lg border border-border bg-surface-1 p-4 shadow-sm">
+            <div className="mt-ps-4 flex items-start gap-ps-4">
               <span
                 className={cn(
                   'mt-2 h-4 w-4 flex-shrink-0 rounded-full ring-2 ring-surface-1/60',
@@ -506,16 +507,16 @@ export function HistorySidebar({
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-body-sm font-semibold text-foreground" title={activeTitle}>
+                <div className="ps-line-clamp-3 text-body-lg font-semibold text-foreground" title={activeTitle}>
                   {activeTitle}
                 </div>
-                <div className="mt-3 text-label-sm text-faint">
+                <div className="mt-ps-3 text-body-lg text-muted">
                   <span className="font-semibold text-muted">Status:</span> {activeStatusLabel}
-                  <span className="mx-4 text-faint/80" aria-hidden="true">·</span>
+                  <span className="mx-ps-3 text-faint/80" aria-hidden="true">·</span>
                   <span className="font-semibold text-muted">Model:</span> {activeModelLabel}
                   {typeof activeDurationS === 'number' ? (
                     <>
-                      <span className="mx-4 text-faint/80" aria-hidden="true">·</span>
+                      <span className="mx-ps-3 text-faint/80" aria-hidden="true">·</span>
                       <span className="font-semibold text-muted">Duration:</span> {activeDurationS}s
                     </>
                   ) : null}
@@ -524,13 +525,13 @@ export function HistorySidebar({
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-1 flex-col gap-4 px-4 py-5">
+          <section className="flex min-h-0 flex-1 flex-col gap-ps-5 px-ps-5 py-ps-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-label-sm uppercase tracking-widest text-faint">Prompts</h2>
+              <h2 className="text-label uppercase tracking-widest text-faint">Prompts</h2>
               <Button
                 type="button"
                 variant="ghost"
-                className="rounded-full border border-border px-2 py-1 text-label-sm text-muted transition-colors hover:border-border-strong"
+                className="rounded-full border border-border px-ps-2 py-ps-1 text-label text-muted transition-colors hover:border-border-strong"
                 onClick={onCreateNew}
               >
                 + New
@@ -544,7 +545,7 @@ export function HistorySidebar({
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search prompts..."
                 aria-label="Search prompts"
-                className="h-9 rounded-lg border border-border bg-surface-1 px-4 text-body-sm text-muted focus-visible:border-border-strong focus-visible:ring-2 focus-visible:ring-accent/20"
+                className="rounded-none border-x-0 border-t-0 border-b border-border bg-transparent px-ps-2 text-body-lg text-foreground focus-visible:border-border-strong"
               />
             </div>
 
@@ -562,7 +563,7 @@ export function HistorySidebar({
             ) : (
               <>
                 <nav aria-label="Prompts list" className="flex-1 overflow-y-auto">
-                  <ul className="flex flex-col gap-3">
+                  <ul className="flex flex-col gap-ps-4">
                     {promptRows.map(({ entry, title, meta, stage, isSelected, processingLabel, key }) => {
                       const externalHover = Boolean(
                         hoveredEntryKey &&
@@ -599,7 +600,7 @@ export function HistorySidebar({
             )}
           </section>
 
-          <footer className="border-t border-border p-4">
+          <footer className="border-t border-border p-ps-5">
             <AuthMenu user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
           </footer>
         </div>

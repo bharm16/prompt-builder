@@ -55,6 +55,14 @@
     font-weight: var(--ps-fw-regular);
   }
 
+  .ps-body-xl {
+    font-family: var(--ps-font-sans);
+    font-size: var(--ps-fs-18);
+    line-height: var(--ps-lh-reading);
+    letter-spacing: var(--ps-ls-reading);
+    font-weight: var(--ps-fw-regular);
+  }
+
   .ps-body-sm {
     font-family: var(--ps-font-sans);
     font-size: var(--ps-fs-13);
@@ -97,4 +105,3 @@
     font-weight: var(--ps-fw-regular);
   }
 }
-
