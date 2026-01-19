@@ -119,6 +119,15 @@
     --ps-container-2xl: 1536px;
 
     /* =========================
+       Thumbnail sizing
+       ========================= */
+    --ps-thumb-sm: 40px;
+    --ps-thumb-md-w: 48px;
+    --ps-thumb-md-h: 36px;
+    --ps-thumb-lg-w: 80px;
+    --ps-thumb-lg-h: 60px;
+
+    /* =========================
        Motion
        ========================= */
     --ps-dur-1: 90ms;
@@ -364,9 +373,14 @@
     /* =========================
        Glass surfaces (dark-tuned)
        ========================= */
-    --ps-glass-bg: rgba(16, 22, 34, 0.72);
-    --ps-glass-bg-subtle: rgba(16, 22, 34, 0.45);
-    --ps-glass-border: rgba(49, 65, 99, 0.45);
+    --ps-glass-bg: rgba(255, 255, 255, 0.05);
+    --ps-glass-bg-subtle: rgba(255, 255, 255, 0.03);
+    --ps-glass-border: rgba(255, 255, 255, 0.08);
+    --ps-sidebar-bg: #0a0d14;
+    --ps-thumb-gradient: radial-gradient(120% 120% at 20% 20%, rgba(104, 134, 255, 0.35) 0%, rgba(104, 134, 255, 0) 60%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    --ps-thumb-gradient-muted: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+    --ps-glow-accent: 0 0 0 1px rgba(104, 134, 255, 0.6), 0 0 18px rgba(104, 134, 255, 0.35);
 
     /* Compatibility aliases */
     --bg: var(--ps-bg);
@@ -374,7 +388,7 @@
     --surface-2: var(--ps-surface-2);
     --surface-3: var(--ps-surface-3);
     --bg-app: var(--ps-bg);
-    --bg-sidebar: var(--ps-surface-1);
+    --bg-sidebar: var(--ps-sidebar-bg);
     --bg-surface: var(--ps-surface-1);
     --bg-surface-2: var(--ps-surface-2);
     --bg-elevated: var(--ps-surface-3);

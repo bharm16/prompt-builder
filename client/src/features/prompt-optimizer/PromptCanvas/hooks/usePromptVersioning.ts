@@ -2,6 +2,7 @@ import { useCallback, useMemo, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import type { HighlightSnapshot } from '../types';
 import type { PromptHistory } from '../../context/types';
 
@@ -9,6 +10,7 @@ interface UsePromptVersioningOptions {
   promptHistory: PromptHistory;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
+  activeVersionId?: string | null;
   latestHighlightRef: MutableRefObject<HighlightSnapshot | null>;
   versionEditCountRef: MutableRefObject<number>;
   versionEditsRef: MutableRefObject<PromptVersionEdit[]>;
@@ -30,6 +32,7 @@ interface UpsertVersionOutputParams {
 interface UsePromptVersioningReturn {
   upsertVersionOutput: (params: UpsertVersionOutputParams) => void;
   syncVersionHighlights: (snapshot: HighlightSnapshot, promptText: string) => void;
+  syncVersionGenerations: (generations: Generation[]) => void;
 }
 
 const toIsoString = (value: number | string): string => {
@@ -46,10 +49,41 @@ const toIsoString = (value: number | string): string => {
   return new Date().toISOString();
 };
 
+const serializeGeneration = (gen: Generation): string =>
+  [
+    gen.id,
+    gen.tier,
+    gen.status,
+    gen.model,
+    gen.mediaType,
+    gen.promptVersionId ?? '',
+    gen.createdAt,
+    gen.completedAt ?? '',
+    gen.estimatedCost ?? '',
+    gen.actualCost ?? '',
+    gen.aspectRatio ?? '',
+    gen.duration ?? '',
+    gen.fps ?? '',
+    gen.thumbnailUrl ?? '',
+    gen.error ?? '',
+    gen.mediaUrls.join('|'),
+  ].join('|');
+
+const areGenerationsEqual = (
+  left?: Generation[] | null,
+  right?: Generation[] | null
+): boolean => {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  if (left.length !== right.length) return false;
+  return left.map(serializeGeneration).join('||') === right.map(serializeGeneration).join('||');
+};
+
 export function usePromptVersioning({
   promptHistory,
   currentPromptUuid,
   currentPromptDocId,
+  activeVersionId,
   latestHighlightRef,
   versionEditCountRef,
   versionEditsRef,
@@ -223,5 +257,32 @@ export function usePromptVersioning({
     ]
   );
 
-  return { upsertVersionOutput, syncVersionHighlights };
+  const syncVersionGenerations = useCallback(
+    (generations: Generation[]): void => {
+      if (!currentPromptUuid) return;
+      if (!currentPromptEntry) return;
+      if (!currentVersions.length) return;
+
+      const index = activeVersionId
+        ? currentVersions.findIndex((version) => version.versionId === activeVersionId)
+        : currentVersions.length - 1;
+      if (index < 0) return;
+
+      const target = currentVersions[index];
+      if (areGenerationsEqual(target.generations, generations)) {
+        return;
+      }
+
+      const updated: PromptVersionEntry = {
+        ...target,
+        generations: generations.length ? generations : [],
+      };
+      const updatedVersions = [...currentVersions];
+      updatedVersions[index] = updated;
+      persistVersions(updatedVersions);
+    },
+    [activeVersionId, currentPromptEntry, currentPromptUuid, currentVersions, persistVersions]
+  );
+
+  return { upsertVersionOutput, syncVersionHighlights, syncVersionGenerations };
 }

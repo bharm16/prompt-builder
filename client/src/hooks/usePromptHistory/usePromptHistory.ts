@@ -115,7 +115,8 @@ export const usePromptHistory = (user: User | null) => {
       generationParams: Record<string, unknown> | null = null,
       brainstormContext: unknown = null,
       highlightCache: unknown = null,
-      existingUuid: string | null = null
+      existingUuid: string | null = null,
+      title: string | null = null
     ): Promise<SaveResult | null> => {
       const normalizedTargetModel =
         typeof targetModel === 'string' && targetModel.trim()
@@ -132,6 +133,7 @@ export const usePromptHistory = (user: User | null) => {
       try {
         const result = await saveEntry(user?.uid, {
           ...(existingUuid ? { uuid: existingUuid } : {}),
+          ...(title !== null ? { title } : {}),
           input,
           output,
           score,
@@ -146,6 +148,7 @@ export const usePromptHistory = (user: User | null) => {
           id: result.id,
           uuid: result.uuid,
           timestamp: new Date().toISOString(),
+          title,
           input,
           output,
           score,
@@ -188,6 +191,7 @@ export const usePromptHistory = (user: User | null) => {
         id,
         uuid,
         timestamp: new Date().toISOString(),
+        title: null,
         input: '',
         output: '',
         score: null,
@@ -221,6 +225,7 @@ export const usePromptHistory = (user: User | null) => {
       // Update local state (map UpdatePromptOptions to Partial<PromptHistoryEntry>)
       const localUpdates: Partial<PromptHistoryEntry> = {};
       if (updates.input !== undefined) localUpdates.input = updates.input;
+      if (updates.title !== undefined) localUpdates.title = updates.title;
       if (updates.mode !== undefined) localUpdates.mode = updates.mode;
       if (updates.targetModel !== undefined) localUpdates.targetModel = updates.targetModel;
       if (updates.generationParams !== undefined) localUpdates.generationParams = updates.generationParams;

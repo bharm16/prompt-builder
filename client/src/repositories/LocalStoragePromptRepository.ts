@@ -57,6 +57,7 @@ const PromptHistoryEntrySchema = z
     id: z.union([z.string(), z.number()]).transform((value) => String(value)).optional(),
     uuid: z.string().optional(),
     timestamp: z.string().optional(),
+    title: z.string().nullable().optional(),
     input: z.string(),
     output: z.string(),
     score: z.number().nullable().optional(),
@@ -109,6 +110,7 @@ export class LocalStoragePromptRepository {
         id: existing?.id ?? String(Date.now()),
         uuid,
         timestamp: new Date().toISOString(),
+        title: promptData.title ?? (existing?.title ?? null),
         input: promptData.input,
         output: promptData.output,
         score: promptData.score ?? null,
@@ -180,6 +182,7 @@ export class LocalStoragePromptRepository {
 
         return {
           ...entry,
+          ...(updates.title !== undefined ? { title: updates.title } : {}),
           ...(updates.input !== undefined ? { input: updates.input } : {}),
           ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
           ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),

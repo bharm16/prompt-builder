@@ -2,6 +2,7 @@ import type { PromptVersionEntry } from '@hooks/types';
 
 export type PromptData = {
   uuid?: string;
+  title?: string | null;
   generationParams?: Record<string, unknown> | null;
   highlightCache?: unknown | null;
   versions?: PromptVersionEntry[];
@@ -28,6 +29,7 @@ export type UpdateHighlightsOptions = {
 };
 
 export type UpdatePromptOptions = {
+  title?: string | null;
   input?: string;
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;

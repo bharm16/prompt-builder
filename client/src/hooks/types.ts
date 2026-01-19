@@ -67,6 +67,7 @@ export interface PromptHistoryEntry {
   id?: string;
   uuid?: string;
   timestamp?: string;
+  title?: string | null;
   input: string;
   output: string;
   score?: number | null;
@@ -108,6 +109,7 @@ export interface PromptVersionEntry {
   edits?: PromptVersionEdit[];
   preview?: PromptVersionPreview | null;
   video?: PromptVersionVideo | null;
+  generations?: Generation[] | null;
 }
 
 export interface Toast {
@@ -116,3 +118,4 @@ export interface Toast {
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
 }
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';

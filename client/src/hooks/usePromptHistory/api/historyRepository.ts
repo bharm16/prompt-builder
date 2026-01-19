@@ -26,6 +26,7 @@ const isValidFirestoreDocId = (docId: string | null | undefined): docId is strin
 export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEntry[] {
   return entries.map((entry) => ({
     ...entry,
+    title: entry.title ?? null,
     brainstormContext: entry.brainstormContext ?? null,
     generationParams: entry.generationParams ?? null,
     highlightCache: entry.highlightCache ?? null,
@@ -101,6 +102,7 @@ export async function saveEntry(
   try {
     const result = await repository.save(userId ?? '', {
       ...(params.uuid ? { uuid: params.uuid } : {}),
+      ...(params.title !== undefined ? { title: params.title } : {}),
       input: params.input,
       output: params.output,
       score: params.score,

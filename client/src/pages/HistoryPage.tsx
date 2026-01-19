@@ -27,6 +27,8 @@ function formatRelativeOrDate(iso: string | undefined): string {
 }
 
 function deriveTitle(entry: PromptHistoryEntry): string {
+  const storedTitle = typeof entry.title === 'string' ? entry.title.trim() : '';
+  if (storedTitle) return storedTitle;
   const source = (entry.output || '').trim().replace(/\s+/g, ' ');
   if (!source) return 'Untitled prompt';
   return source.length > 96 ? `${source.slice(0, 96).trim()}…` : source;

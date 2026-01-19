@@ -115,6 +115,7 @@ export class PromptRepository {
         input: promptData.input,
         output: promptData.output,
         score: promptData.score ?? null,
+        ...(promptData.title !== undefined ? { title: promptData.title } : {}),
         ...(promptData.mode !== undefined ? { mode: promptData.mode } : {}),
         ...(promptData.targetModel !== undefined ? { targetModel: promptData.targetModel } : {}),
         ...(promptData.generationParams !== undefined ? { generationParams: promptData.generationParams } : {}),
@@ -226,6 +227,9 @@ export class PromptRepository {
 
       if (updates.input !== undefined) {
         updatePayload.input = updates.input;
+      }
+      if (updates.title !== undefined) {
+        updatePayload.title = updates.title;
       }
       if (updates.mode !== undefined) {
         updatePayload.mode = updates.mode;
@@ -414,6 +418,9 @@ export class PromptRepository {
 
     if (typeof data.uuid === 'string') {
       entry.uuid = data.uuid;
+    }
+    if (typeof data.title === 'string' || data.title === null) {
+      entry.title = data.title ?? null;
     }
     if (typeof data.score === 'number' || data.score === null) {
       entry.score = data.score;

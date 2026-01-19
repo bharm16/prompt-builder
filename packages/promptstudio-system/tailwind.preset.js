@@ -10,6 +10,7 @@ export default {
       },
       colors: {
         app: 'var(--ps-bg)',
+        sidebar: 'var(--ps-sidebar-bg)',
         background: 'var(--background)',
         'surface-1': 'var(--ps-surface-1)',
         'surface-2': 'var(--ps-surface-2)',

@@ -2,6 +2,8 @@
  * Types for usePromptHistory hook
  */
 
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+
 export interface User {
   uid: string;
   [key: string]: unknown;
@@ -11,6 +13,7 @@ export interface PromptHistoryEntry {
   id?: string;
   uuid?: string;
   timestamp?: string;
+  title?: string | null;
   input: string;
   output: string;
   score?: number | null;
@@ -52,6 +55,7 @@ export interface PromptVersionEntry {
   edits?: PromptVersionEdit[];
   preview?: PromptVersionPreview | null;
   video?: PromptVersionVideo | null;
+  generations?: Generation[] | null;
 }
 
 export interface Toast {
@@ -69,6 +73,7 @@ export interface HistoryState {
 
 export interface SaveEntryParams {
   uuid?: string;
+  title?: string | null;
   input: string;
   output: string;
   score: number | null;
