@@ -107,11 +107,11 @@ export function PromptControlsRow({
           <SelectTrigger
             size="xs"
             variant="ghost"
-            className="h-auto w-auto justify-center rounded-lg px-ps-3 py-ps-3 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
+            className="h-[40px] w-[40px] justify-center rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
             aria-label={`${ariaLabel}: ${currentDisplay}`}
             title={`${ariaLabel}: ${currentDisplay}`}
           >
-            <Icon icon={icon} size="sm" aria-hidden="true" />
+            <Icon icon={icon} size={24} aria-hidden="true" />
           </SelectTrigger>
           <SelectContent>
             {info.allowedValues.map((value) => (
@@ -161,11 +161,11 @@ export function PromptControlsRow({
         <SelectTrigger
           size="xs"
           variant="ghost"
-          className="h-auto w-auto justify-center rounded-lg px-ps-3 py-ps-3 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
+          className="h-[40px] w-[40px] justify-center rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
           aria-label={`Model: ${modelLabel}`}
           title={`Model: ${modelLabel}`}
         >
-          <Icon icon={Robot} size="sm" aria-hidden="true" />
+          <Icon icon={Robot} size={24} aria-hidden="true" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="auto">Auto</SelectItem>
@@ -176,6 +176,8 @@ export function PromptControlsRow({
           ))}
         </SelectContent>
       </Select>
+
+      <div className="w-px h-full bg-[rgb(41,44,50)] mx-1.5"></div>
 
       {aspectRatioInfo &&
         renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', Ruler, isOptimizing)}

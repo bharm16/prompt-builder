@@ -198,20 +198,20 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
     <header className="relative z-40 flex w-full items-center justify-center" role="banner">
       <div
         className={cn(
-          'mx-auto flex w-full max-w-[1040px] flex-nowrap items-center gap-2 px-ps-4',
+          'mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-center gap-2 px-ps-4',
           isOptimizing && 'opacity-70'
         )}
       >
-        <div className="flex w-full max-w-[832px] flex-1 items-center gap-ps-2 rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]">
+        <div className="flex w-full max-w-[832px] h-[54px] flex-1 items-center gap-ps-2 rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]">
           <Button
             type="button"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
             variant="ghost"
-            className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+            className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
           >
-            <Icon icon={SidebarSimple} size="sm" weight="bold" aria-hidden="true" />
+            <Icon icon={SidebarSimple} size={24} weight="bold" aria-hidden="true" />
           </Button>
 
           {saveLabel ? (
@@ -262,9 +262,9 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
               aria-label="Edit prompt"
               title="Edit prompt"
               variant="ghost"
-              className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+              className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
             >
-              <Pencil size={iconSizes.sm} />
+              <Pencil size={24} />
             </Button>
           ) : (
             <div className="flex items-start gap-ps-2">
@@ -275,9 +275,9 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
                 aria-label="Cancel editing"
                 title="Cancel editing"
                 variant="ghost"
-                className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+                className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
               >
-                <X size={iconSizes.sm} />
+                <X size={24} />
               </Button>
               <Button
                 type="button"
@@ -286,9 +286,9 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
                 variant="ghost"
                 aria-label="Update prompt"
                 title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+                className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
               >
-                <Check size={iconSizes.sm} />
+                <Check size={24} />
               </Button>
             </div>
           )}
