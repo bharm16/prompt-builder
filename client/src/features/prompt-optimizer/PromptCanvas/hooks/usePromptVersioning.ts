@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type MutableRefObject } from 'react';
+import { useCallback, useMemo, useRef, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
@@ -79,6 +79,44 @@ const areGenerationsEqual = (
   return left.map(serializeGeneration).join('||') === right.map(serializeGeneration).join('||');
 };
 
+/**
+ * Extract the best thumbnail URL from a list of generations.
+ * Prioritizes: explicit thumbnailUrl > image mediaUrls > first media URL
+ */
+const extractThumbnailFromGenerations = (generations: Generation[]): string | null => {
+  const completed = generations.filter((g) => g.status === 'completed');
+  if (!completed.length) return null;
+
+  // First, look for an explicit thumbnailUrl (set by flux-kontext storyboard)
+  for (const gen of completed) {
+    if (gen.thumbnailUrl && typeof gen.thumbnailUrl === 'string' && gen.thumbnailUrl.trim()) {
+      return gen.thumbnailUrl.trim();
+    }
+  }
+
+  // Next, prefer image or image-sequence media types
+  for (const gen of completed) {
+    if ((gen.mediaType === 'image' || gen.mediaType === 'image-sequence') && gen.mediaUrls.length) {
+      const url = gen.mediaUrls[0];
+      if (url && typeof url === 'string' && url.trim()) {
+        return url.trim();
+      }
+    }
+  }
+
+  // Finally, fall back to any first media URL (e.g., video poster frame if available)
+  for (const gen of completed) {
+    if (gen.mediaUrls.length) {
+      const url = gen.mediaUrls[0];
+      if (url && typeof url === 'string' && url.trim()) {
+        return url.trim();
+      }
+    }
+  }
+
+  return null;
+};
+
 export function usePromptVersioning({
   promptHistory,
   currentPromptUuid,
@@ -92,6 +130,9 @@ export function usePromptVersioning({
   generationParams,
   selectedModel,
 }: UsePromptVersioningOptions): UsePromptVersioningReturn {
+  // Track last persisted thumbnail to prevent infinite update loops
+  const lastPersistedThumbnailRef = useRef<string | null>(null);
+
   const currentPromptEntry = useMemo(() => {
     if (!promptHistory?.history?.length) return null;
     return (
@@ -269,7 +310,24 @@ export function usePromptVersioning({
       if (index < 0) return;
 
       const target = currentVersions[index];
-      if (areGenerationsEqual(target.generations, generations)) {
+      if (!target) return;
+
+      // Extract thumbnail from completed generations for the preview field
+      const thumbnailUrl = extractThumbnailFromGenerations(generations);
+      const existingPreviewUrl = target.preview?.imageUrl;
+
+      // Use ref to prevent infinite loops - only update if thumbnail actually changed
+      // and we haven't just persisted this same thumbnail
+      const alreadyPersisted = thumbnailUrl === lastPersistedThumbnailRef.current;
+      const shouldUpdatePreview = Boolean(
+        thumbnailUrl &&
+          thumbnailUrl !== existingPreviewUrl &&
+          !alreadyPersisted
+      );
+
+      // Check if generations changed or if we have a new thumbnail to persist
+      const generationsChanged = !areGenerationsEqual(target.generations, generations);
+      if (!generationsChanged && !shouldUpdatePreview) {
         return;
       }
 
@@ -277,6 +335,18 @@ export function usePromptVersioning({
         ...target,
         generations: generations.length ? generations : [],
       };
+
+      // Update preview with thumbnail from generations if available
+      if (shouldUpdatePreview && thumbnailUrl) {
+        updated.preview = {
+          generatedAt: new Date().toISOString(),
+          imageUrl: thumbnailUrl,
+          aspectRatio: target.preview?.aspectRatio ?? null,
+        };
+        // Track that we've persisted this thumbnail to prevent re-triggering
+        lastPersistedThumbnailRef.current = thumbnailUrl;
+      }
+
       const updatedVersions = [...currentVersions];
       updatedVersions[index] = updated;
       persistVersions(updatedVersions);

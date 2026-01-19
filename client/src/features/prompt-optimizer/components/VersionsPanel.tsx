@@ -8,6 +8,12 @@ import { cn } from '@/utils/cn';
 import type { PromptVersionEdit } from '@hooks/types';
 import type { HighlightSnapshot } from '../PromptCanvas/types';
 
+type VersionPreview = {
+  generatedAt?: string;
+  imageUrl?: string | null;
+  aspectRatio?: string | null;
+};
+
 type VersionEntry = {
   id?: string;
   versionId?: string;
@@ -26,8 +32,20 @@ type VersionEntry = {
   isCurrent?: boolean;
   hasPreview?: boolean;
   hasVideo?: boolean;
-  preview?: unknown;
+  preview?: VersionPreview | null;
   video?: unknown;
+};
+
+/**
+ * Extract the preview image URL from a version entry
+ */
+const resolvePreviewImageUrl = (entry: VersionEntry): string | null => {
+  if (!entry.preview) return null;
+  const url = entry.preview.imageUrl;
+  if (typeof url === 'string' && url.trim()) {
+    return url.trim();
+  }
+  return null;
 };
 
 const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
@@ -198,6 +216,7 @@ export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactEl
             const isSelected = versionId && activeVersionId
               ? versionId === activeVersionId
               : index === 0;
+            const previewImageUrl = resolvePreviewImageUrl(entry);
             const hasPreview = Boolean(entry.hasPreview ?? entry.preview);
             const hasVideo = Boolean(entry.hasVideo ?? entry.video);
             const label = resolveVersionLabel(entry, index, orderedVersions.length);
@@ -232,8 +251,17 @@ export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactEl
                 {(hasPreview || hasVideo) ? (
                   <div className="inline-flex flex-shrink-0 items-center gap-2">
                     {hasPreview ? (
-                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-3 text-faint">
-                        <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" />
+                      <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3 text-faint">
+                        {previewImageUrl ? (
+                          <img
+                            src={previewImageUrl}
+                            alt={`${label} preview`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" />
+                        )}
                       </div>
                     ) : null}
                     {hasVideo ? (
