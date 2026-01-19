@@ -1929,8 +1929,8 @@ export function PromptCanvas({
             !versionsCollapsed && !stageCollapsed && 'lg:flex-[0_0_48%]'
           )}
         >
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-	            <div className="flex min-h-0 flex-1 w-full flex-col gap-ps-4 px-0 pb-ps-card">
+          <div className="flex flex-auto min-h-[200px] flex-col overflow-y-auto lg:min-h-[300px]">
+	            <div className="flex min-h-0 flex-1 w-full flex-col gap-0 px-0 pb-ps-card h-full overflow-hidden">
 	              <Panel
 	                padding="none"
 	                surface="3"
@@ -2311,14 +2311,16 @@ export function PromptCanvas({
 	
 		              <Panel
 	                asChild
+                  shadow="none"
 	                className={cn(
-	                  'transition-all duration-200',
+	                  'relative border-t-2 border-border rounded-t-none bg-surface-2/95 backdrop-blur transition-all duration-300 ease-smooth',
 	                  runsCollapsed
-	                    ? 'flex items-center justify-between gap-ps-4'
-	                    : 'flex min-h-0 flex-col gap-ps-3'
+	                    ? 'flex items-center justify-between gap-ps-4 max-h-12 overflow-hidden p-ps-3 cursor-pointer'
+	                    : 'flex min-h-0 flex-col gap-ps-3 max-h-[60vh] lg:max-h-[50vh] overflow-y-auto'
 	                )}
 	              >
 	                <section
+                    data-collapsed={runsCollapsed ? 'true' : 'false'}
 	                  role={runsCollapsed ? 'button' : undefined}
 	                  tabIndex={runsCollapsed ? 0 : undefined}
 	                  aria-expanded={runsCollapsed ? 'false' : 'true'}
@@ -2380,7 +2382,7 @@ export function PromptCanvas({
 	                  </>
 	                ) : (
 	                  <>
-	                    <div className="flex items-start justify-between gap-4">
+	                    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border/50 bg-surface-2/95 pb-ps-3 backdrop-blur">
 	                      <div>
 	                        <div className="text-body-lg font-semibold text-foreground">Runs</div>
 	                      </div>
@@ -2401,7 +2403,7 @@ export function PromptCanvas({
 	                      </div>
 	                    </div>
 
-	                    <div className="flex flex-col gap-ps-3">
+	                    <div className="flex min-h-0 flex-1 flex-col gap-ps-3 overflow-y-auto">
 	                  <Panel
 	                    padding="sm"
 	                    className={cn('flex flex-col gap-ps-3', previewStatusState === 'ready' && 'border-accent/50')}
