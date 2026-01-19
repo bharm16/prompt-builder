@@ -420,7 +420,10 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {/* Top Action Buttons */}
-          <PromptTopBar />
+          <PromptTopBar
+            onOptimize={(promptToOptimize, options) =>
+              handleOptimize(promptToOptimize, undefined, options)}
+          />
 
           {/* Conditionally render the appropriate layout */}
           {showResults ? (

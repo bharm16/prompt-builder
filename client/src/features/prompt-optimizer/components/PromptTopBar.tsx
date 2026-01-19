@@ -1,33 +1,41 @@
-import React from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { usePromptState } from '../context/PromptStateContext';
-import { useShareLink } from '../hooks/useShareLink';
-import { usePromptExport } from '../PromptCanvas/hooks/usePromptExport';
-import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import { Command as CommandIcon, Download, Gear, Icon, Plus, Share, SidebarSimple } from '@promptstudio/system/components/ui';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
+import {
+  Check,
+  Icon,
+  Pencil,
+  SidebarSimple,
+  X,
+} from '@promptstudio/system/components/ui';
 import { useDebugLogger } from '@hooks/useDebugLogger';
+import type { OptimizationOptions } from '../types';
+import { PromptControlsRow } from './PromptControlsRow';
+import { sanitizeText } from '@/features/span-highlighting';
 import { cn } from '@/utils/cn';
 
+type PromptTopBarProps = {
+  onOptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+};
+
+const iconSizes = {
+  sm: 16,
+} as const;
+
 /**
- * PromptTopBar - Top Action Buttons
- *
- * Handles the fixed top-left action buttons (New, History toggle)
- * Extracted from PromptOptimizerContainer for better separation of concerns
+ * PromptTopBar - Midjourney-style prompt bar
  */
-export const PromptTopBar = (): React.ReactElement | null => {
+export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElement | null => {
   const {
     showHistory,
     setShowHistory,
     showBrainstorm,
-    showSettings,
-    setShowSettings,
-    showShortcuts,
-    setShowShortcuts,
-    handleCreateNew,
     promptOptimizer,
-    currentPromptUuid,
     outputSaveState,
     outputLastSavedAt,
+    selectedModel,
+    setSelectedModel,
   } = usePromptState();
 
   // Hide when brainstorm modal is open
@@ -36,199 +44,260 @@ export const PromptTopBar = (): React.ReactElement | null => {
   }
 
   const debug = useDebugLogger('PromptTopBar');
-  const toast = useToast();
-  const { shared, share } = useShareLink();
-  const exportMenuRef = React.useRef<HTMLDivElement>(null);
-  const [showExportMenu, setShowExportMenu] = React.useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [originalInputPrompt, setOriginalInputPrompt] = useState('');
+  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(undefined);
 
-  const timeLabel =
-    typeof outputLastSavedAt === 'number'
-      ? new Date(outputLastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : null;
+  const {
+    inputPrompt,
+    setInputPrompt,
+    genericOptimizedPrompt,
+    isProcessing,
+    isRefining,
+    displayedPrompt,
+    qualityScore,
+  } = promptOptimizer;
 
-  const saveLabel =
-    outputSaveState === 'saving'
-      ? 'Saving…'
-      : outputSaveState === 'error'
-        ? 'Save failed'
-        : outputSaveState === 'saved'
-          ? timeLabel
-            ? `Saved · ${timeLabel}`
-            : 'Saved'
-          : '';
+  const timeLabel = useMemo(
+    () =>
+      typeof outputLastSavedAt === 'number'
+        ? new Date(outputLastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : null,
+    [outputLastSavedAt]
+  );
 
-  const handleExport = usePromptExport({
-    inputPrompt: promptOptimizer.inputPrompt,
-    displayedPrompt: promptOptimizer.displayedPrompt ?? null,
-    qualityScore: promptOptimizer.qualityScore ?? null,
-    selectedMode: 'video',
-    setShowExportMenu,
-    toast,
-    debug,
-  });
+  const saveLabel = useMemo(
+    () =>
+      outputSaveState === 'saving'
+        ? 'Saving...'
+        : outputSaveState === 'error'
+          ? 'Save failed'
+          : outputSaveState === 'saved'
+            ? timeLabel
+              ? `Saved · ${timeLabel}`
+              : 'Saved'
+            : '',
+    [outputSaveState, timeLabel]
+  );
 
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-        setShowExportMenu(false);
-      }
-    };
-    if (showExportMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isInputLocked = !isEditing || isOptimizing;
+  const hasInputPrompt = Boolean(inputPrompt.trim());
+  const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
+
+  const handleInputPromptChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      const updatedPrompt = sanitizeText(event.target.value);
+      debug.logAction('inputPromptEdit', { promptLength: updatedPrompt.length });
+      setInputPrompt(updatedPrompt);
+    },
+    [debug, setInputPrompt]
+  );
+
+  const handleEditClick = useCallback((): void => {
+    if (isOptimizing) {
+      return;
     }
-    return undefined;
-  }, [showExportMenu]);
+    setOriginalInputPrompt(inputPrompt);
+    setOriginalSelectedModel(selectedModel);
+    setIsEditing(true);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  }, [inputPrompt, isOptimizing, selectedModel]);
+
+  const handleModelChange = useCallback(
+    (_nextModel: string, previousModel: string | undefined): void => {
+      if (isOptimizing || isEditing) {
+        return;
+      }
+      setOriginalInputPrompt(inputPrompt);
+      setOriginalSelectedModel(previousModel);
+      setIsEditing(true);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    },
+    [inputPrompt, isEditing, isOptimizing]
+  );
+
+  const handleCancel = useCallback((): void => {
+    setInputPrompt(originalInputPrompt);
+    if (originalSelectedModel !== undefined) {
+      setSelectedModel(originalSelectedModel);
+    }
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [originalInputPrompt, originalSelectedModel, setInputPrompt, setSelectedModel]);
+
+  const handleUpdate = useCallback((): void => {
+    if (isProcessing || isRefining) {
+      return;
+    }
+    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    const promptChanged = inputPrompt !== originalInputPrompt;
+    const modelChanged =
+      typeof originalSelectedModel === 'string' && originalSelectedModel !== selectedModel;
+    const genericPrompt =
+      typeof genericOptimizedPrompt === 'string' && genericOptimizedPrompt.trim()
+        ? genericOptimizedPrompt
+        : null;
+
+    if (modelChanged && !promptChanged && genericPrompt) {
+      void onOptimize(inputPrompt, {
+        compileOnly: true,
+        compilePrompt: genericPrompt,
+        createVersion: true,
+      });
+    } else {
+      void onOptimize(inputPrompt);
+    }
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [
+    debug,
+    genericOptimizedPrompt,
+    inputPrompt,
+    isProcessing,
+    isRefining,
+    onOptimize,
+    originalInputPrompt,
+    originalSelectedModel,
+    selectedModel,
+  ]);
+
+  const handleReoptimize = useCallback((): void => {
+    if (isProcessing || isRefining) {
+      return;
+    }
+    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    void onOptimize(inputPrompt);
+  }, [debug, inputPrompt, isProcessing, isRefining, onOptimize]);
+
+  const handleInputPromptKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      if (isProcessing || isRefining) {
+        return;
+      }
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        if (isEditing) {
+          handleUpdate();
+        } else {
+          handleReoptimize();
+        }
+      }
+    },
+    [handleReoptimize, handleUpdate, isEditing, isProcessing, isRefining]
+  );
 
   return (
-    <header className="sticky top-0 z-40 px-4 pt-4" role="banner">
-      <div className="flex h-14 items-center justify-between gap-4 rounded-xl border border-border bg-surface-1/80 px-4 py-3 shadow-sm backdrop-blur">
-        <div className="flex items-center gap-4">
+    <header className="relative z-40 flex w-full items-center justify-center" role="banner">
+      <div
+        className={cn(
+          'mx-auto flex w-full max-w-[1040px] flex-nowrap items-center gap-2 px-ps-4',
+          isOptimizing && 'opacity-70'
+        )}
+      >
+        <div className="flex w-full max-w-[832px] flex-1 items-center gap-ps-2 rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]">
           <Button
             type="button"
-            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
             variant="ghost"
-            size="icon"
+            className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
           >
             <Icon icon={SidebarSimple} size="sm" weight="bold" aria-hidden="true" />
           </Button>
 
-          <div className="hidden flex-col gap-0.5 px-1.5 lg:flex">
-            <div className="text-body font-bold uppercase tracking-widest text-foreground">VIDRA</div>
-            <div className="text-label-12 text-faint">Prompt Studio</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
           {saveLabel ? (
             <div
-              className={cn(
-                'inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-12 text-muted',
-                outputSaveState === 'saving' && 'text-foreground',
-                outputSaveState === 'error' && 'border-error/40 text-error'
-              )}
+              className="flex h-ps-6 items-center"
+              title={saveLabel}
+              aria-label={saveLabel}
               data-state={outputSaveState}
             >
               <span
                 className={cn(
-                  'h-2 w-2 rounded-full',
+                  'h-ps-2 w-ps-2 rounded-full',
                   outputSaveState === 'saving' && 'bg-accent ring-2 ring-accent/10',
                   outputSaveState === 'error' && 'bg-error ring-2 ring-error/10',
                   outputSaveState === 'saved' && 'bg-success ring-2 ring-success/10'
                 )}
                 aria-hidden="true"
               />
-              {saveLabel}
             </div>
-          ) : (
-            <div className="h-10 w-28 opacity-0 pointer-events-none" aria-hidden="true" />
-          )}
+          ) : null}
 
-          <Button
-            type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-body-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-            aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
-            aria-pressed={showShortcuts}
-            onClick={() => setShowShortcuts(!showShortcuts)}
-            variant="ghost"
-          >
-            <Icon icon={CommandIcon} size="sm" weight="bold" aria-hidden="true" />
-            <span className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted">
-              ⌘K
-            </span>
-          </Button>
-
-          <Button
-            type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-gradient-to-r from-accent to-accent-2 px-3 text-body-sm font-semibold text-app shadow-md transition-colors hover:from-accent/90 hover:to-accent-2/90"
-            onClick={handleCreateNew}
-            aria-label="Create new prompt"
-            variant="ghost"
-          >
-            <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
-            New
-          </Button>
-
-          <Button
-            type="button"
-            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-            aria-label={shared ? 'Share link copied' : 'Share prompt'}
-            onClick={() => {
-              if (currentPromptUuid) {
-                share(currentPromptUuid);
-              } else {
-                toast.error('Save the prompt first to generate a share link');
-              }
-            }}
-            variant="ghost"
-            size="icon"
-          >
-            <Icon icon={Share} size="sm" weight="bold" aria-hidden="true" />
-          </Button>
-
-          <div className="relative" ref={exportMenuRef}>
-            <Button
-              type="button"
-              className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-              aria-label="Export prompt"
-              aria-expanded={showExportMenu}
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              variant="ghost"
-              size="icon"
-            >
-              <Icon icon={Download} size="sm" weight="bold" aria-hidden="true" />
-            </Button>
-            {showExportMenu && (
-              <div
-                className="absolute right-0 top-full z-10 mt-2.5 min-w-40 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
-                role="menu"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleExport('text')}
-                  role="menuitem"
-                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                >
-                  Export .txt
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleExport('markdown')}
-                  role="menuitem"
-                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                >
-                  Export .md
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleExport('json')}
-                  role="menuitem"
-                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                >
-                  Export .json
-                </Button>
-              </div>
-            )}
+          <div className="flex min-w-[300px] flex-1 items-center">
+            <label htmlFor="prompt-topbar-input" className="ps-sr-only">
+              Input prompt
+            </label>
+            <Textarea
+              ref={textareaRef}
+              id="prompt-topbar-input"
+              value={inputPrompt}
+              onChange={handleInputPromptChange}
+              onKeyDown={handleInputPromptKeyDown}
+              placeholder="Describe your shot..."
+              readOnly={isInputLocked}
+              rows={1}
+              wrap="off"
+              className="h-auto min-h-0 w-full resize-none overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-0 bg-transparent px-ps-3 py-[14px] text-[16px] leading-[24px] text-[rgb(235,236,239)] placeholder:text-faint focus-visible:ring-0 focus-visible:ring-offset-0 ps-scrollbar-hide"
+              aria-label="Original prompt input"
+              aria-readonly={isInputLocked}
+              aria-busy={isOptimizing}
+            />
           </div>
 
-          <Button
-            type="button"
-            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-            aria-label={showSettings ? 'Close settings' : 'Open settings'}
-            aria-pressed={showSettings}
-            onClick={() => setShowSettings(!showSettings)}
-            variant="ghost"
-            size="icon"
-          >
-            <Icon icon={Gear} size="sm" weight="bold" aria-hidden="true" />
-          </Button>
+          {!isEditing ? (
+            <Button
+              type="button"
+              onClick={handleEditClick}
+              disabled={isOptimizing}
+              aria-label="Edit prompt"
+              title="Edit prompt"
+              variant="ghost"
+              className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+            >
+              <Pencil size={iconSizes.sm} />
+            </Button>
+          ) : (
+            <div className="flex items-start gap-ps-2">
+              <Button
+                type="button"
+                onClick={handleCancel}
+                disabled={isOptimizing}
+                aria-label="Cancel editing"
+                title="Cancel editing"
+                variant="ghost"
+                className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+              >
+                <X size={iconSizes.sm} />
+              </Button>
+              <Button
+                type="button"
+                onClick={handleUpdate}
+                disabled={isReoptimizeDisabled}
+                variant="ghost"
+                aria-label="Update prompt"
+                title="Update and re-optimize (Cmd/Ctrl+Enter)"
+                className="h-auto w-auto px-ps-3 py-ps-3 transition-colors hover:bg-white/5"
+              >
+                <Check size={iconSizes.sm} />
+              </Button>
+            </div>
+          )}
         </div>
+
+        <PromptControlsRow
+          className="flex-shrink-0 items-center gap-[2px] h-[53px] rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] px-[6px] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]"
+          onModelChange={handleModelChange}
+        />
       </div>
     </header>
   );

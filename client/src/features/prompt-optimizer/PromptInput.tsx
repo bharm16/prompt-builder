@@ -242,11 +242,12 @@ export const PromptInput = ({
             </div>
           </header>
 
-          {/* Input canvas + CTA */}
-          <section className="space-y-3" aria-label="Prompt input">
+          {/* Split layout: Input bar + Controls bar (Midjourney-style) */}
+          <section className="flex flex-col gap-3 lg:flex-row lg:gap-3" aria-label="Prompt input">
+            {/* Main input container - grows to fill available space */}
             <div
               className={cn(
-                'relative w-full min-h-44 rounded-xl border border-border bg-surface-1 p-5 shadow-sm transition-all duration-150',
+                'relative flex-1 min-w-0 min-h-44 rounded-xl border border-border bg-surface-1 p-5 shadow-sm transition-all duration-150',
                 isFocused && 'min-h-52 border-accent/70 ring-2 ring-accent/10',
                 !isFocused && isCanvasHovered && 'border-border-strong bg-surface-2'
               )}
@@ -276,23 +277,22 @@ export const PromptInput = ({
                 autoFocus={!hasContent}
                 rows={3}
                 readOnly={isProcessing}
-                className="w-full min-h-28 resize-none bg-transparent p-0 pb-6 pr-36 font-mono text-body text-foreground leading-relaxed placeholder:text-faint focus-visible:outline-none selection:bg-accent/20 selection:text-foreground"
+                className="w-full min-h-28 resize-none bg-transparent p-0 pb-8 font-mono text-body text-foreground leading-relaxed placeholder:text-faint focus-visible:outline-none selection:bg-accent/20 selection:text-foreground"
                 aria-label="Prompt input"
                 aria-busy={isProcessing}
               />
 
-              {/* Micro-toolbar */}
-              <div className="absolute bottom-3 right-3 flex items-center gap-2 text-label-12 text-faint">
-                <span>
-                  {modifierKeyLabel}⏎ Optimize
-                </span>
-                <span className="opacity-60" aria-hidden="true">
-                  ·
-                </span>
-                <span>⇧⏎ New line</span>
-                <span className="opacity-60" aria-hidden="true">
-                  ·
-                </span>
+              {/* Micro-toolbar - inside input container */}
+              <div className="absolute bottom-3 left-5 right-5 flex items-center justify-between text-label-12 text-faint">
+                <div className="flex items-center gap-2">
+                  <span>
+                    {modifierKeyLabel}⏎ Optimize
+                  </span>
+                  <span className="opacity-60" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>⇧⏎ New line</span>
+                </div>
                 <Button
                   type="button"
                   className="p-0 text-label-12 text-faint transition-colors hover:text-muted"
@@ -308,7 +308,7 @@ export const PromptInput = ({
 
               {isExamplesOpen && (
                 <div
-                  className="absolute bottom-10 right-3 w-72 rounded-md border border-border bg-surface-3 p-3 shadow-md"
+                  className="absolute bottom-10 right-3 w-72 rounded-md border border-border bg-surface-3 p-3 shadow-md z-10"
                   ref={examplesPopoverRef}
                   role="dialog"
                   aria-label="Examples"
@@ -337,15 +337,36 @@ export const PromptInput = ({
               )}
             </div>
 
-            <div className="mt-3.5 flex h-10 items-center">
+            {/* Separated controls bar - Midjourney style */}
+            <div className="flex flex-col gap-2 lg:w-auto lg:min-w-fit" aria-label="Generation controls">
+              {/* Generation parameters - visually grouped */}
+              <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface-2/80 p-1.5 shadow-sm lg:flex-col lg:items-stretch">
+                {/* Model selector */}
+                {onModelChange && (
+                  <div className="w-full">
+                    <ModelSelectorDropdown selectedModel={selectedModel} onModelChange={onModelChange} variant="pillDark" />
+                  </div>
+                )}
+                
+                {/* Params row - horizontal on mobile, vertical on desktop */}
+                <div className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:items-stretch">
+                  {renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio')}
+                  {renderDropdown(resolutionInfo, 'resolution', 'Resolution')}
+                  {renderDropdown(durationInfo, 'duration_s', 'Duration')}
+                  {renderDropdown(fpsInfo, 'fps', 'Frame Rate')}
+                  {renderAudioToggle()}
+                </div>
+              </div>
+
+              {/* Optimize CTA - prominent action */}
               <Button
                 type="button"
                 onClick={handleOptimizeClick}
                 disabled={isCtaDisabled}
                 title={!inputPrompt.trim() ? 'Write a rough shot first' : undefined}
                 className={cn(
-                  'group inline-flex h-10 items-center gap-2.5 rounded-md border border-accent/60 bg-accent/10 px-3.5 text-body font-semibold text-foreground transition-all duration-150 hover:bg-accent/20',
-                  isProcessing && 'min-w-60 justify-between',
+                  'group flex h-10 w-full items-center justify-center gap-2.5 rounded-lg border border-accent/60 bg-accent/10 px-4 text-body font-semibold text-foreground transition-all duration-150 hover:bg-accent/20',
+                  isProcessing && 'justify-between px-3',
                   ctaFlash && 'ring-2 ring-accent/20 shadow-md',
                   isCtaDisabled && 'cursor-not-allowed border-border bg-surface-3 text-faint opacity-70 hover:bg-surface-3'
                 )}
@@ -369,30 +390,25 @@ export const PromptInput = ({
                   </>
                 )}
               </Button>
+
+              {/* Workflow hint - only show when relevant */}
+              {(!hasSeenWorkflowChip || !hasContent) && (
+                <div className="hidden lg:flex items-center justify-center rounded-md border border-border/50 bg-surface-3/50 px-2 py-1.5 text-label-12 font-medium text-faint" role="status">
+                  Structure → Refine → Generate
+                </div>
+              )}
             </div>
           </section>
 
-          {/* Control bar */}
-          <div className="h-11 overflow-x-auto overflow-y-hidden rounded-md border border-border bg-surface-2 px-2 py-1.5 shadow-sm ps-scrollbar-hide">
-            <div className="flex h-full min-w-max items-center gap-2">
-              {onModelChange && (
-                <ModelSelectorDropdown selectedModel={selectedModel} onModelChange={onModelChange} variant="pillDark" />
-              )}
-              {renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio')}
-              {renderDropdown(resolutionInfo, 'resolution', 'Resolution')}
-              {renderDropdown(durationInfo, 'duration_s', 'Duration')}
-              {renderDropdown(fpsInfo, 'fps', 'Frame Rate')}
-              {renderAudioToggle()}
-              {!hasSeenWorkflowChip || !hasContent ? (
-                <div className="ml-auto inline-flex h-6 items-center rounded-full border border-border bg-surface-3 px-2.5 text-label-12 font-medium text-faint" role="status">
-                  Workflow: Structure → Refine → Generate
-                </div>
-              ) : null}
+          {/* Workflow hint - mobile only */}
+          {(!hasSeenWorkflowChip || !hasContent) && (
+            <div className="flex lg:hidden items-center justify-center rounded-md border border-border/50 bg-surface-3/50 px-2.5 py-1.5 text-label-12 font-medium text-faint" role="status">
+              Workflow: Structure → Refine → Generate
             </div>
-          </div>
+          )}
 
           {/* Structure promise (coverage meters) */}
-          <section className="-mt-1.5 grid grid-cols-1 gap-2.5 sm:gap-5 lg:grid-cols-2" aria-label="Structure coverage">
+          <section className="grid grid-cols-1 gap-2.5 sm:gap-5 lg:grid-cols-2" aria-label="Structure coverage">
             {coverageMeters.map((category) => (
               <div key={category.key} className="flex h-6 items-center gap-3">
                 <div className="w-20 text-label-12 text-faint">{category.label}</div>

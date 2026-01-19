@@ -300,11 +300,14 @@ export default {
         'button-16': ['var(--ps-fs-16)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '500' }],
         'button-14': ['var(--ps-fs-14)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '500' }],
         'button-12': ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: '0.01em', fontWeight: '500' }],
+        'button-11': ['var(--ps-fs-11)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: '0.01em', fontWeight: '500' }],
 
         'label-16': ['var(--ps-fs-16)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '500' }],
         'label-14': ['var(--ps-fs-14)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '500' }],
         'label-13': ['var(--ps-fs-13)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '500' }],
         'label-12': ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: '0.01em', fontWeight: '500' }],
+        'label-11': ['var(--ps-fs-11)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: '0.01em', fontWeight: '500' }],
+        'label-10': ['var(--ps-fs-10)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: '0.02em', fontWeight: '600' }],
 
         'copy-16': ['var(--ps-fs-16)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '400' }],
         'copy-14': ['var(--ps-fs-14)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: '400' }],

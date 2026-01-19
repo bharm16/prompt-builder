@@ -1,12 +1,14 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { LoadingDots } from '@components/LoadingDots';
 import { Button, type ButtonProps } from '@promptstudio/system/components/ui/button';
+import { Badge } from '@promptstudio/system/components/ui/badge';
 import { Checkbox } from '@promptstudio/system/components/ui/checkbox';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
 import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@promptstudio/system/components/ui/select';
 import { Slider } from '@promptstudio/system/components/ui/slider';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
+import { Panel } from '@promptstudio/system/components/system/Panel';
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
@@ -23,7 +25,6 @@ import {
   Lock,
   LockOpen,
   Pause,
-  Pencil,
   Play,
   X,
 } from '@promptstudio/system/components/ui';
@@ -70,14 +71,12 @@ import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { CategoryLegend } from './components/CategoryLegend';
 import { PromptEditor } from './components/PromptEditor';
 import { VersionsPanel } from './components/VersionsPanel';
+import { StageFrameCard, type FrameStatus } from './components/StageFrameCard';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import { VisualPreview, VideoPreview, type PreviewProvider } from '@/features/preview';
-import { useModelRegistry } from './hooks/useModelRegistry';
-import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './components/constants';
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
-import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
 import { cn } from '@/utils/cn';
 
 
@@ -108,7 +107,7 @@ const RUN_METRICS = {
 
 const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant, ...props }, ref) => (
-    <Button ref={ref} variant={variant ?? 'ghost'} {...props} />
+    <Button ref={ref} variant={variant ?? 'canvas'} {...props} />
   )
 );
 
@@ -125,8 +124,6 @@ type InlineSuggestion = {
 export function PromptCanvas({
   user = null,
   inputPrompt,
-  onInputPromptChange,
-  onReoptimize,
   displayedPrompt,
   previewPrompt = null,
   previewAspectRatio = null,
@@ -160,7 +157,6 @@ export function PromptCanvas({
 
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const editorColumnRef = useRef<HTMLDivElement>(null);
   const outputLocklineRef = useRef<HTMLDivElement>(null);
@@ -219,9 +215,7 @@ export function PromptCanvas({
   // Get model + layout state from context
   const {
     selectedModel,
-    setSelectedModel,
     generationParams,
-    setGenerationParams,
     promptOptimizer,
     setShowSettings,
     promptHistory,
@@ -235,20 +229,7 @@ export function PromptCanvas({
   } = usePromptState();
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
 
-  // Load capabilities schema to access generation controls
-  const { schema, target } = useCapabilities(selectedModel);
-  const { models: registryModels } = useModelRegistry();
-
-  const modelOptions = useMemo(() => {
-    if (registryModels.length) return registryModels;
-    return [...AI_MODEL_IDS]
-      .map((id) => ({
-        id,
-        label: AI_MODEL_LABELS[id],
-        provider: AI_MODEL_PROVIDERS[id],
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [registryModels]);
+  const { target } = useCapabilities(selectedModel);
 
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
@@ -257,29 +238,6 @@ export function PromptCanvas({
     }
     return previewAspectRatio;
   }, [generationParams, previewAspectRatio]);
-
-  // Helper to extract field info from capabilities schema
-  const getFieldInfo = useCallback(
-    (fieldName: string) => {
-      if (!schema?.fields?.[fieldName]) return null;
-
-      const field = schema.fields[fieldName];
-      const state = resolveFieldState(field, generationParams);
-
-      if (!state.available || state.disabled) return null;
-
-      const allowedValues = field.type === 'enum'
-        ? state.allowedValues ?? field.values ?? []
-        : [];
-
-      return { field, allowedValues };
-    },
-    [schema, generationParams]
-  );
-
-  const aspectRatioInfo = useMemo(() => getFieldInfo('aspect_ratio'), [getFieldInfo]);
-  const durationInfo = useMemo(() => getFieldInfo('duration_s'), [getFieldInfo]);
-  const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
 
   const allowsVideoInputReference = useMemo(() => /sora/i.test(selectedModel ?? ''), [selectedModel]);
 
@@ -295,66 +253,6 @@ export function PromptCanvas({
     return trimmed ? trimmed : undefined;
   }, [allowsVideoInputReference, videoInputReference]);
 
-  const handleParamChange = useCallback(
-    (key: string, value: CapabilityValue) => {
-      if (Object.is(generationParams?.[key], value)) {
-        return;
-      }
-      setGenerationParams({
-        ...(generationParams ?? {}),
-        [key]: value,
-      });
-    },
-    [generationParams, setGenerationParams]
-  );
-
-  const renderDropdown = useCallback(
-    (
-      info: ReturnType<typeof getFieldInfo>,
-      key: string,
-      ariaLabel: string,
-      disabled: boolean
-    ) => {
-      if (!info) return null;
-
-      const formatDisplay = (val: unknown) => {
-        if (key === 'duration_s') return `${val}s`;
-        if (key === 'fps') return `${val} fps`;
-        return String(val);
-      };
-
-      const currentRaw = generationParams?.[key] ?? info.field.default ?? '';
-
-      return (
-        <Select
-          value={String(currentRaw)}
-          onValueChange={(value) => {
-            const val = info.field.type === 'int' ? Number(value) : value;
-            handleParamChange(key, val);
-          }}
-          disabled={disabled}
-        >
-          <SelectTrigger
-            className={cn(
-              'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
-              'hover:border-border-strong hover:bg-surface-3'
-            )}
-            aria-label={ariaLabel}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {info.allowedValues.map((value) => (
-              <SelectItem key={String(value)} value={String(value)}>
-                {formatDisplay(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    },
-    [generationParams, handleParamChange]
-  );
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -374,9 +272,6 @@ export function PromptCanvas({
     showLegend,
     visualLastGeneratedAt,
     visualGenerateRequestId,
-    isEditing,
-    originalInputPrompt,
-    originalSelectedModel,
     selectedSpanId,
     lastAppliedSpanId,
     hasInteracted,
@@ -517,18 +412,6 @@ export function PromptCanvas({
   );
   const setHoveredSpanId = useCallback(
     (value: string | null) => setState({ hoveredSpanId: value }),
-    [setState]
-  );
-  const setIsEditing = useCallback(
-    (value: boolean) => setState({ isEditing: value }),
-    [setState]
-  );
-  const setOriginalInputPrompt = useCallback(
-    (value: string) => setState({ originalInputPrompt: value }),
-    [setState]
-  );
-  const setOriginalSelectedModel = useCallback(
-    (value: string | undefined) => setState({ originalSelectedModel: value }),
     [setState]
   );
   const setVisualLastGeneratedAt = useCallback(
@@ -742,7 +625,6 @@ export function PromptCanvas({
 
   const isOptimizing = Boolean(isProcessing || isRefining);
   const isOutputLoading = Boolean(isProcessing || isRefining);
-  const isInputLocked = !isEditing || isOptimizing;
 
   const escapeAttr = (value: string): string => {
     if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
@@ -945,158 +827,6 @@ export function PromptCanvas({
     setIsOutputFocused(false);
   }, [setIsOutputFocused]);
 
-  const handleInputPromptChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-      const updatedPrompt = sanitizeText(e.target.value);
-      debug.logAction('inputPromptEdit', { promptLength: updatedPrompt.length });
-      onInputPromptChange(updatedPrompt);
-    },
-    [onInputPromptChange, debug]
-  );
-
-  const handleReoptimize = useCallback((): void => {
-    if (isProcessing || isRefining) {
-      return;
-    }
-    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
-    void onReoptimize(inputPrompt);
-  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
-
-  const handleRedoOptimize = useCallback((): void => {
-    if (isProcessing || isRefining) {
-      return;
-    }
-    debug.logAction('reoptimize', { promptLength: inputPrompt.length, skipCache: true });
-    void onReoptimize(inputPrompt, { skipCache: true });
-  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
-
-  const handleEditClick = useCallback((): void => {
-    if (isOptimizing) {
-      return;
-    }
-    setOriginalInputPrompt(inputPrompt);
-    setOriginalSelectedModel(selectedModel);
-    setIsEditing(true);
-    // Focus the textarea after state update
-    setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 0);
-  }, [inputPrompt, isOptimizing, selectedModel, setOriginalInputPrompt, setOriginalSelectedModel, setIsEditing]);
-
-  const handleModelChange = useCallback((modelId: string): void => {
-    if (isOptimizing) {
-      return;
-    }
-    const nextModel = modelId.trim();
-    // Only enter edit mode if model actually changed
-    const modelChanged = nextModel !== selectedModel;
-    if (!modelChanged) {
-      return;
-    }
-    setSelectedModel(nextModel);
-    // Automatically enter edit mode when model changes
-    if (modelChanged && !isEditing) {
-      setOriginalInputPrompt(inputPrompt);
-      setOriginalSelectedModel(selectedModel);
-      setIsEditing(true);
-      // Focus the textarea after state update
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 0);
-    }
-  }, [
-    inputPrompt,
-    isEditing,
-    isOptimizing,
-    selectedModel,
-    setSelectedModel,
-    setOriginalInputPrompt,
-    setOriginalSelectedModel,
-    setIsEditing,
-  ]);
-
-  const handleCancel = useCallback((): void => {
-    // Restore original prompt and model
-    onInputPromptChange(originalInputPrompt);
-    if (originalSelectedModel !== undefined) {
-      setSelectedModel(originalSelectedModel);
-    }
-    setIsEditing(false);
-    setOriginalInputPrompt('');
-    setOriginalSelectedModel(undefined);
-  }, [
-    originalInputPrompt,
-    originalSelectedModel,
-    onInputPromptChange,
-    setSelectedModel,
-    setIsEditing,
-    setOriginalInputPrompt,
-    setOriginalSelectedModel,
-  ]);
-
-  const handleUpdate = useCallback((): void => {
-    if (isProcessing || isRefining) {
-      return;
-    }
-    // Changes are already saved via onInputPromptChange as user types
-    // Run reoptimize with the current input prompt
-    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
-    const promptChanged = inputPrompt !== originalInputPrompt;
-    const modelChanged =
-      typeof originalSelectedModel === 'string' && originalSelectedModel !== selectedModel;
-    const genericPrompt =
-      typeof promptOptimizer.genericOptimizedPrompt === 'string' &&
-      promptOptimizer.genericOptimizedPrompt.trim()
-        ? promptOptimizer.genericOptimizedPrompt
-        : null;
-
-    if (modelChanged && !promptChanged && genericPrompt) {
-      void onReoptimize(inputPrompt, {
-        compileOnly: true,
-        compilePrompt: genericPrompt,
-        createVersion: true,
-      });
-    } else {
-      void onReoptimize(inputPrompt);
-    }
-    // Exit edit mode
-    setIsEditing(false);
-    setOriginalInputPrompt('');
-    setOriginalSelectedModel(undefined);
-  }, [
-    inputPrompt,
-    originalInputPrompt,
-    originalSelectedModel,
-    promptOptimizer,
-    selectedModel,
-    isProcessing,
-    isRefining,
-    onReoptimize,
-    debug,
-    setIsEditing,
-    setOriginalInputPrompt,
-    setOriginalSelectedModel,
-  ]);
-
-  const handleInputPromptKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-      if (isProcessing || isRefining) {
-        return;
-      }
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        if (isEditing) {
-          handleUpdate();
-        } else {
-          handleReoptimize();
-        }
-      }
-    },
-    [handleReoptimize, handleUpdate, isEditing, isProcessing, isRefining]
-  );
-
-  const hasInputPrompt = Boolean(inputPrompt.trim());
-  const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
   const previewMetaDetail = 'ETA ~6s';
   const finalMetaDetail = 'ETA ~45s';
   const hasVideoPreviewSource = Boolean(videoPreviewPrompt.trim());
@@ -1713,14 +1443,6 @@ export function PromptCanvas({
   const previewStatusStyles = runStatusStyles(previewStatusState);
   const finalStatusStyles = runStatusStyles(finalStatusState);
 
-  const actionButtonClass =
-    'inline-flex h-9 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
-  const iconButtonClass =
-    'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
-  const primaryButtonClass =
-    'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-gradient-to-r from-accent to-accent-2 px-4 text-label-sm font-semibold text-app shadow-md transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0';
-  const statusPillClass =
-    'inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2 py-1 text-label-sm font-semibold uppercase tracking-wide';
   // NOTE: Phosphor icons require numeric size values, not CSS variables.
   // CSS variables like 'var(--ps-icon-md)' cause icons to render as dots.
   const iconSizes = {
@@ -1731,14 +1453,15 @@ export function PromptCanvas({
   } as const;
 
   const renderStagePanel = (variant: 'desktop' | 'sheet'): React.ReactElement => (
-	    <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
-	      <div className="flex items-start justify-between gap-3">
-	        <div className="flex items-center gap-2">
-	          <div className="text-body-lg font-semibold text-foreground">Stage</div>
+    <Panel asChild className="flex min-h-0 flex-1 flex-col">
+      <section>
+		      <div className="flex items-start justify-between gap-3">
+		        <div className="flex items-center gap-2">
+		          <div className="text-body-lg font-semibold text-foreground">Stage</div>
 	          {variant === 'desktop' && (
 	            <CanvasButton
 	              type="button"
-	              className={iconButtonClass}
+	              size="icon-sm"
 	              onClick={() => setStageCollapsed(true)}
 	              aria-label="Collapse stage panel"
 	            >
@@ -1778,7 +1501,7 @@ export function PromptCanvas({
 	          {variant === 'sheet' && (
 	            <CanvasButton
 	              type="button"
-	              className={iconButtonClass}
+	              size="icon-sm"
 	              onClick={() => setStageSheetOpen(false)}
 	              aria-label="Close stage"
 	            >
@@ -1824,9 +1547,9 @@ export function PromptCanvas({
 	              </div>
 	            </div>
 	
-	            {visualProvider === 'replicate-flux-kontext-fast' ? (
-	              <div className="flex flex-1 flex-col gap-3">
-	                <div className="rounded-lg border border-border bg-surface-2">
+              {visualProvider === 'replicate-flux-kontext-fast' ? (
+	              <div className="flex min-h-0 flex-1 flex-col gap-3">
+	                <div className="flex-shrink-0 rounded-lg border border-border bg-surface-2">
 	                  <div className="border-b border-border px-3 py-2 text-label-sm font-semibold text-foreground">
 	                    Frame {storyboardSelectedIndex + 1}{' '}
 	                    <span className="text-muted">
@@ -1863,51 +1586,52 @@ export function PromptCanvas({
                           <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                        </div>
 	                        <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-	                        <div className="text-label-sm text-muted">
-	                          Generate a preview to validate framing, lighting, and mood.
-	                        </div>
+		                        <div className="text-meta text-muted">
+		                          Generate a preview to validate framing, lighting, and mood.
+		                        </div>
 	                      </div>
 	                    )}
 	                  </div>
 	                </div>
-	
-	                <div className="flex flex-col gap-3">
-	                  {storyboardFrameMeta.map((frame, index) => {
-	                    const thumb = storyboardFrames[index];
-	                    const isSelected = storyboardSelectedIndex === index;
-	                    return (
-	                      <CanvasButton
-	                        key={frame.title}
-	                        type="button"
-	                        className={cn(
-	                          'flex w-full items-start justify-start gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
-	                          'hover:border-border-strong hover:bg-surface-3',
-	                          isSelected && 'border-accent/60 bg-accent/10'
-	                        )}
-	                        data-selected={isSelected ? 'true' : 'false'}
-	                        onClick={() => {
-	                          setStoryboardPlaying(false);
-	                          setStoryboardSelectedIndex(index);
-	                        }}
-	                        role="listitem"
-	                      >
-	                        <span className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-surface-3">
-	                          {typeof thumb === 'string' && thumb ? (
-	                            <img src={thumb} alt="" className="h-full w-full object-cover" />
-	                          ) : (
-	                            <span className="block h-full w-full" />
-	                          )}
-	                        </span>
-	                        <span className="flex min-w-0 flex-col">
-	                          <span className="text-body-sm font-semibold text-foreground">{frame.title}</span>
-	                          {frame.subtitle ? (
-	                            <span className="text-label-sm text-muted">{frame.subtitle}</span>
-	                          ) : null}
-	                        </span>
-	                      </CanvasButton>
-	                    );
-	                  })}
-	                </div>
+
+                  <div className="flex min-h-0 flex-1 flex-col gap-3">
+                    {/* Frame List Header */}
+                    <div className="flex flex-shrink-0 items-center justify-between">
+                      <span className="text-label-sm font-semibold uppercase tracking-wide text-accent">
+                        Frames
+                      </span>
+                      <span className="text-label-sm text-muted">{storyboardFrameMeta.length} total</span>
+                    </div>
+
+                    {/* Frame Cards (scrollable) */}
+                    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                      {storyboardFrameMeta.map((frame, index) => {
+                        const thumb = storyboardFrames[index];
+                        const isSelected = storyboardSelectedIndex === index;
+                        const frameStatus: FrameStatus =
+                          isVisualPreviewGenerating && isSelected
+                            ? 'generating'
+                            : typeof thumb === 'string' && thumb
+                              ? 'ready'
+                              : 'idle';
+                        return (
+                          <div key={frame.title} className="shrink-0">
+                            <StageFrameCard
+                              frame={frame}
+                              index={index}
+                              thumbnailUrl={typeof thumb === 'string' ? thumb : null}
+                              status={frameStatus}
+                              isSelected={isSelected}
+                              onClick={() => {
+                                setStoryboardPlaying(false);
+                                setStoryboardSelectedIndex(index);
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 	
 	                <div className="hidden" aria-hidden="true">
 	                  <VisualPreview
@@ -1947,9 +1671,9 @@ export function PromptCanvas({
                       <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                    </div>
 	                    <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-	                    <div className="text-label-sm text-muted">
-	                      Generate a preview to validate framing, lighting, and mood.
-	                    </div>
+		                    <div className="text-meta text-muted">
+		                      Generate a preview to validate framing, lighting, and mood.
+		                    </div>
 	                  </div>
 	                )}
 	              </div>
@@ -1958,14 +1682,14 @@ export function PromptCanvas({
 	        ) : (
 	          <>
 	            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
-	              <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
+	              <Badge className={cn(finalStatusStyles.text, 'normal-case tracking-normal')}>
 	                <span className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)} aria-hidden="true" />
 	                {finalStatusState === 'generating'
 	                  ? 'Generating'
 	                  : finalStatusState === 'ready'
 	                    ? 'Ready'
 	                    : 'Idle'}
-	              </span>
+	              </Badge>
 	              <span className="text-label-sm font-semibold text-muted">Model: WAN 2.2</span>
 	              <span className="ml-auto" aria-hidden="true" />
 	              {finalStatusState === 'ready' && stageFinalVideoUrl && (
@@ -2038,7 +1762,7 @@ export function PromptCanvas({
                       <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" />
 	                    </div>
 	                    <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
-	                    <div className="text-label-sm text-muted">Generate the final render when you are ready.</div>
+		                    <div className="text-meta text-muted">Generate the final render when you are ready.</div>
 	                  </div>
 	                )}
 	              </div>
@@ -2071,27 +1795,30 @@ export function PromptCanvas({
 	      </div>
 	
 	      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-	        <div className="text-label-sm text-muted">{stageFooterMeta}</div>
+	        <div className="text-meta text-muted">{stageFooterMeta}</div>
 	        {stageTab === 'final' && (
 	          <CanvasButton
 	            type="button"
-	            className="h-9 rounded-lg border border-border bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+	            variant="canvas"
+	            size="sm"
 	            onClick={() => setShowSettings(true)}
 	          >
 	            Edit settings
 	          </CanvasButton>
 	        )}
-	        <CanvasButton
-	          type="button"
-	          onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
-	          disabled={stageCtaDisabled}
-	          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
-	        >
-	          {stageCtaLabel}
-	        </CanvasButton>
-	      </div>
-	    </section>
-	  );
+		        <CanvasButton
+		          type="button"
+		          onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
+		          disabled={stageCtaDisabled}
+		          variant="gradient"
+		          className="min-w-40 justify-center"
+		        >
+		          {stageCtaLabel}
+		        </CanvasButton>
+		      </div>
+      </section>
+    </Panel>
+  );
 
 	  // Render the component
 		  return (
@@ -2126,7 +1853,7 @@ export function PromptCanvas({
         >
           <div className="border-b border-border p-4">
             <div className="text-body-lg font-semibold text-foreground">Prompt Structure</div>
-            <div className="mt-1 text-label-sm text-muted">Semantic breakdown used for generation</div>
+            <div className="mt-1 text-meta text-muted">Semantic breakdown used for generation</div>
           </div>
           <div className="flex-1 overflow-auto p-4">
             <HighlightingErrorBoundary>
@@ -2137,19 +1864,19 @@ export function PromptCanvas({
               />
             </HighlightingErrorBoundary>
           </div>
-          <div className="border-t border-border p-3 text-label-sm text-muted">
-            Hover a token to locate it in the prompt
-          </div>
+	      <div className="border-t border-border p-ps-3 text-meta text-muted">
+	        Hover a token to locate it in the prompt
+	      </div>
         </div>
       )}
 
-      {/* Main Content Container */}
-      <div
-        className={cn(
-          'relative flex min-h-0 flex-1 flex-col gap-4 p-4 xl:flex-row',
-          outlineOverlayActive && 'pointer-events-none opacity-60'
-        )}
-      >
+	      {/* Main Content Container */}
+	      <div
+	        className={cn(
+	          'relative flex min-h-0 flex-1 flex-col gap-ps-4 p-ps-page xl:flex-row',
+	          outlineOverlayActive && 'pointer-events-none opacity-60'
+	        )}
+	      >
         {showVideoPreview && isAnyVideoPreviewGenerating && (
           <div
             className="pointer-events-none absolute inset-0 z-20 bg-surface-1/70 backdrop-blur-sm"
@@ -2182,147 +1909,31 @@ export function PromptCanvas({
           )}
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 pb-4">
-              <div
-                className={cn(
-                  'rounded-xl border border-border bg-surface-2 shadow-sm transition-opacity',
-                  isOptimizing && 'opacity-70'
-                )}
-              >
-                <div
-                  className={cn(
-                    'flex flex-col gap-2 border-b border-border p-3',
-                    showVideoPreview && 'items-stretch'
-                  )}
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <div className="text-body-lg font-semibold text-foreground">Prompt</div>
-                    <div className="flex items-center gap-2">
-                      {!isEditing ? (
-                        <CanvasButton
-                          type="button"
-                          onClick={handleEditClick}
-                          disabled={isOptimizing}
-                          className={actionButtonClass}
-                          aria-label="Edit prompt"
-                          title="Edit prompt"
-                        >
-                          <Pencil size={iconSizes.sm} />
-                          <span>Edit</span>
-                        </CanvasButton>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <CanvasButton
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={isOptimizing}
-                            className={actionButtonClass}
-                            aria-label="Cancel editing"
-                            title="Cancel editing"
-                          >
-                            <X size={iconSizes.sm} />
-                            <span>Cancel</span>
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            onClick={handleUpdate}
-                            disabled={isReoptimizeDisabled}
-                            className={primaryButtonClass}
-                            aria-label="Update prompt"
-                            title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                          >
-                            <Check size={iconSizes.sm} />
-                            <span>Update</span>
-                          </CanvasButton>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {showVideoPreview && (
-                    <div className="flex flex-wrap items-center gap-2" aria-label="Prompt controls">
-                      <Select
-                        value={selectedModel && selectedModel.trim() ? selectedModel : 'auto'}
-                        onValueChange={(value) => handleModelChange(value === 'auto' ? '' : value)}
-                        disabled={isOptimizing}
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
-                            'hover:border-border-strong hover:bg-surface-3'
-                          )}
-                          aria-label="Model"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto (Recommended)</SelectItem>
-                          {modelOptions.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {aspectRatioInfo &&
-                        renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', isOptimizing)}
-
-                      {durationInfo &&
-                        renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
-
-                      {fpsInfo && renderDropdown(fpsInfo, 'fps', 'Frame rate', isOptimizing)}
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <label htmlFor="original-prompt-input" className="ps-sr-only">
-                    Input prompt
-                  </label>
-                  <div className="rounded-lg border border-border bg-surface-1 p-3">
-                    <Textarea
-                      ref={textareaRef}
-                      id="original-prompt-input"
-                      value={inputPrompt}
-                      onChange={handleInputPromptChange}
-                      onKeyDown={handleInputPromptKeyDown}
-                      placeholder="Describe your shot..."
-                      rows={3}
-                      readOnly={isInputLocked}
-                      className="min-h-24 max-h-48 w-full resize-y bg-transparent p-0 text-body text-foreground placeholder:text-faint focus-visible:ring-0 focus-visible:ring-offset-0"
-                      aria-label="Original prompt input"
-                      aria-readonly={isInputLocked}
-                      aria-busy={isOptimizing}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={cn(
-                  'rounded-xl border border-border bg-surface-3 shadow-sm transition-opacity',
-                  isOutputLoading && 'opacity-80'
-                )}
-              >
-                <div className="border-b border-border p-3">
-                  <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
-                      {!selectedSpanId && (
-                        <div className="text-label-sm text-muted">Select a highlight to see suggestions</div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={cn(statusPillClass, outputStatusStyles.text)}>
+	            <div className="mx-auto flex w-full max-w-5xl flex-col gap-ps-4 pb-ps-card">
+	              <Panel
+	                padding="none"
+	                surface="3"
+	                className={cn('transition-opacity', isOutputLoading && 'opacity-80')}
+	              >
+	                <div className="border-b border-border p-ps-card">
+	                  <div className="flex flex-wrap items-baseline justify-between gap-ps-3">
+	                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+	                      <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
+	                      {!selectedSpanId && (
+	                        <div className="text-meta text-muted">Select a highlight to see suggestions</div>
+	                      )}
+	                    </div>
+	                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge casing="upper" className={outputStatusStyles.text}>
                         <span
                           className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
                           aria-hidden="true"
                         />
                         {isOutputFocused ? 'Editing' : 'LIVE'}
-                      </span>
+                      </Badge>
                       <CanvasButton
                         type="button"
-                        className={iconButtonClass}
+                        size="icon-sm"
                         onClick={handleCopy}
                         aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
                         title={copied ? 'Copied' : 'Copy'}
@@ -2335,7 +1946,7 @@ export function PromptCanvas({
 	                      </CanvasButton>
 	                      <CanvasButton
 	                        type="button"
-	                        className={iconButtonClass}
+	                        size="icon-sm"
 	                        onClick={onUndo}
                         disabled={!canUndo}
                         aria-label="Undo"
@@ -2344,7 +1955,7 @@ export function PromptCanvas({
                       </CanvasButton>
                       <CanvasButton
                         type="button"
-                        className={iconButtonClass}
+                        size="icon-sm"
                         onClick={onRedo}
                         disabled={!canRedo}
 	                        aria-label="Redo"
@@ -2354,7 +1965,7 @@ export function PromptCanvas({
 	                      <div className="relative" ref={exportMenuRef}>
 	                        <CanvasButton
 	                          type="button"
-	                          className={iconButtonClass}
+	                          size="icon-sm"
 	                          onClick={() => setShowExportMenu(!showExportMenu)}
 	                          aria-expanded={showExportMenu}
 	                          aria-haspopup="menu"
@@ -2432,13 +2043,13 @@ export function PromptCanvas({
 	                  </div>
 	                </div>
 
-                <div className="p-3">
-                  <div className="flex min-h-0 flex-col gap-4 xl:flex-row">
-                    <div
-                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-3"
-                      aria-busy={isOutputLoading}
-                      ref={editorWrapperRef}
-                    >
+	                <div className="p-ps-card">
+	                  <div className="flex min-h-0 flex-col gap-ps-4 xl:flex-row">
+	                    <div
+	                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-ps-3"
+	                      aria-busy={isOutputLoading}
+	                      ref={editorWrapperRef}
+	                    >
                       <PromptEditor
                         ref={editorRef as React.RefObject<HTMLDivElement>}
                         className="min-h-44 w-full whitespace-pre-wrap font-sans text-body text-foreground outline-none"
@@ -2502,8 +2113,8 @@ export function PromptCanvas({
                         >
                           <LoadingDots size={3} className="text-faint" />
                         </div>
-                      )}
-                    </div>
+	                      )}
+	                    </div>
 
 	                    {selectedSpanId ? (
 	                      <aside
@@ -2513,11 +2124,11 @@ export function PromptCanvas({
                       <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
                         <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
                           Suggestions
-                          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
-                            {suggestionCount}
-                          </span>
-                        </div>
-                        <div className="hidden items-center gap-1 text-muted sm:flex" aria-hidden="true">
+	                          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
+	                            {suggestionCount}
+	                          </span>
+	                        </div>
+	                        <div className="hidden items-center gap-1 text-muted sm:flex" aria-hidden="true">
                           <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
                             Up
                           </span>
@@ -2661,32 +2272,37 @@ export function PromptCanvas({
                     ) : null}
                   </div>
                 </div>
-              </div>
-
-	              <section
+	              </Panel>
+	
+		              <Panel
+	                asChild
 	                className={cn(
-	                  'rounded-xl border border-border bg-surface-2 p-3 shadow-sm transition-all duration-200',
-	                  runsCollapsed ? 'flex items-center justify-between gap-4' : 'flex min-h-0 flex-col gap-3'
-	                )}
-	                role={runsCollapsed ? 'button' : undefined}
-	                tabIndex={runsCollapsed ? 0 : undefined}
-	                aria-expanded={runsCollapsed ? 'false' : 'true'}
-	                aria-label={runsCollapsed ? 'Expand runs' : undefined}
-	                onClick={runsCollapsed ? () => setRunsCollapsed(false) : undefined}
-	                onKeyDown={
+	                  'transition-all duration-200',
 	                  runsCollapsed
-	                    ? (event) => {
-	                        if (event.key === 'Enter' || event.key === ' ') {
-	                          event.preventDefault();
-	                          setRunsCollapsed(false);
-	                        }
-	                      }
-	                    : undefined
-	                }
+	                    ? 'flex items-center justify-between gap-ps-4'
+	                    : 'flex min-h-0 flex-col gap-ps-3'
+	                )}
 	              >
+	                <section
+	                  role={runsCollapsed ? 'button' : undefined}
+	                  tabIndex={runsCollapsed ? 0 : undefined}
+	                  aria-expanded={runsCollapsed ? 'false' : 'true'}
+	                  aria-label={runsCollapsed ? 'Expand runs' : undefined}
+	                  onClick={runsCollapsed ? () => setRunsCollapsed(false) : undefined}
+	                  onKeyDown={
+	                    runsCollapsed
+	                      ? (event) => {
+	                          if (event.key === 'Enter' || event.key === ' ') {
+	                            event.preventDefault();
+	                            setRunsCollapsed(false);
+	                          }
+	                        }
+	                      : undefined
+	                  }
+	                >
 		                {runsCollapsed ? (
 		                  <>
-		                    <div className="flex min-w-0 items-center gap-4">
+		                    <div className="flex min-w-0 items-center gap-ps-4">
 		                      <div className="text-body-lg font-semibold text-foreground">Runs</div>
 		                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-label-sm text-muted">
 		                        <span className="inline-flex items-center gap-1.5">
@@ -2709,13 +2325,14 @@ export function PromptCanvas({
 		                      </div>
 		                    </div>
 		                    <div className="flex items-center gap-2">
-		                      <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
+		                      <Badge className="text-foreground normal-case tracking-normal">
 		                        <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
 		                        Queue
-	                      </span>
+	                      </Badge>
 	                      <CanvasButton
 	                        type="button"
-	                        className={cn(iconButtonClass, 'transition-transform duration-200')}
+	                        size="icon-sm"
+	                        className="transition-transform duration-200"
 	                        onClick={(event) => {
 	                          event.stopPropagation();
 	                          setRunsCollapsed(false);
@@ -2733,13 +2350,14 @@ export function PromptCanvas({
 	                        <div className="text-body-lg font-semibold text-foreground">Runs</div>
 	                      </div>
 	                      <div className="flex items-center gap-2">
-	                        <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
+	                        <Badge className="text-foreground normal-case tracking-normal">
 	                          <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
 	                          Queue
-	                        </span>
+	                        </Badge>
 	                        <CanvasButton
 	                          type="button"
-	                          className={cn(iconButtonClass, 'transition-transform duration-200 rotate-180')}
+	                          size="icon-sm"
+	                          className="transition-transform duration-200 rotate-180"
 	                          onClick={() => setRunsCollapsed(true)}
 	                          aria-label="Collapse runs"
 	                        >
@@ -2748,15 +2366,13 @@ export function PromptCanvas({
 	                      </div>
 	                    </div>
 
-	                    <div className="flex flex-col gap-3">
-	                  <div
-	                    className={cn(
-	                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm',
-	                      previewStatusState === 'ready' && 'border-accent/50'
-                    )}
-                    data-status={previewStatusState}
-                  >
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+	                    <div className="flex flex-col gap-ps-3">
+	                  <Panel
+	                    padding="sm"
+	                    className={cn('flex flex-col gap-ps-3', previewStatusState === 'ready' && 'border-accent/50')}
+	                    data-status={previewStatusState}
+	                  >
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-body-sm font-semibold text-foreground">Preview Run</div>
@@ -2765,13 +2381,13 @@ export function PromptCanvas({
 	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn(statusPillClass, previewStatusStyles.text, 'normal-case tracking-normal')}>
+                          <Badge className={cn(previewStatusStyles.text, 'normal-case tracking-normal')}>
                             <span
                               className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
                               aria-hidden="true"
                             />
                             {previewStatusLabel}
-                          </span>
+                          </Badge>
 	                          {previewEta && <span className="text-label-sm text-muted">{previewEta}</span>}
                           <div className="relative" ref={previewRunMenuRef}>
                             <CanvasButton
@@ -2818,11 +2434,11 @@ export function PromptCanvas({
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3 text-label-sm text-muted">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3 text-label-sm text-muted">
                       Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
                       · Seed {seedLabel}
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
 	                        <span className="font-semibold text-muted">Metrics:</span>
                         <span>Tokens {RUN_METRICS.preview.tokens}</span>
@@ -2840,7 +2456,7 @@ export function PromptCanvas({
                         </span>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
 	                      <div className="text-label-sm text-muted">Artifacts</div>
                       <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.preview.map((artifact) => (
@@ -2863,7 +2479,7 @@ export function PromptCanvas({
                         </CanvasButton>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <CanvasButton
@@ -2902,19 +2518,17 @@ export function PromptCanvas({
                               : handleGenerateVisualPreview
                           }
                           disabled={previewCtaDisabled}
-                          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
+                          variant="gradient"
+                          className="min-w-40 justify-center"
                         >
                           {previewCtaLabel}
                         </CanvasButton>
                       </div>
                     </div>
-                  </div>
+                  </Panel>
 
-                  <div
-                    className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm"
-                    data-status={finalStatusState}
-                  >
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                  <Panel padding="sm" className="flex flex-col gap-ps-3" data-status={finalStatusState}>
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-body-sm font-semibold text-foreground">Final Render</div>
@@ -2923,13 +2537,13 @@ export function PromptCanvas({
 	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
+                          <Badge className={cn(finalStatusStyles.text, 'normal-case tracking-normal')}>
                             <span
                               className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
                               aria-hidden="true"
                             />
                             {finalStatusLabel}
-                          </span>
+                          </Badge>
 	                          {finalEta && <span className="text-label-sm text-muted">{finalEta}</span>}
                           <div className="relative" ref={finalRunMenuRef}>
                             <CanvasButton
@@ -2976,11 +2590,11 @@ export function PromptCanvas({
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3 text-label-sm text-muted">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3 text-label-sm text-muted">
                       Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
                       · Seed {seedLabel}
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
 	                        <span className="font-semibold text-muted">Metrics:</span>
                         <span>Tokens {RUN_METRICS.final.tokens}</span>
@@ -2998,7 +2612,7 @@ export function PromptCanvas({
                         </span>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
 	                      <div className="text-label-sm text-muted">Artifacts</div>
                       <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.final.map((artifact) => (
@@ -3021,7 +2635,7 @@ export function PromptCanvas({
                         </CanvasButton>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <CanvasButton
@@ -3060,17 +2674,19 @@ export function PromptCanvas({
                               : handleGenerateRailVideoPreview
                           }
                           disabled={finalCtaDisabled}
-                          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
+                          variant="gradient"
+                          className="min-w-40 justify-center"
                         >
                           {finalCtaLabel}
                         </CanvasButton>
                       </div>
                     </div>
-	                  </div>
+	                  </Panel>
 	                </div>
 	                  </>
 	                )}
-	              </section>
+	                </section>
+	              </Panel>
             </div>
           </div>
         </div>
@@ -3086,7 +2702,7 @@ export function PromptCanvas({
 	            <section className="flex flex-1 flex-col items-center justify-start gap-4 rounded-xl border border-border bg-surface-2 py-4 shadow-sm">
 	              <CanvasButton
 	                type="button"
-	                className={iconButtonClass}
+	                size="icon-sm"
 	                onClick={() => setStageCollapsed(false)}
 	                aria-label="Expand stage panel"
 	              >
@@ -3102,11 +2718,12 @@ export function PromptCanvas({
 	        </div>
 	      </div>
 	
-	      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-3 xl:hidden">
+	      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-ps-3 xl:hidden">
 	        <div className="flex items-center gap-3">
 	          <CanvasButton
 	            type="button"
-	            className={cn(primaryButtonClass, 'flex-1 justify-center')}
+	            variant="gradient"
+	            className="flex-1 justify-center"
 	            onClick={() => setStageSheetOpen(true)}
 	          >
 	            Open Stage
@@ -3128,7 +2745,7 @@ export function PromptCanvas({
 	      <Sheet open={stageSheetOpen} onOpenChange={setStageSheetOpen}>
 	        <SheetContent
 	          side="bottom"
-	          className="h-[85vh] overflow-auto border-0 bg-transparent p-3 shadow-none [&>button]:hidden"
+	          className="h-[85vh] overflow-auto border-0 bg-transparent p-ps-3 shadow-none [&>button]:hidden"
 	        >
 	          {renderStagePanel('sheet')}
 	        </SheetContent>
@@ -3139,7 +2756,7 @@ export function PromptCanvas({
 	            <div className="flex items-center justify-between border-b border-border p-4">
               <div>
                 <div className="text-body-lg font-semibold text-foreground">Diff</div>
-                <div className="mt-1 text-label-sm text-muted">Input vs optimized output</div>
+                <div className="mt-1 text-meta text-muted">Input vs optimized output</div>
               </div>
               <CanvasButton
                 type="button"
@@ -3151,13 +2768,13 @@ export function PromptCanvas({
               </CanvasButton>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-surface-2 p-3">
+              <div className="rounded-lg border border-border bg-surface-2 p-ps-3">
                 <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Input</div>
                 <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
                   {inputPrompt || '—'}
                 </pre>
               </div>
-              <div className="rounded-lg border border-border bg-surface-2 p-3">
+              <div className="rounded-lg border border-border bg-surface-2 p-ps-3">
                 <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Optimized</div>
                 <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
                   {normalizedDisplayedPrompt || '—'}

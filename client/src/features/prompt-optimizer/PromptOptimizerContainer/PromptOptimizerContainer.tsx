@@ -13,7 +13,6 @@ import { usePromptState, PromptStateProvider } from '../context/PromptStateConte
 import { PromptInputSection } from '../components/PromptInputSection';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { PromptModals } from '../components/PromptModals';
-import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
 import { CoherenceReviewModal } from '../components/CoherenceReviewModal';
 import DebugButton from '@components/DebugButton';
@@ -345,8 +344,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       />
 
       {/* Top Action Buttons */}
-      {showResults && <PromptTopBar />}
-
       {/* History Sidebar */}
       <PromptSidebar user={user} />
 

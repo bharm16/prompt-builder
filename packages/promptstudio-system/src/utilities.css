@@ -59,21 +59,25 @@
 
   /* ===== GLASS MORPHISM ===== */
   .ps-glass {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--ps-glass-bg-subtle);
     backdrop-filter: blur(var(--ps-blur-md));
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(var(--ps-blur-md));
+    border: 1px solid var(--ps-glass-border);
+    box-shadow: var(--ps-shadow-inset);
   }
 
   .ps-glass-subtle {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--ps-glass-bg-subtle);
     backdrop-filter: blur(var(--ps-blur-sm));
+    -webkit-backdrop-filter: blur(var(--ps-blur-sm));
   }
 
   .ps-glass-card {
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--ps-glass-bg);
     backdrop-filter: blur(var(--ps-blur-lg));
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    -webkit-backdrop-filter: blur(var(--ps-blur-lg));
+    border: 1px solid var(--ps-glass-border);
+    box-shadow: var(--ps-shadow-elevated);
   }
 
   /* ===== TEXT UTILITIES ===== */

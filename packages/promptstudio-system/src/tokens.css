@@ -142,8 +142,8 @@
     --ps-border-strong: #314163;
 
     --ps-text: #e7ebf3;
-    --ps-text-muted: #a1aabc;
-    --ps-text-faint: #7f8aa6;
+    --ps-text-muted: #b1bbd2;
+    --ps-text-faint: #93a0be;
 
     --ps-accent: #6886ff;
     --ps-accent-2: #8b66ff;
@@ -343,6 +343,13 @@
 
     /* Focus */
     --ps-focus-ring: rgba(104, 134, 255, 0.75);
+
+    /* =========================
+       Glass surfaces (dark-tuned)
+       ========================= */
+    --ps-glass-bg: rgba(16, 22, 34, 0.72);
+    --ps-glass-bg-subtle: rgba(16, 22, 34, 0.45);
+    --ps-glass-border: rgba(49, 65, 99, 0.45);
 
     /* Compatibility aliases */
     --bg: var(--ps-bg);
