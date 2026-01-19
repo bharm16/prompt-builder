@@ -17,6 +17,7 @@ import {
   CaretLeft,
   CaretRight,
   Check,
+  CheckCircle,
   Copy,
   DotsThree,
   Download,
@@ -26,6 +27,7 @@ import {
   LockOpen,
   Pause,
   Play,
+  WarningCircle,
   X,
 } from '@promptstudio/system/components/ui';
 
@@ -843,18 +845,9 @@ export function PromptCanvas({
     return null;
   })();
   const fpsValue = generationParams?.fps;
-  const seedValue = generationParams?.seed;
   const durationLabel = typeof durationValue === 'number' ? `${durationValue}s` : '—';
   const fpsLabel = typeof fpsValue === 'number' ? `${fpsValue} fps` : '—';
   const aspectLabel = effectiveAspectRatio ? `AR ${effectiveAspectRatio}` : 'AR —';
-  const durationMetaLabel =
-    typeof durationValue === 'number' || typeof durationValue === 'string'
-      ? `Duration ${durationValue}s`
-      : 'Duration —';
-  const fpsMetaLabel =
-    typeof fpsValue === 'number' || typeof fpsValue === 'string' ? `FPS ${fpsValue}` : 'FPS —';
-  const seedLabel =
-    typeof seedValue === 'number' || typeof seedValue === 'string' ? String(seedValue) : 'Auto';
   const storyboardStepSeconds = durationSeconds !== null ? durationSeconds / 4 : null;
   const storyboardFrameMeta = useMemo(
     () =>
@@ -895,6 +888,10 @@ export function PromptCanvas({
         : 'Idle';
   const previewEta = previewStatusState === 'generating' ? previewMetaDetail : null;
   const finalEta = finalStatusState === 'generating' ? finalMetaDetail : null;
+  const showPreviewStatus = previewStatusState !== 'idle';
+  const showFinalStatus = finalStatusState !== 'idle';
+  const previewMetricsVisible = previewStatusState === 'ready';
+  const finalMetricsVisible = finalStatusState === 'ready';
   const canCompareRuns = previewStatusState === 'ready' && finalStatusState === 'ready';
   const previewCtaLabel = previewStatusState === 'ready' ? 'Open in Stage' : 'Generate Preview';
   const finalCtaLabel = finalStatusState === 'ready' ? 'Open Final' : 'Render Final';
@@ -930,6 +927,43 @@ export function PromptCanvas({
     if (urls.length > 0) return [...urls, ...Array.from({ length: Math.max(0, 4 - urls.length) }, () => null)];
     return Array.from({ length: 4 }, () => null);
   }, [visualPreviewState?.imageUrls]);
+  const previewArtifactMedia = useMemo(() => {
+    const availableFrames = storyboardFrames.filter(
+      (frame): frame is string => typeof frame === 'string' && frame.trim().length > 0
+    );
+    const fallbackFrames = seedImageUrl ? [seedImageUrl] : [];
+    const sources = availableFrames.length > 0 ? availableFrames : fallbackFrames;
+    if (sources.length === 0) {
+      return RUN_ARTIFACTS.preview.map(() => null);
+    }
+    return RUN_ARTIFACTS.preview.map((_, index) => ({
+      type: 'image' as const,
+      src: sources[index % sources.length],
+    }));
+  }, [seedImageUrl, storyboardFrames]);
+  const finalArtifactMedia = useMemo(() => {
+    if (stageFinalVideoUrl) {
+      return RUN_ARTIFACTS.final.map(() => ({
+        type: 'video' as const,
+        src: stageFinalVideoUrl,
+      }));
+    }
+    const fallbackFrame =
+      seedImageUrl ??
+      storyboardFrames.find(
+        (frame): frame is string => typeof frame === 'string' && frame.trim().length > 0
+      ) ??
+      null;
+    if (!fallbackFrame) {
+      return RUN_ARTIFACTS.final.map(() => null);
+    }
+    return RUN_ARTIFACTS.final.map(() => ({
+      type: 'image' as const,
+      src: fallbackFrame,
+    }));
+  }, [seedImageUrl, stageFinalVideoUrl, storyboardFrames]);
+  const previewHasArtifacts = previewArtifactMedia.some(Boolean);
+  const finalHasArtifacts = finalArtifactMedia.some(Boolean);
   const hasStoryboardFrames = useMemo(
     () => storyboardFrames.some((frame) => typeof frame === 'string' && Boolean(frame.trim())),
     [storyboardFrames]
@@ -2341,34 +2375,38 @@ export function PromptCanvas({
 		                  <>
 		                    <div className="flex min-w-0 items-center gap-ps-4">
 		                      <div className="text-body-lg font-semibold text-foreground">Runs</div>
-		                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-label-sm text-muted">
-		                        <span className="inline-flex items-center gap-1.5">
-		                          <span
-		                            className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
-		                            aria-hidden="true"
-		                          />
-		                          Preview: {previewStatusLabel}
-		                        </span>
-		                        <span className="text-muted" aria-hidden="true">
-		                          ·
-		                        </span>
-		                        <span className="inline-flex items-center gap-1.5">
-		                          <span
-		                            className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
-		                            aria-hidden="true"
-		                          />
-		                          Final: {finalStatusLabel}
-		                        </span>
-		                      </div>
+		                      {(showPreviewStatus || showFinalStatus) && (
+		                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-label-sm text-muted">
+		                          {showPreviewStatus && (
+		                            <span className="inline-flex items-center gap-1.5">
+		                              <span
+		                                className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
+		                                aria-hidden="true"
+		                              />
+		                              Preview: {previewStatusLabel}
+		                            </span>
+		                          )}
+		                          {showPreviewStatus && showFinalStatus && (
+		                            <span className="text-muted" aria-hidden="true">
+		                              ·
+		                            </span>
+		                          )}
+		                          {showFinalStatus && (
+		                            <span className="inline-flex items-center gap-1.5">
+		                              <span
+		                                className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
+		                                aria-hidden="true"
+		                              />
+		                              Final: {finalStatusLabel}
+		                            </span>
+		                          )}
+		                        </div>
+		                      )}
 		                    </div>
 		                    <div className="flex items-center gap-2">
-		                      <Badge className="text-foreground normal-case tracking-normal">
-		                        <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
-		                        Queue
-	                      </Badge>
-	                      <CanvasButton
-	                        type="button"
-	                        size="icon-sm"
+		                      <CanvasButton
+		                        type="button"
+		                        size="icon-sm"
 	                        className="transition-transform duration-200"
 	                        onClick={(event) => {
 	                          event.stopPropagation();
@@ -2387,10 +2425,6 @@ export function PromptCanvas({
 	                        <div className="text-body-lg font-semibold text-foreground">Runs</div>
 	                      </div>
 	                      <div className="flex items-center gap-2">
-	                        <Badge className="text-foreground normal-case tracking-normal">
-	                          <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
-	                          Queue
-	                        </Badge>
 	                        <CanvasButton
 	                          type="button"
 	                          size="icon-sm"
@@ -2418,13 +2452,15 @@ export function PromptCanvas({
 	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={cn(previewStatusStyles.text, 'normal-case tracking-normal')}>
-                            <span
-                              className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
-                              aria-hidden="true"
-                            />
-                            {previewStatusLabel}
-                          </Badge>
+                          {showPreviewStatus && (
+                            <Badge className={cn(previewStatusStyles.text, 'normal-case tracking-normal')}>
+                              <span
+                                className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
+                                aria-hidden="true"
+                              />
+                              {previewStatusLabel}
+                            </Badge>
+                          )}
 	                          {previewEta && <span className="text-label-sm text-muted">{previewEta}</span>}
                           <div className="relative" ref={previewRunMenuRef}>
                             <CanvasButton
@@ -2444,18 +2480,29 @@ export function PromptCanvas({
                                 <CanvasButton
                                   type="button"
                                   role="menuitem"
+                                  disabled={previewStatusState !== 'ready'}
                                   onClick={() => setOpenRunMenu(null)}
                                   className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                                 >
-                                  View logs
+                                  Retry
                                 </CanvasButton>
                                 <CanvasButton
                                   type="button"
                                   role="menuitem"
+                                  disabled={!canCompareRuns}
                                   onClick={() => setOpenRunMenu(null)}
                                   className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                                 >
-                                  Duplicate settings
+                                  Compare
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  disabled={previewStatusState === 'idle'}
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  View logs
                                 </CanvasButton>
                                 <CanvasButton
                                   type="button"
@@ -2471,75 +2518,98 @@ export function PromptCanvas({
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3 text-label-sm text-muted">
-                      Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
-                      · Seed {seedLabel}
-                    </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
-                      <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
-	                        <span className="font-semibold text-muted">Metrics:</span>
-                        <span>Tokens {RUN_METRICS.preview.tokens}</span>
-	                        <span className="text-muted">·</span>
-                        <span>Est. cost {RUN_METRICS.preview.cost}</span>
-	                        <span className="text-muted">·</span>
-                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
-                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
-                          Quality: {RUN_METRICS.preview.quality}
-                        </span>
-	                        <span className="text-muted">·</span>
-                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
-                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
-                          Safety: {RUN_METRICS.preview.safety}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
-	                      <div className="text-label-sm text-muted">Artifacts</div>
-                      <div className="mt-2 flex items-center gap-2 overflow-hidden">
-                        {RUN_ARTIFACTS.preview.map((artifact) => (
-                          <CanvasButton
-                            key={artifact.id}
-                            type="button"
+                    {previewMetricsVisible && (
+                      <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
+                        <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-surface-2 px-2 py-1">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-[10px] font-semibold text-muted">
+                              #
+                            </span>
+                            <span className="text-foreground">{RUN_METRICS.preview.tokens}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-surface-2 px-2 py-1">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-[10px] font-semibold text-muted">
+                              $
+                            </span>
+                            <span className="text-foreground">{RUN_METRICS.preview.cost}</span>
+                          </span>
+                          <span
                             className={cn(
-                              'h-8 w-12 rounded-md border border-border bg-surface-3 transition-colors hover:border-border-strong',
-                              artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                              'inline-flex items-center justify-center rounded-md border border-border/60 bg-surface-2 px-2 py-1',
+                              metricStyles(RUN_METRICS.preview.quality === 'Pass' ? 'pass' : 'warn').text
                             )}
-                            data-kind={artifact.kind}
-                            aria-label={artifact.label}
-                          />
-                        ))}
-                        <CanvasButton
-                          type="button"
-                          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-label-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
-                        >
-                          View all <span aria-hidden="true">&rarr;</span>
-                        </CanvasButton>
+                            aria-label={`Quality ${RUN_METRICS.preview.quality}`}
+                            title={`Quality ${RUN_METRICS.preview.quality}`}
+                          >
+                            <Icon
+                              icon={RUN_METRICS.preview.quality === 'Pass' ? CheckCircle : WarningCircle}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center justify-center rounded-md border border-border/60 bg-surface-2 px-2 py-1',
+                              metricStyles(RUN_METRICS.preview.safety === 'Clear' ? 'pass' : 'warn').text
+                            )}
+                            aria-label={`Safety ${RUN_METRICS.preview.safety}`}
+                            title={`Safety ${RUN_METRICS.preview.safety}`}
+                          >
+                            <Icon
+                              icon={RUN_METRICS.preview.safety === 'Clear' ? CheckCircle : WarningCircle}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {previewHasArtifacts && (
+                      <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {RUN_ARTIFACTS.preview.map((artifact, index) => {
+                            const media = previewArtifactMedia[index];
+                            return (
+                              <CanvasButton
+                                key={artifact.id}
+                                type="button"
+                                className={cn(
+                                  'relative h-8 w-12 shrink-0 rounded-md border border-border bg-surface-3 p-0 transition-colors hover:border-border-strong',
+                                  artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                                )}
+                                data-kind={artifact.kind}
+                                aria-label={artifact.label}
+                              >
+                                {media?.type === 'image' ? (
+                                  <img
+                                    src={media.src}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-full w-full rounded-md object-cover"
+                                  />
+                                ) : media?.type === 'video' ? (
+                                  <video
+                                    src={media.src}
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    className="h-full w-full rounded-md object-cover"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full rounded-md bg-surface-2" aria-hidden="true" />
+                                )}
+                              </CanvasButton>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <CanvasButton
-                            type="button"
-                            disabled={previewStatusState !== 'ready'}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Retry
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            disabled={!canCompareRuns}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Compare
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            disabled={previewStatusState === 'idle'}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Logs
-                          </CanvasButton>
                           <CanvasButton
                             type="button"
                             className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
@@ -2574,13 +2644,15 @@ export function PromptCanvas({
 	                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={cn(finalStatusStyles.text, 'normal-case tracking-normal')}>
-                            <span
-                              className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
-                              aria-hidden="true"
-                            />
-                            {finalStatusLabel}
-                          </Badge>
+                          {showFinalStatus && (
+                            <Badge className={cn(finalStatusStyles.text, 'normal-case tracking-normal')}>
+                              <span
+                                className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
+                                aria-hidden="true"
+                              />
+                              {finalStatusLabel}
+                            </Badge>
+                          )}
 	                          {finalEta && <span className="text-label-sm text-muted">{finalEta}</span>}
                           <div className="relative" ref={finalRunMenuRef}>
                             <CanvasButton
@@ -2600,18 +2672,29 @@ export function PromptCanvas({
                                 <CanvasButton
                                   type="button"
                                   role="menuitem"
+                                  disabled={finalStatusState !== 'ready'}
                                   onClick={() => setOpenRunMenu(null)}
                                   className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                                 >
-                                  View logs
+                                  Retry
                                 </CanvasButton>
                                 <CanvasButton
                                   type="button"
                                   role="menuitem"
+                                  disabled={!canCompareRuns}
                                   onClick={() => setOpenRunMenu(null)}
                                   className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                                 >
-                                  Duplicate settings
+                                  Compare
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  disabled={finalStatusState === 'idle'}
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  View logs
                                 </CanvasButton>
                                 <CanvasButton
                                   type="button"
@@ -2627,75 +2710,98 @@ export function PromptCanvas({
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3 text-label-sm text-muted">
-                      Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
-                      · Seed {seedLabel}
-                    </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
-                      <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
-	                        <span className="font-semibold text-muted">Metrics:</span>
-                        <span>Tokens {RUN_METRICS.final.tokens}</span>
-	                        <span className="text-muted">·</span>
-                        <span>Est. cost {RUN_METRICS.final.cost}</span>
-	                        <span className="text-muted">·</span>
-                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
-                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
-                          Quality: {RUN_METRICS.final.quality}
-                        </span>
-	                        <span className="text-muted">·</span>
-                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
-                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
-                          Safety: {RUN_METRICS.final.safety}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
-	                      <div className="text-label-sm text-muted">Artifacts</div>
-                      <div className="mt-2 flex items-center gap-2 overflow-hidden">
-                        {RUN_ARTIFACTS.final.map((artifact) => (
-                          <CanvasButton
-                            key={artifact.id}
-                            type="button"
+                    {finalMetricsVisible && (
+                      <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
+                        <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-surface-2 px-2 py-1">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-[10px] font-semibold text-muted">
+                              #
+                            </span>
+                            <span className="text-foreground">{RUN_METRICS.final.tokens}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-surface-2 px-2 py-1">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-[10px] font-semibold text-muted">
+                              $
+                            </span>
+                            <span className="text-foreground">{RUN_METRICS.final.cost}</span>
+                          </span>
+                          <span
                             className={cn(
-                              'h-8 w-12 rounded-md border border-border bg-surface-3 transition-colors hover:border-border-strong',
-                              artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                              'inline-flex items-center justify-center rounded-md border border-border/60 bg-surface-2 px-2 py-1',
+                              metricStyles(RUN_METRICS.final.quality === 'Pass' ? 'pass' : 'warn').text
                             )}
-                            data-kind={artifact.kind}
-                            aria-label={artifact.label}
-                          />
-                        ))}
-                        <CanvasButton
-                          type="button"
-                          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-label-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
-                        >
-                          View all <span aria-hidden="true">&rarr;</span>
-                        </CanvasButton>
+                            aria-label={`Quality ${RUN_METRICS.final.quality}`}
+                            title={`Quality ${RUN_METRICS.final.quality}`}
+                          >
+                            <Icon
+                              icon={RUN_METRICS.final.quality === 'Pass' ? CheckCircle : WarningCircle}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center justify-center rounded-md border border-border/60 bg-surface-2 px-2 py-1',
+                              metricStyles(RUN_METRICS.final.safety === 'Clear' ? 'pass' : 'warn').text
+                            )}
+                            aria-label={`Safety ${RUN_METRICS.final.safety}`}
+                            title={`Safety ${RUN_METRICS.final.safety}`}
+                          >
+                            <Icon
+                              icon={RUN_METRICS.final.safety === 'Clear' ? CheckCircle : WarningCircle}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {finalHasArtifacts && (
+                      <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {RUN_ARTIFACTS.final.map((artifact, index) => {
+                            const media = finalArtifactMedia[index];
+                            return (
+                              <CanvasButton
+                                key={artifact.id}
+                                type="button"
+                                className={cn(
+                                  'relative h-8 w-12 shrink-0 rounded-md border border-border bg-surface-3 p-0 transition-colors hover:border-border-strong',
+                                  artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                                )}
+                                data-kind={artifact.kind}
+                                aria-label={artifact.label}
+                              >
+                                {media?.type === 'image' ? (
+                                  <img
+                                    src={media.src}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-full w-full rounded-md object-cover"
+                                  />
+                                ) : media?.type === 'video' ? (
+                                  <video
+                                    src={media.src}
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    className="h-full w-full rounded-md object-cover"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full rounded-md bg-surface-2" aria-hidden="true" />
+                                )}
+                              </CanvasButton>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="rounded-lg border border-border bg-surface-1 p-ps-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <CanvasButton
-                            type="button"
-                            disabled={finalStatusState !== 'ready'}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Retry
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            disabled={!canCompareRuns}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Compare
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            disabled={finalStatusState === 'idle'}
-                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                          >
-                            Logs
-                          </CanvasButton>
                           <CanvasButton
                             type="button"
                             className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"

@@ -146,7 +146,16 @@ export const HistoryItem = memo<HistoryItemProps>(({
           <span className={cn('h-2 w-2 flex-shrink-0 rounded-full', stageColorClass)} />
           <div className="flex min-w-0 flex-1 flex-col gap-ps-1">
             <div className="flex items-center justify-between gap-ps-3">
-              {versionLabel ? <span className="text-body-lg font-semibold text-foreground">{versionLabel}</span> : <span />}
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-ps-2">
+                  {versionLabel ? (
+                    <span className="flex-shrink-0 text-label-sm font-semibold uppercase tracking-widest text-faint">
+                      {versionLabel}
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 truncate text-body-lg font-semibold text-foreground">{title}</span>
+                </div>
+              </div>
               {processingLabel ? (
                 <span
                   className="rounded-full border border-accent/50 bg-surface-2 px-ps-2 py-0.5 text-label uppercase tracking-widest text-foreground"
@@ -156,7 +165,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
                 </span>
               ) : (
                 <span
-                  className="rounded-full border border-border bg-surface-2 px-ps-2 py-0.5 text-label uppercase tracking-widest text-faint"
+                  className="rounded-full border border-border bg-surface-2 px-ps-2 py-0.5 text-label uppercase tracking-widest text-muted"
                   data-state={stage}
                 >
                   {stage === 'generated'
