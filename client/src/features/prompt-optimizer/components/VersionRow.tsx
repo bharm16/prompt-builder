@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, Image, Play } from '@promptstudio/system/components/ui';
+import { Badge } from '@promptstudio/system/components/ui/badge';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
 import { cn } from '@/utils/cn';
@@ -116,23 +117,36 @@ export function VersionRow({
   // Horizontal layout (filmstrip card)
   if (layout === 'horizontal') {
     return (
-      <Button
+      <button
         type="button"
         onClick={onSelect}
         className={cn(
-          'relative flex h-full min-w-[140px] max-w-[180px] flex-shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-surface-2 p-3 text-center transition-colors hover:border-border-strong',
-          isSelected && 'border-accent/50 ring-2 ring-accent/10'
+          'ps-card-interactive ps-edge-lit',
+          'relative flex h-full min-w-[140px] max-w-[180px] flex-shrink-0 flex-col items-center justify-center',
+          'gap-ps-2 rounded-lg border bg-surface-2 p-ps-3 text-center',
+          'border-border',
+          'hover:border-border-strong hover:bg-surface-3',
+          isSelected && 'border-accent/60 bg-surface-3 ps-glow-accent'
         )}
         data-active={isSelected ? 'true' : 'false'}
         aria-pressed={isSelected}
-        variant="ghost"
       >
         {isSelected && (
-          <span className="absolute bottom-0 left-0 h-1 w-full rounded-b-lg bg-accent" aria-hidden="true" />
+          <span
+            className="absolute inset-x-0 bottom-0 h-[3px] rounded-b-lg bg-accent"
+            style={{ boxShadow: 'var(--ps-glow-accent)' }}
+            aria-hidden="true"
+          />
         )}
         
         {/* Preview thumbnail */}
-        <div className="flex h-16 w-full items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3">
+        <div
+          className={cn(
+            'ps-thumb-frame flex w-full items-center justify-center',
+            'h-ps-10',
+            !previewImageUrl && !hasVideo && 'ps-thumb-placeholder'
+          )}
+        >
           {previewImageUrl ? (
             <img
               src={previewImageUrl}
@@ -148,18 +162,35 @@ export function VersionRow({
         </div>
         
         {/* Label and meta */}
-        <div className="flex w-full flex-col gap-0.5">
-          <div className="flex items-center justify-center gap-1.5">
+        <div className="flex w-full flex-col gap-ps-1">
+          <div className="flex items-center justify-center gap-ps-2">
             {isDirty ? (
-              <span className="h-2 w-2 rounded-full bg-warning ring-2 ring-warning/40" aria-hidden="true" />
+              <span
+                className="h-ps-1 w-ps-1 rounded-full bg-warning ring-2 ring-warning/30 ps-animate-active-dot-pulse"
+                aria-hidden="true"
+              />
             ) : null}
-            <span className="truncate text-body-sm font-semibold text-foreground">{label}</span>
+            <span
+              className={cn(
+                'truncate font-semibold',
+                isSelected
+                  ? 'text-label-14 text-foreground'
+                  : 'text-body-sm text-muted'
+              )}
+            >
+              {label}
+            </span>
+            {isSelected && index === 0 ? (
+              <Badge variant="subtle" size="xs" className="text-accent">
+                Current
+              </Badge>
+            ) : null}
           </div>
           {meta ? (
             <span className="truncate text-label-12 text-muted">{meta}</span>
           ) : null}
         </div>
-      </Button>
+      </button>
     );
   }
 
@@ -169,7 +200,7 @@ export function VersionRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'relative flex h-14 w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 text-left transition-colors hover:border-border-strong',
+        'relative flex h-ps-10 w-full items-center justify-between gap-ps-3 rounded-lg border border-border bg-surface-2 px-ps-3 text-left transition-colors hover:border-border-strong',
         isSelected && 'border-accent/50 ring-2 ring-accent/10'
       )}
       data-active={isSelected ? 'true' : 'false'}
@@ -177,21 +208,24 @@ export function VersionRow({
       variant="ghost"
     >
       {isSelected && (
-        <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-accent" aria-hidden="true" />
+        <span className="absolute left-0 top-0 h-full w-ps-1 rounded-l-lg bg-accent" aria-hidden="true" />
       )}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-ps-1">
+        <div className="flex min-w-0 items-center gap-ps-2">
           {isDirty ? (
-            <span className="h-2 w-2 rounded-full bg-warning ring-2 ring-warning/40" aria-hidden="true" />
+            <span
+              className="h-ps-1 w-ps-1 rounded-full bg-warning ring-2 ring-warning/30 ps-animate-active-dot-pulse"
+              aria-hidden="true"
+            />
           ) : null}
           <div className="truncate text-body-sm font-semibold text-foreground">{label}</div>
         </div>
         <div className="text-label-12 text-muted">{meta}</div>
       </div>
       {hasPreview || hasVideo ? (
-        <div className="inline-flex flex-shrink-0 items-center gap-2">
+        <div className="inline-flex flex-shrink-0 items-center gap-ps-2">
           {hasPreview ? (
-            <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3 text-faint">
+            <div className="inline-flex h-ps-7 w-ps-7 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3 text-faint">
               {previewImageUrl ? (
                 <img
                   src={previewImageUrl}
@@ -205,7 +239,7 @@ export function VersionRow({
             </div>
           ) : null}
           {hasVideo ? (
-            <div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-3 px-2 text-label-sm font-semibold text-muted">
+            <div className="inline-flex h-ps-7 items-center gap-ps-1 rounded-md border border-border bg-surface-3 px-ps-2 text-label-sm font-semibold text-muted">
               <Icon icon={Play} size="sm" weight="bold" aria-hidden="true" />
               <span>Video</span>
             </div>

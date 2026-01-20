@@ -123,8 +123,9 @@ export function CollapsibleDrawer({
         <div
           ref={panelRef}
           className={cn(
-            'relative flex overflow-hidden bg-surface-2 transition-transform duration-200 ease-out',
-            'border border-border',
+            'relative flex overflow-hidden transition-transform duration-200 ease-out',
+            // Only add background/border when not in bottom collapsed state (let children handle it)
+            isBottom && !isOpen ? 'bg-transparent' : 'bg-surface-2 border border-border',
             isBottom ? 'h-full w-full flex-row' : 'h-full flex-col',
             isOpen && 'shadow-lg'
           )}

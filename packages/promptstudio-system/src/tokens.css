@@ -2,10 +2,11 @@
   :root {
     /* =========================
        Typography (dark-first, 14px base)
+       Reference: Runway/Midjourney style guide
        ========================= */
-    --ps-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+    --ps-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
       "Segoe UI", sans-serif;
-    --ps-font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui,
+    --ps-font-display: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui,
       sans-serif;
     --ps-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
       monospace;
@@ -18,7 +19,7 @@
 
     --ps-lh-tight: 1.15;
     --ps-lh-snug: 1.25;
-    --ps-lh-normal: 1.45;
+    --ps-lh-normal: 1.5; /* Updated: Runway uses 1.5 (21px for 14px text) */
     --ps-lh-relaxed: 1.65;
     --ps-lh-reading: 1.75;
 
@@ -28,13 +29,13 @@
     --ps-ls-caps: 0.06em;
     --ps-ls-reading: 0.015em;
 
-    /* Dense UI guideline: primary sizes 12px, 13px, 14px, 16px, 18px, 22px. */
+    /* Dense UI guideline: primary sizes 11px, 13px, 14px, 16px (Runway reference) */
     --ps-fs-10: 10px;
-    --ps-fs-11: 11px;
+    --ps-fs-11: 11px; /* xs */
     --ps-fs-12: 12px;
-    --ps-fs-13: 13px;
-    --ps-fs-14: 14px;
-    --ps-fs-16: 16px;
+    --ps-fs-13: 13px; /* sm */
+    --ps-fs-14: 14px; /* base */
+    --ps-fs-16: 16px; /* lg */
     --ps-fs-18: 18px;
     --ps-fs-20: 20px;
     --ps-fs-24: 24px;
@@ -43,52 +44,56 @@
     --ps-fs-56: 56px;
 
     /* =========================
-       Spacing (4px grid)
+       Spacing (Runway/Midjourney reference)
        ========================= */
-    /* Dense UI guideline: prefer Tailwind spacing scale 2, 3, 4, 6, 8, 12, 16. */
+    /* Dense UI guideline: 4, 8, 10, 12, 14, 16, 20, 24, 32 */
     --ps-s-0: 0px;
-    --ps-s-1: 4px;
-    --ps-s-2: 8px;
-    --ps-s-3: 12px;
-    --ps-s-4: 16px;
-    --ps-s-5: 20px;
-    --ps-s-6: 24px;
-    --ps-s-7: 32px;
+    --ps-s-1: 4px;   /* space-1 */
+    --ps-s-2: 8px;   /* space-2 */
+    --ps-s-2-5: 10px; /* space-3 (Runway dense) */
+    --ps-s-3: 12px;  /* space-4 */
+    --ps-s-3-5: 14px; /* space-5 (Runway dense) */
+    --ps-s-4: 16px;  /* space-6 */
+    --ps-s-5: 20px;  /* space-7 */
+    --ps-s-6: 24px;  /* space-8 */
+    --ps-s-7: 32px;  /* space-10 */
     --ps-s-8: 40px;
     --ps-s-9: 48px;
     --ps-s-10: 56px;
     --ps-s-11: 64px;
 
-    /* Semantic spacing aliases (preferred for long-term stability) */
+    /* Semantic spacing aliases (Runway reference naming) */
     --ps-space-0: 0px;
-    --ps-space-1: var(--ps-s-1);
-    --ps-space-2: var(--ps-s-2);
-    --ps-space-3: var(--ps-s-3);
-    --ps-space-4: var(--ps-s-4);
-    --ps-space-5: var(--ps-s-5);
-    --ps-space-6: var(--ps-s-6);
-    --ps-space-7: var(--ps-s-7);
-    --ps-space-8: var(--ps-s-8);
-    --ps-space-9: var(--ps-s-9);
-    --ps-space-10: var(--ps-s-10);
-    --ps-space-11: var(--ps-s-11);
+    --ps-space-1: var(--ps-s-1);   /* 4px */
+    --ps-space-2: var(--ps-s-2);   /* 8px */
+    --ps-space-3: var(--ps-s-2-5); /* 10px - Runway */
+    --ps-space-4: var(--ps-s-3);   /* 12px */
+    --ps-space-5: var(--ps-s-3-5); /* 14px - Runway */
+    --ps-space-6: var(--ps-s-4);   /* 16px */
+    --ps-space-7: var(--ps-s-5);   /* 20px */
+    --ps-space-8: var(--ps-s-6);   /* 24px */
+    --ps-space-9: var(--ps-s-9);   /* 48px */
+    --ps-space-10: var(--ps-s-7);  /* 32px */
+    --ps-space-11: var(--ps-s-11); /* 64px */
 
     /* Common semantic names */
-    --ps-space-page: var(--ps-s-6); /* default page padding / section rhythm */
-    --ps-space-card: var(--ps-s-4);
+    --ps-space-page: var(--ps-s-6); /* 24px - default page padding / section rhythm */
+    --ps-space-card: var(--ps-s-4); /* 16px */
+    --ps-space-panel: var(--ps-s-3); /* 12px - Runway panel padding */
     --ps-space-paragraph: 1.5em;
 
     /* =========================
-       Radius
+       Radius (Runway/Midjourney reference)
        ========================= */
     --ps-r-none: 0px;
-    --ps-r-xs: 4px;
-    --ps-r-sm: 6px;
-    --ps-r-md: 8px;
-    --ps-r-lg: 10px;
-    --ps-r-xl: 12px;
-    --ps-r-2xl: 16px;
-    --ps-r-pill: 999px;
+    --ps-r-xs: 2px;   /* Updated: was 4px */
+    --ps-r-sm: 4px;   /* Updated: was 6px */
+    --ps-r-md: 6px;   /* Updated: was 8px */
+    --ps-r-lg: 8px;   /* Updated: was 10px */
+    --ps-r-xl: 12px;  /* Same */
+    --ps-r-2xl: 14px; /* Updated: was 16px */
+    --ps-r-3xl: 16px; /* New */
+    --ps-r-pill: 9999px; /* Updated: was 999px */
 
     /* =========================
        Border width
@@ -129,40 +134,42 @@
     --ps-thumb-lg-h: 60px;
 
     /* =========================
-       Motion
+       Motion (Runway reference)
        ========================= */
     --ps-dur-1: 75ms;
-    --ps-dur-2: 120ms;
-    --ps-dur-3: 180ms;
+    --ps-dur-2: 150ms; /* Updated: Runway standard transition */
+    --ps-dur-3: 200ms; /* Updated: Runway slow transition */
     --ps-dur-4: 280ms;
     /* Semantic motion aliases */
     --ps-motion-fast: 120ms;
-    --ps-motion-base: 160ms;
-    --ps-motion-slow: 220ms;
-    --ps-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ps-motion-base: 150ms; /* Updated: Runway standard */
+    --ps-motion-slow: 200ms; /* Updated: Runway slow */
+    --ps-ease-out: cubic-bezier(0.4, 0, 0.2, 1); /* Updated: Runway easing */
     --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
     --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
     --ps-ease-linear: linear;
 
     /* =========================
-       Color (dark-first)
+       Color (dark-first, Runway/Midjourney reference)
        ========================= */
-    --ps-bg: #0a0c10;
-    --ps-surface-1: #12161e;
-    --ps-surface-2: #1a1f2a;
+    --ps-bg: #16181d; /* Updated: Midjourney panel bg */
+    --ps-surface-1: #1b1e23; /* Updated: Runway panel */
+    --ps-surface-2: #1e1f25; /* Updated: Midjourney panel */
     --ps-surface-3: #242a38;
 
-    --ps-border: #24314a;
-    --ps-border-strong: #314163;
+    --ps-border: #2c3037; /* Updated: Runway border */
+    --ps-border-strong: #434651; /* Updated: hover border */
 
-    --ps-text: #e7ebf3;
-    --ps-text-muted: #b1bbd2;
-    --ps-text-faint: #93a0be;
-    --ps-text-ghost: #6b7691;
+    --ps-text: #ebecef; /* Updated: Midjourney text */
+    --ps-text-muted: #c6c9d2; /* Updated: Midjourney secondary */
+    --ps-text-faint: #aaaebb; /* Updated: Midjourney tertiary */
+    --ps-text-ghost: #a1afc5; /* Updated: Runway muted */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
 
     --ps-accent: #6886ff;
-    --ps-accent-2: #8b66ff;
+    --ps-accent-2: #b3affd; /* Updated: Version indicator accent */
+    --ps-accent-runway: #2c22fa; /* New: Runway primary blue */
+    --ps-accent-mj: #f2330d; /* New: Midjourney orange */
 
     --ps-success: #4ec7a2;
     --ps-warning: #f5c05c;
@@ -320,7 +327,143 @@
     --ps-highlight-pill-radius: var(--ps-r-xs);
 
     /* =========================
-       Shadows (dark-tuned)
+       Panel Components (Runway/Midjourney)
+       ========================= */
+    /* Midjourney-style panel */
+    --ps-panel-mj-bg: #1e1f25;
+    --ps-panel-mj-border: #292c32;
+    --ps-panel-mj-radius: 12px;
+    --ps-panel-mj-shadow: 0 7px 21px rgba(0, 0, 0, 0.25);
+    --ps-panel-mj-padding: 16px;
+
+    /* Runway-style panel */
+    --ps-panel-rw-bg: #1b1e23;
+    --ps-panel-rw-border: #2c3037;
+    --ps-panel-rw-radius: 8px;
+    --ps-panel-rw-padding: 12px;
+
+    /* =========================
+       Button Components (Runway/Midjourney)
+       ========================= */
+    /* Ghost button (Midjourney) */
+    --ps-btn-ghost-bg: transparent;
+    --ps-btn-ghost-border: transparent;
+    --ps-btn-ghost-radius: 6px;
+    --ps-btn-ghost-color: #ebecef;
+    --ps-btn-ghost-font-size: 14px;
+    --ps-btn-ghost-font-weight: 500;
+    --ps-btn-ghost-padding: 6px 12px;
+    --ps-btn-ghost-hover-bg: #292c32;
+
+    /* Outline button (Runway) */
+    --ps-btn-outline-bg: transparent;
+    --ps-btn-outline-border: #2c3037;
+    --ps-btn-outline-radius: 6px;
+    --ps-btn-outline-color: #a1afc5;
+    --ps-btn-outline-font-size: 14px;
+    --ps-btn-outline-font-weight: 600;
+    --ps-btn-outline-padding: 8px 12px;
+    --ps-btn-outline-hover-bg: #2c3037;
+    --ps-btn-outline-hover-color: #ffffff;
+
+    /* Primary button (Runway) */
+    --ps-btn-primary-bg: #2c22fa;
+    --ps-btn-primary-border: none;
+    --ps-btn-primary-radius: 8px;
+    --ps-btn-primary-color: #ffffff;
+    --ps-btn-primary-font-weight: 600;
+    --ps-btn-primary-padding: 8px 12px;
+
+    /* Filled button (Runway) */
+    --ps-btn-filled-bg: #2c3037;
+    --ps-btn-filled-border: none;
+    --ps-btn-filled-radius: 8px;
+    --ps-btn-filled-color: #a1afc5;
+    --ps-btn-filled-font-weight: 600;
+    --ps-btn-filled-padding: 8px 12px;
+
+    /* Icon button (Runway) */
+    --ps-btn-icon-bg: transparent;
+    --ps-btn-icon-border: #2c3037;
+    --ps-btn-icon-radius: 6px;
+    --ps-btn-icon-size: 32px;
+    --ps-btn-icon-color: #a1afc5;
+
+    /* =========================
+       Selected/Active States (Midjourney)
+       ========================= */
+    --ps-selected-bg: rgba(242, 51, 13, 0.2);
+    --ps-selected-border: rgba(242, 51, 13, 0.2);
+    --ps-selected-radius: 12px;
+    --ps-selected-shadow:
+      0 10px 15px -3px rgba(242, 51, 13, 0.1),
+      0 4px 6px -4px rgba(242, 51, 13, 0.1);
+    --ps-selected-color: #f2330d;
+
+    /* =========================
+       Dropdown/Select (Runway)
+       ========================= */
+    --ps-dropdown-bg: transparent;
+    --ps-dropdown-border: #2c3037;
+    --ps-dropdown-radius: 6px;
+    --ps-dropdown-color: #ffffff;
+    --ps-dropdown-font-size: 14px;
+    --ps-dropdown-padding: 4px 8px 4px 12px;
+
+    /* =========================
+       Version Drawer (Custom)
+       ========================= */
+    /* Collapsed version pill */
+    --ps-version-pill-bg: #1e1f25;
+    --ps-version-pill-border: #292c32;
+    --ps-version-pill-radius: 8px;
+    --ps-version-pill-padding: 6px 12px;
+    --ps-version-pill-gap: 8px;
+    --ps-version-pill-color: #c6c9d2;
+    --ps-version-pill-font-size: 13px;
+    --ps-version-pill-font-weight: 500;
+    --ps-version-pill-hover-bg: #292c32;
+    --ps-version-pill-hover-border: #434651;
+
+    /* Version badge */
+    --ps-version-badge-bg: #292c32;
+    --ps-version-badge-radius: 4px;
+    --ps-version-badge-padding: 2px 6px;
+    --ps-version-badge-font-size: 11px;
+    --ps-version-badge-font-weight: 600;
+    --ps-version-badge-color: #aaaebb;
+
+    /* Version current indicator */
+    --ps-version-current-color: #b3affd;
+    --ps-version-current-font-weight: 600;
+
+    /* Expanded drawer */
+    --ps-version-drawer-bg: #1e1f25;
+    --ps-version-drawer-border: #292c32;
+    --ps-version-drawer-radius: 12px;
+    --ps-version-drawer-shadow: 0 7px 21px rgba(0, 0, 0, 0.25);
+    --ps-version-drawer-padding: 12px;
+
+    /* Version card */
+    --ps-version-card-bg: #16181d;
+    --ps-version-card-border: transparent;
+    --ps-version-card-radius: 8px;
+    --ps-version-card-padding: 8px;
+    --ps-version-card-hover-border: #434651;
+    --ps-version-card-selected-border: #b3affd;
+    --ps-version-card-selected-bg: rgba(179, 175, 253, 0.1);
+
+    /* =========================
+       Icon Sizes (Runway reference)
+       ========================= */
+    --ps-icon-sidebar: 24px; /* Sidebar icons */
+    --ps-icon-small: 16px;   /* Small inline icons */
+    --ps-icon-default: 20px; /* Default icons */
+    --ps-icon-inactive-color: #aaaebb;
+    --ps-icon-active-color: #ebecef;
+
+    /* =========================
+       Shadows (Midjourney/Runway reference)
        ========================= */
     --ps-shadow-sm:
       0 1px 2px rgba(0, 0, 0, 0.5),
@@ -329,8 +472,7 @@
       0 4px 12px rgba(0, 0, 0, 0.6),
       0 0 0 1px rgba(255, 255, 255, 0.04);
     --ps-shadow-lg:
-      0 12px 40px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
+      0 7px 21px rgba(0, 0, 0, 0.25); /* Updated: Midjourney panel shadow */
     --ps-shadow-elevated:
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 8px 24px rgba(0, 0, 0, 0.5);
@@ -338,6 +480,10 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 16px 48px rgba(0, 0, 0, 0.6);
     --ps-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    /* New: Midjourney selected glow */
+    --ps-shadow-glow-mj:
+      0 10px 15px -3px rgba(242, 51, 13, 0.1),
+      0 4px 6px -4px rgba(242, 51, 13, 0.1);
 
     /* =========================
        Opacity
@@ -422,7 +568,9 @@
     --accent-2: var(--ps-accent-2);
     --accent-cyan: var(--ps-accent);
     --accent-purple: var(--ps-accent-2);
-    --accent-orange: var(--ps-accent);
+    --accent-orange: var(--ps-accent-mj); /* Updated: Midjourney orange */
+    --accent-runway: var(--ps-accent-runway); /* New: Runway blue */
+    --accent-mj: var(--ps-accent-mj); /* New: Midjourney orange */
 
     --success: var(--ps-success);
     --warning: var(--ps-warning);
@@ -481,16 +629,19 @@
     --r-lg: var(--ps-r-lg);
     --r-xl: var(--ps-r-xl);
     --r-2xl: var(--ps-r-2xl);
+    --r-3xl: var(--ps-r-3xl);
     --r-pill: var(--ps-r-pill);
-    --r-card: var(--ps-r-2xl);
-    --r-input: var(--ps-r-lg);
+    --r-card: var(--ps-r-xl); /* Updated: 12px for cards (Runway) */
+    --r-input: var(--ps-r-md); /* Updated: 6px for inputs (Runway) */
     --r-chip: var(--ps-r-pill);
-    --r-badge: var(--ps-r-md);
+    --r-badge: var(--ps-r-sm); /* Updated: 4px for badges */
     --r-kbd: var(--ps-r-md);
+    --r-panel: var(--ps-r-lg); /* New: 8px for panels (Runway) */
+    --r-panel-mj: var(--ps-r-xl); /* New: 12px for panels (Midjourney) */
 
     --radius-1: var(--ps-r-md);
     --radius-2: var(--ps-r-lg);
-    --radius-3: var(--ps-r-2xl);
+    --radius-3: var(--ps-r-xl);
     --radius-4: var(--ps-r-2xl);
 
     --font-sans: var(--ps-font-sans);
