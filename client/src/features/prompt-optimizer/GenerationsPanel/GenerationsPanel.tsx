@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from 'react';
-import { Panel } from '@promptstudio/system/components/system/Panel';
 import { cn } from '@/utils/cn';
 import type { Generation, GenerationsPanelProps } from './types';
 import { GenerationHeader } from './components/GenerationHeader';
@@ -8,9 +7,9 @@ import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 
 const EmptyState = (): React.ReactElement => (
-  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface-1 px-6 py-12 text-center">
-    <div className="text-body-sm font-semibold text-foreground">No generations yet</div>
-    <div className="text-label-sm text-muted">
+  <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="from-surface-2 to-surface-3 aspect-video w-full max-w-sm animate-pulse rounded-lg bg-gradient-to-br opacity-60" />
+    <div className="text-label-sm text-muted mt-4">
       Run a draft or render to see your outputs here.
     </div>
   </div>
@@ -36,18 +35,20 @@ export function GenerationsPanel({
     removeGeneration,
   } = useGenerationsState({ initialGenerations, onGenerationsChange });
 
-  const { generateDraft, generateRender, retryGeneration } = useGenerationActions(dispatch, {
-    aspectRatio,
-    duration,
-    fps,
-    generationParams,
-    promptVersionId,
-    generations,
-  });
+  const { generateDraft, generateRender, retryGeneration } =
+    useGenerationActions(dispatch, {
+      aspectRatio,
+      duration,
+      fps,
+      generationParams,
+      promptVersionId,
+      generations,
+    });
 
-  const activeDraftModel = useMemo(() => getLatestByTier('draft')?.model ?? null, [
-    getLatestByTier,
-  ]);
+  const activeDraftModel = useMemo(
+    () => getLatestByTier('draft')?.model ?? null,
+    [getLatestByTier]
+  );
 
   const handleDraft = useCallback(
     (model: 'flux-kontext' | 'wan-2.2') => {
@@ -87,7 +88,7 @@ export function GenerationsPanel({
   }, []);
 
   return (
-    <Panel className={cn('flex h-full flex-col overflow-hidden', className)}>
+    <div className={cn('flex h-full flex-col overflow-hidden', className)}>
       <GenerationHeader
         onDraft={handleDraft}
         onRender={handleRender}
@@ -111,6 +112,6 @@ export function GenerationsPanel({
           ))
         )}
       </div>
-    </Panel>
+    </div>
   );
 }

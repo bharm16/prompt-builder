@@ -6,7 +6,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@promptstudio/system/components/ui/select';
-import { DRAFT_MODELS, RENDER_MODELS, formatCost } from '../config/generationConfig';
+import {
+  DRAFT_MODELS,
+  RENDER_MODELS,
+  formatCost,
+} from '../config/generationConfig';
 import { cn } from '@/utils/cn';
 
 interface GenerationHeaderProps {
@@ -26,7 +30,9 @@ export function GenerationHeader({
 }: GenerationHeaderProps): React.ReactElement {
   const draftOptions = useMemo(() => Object.entries(DRAFT_MODELS), []);
   const renderOptions = useMemo(() => Object.entries(RENDER_MODELS), []);
-  const [draftValue, setDraftValue] = useState<string | undefined>(activeDraftModel ?? undefined);
+  const [draftValue, setDraftValue] = useState<string | undefined>(
+    activeDraftModel ?? undefined
+  );
   const [renderValue, setRenderValue] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -34,7 +40,7 @@ export function GenerationHeader({
   }, [activeDraftModel]);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+    <div className="border-border flex flex-wrap items-center gap-3 border-b px-4 py-3">
       <div className="flex items-center gap-2">
         <Select
           value={draftValue}
@@ -46,7 +52,7 @@ export function GenerationHeader({
         >
           <SelectTrigger
             className={cn(
-              'h-9 min-w-[140px] rounded-lg border border-border bg-surface-2 text-label-sm font-semibold',
+              'border-border bg-surface-2 text-label-sm h-9 min-w-36 rounded-lg border font-semibold',
               'hover:border-border-strong hover:bg-surface-3'
             )}
             aria-label="Draft model selection"
@@ -55,9 +61,15 @@ export function GenerationHeader({
           </SelectTrigger>
           <SelectContent>
             {draftOptions.map(([id, config]) => (
-              <SelectItem key={id} value={id} title={`${config.label} • ${formatCost(config.cost)}`}>
+              <SelectItem
+                key={id}
+                value={id}
+                title={`${config.label} • ${formatCost(config.cost)}`}
+              >
                 <div className="flex flex-col">
-                  <span className="text-body-sm font-semibold text-foreground">{config.label}</span>
+                  <span className="text-body-sm text-foreground font-semibold">
+                    {config.label}
+                  </span>
                   <span className="text-label-sm text-muted">
                     {formatCost(config.cost)} • {config.eta}
                     {config.frameCount ? ` • ${config.frameCount} frames` : ''}
@@ -78,8 +90,8 @@ export function GenerationHeader({
         >
           <SelectTrigger
             className={cn(
-              'h-9 min-w-[140px] rounded-lg border border-border bg-surface-2 text-label-sm font-semibold',
-              'hover:border-border-strong hover:bg-surface-3'
+              'border-accent bg-accent text-label-sm text-app ps-glow-accent data-[placeholder]:text-app/90 h-9 min-w-36 rounded-lg border font-semibold',
+              'hover:opacity-90'
             )}
             aria-label="Render model selection"
           >
@@ -87,9 +99,15 @@ export function GenerationHeader({
           </SelectTrigger>
           <SelectContent>
             {renderOptions.map(([id, config]) => (
-              <SelectItem key={id} value={id} title={`${config.label} • ${formatCost(config.cost)}`}>
+              <SelectItem
+                key={id}
+                value={id}
+                title={`${config.label} • ${formatCost(config.cost)}`}
+              >
                 <div className="flex flex-col">
-                  <span className="text-body-sm font-semibold text-foreground">{config.label}</span>
+                  <span className="text-body-sm text-foreground font-semibold">
+                    {config.label}
+                  </span>
                   <span className="text-label-sm text-muted">
                     {formatCost(config.cost)} • {config.eta}
                   </span>

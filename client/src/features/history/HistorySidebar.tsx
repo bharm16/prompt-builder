@@ -10,9 +10,21 @@ import { getAuthRepository } from '@repositories/index';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@promptstudio/system/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@promptstudio/system/components/ui/dialog';
 import { Input } from '@promptstudio/system/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@promptstudio/system/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@promptstudio/system/components/ui/tooltip';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
@@ -66,7 +78,8 @@ function normalizeTitle(value: string): string {
 }
 
 function resolveEntryTitle(entry: PromptHistoryEntry): string {
-  const storedTitle = typeof entry.title === 'string' ? normalizeTitle(entry.title) : '';
+  const storedTitle =
+    typeof entry.title === 'string' ? normalizeTitle(entry.title) : '';
   if (storedTitle) return storedTitle;
   return deriveBaseTitle(entry.input);
 }
@@ -74,19 +87,22 @@ function resolveEntryTitle(entry: PromptHistoryEntry): string {
 function condensedTitle(value: string, maxChars: number = 30): string {
   const normalized = normalizeTitle(value);
   if (!normalized) return 'Untitled';
-  return normalized.length > maxChars ? `${normalized.slice(0, maxChars).trim()}...` : normalized;
+  return normalized.length > maxChars
+    ? `${normalized.slice(0, maxChars).trim()}...`
+    : normalized;
 }
 
 function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {
-  const hasInput = typeof entry.input === 'string' && entry.input.trim().length > 0;
-  const hasOutput = typeof entry.output === 'string' && entry.output.trim().length > 0;
+  const hasInput =
+    typeof entry.input === 'string' && entry.input.trim().length > 0;
+  const hasOutput =
+    typeof entry.output === 'string' && entry.output.trim().length > 0;
   if (!hasInput && !hasOutput) return 'draft';
   if (hasInput && !hasOutput) return 'draft';
   if (!hasOutput) return 'error';
   if (entry.highlightCache) return 'generated';
   return 'optimized';
 }
-
 
 function formatRelativeOrDate(iso: string | undefined): string {
   if (!iso) return 'No date';
@@ -104,11 +120,23 @@ function formatRelativeOrDate(iso: string | undefined): string {
   return formatShortDate(iso);
 }
 
-function extractDurationS(entry: PromptHistoryEntry, selectedFallback: number | null): number | null {
-  const fromEntry = (entry.generationParams as Record<string, unknown> | null | undefined)?.duration_s;
-  if (typeof fromEntry === 'number' && Number.isFinite(fromEntry)) return fromEntry;
-  if (typeof fromEntry === 'string' && fromEntry.trim() && !Number.isNaN(Number(fromEntry))) return Number(fromEntry);
-  if (typeof selectedFallback === 'number' && Number.isFinite(selectedFallback)) return selectedFallback;
+function extractDurationS(
+  entry: PromptHistoryEntry,
+  selectedFallback: number | null
+): number | null {
+  const fromEntry = (
+    entry.generationParams as Record<string, unknown> | null | undefined
+  )?.duration_s;
+  if (typeof fromEntry === 'number' && Number.isFinite(fromEntry))
+    return fromEntry;
+  if (
+    typeof fromEntry === 'string' &&
+    fromEntry.trim() &&
+    !Number.isNaN(Number(fromEntry))
+  )
+    return Number(fromEntry);
+  if (typeof selectedFallback === 'number' && Number.isFinite(selectedFallback))
+    return selectedFallback;
   return null;
 }
 
@@ -140,7 +168,11 @@ function deriveBaseTitle(input: string): string {
   ]);
 
   let start = 0;
-  while (start < rawTokens.length && stop.has(rawTokens[start]?.toLowerCase() ?? '')) start += 1;
+  while (
+    start < rawTokens.length &&
+    stop.has(rawTokens[start]?.toLowerCase() ?? '')
+  )
+    start += 1;
 
   const tokens = rawTokens.slice(start);
   if (tokens.length === 0) return 'Untitled';
@@ -150,7 +182,16 @@ function deriveBaseTitle(input: string): string {
   const third = tokens[2] ?? '';
   const secondLower = second.toLowerCase();
 
-  const nounFollowers = new Set(['chase', 'battle', 'portrait', 'scene', 'shot', 'sequence', 'close-up', 'closeup']);
+  const nounFollowers = new Set([
+    'chase',
+    'battle',
+    'portrait',
+    'scene',
+    'shot',
+    'sequence',
+    'close-up',
+    'closeup',
+  ]);
   const takeThird = secondLower.endsWith('ing') && third;
   const takeTwo = nounFollowers.has(secondLower) || Boolean(second);
 
@@ -186,7 +227,9 @@ function extractDisambiguator(input: string): string | null {
   return null;
 }
 
-function formatModelLabel(targetModel: string | null | undefined): string | null {
+function formatModelLabel(
+  targetModel: string | null | undefined
+): string | null {
   if (!targetModel || !targetModel.trim()) return null;
   const normalized = targetModel.trim().replace(/\s+/g, ' ');
   const veoMatch = normalized.match(/(veo[-\s]?\d+(?:\.\d+)?)/i);
@@ -258,16 +301,24 @@ export function HistorySidebar({
   const debug = useDebugLogger('HistorySidebar', {
     historyCount: history.length,
     isExpanded: showHistory,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   });
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = React.useState<boolean>(false);
   const hoverExpandedRef = React.useRef<boolean>(false);
-  const [hoveredEntryKey, setHoveredEntryKey] = React.useState<string | null>(null);
-  const [focusedEntryKey, setFocusedEntryKey] = React.useState<string | null>(null);
-  const [renameEntry, setRenameEntry] = React.useState<PromptHistoryEntry | null>(null);
+  const [hoveredEntryKey, setHoveredEntryKey] = React.useState<string | null>(
+    null
+  );
+  const [focusedEntryKey, setFocusedEntryKey] = React.useState<string | null>(
+    null
+  );
+  const [renameEntry, setRenameEntry] =
+    React.useState<PromptHistoryEntry | null>(null);
   const [renameValue, setRenameValue] = React.useState<string>('');
-  const [filterState, setFilterState] = React.useState<{ videosOnly: boolean; recentOnly: boolean }>({
+  const [filterState, setFilterState] = React.useState<{
+    videosOnly: boolean;
+    recentOnly: boolean;
+  }>({
     videosOnly: false,
     recentOnly: false,
   });
@@ -303,7 +354,10 @@ export function HistorySidebar({
     try {
       const authRepository = getAuthRepository();
       const signedInUser = await authRepository.signInWithGoogle();
-      const displayName = typeof signedInUser.displayName === 'string' ? signedInUser.displayName : 'User';
+      const displayName =
+        typeof signedInUser.displayName === 'string'
+          ? signedInUser.displayName
+          : 'User';
       debug.endTimer('signIn', 'Sign in successful');
       toast.success(`Welcome, ${displayName}!`);
     } catch (error) {
@@ -390,14 +444,21 @@ export function HistorySidebar({
 
   const activeEntry = React.useMemo(() => {
     return (
-      history.find((item) => currentPromptUuid && item.uuid === currentPromptUuid) ||
-      history.find((item) => currentPromptDocId && item.id === currentPromptDocId) ||
+      history.find(
+        (item) => currentPromptUuid && item.uuid === currentPromptUuid
+      ) ||
+      history.find(
+        (item) => currentPromptDocId && item.id === currentPromptDocId
+      ) ||
       null
     );
   }, [history, currentPromptUuid, currentPromptDocId]);
 
-  const activeThumbnailUrl = activeEntry ? resolveHistoryThumbnail(activeEntry) : null;
-  const showActiveProgress = activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing';
+  const activeThumbnailUrl = activeEntry
+    ? resolveHistoryThumbnail(activeEntry)
+    : null;
+  const showActiveProgress =
+    activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing';
   const activeStatusTone =
     activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing'
       ? 'warning'
@@ -408,7 +469,9 @@ export function HistorySidebar({
           : null;
 
   const promptRows = React.useMemo(() => {
-    const baseTitles = displayedHistory.map((entry) => normalizeTitle(resolveEntryTitle(entry)));
+    const baseTitles = displayedHistory.map((entry) =>
+      normalizeTitle(resolveEntryTitle(entry))
+    );
     const counts = new Map<string, number>();
     baseTitles.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
     const seen = new Map<string, number>();
@@ -422,31 +485,43 @@ export function HistorySidebar({
 
       const isSelected = Boolean(
         (currentPromptUuid && entry.uuid === currentPromptUuid) ||
-        (currentPromptDocId && entry.id === currentPromptDocId)
+          (currentPromptDocId && entry.id === currentPromptDocId)
       );
 
       const dateLabel = formatRelativeOrDate(entry.timestamp);
-      const durationS = extractDurationS(entry, isSelected ? activeDurationS : null);
-      const durationLabel = typeof durationS === 'number' ? `${durationS}s` : null;
+      const durationS = extractDurationS(
+        entry,
+        isSelected ? activeDurationS : null
+      );
+      const durationLabel =
+        typeof durationS === 'number' ? `${durationS}s` : null;
       const modelLabel =
-        formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ??
-        (isSelected ? formatModelLabel(activeModelLabel) : null);
+        formatModelLabel(
+          typeof entry.targetModel === 'string' ? entry.targetModel : null
+        ) ?? (isSelected ? formatModelLabel(activeModelLabel) : null);
 
       const normalizedActiveProcessing =
         activeStatusLabel === 'Optimizing' ? 'Refining' : activeStatusLabel;
-      const processingLabel = isSelected ? normalizeProcessingLabel(normalizedActiveProcessing) : null;
+      const processingLabel = isSelected
+        ? normalizeProcessingLabel(normalizedActiveProcessing)
+        : null;
       const effectiveProcessingLabel =
-        isSelected && (activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing')
+        isSelected &&
+        (activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing')
           ? processingLabel
           : null;
 
-      const meta = [dateLabel, durationLabel, modelLabel].filter(Boolean).join(' | ');
+      const meta = [dateLabel, durationLabel, modelLabel]
+        .filter(Boolean)
+        .join(' | ');
 
       const disambiguator =
         extractDisambiguator(entry.input) ??
         (() => {
           const model =
-            formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ?? modelLabel;
+            formatModelLabel(
+              typeof entry.targetModel === 'string' ? entry.targetModel : null
+            ) ?? modelLabel;
           if (!model) return null;
           return nextSeen === 1 ? model : `alt ${nextSeen}`;
         })() ??
@@ -454,7 +529,9 @@ export function HistorySidebar({
 
       const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
 
-      const key = (entry.id || entry.uuid || `${entry.timestamp ?? ''}-${title}`) as string;
+      const key = (entry.id ||
+        entry.uuid ||
+        `${entry.timestamp ?? ''}-${title}`) as string;
 
       return {
         entry,
@@ -478,7 +555,10 @@ export function HistorySidebar({
 
   const collapsedTimeline = React.useMemo(() => {
     const entries = filteredByChips.slice(0, COLLAPSED_TIMELINE_MAX);
-    const overflow = Math.max(0, filteredByChips.length - COLLAPSED_TIMELINE_MAX);
+    const overflow = Math.max(
+      0,
+      filteredByChips.length - COLLAPSED_TIMELINE_MAX
+    );
     return { entries, overflow };
   }, [filteredByChips]);
 
@@ -518,9 +598,13 @@ export function HistorySidebar({
         event.preventDefault();
         if (promptRows.length === 0) return;
 
-        const selectedKey = promptRows.find((row) => row.isSelected)?.key ?? null;
-        const currentKey = focusedEntryKey ?? selectedKey ?? promptRows[0]?.key ?? null;
-        const currentIndex = currentKey ? promptRows.findIndex((row) => row.key === currentKey) : 0;
+        const selectedKey =
+          promptRows.find((row) => row.isSelected)?.key ?? null;
+        const currentKey =
+          focusedEntryKey ?? selectedKey ?? promptRows[0]?.key ?? null;
+        const currentIndex = currentKey
+          ? promptRows.findIndex((row) => row.key === currentKey)
+          : 0;
         const safeIndex = currentIndex >= 0 ? currentIndex : 0;
         const nextIndex =
           event.key === 'ArrowDown'
@@ -530,7 +614,9 @@ export function HistorySidebar({
 
         if (nextKey) {
           setFocusedEntryKey(nextKey);
-          const targetNode = document.querySelector(`[data-history-index="${nextIndex}"]`);
+          const targetNode = document.querySelector(
+            `[data-history-index="${nextIndex}"]`
+          );
           if (targetNode instanceof HTMLElement) {
             targetNode.scrollIntoView({ block: 'nearest' });
           }
@@ -538,7 +624,10 @@ export function HistorySidebar({
       }
 
       if (event.key === 'Enter') {
-        const selectedKey = focusedEntryKey ?? promptRows.find((row) => row.isSelected)?.key ?? null;
+        const selectedKey =
+          focusedEntryKey ??
+          promptRows.find((row) => row.isSelected)?.key ??
+          null;
         if (!selectedKey) return;
         const row = rowByKey.get(selectedKey);
         if (row) {
@@ -549,22 +638,29 @@ export function HistorySidebar({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showHistory, renameEntry, promptRows, focusedEntryKey, rowByKey, onLoadFromHistory]);
+  }, [
+    showHistory,
+    renameEntry,
+    promptRows,
+    focusedEntryKey,
+    rowByKey,
+    onLoadFromHistory,
+  ]);
 
   return (
     <aside
       id="history-sidebar"
       className={cn(
-        'flex h-full min-h-0 flex-none flex-col overflow-hidden bg-sidebar ps-sidebar-edge transition-all duration-slow',
+        'bg-sidebar ps-sidebar-edge duration-slow flex h-full min-h-0 flex-none flex-col overflow-hidden transition-all',
         // Enforce a hard cap so the sidebar can't expand due to missing/overridden token CSS.
-        isCollapsed ? 'w-ps-9' : 'w-sidebar min-w-0 max-w-sidebar basis-sidebar'
+        isCollapsed ? 'w-14' : 'w-sidebar max-w-sidebar basis-sidebar min-w-0'
       )}
       aria-label="Prompt history"
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
     >
       {isCollapsed ? (
-        <div className="flex h-full flex-col items-center gap-ps-4 py-ps-4 ps-animate-fade-in">
+        <div className="gap-ps-4 py-ps-4 ps-animate-fade-in flex h-full flex-col items-center">
           <Button
             type="button"
             onClick={() => {
@@ -573,30 +669,37 @@ export function HistorySidebar({
             }}
             variant="ghost"
             size="icon"
-            className="h-ps-8 w-ps-8 rounded-lg border border-border bg-surface-2 text-muted ps-transition hover:-translate-y-px hover:border-border-strong"
+            className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
             aria-label="Expand sidebar"
             title="Vidra"
           >
-            <span className="text-body-sm font-semibold text-foreground">V</span>
+            <span className="text-body-sm text-foreground font-semibold">
+              V
+            </span>
           </Button>
 
           <div className="ps-divider-fade" aria-hidden="true" />
 
           <TooltipProvider delayDuration={120}>
-            <div className="relative flex flex-col items-center gap-ps-2 py-ps-2">
+            <div className="gap-ps-2 py-ps-2 relative flex flex-col items-center">
               {collapsedTimeline.entries.map((entry) => {
                 const key = (entry.id || entry.uuid) as string | undefined;
                 const isSelected = Boolean(
                   (currentPromptUuid && entry.uuid === currentPromptUuid) ||
-                  (currentPromptDocId && entry.id === currentPromptDocId)
+                    (currentPromptDocId && entry.id === currentPromptDocId)
                 );
                 const title = resolveEntryTitle(entry);
                 return (
-                  <Tooltip key={key ?? `${entry.timestamp ?? ''}-${entry.input.slice(0, 8)}`}>
+                  <Tooltip
+                    key={
+                      key ??
+                      `${entry.timestamp ?? ''}-${entry.input.slice(0, 8)}`
+                    }
+                  >
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="ps-thumb-trigger flex flex-col items-center gap-1 text-faint"
+                        className="ps-thumb-trigger text-faint flex flex-col items-center gap-1"
                         aria-label={`Prompt: ${title}`}
                         onMouseEnter={() => setHoveredEntryKey(key ?? null)}
                         onMouseLeave={() => setHoveredEntryKey(null)}
@@ -609,13 +712,10 @@ export function HistorySidebar({
                         <HistoryThumbnail
                           src={resolveHistoryThumbnail(entry)}
                           label={title}
-                          size="sm"
+                          size="md"
                           variant="muted"
                           isActive={isSelected}
                         />
-                        <span className="w-ps-9 ps-line-clamp-2 text-center text-label-10 text-faint">
-                          {condensedTitle(title)}
-                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="ps-glass-subtle border-border/60 text-body-sm text-foreground">
@@ -624,7 +724,9 @@ export function HistorySidebar({
                   </Tooltip>
                 );
               })}
-              {collapsedTimeline.overflow > 0 && <div className="ps-rail-fade" aria-hidden="true" />}
+              {collapsedTimeline.overflow > 0 && (
+                <div className="ps-rail-fade" aria-hidden="true" />
+              )}
             </div>
           </TooltipProvider>
 
@@ -635,7 +737,7 @@ export function HistorySidebar({
             onClick={onCreateNew}
             variant="ghost"
             size="icon"
-            className="h-ps-8 w-ps-8 rounded-lg border border-border bg-surface-2 text-muted ps-transition hover:-translate-y-px hover:border-border-strong"
+            className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
             aria-label="New prompt"
             title="New prompt"
           >
@@ -651,7 +753,7 @@ export function HistorySidebar({
                 onClick={handleSignIn}
                 variant="ghost"
                 size="icon"
-                className="h-ps-8 w-ps-8 rounded-lg border border-border bg-surface-2 text-muted ps-transition hover:-translate-y-px hover:border-border-strong"
+                className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
                 aria-label="Sign in"
                 title="Sign in"
               >
@@ -666,12 +768,20 @@ export function HistorySidebar({
                 }}
                 variant="ghost"
                 size="icon"
-                className="h-ps-8 w-ps-8 rounded-lg border border-border bg-surface-2 text-muted ps-transition hover:-translate-y-px hover:border-border-strong"
+                className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
                 aria-label="User menu"
-                title={typeof user.displayName === 'string' ? user.displayName : 'User'}
+                title={
+                  typeof user.displayName === 'string'
+                    ? user.displayName
+                    : 'User'
+                }
               >
                 {typeof user.photoURL === 'string' && user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
+                  <img
+                    src={user.photoURL}
+                    alt=""
+                    className="h-8 w-8 rounded-full"
+                  />
                 ) : (
                   <UserIcon size={18} />
                 )}
@@ -680,10 +790,12 @@ export function HistorySidebar({
           </div>
         </div>
       ) : (
-        <div className="flex h-full flex-col ps-animate-fade-in">
+        <div className="ps-animate-fade-in flex h-full flex-col">
           <header className="px-ps-5 py-ps-6">
             <div className="mb-ps-4 flex items-center justify-between">
-              <h1 className="text-h3 font-bold tracking-tight text-foreground">Vidra</h1>
+              <h1 className="text-h3 text-foreground font-bold tracking-tight">
+                Vidra
+              </h1>
               <Button
                 onClick={() => {
                   hoverExpandedRef.current = false;
@@ -692,7 +804,7 @@ export function HistorySidebar({
                 variant="ghost"
                 size="icon"
                 aria-label="Collapse sidebar"
-                className="h-9 w-9 rounded-lg border border-border bg-surface-2 text-muted ps-transition-colors hover:bg-surface-3 hover:text-foreground"
+                className="border-border bg-surface-2 text-muted ps-transition-colors hover:bg-surface-3 hover:text-foreground h-9 w-9 rounded-lg border"
               >
                 <PanelLeft size={20} />
               </Button>
@@ -700,13 +812,16 @@ export function HistorySidebar({
             <div className="ps-divider-fade" aria-hidden="true" />
           </header>
 
-          <section className="mt-ps-5 px-ps-5 pb-ps-5" aria-label="Active prompt">
-            <div className="flex items-center gap-ps-2 text-label uppercase tracking-widest text-faint">
+          <section
+            className="mt-ps-5 px-ps-5 pb-ps-5"
+            aria-label="Active prompt"
+          >
+            <div className="gap-ps-2 text-label text-faint flex items-center uppercase tracking-widest">
               <span>Active Prompt</span>
-              <span className="flex-1 ps-divider-fade" aria-hidden="true" />
+              <span className="ps-divider-fade flex-1" aria-hidden="true" />
             </div>
-            <div className="mt-ps-4 rounded-lg ps-card-glass p-ps-3">
-              <div className="flex items-start gap-ps-3">
+            <div className="mt-ps-4 ps-card-glass p-ps-3 rounded-lg">
+              <div className="gap-ps-3 flex items-start">
                 <div className="ps-thumb-trigger">
                   <HistoryThumbnail
                     src={activeThumbnailUrl}
@@ -717,27 +832,33 @@ export function HistorySidebar({
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="ps-line-clamp-2 text-body font-semibold text-foreground" title={activeTitle}>
+                  <div
+                    className="ps-line-clamp-2 text-body text-foreground font-semibold"
+                    title={activeTitle}
+                  >
                     {activeTitle}
                   </div>
-                  <div className="mt-ps-2 flex flex-wrap items-center gap-ps-2 text-label-sm text-muted">
+                  <div className="mt-ps-2 gap-ps-2 text-label-sm text-muted flex flex-wrap items-center">
                     {activeStatusTone ? (
                       <span
                         className={cn(
-                          'rounded-full border px-ps-2 py-0.5 text-label-sm',
-                          activeStatusTone === 'warning' && 'border-warning/40 bg-warning/10 text-warning',
-                          activeStatusTone === 'error' && 'border-error/40 bg-error/10 text-error',
-                          activeStatusTone === 'muted' && 'border-border bg-surface-2 text-muted'
+                          'px-ps-2 text-label-sm rounded-full border py-0.5',
+                          activeStatusTone === 'warning' &&
+                            'border-warning/40 bg-warning/10 text-warning',
+                          activeStatusTone === 'error' &&
+                            'border-error/40 bg-error/10 text-error',
+                          activeStatusTone === 'muted' &&
+                            'border-border bg-surface-2 text-muted'
                         )}
                       >
                         {activeStatusLabel}
                       </span>
                     ) : null}
-                    <span className="rounded-full border border-border bg-surface-2 px-ps-2 py-0.5 text-label-sm text-muted">
+                    <span className="border-border bg-surface-2 px-ps-2 text-label-sm text-muted rounded-full border py-0.5">
                       {activeModelLabel}
                     </span>
                     {typeof activeDurationS === 'number' ? (
-                      <span className="rounded-full border border-border bg-surface-2 px-ps-2 py-0.5 text-label-sm text-muted">
+                      <span className="border-border bg-surface-2 px-ps-2 text-label-sm text-muted rounded-full border py-0.5">
                         {activeDurationS}s
                       </span>
                     ) : null}
@@ -745,24 +866,27 @@ export function HistorySidebar({
                 </div>
               </div>
               {showActiveProgress && (
-                <div className="mt-ps-3 h-1 w-full overflow-hidden rounded-full bg-surface-3">
-                  <div className="h-full w-1/2 ps-shimmer" aria-hidden="true" />
+                <div className="mt-ps-3 bg-surface-3 h-1 w-full overflow-hidden rounded-full">
+                  <div className="ps-shimmer h-full w-1/2" aria-hidden="true" />
                 </div>
               )}
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-1 flex-col gap-ps-5 px-ps-5 py-ps-6">
+          <section className="gap-ps-5 px-ps-5 py-ps-6 flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-ps-2 text-label uppercase tracking-widest text-faint">
-                <Sparkles className="h-3.5 w-3.5 text-muted" aria-hidden="true" />
+              <div className="gap-ps-2 text-label text-faint flex items-center uppercase tracking-widest">
+                <Sparkles
+                  className="text-muted h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
                 <h2>Prompts</h2>
               </div>
               <Button
                 type="button"
                 variant="default"
                 size="sm"
-                className="rounded-full px-ps-3 text-button-12 shadow-sm"
+                className="px-ps-3 text-button-12 rounded-full shadow-sm"
                 onClick={onCreateNew}
               >
                 <span>+ New</span>
@@ -774,7 +898,7 @@ export function HistorySidebar({
 
             <div className="ps-focus-glow relative rounded-lg">
               <Search
-                className="absolute left-ps-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
+                className="left-ps-3 text-faint absolute top-1/2 h-4 w-4 -translate-y-1/2"
                 aria-hidden="true"
               />
               <Input
@@ -784,21 +908,25 @@ export function HistorySidebar({
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search prompts..."
                 aria-label="Search prompts"
-                className="h-ps-9 rounded-lg border border-border bg-surface-2/60 pl-ps-7 pr-ps-3 text-body-sm text-foreground focus-visible:border-border-strong focus-visible:ring-1 focus-visible:ring-accent/40"
+                className="h-ps-9 border-border bg-surface-2/60 pl-ps-7 pr-ps-3 text-body-sm text-foreground focus-visible:border-border-strong focus-visible:ring-accent/40 rounded-lg border focus-visible:ring-1"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-ps-2">
+            <div className="gap-ps-2 flex flex-wrap items-center">
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
                 className={cn(
-                  'rounded-full border border-border px-ps-3 text-label-sm text-muted transition-colors',
-                  filterState.videosOnly && 'border-border-strong bg-surface-2 text-foreground'
+                  'border-border px-ps-3 text-label-sm text-muted rounded-full border transition-colors',
+                  filterState.videosOnly &&
+                    'border-border-strong bg-surface-2 text-foreground'
                 )}
                 onClick={() =>
-                  setFilterState((prev) => ({ ...prev, videosOnly: !prev.videosOnly }))
+                  setFilterState((prev) => ({
+                    ...prev,
+                    videosOnly: !prev.videosOnly,
+                  }))
                 }
               >
                 Videos only
@@ -808,11 +936,15 @@ export function HistorySidebar({
                 variant="ghost"
                 size="xs"
                 className={cn(
-                  'rounded-full border border-border px-ps-3 text-label-sm text-muted transition-colors',
-                  filterState.recentOnly && 'border-border-strong bg-surface-2 text-foreground'
+                  'border-border px-ps-3 text-label-sm text-muted rounded-full border transition-colors',
+                  filterState.recentOnly &&
+                    'border-border-strong bg-surface-2 text-foreground'
                 )}
                 onClick={() =>
-                  setFilterState((prev) => ({ ...prev, recentOnly: !prev.recentOnly }))
+                  setFilterState((prev) => ({
+                    ...prev,
+                    recentOnly: !prev.recentOnly,
+                  }))
                 }
               >
                 Last 7 days
@@ -820,17 +952,17 @@ export function HistorySidebar({
             </div>
 
             {isLoadingHistory ? (
-              <div className="flex flex-col items-center gap-2 py-6 text-center text-label-sm text-faint">
+              <div className="text-label-sm text-faint flex flex-col items-center gap-2 py-6 text-center">
                 <div className="ps-spinner-sm" />
                 <p>Loading...</p>
               </div>
             ) : filteredByChips.length === 0 ? (
               searchQuery ? (
-                <div className="py-6 text-center text-label-sm text-faint">
+                <div className="text-label-sm text-faint py-6 text-center">
                   <p>No results for &quot;{searchQuery}&quot;.</p>
                 </div>
               ) : hasActiveFilters ? (
-                <div className="py-6 text-center text-label-sm text-faint">
+                <div className="text-label-sm text-faint py-6 text-center">
                   <p>No prompts match these filters.</p>
                 </div>
               ) : (
@@ -838,38 +970,57 @@ export function HistorySidebar({
               )
             ) : (
               <>
-                <nav aria-label="Prompts list" className="flex-1 overflow-y-auto ps-scrollbar-thin">
-                  <ul className="flex flex-col gap-ps-3">
-                    {promptRows.map(({ entry, title, meta, stage, isSelected, processingLabel, key, thumbnailUrl }, index) => {
-                      const externalHover = Boolean(
-                        (hoveredEntryKey &&
-                          (entry.id === hoveredEntryKey || entry.uuid === hoveredEntryKey || key === hoveredEntryKey)) ||
-                          (focusedEntryKey &&
-                            (entry.id === focusedEntryKey ||
-                              entry.uuid === focusedEntryKey ||
-                              key === focusedEntryKey))
-                      );
-                      return (
-                        <HistoryItem
-                          key={key}
-                          entry={entry}
-                          onLoad={onLoadFromHistory}
-                          onDelete={onDelete}
-                          isSelected={isSelected}
-                          isExternallyHovered={externalHover}
-                          title={title}
-                          meta={meta}
-                          stage={stage}
-                          processingLabel={processingLabel}
-                          thumbnailUrl={thumbnailUrl}
-                          onDuplicate={onDuplicate}
-                          onRename={handleRenameRequest}
-                          onCopyPrompt={handleCopyPrompt}
-                          onOpenInNewTab={handleOpenInNewTab}
-                          dataIndex={index}
-                        />
-                      );
-                    })}
+                <nav
+                  aria-label="Prompts list"
+                  className="ps-scrollbar-thin flex-1 overflow-y-auto"
+                >
+                  <ul className="gap-ps-3 flex flex-col">
+                    {promptRows.map(
+                      (
+                        {
+                          entry,
+                          title,
+                          meta,
+                          stage,
+                          isSelected,
+                          processingLabel,
+                          key,
+                          thumbnailUrl,
+                        },
+                        index
+                      ) => {
+                        const externalHover = Boolean(
+                          (hoveredEntryKey &&
+                            (entry.id === hoveredEntryKey ||
+                              entry.uuid === hoveredEntryKey ||
+                              key === hoveredEntryKey)) ||
+                            (focusedEntryKey &&
+                              (entry.id === focusedEntryKey ||
+                                entry.uuid === focusedEntryKey ||
+                                key === focusedEntryKey))
+                        );
+                        return (
+                          <HistoryItem
+                            key={key}
+                            entry={entry}
+                            onLoad={onLoadFromHistory}
+                            onDelete={onDelete}
+                            isSelected={isSelected}
+                            isExternallyHovered={externalHover}
+                            title={title}
+                            meta={meta}
+                            stage={stage}
+                            processingLabel={processingLabel}
+                            thumbnailUrl={thumbnailUrl}
+                            onDuplicate={onDuplicate}
+                            onRename={handleRenameRequest}
+                            onCopyPrompt={handleCopyPrompt}
+                            onOpenInNewTab={handleOpenInNewTab}
+                            dataIndex={index}
+                          />
+                        );
+                      }
+                    )}
                   </ul>
                 </nav>
                 {filteredByChips.length > INITIAL_HISTORY_LIMIT && (
@@ -877,7 +1028,7 @@ export function HistorySidebar({
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-label-sm text-faint"
+                    className="text-label-sm text-faint w-full justify-start"
                   >
                     {showAllHistory ? 'See less' : 'See more...'}
                   </Button>
@@ -888,7 +1039,11 @@ export function HistorySidebar({
 
           <footer className="px-ps-5 pb-ps-5 pt-ps-4">
             <div className="ps-divider-fade mb-ps-4" aria-hidden="true" />
-            <AuthMenu user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
+            <AuthMenu
+              user={user}
+              onSignIn={handleSignIn}
+              onSignOut={handleSignOut}
+            />
           </footer>
         </div>
       )}
@@ -901,9 +1056,11 @@ export function HistorySidebar({
           }
         }}
       >
-        <DialogContent className="max-w-sm rounded-xl ps-card-glass p-ps-5 shadow-lg">
+        <DialogContent className="ps-card-glass p-ps-5 max-w-sm rounded-xl shadow-lg">
           <DialogHeader>
-            <DialogTitle className="text-body-lg text-foreground">Rename prompt</DialogTitle>
+            <DialogTitle className="text-body-lg text-foreground">
+              Rename prompt
+            </DialogTitle>
             <DialogDescription className="text-body-sm text-muted">
               Give this prompt a short, memorable title.
             </DialogDescription>
@@ -920,7 +1077,7 @@ export function HistorySidebar({
               }
             }}
           />
-          <DialogFooter className="mt-ps-4 flex gap-ps-2 sm:justify-end">
+          <DialogFooter className="mt-ps-4 gap-ps-2 flex sm:justify-end">
             <Button
               type="button"
               variant="secondary"

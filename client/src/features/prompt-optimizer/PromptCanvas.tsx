@@ -1,11 +1,21 @@
-import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
+import React, {
+  useRef,
+  useMemo,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { LoadingDots } from '@components/LoadingDots';
-import { Button, type ButtonProps } from '@promptstudio/system/components/ui/button';
-import { Badge } from '@promptstudio/system/components/ui/badge';
-import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
+import {
+  Button,
+  type ButtonProps,
+} from '@promptstudio/system/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+} from '@promptstudio/system/components/ui/dialog';
 import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
-import { Panel } from '@promptstudio/system/components/system/Panel';
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
@@ -26,20 +36,35 @@ import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRe
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Internal absolute imports
-import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
+import {
+  PERFORMANCE_CONFIG,
+  DEFAULT_LABELING_POLICY,
+  TEMPLATE_VERSIONS,
+} from '@config/performance.config';
 
 // Relative imports - types first
-import type { HighlightSnapshot, PromptCanvasProps, SuggestionItem } from './PromptCanvas/types';
+import type {
+  HighlightSnapshot,
+  PromptCanvasProps,
+  SuggestionItem,
+} from './PromptCanvas/types';
 import type { Generation } from './GenerationsPanel/types';
 
 // Relative imports - implementations
-import { createHighlightSignature, useSpanLabeling, sanitizeText } from '@/features/span-highlighting';
+import {
+  createHighlightSignature,
+  useSpanLabeling,
+  sanitizeText,
+} from '@/features/span-highlighting';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '@/features/span-highlighting';
 import { useHighlightFingerprint } from '@/features/span-highlighting';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
-import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textFormatting';
+import {
+  formatTextToHTML,
+  escapeHTMLForMLHighlighting,
+} from './utils/textFormatting';
 import { buildSuggestionContext } from './utils/enhancementSuggestionContext';
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
@@ -66,8 +91,10 @@ import { HighlightingErrorBoundary } from '../span-highlighting/components/Highl
 import { usePromptState } from './context/PromptStateContext';
 import { cn } from '@/utils/cn';
 import { GenerationsPanel } from './GenerationsPanel';
-import { CollapsibleDrawer, useDrawerState } from '@components/CollapsibleDrawer';
-
+import {
+  CollapsibleDrawer,
+  useDrawerState,
+} from '@components/CollapsibleDrawer';
 
 const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant, ...props }, ref) => (
@@ -84,7 +111,9 @@ type InlineSuggestion = {
   item: SuggestionItem | string;
 };
 
-const resolveVersionTimestamp = (value: string | number | undefined): number | null => {
+const resolveVersionTimestamp = (
+  value: string | number | undefined
+): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
@@ -145,7 +174,6 @@ export function PromptCanvas({
   const suggestionsListRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
-  const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
   const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
@@ -158,7 +186,7 @@ export function PromptCanvas({
     position: 'bottom',
     desktopMode: 'push',
   });
-  
+
   // Refs for tracking previous state to prevent loops
   const previousSelectedSpanIdRef = useRef<string | null>(null);
   const previousSuggestionCountRef = useRef(0);
@@ -205,7 +233,9 @@ export function PromptCanvas({
 
   const fpsNumber = useMemo(() => {
     const fpsValue = generationParams?.fps;
-    return typeof fpsValue === 'number' && Number.isFinite(fpsValue) ? fpsValue : null;
+    return typeof fpsValue === 'number' && Number.isFinite(fpsValue)
+      ? fpsValue
+      : null;
   }, [generationParams?.fps]);
 
   // Custom hooks for clipboard and sharing
@@ -241,7 +271,9 @@ export function PromptCanvas({
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
   // Extract suggestions visibility state for contextual UI
-  const isSuggestionsOpen = Boolean(selectedSpanId || (suggestionsData && suggestionsData.show !== false));
+  const isSuggestionsOpen = Boolean(
+    selectedSpanId || (suggestionsData && suggestionsData.show !== false)
+  );
   const currentPromptEntry = useMemo(() => {
     if (!promptHistory.history.length) return null;
     return (
@@ -251,7 +283,10 @@ export function PromptCanvas({
     );
   }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
   const currentVersions = useMemo(
-    () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
+    () =>
+      Array.isArray(currentPromptEntry?.versions)
+        ? currentPromptEntry.versions
+        : [],
     [currentPromptEntry]
   );
   const orderedVersions = useMemo(() => {
@@ -271,7 +306,9 @@ export function PromptCanvas({
   }, [normalizedDisplayedPrompt]);
   const latestVersionSignature = orderedVersions[0]?.signature ?? null;
   const hasEditsSinceLastVersion = Boolean(
-    latestVersionSignature && currentSignature && latestVersionSignature !== currentSignature
+    latestVersionSignature &&
+      currentSignature &&
+      latestVersionSignature !== currentSignature
   );
   const versionsForPanel = useMemo(
     () =>
@@ -284,27 +321,34 @@ export function PromptCanvas({
       })),
     [orderedVersions, hasEditsSinceLastVersion]
   );
-  const selectedVersionId = activeVersionId ?? versionsForPanel[0]?.versionId ?? '';
+  const selectedVersionId =
+    activeVersionId ?? versionsForPanel[0]?.versionId ?? '';
   const activeVersion = useMemo(() => {
     if (activeVersionId) {
-      return currentVersions.find((version) => version.versionId === activeVersionId) ?? null;
+      return (
+        currentVersions.find(
+          (version) => version.versionId === activeVersionId
+        ) ?? null
+      );
     }
     return orderedVersions[0] ?? null;
   }, [activeVersionId, currentVersions, orderedVersions]);
   const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
-  const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning({
-    promptHistory,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeVersionId,
-    latestHighlightRef,
-    versionEditCountRef,
-    versionEditsRef,
-    resetVersionEdits,
-    effectiveAspectRatio,
-    generationParams,
-    selectedModel,
-  });
+  const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning(
+    {
+      promptHistory,
+      currentPromptUuid,
+      currentPromptDocId,
+      activeVersionId,
+      latestHighlightRef,
+      versionEditCountRef,
+      versionEditsRef,
+      resetVersionEdits,
+      effectiveAspectRatio,
+      generationParams,
+      selectedModel,
+    }
+  );
 
   const handleSelectVersion = useCallback(
     (versionId: string): void => {
@@ -320,8 +364,13 @@ export function PromptCanvas({
       promptOptimizer.setOptimizedPrompt(promptText);
       setDisplayedPromptSilently(promptText);
 
-      const highlights = isHighlightSnapshot(target.highlights) ? target.highlights : null;
-      applyInitialHighlightSnapshot(highlights, { bumpVersion: true, markPersisted: false });
+      const highlights = isHighlightSnapshot(target.highlights)
+        ? target.highlights
+        : null;
+      applyInitialHighlightSnapshot(highlights, {
+        bumpVersion: true,
+        markPersisted: false,
+      });
       resetEditStacks();
       resetVersionEdits();
     },
@@ -344,13 +393,16 @@ export function PromptCanvas({
     if (!promptText) return;
 
     const signature = createHighlightSignature(promptText);
-    const lastSignature = currentVersions[currentVersions.length - 1]?.signature ?? null;
+    const lastSignature =
+      currentVersions[currentVersions.length - 1]?.signature ?? null;
     if (lastSignature && lastSignature === signature) {
       return;
     }
 
     const editCount = versionEditCountRef.current;
-    const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
+    const edits = versionEditsRef.current.length
+      ? [...versionEditsRef.current]
+      : [];
     const nextVersion = {
       versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       label: `v${currentVersions.length + 1}`,
@@ -398,7 +450,10 @@ export function PromptCanvas({
   useEffect(() => {
     if (!showExportMenu) return;
     const handleClickOutside = (event: MouseEvent): void => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
         setShowExportMenu(false);
       }
     };
@@ -520,7 +575,9 @@ export function PromptCanvas({
           spans: result.spans,
           meta: result.meta ?? null,
           signature: result.signature,
-          cacheId: result.cacheId ?? (currentPromptUuid ? String(currentPromptUuid) : null),
+          cacheId:
+            result.cacheId ??
+            (currentPromptUuid ? String(currentPromptUuid) : null),
           updatedAt: new Date().toISOString(),
         };
         syncVersionHighlights(snapshot, normalizedDisplayedPrompt ?? '');
@@ -546,7 +603,7 @@ export function PromptCanvas({
     error: labelingError,
     signature: labelingSignature,
   } = useSpanLabeling({
-    text: enableMLHighlighting ? normalizedDisplayedPrompt ?? '' : '',
+    text: enableMLHighlighting ? (normalizedDisplayedPrompt ?? '') : '',
     initialData: memoizedInitialHighlights,
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
@@ -599,15 +656,14 @@ export function PromptCanvas({
   });
 
   // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
-  const { html: formattedHTML } = useMemo(
-    () => {
-      if (enableMLHighlighting) {
-        return { html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || '') };
-      }
-      return formatTextToHTML(normalizedDisplayedPrompt ?? '');
-    },
-    [normalizedDisplayedPrompt, enableMLHighlighting]
-  );
+  const { html: formattedHTML } = useMemo(() => {
+    if (enableMLHighlighting) {
+      return {
+        html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || ''),
+      };
+    }
+    return formatTextToHTML(normalizedDisplayedPrompt ?? '');
+  }, [normalizedDisplayedPrompt, enableMLHighlighting]);
 
   useHighlightRendering({
     editorRef: editorRef as React.RefObject<HTMLElement>,
@@ -622,7 +678,11 @@ export function PromptCanvas({
 
   // Performance timer: Track when prompt appears on screen
   useEffect(() => {
-    if (normalizedDisplayedPrompt && normalizedDisplayedPrompt.trim() && enableMLHighlighting) {
+    if (
+      normalizedDisplayedPrompt &&
+      normalizedDisplayedPrompt.trim() &&
+      enableMLHighlighting
+    ) {
       performance.mark('prompt-displayed-on-screen');
       debug.logEffect('Prompt displayed on screen', {
         promptLength: normalizedDisplayedPrompt.length,
@@ -644,7 +704,12 @@ export function PromptCanvas({
   const inspectedSpanElementRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const root = editorRef.current;
-    if (!root || !enableMLHighlighting || !showHighlights || !outlineOverlayActive) {
+    if (
+      !root ||
+      !enableMLHighlighting ||
+      !showHighlights ||
+      !outlineOverlayActive
+    ) {
       if (inspectedSpanElementRef.current) {
         inspectedSpanElementRef.current.classList.remove('brightness-90');
         inspectedSpanElementRef.current = null;
@@ -661,7 +726,9 @@ export function PromptCanvas({
       return;
     }
 
-    const el = root.querySelector(`[data-span-id="${escapeAttr(hoveredSpanId)}"]`) as HTMLElement | null;
+    const el = root.querySelector(
+      `[data-span-id="${escapeAttr(hoveredSpanId)}"]`
+    ) as HTMLElement | null;
     if (!el) return;
     el.classList.add('brightness-90');
     inspectedSpanElementRef.current = el;
@@ -671,7 +738,12 @@ export function PromptCanvas({
         inspectedSpanElementRef.current = null;
       }
     };
-  }, [enableMLHighlighting, hoveredSpanId, showHighlights, outlineOverlayActive]);
+  }, [
+    enableMLHighlighting,
+    hoveredSpanId,
+    showHighlights,
+    outlineOverlayActive,
+  ]);
 
   const closeInlinePopover = useCallback((): void => {
     setSelectedSpanId(null);
@@ -687,7 +759,9 @@ export function PromptCanvas({
     const interval = window.setInterval(() => {
       const nodes = root.querySelectorAll('span.value-word[data-span-id]');
       if (!nodes.length) return;
-      const node = nodes[Math.floor(Math.random() * nodes.length)] as HTMLElement;
+      const node = nodes[
+        Math.floor(Math.random() * nodes.length)
+      ] as HTMLElement;
       node.classList.add('opacity-80');
       window.setTimeout(() => node.classList.remove('opacity-80'), 200);
     }, 6000);
@@ -815,7 +889,9 @@ export function PromptCanvas({
 
   // Event handlers
   const handleCopy = useCallback((): void => {
-    debug.logAction('copy', { promptLength: normalizedDisplayedPrompt?.length ?? 0 });
+    debug.logAction('copy', {
+      promptLength: normalizedDisplayedPrompt?.length ?? 0,
+    });
     copy(normalizedDisplayedPrompt ?? '');
   }, [copy, normalizedDisplayedPrompt, debug]);
 
@@ -843,9 +919,10 @@ export function PromptCanvas({
 
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
-      const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
+      const newText =
+        e.currentTarget.innerText || e.currentTarget.textContent || '';
       const normalizedText = sanitizeText(newText);
-      debug.logAction('textEdit', { 
+      debug.logAction('textEdit', {
         newLength: normalizedText.length,
         oldLength: normalizedDisplayedPrompt?.length ?? 0,
       });
@@ -855,14 +932,6 @@ export function PromptCanvas({
     },
     [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
   );
-
-  const handleOutputFocus = useCallback((): void => {
-    setIsOutputFocused(true);
-  }, []);
-
-  const handleOutputBlur = useCallback((): void => {
-    setIsOutputFocused(false);
-  }, [setIsOutputFocused]);
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -889,7 +958,8 @@ export function PromptCanvas({
   const selectedSpanText = useMemo(() => {
     if (!selectedSpan) return '';
     const displayQuote =
-      typeof selectedSpan.displayQuote === 'string' && selectedSpan.displayQuote.trim()
+      typeof selectedSpan.displayQuote === 'string' &&
+      selectedSpan.displayQuote.trim()
         ? selectedSpan.displayQuote
         : '';
     const quote =
@@ -904,7 +974,9 @@ export function PromptCanvas({
   }, [selectedSpan]);
 
   const inlineSuggestions = useMemo<InlineSuggestion[]>(() => {
-    const rawSuggestions = (suggestionsData?.suggestions ?? []) as Array<SuggestionItem | string>;
+    const rawSuggestions = (suggestionsData?.suggestions ?? []) as Array<
+      SuggestionItem | string
+    >;
     return rawSuggestions
       .map((item, index) => {
         const rawText =
@@ -951,19 +1023,29 @@ export function PromptCanvas({
   }, [selectedSpanText, suggestionsData?.selectedText]);
 
   const isInlineLoading = Boolean(
-    selectedSpanId && (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
+    selectedSpanId &&
+      (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
   );
   const isInlineError = Boolean(suggestionsData?.isError);
   const inlineErrorMessage =
-    typeof suggestionsData?.errorMessage === 'string' && suggestionsData.errorMessage.trim()
+    typeof suggestionsData?.errorMessage === 'string' &&
+    suggestionsData.errorMessage.trim()
       ? suggestionsData.errorMessage.trim()
       : 'Failed to load suggestions.';
   const isInlineEmpty = Boolean(
-    selectedSpanId && !isInlineLoading && !isInlineError && suggestionCount === 0
+    selectedSpanId &&
+      !isInlineLoading &&
+      !isInlineError &&
+      suggestionCount === 0
   );
-  const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
+  const selectionLabel =
+    selectedSpanText || suggestionsData?.selectedText || '';
   const customRequestSelection = selectionLabel.trim();
-  const customRequestPrompt = (suggestionsData?.fullPrompt || normalizedDisplayedPrompt || '').trim();
+  const customRequestPrompt = (
+    suggestionsData?.fullPrompt ||
+    normalizedDisplayedPrompt ||
+    ''
+  ).trim();
 
   const customRequestPreferIndex = useMemo(() => {
     const preferIndexRaw =
@@ -1026,7 +1108,8 @@ export function PromptCanvas({
   }, [selectedSpanId]);
 
   useEffect(() => {
-    const justOpened = previousSelectedSpanIdRef.current !== selectedSpanId && selectedSpanId;
+    const justOpened =
+      previousSelectedSpanIdRef.current !== selectedSpanId && selectedSpanId;
     const countChanged = suggestionCount !== previousSuggestionCountRef.current;
 
     if (selectedSpanId && (justOpened || countChanged)) {
@@ -1040,7 +1123,7 @@ export function PromptCanvas({
 
   useEffect(() => {
     if (!selectedSpanId || !suggestionsListRef.current) return;
-    
+
     // Skip scrolling if the change came from mouse hover to prevent fighting/looping
     if (interactionSourceRef.current === 'mouse') return;
 
@@ -1057,14 +1140,19 @@ export function PromptCanvas({
     const active = inlineSuggestions[activeSuggestionIndex];
     if (!active) return;
     handleSuggestionClickWithFeedback(active.item);
-  }, [activeSuggestionIndex, inlineSuggestions, handleSuggestionClickWithFeedback]);
+  }, [
+    activeSuggestionIndex,
+    inlineSuggestions,
+    handleSuggestionClickWithFeedback,
+  ]);
 
   useEffect(() => {
     if (!selectedSpanId) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement | null;
       const isTextInput =
-        !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+        !!target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       const isCustomRequestTarget =
         !!target && Boolean(target.closest?.('[data-suggest-custom]'));
 
@@ -1119,16 +1207,15 @@ export function PromptCanvas({
 
       setSelectedSpanId(spanId);
 
-      const span =
-        Array.isArray(parseResult?.spans)
-          ? parseResult.spans.find((candidate) => {
-              const candidateId =
-                typeof candidate?.id === 'string' && candidate.id.length > 0
-                  ? candidate.id
-                  : `span_${candidate.start}_${candidate.end}`;
-              return candidateId === spanId;
-            })
-          : null;
+      const span = Array.isArray(parseResult?.spans)
+        ? parseResult.spans.find((candidate) => {
+            const candidateId =
+              typeof candidate?.id === 'string' && candidate.id.length > 0
+                ? candidate.id
+                : `span_${candidate.start}_${candidate.end}`;
+            return candidateId === spanId;
+          })
+        : null;
 
       if (span) {
         scrollToSpan(editorRef as React.RefObject<HTMLElement>, { id: spanId });
@@ -1171,12 +1258,14 @@ export function PromptCanvas({
         allLabeledSpans: parseResult.spans,
       });
     },
-    [onFetchSuggestions, normalizedDisplayedPrompt, parseResult.spans, editorRef, setSelectedSpanId]
+    [
+      onFetchSuggestions,
+      normalizedDisplayedPrompt,
+      parseResult.spans,
+      editorRef,
+      setSelectedSpanId,
+    ]
   );
-
-  const outputStatusStyles = isOutputFocused
-    ? { text: 'text-warning', dot: 'bg-warning' }
-    : { text: 'text-foreground', dot: 'bg-accent' };
 
   // NOTE: Phosphor icons require numeric size values, not CSS variables.
   // CSS variables like 'var(--ps-icon-md)' cause icons to render as dots.
@@ -1206,16 +1295,20 @@ export function PromptCanvas({
         <div
           ref={outlineOverlayRef}
           className={cn(
-            'absolute left-6 top-6 bottom-6 z-modal flex w-96 flex-col overflow-hidden rounded-xl border border-border bg-surface-1 shadow-lg',
+            'z-modal border-border bg-surface-1 absolute bottom-6 left-6 top-6 flex w-96 flex-col overflow-hidden rounded-xl border shadow-lg',
             'ps-animate-scale-in'
           )}
           data-state={outlineOverlayState}
           role="dialog"
           aria-label="Prompt structure"
         >
-          <div className="border-b border-border p-4">
-            <div className="text-body-lg font-semibold text-foreground">Prompt Structure</div>
-            <div className="mt-1 text-meta text-muted">Semantic breakdown used for generation</div>
+          <div className="border-border border-b p-4">
+            <div className="text-body-lg text-foreground font-semibold">
+              Prompt Structure
+            </div>
+            <div className="text-meta text-muted mt-1">
+              Semantic breakdown used for generation
+            </div>
           </div>
           <div className="flex-1 overflow-auto p-4">
             <HighlightingErrorBoundary>
@@ -1226,455 +1319,526 @@ export function PromptCanvas({
               />
             </HighlightingErrorBoundary>
           </div>
-	      <div className="border-t border-border p-ps-3 text-meta text-muted">
-	        Hover a token to locate it in the prompt
-	      </div>
+          <div className="border-border p-ps-3 text-meta text-muted border-t">
+            Hover a token to locate it in the prompt
+          </div>
         </div>
       )}
 
       {/* Main Content Container */}
       <div
         className={cn(
-          'relative flex min-h-0 flex-1 flex-col gap-ps-3 p-ps-3',
+          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col',
           outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-ps-3 lg:flex-row">
-          <div 
-            className="flex min-h-0 min-w-0 flex-col gap-ps-3" 
-            style={{ flex: '45 1 0%', minWidth: '300px' }}
-          >
-              {/* Main Editor Area - Optimized Prompt */}
-              <div
-                ref={editorColumnRef}
-                className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
-              >
-                <div className="flex flex-auto min-h-[200px] flex-col overflow-y-auto lg:min-h-[300px]">
-                  <div className="flex min-h-0 flex-1 w-full flex-col gap-0 px-0 pb-ps-card h-full overflow-hidden">
-                    <Panel
-                      padding="none"
-                      surface="3"
-                      className={cn(
-                        'flex min-h-0 flex-1 flex-col transition-opacity',
-                        isOutputLoading && 'opacity-80'
-                      )}
-                    >
-                      <div className="border-b border-border p-ps-card">
-                        <div className="flex flex-wrap items-baseline justify-between gap-ps-3">
-                          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
-                            {!selectedSpanId && (
-                              <div className="text-meta text-muted">Select a highlight to see suggestions</div>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {!outlineOverlayActive && (
-                              <CanvasButton
-                                type="button"
-                                size="icon-sm"
-                                onClick={openOutlineOverlay}
-                                aria-label="Open outline"
-                                title="Open outline"
-                              >
-                                <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
-                              </CanvasButton>
-                            )}
-                            <Badge casing="upper" className={outputStatusStyles.text}>
-                              <span
-                                className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
-                                aria-hidden="true"
-                              />
-                              {isOutputFocused ? 'Editing' : 'LIVE'}
-                            </Badge>
-                            <CanvasButton
-                              type="button"
-                              size="icon-sm"
-                              onClick={handleCopy}
-                              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-                              title={copied ? 'Copied' : 'Copy'}
-                            >
-                              {copied ? (
-                                <Icon icon={Check} size="md" weight="bold" aria-hidden="true" />
-                              ) : (
-                                <Icon icon={Copy} size="md" weight="bold" aria-hidden="true" />
-                              )}
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              size="icon-sm"
-                              onClick={onUndo}
-                              disabled={!canUndo}
-                              aria-label="Undo"
-                            >
-                              <Icon icon={ArrowCounterClockwise} size="md" weight="bold" aria-hidden="true" />
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              size="icon-sm"
-                              onClick={onRedo}
-                              disabled={!canRedo}
-                              aria-label="Redo"
-                            >
-                              <Icon icon={ArrowClockwise} size="md" weight="bold" aria-hidden="true" />
-                            </CanvasButton>
-                            <div className="relative" ref={exportMenuRef}>
-                              <CanvasButton
-                                type="button"
-                                size="icon-sm"
-                                onClick={() => setShowExportMenu(!showExportMenu)}
-                                aria-expanded={showExportMenu}
-                                aria-haspopup="menu"
-                                aria-label="More actions"
-                                title="More"
-                              >
-                                <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
-                              </CanvasButton>
-                              {showExportMenu && (
-                                <div
-                                  className="absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
-                                  role="menu"
-                                >
-                                  <CanvasButton
-                                    type="button"
-                                    onClick={() => {
-                                      setShowDiff(true);
-                                      setShowExportMenu(false);
-                                    }}
-                                    role="menuitem"
-                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                                  >
-                                    Compare versions
-                                  </CanvasButton>
-                                  <div className="my-1 h-px bg-border" aria-hidden="true" />
-                                  <CanvasButton
-                                    type="button"
-                                    onClick={() => {
-                                      handleExport('text');
-                                      setShowExportMenu(false);
-                                    }}
-                                    role="menuitem"
-                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                                  >
-                                    Export .txt
-                                  </CanvasButton>
-                                  <CanvasButton
-                                    type="button"
-                                    onClick={() => {
-                                      handleExport('markdown');
-                                      setShowExportMenu(false);
-                                    }}
-                                    role="menuitem"
-                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                                  >
-                                    Export .md
-                                  </CanvasButton>
-                                  <CanvasButton
-                                    type="button"
-                                    onClick={() => {
-                                      handleExport('json');
-                                      setShowExportMenu(false);
-                                    }}
-                                    role="menuitem"
-                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                                  >
-                                    Export .json
-                                  </CanvasButton>
-                                  <div className="my-1 h-px bg-border" aria-hidden="true" />
-                                  <CanvasButton
-                                    type="button"
-                                    onClick={() => {
-                                      handleShare();
-                                      setShowExportMenu(false);
-                                    }}
-                                    role="menuitem"
-                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-                                  >
-                                    Share
-                                  </CanvasButton>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex min-h-0 flex-1 flex-col p-ps-card">
-                        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-ps-4 xl:flex-row">
-                          <div
-                            className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
-                            aria-busy={isOutputLoading}
-                            ref={editorWrapperRef}
-                          >
-                      <PromptEditor
-                        ref={editorRef as React.RefObject<HTMLDivElement>}
-                        className="min-h-44 w-full flex-1 min-h-0 overflow-y-auto whitespace-pre-wrap px-ps-3 py-ps-4 text-body-xl text-foreground-warm outline-none"
-                        onTextSelection={handleTextSelection}
-                        onHighlightClick={handleHighlightClick}
-                        onHighlightMouseDown={handleHighlightMouseDown}
-                        onHighlightMouseEnter={handleHighlightMouseEnter}
-                        onHighlightMouseLeave={handleHighlightMouseLeave}
-                        onCopyEvent={handleCopyEvent}
-                        onInput={handleInput}
-                        onFocus={handleOutputFocus}
-                        onBlur={handleOutputBlur}
-                      />
-                      <div
-                        ref={outputLocklineRef}
-                        className={cn(
-                          'mt-4 h-px w-full origin-left scale-x-0 bg-border transition-transform duration-300',
-                          isOutputLoading && 'scale-x-100'
-                        )}
-                        aria-hidden="true"
-                      />
-                      {enableMLHighlighting &&
-                        !outlineOverlayActive &&
-                        hoveredSpanId &&
-                        lockButtonPosition &&
-                        !isOutputLoading && (
+        <div className="gap-ps-4 lg:gap-ps-5 flex min-h-0 flex-1 flex-col lg:flex-row">
+          <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col lg:min-w-80 lg:flex-[9]">
+            {/* Main Editor Area - Optimized Prompt */}
+            <div
+              ref={editorColumnRef}
+              className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
+            >
+              <div className="flex min-h-[200px] flex-auto flex-col overflow-y-auto lg:min-h-[300px]">
+                <div className="pb-ps-card flex h-full min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden px-0">
+                  <div
+                    className={cn(
+                      'flex min-h-0 flex-1 flex-col transition-opacity',
+                      isOutputLoading && 'opacity-80'
+                    )}
+                  >
+                    <div className="gap-ps-3 px-ps-3 py-ps-2 flex items-center justify-between">
+                      <span className="text-label-sm text-muted">
+                        Optimized Editor
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!outlineOverlayActive && (
                           <CanvasButton
-                            ref={lockButtonRef}
                             type="button"
-                            onClick={handleToggleLock}
-                            onMouseEnter={cancelHideLockButton}
-                            onMouseLeave={handleLockButtonMouseLeave}
-                            onMouseDown={(e) => e.preventDefault()}
-                            className={cn(
-                              'absolute z-10 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full -mt-1.5 items-center justify-center rounded-full border border-border bg-surface-2 text-muted shadow-md transition-colors',
-                              'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
-                              isHoveredLocked && 'border-accent text-foreground'
-                            )}
-                            style={{
-                              top: `${lockButtonPosition.top}px`,
-                              left: `${lockButtonPosition.left}px`,
-                            }}
-                            data-locked={isHoveredLocked ? 'true' : 'false'}
-                            aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                            title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                            aria-pressed={isHoveredLocked}
+                            size="icon-sm"
+                            onClick={openOutlineOverlay}
+                            aria-label="Open outline"
+                            title="Open outline"
                           >
-                            {isHoveredLocked ? (
-                              <Icon icon={LockOpen} size="sm" weight="bold" aria-hidden="true" />
-                            ) : (
-                              <Icon icon={Lock} size="sm" weight="bold" aria-hidden="true" />
-                            )}
+                            <Icon
+                              icon={GridFour}
+                              size="md"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
                           </CanvasButton>
                         )}
-                      {isOutputLoading && (
-                        <div
-                          className="absolute inset-0 flex items-start justify-start bg-surface-3/80 p-ps-4 backdrop-blur-sm"
-                          role="status"
-                          aria-live="polite"
-                          aria-label="Optimizing prompt"
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          onClick={handleCopy}
+                          aria-label={
+                            copied ? 'Copied to clipboard' : 'Copy to clipboard'
+                          }
+                          title={copied ? 'Copied' : 'Copy'}
                         >
-                          <LoadingDots size={3} className="text-faint" />
-                        </div>
-	                      )}
-	                    </div>
-
-	                    {selectedSpanId ? (
-	                      <aside
-	                        className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-lg border border-accent/30 bg-surface-2 shadow-sm ring-2 ring-accent/10 xl:w-96"
-	                        aria-label="Suggestions"
-	                      >
-                      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
-                        <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
-                          Suggestions
-	                          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
-	                            {suggestionCount}
-	                          </span>
-	                        </div>
-	                        <div className="hidden items-center gap-1 text-muted sm:flex" aria-hidden="true">
-                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
-                            Up
-                          </span>
-                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
-                            Down
-                          </span>
-                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
-                            Enter
-                          </span>
-                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
-                            Esc
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="border-b border-border px-3 py-2" data-suggest-custom>
-                            <form
-                              className="flex items-center gap-2"
-                              onSubmit={handleCustomRequestSubmit}
+                          {copied ? (
+                            <Icon
+                              icon={Check}
+                              size="md"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Icon
+                              icon={Copy}
+                              size="md"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </CanvasButton>
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          onClick={onUndo}
+                          disabled={!canUndo}
+                          aria-label="Undo"
+                        >
+                          <Icon
+                            icon={ArrowCounterClockwise}
+                            size="md"
+                            weight="bold"
+                            aria-hidden="true"
+                          />
+                        </CanvasButton>
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          onClick={onRedo}
+                          disabled={!canRedo}
+                          aria-label="Redo"
+                        >
+                          <Icon
+                            icon={ArrowClockwise}
+                            size="md"
+                            weight="bold"
+                            aria-hidden="true"
+                          />
+                        </CanvasButton>
+                        <div className="relative" ref={exportMenuRef}>
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                            aria-expanded={showExportMenu}
+                            aria-haspopup="menu"
+                            aria-label="More actions"
+                            title="More"
+                          >
+                            <Icon
+                              icon={DotsThree}
+                              size="md"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </CanvasButton>
+                          {showExportMenu && (
+                            <div
+                              className="border-border bg-surface-3 absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border p-2 shadow-md"
+                              role="menu"
                             >
-                              <Textarea
-                                id="inline-custom-request"
-                                value={customRequest}
-                                onChange={(event) => {
-                                  setCustomRequest(event.target.value);
-                                  if (customRequestError) {
-                                    setCustomRequestError('');
-                                  }
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  setShowDiff(true);
+                                  setShowExportMenu(false);
                                 }}
-                                placeholder="Add a specific change (e.g. football field)"
-                                className="min-h-9 flex-1 resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-body-sm text-foreground placeholder:text-faint focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-0"
-                                maxLength={MAX_REQUEST_LENGTH}
-                                rows={1}
-                                aria-label="Custom suggestion request"
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                              >
+                                Compare versions
+                              </CanvasButton>
+                              <div
+                                className="bg-border my-1 h-px"
+                                aria-hidden="true"
                               />
                               <CanvasButton
-                                type="submit"
-                                className={cn(
-                                  'h-9 rounded-lg border border-accent bg-accent px-3 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
-                                  isCustomRequestDisabled && 'opacity-50'
-                                )}
-                                disabled={isCustomRequestDisabled}
-                                aria-busy={isCustomLoading}
+                                type="button"
+                                onClick={() => {
+                                  handleExport('text');
+                                  setShowExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
                               >
-                                {isCustomLoading ? 'Applying...' : 'Apply'}
+                                Export .txt
                               </CanvasButton>
-                            </form>
-                            {customRequestError && (
-                              <div className="mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
-                                {customRequestError}
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  handleExport('markdown');
+                                  setShowExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                              >
+                                Export .md
+                              </CanvasButton>
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  handleExport('json');
+                                  setShowExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                              >
+                                Export .json
+                              </CanvasButton>
+                              <div
+                                className="bg-border my-1 h-px"
+                                aria-hidden="true"
+                              />
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  handleShare();
+                                  setShowExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                              >
+                                Share
+                              </CanvasButton>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="px-ps-3" aria-hidden="true">
+                      <div className="ps-divider-fade" />
+                    </div>
+
+                    <div className="px-ps-3 pb-ps-card pt-ps-4 flex min-h-0 flex-1 flex-col">
+                      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                        <div
+                          className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col"
+                          aria-busy={isOutputLoading}
+                          ref={editorWrapperRef}
+                        >
+                          <PromptEditor
+                            ref={editorRef as React.RefObject<HTMLDivElement>}
+                            className="px-ps-3 py-ps-4 text-body-xl text-foreground-warm min-h-0 min-h-44 w-full flex-1 overflow-y-auto whitespace-pre-wrap outline-none"
+                            onTextSelection={handleTextSelection}
+                            onHighlightClick={handleHighlightClick}
+                            onHighlightMouseDown={handleHighlightMouseDown}
+                            onHighlightMouseEnter={handleHighlightMouseEnter}
+                            onHighlightMouseLeave={handleHighlightMouseLeave}
+                            onCopyEvent={handleCopyEvent}
+                            onInput={handleInput}
+                          />
+                          <div
+                            ref={outputLocklineRef}
+                            className={cn(
+                              'bg-border mt-4 h-px w-full origin-left scale-x-0 transition-transform duration-300',
+                              isOutputLoading && 'scale-x-100'
+                            )}
+                            aria-hidden="true"
+                          />
+                          {enableMLHighlighting &&
+                            !outlineOverlayActive &&
+                            hoveredSpanId &&
+                            lockButtonPosition &&
+                            !isOutputLoading && (
+                              <CanvasButton
+                                ref={lockButtonRef}
+                                type="button"
+                                onClick={handleToggleLock}
+                                onMouseEnter={cancelHideLockButton}
+                                onMouseLeave={handleLockButtonMouseLeave}
+                                onMouseDown={(e) => e.preventDefault()}
+                                className={cn(
+                                  'border-border bg-surface-2 text-muted absolute z-10 -mt-1.5 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border shadow-md transition-colors',
+                                  'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
+                                  isHoveredLocked &&
+                                    'border-accent text-foreground'
+                                )}
+                                style={{
+                                  top: `${lockButtonPosition.top}px`,
+                                  left: `${lockButtonPosition.left}px`,
+                                }}
+                                data-locked={isHoveredLocked ? 'true' : 'false'}
+                                aria-label={
+                                  isHoveredLocked ? 'Unlock span' : 'Lock span'
+                                }
+                                title={
+                                  isHoveredLocked ? 'Unlock span' : 'Lock span'
+                                }
+                                aria-pressed={isHoveredLocked}
+                              >
+                                {isHoveredLocked ? (
+                                  <Icon
+                                    icon={LockOpen}
+                                    size="sm"
+                                    weight="bold"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <Icon
+                                    icon={Lock}
+                                    size="sm"
+                                    weight="bold"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                              </CanvasButton>
+                            )}
+                          {isOutputLoading && (
+                            <div
+                              className="bg-surface-3/80 p-ps-4 absolute inset-0 flex items-start justify-start backdrop-blur-sm"
+                              role="status"
+                              aria-live="polite"
+                              aria-label="Optimizing prompt"
+                            >
+                              <LoadingDots size={3} className="text-faint" />
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedSpanId ? (
+                          <aside
+                            className="border-border bg-surface-2 absolute right-0 top-0 bottom-0 z-20 flex w-80 min-w-0 flex-col overflow-hidden rounded-lg border shadow-lg"
+                            aria-label="Suggestions"
+                          >
+                            <div className="border-border flex items-center justify-between gap-3 border-b px-3 py-2">
+                              <div className="text-body-sm text-foreground flex items-center gap-2 font-semibold">
+                                Suggestions
+                                <span className="bg-surface-3 text-label-sm text-muted inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5">
+                                  {suggestionCount}
+                                </span>
+                              </div>
+                              <div
+                                className="text-muted hidden items-center gap-1 sm:flex"
+                                aria-hidden="true"
+                              >
+                                <span className="border-border bg-surface-3 text-label-sm text-muted rounded-md border px-2 py-0.5 font-semibold">
+                                  Up
+                                </span>
+                                <span className="border-border bg-surface-3 text-label-sm text-muted rounded-md border px-2 py-0.5 font-semibold">
+                                  Down
+                                </span>
+                                <span className="border-border bg-surface-3 text-label-sm text-muted rounded-md border px-2 py-0.5 font-semibold">
+                                  Enter
+                                </span>
+                                <span className="border-border bg-surface-3 text-label-sm text-muted rounded-md border px-2 py-0.5 font-semibold">
+                                  Esc
+                                </span>
+                              </div>
+                            </div>
+
+                            <div
+                              className="border-border border-b px-3 py-2"
+                              data-suggest-custom
+                            >
+                              <form
+                                className="flex items-center gap-2"
+                                onSubmit={handleCustomRequestSubmit}
+                              >
+                                <Textarea
+                                  id="inline-custom-request"
+                                  value={customRequest}
+                                  onChange={(event) => {
+                                    setCustomRequest(event.target.value);
+                                    if (customRequestError) {
+                                      setCustomRequestError('');
+                                    }
+                                  }}
+                                  placeholder="Add a specific change (e.g. football field)"
+                                  className="border-border bg-surface-2 text-body-sm text-foreground placeholder:text-faint focus-visible:ring-accent min-h-9 flex-1 resize-none rounded-lg border px-3 py-2 focus-visible:ring-2 focus-visible:ring-offset-0"
+                                  maxLength={MAX_REQUEST_LENGTH}
+                                  rows={1}
+                                  aria-label="Custom suggestion request"
+                                />
+                                <CanvasButton
+                                  type="submit"
+                                  className={cn(
+                                    'border-accent bg-accent text-label-sm text-app h-9 rounded-lg border px-3 font-semibold shadow-sm transition hover:opacity-90',
+                                    isCustomRequestDisabled && 'opacity-50'
+                                  )}
+                                  disabled={isCustomRequestDisabled}
+                                  aria-busy={isCustomLoading}
+                                >
+                                  {isCustomLoading ? 'Applying...' : 'Apply'}
+                                </CanvasButton>
+                              </form>
+                              {customRequestError && (
+                                <div
+                                  className="border-error/30 bg-error/10 text-label-sm text-error mt-2 rounded-lg border px-3 py-2"
+                                  role="alert"
+                                >
+                                  {customRequestError}
+                                </div>
+                              )}
+                            </div>
+
+                            {isInlineError && (
+                              <div
+                                className="border-error/30 bg-error/10 text-label-sm text-error mx-3 mt-2 rounded-lg border px-3 py-2"
+                                role="alert"
+                              >
+                                {inlineErrorMessage}
                               </div>
                             )}
-                          </div>
 
-                          {isInlineError && (
-                            <div className="mx-3 mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
-                              {inlineErrorMessage}
-                            </div>
-                          )}
+                            {isInlineLoading && (
+                              <div className="flex flex-1 flex-col gap-2 px-3 py-2">
+                                <div className="bg-surface-3 h-9 w-full animate-pulse rounded-lg" />
+                                <div className="bg-surface-3 h-9 w-full animate-pulse rounded-lg" />
+                                <div className="bg-surface-3 h-9 w-full animate-pulse rounded-lg" />
+                              </div>
+                            )}
 
-                          {isInlineLoading && (
-                            <div className="flex flex-1 flex-col gap-2 px-3 py-2">
-                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
-                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
-                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
-                            </div>
-                          )}
-
-                          {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
-                            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2" ref={suggestionsListRef}>
-                              {inlineSuggestions.map((suggestion, index) => (
+                            {!isInlineLoading &&
+                              !isInlineError &&
+                              suggestionCount > 0 && (
                                 <div
-                                  key={suggestion.key}
-                                  data-index={index}
-                                  data-selected={activeSuggestionIndex === index ? 'true' : 'false'}
-                                  className={cn(
-                                    'flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2 text-body-sm text-foreground transition-colors',
-                                    'hover:border-border-strong hover:bg-surface-2',
-                                    activeSuggestionIndex === index && 'border-accent/50 bg-accent/10'
+                                  className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
+                                  ref={suggestionsListRef}
+                                >
+                                  {inlineSuggestions.map(
+                                    (suggestion, index) => (
+                                      <div
+                                        key={suggestion.key}
+                                        data-index={index}
+                                        data-selected={
+                                          activeSuggestionIndex === index
+                                            ? 'true'
+                                            : 'false'
+                                        }
+                                        className={cn(
+                                          'border-border bg-surface-2 text-body-sm text-foreground flex cursor-pointer items-start justify-between gap-3 rounded-lg border px-3 py-2 transition-colors',
+                                          'hover:border-border-strong hover:bg-surface-3',
+                                          activeSuggestionIndex === index &&
+                                            'border-accent/50 bg-accent/10'
+                                        )}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onMouseEnter={() => {
+                                          interactionSourceRef.current =
+                                            'mouse';
+                                          setActiveSuggestionIndex(index);
+                                        }}
+                                        onClick={() => {
+                                          handleSuggestionClickWithFeedback(
+                                            suggestion.item
+                                          );
+                                          closeInlinePopover();
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                      >
+                                        <div className="text-body-sm text-foreground min-w-0">
+                                          {suggestion.text}
+                                        </div>
+                                        {index === 0 ? (
+                                          <span className="bg-accent/10 text-label-sm text-accent inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 font-semibold">
+                                            Best match
+                                          </span>
+                                        ) : suggestion.meta ? (
+                                          <div className="text-label-sm text-muted flex-shrink-0">
+                                            {suggestion.meta}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    )
                                   )}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onMouseEnter={() => {
-                                    interactionSourceRef.current = 'mouse';
-                                    setActiveSuggestionIndex(index);
-                                  }}
+                                </div>
+                              )}
+
+                            {isInlineEmpty && (
+                              <div className="text-label-sm text-muted flex flex-1 items-center px-3 py-2">
+                                No suggestions yet.
+                              </div>
+                            )}
+
+                            <div className="border-border border-t px-3 py-2">
+                              <div className="text-label-sm text-muted">
+                                {selectionLabel
+                                  ? `Replace "${selectionLabel}"`
+                                  : 'Replace selection'}
+                              </div>
+                              <div className="mt-3 flex items-center gap-2">
+                                <CanvasButton
+                                  type="button"
+                                  className="border-border bg-surface-3 text-label-sm text-muted hover:bg-surface-2 hover:text-foreground h-9 rounded-lg border px-3 font-semibold transition-colors"
+                                  onClick={closeInlinePopover}
+                                >
+                                  Clear
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  className={cn(
+                                    'border-accent bg-accent text-label-sm text-app h-9 rounded-lg border px-3 font-semibold shadow-sm transition hover:opacity-90',
+                                    !suggestionCount && 'opacity-50'
+                                  )}
                                   onClick={() => {
-                                    handleSuggestionClickWithFeedback(suggestion.item);
+                                    handleApplyActiveSuggestion();
                                     closeInlinePopover();
                                   }}
-                                  role="button"
-                                  tabIndex={0}
+                                  disabled={!suggestionCount}
                                 >
-                                  <div className="min-w-0 text-body-sm text-foreground">{suggestion.text}</div>
-                                  {index === 0 ? (
-                                    <span className="inline-flex flex-shrink-0 items-center rounded-full bg-accent/10 px-2 py-0.5 text-label-sm font-semibold text-accent">
-                                      Best match
-                                    </span>
-                                  ) : suggestion.meta ? (
-                                    <div className="flex-shrink-0 text-label-sm text-muted">{suggestion.meta}</div>
-                                  ) : null}
-                                </div>
-                              ))}
+                                  Apply
+                                </CanvasButton>
+                              </div>
                             </div>
-                          )}
-
-                          {isInlineEmpty && (
-                            <div className="flex flex-1 items-center px-3 py-2 text-label-sm text-muted">
-                              No suggestions yet.
-                            </div>
-                          )}
-
-                          <div className="border-t border-border px-3 py-2">
-                            <div className="text-label-sm text-muted">
-                              {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
-                            </div>
-                            <div className="mt-3 flex items-center gap-2">
-                              <CanvasButton
-                                type="button"
-                                className="h-9 rounded-lg border border-border bg-surface-3 px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
-                                onClick={closeInlinePopover}
-                              >
-                                Clear
-                              </CanvasButton>
-                              <CanvasButton
-                                type="button"
-                                className={cn(
-                                  'h-9 rounded-lg border border-accent bg-accent px-3 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
-                                  !suggestionCount && 'opacity-50'
-                                )}
-                                onClick={() => {
-                                  handleApplyActiveSuggestion();
-                                  closeInlinePopover();
-                                }}
-                                disabled={!suggestionCount}
-                              >
-                                Apply
-                              </CanvasButton>
-                            </div>
-                          </div>
-                    </aside>
-                    ) : null}
+                          </aside>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </Panel>
-
+              </div>
             </div>
+
+            <CollapsibleDrawer
+              isOpen={versionsDrawer.isOpen}
+              onToggle={versionsDrawer.toggle}
+              height="180px"
+              collapsedHeight="48px"
+              position="bottom"
+              displayMode={versionsDrawer.displayMode}
+              showToggle={false}
+            >
+              <VersionsPanel
+                versions={versionsForPanel}
+                selectedVersionId={selectedVersionId}
+                onSelectVersion={handleSelectVersion}
+                onCreateVersion={handleCreateVersion}
+                isCompact={!versionsDrawer.isOpen}
+                onExpandDrawer={versionsDrawer.open}
+                onCollapseDrawer={versionsDrawer.close}
+                layout="horizontal"
+              />
+            </CollapsibleDrawer>
           </div>
-        </div>
 
-          <CollapsibleDrawer
-            isOpen={versionsDrawer.isOpen}
-            onToggle={versionsDrawer.toggle}
-            height="180px"
-            collapsedHeight="40px"
-            position="bottom"
-            displayMode={versionsDrawer.displayMode}
-            showToggle={false}
-          >
-            <VersionsPanel
-              versions={versionsForPanel}
-              selectedVersionId={selectedVersionId}
-              onSelectVersion={handleSelectVersion}
-              onCreateVersion={handleCreateVersion}
-              isCompact={!versionsDrawer.isOpen}
-              onExpandDrawer={versionsDrawer.open}
-              onCollapseDrawer={versionsDrawer.close}
-              layout="horizontal"
-            />
-          </CollapsibleDrawer>
-        </div>
-
-        {/* Right Rail - Generations */}
-        <div 
-          className="hidden min-h-0 flex-col border-l border-border pl-4 lg:flex"
-          style={{ flex: '55 1 0%', minWidth: '350px' }}
-        >
-          <GenerationsPanel
-            prompt={normalizedDisplayedPrompt ?? ''}
-            promptVersionId={promptVersionId}
-            aspectRatio={effectiveAspectRatio ?? '16:9'}
-            duration={durationSeconds ?? undefined}
-            fps={fpsNumber ?? undefined}
-            generationParams={generationParams ?? undefined}
-            initialGenerations={activeVersion?.generations ?? undefined}
-            onGenerationsChange={handleGenerationsChange}
+          <div
+            className="bg-border/10 hidden w-px self-stretch lg:block"
+            aria-hidden="true"
           />
-        </div>
+
+          {/* Right Rail - Generations */}
+          <div className="lg:min-w-88 hidden min-h-0 flex-1 flex-col lg:flex lg:flex-[11]">
+            <GenerationsPanel
+              prompt={normalizedDisplayedPrompt ?? ''}
+              promptVersionId={promptVersionId}
+              aspectRatio={effectiveAspectRatio ?? '16:9'}
+              duration={durationSeconds ?? undefined}
+              fps={fpsNumber ?? undefined}
+              generationParams={generationParams ?? undefined}
+              initialGenerations={activeVersion?.generations ?? undefined}
+              onGenerationsChange={handleGenerationsChange}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-2 p-ps-3 lg:hidden">
+      <div className="border-border bg-surface-2 p-ps-3 fixed bottom-0 left-0 right-0 z-40 border-t lg:hidden">
         <div className="flex items-center gap-3">
           <CanvasButton
             type="button"
@@ -1690,7 +1854,7 @@ export function PromptCanvas({
       <Sheet open={generationsSheetOpen} onOpenChange={setGenerationsSheetOpen}>
         <SheetContent
           side="bottom"
-          className="h-[85vh] overflow-auto border-0 bg-transparent p-ps-3 shadow-none [&>button]:hidden"
+          className="p-ps-3 h-[85vh] overflow-auto border-0 bg-transparent shadow-none [&>button]:hidden"
         >
           <GenerationsPanel
             prompt={normalizedDisplayedPrompt ?? ''}
@@ -1705,17 +1869,21 @@ export function PromptCanvas({
           />
         </SheetContent>
       </Sheet>
-	      {showDiff && (
-	        <Dialog open={showDiff} onOpenChange={setShowDiff}>
-	          <DialogContent className="w-full max-w-5xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
-	            <div className="flex items-center justify-between border-b border-border p-4">
+      {showDiff && (
+        <Dialog open={showDiff} onOpenChange={setShowDiff}>
+          <DialogContent className="border-border bg-surface-3 w-full max-w-5xl gap-0 rounded-xl border p-0 shadow-lg [&>button]:hidden">
+            <div className="border-border flex items-center justify-between border-b p-4">
               <div>
-                <div className="text-body-lg font-semibold text-foreground">Diff</div>
-                <div className="mt-1 text-meta text-muted">Input vs optimized output</div>
+                <div className="text-body-lg text-foreground font-semibold">
+                  Diff
+                </div>
+                <div className="text-meta text-muted mt-1">
+                  Input vs optimized output
+                </div>
               </div>
               <CanvasButton
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                className="border-border text-muted hover:bg-surface-2 hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors"
                 onClick={() => setShowDiff(false)}
                 aria-label="Close diff"
               >
@@ -1723,15 +1891,19 @@ export function PromptCanvas({
               </CanvasButton>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-surface-2 p-ps-3">
-                <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Input</div>
-                <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
+              <div className="border-border bg-surface-2 p-ps-3 rounded-lg border">
+                <div className="text-label-sm text-muted font-semibold uppercase tracking-widest">
+                  Input
+                </div>
+                <pre className="text-body-sm text-muted mt-3 whitespace-pre-wrap font-mono">
                   {inputPrompt || '—'}
                 </pre>
               </div>
-              <div className="rounded-lg border border-border bg-surface-2 p-ps-3">
-                <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Optimized</div>
-                <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
+              <div className="border-border bg-surface-2 p-ps-3 rounded-lg border">
+                <div className="text-label-sm text-muted font-semibold uppercase tracking-widest">
+                  Optimized
+                </div>
+                <pre className="text-body-sm text-muted mt-3 whitespace-pre-wrap font-mono">
                   {normalizedDisplayedPrompt || '—'}
                 </pre>
               </div>

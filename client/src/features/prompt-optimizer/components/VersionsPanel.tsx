@@ -1,5 +1,12 @@
 import React from 'react';
-import { CaretDown, CaretLeft, CaretUp, Icon, List, Plus } from '@promptstudio/system/components/ui';
+import {
+  CaretDown,
+  CaretLeft,
+  CaretUp,
+  Icon,
+  List,
+  Plus,
+} from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { VersionRow, type VersionEntry } from './VersionRow';
 
@@ -36,13 +43,17 @@ export const VersionsPanel = ({
   layout = 'vertical',
 }: VersionsPanelProps): React.ReactElement => {
   const orderedVersions = versions ?? [];
-  const fallbackId = orderedVersions[0] ? resolveEntryId(orderedVersions[0]) : null;
+  const fallbackId = orderedVersions[0]
+    ? resolveEntryId(orderedVersions[0])
+    : null;
   const resolvedSelectedId = selectedVersionId || fallbackId || '';
   const currentVersion =
     orderedVersions.find((entry) => {
       const entryId = resolveEntryId(entry);
       return entryId && entryId === resolvedSelectedId;
-    }) ?? orderedVersions[0] ?? null;
+    }) ??
+    orderedVersions[0] ??
+    null;
   const versionCount = orderedVersions.length;
 
   // Horizontal layout (bottom drawer)
@@ -54,29 +65,25 @@ export const VersionsPanel = ({
       return (
         <button
           type="button"
-          className="group flex h-full w-full items-center justify-between gap-4 rounded-t-xl border border-border bg-surface-2 px-4 text-left shadow-sm hover:bg-surface-3 transition-colors"
+          className="gap-ps-3 border-border bg-surface-2 px-ps-4 hover:bg-surface-3 group flex h-full w-full items-center justify-between rounded-t-xl border text-left shadow-sm transition-colors"
           onClick={onExpandDrawer}
           title={compactLabel}
           aria-label={compactLabel}
         >
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center">
-              <Icon icon={List} size="md" weight="bold" aria-hidden="true" className="text-muted" />
-              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-app">
-                {versionCount}
-              </span>
-            </div>
-            <span className="text-label-sm text-muted">
-              {versionCount} version{versionCount === 1 ? '' : 's'}
+          <div className="gap-ps-3 flex min-w-0 items-center">
+            <span className="border-border bg-surface-3 text-label-sm text-foreground inline-flex items-center rounded-md border px-2 py-1 font-semibold">
+              v{versionCount}
             </span>
             {currentVersion ? (
-              <span className="text-label-sm text-foreground font-medium">
-                • {currentVersion.label ?? 'Current'}
+              <span className="text-label-sm text-muted min-w-0 truncate">
+                {currentVersion.label ?? 'Current'}
               </span>
-            ) : null}
+            ) : (
+              <span className="text-label-sm text-muted">Versions</span>
+            )}
           </div>
           <span
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-3 text-muted transition-colors group-hover:text-foreground"
+            className="border-border bg-surface-3 text-muted group-hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors"
             title="Toggle versions (`)"
           >
             <Icon icon={CaretUp} size="sm" weight="bold" aria-hidden="true" />
@@ -87,12 +94,16 @@ export const VersionsPanel = ({
 
     // Expanded horizontal filmstrip
     return (
-      <aside className="flex h-full w-full flex-col overflow-hidden rounded-t-xl border border-border bg-surface-2">
+      <aside className="border-border bg-surface-2 flex h-full w-full flex-col overflow-hidden rounded-t-xl border">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+        <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-2">
           <div className="flex items-center gap-3">
-            <div className="text-body-sm font-semibold text-foreground">Versions</div>
-            <span className="text-label-12 text-muted">{versionCount} snapshots</span>
+            <div className="text-body-sm text-foreground font-semibold">
+              Versions
+            </div>
+            <span className="text-label-12 text-muted">
+              {versionCount} snapshots
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -114,7 +125,12 @@ export const VersionsPanel = ({
                 aria-label="Collapse versions panel"
                 title="Toggle versions (`)"
               >
-                <Icon icon={CaretDown} size="sm" weight="bold" aria-hidden="true" />
+                <Icon
+                  icon={CaretDown}
+                  size="sm"
+                  weight="bold"
+                  aria-hidden="true"
+                />
               </Button>
             ) : null}
           </div>
@@ -122,7 +138,7 @@ export const VersionsPanel = ({
 
         {/* Horizontal scrolling filmstrip */}
         {orderedVersions.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-label-12 text-muted">
+          <div className="text-label-12 text-muted flex flex-1 items-center justify-center">
             No versions yet
           </div>
         ) : (
@@ -162,26 +178,38 @@ export const VersionsPanel = ({
     return (
       <button
         type="button"
-        className="group flex h-full w-12 flex-col items-center gap-4 rounded-xl border border-border bg-surface-2 py-4 text-left shadow-sm"
+        className="border-border bg-surface-2 group flex h-full w-12 flex-col items-center gap-4 rounded-xl border py-4 text-left shadow-sm"
         onClick={onExpandDrawer}
         title={compactLabel}
         aria-label={compactLabel}
       >
         <span
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-3 text-muted transition-colors group-hover:text-foreground"
+          className="border-border bg-surface-3 text-muted group-hover:text-foreground inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors"
           title="Toggle versions ([)"
         >
-          <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" className="rotate-180" />
+          <Icon
+            icon={CaretLeft}
+            size="sm"
+            weight="bold"
+            aria-hidden="true"
+            className="rotate-180"
+          />
         </span>
         <div className="relative flex items-center justify-center">
-          <Icon icon={List} size="md" weight="bold" aria-hidden="true" className="text-muted" />
-          <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-app">
+          <Icon
+            icon={List}
+            size="md"
+            weight="bold"
+            aria-hidden="true"
+            className="text-muted"
+          />
+          <span className="bg-accent text-app absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
             {versionCount}
           </span>
         </div>
         {currentVersion ? (
           <span
-            className="h-2 w-2 rounded-full bg-accent ring-2 ring-accent/30"
+            className="bg-accent ring-accent/30 h-2 w-2 rounded-full ring-2"
             title={currentVersion.label ?? 'Current version'}
           />
         ) : null}
@@ -190,12 +218,16 @@ export const VersionsPanel = ({
   }
 
   return (
-    <aside className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-2">
+    <aside className="border-border bg-surface-2 flex h-full flex-col overflow-hidden rounded-xl border">
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-body-lg font-semibold text-foreground">Versions</div>
-            <div className="mt-1 text-label-12 text-muted">Prompt snapshots</div>
+            <div className="text-body-lg text-foreground font-semibold">
+              Versions
+            </div>
+            <div className="text-label-12 text-muted mt-1">
+              Prompt snapshots
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -217,14 +249,19 @@ export const VersionsPanel = ({
                 aria-label="Collapse versions panel"
                 title="Toggle versions ([)"
               >
-                <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" />
+                <Icon
+                  icon={CaretLeft}
+                  size="sm"
+                  weight="bold"
+                  aria-hidden="true"
+                />
               </Button>
             ) : null}
           </div>
         </div>
       </div>
       {orderedVersions.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-label-12 text-muted">
+        <div className="text-label-12 text-muted flex flex-1 items-center justify-center">
           No versions yet
         </div>
       ) : (

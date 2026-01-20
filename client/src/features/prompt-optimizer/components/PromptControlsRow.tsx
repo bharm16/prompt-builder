@@ -1,6 +1,17 @@
 import React, { useCallback, useMemo } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@promptstudio/system/components/ui/select';
-import { FilmSlate, Icon, Robot, Ruler, VideoCamera } from '@promptstudio/system/components/ui';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@promptstudio/system/components/ui/select';
+import {
+  FilmSlate,
+  Icon,
+  Robot,
+  Ruler,
+  VideoCamera,
+} from '@promptstudio/system/components/ui';
 import { usePromptState } from '../context/PromptStateContext';
 import { useCapabilities } from '../hooks/useCapabilities';
 import { useModelRegistry } from '../hooks/useModelRegistry';
@@ -10,7 +21,10 @@ import { cn } from '@/utils/cn';
 
 type PromptControlsRowProps = {
   className?: string;
-  onModelChange?: (nextModel: string, previousModel: string | undefined) => void;
+  onModelChange?: (
+    nextModel: string,
+    previousModel: string | undefined
+  ) => void;
 };
 
 export function PromptControlsRow({
@@ -26,7 +40,9 @@ export function PromptControlsRow({
     promptOptimizer,
   } = usePromptState();
   const showVideoPreview = selectedMode === 'video';
-  const isOptimizing = Boolean(promptOptimizer.isProcessing || promptOptimizer.isRefining);
+  const isOptimizing = Boolean(
+    promptOptimizer.isProcessing || promptOptimizer.isRefining
+  );
   const { schema } = useCapabilities(selectedModel);
   const { models: registryModels } = useModelRegistry();
 
@@ -50,17 +66,24 @@ export function PromptControlsRow({
 
       if (!state.available || state.disabled) return null;
 
-      const allowedValues = field.type === 'enum'
-        ? state.allowedValues ?? field.values ?? []
-        : [];
+      const allowedValues =
+        field.type === 'enum'
+          ? (state.allowedValues ?? field.values ?? [])
+          : [];
 
       return { field, allowedValues };
     },
     [schema, generationParams]
   );
 
-  const aspectRatioInfo = useMemo(() => getFieldInfo('aspect_ratio'), [getFieldInfo]);
-  const durationInfo = useMemo(() => getFieldInfo('duration_s'), [getFieldInfo]);
+  const aspectRatioInfo = useMemo(
+    () => getFieldInfo('aspect_ratio'),
+    [getFieldInfo]
+  );
+  const durationInfo = useMemo(
+    () => getFieldInfo('duration_s'),
+    [getFieldInfo]
+  );
   const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
 
   const handleParamChange = useCallback(
@@ -107,7 +130,7 @@ export function PromptControlsRow({
           <SelectTrigger
             size="xs"
             variant="ghost"
-            className="h-[40px] w-[40px] justify-center rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
+            className="h-ps-10 w-ps-10 text-muted hover:bg-surface-2 hover:text-foreground justify-center rounded-lg px-0 transition-colors [&>svg:last-child]:hidden"
             aria-label={`${ariaLabel}: ${currentDisplay}`}
             title={`${ariaLabel}: ${currentDisplay}`}
           >
@@ -145,23 +168,30 @@ export function PromptControlsRow({
     return null;
   }
 
-  const modelValue = selectedModel && selectedModel.trim() ? selectedModel : 'auto';
+  const modelValue =
+    selectedModel && selectedModel.trim() ? selectedModel : 'auto';
   const modelLabel =
     modelValue === 'auto'
       ? 'Auto'
-      : modelOptions.find((opt) => opt.id === modelValue)?.label ?? modelValue;
+      : (modelOptions.find((opt) => opt.id === modelValue)?.label ??
+        modelValue);
 
   return (
-    <div className={cn('flex flex-nowrap items-center gap-[2px]', className)} aria-label="Prompt controls">
+    <div
+      className={cn('flex flex-nowrap items-center gap-1', className)}
+      aria-label="Prompt controls"
+    >
       <Select
         value={modelValue}
-        onValueChange={(value) => handleModelSelect(value === 'auto' ? '' : value)}
+        onValueChange={(value) =>
+          handleModelSelect(value === 'auto' ? '' : value)
+        }
         disabled={isOptimizing}
       >
         <SelectTrigger
           size="xs"
           variant="ghost"
-          className="h-[40px] w-[40px] justify-center rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 [&>svg:last-child]:hidden"
+          className="h-ps-10 w-ps-10 text-muted hover:bg-surface-2 hover:text-foreground justify-center rounded-lg px-0 transition-colors [&>svg:last-child]:hidden"
           aria-label={`Model: ${modelLabel}`}
           title={`Model: ${modelLabel}`}
         >
@@ -177,14 +207,28 @@ export function PromptControlsRow({
         </SelectContent>
       </Select>
 
-      <div className="w-px h-full bg-[rgb(41,44,50)] mx-1.5"></div>
+      <div className="mx-ps-2 h-ps-6 bg-border/20 w-px" aria-hidden="true" />
 
       {aspectRatioInfo &&
-        renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', Ruler, isOptimizing)}
+        renderDropdown(
+          aspectRatioInfo,
+          'aspect_ratio',
+          'Aspect ratio',
+          Ruler,
+          isOptimizing
+        )}
 
-      {durationInfo && renderDropdown(durationInfo, 'duration_s', 'Duration', FilmSlate, isOptimizing)}
+      {durationInfo &&
+        renderDropdown(
+          durationInfo,
+          'duration_s',
+          'Duration',
+          FilmSlate,
+          isOptimizing
+        )}
 
-      {fpsInfo && renderDropdown(fpsInfo, 'fps', 'Frame rate', VideoCamera, isOptimizing)}
+      {fpsInfo &&
+        renderDropdown(fpsInfo, 'fps', 'Frame rate', VideoCamera, isOptimizing)}
     </div>
   );
 }

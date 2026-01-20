@@ -16,7 +16,10 @@ import { sanitizeText } from '@/features/span-highlighting';
 import { cn } from '@/utils/cn';
 
 type PromptTopBarProps = {
-  onOptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+  onOptimize: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions
+  ) => Promise<void>;
 };
 
 const iconSizes = {
@@ -26,7 +29,9 @@ const iconSizes = {
 /**
  * PromptTopBar - Midjourney-style prompt bar
  */
-export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElement | null => {
+export const PromptTopBar = ({
+  onOptimize,
+}: PromptTopBarProps): React.ReactElement | null => {
   const {
     showHistory,
     setShowHistory,
@@ -47,7 +52,9 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [originalInputPrompt, setOriginalInputPrompt] = useState('');
-  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(undefined);
+  const [originalSelectedModel, setOriginalSelectedModel] = useState<
+    string | undefined
+  >(undefined);
 
   const {
     inputPrompt,
@@ -62,7 +69,10 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
   const timeLabel = useMemo(
     () =>
       typeof outputLastSavedAt === 'number'
-        ? new Date(outputLastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        ? new Date(outputLastSavedAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
         : null,
     [outputLastSavedAt]
   );
@@ -89,7 +99,9 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
   const handleInputPromptChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
       const updatedPrompt = sanitizeText(event.target.value);
-      debug.logAction('inputPromptEdit', { promptLength: updatedPrompt.length });
+      debug.logAction('inputPromptEdit', {
+        promptLength: updatedPrompt.length,
+      });
       setInputPrompt(updatedPrompt);
     },
     [debug, setInputPrompt]
@@ -130,7 +142,12 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
     setIsEditing(false);
     setOriginalInputPrompt('');
     setOriginalSelectedModel(undefined);
-  }, [originalInputPrompt, originalSelectedModel, setInputPrompt, setSelectedModel]);
+  }, [
+    originalInputPrompt,
+    originalSelectedModel,
+    setInputPrompt,
+    setSelectedModel,
+  ]);
 
   const handleUpdate = useCallback((): void => {
     if (isProcessing || isRefining) {
@@ -139,9 +156,11 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
     debug.logAction('reoptimize', { promptLength: inputPrompt.length });
     const promptChanged = inputPrompt !== originalInputPrompt;
     const modelChanged =
-      typeof originalSelectedModel === 'string' && originalSelectedModel !== selectedModel;
+      typeof originalSelectedModel === 'string' &&
+      originalSelectedModel !== selectedModel;
     const genericPrompt =
-      typeof genericOptimizedPrompt === 'string' && genericOptimizedPrompt.trim()
+      typeof genericOptimizedPrompt === 'string' &&
+      genericOptimizedPrompt.trim()
         ? genericOptimizedPrompt
         : null;
 
@@ -195,28 +214,36 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
   );
 
   return (
-    <header className="relative z-40 flex w-full items-center justify-center" role="banner">
+    <header
+      className="relative z-40 flex w-full items-center justify-center"
+      role="banner"
+    >
       <div
         className={cn(
-          'mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-center gap-2 px-ps-4',
+          'px-ps-4 mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-center gap-2',
           isOptimizing && 'opacity-70'
         )}
       >
-        <div className="flex w-full max-w-[832px] h-[54px] flex-1 items-center gap-ps-2 rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]">
+        <div className="gap-ps-2 ps-glass flex h-14 w-full max-w-4xl flex-1 items-center rounded-xl shadow-sm">
           <Button
             type="button"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
-            variant="ghost"
-            className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
+            variant="canvas"
+            size="icon-lg"
           >
-            <Icon icon={SidebarSimple} size={24} weight="bold" aria-hidden="true" />
+            <Icon
+              icon={SidebarSimple}
+              size={24}
+              weight="bold"
+              aria-hidden="true"
+            />
           </Button>
 
           {saveLabel ? (
             <div
-              className="flex h-ps-6 items-center"
+              className="h-ps-6 flex items-center"
               title={saveLabel}
               aria-label={saveLabel}
               data-state={outputSaveState}
@@ -224,16 +251,19 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
               <span
                 className={cn(
                   'h-ps-2 w-ps-2 rounded-full',
-                  outputSaveState === 'saving' && 'bg-accent ring-2 ring-accent/10',
-                  outputSaveState === 'error' && 'bg-error ring-2 ring-error/10',
-                  outputSaveState === 'saved' && 'bg-success ring-2 ring-success/10'
+                  outputSaveState === 'saving' &&
+                    'bg-accent ring-accent/10 ring-2',
+                  outputSaveState === 'error' &&
+                    'bg-error ring-error/10 ring-2',
+                  outputSaveState === 'saved' &&
+                    'bg-success ring-success/10 ring-2'
                 )}
                 aria-hidden="true"
               />
             </div>
           ) : null}
 
-          <div className="flex min-w-[300px] flex-1 items-center">
+          <div className="flex min-w-72 flex-1 items-center">
             <label htmlFor="prompt-topbar-input" className="ps-sr-only">
               Input prompt
             </label>
@@ -247,7 +277,7 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
               readOnly={isInputLocked}
               rows={1}
               wrap="off"
-              className="h-auto min-h-0 w-full resize-none overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-0 bg-transparent px-ps-3 py-[14px] text-[16px] leading-[24px] text-[rgb(235,236,239)] placeholder:text-faint focus-visible:ring-0 focus-visible:ring-offset-0 ps-scrollbar-hide"
+              className="px-ps-3 py-ps-3 text-body-lg text-foreground placeholder:text-faint ps-scrollbar-hide h-full min-h-0 w-full resize-none overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               aria-label="Original prompt input"
               aria-readonly={isInputLocked}
               aria-busy={isOptimizing}
@@ -261,21 +291,21 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
               disabled={isOptimizing}
               aria-label="Edit prompt"
               title="Edit prompt"
-              variant="ghost"
-              className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
+              variant="canvas"
+              size="icon-lg"
             >
               <Pencil size={24} />
             </Button>
           ) : (
-            <div className="flex items-start gap-ps-2">
+            <div className="gap-ps-2 flex items-start">
               <Button
                 type="button"
                 onClick={handleCancel}
                 disabled={isOptimizing}
                 aria-label="Cancel editing"
                 title="Cancel editing"
-                variant="ghost"
-                className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
+                variant="canvas"
+                size="icon-lg"
               >
                 <X size={24} />
               </Button>
@@ -283,10 +313,10 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
                 type="button"
                 onClick={handleUpdate}
                 disabled={isReoptimizeDisabled}
-                variant="ghost"
+                variant="canvas"
+                size="icon-lg"
                 aria-label="Update prompt"
                 title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                className="h-[40px] w-[40px] px-2 py-1.5 transition-colors hover:bg-white/5"
               >
                 <Check size={24} />
               </Button>
@@ -295,7 +325,7 @@ export const PromptTopBar = ({ onOptimize }: PromptTopBarProps): React.ReactElem
         </div>
 
         <PromptControlsRow
-          className="flex-shrink-0 items-center gap-[2px] h-[53px] rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] px-[6px] shadow-[0px_7px_21px_0px_rgba(51,51,51,0.05)]"
+          className="ps-glass px-ps-2 h-14 flex-shrink-0 rounded-xl shadow-sm"
           onModelChange={handleModelChange}
         />
       </div>
