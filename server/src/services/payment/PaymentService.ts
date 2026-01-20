@@ -94,6 +94,13 @@ export class PaymentService {
     return this.stripe;
   }
 
+  private async resolveCheckoutMode(priceId: string): Promise<'subscription' | 'payment'> {
+    const stripe = this.getStripe();
+    const price = await stripe.prices.retrieve(priceId);
+    const isRecurring = price.type === 'recurring' || Boolean(price.recurring);
+    return isRecurring ? 'subscription' : 'payment';
+  }
+
   public isPriceIdConfigured(priceId: string): boolean {
     const credits = this.priceCredits[priceId];
     return typeof credits === 'number' && Number.isFinite(credits) && credits > 0;
@@ -170,6 +177,7 @@ export class PaymentService {
     try {
       const credits = this.getCreditsForPriceId(priceId);
       const stripe = this.getStripe();
+      const mode = await this.resolveCheckoutMode(priceId);
       const session = await stripe.checkout.sessions.create({
         ...(customerId ? { customer: customerId } : {}),
         payment_method_types: ['card', 'link'],
@@ -179,15 +187,19 @@ export class PaymentService {
             quantity: 1,
           },
         ],
-        mode: 'subscription',
+        mode,
         success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${returnUrl}?canceled=true`,
         client_reference_id: userId,
-        subscription_data: {
-          metadata: {
-            userId,
-          },
-        },
+        ...(mode === 'subscription'
+          ? {
+              subscription_data: {
+                metadata: {
+                  userId,
+                },
+              },
+            }
+          : {}),
         metadata: {
           userId,
           creditAmount: String(credits),

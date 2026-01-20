@@ -11,6 +11,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { useUserCreditBalance } from '@hooks/useUserCreditBalance';
 import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@/features/billing/subscriptionTiers';
+import { CREDIT_PACKS } from '@/features/billing/creditPacks';
 import { AuthShell } from './auth/AuthShell';
 
 function formatInteger(value: number): string {
@@ -53,15 +54,15 @@ export function BillingPage(): React.ReactElement {
     return `/signin?redirect=${redirect}`;
   }, [location.pathname, location.search]);
 
-  const handleSubscribe = async (tier: SubscriptionTier): Promise<void> => {
+  const handleCheckout = async (priceId: string): Promise<void> => {
     if (!user) {
       toast.error('Sign in to manage billing.');
       return;
     }
 
-    setIsBusy(tier.priceId);
+    setIsBusy(priceId);
     try {
-      const response = await apiClient.post('/api/payment/checkout', { priceId: tier.priceId });
+      const response = await apiClient.post('/api/payment/checkout', { priceId });
       const redirectUrl = (response as { url?: string }).url;
 
       if (!redirectUrl) {
@@ -73,12 +74,16 @@ export function BillingPage(): React.ReactElement {
       const info = sanitizeError(error);
       log.error('Checkout failed', error instanceof Error ? error : new Error(info.message), {
         operation: 'checkout',
-        priceId: tier.priceId,
+        priceId,
       });
       toast.error('Checkout failed. Billing may not be configured.');
     } finally {
       setIsBusy(null);
     }
+  };
+
+  const handleSubscribe = async (tier: SubscriptionTier): Promise<void> => {
+    await handleCheckout(tier.priceId);
   };
 
   const handleOpenPortal = async (): Promise<void> => {
@@ -300,8 +305,60 @@ export function BillingPage(): React.ReactElement {
           </div>
 
           <p className="mt-4 text-[12px] leading-relaxed text-white/45">
-            Subscriptions are processed by Stripe. Credits are granted on successful invoice payment. For changes or cancellations,
-            contact support.
+            Subscriptions are processed by Stripe. Credits are granted on successful invoice payment. Image previews cost 1 credit per
+            image. For changes or cancellations, contact support.
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight text-white">Credit packs</h2>
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-white/50">ONE-TIME</p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {CREDIT_PACKS.map((pack) => (
+              <div
+                key={pack.priceId}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[15px] font-semibold text-white">{pack.name}</p>
+                    <p className="mt-1 text-[13px] leading-snug text-white/60">
+                      {pack.description}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-semibold text-white tabular-nums">{pack.price}</p>
+                    <p className="mt-1 text-[12px] text-white/60 tabular-nums">
+                      {formatInteger(pack.credits)} credits
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={() => handleCheckout(pack.priceId)}
+                    disabled={!user || isBusy !== null}
+                    variant="ghost"
+                    className={cn(
+                      'h-10 w-full rounded-[12px]',
+                      'border border-white/10 bg-black/30',
+                      'text-[13px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white',
+                      'disabled:cursor-not-allowed disabled:opacity-60'
+                    )}
+                  >
+                    {isBusy === pack.priceId ? 'Redirecting…' : 'Buy credits'}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-[12px] leading-relaxed text-white/45">
+            Credit packs are one-time purchases and add credits immediately after checkout confirmation.
           </p>
         </div>
       </div>

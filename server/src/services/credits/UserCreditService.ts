@@ -17,11 +17,7 @@ export class UserCreditService {
         const snapshot = await transaction.get(userRef);
 
         if (!snapshot.exists) {
-          transaction.set(userRef, {
-            credits: 100,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-          return true;
+          return false;
         }
 
         const data = snapshot.data();

@@ -37,7 +37,7 @@ export const buildGeneration = (
     promptVersionId: params.promptVersionId ?? null,
     createdAt: Date.now(),
     completedAt: null,
-    estimatedCost: config?.cost ?? null,
+    estimatedCost: config?.credits ?? null,
     actualCost: null,
     aspectRatio: params.aspectRatio ?? null,
     duration: params.duration ?? null,

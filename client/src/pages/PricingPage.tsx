@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS } from '@/features/billing/subscriptionTiers';
+import { CREDIT_PACKS } from '@/features/billing/creditPacks';
 import { MarketingPage } from './MarketingPage';
 import { Card } from '@promptstudio/system/components/ui/card';
 
@@ -162,6 +163,39 @@ export function PricingPage(): React.ReactElement {
         </div>
       </div>
 
+      <Card className="mt-6 p-6">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-foreground">Credit packs</h3>
+            <span className="text-[11px] font-semibold tracking-[0.22em] text-muted">
+              ONE-TIME
+            </span>
+          </div>
+          <p className="text-[13px] leading-relaxed text-muted">
+            Need more credits mid-cycle? Top up with a one-time pack and keep shipping.
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-4">
+            {CREDIT_PACKS.map((pack) => (
+              <div
+                key={pack.priceId}
+                className="rounded-lg border border-border bg-surface-1 p-4"
+              >
+                <p className="text-[13px] font-semibold text-foreground">{pack.name}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground tabular-nums">
+                  {pack.price}
+                </p>
+                <p className="mt-1 text-[12px] text-muted">
+                  {pack.credits.toLocaleString()} credits
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[12px] leading-relaxed text-muted">
+            Image previews cost 1 credit per image. Packs are applied after checkout completes.
+          </p>
+        </div>
+      </Card>
+
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {[
           {
@@ -194,18 +228,24 @@ export function PricingPage(): React.ReactElement {
                 Yes — billing attaches to your account so credits sync and purchases are recoverable.
               </p>
             </div>
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">Where do credits show up?</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-muted">
-                In the app after the invoice is paid. If you don’t see them, reach out via{' '}
-                <Link to="/contact" className="text-foreground hover:underline font-medium">
-                  support
-                </Link>
-                .
-              </p>
-            </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Where do credits show up?</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              In the app after the invoice is paid. If you don’t see them, reach out via{' '}
+              <Link to="/contact" className="text-foreground hover:underline font-medium">
+                support
+              </Link>
+              .
+            </p>
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">How much do previews cost?</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              Image previews cost 1 credit per image. Wan video previews cost 5 credits.
+            </p>
           </div>
         </div>
+      </div>
       </Card>
     </MarketingPage>
   );

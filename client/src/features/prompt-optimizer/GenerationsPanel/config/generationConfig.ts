@@ -2,7 +2,7 @@ import type { GenerationMediaType } from '../types';
 
 type ModelConfig = {
   label: string;
-  cost: number;
+  credits: number;
   eta: string;
   mediaType: GenerationMediaType;
   frameCount?: number;
@@ -11,25 +11,25 @@ type ModelConfig = {
 export const DRAFT_MODELS: Record<string, ModelConfig> = {
   'flux-kontext': {
     label: 'Kontext',
-    cost: 8,
+    credits: 4,
     eta: '20s',
     mediaType: 'image-sequence',
     frameCount: 4,
   },
   'wan-2.2': {
     label: 'WAN 2.2',
-    cost: 18,
+    credits: 5,
     eta: '45s',
     mediaType: 'video',
   },
 };
 
 export const RENDER_MODELS: Record<string, ModelConfig> = {
-  sora: { label: 'Sora', cost: 320, eta: '2-4m', mediaType: 'video' },
-  veo: { label: 'Veo', cost: 260, eta: '2-3m', mediaType: 'video' },
-  runway: { label: 'Runway', cost: 140, eta: '90s', mediaType: 'video' },
-  kling: { label: 'Kling', cost: 150, eta: '2m', mediaType: 'video' },
-  luma: { label: 'Luma', cost: 120, eta: '75s', mediaType: 'video' },
+  sora: { label: 'Sora', credits: 80, eta: '2-4m', mediaType: 'video' },
+  veo: { label: 'Veo', credits: 30, eta: '2-3m', mediaType: 'video' },
+  runway: { label: 'Runway', credits: 40, eta: '90s', mediaType: 'video' },
+  kling: { label: 'Kling', credits: 35, eta: '2m', mediaType: 'video' },
+  luma: { label: 'Luma', credits: 40, eta: '75s', mediaType: 'video' },
 };
 
 export const getModelConfig = (modelId: string): ModelConfig | null => {
@@ -38,13 +38,12 @@ export const getModelConfig = (modelId: string): ModelConfig | null => {
   return null;
 };
 
-export const formatCost = (cents?: number | null): string => {
-  if (cents === null || cents === undefined || Number.isNaN(cents)) return '—';
-  const dollars = cents / 100;
-  if (dollars < 1) return `$${dollars.toFixed(2)}`;
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-    dollars
+export const formatCredits = (credits?: number | null): string => {
+  if (credits === null || credits === undefined || Number.isNaN(credits)) return '—';
+  const formatted = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
+    credits
   );
+  return `${formatted} credit${credits === 1 ? '' : 's'}`;
 };
 
 export const formatRelativeTime = (timestamp?: number | string | null): string => {

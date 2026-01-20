@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
+import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/StoryboardPreviewService';
 import type { ImagePreviewSpeedMode } from '@services/image-generation/providers/types';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageStoryboardGenerateServices = Pick<
   PreviewRoutesServices,
-  'storyboardPreviewService'
+  'storyboardPreviewService' | 'userCreditService'
 >;
 
 const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
@@ -15,9 +16,11 @@ const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
   'Extra Juiced',
   'Real Time',
 ]);
+const IMAGE_PREVIEW_CREDIT_COST = 1;
 
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
+  userCreditService,
 }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
@@ -90,6 +93,38 @@ export const createImageStoryboardGenerateHandler = ({
     }
 
     const userId = await getAuthenticatedUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        message: 'You must be logged in to generate storyboard previews.',
+      });
+    }
+
+    if (!userCreditService) {
+      logger.error('User credit service is not available - blocking preview access', undefined, {
+        path: req.path,
+      });
+      return res.status(503).json({
+        success: false,
+        error: 'Storyboard generation service is not available',
+        message: 'Credit service is not configured',
+      });
+    }
+
+    const storyboardFrames = normalizedSeedImageUrl
+      ? Math.max(0, STORYBOARD_FRAME_COUNT - 1)
+      : STORYBOARD_FRAME_COUNT;
+    const previewCost = storyboardFrames * IMAGE_PREVIEW_CREDIT_COST;
+    const hasCredits = await userCreditService.reserveCredits(userId, previewCost);
+    if (!hasCredits) {
+      return res.status(402).json({
+        success: false,
+        error: 'Insufficient credits',
+        message: `This storyboard requires ${previewCost} credit${previewCost === 1 ? '' : 's'}.`,
+      });
+    }
+
     try {
       const result = await storyboardPreviewService.generateStoryboard({
         prompt: prompt.trim(),
@@ -109,6 +144,7 @@ export const createImageStoryboardGenerateHandler = ({
         },
       });
     } catch (error: unknown) {
+      await userCreditService.refundCredits(userId, previewCost);
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);

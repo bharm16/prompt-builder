@@ -8,7 +8,9 @@ import type {
 } from '@services/image-generation/providers/types';
 import { getAuthenticatedUserId } from '../auth';
 
-type ImageGenerateServices = Pick<PreviewRoutesServices, 'imageGenerationService'>;
+type ImageGenerateServices = Pick<PreviewRoutesServices, 'imageGenerationService' | 'userCreditService'>;
+
+const IMAGE_PREVIEW_CREDIT_COST = 1;
 
 const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
   'Lightly Juiced',
@@ -19,6 +21,7 @@ const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
 
 export const createImageGenerateHandler = ({
   imageGenerationService,
+  userCreditService,
 }: ImageGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!imageGenerationService) {
@@ -131,6 +134,35 @@ export const createImageGenerateHandler = ({
     }
 
     const userId = await getAuthenticatedUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        message: 'You must be logged in to generate image previews.',
+      });
+    }
+
+    if (!userCreditService) {
+      logger.error('User credit service is not available - blocking preview access', undefined, {
+        path: req.path,
+      });
+      return res.status(503).json({
+        success: false,
+        error: 'Image generation service is not available',
+        message: 'Credit service is not configured',
+      });
+    }
+
+    const previewCost = IMAGE_PREVIEW_CREDIT_COST;
+    const hasCredits = await userCreditService.reserveCredits(userId, previewCost);
+    if (!hasCredits) {
+      return res.status(402).json({
+        success: false,
+        error: 'Insufficient credits',
+        message: `This preview requires ${previewCost} credit${previewCost === 1 ? '' : 's'}.`,
+      });
+    }
+
     try {
       const result = await imageGenerationService.generatePreview(prompt, {
         ...(aspectRatio ? { aspectRatio } : {}),
@@ -149,6 +181,7 @@ export const createImageGenerateHandler = ({
         data: result,
       });
     } catch (error: unknown) {
+      await userCreditService.refundCredits(userId, previewCost);
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);

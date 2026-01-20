@@ -26,11 +26,11 @@ By the time you get what you wanted, you've burned through half your credits on 
 
 PromptCanvas lets you preview your video with fast, inexpensive models before committing to final generation:
 
-| Stage | Model | Cost | Time | Purpose |
-|-------|-------|------|------|--------|
-| **Image Preview** | Flux Schnell | ~$0.01 | 5-10s | Validate framing, lighting, mood |
-| **Video Preview** | Wan 2.2 | ~$0.05 | 30-60s | Test motion, pacing, camera |
-| **Final Generation** | Sora 2, Veo 3, Kling, Luma | $2-5 | 2-5min | Production-ready output |
+| Stage | Model | Credit cost | Time | Purpose |
+|-------|-------|-------------|------|--------|
+| **Image Preview** | Flux Schnell | 1 credit / image | 5-10s | Validate framing, lighting, mood |
+| **Video Preview** | Wan 2.2 | 5 credits | 30-60s | Test motion, pacing, camera |
+| **Final Generation** | Sora 2, Veo 3, Kling, Luma | 30-80 credits | 2-5min | Production-ready output |
 
 **The workflow:**
 1. **Write** → Interactive editor with semantic highlighting
@@ -134,6 +134,47 @@ npm start
 | **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
 | **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
 | **Consistency Tracking** | Suggestions respect your edit history to maintain coherence |
+
+---
+
+## Billing & Credits
+
+### Plans (monthly)
+
+| Plan | Price | Credits/month |
+|------|-------|---------------|
+| Free | $0 | n/a |
+| Explorer | $19 | 400 |
+| Creator | $59 | 1,500 |
+| Agency | $179 | 5,000 |
+
+**Plan highlights (from the pricing page):**
+- Free: Local history, core prompt optimization, upgrade anytime
+- Explorer: Priority generation queue, email support
+- Creator: Faster generations, early feature access
+- Agency: Team-ready workflows, priority support
+
+### Add-on credit packs (one-time)
+
+| Pack | Credits | Price |
+|------|---------|-------|
+| Starter Pack | 250 | $15 |
+| Booster Pack | 500 | $28 |
+| Pro Pack | 1,000 | $52 |
+| Studio Pack | 2,500 | $120 |
+
+Stripe setup: map price IDs to credit amounts via `STRIPE_PRICE_CREDITS` (include both subscriptions and packs).
+Credit packs are one-time top-ups applied after checkout completes.
+
+### Generation costs
+
+- Image previews: 1 credit per image
+- Wan previews (Draft/Pro): 5 credits
+- Final renders: Sora 2 (80), Sora 2 Pro (80), Luma Ray‑3 (40), Kling v2.1 (35), Veo 3 (30), Artistic (30), Tier 1 (15)
+- Default video cost (if model is unknown): 40 credits
+
+Credits are reserved at request time and refunded automatically if a preview or generation fails.
+Preview and generation requests require authentication; anonymous users can’t consume credits.
 
 ---
 

@@ -3,7 +3,7 @@ import type { ImageGenerationService } from '@services/image-generation/ImageGen
 import type { ImagePreviewSpeedMode } from '@services/image-generation/providers/types';
 import { StoryboardFramePlanner } from './StoryboardFramePlanner';
 
-const DEFAULT_FRAME_COUNT = 4;
+export const STORYBOARD_FRAME_COUNT = 4;
 const CONTINUITY_HEADER =
   'Continuity: preserve the same character identity, wardrobe, scene, lighting, and style. Apply only the change described.';
 
@@ -49,10 +49,10 @@ export class StoryboardPreviewService {
     const userId = request.userId ?? 'anonymous';
     const deltas = await this.storyboardFramePlanner.planDeltas(
       trimmedPrompt,
-      DEFAULT_FRAME_COUNT
+      STORYBOARD_FRAME_COUNT
     );
 
-    if (deltas.length !== DEFAULT_FRAME_COUNT - 1) {
+    if (deltas.length !== STORYBOARD_FRAME_COUNT - 1) {
       throw new Error('Storyboard planner did not return the expected number of deltas');
     }
 

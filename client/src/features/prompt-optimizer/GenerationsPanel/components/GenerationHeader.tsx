@@ -9,7 +9,7 @@ import {
 import {
   DRAFT_MODELS,
   RENDER_MODELS,
-  formatCost,
+  formatCredits,
 } from '../config/generationConfig';
 
 interface GenerationHeaderProps {
@@ -63,7 +63,7 @@ export function GenerationHeader({
               <SelectItem
                 key={id}
                 value={id}
-                title={`${config.label} • ${formatCost(config.cost)}`}
+                title={`${config.label} • ${formatCredits(config.credits)}`}
               >
                 {config.label}
               </SelectItem>
@@ -93,7 +93,7 @@ export function GenerationHeader({
               <SelectItem
                 key={id}
                 value={id}
-                title={`${config.label} • ${formatCost(config.cost)}`}
+                title={`${config.label} • ${formatCredits(config.credits)}`}
               >
                 {config.label}
               </SelectItem>
