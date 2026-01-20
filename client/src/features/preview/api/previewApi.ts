@@ -28,6 +28,10 @@ export interface GeneratePreviewResponse {
   success: boolean;
   data?: {
     imageUrl: string;
+    storagePath?: string;
+    viewUrl?: string;
+    viewUrlExpiresAt?: string;
+    sizeBytes?: number;
     metadata: {
       aspectRatio: string;
       model: string;
@@ -127,6 +131,10 @@ export async function generateStoryboardPreview(
 export interface GenerateVideoResponse {
   success: boolean;
   videoUrl?: string;
+  storagePath?: string;
+  viewUrl?: string;
+  viewUrlExpiresAt?: string;
+  sizeBytes?: number;
   jobId?: string;
   status?: VideoJobStatus;
   creditsReserved?: number;
@@ -144,6 +152,10 @@ export interface VideoJobStatusResponse {
   videoUrl?: string;
   assetId?: string;
   contentType?: string;
+  storagePath?: string;
+  viewUrl?: string;
+  viewUrlExpiresAt?: string;
+  sizeBytes?: number;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;

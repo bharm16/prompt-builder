@@ -15,6 +15,7 @@ import { createOptimizeRoutes } from './optimize.routes';
 import { createVideoRoutes } from './video.routes';
 import { createCapabilitiesRoutes } from './capabilities.routes';
 import { createEnhancementRoutes } from './enhancement.routes';
+import { createStorageRoutes } from './storage.routes';
 
 interface ApiServices {
   promptOptimizationService: any;
@@ -66,6 +67,9 @@ export function createAPIRoutes(services: ApiServices): Router {
       metricsService,
     })
   );
+
+  // Mount storage routes under /storage
+  router.use('/storage', createStorageRoutes());
 
   // Capabilities registry routes (schema-driven UI)
   router.use('/', createCapabilitiesRoutes());

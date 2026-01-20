@@ -10,8 +10,9 @@
     "#shared/*": "./shared/*"
   },
   "dependencies": {
-    "@promptstudio/system": "workspace:*",
+    "@google-cloud/storage": "^7.18.0",
     "@huggingface/transformers": "^3.8.0",
+    "@promptstudio/system": "workspace:*",
     "@sentry/node": "^10.22.0",
     "@sentry/profiling-node": "^10.22.0",
     "@sentry/react": "^10.22.0",

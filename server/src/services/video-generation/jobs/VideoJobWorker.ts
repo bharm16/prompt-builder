@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
 import type { VideoGenerationService } from '../VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import { getStorageService } from '@services/storage/StorageService';
 import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 
@@ -135,7 +136,39 @@ export class VideoJobWorker {
         job.request.prompt,
         job.request.options
       );
-      const marked = await this.jobStore.markCompleted(job.id, result);
+      let storageResult: {
+        storagePath: string;
+        viewUrl: string;
+        expiresAt: string;
+        sizeBytes: number;
+      } | null = null;
+
+      try {
+        const storage = getStorageService();
+        storageResult = await storage.saveFromUrl(job.userId, result.videoUrl, 'generation', {
+          model: job.request.options?.model,
+          creditsUsed: job.creditsReserved,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log.warn('Failed to persist generated video to storage', {
+          jobId: job.id,
+          userId: job.userId,
+          error: errorMessage,
+        });
+      }
+
+      const resultWithStorage = storageResult
+        ? {
+            ...result,
+            storagePath: storageResult.storagePath,
+            viewUrl: storageResult.viewUrl,
+            viewUrlExpiresAt: storageResult.expiresAt,
+            sizeBytes: storageResult.sizeBytes,
+          }
+        : result;
+
+      const marked = await this.jobStore.markCompleted(job.id, resultWithStorage);
       if (!marked) {
         this.log.warn('Video job completion skipped (status changed)', {
           jobId: job.id,

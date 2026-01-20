@@ -6,6 +6,7 @@ import type {
   ImagePreviewProviderSelection,
   ImagePreviewSpeedMode,
 } from '@services/image-generation/providers/types';
+import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageGenerateServices = Pick<PreviewRoutesServices, 'imageGenerationService' | 'userCreditService'>;
@@ -176,9 +177,42 @@ export const createImageGenerateHandler = ({
           : {}),
       });
 
+      let storageResult: {
+        storagePath: string;
+        viewUrl: string;
+        expiresAt: string;
+        sizeBytes: number;
+      } | null = null;
+
+      try {
+        const storage = getStorageService();
+        storageResult = await storage.saveFromUrl(userId, result.imageUrl, 'preview-image', {
+          model: result.metadata.model,
+          promptId: (req.body as { promptId?: string })?.promptId,
+          aspectRatio: result.metadata.aspectRatio,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Failed to persist preview image to storage', {
+          userId,
+          error: errorMessage,
+        });
+      }
+
+      const responseData = storageResult
+        ? {
+            ...result,
+            imageUrl: storageResult.viewUrl,
+            viewUrl: storageResult.viewUrl,
+            viewUrlExpiresAt: storageResult.expiresAt,
+            storagePath: storageResult.storagePath,
+            sizeBytes: storageResult.sizeBytes,
+          }
+        : result;
+
       return res.json({
         success: true,
-        data: result,
+        data: responseData,
       });
     } catch (error: unknown) {
       await userCreditService.refundCredits(userId, previewCost);

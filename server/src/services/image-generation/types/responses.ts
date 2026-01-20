@@ -7,6 +7,10 @@
  */
 export interface ImageGenerationResult {
   imageUrl: string;
+  storagePath?: string;
+  viewUrl?: string;
+  viewUrlExpiresAt?: string;
+  sizeBytes?: number;
   metadata: {
     aspectRatio: string;
     model: string;

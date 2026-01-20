@@ -22,6 +22,10 @@ export const VideoJobResultSchema = z.object({
   assetId: z.string(),
   videoUrl: z.string(),
   contentType: z.string(),
+  storagePath: z.string().optional(),
+  viewUrl: z.string().optional(),
+  viewUrlExpiresAt: z.string().optional(),
+  sizeBytes: z.number().optional(),
 });
 
 export const VideoJobErrorSchema = z.object({
@@ -41,4 +45,3 @@ export const VideoJobRecordSchema = z.object({
   workerId: z.string().optional(),
   leaseExpiresAtMs: z.number().optional(),
 });
-

@@ -40,6 +40,10 @@ export interface VideoGenerationResult {
   assetId: string;
   videoUrl: string;
   contentType: string;
+  storagePath?: string;
+  viewUrl?: string;
+  viewUrlExpiresAt?: string;
+  sizeBytes?: number;
 }
 
 export interface VideoProviderAvailability {

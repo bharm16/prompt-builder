@@ -82,6 +82,18 @@ export const createVideoJobsHandler = ({
       }
       response.assetId = job.result.assetId;
       response.contentType = job.result.contentType;
+      if (job.result.storagePath) {
+        response.storagePath = job.result.storagePath;
+      }
+      if (job.result.viewUrl) {
+        response.viewUrl = job.result.viewUrl;
+      }
+      if (job.result.viewUrlExpiresAt) {
+        response.viewUrlExpiresAt = job.result.viewUrlExpiresAt;
+      }
+      if (typeof job.result.sizeBytes === 'number') {
+        response.sizeBytes = job.result.sizeBytes;
+      }
     }
 
     if (job.status === 'failed') {
