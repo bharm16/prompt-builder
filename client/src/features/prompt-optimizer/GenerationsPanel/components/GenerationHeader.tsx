@@ -39,7 +39,7 @@ export function GenerationHeader({
   }, [activeDraftModel]);
 
   return (
-    <div className="border-border flex h-ps-9 items-center gap-ps-3 overflow-x-auto border-b px-ps-3">
+    <div className="flex h-ps-9 items-center gap-ps-3 overflow-x-auto px-ps-6">
       <div className="border-border flex items-center gap-2 rounded-lg border p-1">
         <Select
           value={draftValue}

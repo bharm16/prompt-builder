@@ -1347,7 +1347,7 @@ export function PromptCanvas({
                       isOutputLoading && 'opacity-80'
                     )}
                   >
-                    <div className="gap-ps-3 px-ps-3 flex h-ps-9 items-center justify-between">
+                    <div className="gap-ps-3 px-ps-6 flex h-ps-9 items-center justify-between">
                       <span className="text-label-sm text-muted">
                         Optimized Editor
                       </span>
@@ -1511,10 +1511,6 @@ export function PromptCanvas({
                         </div>
                       </div>
                     </div>
-                    <div className="px-ps-3" aria-hidden="true">
-                      <div className="ps-divider-fade" />
-                    </div>
-
                     <div className="px-ps-3 pb-ps-card pt-ps-4 flex min-h-0 flex-1 flex-col">
                       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                         <div

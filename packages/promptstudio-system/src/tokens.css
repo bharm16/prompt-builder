@@ -117,7 +117,7 @@
     /* =========================
        Layout sizing
        ========================= */
-    --ps-sidebar-width: 260px;
+    --ps-sidebar-width: 280px;
     --ps-container-sm: 640px;
     --ps-container-md: 768px;
     --ps-container-lg: 1024px;
@@ -127,7 +127,7 @@
     /* =========================
        Thumbnail sizing
        ========================= */
-    --ps-thumb-sm: 40px;
+    --ps-thumb-sm: 36px;
     --ps-thumb-md-w: 48px;
     --ps-thumb-md-h: 36px;
     --ps-thumb-lg-w: 80px;
@@ -534,7 +534,7 @@
     --ps-glass-bg: rgba(255, 255, 255, 0.05);
     --ps-glass-bg-subtle: rgba(255, 255, 255, 0.03);
     --ps-glass-border: rgba(255, 255, 255, 0.08);
-    --ps-sidebar-bg: #0a0d14;
+    --ps-sidebar-bg: #131418;
     --ps-thumb-gradient: radial-gradient(120% 120% at 20% 20%, rgba(104, 134, 255, 0.35) 0%, rgba(104, 134, 255, 0) 60%),
       linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
     --ps-thumb-gradient-muted: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);

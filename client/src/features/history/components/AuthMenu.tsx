@@ -52,7 +52,7 @@ export function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.Re
         type="button"
         onClick={() => setShowAuthMenu(!showAuthMenu)}
         variant="ghost"
-        className="w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-surface-1"
+        className="w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[rgba(255,255,255,0.05)]"
         aria-expanded={showAuthMenu}
         aria-label="User menu"
       >
@@ -60,21 +60,21 @@ export function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.Re
           <img
             src={photoURL}
             alt=""
-            className="h-7 w-7 flex-shrink-0 rounded-full"
+            className="h-9 w-9 flex-shrink-0 rounded-full"
           />
         )}
         <div className="min-w-0 flex-1 text-left">
-          <p className="truncate text-label-12 text-foreground">
+          <p className="truncate text-[13px] font-semibold text-foreground">
             {displayName}
           </p>
-          <p className="truncate text-label-12 text-muted">
+          <p className="truncate text-[12px] font-normal text-muted">
             {email}
           </p>
         </div>
       </Button>
 
       {showAuthMenu && (
-        <div className="absolute bottom-full mb-2 left-0 w-full bg-app border border-border rounded-lg shadow-md py-1">
+        <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-border bg-app py-1 shadow-md">
           <Button
             onClick={onSignOut}
             size="sm"

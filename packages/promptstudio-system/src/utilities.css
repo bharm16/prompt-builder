@@ -127,7 +127,7 @@
   .ps-thumb-frame {
     position: relative;
     overflow: hidden;
-    border-radius: var(--ps-r-sm);
+    border-radius: var(--ps-r-md);
     border: 1px solid var(--ps-border);
     background: var(--ps-surface-2);
     transition:

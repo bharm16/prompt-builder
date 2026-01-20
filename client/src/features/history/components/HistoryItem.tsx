@@ -148,53 +148,59 @@ export const HistoryItem = memo<HistoryItemProps>(({
   }
 
   const isHovering = isExternallyHovered;
-  const showAccentBar = isSelected || isHovering;
 
   return (
     <DropdownMenu open={contextOpen} onOpenChange={handleMenuOpenChange}>
       <li data-history-index={dataIndex}>
         <div
           className={cn(
-            'group relative flex items-center rounded-lg ps-card-glass ps-card-interactive',
-            (isSelected || isHovering) && 'bg-surface-2/40'
+            // 48px row height, subtle hover/selected states (Runway/Midjourney-ish).
+            'group relative flex h-12 items-center rounded-lg transition-colors',
+            isSelected
+              ? [
+                  'bg-[rgb(44,48,55)]',
+                  // Centered 24px accent bar (not a full-height ring).
+                  "before:content-[''] before:absolute before:left-0 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 before:bg-[rgb(59,130,246)] before:rounded-r-[2px]",
+                ].join(' ')
+              : isHovering
+                ? 'bg-[rgb(39,42,55)]'
+                : 'bg-transparent'
           )}
           data-stage={stage}
         >
-          <span
-            className={cn(
-              'absolute left-0 top-ps-2 bottom-ps-2 w-0.5 rounded-full bg-accent opacity-0 transition-opacity duration-150',
-              showAccentBar && 'opacity-100',
-              'group-hover:opacity-100'
-            )}
-            aria-hidden="true"
-          />
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               onClick={handleLoad}
               onContextMenu={handleContextMenu}
               variant="ghost"
-              className="flex w-full min-w-0 items-start gap-ps-3 py-ps-3 pl-ps-3 pr-ps-3 text-left"
+              className={cn(
+                'flex h-12 w-full min-w-0 items-center text-left',
+                'gap-[10px] px-2 py-[6px] pr-12',
+                // Ensure selected doesn't look like "focus ring"
+                'ring-0 focus-visible:ring-0 focus:ring-0'
+              )}
               aria-label={`Load prompt: ${title}`}
               title={title}
             >
-              <div className="ps-thumb-trigger">
+              <div>
                 <HistoryThumbnail
                   src={thumbnailUrl}
                   label={title}
                   size="md"
                   variant="muted"
-                  isActive={showAccentBar}
+                  isActive={false}
+                  className="h-9 w-9 rounded-[6px] border border-[rgb(44,48,55)] bg-[rgb(44,48,55)]"
                 />
               </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-ps-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 {versionLabel ? (
                   <span className="text-label-10 font-semibold uppercase tracking-widest text-faint">
                     {versionLabel}
                   </span>
                 ) : null}
                 <div className="flex items-start justify-between gap-ps-3">
-                  <span className="min-w-0 flex-1 ps-line-clamp-2 text-body-sm font-semibold text-foreground">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
                     {title}
                   </span>
                   {statusLabel && statusTone ? (
@@ -210,36 +216,46 @@ export const HistoryItem = memo<HistoryItemProps>(({
                     </span>
                   ) : null}
                 </div>
-                <div className="truncate text-meta text-muted">{meta}</div>
+                <div className="truncate text-[11px] text-[rgb(107,114,128)]">
+                  {meta}
+                </div>
               </div>
             </Button>
           </DropdownMenuTrigger>
 
-          {stage === 'error' && (
+          <div
+            className={cn(
+              'absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2',
+              'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+              'pointer-events-none group-hover:pointer-events-auto'
+            )}
+          >
+            {stage === 'error' && (
+              <Button
+                type="button"
+                onClick={handleRetry}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:bg-[rgba(255,255,255,0.06)]"
+                aria-label="Retry"
+                title="Retry"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-warning" />
+              </Button>
+            )}
+
             <Button
               type="button"
-              onClick={handleRetry}
+              onClick={handleDelete}
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-md border border-border bg-surface-1 text-faint opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-              aria-label="Retry"
-              title="Retry"
+              className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:border-error/60 hover:bg-[rgba(255,255,255,0.06)] hover:text-error"
+              aria-label="Delete prompt"
+              title="Delete prompt"
             >
-              <RotateCcw className="h-3.5 w-3.5 text-warning" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
-          )}
-
-          <Button
-            type="button"
-            onClick={handleDelete}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-md border border-border bg-surface-1 text-faint opacity-0 transition-opacity duration-150 hover:border-error/60 hover:text-error group-hover:opacity-100"
-            aria-label="Delete prompt"
-            title="Delete prompt"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          </div>
         </div>
       </li>
 

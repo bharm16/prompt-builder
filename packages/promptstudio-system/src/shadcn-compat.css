@@ -5,7 +5,8 @@
     --foreground: var(--ps-text);
     --card: var(--ps-surface-1);
     --card-foreground: var(--ps-text);
-    --popover: var(--ps-surface-3);
+    /* Popovers/menus should match Runway-style panels */
+    --popover: var(--ps-surface-1);
     --popover-foreground: var(--ps-text);
     --primary: var(--ps-accent);
     --primary-foreground: var(--ps-bg);

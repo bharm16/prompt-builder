@@ -28,24 +28,58 @@ export function HistoryThumbnail({
   isActive = false,
   className,
 }: HistoryThumbnailProps): React.ReactElement {
-  const hasSrc = typeof src === 'string' && src.trim().length > 0;
-  const variantClass = variant === 'muted' ? 'ps-thumb-muted' : 'ps-thumb-placeholder';
+  const [didError, setDidError] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    setDidError(false);
+  }, [src]);
+
+  const normalizedSrc = typeof src === 'string' ? src.trim() : '';
+  const hasSrc = normalizedSrc.length > 0;
+  const showFallback = !hasSrc || didError;
+
+  const fallbackChar = React.useMemo(() => {
+    const raw = (label ?? '').trim();
+    if (!raw) return '';
+    const match = raw.match(/[A-Za-z0-9]/);
+    return (match?.[0] ?? '').toUpperCase();
+  }, [label]);
+
+  const variantClass =
+    variant === 'muted' ? 'ps-thumb-muted' : 'ps-thumb-placeholder';
 
   return (
     <div
       className={cn(
-        'ps-thumb-frame',
+        'ps-thumb-frame flex flex-shrink-0 items-center justify-center bg-[rgb(44,48,55)]',
         SIZE_CLASSES[size],
         isActive && 'ps-thumb-active',
         className
       )}
     >
-      {hasSrc ? (
-        <img src={src} alt={label} className="h-full w-full object-cover" loading="lazy" />
-      ) : (
-        <div className={cn('flex h-full w-full items-center justify-center', variantClass)}>
-          <Image className="h-4 w-4 text-faint" aria-hidden="true" />
+      {showFallback ? (
+        <div
+          className={cn(
+            'flex h-full w-full items-center justify-center',
+            variantClass
+          )}
+        >
+          {fallbackChar ? (
+            <span className="text-[14px] font-medium leading-none text-[rgb(198,201,210)]">
+              {fallbackChar}
+            </span>
+          ) : (
+            <Image className="h-4 w-4 text-faint" aria-hidden="true" />
+          )}
         </div>
+      ) : (
+        <img
+          src={normalizedSrc}
+          alt={label}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setDidError(true)}
+        />
       )}
     </div>
   );

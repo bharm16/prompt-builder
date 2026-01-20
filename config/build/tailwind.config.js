@@ -10,6 +10,11 @@ export default {
   content: [
     path.resolve(__dirname, '../../client/index.html'),
     path.resolve(__dirname, '../../client/src/**/*.{js,ts,jsx,tsx}'),
+    // Include design-system components (Tailwind classes live there)
+    path.resolve(
+      __dirname,
+      '../../packages/promptstudio-system/src/**/*.{js,ts,jsx,tsx}'
+    ),
   ],
   darkMode: false, // Disable dark mode completely
   presets: [promptStudioPreset],

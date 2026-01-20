@@ -120,26 +120,6 @@ function formatRelativeOrDate(iso: string | undefined): string {
   return formatShortDate(iso);
 }
 
-function extractDurationS(
-  entry: PromptHistoryEntry,
-  selectedFallback: number | null
-): number | null {
-  const fromEntry = (
-    entry.generationParams as Record<string, unknown> | null | undefined
-  )?.duration_s;
-  if (typeof fromEntry === 'number' && Number.isFinite(fromEntry))
-    return fromEntry;
-  if (
-    typeof fromEntry === 'string' &&
-    fromEntry.trim() &&
-    !Number.isNaN(Number(fromEntry))
-  )
-    return Number(fromEntry);
-  if (typeof selectedFallback === 'number' && Number.isFinite(selectedFallback))
-    return selectedFallback;
-  return null;
-}
-
 function toTitleToken(token: string): string {
   if (!token) return token;
   if (token.toLowerCase() === 'tv') return 'TV';
@@ -293,10 +273,8 @@ export function HistorySidebar({
   onRename,
   currentPromptUuid,
   currentPromptDocId,
-  activeTitle,
   activeStatusLabel,
   activeModelLabel,
-  activeDurationS,
 }: HistorySidebarProps): React.ReactElement {
   const debug = useDebugLogger('HistorySidebar', {
     historyCount: history.length,
@@ -442,32 +420,6 @@ export function HistorySidebar({
     setShowHistory(false);
   }, [setShowHistory]);
 
-  const activeEntry = React.useMemo(() => {
-    return (
-      history.find(
-        (item) => currentPromptUuid && item.uuid === currentPromptUuid
-      ) ||
-      history.find(
-        (item) => currentPromptDocId && item.id === currentPromptDocId
-      ) ||
-      null
-    );
-  }, [history, currentPromptUuid, currentPromptDocId]);
-
-  const activeThumbnailUrl = activeEntry
-    ? resolveHistoryThumbnail(activeEntry)
-    : null;
-  const showActiveProgress =
-    activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing';
-  const activeStatusTone =
-    activeStatusLabel === 'Refining' || activeStatusLabel === 'Optimizing'
-      ? 'warning'
-      : activeStatusLabel === 'Draft'
-        ? 'muted'
-        : activeStatusLabel === 'Incomplete'
-          ? 'error'
-          : null;
-
   const promptRows = React.useMemo(() => {
     const baseTitles = displayedHistory.map((entry) =>
       normalizeTitle(resolveEntryTitle(entry))
@@ -489,12 +441,6 @@ export function HistorySidebar({
       );
 
       const dateLabel = formatRelativeOrDate(entry.timestamp);
-      const durationS = extractDurationS(
-        entry,
-        isSelected ? activeDurationS : null
-      );
-      const durationLabel =
-        typeof durationS === 'number' ? `${durationS}s` : null;
       const modelLabel =
         formatModelLabel(
           typeof entry.targetModel === 'string' ? entry.targetModel : null
@@ -511,9 +457,8 @@ export function HistorySidebar({
           ? processingLabel
           : null;
 
-      const meta = [dateLabel, durationLabel, modelLabel]
-        .filter(Boolean)
-        .join(' | ');
+      // Keep list meta compact: time only (duration/model are redundant in list context).
+      const meta = dateLabel;
 
       const disambiguator =
         extractDisambiguator(entry.input) ??
@@ -548,7 +493,6 @@ export function HistorySidebar({
     displayedHistory,
     currentPromptUuid,
     currentPromptDocId,
-    activeDurationS,
     activeStatusLabel,
     activeModelLabel,
   ]);
@@ -651,16 +595,16 @@ export function HistorySidebar({
     <aside
       id="history-sidebar"
       className={cn(
-        'bg-sidebar ps-sidebar-edge duration-slow flex h-full min-h-0 flex-none flex-col overflow-hidden transition-all',
+        'bg-sidebar ps-sidebar-edge duration-slow flex h-full min-h-0 flex-none flex-col overflow-hidden p-ps-4 transition-all',
         // Enforce a hard cap so the sidebar can't expand due to missing/overridden token CSS.
-        isCollapsed ? 'w-14' : 'w-sidebar max-w-sidebar basis-sidebar min-w-0'
+        isCollapsed ? 'w-[60px]' : 'w-sidebar max-w-sidebar basis-sidebar min-w-0'
       )}
       aria-label="Prompt history"
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
     >
       {isCollapsed ? (
-        <div className="gap-ps-4 py-ps-4 ps-animate-fade-in flex h-full flex-col items-center">
+        <div className="gap-ps-2 ps-animate-fade-in flex h-full flex-col items-center">
           <Button
             type="button"
             onClick={() => {
@@ -669,7 +613,7 @@ export function HistorySidebar({
             }}
             variant="ghost"
             size="icon"
-            className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
+            className="h-ps-8 w-ps-8 rounded-[6px] bg-[rgb(44,48,55)] text-muted ps-transition hover:bg-[rgb(36,42,56)] hover:text-foreground"
             aria-label="Expand sidebar"
             title="Vidra"
           >
@@ -681,7 +625,7 @@ export function HistorySidebar({
           <div className="ps-divider-fade" aria-hidden="true" />
 
           <TooltipProvider delayDuration={120}>
-            <div className="gap-ps-2 py-ps-2 relative flex flex-col items-center">
+            <div className="gap-ps-2 relative flex flex-col items-center">
               {collapsedTimeline.entries.map((entry) => {
                 const key = (entry.id || entry.uuid) as string | undefined;
                 const isSelected = Boolean(
@@ -712,13 +656,19 @@ export function HistorySidebar({
                         <HistoryThumbnail
                           src={resolveHistoryThumbnail(entry)}
                           label={title}
-                          size="md"
+                          size="sm"
                           variant="muted"
                           isActive={isSelected}
                         />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="ps-glass-subtle border-border/60 text-body-sm text-foreground">
+                    <TooltipContent
+                      className={cn(
+                        'text-body-sm text-foreground',
+                        'rounded-lg border border-[rgb(67,70,81)] bg-[rgb(24,25,28)]',
+                        'shadow-[0_4px_12px_rgba(0,0,0,0.4)]'
+                      )}
+                    >
                       {title}
                     </TooltipContent>
                   </Tooltip>
@@ -737,7 +687,7 @@ export function HistorySidebar({
             onClick={onCreateNew}
             variant="ghost"
             size="icon"
-            className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
+            className="h-ps-8 w-ps-8 rounded-[6px] bg-[rgb(44,48,55)] text-muted ps-transition hover:bg-[rgb(36,42,56)] hover:text-foreground"
             aria-label="New prompt"
             title="New prompt"
           >
@@ -753,7 +703,7 @@ export function HistorySidebar({
                 onClick={handleSignIn}
                 variant="ghost"
                 size="icon"
-                className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
+                className="h-ps-8 w-ps-8 rounded-[6px] bg-[rgb(44,48,55)] text-muted ps-transition hover:bg-[rgb(36,42,56)] hover:text-foreground"
                 aria-label="Sign in"
                 title="Sign in"
               >
@@ -768,7 +718,7 @@ export function HistorySidebar({
                 }}
                 variant="ghost"
                 size="icon"
-                className="h-ps-8 w-ps-8 border-border bg-surface-2 text-muted ps-transition hover:border-border-strong rounded-lg border hover:-translate-y-px"
+                className="h-ps-8 w-ps-8 rounded-[6px] bg-[rgb(44,48,55)] text-muted ps-transition hover:bg-[rgb(36,42,56)] hover:text-foreground"
                 aria-label="User menu"
                 title={
                   typeof user.displayName === 'string'
@@ -791,109 +741,63 @@ export function HistorySidebar({
         </div>
       ) : (
         <div className="ps-animate-fade-in flex h-full flex-col">
-          <header className="px-ps-5 py-ps-6">
-            <div className="mb-ps-4 flex items-center justify-between">
-              <h1 className="text-h3 text-foreground font-bold tracking-tight">
-                Vidra
-              </h1>
-              <Button
-                onClick={() => {
-                  hoverExpandedRef.current = false;
-                  setShowHistory(false);
-                }}
-                variant="ghost"
-                size="icon"
-                aria-label="Collapse sidebar"
-                className="border-border bg-surface-2 text-muted ps-transition-colors hover:bg-surface-3 hover:text-foreground h-9 w-9 rounded-lg border"
-              >
-                <PanelLeft size={20} />
-              </Button>
-            </div>
-            <div className="ps-divider-fade" aria-hidden="true" />
+          <header className="flex h-12 items-center justify-between px-4">
+            <h1 className="text-[16px] font-semibold text-foreground">
+              Vidra
+            </h1>
+            <Button
+              onClick={() => {
+                hoverExpandedRef.current = false;
+                setShowHistory(false);
+              }}
+              variant="ghost"
+              size="icon"
+              aria-label="Collapse sidebar"
+              className="h-7 w-7 rounded-md bg-[rgb(44,48,55)] text-muted transition-colors hover:bg-[rgb(36,42,56)] hover:text-foreground"
+            >
+              <PanelLeft size={18} />
+            </Button>
           </header>
 
-          <section
-            className="mt-ps-5 px-ps-5 pb-ps-5"
-            aria-label="Active prompt"
-          >
-            <div className="gap-ps-2 text-label text-faint flex items-center uppercase tracking-widest">
-              <span>Active Prompt</span>
-              <span className="ps-divider-fade flex-1" aria-hidden="true" />
-            </div>
-            <div className="mt-ps-4 ps-card-glass p-ps-3 rounded-lg">
-              <div className="gap-ps-3 flex items-start">
-                <div className="ps-thumb-trigger">
-                  <HistoryThumbnail
-                    src={activeThumbnailUrl}
-                    label={activeTitle}
-                    size="lg"
-                    variant="muted"
-                    isActive={showActiveProgress}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="ps-line-clamp-2 text-body text-foreground font-semibold"
-                    title={activeTitle}
-                  >
-                    {activeTitle}
-                  </div>
-                  <div className="mt-ps-2 gap-ps-2 text-label-sm text-muted flex flex-wrap items-center">
-                    {activeStatusTone ? (
-                      <span
-                        className={cn(
-                          'px-ps-2 text-label-sm rounded-full border py-0.5',
-                          activeStatusTone === 'warning' &&
-                            'border-warning/40 bg-warning/10 text-warning',
-                          activeStatusTone === 'error' &&
-                            'border-error/40 bg-error/10 text-error',
-                          activeStatusTone === 'muted' &&
-                            'border-border bg-surface-2 text-muted'
-                        )}
-                      >
-                        {activeStatusLabel}
-                      </span>
-                    ) : null}
-                    <span className="border-border bg-surface-2 px-ps-2 text-label-sm text-muted rounded-full border py-0.5">
-                      {activeModelLabel}
-                    </span>
-                    {typeof activeDurationS === 'number' ? (
-                      <span className="border-border bg-surface-2 px-ps-2 text-label-sm text-muted rounded-full border py-0.5">
-                        {activeDurationS}s
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              {showActiveProgress && (
-                <div className="mt-ps-3 bg-surface-3 h-1 w-full overflow-hidden rounded-full">
-                  <div className="ps-shimmer h-full w-1/2" aria-hidden="true" />
-                </div>
-              )}
-            </div>
-          </section>
+          <div
+            className="mx-4 my-3 h-px bg-[rgb(41,44,50)]"
+            aria-hidden="true"
+          />
 
-          <section className="gap-ps-5 px-ps-5 py-ps-6 flex min-h-0 flex-1 flex-col">
+          <section className="flex min-h-0 flex-1 flex-col gap-ps-4 px-4 py-ps-4">
             <div className="flex items-center justify-between">
-              <div className="gap-ps-2 text-label text-faint flex items-center uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-[rgb(107,114,128)]">
                 <Sparkles
-                  className="text-muted h-3.5 w-3.5"
+                  className="h-3.5 w-3.5 text-[rgb(107,114,128)]"
                   aria-hidden="true"
                 />
                 <h2>Prompts</h2>
               </div>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                className="px-ps-3 text-button-12 rounded-full shadow-sm"
-                onClick={onCreateNew}
-              >
-                <span>+ New</span>
-                <span className="text-label-sm text-foreground/80">
-                  {modKey === 'Cmd' ? 'Cmd+N' : 'Ctrl+N'}
-                </span>
-              </Button>
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 rounded-md bg-[rgb(44,48,55)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] shadow-none hover:bg-[rgb(36,42,56)] hover:text-foreground"
+                      onClick={onCreateNew}
+                      aria-label="New prompt"
+                    >
+                      + New
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className={cn(
+                      'text-body-sm text-foreground',
+                      'rounded-lg border border-[rgb(67,70,81)] bg-[rgb(24,25,28)]',
+                      'shadow-[0_4px_12px_rgba(0,0,0,0.4)]'
+                    )}
+                  >
+                    New prompt ({modKey === 'Cmd' ? '⌘N' : 'Ctrl+N'})
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             <div className="ps-focus-glow relative rounded-lg">
@@ -906,9 +810,9 @@ export function HistorySidebar({
                 type="text"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search prompts..."
+                placeholder="Search..."
                 aria-label="Search prompts"
-                className="h-ps-9 border-border bg-surface-2/60 pl-ps-7 pr-ps-3 text-body-sm text-foreground focus-visible:border-border-strong focus-visible:ring-accent/40 rounded-lg border focus-visible:ring-1"
+                className="h-9 rounded-lg border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] pl-9 pr-ps-3 text-body-sm text-foreground placeholder:text-faint focus-visible:border-[rgb(59,130,246)] focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
 
@@ -918,9 +822,9 @@ export function HistorySidebar({
                 variant="ghost"
                 size="xs"
                 className={cn(
-                  'border-border px-ps-3 text-label-sm text-muted rounded-full border transition-colors',
+                  'h-7 rounded-md border border-[rgb(44,48,55)] bg-[rgb(30,31,37)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] transition-colors hover:bg-[rgb(39,42,55)] hover:text-foreground',
                   filterState.videosOnly &&
-                    'border-border-strong bg-surface-2 text-foreground'
+                    'border-[rgb(67,70,81)] bg-[rgb(44,48,55)] text-foreground'
                 )}
                 onClick={() =>
                   setFilterState((prev) => ({
@@ -936,9 +840,9 @@ export function HistorySidebar({
                 variant="ghost"
                 size="xs"
                 className={cn(
-                  'border-border px-ps-3 text-label-sm text-muted rounded-full border transition-colors',
+                  'h-7 rounded-md border border-[rgb(44,48,55)] bg-[rgb(30,31,37)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] transition-colors hover:bg-[rgb(39,42,55)] hover:text-foreground',
                   filterState.recentOnly &&
-                    'border-border-strong bg-surface-2 text-foreground'
+                    'border-[rgb(67,70,81)] bg-[rgb(44,48,55)] text-foreground'
                 )}
                 onClick={() =>
                   setFilterState((prev) => ({
@@ -974,7 +878,7 @@ export function HistorySidebar({
                   aria-label="Prompts list"
                   className="ps-scrollbar-thin flex-1 overflow-y-auto"
                 >
-                  <ul className="gap-ps-3 flex flex-col">
+                  <ul className="gap-ps-2 flex flex-col">
                     {promptRows.map(
                       (
                         {
@@ -1037,8 +941,7 @@ export function HistorySidebar({
             )}
           </section>
 
-          <footer className="px-ps-5 pb-ps-5 pt-ps-4">
-            <div className="ps-divider-fade mb-ps-4" aria-hidden="true" />
+          <footer className="mt-auto flex h-16 items-center border-t border-[rgb(41,44,50)] px-4 py-3">
             <AuthMenu
               user={user}
               onSignIn={handleSignIn}

@@ -8,8 +8,8 @@
 @layer base {
   /* App-specific layout variables only */
   :root {
-    --layout-sidebar-width-expanded: 240px;
-    --layout-sidebar-width-collapsed: 56px;
+    --layout-sidebar-width-expanded: 280px;
+    --layout-sidebar-width-collapsed: 60px;
     --layout-bento-rail-width: 44px;
     --sidebar-width: var(--layout-sidebar-width-collapsed);
     --global-top-nav-height: 52px;

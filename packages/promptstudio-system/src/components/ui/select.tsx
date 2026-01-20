@@ -49,17 +49,17 @@ const selectTriggerVariants = cva(
 );
 
 const selectItemVariants = cva(
-  'relative flex w-full cursor-default select-none items-center outline-none focus:bg-surface-3 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+  'relative flex w-full cursor-pointer select-none items-center outline-none transition-colors duration-base data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground data-[state=checked]:bg-surface-2 data-[state=checked]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
   {
     variants: {
       size: {
-        xxs: 'rounded py-0.5 pl-ps-6 pr-ps-2 text-label-10 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
-        xs: 'rounded py-ps-1 pl-ps-6 pr-ps-2 text-label-11 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
-        sm: 'rounded-md py-ps-1 pl-ps-6 pr-ps-2 text-label-12 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
+        xxs: 'min-h-ps-8 rounded px-ps-3 py-ps-1 text-label-sm',
+        xs: 'min-h-ps-9 rounded px-ps-3 py-ps-1 text-label-sm',
+        sm: 'min-h-ps-9 rounded-md px-ps-3 py-ps-1 text-label',
         default:
-          'rounded-md py-ps-1 pl-ps-7 pr-ps-2 text-body-sm [&_.item-indicator]:left-ps-2 [&_.item-indicator]:size-icon-sm',
-        md: 'rounded-md py-ps-1 pl-ps-7 pr-ps-2 text-body-sm [&_.item-indicator]:left-ps-2 [&_.item-indicator]:size-icon-sm',
-        lg: 'rounded-md py-ps-2 pl-ps-8 pr-ps-3 text-body [&_.item-indicator]:left-ps-2 [&_.item-indicator]:size-icon-sm',
+          'min-h-ps-10 rounded-md px-ps-3 py-ps-2 text-body',
+        md: 'min-h-ps-10 rounded-md px-ps-3 py-ps-2 text-body',
+        lg: 'min-h-ps-10 rounded-md px-ps-3 py-ps-2 text-body-lg',
       },
     },
     defaultVariants: {
@@ -150,7 +150,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'border-border bg-popover text-popover-foreground shadow-elevated data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-xl border',
+        'bg-popover text-popover-foreground shadow-elevated data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-lg border-0',
         position === 'popper' &&
           'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
         className
@@ -181,7 +181,7 @@ const SelectLabel = React.forwardRef<
   <SelectPrimitive.Label
     ref={ref}
     className={cn(
-      'py-ps-1 pl-ps-7 pr-ps-2 text-body-sm text-foreground font-semibold',
+      'px-ps-3 py-ps-2 text-label-sm font-semibold text-ghost',
       className
     )}
     {...props}
@@ -207,13 +207,14 @@ const SelectItem = React.forwardRef<
       className={cn(selectItemVariants({ size }), className)}
       {...props}
     >
-      <span className="item-indicator absolute flex items-center justify-center">
-        <SelectPrimitive.ItemIndicator>
-          <Check size={iconSize} />
-        </SelectPrimitive.ItemIndicator>
+      <span className="flex items-center gap-ps-2">
+        <span className="flex size-icon-sm items-center justify-center">
+          <SelectPrimitive.ItemIndicator>
+            <Check size={iconSize} />
+          </SelectPrimitive.ItemIndicator>
+        </span>
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       </span>
-
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   );
 });
@@ -225,7 +226,7 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn('-mx-ps-1 my-ps-1 bg-border h-px', className)}
+    className={cn('-mx-ps-1 my-ps-1 h-px bg-surface-2', className)}
     {...props}
   />
 ));

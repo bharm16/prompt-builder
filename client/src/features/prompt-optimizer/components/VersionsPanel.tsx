@@ -110,8 +110,8 @@ export const VersionsPanel = ({
       return (
         <div
           className={cn(
-            'flex h-11 w-full items-center justify-between',
-            'px-ps-4',
+            'flex h-ps-9 w-full items-center justify-between',
+            'px-ps-6',
             'bg-[rgb(30,31,37)]',
             'border border-[rgb(41,44,50)]',
             'rounded-lg',
@@ -199,7 +199,7 @@ export const VersionsPanel = ({
       <aside className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0_7px_21px_rgba(0,0,0,0.25)]">
         {/* Header */}
         <TooltipProvider delayDuration={120}>
-          <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[rgb(41,44,50)] px-4 py-3">
+          <div className="flex h-ps-9 items-center justify-between gap-3 px-ps-6">
             <div className="flex items-center gap-ps-2">
               <Icon icon={List} size="sm" weight="bold" className="text-muted" />
               <span className="text-label-14 font-semibold text-foreground">
@@ -368,7 +368,7 @@ export const VersionsPanel = ({
 
   return (
     <aside className="border-border bg-surface-2 flex h-full flex-col overflow-hidden rounded-xl border">
-      <div className="px-ps-4 pb-ps-3 pt-ps-4">
+      <div className="px-ps-6 pb-ps-3 pt-ps-4">
         <TooltipProvider delayDuration={120}>
           <div className="flex items-start justify-between gap-ps-3">
             <div>
