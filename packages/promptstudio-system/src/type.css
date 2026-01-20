@@ -70,14 +70,13 @@
     font-weight: var(--ps-fw-regular);
   }
 
-  /* Labels (uppercase UI labels) */
+  /* Labels (no forced uppercase) */
   .ps-label {
     font-family: var(--ps-font-sans);
     font-size: var(--ps-fs-12);
     line-height: var(--ps-lh-normal);
     font-weight: var(--ps-fw-semibold);
     letter-spacing: var(--ps-ls-label);
-    text-transform: uppercase;
   }
 
   .ps-label-sm {
@@ -86,6 +85,15 @@
     line-height: var(--ps-lh-normal);
     font-weight: var(--ps-fw-semibold);
     letter-spacing: var(--ps-ls-label);
+  }
+
+  /* Caps labels (for ALL CAPS use cases) */
+  .ps-label-caps {
+    font-family: var(--ps-font-sans);
+    font-size: var(--ps-fs-12);
+    line-height: var(--ps-lh-normal);
+    font-weight: var(--ps-fw-semibold);
+    letter-spacing: var(--ps-ls-caps);
     text-transform: uppercase;
   }
 

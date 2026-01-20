@@ -24,7 +24,8 @@
 
     --ps-ls-tight: -0.01em;
     --ps-ls-normal: 0em;
-    --ps-ls-label: 0.14em;
+    --ps-ls-label: 0.02em;
+    --ps-ls-caps: 0.06em;
     --ps-ls-reading: 0.015em;
 
     /* Dense UI guideline: primary sizes 12px, 13px, 14px, 16px, 18px, 22px. */
@@ -81,12 +82,12 @@
        Radius
        ========================= */
     --ps-r-none: 0px;
-    --ps-r-xs: 8px;
-    --ps-r-sm: 10px;
-    --ps-r-md: 12px;
-    --ps-r-lg: 14px;
-    --ps-r-xl: 16px;
-    --ps-r-2xl: 20px;
+    --ps-r-xs: 4px;
+    --ps-r-sm: 6px;
+    --ps-r-md: 8px;
+    --ps-r-lg: 10px;
+    --ps-r-xl: 12px;
+    --ps-r-2xl: 16px;
     --ps-r-pill: 999px;
 
     /* =========================
@@ -130,10 +131,10 @@
     /* =========================
        Motion
        ========================= */
-    --ps-dur-1: 90ms;
-    --ps-dur-2: 140ms;
-    --ps-dur-3: 200ms;
-    --ps-dur-4: 320ms;
+    --ps-dur-1: 75ms;
+    --ps-dur-2: 120ms;
+    --ps-dur-3: 180ms;
+    --ps-dur-4: 280ms;
     /* Semantic motion aliases */
     --ps-motion-fast: 120ms;
     --ps-motion-base: 160ms;
@@ -146,10 +147,10 @@
     /* =========================
        Color (dark-first)
        ========================= */
-    --ps-bg: #0b0f17;
-    --ps-surface-1: #101622;
-    --ps-surface-2: #121a28;
-    --ps-surface-3: #152033;
+    --ps-bg: #0a0c10;
+    --ps-surface-1: #12161e;
+    --ps-surface-2: #1a1f2a;
+    --ps-surface-3: #242a38;
 
     --ps-border: #24314a;
     --ps-border-strong: #314163;
@@ -157,6 +158,7 @@
     --ps-text: #e7ebf3;
     --ps-text-muted: #b1bbd2;
     --ps-text-faint: #93a0be;
+    --ps-text-ghost: #6b7691;
     --ps-text-warm: rgba(255, 255, 255, 0.95);
 
     --ps-accent: #6886ff;
@@ -320,11 +322,21 @@
     /* =========================
        Shadows (dark-tuned)
        ========================= */
-    --ps-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.35);
-    --ps-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
-    --ps-shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.55);
-    --ps-shadow-elevated: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.6);
-    --ps-shadow-floating: 0 2px 0 rgba(255, 255, 255, 0.05), 0 16px 40px rgba(0, 0, 0, 0.7);
+    --ps-shadow-sm:
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.03);
+    --ps-shadow-md:
+      0 4px 12px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+    --ps-shadow-lg:
+      0 12px 40px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+    --ps-shadow-elevated:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 8px 24px rgba(0, 0, 0, 0.5);
+    --ps-shadow-floating:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 16px 48px rgba(0, 0, 0, 0.6);
     --ps-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
     /* =========================

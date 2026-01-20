@@ -1333,7 +1333,7 @@ export function PromptCanvas({
         )}
       >
         <div className="gap-ps-4 lg:gap-ps-5 flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col lg:min-w-80 lg:flex-[9]">
+          <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col self-stretch lg:min-w-80 lg:flex-[9]">
             {/* Main Editor Area - Optimized Prompt */}
             <div
               ref={editorColumnRef}
@@ -1347,7 +1347,7 @@ export function PromptCanvas({
                       isOutputLoading && 'opacity-80'
                     )}
                   >
-                    <div className="gap-ps-3 px-ps-3 py-ps-2 flex items-center justify-between">
+                    <div className="gap-ps-3 px-ps-3 flex h-ps-9 items-center justify-between">
                       <span className="text-label-sm text-muted">
                         Optimized Editor
                       </span>

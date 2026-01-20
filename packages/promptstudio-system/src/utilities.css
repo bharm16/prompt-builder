@@ -41,6 +41,22 @@
     outline-offset: 2px;
   }
 
+  .ps-focus-depth:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--ps-bg),
+      0 0 0 4px var(--ps-accent);
+  }
+
+  /* ===== EDGE LIT ===== */
+  .ps-edge-lit {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .ps-edge-lit-strong {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
   /* ===== SCROLLBAR ===== */
   .ps-scrollbar-hide {
     -ms-overflow-style: none;
@@ -163,6 +179,9 @@
   }
   .ps-text-faint {
     color: var(--ps-text-faint);
+  }
+  .ps-text-ghost {
+    color: var(--ps-text-ghost);
   }
 
   .ps-text-balance {

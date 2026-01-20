@@ -11,7 +11,6 @@ import {
   RENDER_MODELS,
   formatCost,
 } from '../config/generationConfig';
-import { cn } from '@/utils/cn';
 
 interface GenerationHeaderProps {
   onDraft: (model: 'flux-kontext' | 'wan-2.2') => void;
@@ -40,7 +39,7 @@ export function GenerationHeader({
   }, [activeDraftModel]);
 
   return (
-    <div className="border-border flex flex-wrap items-center gap-3 border-b px-4 py-3">
+    <div className="border-border flex h-ps-9 items-center gap-ps-3 overflow-x-auto border-b px-ps-3">
       <div className="flex items-center gap-2">
         <Select
           value={draftValue}
@@ -51,10 +50,10 @@ export function GenerationHeader({
           disabled={isDraftDisabled}
         >
           <SelectTrigger
-            className={cn(
-              'border-border bg-surface-2 text-label-sm h-9 min-w-36 rounded-lg border font-semibold',
-              'hover:border-border-strong hover:bg-surface-3'
-            )}
+            size="xxs"
+            align="center"
+            variant="filled"
+            className="min-w-36"
             aria-label="Draft model selection"
           >
             <SelectValue placeholder="Draft" />
@@ -66,15 +65,7 @@ export function GenerationHeader({
                 value={id}
                 title={`${config.label} • ${formatCost(config.cost)}`}
               >
-                <div className="flex flex-col">
-                  <span className="text-body-sm text-foreground font-semibold">
-                    {config.label}
-                  </span>
-                  <span className="text-label-sm text-muted">
-                    {formatCost(config.cost)} • {config.eta}
-                    {config.frameCount ? ` • ${config.frameCount} frames` : ''}
-                  </span>
-                </div>
+                {config.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -89,10 +80,10 @@ export function GenerationHeader({
           disabled={isRenderDisabled}
         >
           <SelectTrigger
-            className={cn(
-              'border-accent bg-accent text-label-sm text-app ps-glow-accent data-[placeholder]:text-app/90 h-9 min-w-36 rounded-lg border font-semibold',
-              'hover:opacity-90'
-            )}
+            size="xxs"
+            align="center"
+            variant="accent"
+            className="min-w-36"
             aria-label="Render model selection"
           >
             <SelectValue placeholder="Render" />
@@ -104,14 +95,7 @@ export function GenerationHeader({
                 value={id}
                 title={`${config.label} • ${formatCost(config.cost)}`}
               >
-                <div className="flex flex-col">
-                  <span className="text-body-sm text-foreground font-semibold">
-                    {config.label}
-                  </span>
-                  <span className="text-label-sm text-muted">
-                    {formatCost(config.cost)} • {config.eta}
-                  </span>
-                </div>
+                {config.label}
               </SelectItem>
             ))}
           </SelectContent>

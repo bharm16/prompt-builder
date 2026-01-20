@@ -152,6 +152,7 @@ export default {
           foreground: 'var(--destructive-foreground)',
         },
         danger: 'var(--ps-danger)',
+        ghost: 'var(--ps-text-ghost)',
         'brand-primary': {
           50: 'var(--ps-brand-primary-50)',
           100: 'var(--ps-brand-primary-100)',
@@ -300,6 +301,7 @@ export default {
         'body-sm': ['var(--ps-fs-13)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
         label: ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-label)', fontWeight: 'var(--ps-fw-semibold)' }],
         'label-sm': ['var(--ps-fs-11)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-label)', fontWeight: 'var(--ps-fw-semibold)' }],
+        'label-caps': ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-caps)', fontWeight: 'var(--ps-fw-semibold)', textTransform: 'uppercase' }],
         meta: ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
         code: ['var(--ps-fs-13)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
 

@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@promptstudio/system/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-ps-2 whitespace-nowrap rounded-lg text-button-14 font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 ps-press [&_svg]:pointer-events-none [&_svg]:size-icon-sm [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-ps-2 whitespace-nowrap rounded-sm text-button-14 font-medium ps-edge-lit transition-colors disabled:pointer-events-none disabled:opacity-50 ps-press [&_svg]:pointer-events-none [&_svg]:size-icon-sm [&_svg]:shrink-0",
   {
     variants: {
       variant: {

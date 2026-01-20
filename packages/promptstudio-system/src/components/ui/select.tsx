@@ -14,25 +14,34 @@ const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
 const selectTriggerVariants = cva(
-  'flex w-full items-center justify-between border bg-surface-1 text-foreground transition-colors data-[placeholder]:text-faint focus-visible:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+  'flex w-full items-center border bg-surface-1 text-foreground transition-colors data-[placeholder]:text-faint focus-visible:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
   {
     variants: {
       size: {
+        xxs: 'h-ps-6 gap-ps-1 px-ps-1 text-label-10 rounded-md [&>svg]:size-3',
         xs: 'h-ps-6 gap-ps-1 px-ps-2 text-label-11 rounded-md [&>svg]:size-3',
         sm: 'h-ps-7 gap-ps-1 px-ps-2 text-label-12 rounded-lg [&>svg]:size-3.5',
         default: 'h-ps-8 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
         md: 'h-ps-8 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
         lg: 'h-ps-9 gap-ps-2 px-ps-4 py-ps-2 text-body-lg rounded-lg',
       },
+      align: {
+        between: 'justify-between',
+        center: 'relative justify-center',
+      },
       variant: {
         default: 'border-border hover:border-border-strong',
+        filled: 'border-border bg-surface-2 hover:border-border-strong hover:bg-surface-3',
         ghost:
           'border-transparent bg-transparent hover:bg-surface-2 hover:border-border',
         pill: 'border-border bg-surface-2 rounded-full hover:border-border-strong hover:bg-surface-3',
+        accent:
+          'border-accent bg-accent text-app ps-glow-accent data-[placeholder]:text-app/90 hover:opacity-90 focus-visible:border-accent',
       },
     },
     defaultVariants: {
       size: 'default',
+      align: 'between',
       variant: 'default',
     },
   }
@@ -43,6 +52,7 @@ const selectItemVariants = cva(
   {
     variants: {
       size: {
+        xxs: 'rounded py-0.5 pl-ps-6 pr-ps-2 text-label-10 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
         xs: 'rounded py-ps-1 pl-ps-6 pr-ps-2 text-label-11 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
         sm: 'rounded-md py-ps-1 pl-ps-6 pr-ps-2 text-label-12 [&_.item-indicator]:left-ps-1 [&_.item-indicator]:size-icon-xs',
         default:
@@ -59,7 +69,7 @@ const selectItemVariants = cva(
 
 // Context to pass size down to SelectItem
 type SelectContextValue = {
-  size?: 'xs' | 'sm' | 'default' | 'md' | 'lg';
+  size?: 'xxs' | 'xs' | 'sm' | 'default' | 'md' | 'lg';
 };
 const SelectContext = React.createContext<SelectContextValue>({});
 
@@ -70,16 +80,26 @@ export interface SelectTriggerProps
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectTriggerProps
->(({ className, children, size, variant, ...props }, ref) => (
+>(({ className, children, size, align, variant, ...props }, ref) => (
   <SelectContext.Provider value={{ size: size ?? 'default' }}>
     <SelectPrimitive.Trigger
       ref={ref}
-      className={cn(selectTriggerVariants({ size, variant }), className)}
+      className={cn(selectTriggerVariants({ size, align, variant }), className)}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <CaretDown className="shrink-0 opacity-50" />
+        <CaretDown
+          className={cn(
+            'opacity-50',
+            align === 'center'
+              ? cn(
+                  'absolute top-1/2 -translate-y-1/2',
+                  size === 'xxs' || size === 'xs' ? 'right-ps-1' : 'right-ps-2'
+                )
+              : 'shrink-0'
+          )}
+        />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   </SelectContext.Provider>
@@ -178,7 +198,7 @@ const SelectItem = React.forwardRef<
 >(({ className, children, size: sizeProp, ...props }, ref) => {
   const context = React.useContext(SelectContext);
   const size = sizeProp ?? context.size ?? 'default';
-  const iconSize = size === 'xs' || size === 'sm' ? 12 : 16;
+  const iconSize = size === 'xxs' || size === 'xs' || size === 'sm' ? 12 : 16;
 
   return (
     <SelectPrimitive.Item
