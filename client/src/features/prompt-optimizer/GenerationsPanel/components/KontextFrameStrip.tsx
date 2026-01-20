@@ -26,13 +26,13 @@ export function KontextFrameStrip({
   }, [slots, safeDuration]);
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
       {slots.map((frame, index) => (
         <button
           key={`frame-${index}`}
           type="button"
           className={cn(
-            'group overflow-hidden rounded-lg border border-border bg-surface-2 text-left',
+            'group overflow-hidden rounded-md border border-border bg-surface-2 text-left',
             'transition hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50'
           )}
           onClick={() => onFrameClick?.(index)}
@@ -47,7 +47,7 @@ export function KontextFrameStrip({
             {isGenerating && !frame && (
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-surface-2/60 to-surface-3/90" />
             )}
-            <div className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            <div className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
               {labels[index]}
             </div>
           </div>

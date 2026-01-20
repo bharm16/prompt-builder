@@ -7,11 +7,7 @@ import {
 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { cn } from '@/utils/cn';
-import {
-  formatCost,
-  formatRelativeTime,
-  getModelConfig,
-} from '../config/generationConfig';
+import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
 import type { Generation } from '../types';
 import { GenerationBadge } from './GenerationBadge';
 import { KontextFrameStrip } from './KontextFrameStrip';
@@ -40,38 +36,47 @@ export function GenerationCard({
   isActive = false,
 }: GenerationCardProps): React.ReactElement {
   const config = getModelConfig(generation.model);
-  const cost = generation.actualCost ?? generation.estimatedCost ?? null;
   const timeLabel = formatRelativeTime(
     generation.completedAt ?? generation.createdAt
   );
   const isGenerating =
     generation.status === 'pending' || generation.status === 'generating';
   const mediaUrl = generation.mediaUrls[0] ?? null;
+  const showRetry = generation.status === 'failed' && Boolean(onRetry);
+  const showDownload =
+    generation.tier === 'render' &&
+    generation.status === 'completed' &&
+    Boolean(mediaUrl) &&
+    Boolean(onDownload);
 
   return (
     <div
       className={cn(
         'bg-surface-2 rounded-xl border p-4 transition-colors',
-        isActive ? 'border-accent/60 ps-glow-accent' : 'border-border'
+        isActive ? 'border-border-strong' : 'border-border'
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <GenerationBadge tier={generation.tier} />
-        <div className="min-w-0 flex-1">
-          <div className="text-body-sm text-foreground truncate font-semibold">
+        <div className="min-w-0 flex flex-1 items-center gap-2">
+          <div className="text-body-sm text-foreground truncate font-medium">
             {config?.label ?? generation.model}
           </div>
-          <div className="text-label-sm text-muted">
-            {formatCost(cost)} · {timeLabel}
-          </div>
+          <div className="text-label-sm text-muted shrink-0">{timeLabel}</div>
         </div>
-        <div className="text-label-sm text-muted flex items-center gap-1">
+        <div
+          className={cn(
+            'text-label-sm text-muted ml-auto flex items-center gap-1 font-medium',
+            generation.status === 'completed' && 'text-success',
+            generation.status === 'failed' && 'text-error'
+          )}
+        >
           {statusLabel(generation.status)}
         </div>
         <Button
           type="button"
           variant="ghost"
-          className="h-8 w-8 rounded-full"
+          className="h-7 w-7 rounded-md"
           aria-label="More actions"
           onClick={() => onDelete?.(generation)}
         >
@@ -79,7 +84,7 @@ export function GenerationCard({
         </Button>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {generation.mediaType === 'image-sequence' ? (
           <KontextFrameStrip
             frames={
@@ -99,48 +104,40 @@ export function GenerationCard({
         )}
       </div>
 
-      <div className="text-label-sm text-muted mt-4 flex flex-wrap items-center gap-2">
-        <span className="border-border rounded-full border px-2 py-0.5">
-          {generation.aspectRatio ?? 'Aspect n/a'}
-        </span>
-        <span className="border-border rounded-full border px-2 py-0.5">
-          {generation.duration ? `${generation.duration}s` : 'Duration n/a'}
-        </span>
-        <span className="border-border rounded-full border px-2 py-0.5">
-          {generation.fps ? `${generation.fps} fps` : 'FPS n/a'}
-        </span>
-        <span className="ml-auto" aria-hidden="true" />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {generation.status === 'failed' && (
-          <span className="text-error inline-flex items-center gap-1">
+          <span className="text-error inline-flex items-center gap-1 text-label-sm">
             <WarningCircle size={14} aria-hidden="true" />
             {generation.error ?? 'Generation failed'}
           </span>
         )}
-        {generation.status === 'failed' && onRetry && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="text-label-sm h-8 gap-1 px-2"
-            onClick={() => onRetry(generation)}
-          >
-            <ArrowClockwise size={14} aria-hidden="true" />
-            Retry
-          </Button>
+
+        {(showRetry || showDownload) && (
+          <div className="ml-auto flex items-center gap-2">
+            {showRetry && onRetry && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-label-sm h-8 gap-1 px-2"
+                onClick={() => onRetry(generation)}
+              >
+                <ArrowClockwise size={14} aria-hidden="true" />
+                Retry
+              </Button>
+            )}
+            {showDownload && mediaUrl && onDownload && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-label-sm h-8 gap-1 px-2"
+                onClick={() => onDownload(generation)}
+              >
+                <Download size={14} aria-hidden="true" />
+                Download
+              </Button>
+            )}
+          </div>
         )}
-        {generation.tier === 'render' &&
-          generation.status === 'completed' &&
-          mediaUrl &&
-          onDownload && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-label-sm h-8 gap-1 px-2"
-              onClick={() => onDownload(generation)}
-            >
-              <Download size={14} aria-hidden="true" />
-              Download
-            </Button>
-          )}
       </div>
     </div>
   );
