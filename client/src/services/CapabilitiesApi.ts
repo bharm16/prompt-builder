@@ -10,8 +10,15 @@ interface ModelsResponse {
   models: string[];
 }
 
+interface VideoAvailabilityModel {
+  id: string;
+  available: boolean;
+  supportsImageInput?: boolean;
+}
+
 interface VideoAvailabilityResponse {
   availableModels: string[];
+  models?: VideoAvailabilityModel[];
 }
 
 export class CapabilitiesApi {

@@ -11,8 +11,10 @@
  */
 
 import React from 'react';
+import { Check } from 'lucide-react';
 import { useImagePreview } from '../hooks/useImagePreview';
 import type { PreviewProvider } from '../api/previewApi';
+import { cn } from '@/utils/cn';
 
 interface VisualPreviewProps {
   prompt: string;
@@ -21,6 +23,8 @@ interface VisualPreviewProps {
   seedImageUrl?: string | null;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
+  onImageSelected?: (imageUrl: string, index: number) => void;
+  selectedImageIndex?: number | null;
   onPreviewGenerated?: ((payload: {
     prompt: string;
     generatedAt: number;
@@ -114,6 +118,8 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   isVisible,
   seedImageUrl = null,
   generateRequestId,
+  onImageSelected,
+  selectedImageIndex = null,
   onPreviewGenerated,
   onLoadingChange,
   provider: controlledProvider,
@@ -213,12 +219,40 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     return (
       <div className="grid grid-cols-2 gap-2 bg-surface-2 p-2" aria-label="Preview frames">
         {imageUrls.map((url, index) => (
-          <div
+          <button
             key={`${index}-${url ?? 'empty'}`}
-            className="overflow-hidden rounded-md bg-surface-3"
+            type="button"
+            disabled={!url}
+            onClick={() => {
+              if (url) {
+                onImageSelected?.(url, index);
+              }
+            }}
+            className={cn(
+              'relative overflow-hidden rounded-md bg-surface-3 transition-all',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+              'hover:ring-2 hover:ring-accent/50',
+              selectedImageIndex === index && 'ring-2 ring-accent',
+              !url && 'cursor-default'
+            )}
           >
-            {url ? <img src={url} alt={`Frame ${index + 1}`} className="h-full w-full object-cover" /> : null}
-          </div>
+            {url ? (
+              <>
+                <img
+                  src={url}
+                  alt={`Frame ${index + 1}`}
+                  className="h-full w-full object-cover"
+                />
+                {selectedImageIndex === index && (
+                  <div className="absolute right-2 top-2 rounded-full bg-accent p-1">
+                    <Check className="h-4 w-4 text-app" />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="h-full w-full animate-pulse bg-surface-3" />
+            )}
+          </button>
         ))}
       </div>
     );

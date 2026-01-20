@@ -17,6 +17,7 @@ interface VideoPreviewProps {
   model?: string;
   generationParams?: Record<string, unknown>;
   inputReference?: string;
+  startImage?: string | null;
   isVisible: boolean;
   seedVideoUrl?: string | null;
   generateRequestId?: number;
@@ -51,6 +52,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   model,
   generationParams,
   inputReference,
+  startImage = null,
   isVisible,
   seedVideoUrl = null,
   generateRequestId,
@@ -71,6 +73,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     aspectRatio: normalizedAspectRatio,
     ...(model ? { model } : {}),
     ...(inputReference?.trim() ? { inputReference: inputReference.trim() } : {}),
+    ...(startImage?.trim() ? { startImage: startImage.trim() } : {}),
     ...(generationParams ? { generationParams } : {}),
   });
   const displayVideoUrl = videoUrl ?? seedVideoUrl;

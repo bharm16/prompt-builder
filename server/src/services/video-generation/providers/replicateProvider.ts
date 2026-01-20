@@ -18,6 +18,12 @@ const WAN_ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
   '3:4': '768*1024',
 };
 
+const WAN_I2V_MODEL_MAP: Record<string, string> = {
+  'wan-video/wan-2.2-t2v-fast': 'wan-video/wan-2.2-i2v-fast',
+  'wan-video/wan-2.1-t2v-480p': 'wavespeedai/wan-2.1-i2v-480p',
+  'wan-video/wan-2.1-t2v-720p': 'wavespeedai/wan-2.1-i2v-720p',
+};
+
 function normalizeWanSize(rawSize: string): string | null {
   const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
   if (!cleaned) {
@@ -48,6 +54,23 @@ function resolveWanSize(aspectRatio: string, rawSize?: string): string {
   return WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ?? defaultSize;
 }
 
+function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string {
+  if (!hasStartImage || !modelId.includes('wan')) {
+    return modelId;
+  }
+
+  const i2vModel = WAN_I2V_MODEL_MAP[modelId];
+  if (i2vModel) {
+    return i2vModel;
+  }
+
+  if (modelId.includes('t2v')) {
+    return modelId.replace('t2v', 'i2v');
+  }
+
+  return modelId;
+}
+
 export function buildReplicateInput(
   modelId: VideoModelId,
   prompt: string,
@@ -61,6 +84,9 @@ export function buildReplicateInput(
     input.aspect_ratio = options.aspectRatio || '16:9';
     if (options.negativePrompt) {
       input.negative_prompt = options.negativePrompt;
+    }
+    if (options.startImage) {
+      input.image = options.startImage;
     }
     return input;
   }
@@ -77,6 +103,10 @@ export function buildReplicateInput(
   input.go_fast = true;
   input.sample_shift = 12;
 
+  if (options.startImage) {
+    input.image = options.startImage;
+  }
+
   return input;
 }
 
@@ -87,11 +117,17 @@ export async function generateReplicateVideo(
   options: VideoGenerationOptions,
   log: LogSink
 ): Promise<string> {
-  const input = buildReplicateInput(modelId, prompt, options);
+  const resolvedModelId = resolveWanModelForI2V(modelId, Boolean(options.startImage));
+  const input = buildReplicateInput(resolvedModelId as VideoModelId, prompt, options);
 
-  log.info('Calling replicate.run', { modelId, input });
+  log.info('Calling replicate.run', {
+    originalModelId: modelId,
+    resolvedModelId,
+    input,
+    isI2V: Boolean(options.startImage),
+  });
 
-  const output = (await replicate.run(modelId as any, { input })) as unknown;
+  const output = (await replicate.run(resolvedModelId as any, { input })) as unknown;
 
   log.info('replicate.run finished', {
     outputType: typeof output,

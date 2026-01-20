@@ -77,7 +77,7 @@ export async function generateVideoWorkflow(
       if (!clients.luma) {
         throw new Error('Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.');
       }
-      const url = await generateLumaVideo(clients.luma, prompt, log);
+      const url = await generateLumaVideo(clients.luma, prompt, options, log);
       const asset = await storeVideoFromUrl(assetStore, url, log);
       return formatResult(asset);
     }

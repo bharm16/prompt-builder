@@ -73,6 +73,18 @@ export const audioField = (defaultValue = false): CapabilityField => ({
   },
 });
 
+export const imageInputField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Image Input',
+    description: 'Supports image-to-video generation',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 5,
+  },
+});
+
 export const seedField = (): CapabilityField => ({
   type: 'int',
   default: 0,

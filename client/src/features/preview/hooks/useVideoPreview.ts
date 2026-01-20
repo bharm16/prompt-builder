@@ -89,7 +89,7 @@ export function useVideoPreview({
     setError(null);
     setLoading(false);
     lastPromptRef.current = '';
-  }, [prompt, aspectRatio, inputReference]);
+  }, [prompt, aspectRatio, inputReference, startImage]);
 
   /**
    * Generate preview video
@@ -125,6 +125,12 @@ export function useVideoPreview({
       abortControllerRef.current = abortController;
 
       try {
+        const resolvedModel = model && model.trim().length > 0 ? model.trim() : 'wan-2.2';
+        const normalizedModel = resolvedModel.toLowerCase();
+        const isWanModel = normalizedModel.includes('wan');
+        const isSoraModel = normalizedModel.includes('sora');
+        const resolvedInputReference = inputReference || (isSoraModel ? startImage : undefined);
+
         const options = (() => {
           const payload: {
             startImage?: string;
@@ -132,48 +138,50 @@ export function useVideoPreview({
             generationParams?: Record<string, unknown>;
           } = {};
           if (startImage) payload.startImage = startImage;
-          if (inputReference) payload.inputReference = inputReference;
+          if (resolvedInputReference) payload.inputReference = resolvedInputReference;
           if (generationParams) payload.generationParams = generationParams;
           return Object.keys(payload).length ? payload : undefined;
         })();
-        let wanPrompt = cleanedPrompt;
-        try {
-          const compileAbortController = new AbortController();
-          const abortCompile = () => compileAbortController.abort();
-          const timeoutId = window.setTimeout(() => {
-            compileAbortController.abort();
-          }, COMPILE_TIMEOUT_MS);
 
-          abortController.signal.addEventListener('abort', abortCompile, { once: true });
+        let resolvedPrompt = cleanedPrompt;
+        if (isWanModel) {
           try {
-            const compiled = await promptOptimizationApiV2.compilePrompt({
-              prompt: cleanedPrompt,
-              targetModel: 'wan',
-              signal: compileAbortController.signal,
-            });
+            const compileAbortController = new AbortController();
+            const abortCompile = () => compileAbortController.abort();
+            const timeoutId = window.setTimeout(() => {
+              compileAbortController.abort();
+            }, COMPILE_TIMEOUT_MS);
 
-            if (!compileAbortController.signal.aborted) {
-              if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
-                const trimmed = compiled.compiledPrompt.trim();
-                if (trimmed) {
-                  wanPrompt = trimmed;
+            abortController.signal.addEventListener('abort', abortCompile, { once: true });
+            try {
+              const compiled = await promptOptimizationApiV2.compilePrompt({
+                prompt: cleanedPrompt,
+                targetModel: 'wan',
+                signal: compileAbortController.signal,
+              });
+
+              if (!compileAbortController.signal.aborted) {
+                if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
+                  const trimmed = compiled.compiledPrompt.trim();
+                  if (trimmed) {
+                    resolvedPrompt = trimmed;
+                  }
                 }
               }
+            } finally {
+              window.clearTimeout(timeoutId);
+              abortController.signal.removeEventListener('abort', abortCompile);
             }
-          } finally {
-            window.clearTimeout(timeoutId);
-            abortController.signal.removeEventListener('abort', abortCompile);
+          } catch {
+            // Best-effort compile; fallback to cleaned prompt on errors/timeouts.
           }
-        } catch {
-          // Best-effort compile; fallback to cleaned prompt on errors/timeouts.
         }
 
         if (abortController.signal.aborted) {
           return;
         }
 
-        const previewModel = 'wan-2.2';
-        const response = await generateVideoPreview(wanPrompt, aspectRatio, previewModel, options);
+        const response = await generateVideoPreview(resolvedPrompt, aspectRatio, resolvedModel, options);
 
         // Check if request was aborted
         if (abortController.signal.aborted) {

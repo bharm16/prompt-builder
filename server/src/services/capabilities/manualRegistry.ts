@@ -6,6 +6,7 @@ import {
   durationField,
   fpsField,
   guidanceField,
+  imageInputField,
   resolutionField,
   seedField,
 } from './templates';
@@ -31,6 +32,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       audio: audioField(false),
       seed: seedField(),
       guidance: guidanceField(7),
+      image_input: imageInputField(true),
     }),
     'sora-2-pro': buildSchema('openai', 'sora-2-pro', {
       aspect_ratio: aspectRatioField(),
@@ -40,6 +42,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       audio: audioField(false),
       seed: seedField(),
       guidance: guidanceField(7),
+      image_input: imageInputField(true),
     }),
   },
   runway: {
@@ -59,6 +62,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       resolution: resolutionField(['720p']),
       fps: fpsField([24]),
       seed: seedField(),
+      image_input: imageInputField(true),
     }),
   },
   google: {
@@ -70,6 +74,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       audio: audioField(false),
       seed: seedField(),
       guidance: guidanceField(8),
+      image_input: imageInputField(false),
     }),
   },
   kling: {
@@ -80,6 +85,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       fps: fpsField([24, 30]),
       audio: audioField(true),
       seed: seedField(),
+      image_input: imageInputField(true),
     }),
   },
   wan: {
@@ -89,6 +95,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       resolution: resolutionField(['720p']),
       fps: fpsField([24, 30]),
       seed: seedField(),
+      image_input: imageInputField(true),
     }),
   },
 };

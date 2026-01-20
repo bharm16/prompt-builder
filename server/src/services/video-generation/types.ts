@@ -62,6 +62,7 @@ export interface VideoModelAvailability {
   resolvedModelId?: VideoModelId;
   statusCode?: number;
   message?: string;
+  supportsImageInput?: boolean;
 }
 
 export interface VideoAvailabilityReport {

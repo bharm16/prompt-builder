@@ -15,6 +15,16 @@ interface KlingTextToVideoInput {
   aspect_ratio?: KlingAspectRatio;
 }
 
+interface KlingImageToVideoInput {
+  model_name?: KlingModelId;
+  prompt: string;
+  image: string;
+  negative_prompt?: string;
+  aspect_ratio?: KlingAspectRatio;
+  duration?: '5' | '10';
+  mode?: 'std' | 'pro';
+}
+
 export const DEFAULT_KLING_BASE_URL = 'https://api.klingai.com';
 
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
@@ -32,6 +42,16 @@ const KLING_CREATE_TASK_RESPONSE_SCHEMA = z.object({
     task_info: z.object({ external_task_id: z.string().optional() }).optional(),
     created_at: z.number().optional(),
     updated_at: z.number().optional(),
+  }),
+});
+
+const KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA = z.object({
+  code: z.number(),
+  message: z.string().optional(),
+  request_id: z.string().optional(),
+  data: z.object({
+    task_id: z.string(),
+    task_status: KLING_TASK_STATUS_SCHEMA,
   }),
 });
 
@@ -153,6 +173,24 @@ async function createKlingTask(
   return parsed.data.task_id;
 }
 
+async function createKlingImageToVideoTask(
+  baseUrl: string,
+  apiKey: string,
+  input: KlingImageToVideoInput
+): Promise<string> {
+  const json = await klingFetch(baseUrl, apiKey, '/v1/videos/image2video', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  const parsed = KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA.parse(json);
+
+  if (parsed.code !== 0) {
+    throw new Error(`Kling i2v error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+  }
+
+  return parsed.data.task_id;
+}
+
 async function getKlingTask(baseUrl: string, apiKey: string, taskIdOrExternalId: string) {
   const json = await klingFetch(
     baseUrl,
@@ -201,6 +239,48 @@ async function waitForKlingVideo(
   }
 }
 
+async function waitForKlingImageToVideo(
+  baseUrl: string,
+  apiKey: string,
+  taskId: string
+): Promise<string> {
+  const start = Date.now();
+
+  while (true) {
+    const json = await klingFetch(
+      baseUrl,
+      apiKey,
+      `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
+      { method: 'GET' }
+    );
+    const parsed = KLING_TASK_RESULT_RESPONSE_SCHEMA.parse(json);
+
+    if (parsed.code !== 0) {
+      throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+    }
+
+    const task = parsed.data;
+
+    if (task.task_status === 'succeed') {
+      const url = task.task_result?.videos?.[0]?.url;
+      if (!url) {
+        throw new Error('Kling i2v task succeeded but no video URL was returned.');
+      }
+      return url;
+    }
+
+    if (task.task_status === 'failed') {
+      throw new Error(`Kling i2v task failed: ${task.task_status_msg ?? 'no reason provided'}`);
+    }
+
+    if (Date.now() - start > KLING_TASK_TIMEOUT_MS) {
+      throw new Error(`Timed out waiting for Kling i2v task ${taskId}`);
+    }
+
+    await sleep(KLING_STATUS_POLL_INTERVAL_MS);
+  }
+}
+
 export async function generateKlingVideo(
   apiKey: string,
   baseUrl: string,
@@ -209,6 +289,10 @@ export async function generateKlingVideo(
   options: VideoGenerationOptions,
   log: LogSink
 ): Promise<string> {
+  if (options.startImage) {
+    return generateKlingImageToVideo(apiKey, baseUrl, prompt, modelId, options, log);
+  }
+
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
   const input: KlingTextToVideoInput = {
     model_name: modelId,
@@ -218,7 +302,34 @@ export async function generateKlingVideo(
   };
 
   const taskId = await createKlingTask(baseUrl, apiKey, input);
-  log.info('Kling generation started', { modelId, taskId });
+  log.info('Kling t2v generation started', { modelId, taskId });
 
   return await waitForKlingVideo(baseUrl, apiKey, taskId);
+}
+
+async function generateKlingImageToVideo(
+  apiKey: string,
+  baseUrl: string,
+  prompt: string,
+  modelId: KlingModelId,
+  options: VideoGenerationOptions,
+  log: LogSink
+): Promise<string> {
+  const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
+  const input: KlingImageToVideoInput = {
+    model_name: modelId,
+    prompt,
+    image: options.startImage!,
+    ...(options.negativePrompt ? { negative_prompt: options.negativePrompt } : {}),
+    ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+  };
+
+  const taskId = await createKlingImageToVideoTask(baseUrl, apiKey, input);
+  log.info('Kling i2v generation started', {
+    modelId,
+    taskId,
+    imageUrl: options.startImage,
+  });
+
+  return await waitForKlingImageToVideo(baseUrl, apiKey, taskId);
 }

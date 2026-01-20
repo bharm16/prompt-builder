@@ -497,6 +497,9 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 export const VIDEO_MODELS = {
   /** ⚡ DRAFT TIER: Extremely cheap ($0.01), fast, decent motion. */
   DRAFT: "wan-video/wan-2.2-t2v-fast", 
+
+  /** ⚡ DRAFT TIER i2v: image-to-video fast. */
+  DRAFT_I2V: "wan-video/wan-2.2-i2v-fast",
   
   /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
   PRO: "wan-video/wan-2.2-t2v-fast", 

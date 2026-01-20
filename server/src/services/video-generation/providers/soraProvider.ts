@@ -68,8 +68,9 @@ export async function generateSoraVideo(
   assetStore: VideoAssetStore,
   log: LogSink
 ): Promise<StoredVideoAsset> {
-  const inputReference = options.inputReference
-    ? await resolveSoraInputReference(options.inputReference, log)
+  const resolvedInputReference = options.inputReference || options.startImage;
+  const inputReference = resolvedInputReference
+    ? await resolveSoraInputReference(resolvedInputReference, log)
     : undefined;
 
   const seconds = resolveSoraSeconds(options.seconds);

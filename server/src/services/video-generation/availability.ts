@@ -1,8 +1,26 @@
 import { resolveModelSelection, isKlingModel, isLumaModel, isOpenAISoraModel, isVeoModel } from './modelResolver';
 import type { VideoAvailabilityReport, VideoModelAvailability, VideoProviderAvailability } from './types';
 import { resolveAutoModelId } from './providers/ProviderRegistry';
+import { MANUAL_CAPABILITIES_REGISTRY } from '@services/capabilities/manualRegistry';
 
 type LogSink = { warn: (message: string, meta?: Record<string, unknown>) => void };
+
+export function getModelCapabilities(modelId: string): { supportsImageInput: boolean } {
+  for (const [, models] of Object.entries(MANUAL_CAPABILITIES_REGISTRY)) {
+    for (const [id, schema] of Object.entries(models)) {
+      if (id === modelId || schema.model === modelId) {
+        return {
+          supportsImageInput: schema.fields?.image_input?.default === true,
+        };
+      }
+    }
+  }
+
+  const i2vModels = ['sora-2', 'sora-2-pro', 'luma-ray3', 'kling-26', 'wan-2.2'];
+  return {
+    supportsImageInput: i2vModels.some((entry) => modelId.includes(entry)),
+  };
+}
 
 export function getModelAvailability(
   model: string | null | undefined,
@@ -120,7 +138,10 @@ export function getAvailabilityReport(
   log: LogSink
 ): VideoAvailabilityReport {
   const uniqueIds = Array.from(new Set(modelIds));
-  const models = uniqueIds.map((id) => getModelAvailability(id, providers, log));
+  const models = uniqueIds.map((id) => ({
+    ...getModelAvailability(id, providers, log),
+    supportsImageInput: getModelCapabilities(id).supportsImageInput,
+  }));
   const availableModels = models.filter((model) => model.available).map((model) => model.id);
   return { providers, models, availableModels };
 }
