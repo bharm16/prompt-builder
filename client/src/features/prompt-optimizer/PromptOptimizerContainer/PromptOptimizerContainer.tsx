@@ -14,7 +14,6 @@ import { PromptInputSection } from '../components/PromptInputSection';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { PromptModals } from '../components/PromptModals';
 import { PromptSidebar } from '../components/PromptSidebar';
-import { CoherencePanel } from '../components/coherence/CoherencePanel';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
@@ -426,6 +425,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           stablePromptContext={stablePromptContext}
           coherenceAffectedSpanIds={affectedSpanIds}
           coherenceSpanIssueMap={spanIssueMap}
+          coherenceIssues={coherenceIssues}
+          isCoherenceChecking={isCoherenceChecking}
+          isCoherencePanelExpanded={isPanelExpanded}
+          onToggleCoherencePanelExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
+          onDismissCoherenceIssue={dismissIssue}
+          onDismissAllCoherenceIssues={dismissAll}
+          onApplyCoherenceFix={applyFix}
+          onScrollToCoherenceSpan={scrollToSpanById}
         />
 
         {/* Privacy Policy Footer */}
@@ -453,16 +460,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         />
       )}
 
-      <CoherencePanel
-        issues={coherenceIssues}
-        isChecking={isCoherenceChecking}
-        isExpanded={isPanelExpanded}
-        onToggleExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
-        onDismissIssue={dismissIssue}
-        onDismissAll={dismissAll}
-        onApplyFix={applyFix}
-        onScrollToSpan={scrollToSpanById}
-      />
     </div>
   );
 }

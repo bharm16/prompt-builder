@@ -4,8 +4,8 @@ import {
   Icon,
   WarningCircle,
   Sparkle,
-  CaretUp,
   CaretDown,
+  X,
 } from '@promptstudio/system/components/ui';
 import { CoherenceIssueCard } from './CoherenceIssueCard';
 import type { CoherenceIssue } from './useCoherenceAnnotations';
@@ -42,20 +42,15 @@ export function CoherencePanel({
   }
 
   return (
-    <div
-      className={cn(
-        'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface-1 shadow-lg transition-all duration-200',
-        isExpanded ? 'max-h-[50vh]' : 'max-h-12'
-      )}
-    >
-      <div className="flex w-full items-center justify-between px-4 py-3 hover:bg-surface-2">
+    <div className="mt-4 border-t border-[rgba(67,70,81,0.5)] px-4 pt-4">
+      <div className="flex w-full max-w-[480px] items-center justify-between">
         <button
           type="button"
           onClick={onToggleExpanded}
           aria-expanded={isExpanded}
-          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+          className="flex h-10 min-w-0 flex-1 items-center justify-between gap-3 py-2 text-left"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             {isChecking ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-accent" />
             ) : conflicts.length > 0 ? (
@@ -64,85 +59,76 @@ export function CoherencePanel({
               <Icon icon={Sparkle} size="sm" className="text-info" />
             ) : null}
 
-            <span className="text-body-sm font-medium text-foreground">
+            <div className="flex min-w-0 items-center gap-2">
               {isChecking ? (
-                'Checking coherence...'
+                <span className="text-body-sm text-muted">Checking coherence...</span>
               ) : (
                 <>
                   {conflicts.length > 0 && (
-                    <span className="text-error">
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-md px-3 py-1 text-xs font-medium',
+                        'bg-[rgba(239,68,68,0.1)] text-[rgb(239,68,68)]'
+                      )}
+                    >
                       {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''}
                     </span>
                   )}
-                  {conflicts.length > 0 && harmonizations.length > 0 && ' · '}
                   {harmonizations.length > 0 && (
-                    <span className="text-muted">
+                    <span className="border-[rgb(67,70,81)] bg-surface-2 text-muted inline-flex items-center rounded-md border px-3 py-1 text-xs font-medium">
                       {harmonizations.length} suggestion{harmonizations.length > 1 ? 's' : ''}
                     </span>
                   )}
                 </>
               )}
-            </span>
+            </div>
           </div>
 
           <Icon
-            icon={isExpanded ? CaretDown : CaretUp}
+            icon={CaretDown}
             size="sm"
-            className="text-muted"
+            className={cn(
+              'text-[rgb(170,174,187)] transition-transform duration-200',
+              isExpanded ? 'rotate-180' : 'rotate-0'
+            )}
           />
         </button>
 
-        {hasIssues && (
+        {hasIssues && isExpanded && (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onDismissAll}
-            className="ml-2 shrink-0 text-muted hover:text-foreground"
+            className="ml-2 h-8 w-8 shrink-0 text-muted hover:text-foreground"
+            aria-label="Dismiss all"
           >
-            Dismiss all
+            <Icon icon={X} size="sm" />
           </Button>
         )}
       </div>
 
       {isExpanded && (
-        <div className="max-h-[calc(50vh-48px)] overflow-y-auto px-4 pb-4">
-          {conflicts.length > 0 && (
-            <section className="mb-4">
-              <h3 className="mb-2 text-label-12 font-semibold uppercase tracking-widest text-error">
-                Conflicts
-              </h3>
-              <div className="grid gap-2">
-                {conflicts.map((issue) => (
-                  <CoherenceIssueCard
-                    key={issue.id}
-                    issue={issue}
-                    onDismiss={() => onDismissIssue(issue.id)}
-                    onApplyFix={(rec) => onApplyFix(issue.id, rec)}
-                    onScrollToSpan={onScrollToSpan}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {harmonizations.length > 0 && (
-            <section>
-              <h3 className="mb-2 text-label-12 font-semibold uppercase tracking-widest text-muted">
-                Suggestions
-              </h3>
-              <div className="grid gap-2">
-                {harmonizations.map((issue) => (
-                  <CoherenceIssueCard
-                    key={issue.id}
-                    issue={issue}
-                    onDismiss={() => onDismissIssue(issue.id)}
-                    onApplyFix={(rec) => onApplyFix(issue.id, rec)}
-                    onScrollToSpan={onScrollToSpan}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="mt-3 flex w-full max-w-[480px] flex-col gap-3">
+          <div className="flex flex-col gap-3">
+            {conflicts.map((issue) => (
+              <CoherenceIssueCard
+                key={issue.id}
+                issue={issue}
+                onDismiss={() => onDismissIssue(issue.id)}
+                onApplyFix={(rec) => onApplyFix(issue.id, rec)}
+                onScrollToSpan={onScrollToSpan}
+              />
+            ))}
+            {harmonizations.map((issue) => (
+              <CoherenceIssueCard
+                key={issue.id}
+                issue={issue}
+                onDismiss={() => onDismissIssue(issue.id)}
+                onApplyFix={(rec) => onApplyFix(issue.id, rec)}
+                onScrollToSpan={onScrollToSpan}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

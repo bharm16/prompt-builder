@@ -13,3 +13,10 @@ export type {
   GenerationTier,
   GenerationsPanelProps,
 } from './types';
+export { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
+export type {
+  TimelineDivider,
+  TimelineGenerationItem,
+  TimelineItem,
+} from './hooks/useGenerationsTimeline';
+export { VersionDivider } from './components/VersionDivider';

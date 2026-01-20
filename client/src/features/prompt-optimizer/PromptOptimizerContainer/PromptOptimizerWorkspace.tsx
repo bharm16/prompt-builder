@@ -19,7 +19,6 @@ import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
-import { CoherencePanel } from '../components/coherence/CoherencePanel';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
@@ -481,6 +480,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
               displayedPrompt={promptOptimizer.displayedPrompt}
               coherenceAffectedSpanIds={affectedSpanIds}
               coherenceSpanIssueMap={spanIssueMap}
+              coherenceIssues={coherenceIssues}
+              isCoherenceChecking={isCoherenceChecking}
+              isCoherencePanelExpanded={isPanelExpanded}
+              onToggleCoherencePanelExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
+              onDismissCoherenceIssue={dismissIssue}
+              onDismissAllCoherenceIssues={dismissAll}
+              onApplyCoherenceFix={applyFix}
+              onScrollToCoherenceSpan={scrollToSpanById}
             />
           ) : shouldShowLoading ? (
             <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
@@ -513,16 +520,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         />
       )}
 
-      <CoherencePanel
-        issues={coherenceIssues}
-        isChecking={isCoherenceChecking}
-        isExpanded={isPanelExpanded}
-        onToggleExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
-        onDismissIssue={dismissIssue}
-        onDismissAll={dismissAll}
-        onApplyFix={applyFix}
-        onScrollToSpan={scrollToSpanById}
-      />
     </div>
   );
 }

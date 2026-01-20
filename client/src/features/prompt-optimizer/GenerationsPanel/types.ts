@@ -1,3 +1,5 @@
+import type { PromptVersionEntry } from '@hooks/types';
+
 export type GenerationTier = 'draft' | 'render';
 export type GenerationStatus = 'pending' | 'generating' | 'completed' | 'failed';
 export type GenerationMediaType = 'image' | 'video' | 'image-sequence';
@@ -40,4 +42,7 @@ export interface GenerationsPanelProps {
   initialGenerations?: Generation[];
   onGenerationsChange?: (generations: Generation[]) => void;
   className?: string;
+  versions: PromptVersionEntry[];
+  onRestoreVersion: (versionId: string) => void;
+  onCreateVersionIfNeeded: () => string;
 }

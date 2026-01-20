@@ -19,6 +19,7 @@ interface GenerationCardProps {
   onDelete?: (generation: Generation) => void;
   onDownload?: (generation: Generation) => void;
   isActive?: boolean;
+  onClick?: () => void;
 }
 
 const statusLabel = (status: Generation['status']): string => {
@@ -34,6 +35,7 @@ export function GenerationCard({
   onDelete,
   onDownload,
   isActive = false,
+  onClick,
 }: GenerationCardProps): React.ReactElement {
   const config = getModelConfig(generation.model);
   const timeLabel = formatRelativeTime(
@@ -48,13 +50,35 @@ export function GenerationCard({
     generation.status === 'completed' &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onClick) return;
+    const target = event.target as Element;
+    if (target.closest('button, a, input, textarea, select, video')) {
+      return;
+    }
+    onClick();
+  };
 
   return (
     <div
       className={cn(
         'bg-surface-2 rounded-xl border p-4 transition-colors',
-        isActive ? 'border-border-strong' : 'border-border'
+        isActive ? 'border-border-strong' : 'border-border',
+        onClick && 'cursor-pointer hover:border-border-strong'
       )}
+      onClick={onClick ? handleClick : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       <div className="flex items-center gap-2">
         <GenerationBadge tier={generation.tier} />
@@ -78,7 +102,10 @@ export function GenerationCard({
           variant="ghost"
           className="h-7 w-7 rounded-md"
           aria-label="More actions"
-          onClick={() => onDelete?.(generation)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete?.(generation);
+          }}
         >
           <DotsThree size={18} weight="bold" aria-hidden="true" />
         </Button>
@@ -119,7 +146,10 @@ export function GenerationCard({
                 type="button"
                 variant="ghost"
                 className="text-label-sm h-8 gap-1 px-2"
-                onClick={() => onRetry(generation)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRetry(generation);
+                }}
               >
                 <ArrowClockwise size={14} aria-hidden="true" />
                 Retry
@@ -130,7 +160,10 @@ export function GenerationCard({
                 type="button"
                 variant="ghost"
                 className="text-label-sm h-8 gap-1 px-2"
-                onClick={() => onDownload(generation)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDownload(generation);
+                }}
               >
                 <Download size={14} aria-hidden="true" />
                 Download

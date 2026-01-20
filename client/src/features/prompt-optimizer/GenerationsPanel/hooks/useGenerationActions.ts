@@ -30,12 +30,24 @@ export function useGenerationActions(
     inFlightRef.current.clear();
   }, []);
 
-  useEffect(() => {
-    if (promptVersionRef.current !== (options.promptVersionId ?? null)) {
-      abortAll();
-      promptVersionRef.current = options.promptVersionId ?? null;
+  const abortMismatched = useCallback((nextPromptVersionId: string | null) => {
+    const entries = Array.from(inFlightRef.current.entries());
+    for (const [id, controller] of entries) {
+      const generation = generationsRef.current.find((item) => item.id === id);
+      const generationVersionId = generation?.promptVersionId ?? null;
+      if (!generation || generationVersionId !== nextPromptVersionId) {
+        controller.abort();
+        inFlightRef.current.delete(id);
+      }
     }
-  }, [abortAll, options.promptVersionId]);
+  }, []);
+
+  useEffect(() => {
+    const nextPromptVersionId = options.promptVersionId ?? null;
+    if (promptVersionRef.current === nextPromptVersionId) return;
+    abortMismatched(nextPromptVersionId);
+    promptVersionRef.current = nextPromptVersionId;
+  }, [abortMismatched, options.promptVersionId]);
 
   useEffect(() => () => abortAll(), [abortAll]);
 

@@ -65,11 +65,13 @@ function generationsReducer(
 interface UseGenerationsStateOptions {
   initialGenerations?: Generation[];
   onGenerationsChange?: (generations: Generation[]) => void;
+  promptVersionId?: string | null;
 }
 
 export function useGenerationsState({
   initialGenerations,
   onGenerationsChange,
+  promptVersionId,
 }: UseGenerationsStateOptions = {}) {
   const [state, dispatch] = useReducer(
     generationsReducer,
@@ -80,9 +82,16 @@ export function useGenerationsState({
 
   useEffect(() => {
     if (!initialGenerations || initialRef.current === initialGenerations) return;
+    const hasLocalForVersion = Boolean(
+      promptVersionId &&
+        initialGenerations.length === 0 &&
+        state.generations.some((gen) => gen.promptVersionId === promptVersionId)
+    );
+    if (hasLocalForVersion) return;
+
     initialRef.current = initialGenerations;
     dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations });
-  }, [initialGenerations]);
+  }, [initialGenerations, promptVersionId, state.generations]);
 
   useEffect(() => {
     onGenerationsChange?.(state.generations);

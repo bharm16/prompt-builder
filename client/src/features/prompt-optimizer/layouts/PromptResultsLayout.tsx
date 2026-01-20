@@ -4,6 +4,8 @@ import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
 import type { OptimizationOptions } from '../types';
+import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from '../types/coherence';
 
 /**
  * PromptResultsLayout - Results/Canvas View Layout
@@ -33,6 +35,19 @@ interface PromptResultsLayoutProps {
   displayedPrompt?: string;
   coherenceAffectedSpanIds?: Set<string>;
   coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
+
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[];
+  isCoherenceChecking?: boolean;
+  isCoherencePanelExpanded?: boolean;
+  onToggleCoherencePanelExpanded?: () => void;
+  onDismissCoherenceIssue?: (issueId: string) => void;
+  onDismissAllCoherenceIssues?: () => void;
+  onApplyCoherenceFix?: (
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void;
+  onScrollToCoherenceSpan?: (spanId: string) => void;
 }
 
 export const PromptResultsLayout = ({
@@ -47,6 +62,14 @@ export const PromptResultsLayout = ({
   stablePromptContext,
   coherenceAffectedSpanIds,
   coherenceSpanIssueMap,
+  coherenceIssues,
+  isCoherenceChecking,
+  isCoherencePanelExpanded,
+  onToggleCoherencePanelExpanded,
+  onDismissCoherenceIssue,
+  onDismissAllCoherenceIssues,
+  onApplyCoherenceFix,
+  onScrollToCoherenceSpan,
 }: PromptResultsLayoutProps): React.ReactElement => {
   return (
     <main
@@ -65,6 +88,14 @@ export const PromptResultsLayout = ({
         stablePromptContext={stablePromptContext}
         coherenceAffectedSpanIds={coherenceAffectedSpanIds}
         coherenceSpanIssueMap={coherenceSpanIssueMap}
+        coherenceIssues={coherenceIssues}
+        isCoherenceChecking={isCoherenceChecking}
+        isCoherencePanelExpanded={isCoherencePanelExpanded}
+        onToggleCoherencePanelExpanded={onToggleCoherencePanelExpanded}
+        onDismissCoherenceIssue={onDismissCoherenceIssue}
+        onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
+        onApplyCoherenceFix={onApplyCoherenceFix}
+        onScrollToCoherenceSpan={onScrollToCoherenceSpan}
       />
     </main>
   );

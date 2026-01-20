@@ -10,6 +10,8 @@ import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 
 import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
+import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
 
 export interface SpansData {
   spans: Array<{
@@ -209,4 +211,17 @@ export interface PromptCanvasProps {
   refinedSpans?: SpansData | null;
   coherenceAffectedSpanIds?: Set<string>;
   coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
+
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[];
+  isCoherenceChecking?: boolean;
+  isCoherencePanelExpanded?: boolean;
+  onToggleCoherencePanelExpanded?: () => void;
+  onDismissCoherenceIssue?: (issueId: string) => void;
+  onDismissAllCoherenceIssues?: () => void;
+  onApplyCoherenceFix?: (
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void;
+  onScrollToCoherenceSpan?: (spanId: string) => void;
 }

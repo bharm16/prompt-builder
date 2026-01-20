@@ -19,38 +19,40 @@ export function CoherenceIssueCard({
   onScrollToSpan,
 }: CoherenceIssueCardProps) {
   const [showDiff, setShowDiff] = useState(false);
-  const isConflict = issue.type === 'conflict';
 
   return (
     <div
       className={cn(
-        'rounded-lg border p-3',
-        isConflict ? 'border-error/30 bg-error/5' : 'border-border bg-surface-2'
+        'relative rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] p-4'
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <p className="text-body-sm font-medium text-foreground">{issue.message}</p>
-          <p className="mt-1 text-label-12 text-muted">{issue.reasoning}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDismiss}
-          className="h-6 w-6 shrink-0 text-muted hover:text-foreground"
-        >
-          <Icon icon={X} size="sm" />
-        </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onDismiss}
+        className="absolute right-3 top-3 h-6 w-6 text-muted hover:text-foreground"
+        aria-label="Dismiss"
+      >
+        <Icon icon={X} size="sm" />
+      </Button>
+
+      <div className="pr-8">
+        <p className="text-sm font-medium text-[rgb(235,236,239)]">
+          {issue.message}
+        </p>
+        <p className="mt-1 text-[13px] leading-5 text-[rgb(170,174,187)]">
+          {issue.reasoning}
+        </p>
       </div>
 
       {issue.involvedSpanIds.length > 0 && onScrollToSpan && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-3 flex flex-wrap gap-2">
           {issue.involvedSpanIds.map((spanId, idx) => (
             <button
               key={spanId}
               type="button"
               onClick={() => onScrollToSpan(spanId)}
-              className="rounded bg-surface-3 px-1.5 py-0.5 text-label-12 text-accent hover:bg-accent/10"
+              className="bg-[rgb(44,48,55)] text-xs font-medium text-[rgb(235,236,239)] hover:bg-[rgb(52,56,64)] rounded-md px-3 py-1.5"
             >
               Span {String.fromCharCode(65 + idx)}
             </button>
@@ -59,34 +61,34 @@ export function CoherenceIssueCard({
       )}
 
       {issue.recommendations.length > 0 && (
-        <div className="mt-3 grid gap-2">
+        <div className="mt-3 grid gap-3">
           {issue.recommendations.map((rec, idx) => (
             <div
               key={rec.id || idx}
-              className="flex items-center justify-between gap-2 rounded bg-surface-1 p-2"
+              className="flex items-center justify-between gap-3 rounded-lg border border-[rgb(67,70,81)] bg-transparent p-3"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-label-12 font-medium text-foreground">
+                <p className="truncate text-xs font-medium text-[rgb(235,236,239)]">
                   {rec.title}
                 </p>
                 {showDiff && rec.edits?.[0] && (
-                  <div className="mt-1 flex items-center gap-2 text-label-12">
-                    <span className="line-through text-muted">
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-[rgb(170,174,187)] line-through">
                       {rec.edits[0].anchorQuote?.slice(0, 30)}...
                     </span>
                     <Icon icon={ArrowRight} size="xs" className="text-muted" />
-                    <span className="text-accent">
+                    <span className="text-[rgb(235,236,239)]">
                       {rec.edits[0].replacementText?.slice(0, 30)}...
                     </span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowDiff(!showDiff)}
-                  className="text-label-12 text-muted"
+                  className="text-muted h-8 rounded-md border border-[rgb(67,70,81)] bg-transparent px-3 text-xs hover:text-foreground"
                 >
                   {showDiff ? 'Hide' : 'Diff'}
                 </Button>
@@ -94,7 +96,7 @@ export function CoherenceIssueCard({
                   variant="default"
                   size="sm"
                   onClick={() => onApplyFix(rec)}
-                  className="text-label-12"
+                  className="h-8 rounded-md bg-[rgb(99,102,241)] px-3 text-xs font-medium text-white hover:opacity-90"
                 >
                   Apply
                 </Button>

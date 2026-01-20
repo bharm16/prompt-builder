@@ -4,6 +4,8 @@ import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
+import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from './types/coherence';
 
 /**
  * Prompt optimization mode configuration
@@ -150,6 +152,19 @@ export interface PromptResultsSectionProps {
   stablePromptContext?: PromptContext | null;
   coherenceAffectedSpanIds?: Set<string>;
   coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
+
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[];
+  isCoherenceChecking?: boolean;
+  isCoherencePanelExpanded?: boolean;
+  onToggleCoherencePanelExpanded?: () => void;
+  onDismissCoherenceIssue?: (issueId: string) => void;
+  onDismissAllCoherenceIssues?: () => void;
+  onApplyCoherenceFix?: (
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void;
+  onScrollToCoherenceSpan?: (spanId: string) => void;
 }
 
 /**

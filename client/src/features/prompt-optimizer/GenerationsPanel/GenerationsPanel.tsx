@@ -5,8 +5,10 @@ import { Icon, Play } from '@promptstudio/system/components/ui';
 import type { Generation, GenerationsPanelProps } from './types';
 import { GenerationHeader } from './components/GenerationHeader';
 import { GenerationCard } from './components/GenerationCard';
+import { VersionDivider } from './components/VersionDivider';
 import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
+import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
 
@@ -55,6 +57,9 @@ export function GenerationsPanel({
   initialGenerations,
   onGenerationsChange,
   className,
+  versions,
+  onRestoreVersion,
+  onCreateVersionIfNeeded,
 }: GenerationsPanelProps): React.ReactElement {
   const {
     generations,
@@ -63,7 +68,11 @@ export function GenerationsPanel({
     dispatch,
     getLatestByTier,
     removeGeneration,
-  } = useGenerationsState({ initialGenerations, onGenerationsChange });
+  } = useGenerationsState({
+    initialGenerations,
+    onGenerationsChange,
+    promptVersionId,
+  });
 
   const { generateDraft, generateRender, retryGeneration } =
     useGenerationActions(dispatch, {
@@ -90,17 +99,19 @@ export function GenerationsPanel({
   const handleDraft = useCallback(
     (model: DraftModel) => {
       if (!prompt.trim()) return;
-      generateDraft(model, prompt, {});
+      const versionId = onCreateVersionIfNeeded();
+      generateDraft(model, prompt, { promptVersionId: versionId });
     },
-    [generateDraft, prompt]
+    [generateDraft, onCreateVersionIfNeeded, prompt]
   );
 
   const handleRender = useCallback(
     (model: string) => {
       if (!prompt.trim()) return;
-      generateRender(model, prompt, {});
+      const versionId = onCreateVersionIfNeeded();
+      generateRender(model, prompt, { promptVersionId: versionId });
     },
-    [generateRender, prompt]
+    [generateRender, onCreateVersionIfNeeded, prompt]
   );
 
   const handleDelete = useCallback(
@@ -124,6 +135,21 @@ export function GenerationsPanel({
     }
   }, []);
 
+  const versionsForTimeline = useMemo(() => {
+    if (!versions.length || !promptVersionId) return versions;
+    const index = versions.findIndex(
+      (version) => version.versionId === promptVersionId
+    );
+    if (index < 0) return versions;
+    const target = versions[index];
+    if (target?.generations === generations) return versions;
+    const next = [...versions];
+    next[index] = { ...target, generations };
+    return next;
+  }, [generations, promptVersionId, versions]);
+
+  const timeline = useGenerationsTimeline({ versions: versionsForTimeline });
+
   return (
     <div className={cn('flex h-full flex-col overflow-hidden', className)}>
       <GenerationHeader
@@ -133,23 +159,36 @@ export function GenerationsPanel({
         isRenderDisabled={!prompt.trim() || isGenerating}
         activeDraftModel={activeDraftModel}
       />
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-        {generations.length === 0 ? (
+      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
+        {timeline.length === 0 ? (
           <EmptyState
             onRunDraft={() => handleDraft(defaultDraftModel)}
             isRunDraftDisabled={!prompt.trim() || isGenerating}
           />
         ) : (
-          generations.map((generation) => (
-            <GenerationCard
-              key={generation.id}
-              generation={generation}
-              isActive={generation.id === activeGenerationId}
-              onRetry={handleRetry}
-              onDelete={handleDelete}
-              onDownload={handleDownload}
-            />
-          ))
+          timeline.map((item, index) => {
+            if (item.type === 'divider') {
+              return (
+                <VersionDivider
+                  key={`divider-${item.versionId}-${index}`}
+                  versionLabel={item.versionLabel}
+                  promptChanged={item.promptChanged}
+                />
+              );
+            }
+
+            return (
+              <GenerationCard
+                key={item.generation.id}
+                generation={item.generation}
+                isActive={item.generation.id === activeGenerationId}
+                onRetry={handleRetry}
+                onDelete={handleDelete}
+                onDownload={handleDownload}
+                onClick={() => onRestoreVersion(item.generation._versionId)}
+              />
+            );
+          })
         )}
       </div>
     </div>

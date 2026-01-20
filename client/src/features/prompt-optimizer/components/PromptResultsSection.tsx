@@ -21,6 +21,14 @@ export const PromptResultsSection = ({
   stablePromptContext = null,
   coherenceAffectedSpanIds,
   coherenceSpanIssueMap,
+  coherenceIssues,
+  isCoherenceChecking,
+  isCoherencePanelExpanded,
+  onToggleCoherencePanelExpanded,
+  onDismissCoherenceIssue,
+  onDismissAllCoherenceIssues,
+  onApplyCoherenceFix,
+  onScrollToCoherenceSpan,
 }: PromptResultsSectionProps): React.ReactElement | null => {
   const {
     showResults,
@@ -100,6 +108,14 @@ export const PromptResultsSection = ({
         refinedSpans={promptOptimizer.refinedSpans}
         coherenceAffectedSpanIds={coherenceAffectedSpanIds}
         coherenceSpanIssueMap={coherenceSpanIssueMap}
+        coherenceIssues={coherenceIssues}
+        isCoherenceChecking={isCoherenceChecking}
+        isCoherencePanelExpanded={isCoherencePanelExpanded}
+        onToggleCoherencePanelExpanded={onToggleCoherencePanelExpanded}
+        onDismissCoherenceIssue={onDismissCoherenceIssue}
+        onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
+        onApplyCoherenceFix={onApplyCoherenceFix}
+        onScrollToCoherenceSpan={onScrollToCoherenceSpan}
       />
     </>
   );

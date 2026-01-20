@@ -96,6 +96,7 @@ import {
   CollapsibleDrawer,
   useDrawerState,
 } from '@components/CollapsibleDrawer';
+import { CoherencePanel } from './components/coherence/CoherencePanel';
 
 const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant, ...props }, ref) => (
@@ -160,6 +161,14 @@ export function PromptCanvas({
   refinedSpans = null,
   coherenceAffectedSpanIds,
   coherenceSpanIssueMap,
+  coherenceIssues,
+  isCoherenceChecking,
+  isCoherencePanelExpanded,
+  onToggleCoherencePanelExpanded,
+  onDismissCoherenceIssue,
+  onDismissAllCoherenceIssues,
+  onApplyCoherenceFix,
+  onScrollToCoherenceSpan,
 }: PromptCanvasProps): React.ReactElement {
   // Debug logging
   const debug = useDebugLogger('PromptCanvas', {
@@ -426,6 +435,89 @@ export function PromptCanvas({
     setActiveVersionId(nextVersion.versionId);
     resetVersionEdits();
   }, [
+    currentPromptDocId,
+    currentPromptUuid,
+    currentVersions,
+    latestHighlightRef,
+    normalizedDisplayedPrompt,
+    promptHistory,
+    resetVersionEdits,
+    setActiveVersionId,
+    versionEditCountRef,
+    versionEditsRef,
+  ]);
+
+  const createVersionIfNeeded = useCallback((): string => {
+    const promptText = (normalizedDisplayedPrompt ?? '').trim();
+    if (!promptText) {
+      return activeVersion?.versionId ?? '';
+    }
+
+    if (!currentPromptUuid) {
+      return activeVersion?.versionId ?? '';
+    }
+
+    const signature = createHighlightSignature(promptText);
+
+    if (!currentVersions.length) {
+      const editCount = versionEditCountRef.current;
+      const edits = versionEditsRef.current.length
+        ? [...versionEditsRef.current]
+        : [];
+      const newVersion = {
+        versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        label: 'v1',
+        signature,
+        prompt: promptText,
+        timestamp: new Date().toISOString(),
+        highlights: latestHighlightRef.current ?? null,
+        preview: null,
+        video: null,
+        generations: [],
+        ...(editCount > 0 ? { editCount } : {}),
+        ...(edits.length ? { edits } : {}),
+      };
+
+      promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+        newVersion,
+      ]);
+      setActiveVersionId(newVersion.versionId);
+      resetVersionEdits();
+      return newVersion.versionId;
+    }
+
+    const lastVersion = currentVersions[currentVersions.length - 1];
+    if (lastVersion && lastVersion.signature === signature) {
+      return lastVersion.versionId;
+    }
+
+    const editCount = versionEditCountRef.current;
+    const edits = versionEditsRef.current.length
+      ? [...versionEditsRef.current]
+      : [];
+    const newVersion = {
+      versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      label: `v${currentVersions.length + 1}`,
+      signature,
+      prompt: promptText,
+      timestamp: new Date().toISOString(),
+      highlights: latestHighlightRef.current ?? null,
+      preview: null,
+      video: null,
+      generations: [],
+      ...(editCount > 0 ? { editCount } : {}),
+      ...(edits.length ? { edits } : {}),
+    };
+
+    promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+      ...currentVersions,
+      newVersion,
+    ]);
+    setActiveVersionId(newVersion.versionId);
+    resetVersionEdits();
+    return newVersion.versionId;
+  }, [
+    activeVersion?.versionId,
     currentPromptDocId,
     currentPromptUuid,
     currentVersions,
@@ -1803,6 +1895,17 @@ export function PromptCanvas({
               </div>
             </div>
 
+            <CoherencePanel
+              issues={coherenceIssues ?? []}
+              isChecking={Boolean(isCoherenceChecking)}
+              isExpanded={Boolean(isCoherencePanelExpanded)}
+              onToggleExpanded={onToggleCoherencePanelExpanded ?? (() => {})}
+              onDismissIssue={onDismissCoherenceIssue ?? (() => {})}
+              onDismissAll={onDismissAllCoherenceIssues ?? (() => {})}
+              onApplyFix={onApplyCoherenceFix ?? (() => {})}
+              onScrollToSpan={onScrollToCoherenceSpan}
+            />
+
             <CollapsibleDrawer
               isOpen={versionsDrawer.isOpen}
               onToggle={versionsDrawer.toggle}
@@ -1841,6 +1944,9 @@ export function PromptCanvas({
               generationParams={generationParams ?? undefined}
               initialGenerations={activeVersion?.generations ?? undefined}
               onGenerationsChange={handleGenerationsChange}
+              versions={currentVersions}
+              onRestoreVersion={handleSelectVersion}
+              onCreateVersionIfNeeded={createVersionIfNeeded}
             />
           </div>
         </div>
@@ -1874,6 +1980,9 @@ export function PromptCanvas({
             initialGenerations={activeVersion?.generations ?? undefined}
             onGenerationsChange={handleGenerationsChange}
             className="h-full"
+            versions={currentVersions}
+            onRestoreVersion={handleSelectVersion}
+            onCreateVersionIfNeeded={createVersionIfNeeded}
           />
         </SheetContent>
       </Sheet>
