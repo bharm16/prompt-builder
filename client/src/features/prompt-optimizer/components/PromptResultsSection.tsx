@@ -19,6 +19,8 @@ export const PromptResultsSection = ({
   onUndo,
   onRedo,
   stablePromptContext = null,
+  coherenceAffectedSpanIds,
+  coherenceSpanIssueMap,
 }: PromptResultsSectionProps): React.ReactElement | null => {
   const {
     showResults,
@@ -96,6 +98,8 @@ export const PromptResultsSection = ({
         // Span labeling for fast highlights (NEW!)
         draftSpans={promptOptimizer.draftSpans}
         refinedSpans={promptOptimizer.refinedSpans}
+        coherenceAffectedSpanIds={coherenceAffectedSpanIds}
+        coherenceSpanIssueMap={coherenceSpanIssueMap}
       />
     </>
   );

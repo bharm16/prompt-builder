@@ -1,16 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@promptstudio/system/components/ui/select';
-import {
-  DRAFT_MODELS,
-  RENDER_MODELS,
-  formatCredits,
-} from '../config/generationConfig';
+import React, { useEffect, useState } from 'react';
+import { DRAFT_MODELS, RENDER_MODELS } from '../config/generationConfig';
+import { SplitActionButton } from './SplitActionButton';
 
 interface GenerationHeaderProps {
   onDraft: (model: 'flux-kontext' | 'wan-2.2') => void;
@@ -27,79 +17,38 @@ export function GenerationHeader({
   isRenderDisabled = false,
   activeDraftModel,
 }: GenerationHeaderProps): React.ReactElement {
-  const draftOptions = useMemo(() => Object.entries(DRAFT_MODELS), []);
-  const renderOptions = useMemo(() => Object.entries(RENDER_MODELS), []);
-  const [draftValue, setDraftValue] = useState<string | undefined>(
-    activeDraftModel ?? undefined
+  const [draftModel, setDraftModel] = useState<string>(
+    activeDraftModel ?? 'flux-kontext'
   );
-  const [renderValue, setRenderValue] = useState<string | undefined>(undefined);
+  const [renderModel, setRenderModel] = useState<string>('sora');
 
   useEffect(() => {
-    setDraftValue(activeDraftModel ?? undefined);
+    if (activeDraftModel) {
+      setDraftModel(activeDraftModel);
+    }
   }, [activeDraftModel]);
 
   return (
     <div className="flex h-ps-9 items-center gap-ps-3 overflow-x-auto px-ps-6">
-      <div className="border-border flex items-center gap-2 rounded-lg border p-1">
-        <Select
-          value={draftValue}
-          onValueChange={(value) => {
-            setDraftValue(value);
-            onDraft(value as 'flux-kontext' | 'wan-2.2');
-          }}
+      <div className="flex items-center gap-2">
+        <SplitActionButton
+          label="Draft"
+          selectedModel={draftModel}
+          models={DRAFT_MODELS}
+          onRun={() => onDraft(draftModel as 'flux-kontext' | 'wan-2.2')}
+          onModelChange={setDraftModel}
           disabled={isDraftDisabled}
-        >
-          <SelectTrigger
-            size="xxs"
-            align="center"
-            variant="filled"
-            className="min-w-36"
-            aria-label="Draft model selection"
-          >
-            <SelectValue placeholder="Draft" />
-          </SelectTrigger>
-          <SelectContent>
-            {draftOptions.map(([id, config]) => (
-              <SelectItem
-                key={id}
-                value={id}
-                title={`${config.label} • ${formatCredits(config.credits)}`}
-              >
-                {config.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={renderValue}
-          onValueChange={(value) => {
-            setRenderValue(value);
-            onRender(value);
-          }}
+          variant="default"
+        />
+        <SplitActionButton
+          label="Render"
+          selectedModel={renderModel}
+          models={RENDER_MODELS}
+          onRun={() => onRender(renderModel)}
+          onModelChange={setRenderModel}
           disabled={isRenderDisabled}
-        >
-          <SelectTrigger
-            size="xxs"
-            align="center"
-            variant="accent"
-            className="min-w-36"
-            aria-label="Render model selection"
-          >
-            <SelectValue placeholder="Render" />
-          </SelectTrigger>
-          <SelectContent>
-            {renderOptions.map(([id, config]) => (
-              <SelectItem
-                key={id}
-                value={id}
-                title={`${config.label} • ${formatCredits(config.credits)}`}
-              >
-                {config.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          variant="accent"
+        />
       </div>
     </div>
   );

@@ -72,6 +72,7 @@ import { useParseResult } from './PromptCanvas/hooks/useParseResult';
 import { usePromptCanvasState } from './PromptCanvas/hooks/usePromptCanvasState';
 import { usePromptStatus } from './PromptCanvas/hooks/usePromptStatus';
 import { useSpanSelectionEffects } from './PromptCanvas/hooks/useSpanSelectionEffects';
+import { useCoherenceSpanMarkers } from './PromptCanvas/hooks/useCoherenceSpanMarkers';
 import { useSuggestionFeedback } from './PromptCanvas/hooks/useSuggestionFeedback';
 import { useSuggestionSelection } from './PromptCanvas/hooks/useSuggestionSelection';
 import { useTextSelection } from './PromptCanvas/hooks/useTextSelection';
@@ -157,6 +158,8 @@ export function PromptCanvas({
   isProcessing = false,
   draftSpans = null,
   refinedSpans = null,
+  coherenceAffectedSpanIds,
+  coherenceSpanIssueMap,
 }: PromptCanvasProps): React.ReactElement {
   // Debug logging
   const debug = useDebugLogger('PromptCanvas', {
@@ -831,6 +834,15 @@ export function PromptCanvas({
     selectedSpanId,
     displayedPrompt: normalizedDisplayedPrompt,
     setState,
+  });
+
+  useCoherenceSpanMarkers({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    enableMLHighlighting,
+    showHighlights,
+    affectedSpanIds: coherenceAffectedSpanIds ?? null,
+    spanIssueMap: coherenceSpanIssueMap ?? null,
+    highlightFingerprint,
   });
 
   useSuggestionSelection({

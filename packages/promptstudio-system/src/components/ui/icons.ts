@@ -7,6 +7,8 @@ export {
   MagicWand,
   Lightning,
   Robot,
+  Brain,
+  Cpu,
 
   // Actions
   Copy,
@@ -36,6 +38,12 @@ export {
   Camera,
   Play,
   Pause,
+
+  // Time / Performance
+  Clock,
+  Timer,
+  Gauge,
+  Speedometer,
 
   // UI
   Gear,
@@ -73,6 +81,8 @@ export {
   Question,
   Star,
   Heart,
+  Crop,
+  FrameCorners,
   Ruler,
   Target,
   Tree,

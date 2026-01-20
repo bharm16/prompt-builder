@@ -11,7 +11,7 @@
  * - Conditional layout rendering
  */
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { PromptInputLayout } from '../layouts/PromptInputLayout';
@@ -19,11 +19,17 @@ import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
-import { CoherenceReviewModal } from '../components/CoherenceReviewModal';
+import { CoherencePanel } from '../components/coherence/CoherencePanel';
+import {
+  useCoherenceAnnotations,
+  type CoherenceIssue,
+} from '../components/coherence/useCoherenceAnnotations';
 import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { getAuthRepository } from '@/repositories';
+import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
+import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -32,8 +38,8 @@ import {
   useImprovementFlow,
   useConceptBrainstorm,
   useEnhancementSuggestions,
-  useCoherenceReview,
 } from './hooks';
+import type { CoherenceRecommendation } from '../types/coherence';
 import type { User } from '../context/types';
 
 /**
@@ -312,22 +318,68 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     toast,
   });
 
+  const handleApplyCoherenceFix = useCallback(
+    (recommendation: CoherenceRecommendation, issue: CoherenceIssue): boolean => {
+      const currentPrompt = promptOptimizer.displayedPrompt;
+      if (!currentPrompt) {
+        return false;
+      }
+
+      const result = applyCoherenceRecommendation({
+        recommendation,
+        prompt: currentPrompt,
+        spans: issue.spans,
+        highlightSnapshot: latestHighlightRef.current,
+      });
+
+      if (!result.updatedPrompt) {
+        return false;
+      }
+
+      if (result.updatedSnapshot) {
+        applyInitialHighlightSnapshot(result.updatedSnapshot, {
+          bumpVersion: true,
+          markPersisted: false,
+        });
+      }
+
+      handleDisplayedPromptChange(result.updatedPrompt);
+
+      if (currentPromptUuid) {
+        try {
+          promptHistory.updateEntryOutput(currentPromptUuid, currentPromptDocId, result.updatedPrompt);
+        } catch (error) {
+          console.warn('Failed to persist coherence edits:', error);
+        }
+      }
+
+      return true;
+    },
+    [
+      applyInitialHighlightSnapshot,
+      currentPromptDocId,
+      currentPromptUuid,
+      handleDisplayedPromptChange,
+      latestHighlightRef,
+      promptHistory,
+      promptOptimizer.displayedPrompt,
+    ]
+  );
+
   const {
-    reviewData,
+    issues: coherenceIssues,
     isChecking: isCoherenceChecking,
-    isApplying: isCoherenceApplying,
-    runCoherenceCheck,
-    applyRecommendations,
-    dismissReview,
-  } = useCoherenceReview({
-    promptOptimizer,
-    handleDisplayedPromptChange,
-    applyInitialHighlightSnapshot,
-    latestHighlightRef,
+    isPanelExpanded,
+    setIsPanelExpanded,
+    affectedSpanIds,
+    spanIssueMap,
+    runCheck: runCoherenceCheck,
+    dismissIssue,
+    dismissAll,
+    applyFix,
+  } = useCoherenceAnnotations({
+    onApplyFix: handleApplyCoherenceFix,
     toast,
-    currentPromptUuid,
-    currentPromptDocId,
-    promptHistory,
   });
 
   // Enhancement suggestions
@@ -401,18 +453,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         onSkipBrainstorm={handleSkipBrainstorm}
       />
 
-      <CoherenceReviewModal
-        review={reviewData}
-        isChecking={isCoherenceChecking}
-        isApplying={isCoherenceApplying}
-        onDismiss={dismissReview}
-        onUndoOriginal={() => {
-          handleUndo();
-          dismissReview();
-        }}
-        onApplySelected={applyRecommendations}
-      />
-
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <div className="flex min-h-0 flex-shrink-0">
           <PromptSidebar user={user} />
@@ -439,6 +479,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
               stablePromptContext={stablePromptContext}
               suggestionsData={suggestionsData}
               displayedPrompt={promptOptimizer.displayedPrompt}
+              coherenceAffectedSpanIds={affectedSpanIds}
+              coherenceSpanIssueMap={spanIssueMap}
             />
           ) : shouldShowLoading ? (
             <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
@@ -470,6 +512,17 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           promptContext={stablePromptContext}
         />
       )}
+
+      <CoherencePanel
+        issues={coherenceIssues}
+        isChecking={isCoherenceChecking}
+        isExpanded={isPanelExpanded}
+        onToggleExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
+        onDismissIssue={dismissIssue}
+        onDismissAll={dismissAll}
+        onApplyFix={applyFix}
+        onScrollToSpan={scrollToSpanById}
+      />
     </div>
   );
 }

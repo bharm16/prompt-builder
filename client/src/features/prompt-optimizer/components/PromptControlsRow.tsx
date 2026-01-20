@@ -6,11 +6,11 @@ import {
   SelectTrigger,
 } from '@promptstudio/system/components/ui/select';
 import {
-  FilmSlate,
+  Brain,
+  FrameCorners,
+  Gauge,
   Icon,
-  Robot,
-  Ruler,
-  VideoCamera,
+  Timer,
 } from '@promptstudio/system/components/ui';
 import { usePromptState } from '../context/PromptStateContext';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -195,7 +195,7 @@ export function PromptControlsRow({
           aria-label={`Model: ${modelLabel}`}
           title={`Model: ${modelLabel}`}
         >
-          <Icon icon={Robot} size="md" aria-hidden="true" />
+          <Icon icon={Brain} size="md" aria-hidden="true" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="auto">Auto</SelectItem>
@@ -214,7 +214,7 @@ export function PromptControlsRow({
           aspectRatioInfo,
           'aspect_ratio',
           'Aspect ratio',
-          Ruler,
+          FrameCorners,
           isOptimizing
         )}
 
@@ -223,12 +223,12 @@ export function PromptControlsRow({
           durationInfo,
           'duration_s',
           'Duration',
-          FilmSlate,
+          Timer,
           isOptimizing
         )}
 
       {fpsInfo &&
-        renderDropdown(fpsInfo, 'fps', 'Frame rate', VideoCamera, isOptimizing)}
+        renderDropdown(fpsInfo, 'fps', 'Frame rate', Gauge, isOptimizing)}
     </div>
   );
 }

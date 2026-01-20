@@ -148,6 +148,8 @@ export interface PromptResultsSectionProps {
   onUndo: () => void;
   onRedo: () => void;
   stablePromptContext?: PromptContext | null;
+  coherenceAffectedSpanIds?: Set<string>;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
 }
 
 /**

@@ -207,4 +207,6 @@ export interface PromptCanvasProps {
   isProcessing?: boolean;
   draftSpans?: SpansData | null;
   refinedSpans?: SpansData | null;
+  coherenceAffectedSpanIds?: Set<string>;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
 }

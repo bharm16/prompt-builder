@@ -31,6 +31,8 @@ interface PromptResultsLayoutProps {
   stablePromptContext: PromptContext | null;
   suggestionsData: SuggestionsData | null;
   displayedPrompt?: string;
+  coherenceAffectedSpanIds?: Set<string>;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
 }
 
 export const PromptResultsLayout = ({
@@ -43,6 +45,8 @@ export const PromptResultsLayout = ({
   onUndo,
   onRedo,
   stablePromptContext,
+  coherenceAffectedSpanIds,
+  coherenceSpanIssueMap,
 }: PromptResultsLayoutProps): React.ReactElement => {
   return (
     <main
@@ -59,6 +63,8 @@ export const PromptResultsLayout = ({
         onUndo={onUndo}
         onRedo={onRedo}
         stablePromptContext={stablePromptContext}
+        coherenceAffectedSpanIds={coherenceAffectedSpanIds}
+        coherenceSpanIssueMap={coherenceSpanIssueMap}
       />
     </main>
   );
