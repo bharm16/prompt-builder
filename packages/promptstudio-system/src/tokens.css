@@ -154,11 +154,11 @@
        ========================= */
     --ps-bg: #16181d; /* Updated: Midjourney panel bg */
     --ps-surface-1: #1b1e23; /* Updated: Runway panel */
-    --ps-surface-2: #1e1f25; /* Updated: Midjourney panel */
+    --ps-surface-2: #2c3037; /* Updated */
     --ps-surface-3: #242a38;
 
-    --ps-border: #2c3037; /* Updated: Runway border */
-    --ps-border-strong: #434651; /* Updated: hover border */
+    --ps-border: #434651; /* Updated */
+    --ps-border-strong: #5a5e6c; /* Updated */
 
     --ps-text: #ebecef; /* Updated: Midjourney text */
     --ps-text-muted: #c6c9d2; /* Updated: Midjourney secondary */
@@ -166,7 +166,7 @@
     --ps-text-ghost: #a1afc5; /* Updated: Runway muted */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
 
-    --ps-accent: #6886ff;
+    --ps-accent: #ffffff;
     --ps-accent-2: #b3affd; /* Updated: Version indicator accent */
     --ps-accent-runway: #2c22fa; /* New: Runway primary blue */
     --ps-accent-mj: #f2330d; /* New: Midjourney orange */
@@ -320,11 +320,11 @@
     --ps-editor-letter-spacing: 0.01em;
     --ps-editor-padding-y: var(--ps-space-7);
     --ps-editor-padding-x: 28px;
-    --ps-highlight-pill-padding-y: 6px;
-    --ps-highlight-pill-padding-x: 10px;
+    --ps-highlight-pill-padding-y: 4px;
+    --ps-highlight-pill-padding-x: 8px;
     --ps-highlight-pill-margin-x: 3px;
     --ps-highlight-pill-line-height: 1;
-    --ps-highlight-pill-radius: var(--ps-r-xs);
+    --ps-highlight-pill-radius: var(--ps-r-md);
 
     /* =========================
        Panel Components (Runway/Midjourney)

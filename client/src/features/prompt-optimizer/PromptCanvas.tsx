@@ -1351,7 +1351,7 @@ export function PromptCanvas({
                       <span className="text-label-sm text-muted">
                         Optimized Editor
                       </span>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-ps-2">
                         {!outlineOverlayActive && (
                           <CanvasButton
                             type="button"
@@ -1362,7 +1362,7 @@ export function PromptCanvas({
                           >
                             <Icon
                               icon={GridFour}
-                              size="md"
+                              size="sm"
                               weight="bold"
                               aria-hidden="true"
                             />
@@ -1380,14 +1380,14 @@ export function PromptCanvas({
                           {copied ? (
                             <Icon
                               icon={Check}
-                              size="md"
+                              size="sm"
                               weight="bold"
                               aria-hidden="true"
                             />
                           ) : (
                             <Icon
                               icon={Copy}
-                              size="md"
+                              size="sm"
                               weight="bold"
                               aria-hidden="true"
                             />
@@ -1402,7 +1402,7 @@ export function PromptCanvas({
                         >
                           <Icon
                             icon={ArrowCounterClockwise}
-                            size="md"
+                            size="sm"
                             weight="bold"
                             aria-hidden="true"
                           />
@@ -1416,7 +1416,7 @@ export function PromptCanvas({
                         >
                           <Icon
                             icon={ArrowClockwise}
-                            size="md"
+                            size="sm"
                             weight="bold"
                             aria-hidden="true"
                           />
@@ -1433,7 +1433,7 @@ export function PromptCanvas({
                           >
                             <Icon
                               icon={DotsThree}
-                              size="md"
+                              size="sm"
                               weight="bold"
                               aria-hidden="true"
                             />
@@ -1799,7 +1799,7 @@ export function PromptCanvas({
               isOpen={versionsDrawer.isOpen}
               onToggle={versionsDrawer.toggle}
               height="180px"
-              collapsedHeight="48px"
+              collapsedHeight="44px"
               position="bottom"
               displayMode={versionsDrawer.displayMode}
               showToggle={false}

@@ -18,11 +18,11 @@ const selectTriggerVariants = cva(
   {
     variants: {
       size: {
-        xxs: 'h-ps-6 gap-ps-1 px-ps-1 text-label-10 rounded-md [&>svg]:size-3',
+        xxs: 'h-ps-6 gap-ps-1 px-ps-4 text-label-10 rounded-md [&>svg]:size-3',
         xs: 'h-ps-6 gap-ps-1 px-ps-2 text-label-11 rounded-md [&>svg]:size-3',
-        sm: 'h-ps-7 gap-ps-1 px-ps-2 text-label-12 rounded-lg [&>svg]:size-3.5',
-        default: 'h-ps-8 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
-        md: 'h-ps-8 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
+        sm: 'h-ps-6 gap-ps-1 px-ps-2 text-label-12 rounded-lg [&>svg]:size-3.5',
+        default: 'h-ps-6 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
+        md: 'h-ps-6 gap-ps-2 px-ps-3 py-ps-2 text-body rounded-lg',
         lg: 'h-ps-9 gap-ps-2 px-ps-4 py-ps-2 text-body-lg rounded-lg',
       },
       align: {
@@ -31,12 +31,13 @@ const selectTriggerVariants = cva(
       },
       variant: {
         default: 'border-border hover:border-border-strong',
-        filled: 'border-border bg-surface-2 hover:border-border-strong hover:bg-surface-3',
+        filled:
+          'border-border bg-surface-2 text-muted data-[placeholder]:text-muted hover:border-border-strong hover:bg-surface-3',
         ghost:
           'border-transparent bg-transparent hover:bg-surface-2 hover:border-border',
         pill: 'border-border bg-surface-2 rounded-full hover:border-border-strong hover:bg-surface-3',
         accent:
-          'border-accent bg-accent text-app ps-glow-accent data-[placeholder]:text-app/90 hover:opacity-90 focus-visible:border-accent',
+          'border-accent bg-accent text-app font-semibold ps-glow-accent data-[placeholder]:text-app/90 hover:opacity-90 focus-visible:border-accent',
       },
     },
     defaultVariants: {

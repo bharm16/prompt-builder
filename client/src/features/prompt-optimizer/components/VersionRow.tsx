@@ -121,29 +121,22 @@ export function VersionRow({
         type="button"
         onClick={onSelect}
         className={cn(
-          'ps-card-interactive ps-edge-lit',
-          'relative flex h-full min-w-[140px] max-w-[180px] flex-shrink-0 flex-col items-center justify-center',
-          'gap-ps-2 rounded-lg border bg-surface-2 p-ps-3 text-center',
-          'border-border',
-          'hover:border-border-strong hover:bg-surface-3',
-          isSelected && 'border-accent/60 bg-surface-3 ps-glow-accent'
+          'ps-card-interactive',
+          'snap-start',
+          'relative flex h-[120px] min-w-[160px] max-w-[180px] flex-shrink-0 flex-col items-center justify-start',
+          'gap-2 rounded-lg border p-3 text-center',
+          isSelected
+            ? 'border-2 border-[rgb(104,134,255)] bg-[rgb(36,42,56)]'
+            : 'border border-[rgb(44,48,55)] bg-[rgb(36,40,47)] hover:bg-[rgb(36,42,56)]'
         )}
         data-active={isSelected ? 'true' : 'false'}
         aria-pressed={isSelected}
       >
-        {isSelected && (
-          <span
-            className="absolute inset-x-0 bottom-0 h-[3px] rounded-b-lg bg-accent"
-            style={{ boxShadow: 'var(--ps-glow-accent)' }}
-            aria-hidden="true"
-          />
-        )}
-        
         {/* Preview thumbnail */}
         <div
           className={cn(
             'ps-thumb-frame flex w-full items-center justify-center',
-            'h-ps-10',
+            'h-16 overflow-hidden rounded-[6px]',
             !previewImageUrl && !hasVideo && 'ps-thumb-placeholder'
           )}
         >
@@ -160,10 +153,10 @@ export function VersionRow({
             <Icon icon={Image} size="lg" weight="bold" aria-hidden="true" className="text-faint" />
           )}
         </div>
-        
+
         {/* Label and meta */}
-        <div className="flex w-full flex-col gap-ps-1">
-          <div className="flex items-center justify-center gap-ps-2">
+        <div className="flex w-full flex-col gap-1">
+          <div className="flex items-center justify-center gap-2">
             {isDirty ? (
               <span
                 className="h-ps-1 w-ps-1 rounded-full bg-warning ring-2 ring-warning/30 ps-animate-active-dot-pulse"
@@ -181,13 +174,13 @@ export function VersionRow({
               {label}
             </span>
             {isSelected && index === 0 ? (
-              <Badge variant="subtle" size="xs" className="text-accent">
+              <span className="inline-flex items-center rounded-full bg-[rgb(44,48,55)] px-[6px] py-[2px] text-[11px] font-semibold text-[rgb(235,236,239)]">
                 Current
-              </Badge>
+              </span>
             ) : null}
           </div>
           {meta ? (
-            <span className="truncate text-label-12 text-muted">{meta}</span>
+            <span className="truncate text-[11px] font-medium text-muted">{meta}</span>
           ) : null}
         </div>
       </button>

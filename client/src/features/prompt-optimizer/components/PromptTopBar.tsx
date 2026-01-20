@@ -235,7 +235,7 @@ export const PromptTopBar = ({
           >
             <Icon
               icon={SidebarSimple}
-              size={24}
+              size="md"
               weight="bold"
               aria-hidden="true"
             />
@@ -294,7 +294,7 @@ export const PromptTopBar = ({
               variant="canvas"
               size="icon-lg"
             >
-              <Pencil size={24} />
+              <Icon icon={Pencil} size="md" weight="bold" aria-hidden="true" />
             </Button>
           ) : (
             <div className="gap-ps-2 flex items-start">
@@ -307,7 +307,7 @@ export const PromptTopBar = ({
                 variant="canvas"
                 size="icon-lg"
               >
-                <X size={24} />
+                <Icon icon={X} size="md" weight="bold" aria-hidden="true" />
               </Button>
               <Button
                 type="button"
@@ -318,7 +318,7 @@ export const PromptTopBar = ({
                 aria-label="Update prompt"
                 title="Update and re-optimize (Cmd/Ctrl+Enter)"
               >
-                <Check size={24} />
+                <Icon icon={Check} size="md" weight="bold" aria-hidden="true" />
               </Button>
             </div>
           )}

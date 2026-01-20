@@ -18,7 +18,7 @@ export function getHighlightClassName(category: string | null | undefined): stri
     'value-word',
     'relative',
     'cursor-pointer',
-    'rounded-sm',
+    'rounded-md',
     'ps-highlight-pill',
     'border',
     'border-[var(--highlight-border)]',

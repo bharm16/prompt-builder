@@ -40,7 +40,7 @@ export function GenerationHeader({
 
   return (
     <div className="border-border flex h-ps-9 items-center gap-ps-3 overflow-x-auto border-b px-ps-3">
-      <div className="flex items-center gap-2">
+      <div className="border-border flex items-center gap-2 rounded-lg border p-1">
         <Select
           value={draftValue}
           onValueChange={(value) => {

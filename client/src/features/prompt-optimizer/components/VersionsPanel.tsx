@@ -62,91 +62,144 @@ export const VersionsPanel = ({
     orderedVersions[0] ??
     null;
   const versionCount = orderedVersions.length;
+  const horizontalScrollerRef = React.useRef<HTMLDivElement>(null);
+  const [horizontalFadeState, setHorizontalFadeState] = React.useState<{
+    showLeft: boolean;
+    showRight: boolean;
+    isScrollable: boolean;
+  }>({ showLeft: false, showRight: false, isScrollable: false });
+
+  React.useEffect(() => {
+    if (layout !== 'horizontal' || isCompact) return;
+    const scroller = horizontalScrollerRef.current;
+    if (!scroller) return;
+
+    const updateFadeState = (): void => {
+      const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
+      const isScrollable = maxScrollLeft > 1;
+      const showLeft = isScrollable && scroller.scrollLeft > 1;
+      const showRight = isScrollable && scroller.scrollLeft < maxScrollLeft - 1;
+      setHorizontalFadeState({ showLeft, showRight, isScrollable });
+    };
+
+    updateFadeState();
+    scroller.addEventListener('scroll', updateFadeState, { passive: true });
+    window.addEventListener('resize', updateFadeState);
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateFadeState())
+        : null;
+    resizeObserver?.observe(scroller);
+
+    return () => {
+      scroller.removeEventListener('scroll', updateFadeState);
+      window.removeEventListener('resize', updateFadeState);
+      resizeObserver?.disconnect();
+    };
+  }, [isCompact, layout, orderedVersions.length]);
 
   // Horizontal layout (bottom drawer)
   if (layout === 'horizontal') {
-    const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'} - Click to expand`;
+    const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'}`;
     const isExpanded = !isCompact;
     const chevronClass = `ps-transition-transform${isExpanded ? '' : ' rotate-180'}`;
 
     // Compact horizontal bar - Premium cinematic style
     if (isCompact) {
       return (
-        <button
-          type="button"
+        <div
           className={cn(
-            'ps-glass ps-edge-lit group',
-            'flex h-full w-full items-center justify-between',
-            'gap-ps-3 px-ps-4',
-            'rounded-t-xl border-t border-x border-border/60',
-            'text-left transition-all duration-200',
-            'shadow-[0_-4px_16px_rgba(0,0,0,0.25)]',
-            'hover:shadow-[0_-6px_24px_rgba(0,0,0,0.35)]',
-            'hover:border-border'
+            'flex h-11 w-full items-center justify-between',
+            'px-ps-4',
+            'bg-[rgb(30,31,37)]',
+            'border border-[rgb(41,44,50)]',
+            'rounded-lg',
+            'shadow-[0_2px_8px_rgba(0,0,0,0.15)]'
           )}
-          onClick={onExpandDrawer}
-          title={compactLabel}
-          aria-label={compactLabel}
+          aria-label="Versions"
         >
-          <div className="gap-ps-3 flex min-w-0 items-center">
-            {/* Version badge with accent glow */}
+          <button
+            type="button"
+            className="flex min-w-0 items-center gap-2 text-left"
+            onClick={onExpandDrawer}
+            title="Expand versions"
+            aria-label="Expand versions"
+          >
+            <Icon
+              icon={List}
+              size="sm"
+              weight="bold"
+              aria-hidden="true"
+              className="text-[rgb(170,174,187)]"
+            />
+            <span className="text-[12px] font-semibold text-[rgb(235,236,239)]">
+              Versions
+            </span>
             <span
               className={cn(
-                'inline-flex items-center gap-ps-1',
-                'rounded-md px-ps-2 py-ps-1',
-                'bg-accent/15 border border-accent/30',
-                'text-label-sm text-accent font-semibold',
-                'shadow-[0_0_8px_rgba(104,134,255,0.15)]'
+                'ml-2 inline-flex items-center justify-center',
+                'rounded-[10px] bg-[rgb(44,48,55)]',
+                'px-2 py-[2px]',
+                'text-[11px] font-medium text-[rgb(170,174,187)]'
               )}
+              aria-label={compactLabel}
+              title={compactLabel}
             >
-              <Icon icon={List} size="xs" weight="bold" aria-hidden="true" />
-              <span>{versionCount}</span>
+              {versionCount}
             </span>
-            {currentVersion ? (
-              <span className="text-body-sm text-muted min-w-0 truncate group-hover:text-foreground transition-colors">
-                {currentVersion.label ?? 'Current version'}
-              </span>
-            ) : (
-              <span className="text-body-sm text-muted group-hover:text-foreground transition-colors">
-                Versions
-              </span>
-            )}
-          </div>
-          {/* Expand indicator */}
-          <div className="flex items-center gap-ps-2">
-            <span className="text-label-xs text-faint hidden sm:block group-hover:text-muted transition-colors">
-              Click to expand
-            </span>
-            <span
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
               className={cn(
-                'inline-flex h-8 w-8 items-center justify-center',
-                'rounded-lg border border-border/60',
-                'bg-surface-3/50 backdrop-blur-sm',
-                'text-muted group-hover:text-foreground',
-                'group-hover:border-border group-hover:bg-surface-3',
-                'transition-all duration-200'
+                'inline-flex h-8 w-8 items-center justify-center rounded-md',
+                'text-[rgb(170,174,187)]',
+                'hover:bg-[rgb(44,48,55)] hover:text-[rgb(235,236,239)]',
+                'transition-colors'
               )}
-              title="Toggle versions (`)"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCreateVersion();
+              }}
+              aria-label="Create snapshot"
+              title="Create snapshot"
+            >
+              <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              className={cn(
+                'group inline-flex h-8 w-8 items-center justify-center rounded-md',
+                'text-[rgb(170,174,187)]',
+                'hover:bg-[rgb(44,48,55)] hover:text-[rgb(235,236,239)]',
+                'transition-colors'
+              )}
+              onClick={onExpandDrawer}
+              aria-label="Expand versions"
+              title="Expand versions"
             >
               <Icon
                 icon={CaretDown}
                 size="sm"
                 weight="bold"
                 aria-hidden="true"
-                className={cn('transition-transform duration-200', !isExpanded && 'rotate-180')}
+                className="transition-transform duration-200 group-hover:rotate-180"
               />
-            </span>
+            </button>
           </div>
-        </button>
+        </div>
       );
     }
 
     // Expanded horizontal filmstrip
     return (
-      <aside className="border-border bg-surface-2 flex h-full w-full flex-col overflow-hidden rounded-t-xl border shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+      <aside className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0_7px_21px_rgba(0,0,0,0.25)]">
         {/* Header */}
         <TooltipProvider delayDuration={120}>
-          <div className="border-border flex items-center justify-between gap-ps-3 border-b px-ps-4 py-ps-2">
+          <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[rgb(41,44,50)] px-4 py-3">
             <div className="flex items-center gap-ps-2">
               <Icon icon={List} size="sm" weight="bold" className="text-muted" />
               <span className="text-label-14 font-semibold text-foreground">
@@ -214,8 +267,23 @@ export const VersionsPanel = ({
           </div>
         ) : (
           <div className="relative flex-1 overflow-hidden">
-            <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-ps-6 bg-gradient-to-r from-surface-2 to-transparent" />
-            <div className="ps-scrollbar-thin flex h-full items-stretch gap-ps-3 overflow-x-auto px-ps-4 py-ps-3">
+            <div
+              className={cn(
+                'pointer-events-none absolute left-0 top-0 z-10 h-full w-6 bg-gradient-to-r from-[rgb(30,31,37)] to-transparent transition-opacity',
+                horizontalFadeState.showLeft ? 'opacity-100' : 'opacity-0'
+              )}
+              aria-hidden="true"
+            />
+            <div
+              ref={horizontalScrollerRef}
+              className={cn(
+                'ps-scrollbar-thin',
+                'flex h-full items-stretch overflow-x-auto',
+                'gap-3',
+                'px-4 pt-3 pb-4',
+                'snap-x snap-mandatory scroll-px-4'
+              )}
+            >
               {orderedVersions.map((entry, index) => {
                 const versionId = resolveEntryId(entry);
                 const isSelected = versionId
@@ -239,7 +307,13 @@ export const VersionsPanel = ({
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-ps-6 bg-gradient-to-l from-surface-2 to-transparent" />
+            <div
+              className={cn(
+                'pointer-events-none absolute right-0 top-0 z-10 h-full w-6 bg-gradient-to-l from-[rgb(30,31,37)] to-transparent transition-opacity',
+                horizontalFadeState.showRight ? 'opacity-100' : 'opacity-0'
+              )}
+              aria-hidden="true"
+            />
           </div>
         )}
       </aside>

@@ -49,9 +49,9 @@ export function CollapsibleDrawer({
 
   const closedTranslate = useMemo(() => {
     if (isBottom) {
-      // For bottom: keep only the collapsedHeight visible.
-      const delta = `(${collapsedHeight} - ${drawerHeight})`;
-      return `translateY(calc(${delta}))`;
+      // For bottom: we no longer "peek" via transform; we actually collapse height.
+      // Keep transform neutral so the collapsed bar is fully visible inline.
+      return 'translate(0, 0)';
     }
     // For left/right: translate horizontally.
     const delta = `(${drawerWidth} - ${collapsedWidth})`;
@@ -131,8 +131,12 @@ export function CollapsibleDrawer({
           )}
           style={{
             width: isBottom ? '100%' : drawerWidth,
-            height: isBottom ? drawerHeight : '100%',
-            transform: isOpen ? 'translate(0, 0)' : closedTranslate,
+            height: isBottom ? '100%' : '100%',
+            transform: isBottom
+              ? 'translate(0, 0)'
+              : isOpen
+                ? 'translate(0, 0)'
+                : closedTranslate,
           }}
           role={isOverlay ? 'dialog' : undefined}
           aria-modal={isOverlay ? true : undefined}

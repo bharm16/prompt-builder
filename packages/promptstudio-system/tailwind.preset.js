@@ -218,7 +218,16 @@ export default {
         'icon-xl': 'var(--ps-icon-xl)',
         'icon-2xl': 'var(--ps-icon-2xl)',
       },
+      height: {
+        // Component sizing overrides (keeps spacing scale intact)
+        'ps-6': '36px',
+        'ps-7': '32px',
+        'ps-8': '32px',
+      },
       width: {
+        // Component sizing overrides (keeps spacing scale intact)
+        'ps-7': '32px',
+        'ps-8': '32px',
         sidebar: 'var(--ps-sidebar-width)',
       },
       minWidth: {
@@ -297,10 +306,10 @@ export default {
         h5: ['var(--ps-fs-16)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-tight)', fontWeight: 'var(--ps-fw-semibold)' }],
         body: ['var(--ps-fs-14)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
         'body-lg': ['var(--ps-fs-16)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
-        'body-xl': ['var(--ps-fs-18)', { lineHeight: 'var(--ps-lh-reading)', letterSpacing: 'var(--ps-ls-reading)', fontWeight: 'var(--ps-fw-regular)' }],
+        'body-xl': ['var(--ps-fs-16)', { lineHeight: '24px', letterSpacing: 'var(--ps-ls-reading)', fontWeight: 'var(--ps-fw-regular)' }],
         'body-sm': ['var(--ps-fs-13)', { lineHeight: 'var(--ps-lh-relaxed)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
         label: ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-label)', fontWeight: 'var(--ps-fw-semibold)' }],
-        'label-sm': ['var(--ps-fs-11)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-label)', fontWeight: 'var(--ps-fw-semibold)' }],
+        'label-sm': ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-label)', fontWeight: 'var(--ps-fw-semibold)' }],
         'label-caps': ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-caps)', fontWeight: 'var(--ps-fw-semibold)', textTransform: 'uppercase' }],
         meta: ['var(--ps-fs-12)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],
         code: ['var(--ps-fs-13)', { lineHeight: 'var(--ps-lh-normal)', letterSpacing: 'var(--ps-ls-normal)', fontWeight: 'var(--ps-fw-regular)' }],

@@ -134,7 +134,7 @@ export function PromptControlsRow({
             aria-label={`${ariaLabel}: ${currentDisplay}`}
             title={`${ariaLabel}: ${currentDisplay}`}
           >
-            <Icon icon={icon} size={24} aria-hidden="true" />
+            <Icon icon={icon} size="md" aria-hidden="true" />
           </SelectTrigger>
           <SelectContent>
             {info.allowedValues.map((value) => (
@@ -178,7 +178,7 @@ export function PromptControlsRow({
 
   return (
     <div
-      className={cn('flex flex-nowrap items-center gap-1', className)}
+      className={cn('flex flex-nowrap items-center gap-ps-1', className)}
       aria-label="Prompt controls"
     >
       <Select
@@ -195,7 +195,7 @@ export function PromptControlsRow({
           aria-label={`Model: ${modelLabel}`}
           title={`Model: ${modelLabel}`}
         >
-          <Icon icon={Robot} size={24} aria-hidden="true" />
+          <Icon icon={Robot} size="md" aria-hidden="true" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="auto">Auto</SelectItem>
