@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ArrowClockwise,
+  Check,
   DotsThree,
   Download,
   WarningCircle,
@@ -18,6 +19,7 @@ interface GenerationCardProps {
   onRetry?: (generation: Generation) => void;
   onDelete?: (generation: Generation) => void;
   onDownload?: (generation: Generation) => void;
+  onCancel?: (generation: Generation) => void;
   isActive?: boolean;
   onClick?: () => void;
 }
@@ -34,6 +36,7 @@ export function GenerationCard({
   onRetry,
   onDelete,
   onDownload,
+  onCancel,
   isActive = false,
   onClick,
 }: GenerationCardProps): React.ReactElement {
@@ -43,6 +46,51 @@ export function GenerationCard({
   );
   const isGenerating =
     generation.status === 'pending' || generation.status === 'generating';
+  const isCompleted = generation.status === 'completed';
+  const isFailed = generation.status === 'failed';
+  const [now, setNow] = React.useState<number>(() => Date.now());
+
+  React.useEffect(() => {
+    if (!isGenerating) return;
+    const id = window.setInterval(() => setNow(Date.now()), 400);
+    return () => window.clearInterval(id);
+  }, [isGenerating]);
+
+  const progressPercent = React.useMemo(() => {
+    if (isCompleted) return 100;
+    if (!isGenerating) return null;
+
+    const expectedMs =
+      generation.mediaType === 'image-sequence'
+        ? 18_000
+        : generation.tier === 'render'
+          ? 65_000
+          : 35_000;
+    const elapsedMs = Math.max(0, now - generation.createdAt);
+    const timePercent = Math.max(
+      0,
+      Math.min(95, Math.floor((elapsedMs / expectedMs) * 100))
+    );
+
+    const totalSlots = generation.mediaType === 'image-sequence' ? 4 : 1;
+    const urlPercent = Math.max(
+      0,
+      Math.min(
+        99,
+        Math.round((Math.min(generation.mediaUrls.length, totalSlots) / totalSlots) * 100)
+      )
+    );
+
+    return Math.max(timePercent, urlPercent);
+  }, [
+    generation.createdAt,
+    generation.mediaType,
+    generation.mediaUrls.length,
+    generation.tier,
+    isCompleted,
+    isGenerating,
+    now,
+  ]);
   const mediaUrl = generation.mediaUrls[0] ?? null;
   const showRetry = generation.status === 'failed' && Boolean(onRetry);
   const showDownload =
@@ -63,8 +111,13 @@ export function GenerationCard({
     <div
       className={cn(
         'bg-surface-2 rounded-xl border p-4 transition-colors',
-        isActive ? 'border-border-strong' : 'border-border',
-        onClick && 'cursor-pointer hover:border-border-strong'
+        isGenerating
+          ? 'border-accent/50 hover:border-accent animate-border-pulse'
+          : isActive
+            ? 'border-border-strong'
+            : 'border-border',
+        onClick && 'cursor-pointer',
+        onClick && !isGenerating && 'hover:border-border-strong'
       )}
       onClick={onClick ? handleClick : undefined}
       role={onClick ? 'button' : undefined}
@@ -81,22 +134,46 @@ export function GenerationCard({
       }
     >
       <div className="flex items-center gap-2">
-        <GenerationBadge tier={generation.tier} />
+        <GenerationBadge tier={generation.tier} status={generation.status} />
         <div className="min-w-0 flex flex-1 items-center gap-2">
           <div className="text-body-sm text-foreground truncate font-medium">
             {config?.label ?? generation.model}
           </div>
           <div className="text-label-sm text-muted shrink-0">{timeLabel}</div>
         </div>
-        <div
-          className={cn(
-            'text-label-sm text-muted ml-auto flex items-center gap-1 font-medium',
-            generation.status === 'completed' && 'text-success',
-            generation.status === 'failed' && 'text-error'
-          )}
-        >
-          {statusLabel(generation.status)}
-        </div>
+        {isGenerating ? (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-label-sm text-muted">
+              {typeof progressPercent === 'number' ? `${progressPercent}%` : '...'}
+            </span>
+            {onCancel && (
+              <button
+                type="button"
+                className="text-label-sm text-muted hover:text-foreground transition-colors"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCancel(generation);
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        ) : isCompleted ? (
+          <div className="ml-auto flex items-center gap-1 text-label-sm font-medium text-success">
+            <Check size={14} weight="bold" className="text-success" aria-hidden="true" />
+            Completed
+          </div>
+        ) : (
+          <div
+            className={cn(
+              'text-label-sm text-muted ml-auto flex items-center gap-1 font-medium',
+              isFailed && 'text-error'
+            )}
+          >
+            {statusLabel(generation.status)}
+          </div>
+        )}
         <Button
           type="button"
           variant="ghost"
@@ -121,6 +198,7 @@ export function GenerationCard({
             }
             duration={generation.duration ?? 5}
             isGenerating={isGenerating}
+            progressPercent={progressPercent}
           />
         ) : (
           <VideoThumbnail

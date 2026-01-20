@@ -48,6 +48,7 @@ export default {
         'scale-in': 'scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
         'shimmer': 'shimmer 2s infinite',
+        'border-pulse': 'borderPulse 2s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
         // Enhanced mockup animations
         'pulse-subtle': 'pulseSubtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -60,8 +61,8 @@ export default {
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%': { opacity: '0', filter: 'blur(4px)' },
+          '100%': { opacity: '1', filter: 'blur(0)' },
         },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
@@ -82,6 +83,16 @@ export default {
         shimmer: {
           '0%': { backgroundPosition: '-1000px 0' },
           '100%': { backgroundPosition: '1000px 0' },
+        },
+        borderPulse: {
+          '0%, 100%': {
+            borderColor: 'color-mix(in srgb, var(--ps-accent) 50%, transparent)',
+            boxShadow: '0 0 0 0 color-mix(in srgb, var(--ps-accent) 0%, transparent)',
+          },
+          '50%': {
+            borderColor: 'color-mix(in srgb, var(--ps-accent) 80%, transparent)',
+            boxShadow: '0 0 8px 0 color-mix(in srgb, var(--ps-accent) 15%, transparent)',
+          },
         },
         // Enhanced mockup keyframes
         pulseSubtle: {

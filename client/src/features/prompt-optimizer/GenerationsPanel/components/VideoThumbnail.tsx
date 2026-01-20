@@ -18,7 +18,7 @@ export function VideoThumbnail({
   if (isGenerating) {
     return (
       <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-surface-3">
-        <div className="h-full w-full animate-pulse bg-gradient-to-br from-surface-2/70 to-surface-3" />
+        <div className="h-full w-full bg-gradient-to-r from-surface-3 via-surface-2 to-surface-3 bg-[length:200%_100%] animate-shimmer" />
       </div>
     );
   }

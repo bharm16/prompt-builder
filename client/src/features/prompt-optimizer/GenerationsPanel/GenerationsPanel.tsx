@@ -74,15 +74,15 @@ export function GenerationsPanel({
     promptVersionId,
   });
 
-  const { generateDraft, generateRender, retryGeneration } =
+  const { generateDraft, generateRender, retryGeneration, cancelGeneration } =
     useGenerationActions(dispatch, {
-      aspectRatio,
-      duration,
-      fps,
-      generationParams,
-      promptVersionId,
-      generations,
-    });
+    aspectRatio,
+    duration,
+    fps,
+    generationParams,
+    promptVersionId,
+    generations,
+  });
 
   const activeDraftModel = useMemo(
     () => getLatestByTier('draft')?.model ?? null,
@@ -126,6 +126,13 @@ export function GenerationsPanel({
       retryGeneration(generation.id);
     },
     [retryGeneration]
+  );
+
+  const handleCancel = useCallback(
+    (generation: Generation) => {
+      cancelGeneration(generation.id);
+    },
+    [cancelGeneration]
   );
 
   const handleDownload = useCallback((generation: Generation) => {
@@ -185,6 +192,7 @@ export function GenerationsPanel({
                 onRetry={handleRetry}
                 onDelete={handleDelete}
                 onDownload={handleDownload}
+                onCancel={handleCancel}
                 onClick={() => onRestoreVersion(item.generation._versionId)}
               />
             );

@@ -1,18 +1,26 @@
 import React from 'react';
 import { Badge } from '@promptstudio/system/components/ui/badge';
 import { cn } from '@/utils/cn';
-import type { GenerationTier } from '../types';
+import type { GenerationStatus, GenerationTier } from '../types';
 
 interface GenerationBadgeProps {
   tier: GenerationTier;
+  status?: GenerationStatus;
   className?: string;
 }
 
 export function GenerationBadge({
   tier,
+  status,
   className,
 }: GenerationBadgeProps): React.ReactElement {
   const isDraft = tier === 'draft';
+  const dotClass = (() => {
+    if (status === 'pending' || status === 'generating') return 'bg-warning animate-pulse';
+    if (status === 'completed') return 'bg-success';
+    if (status === 'failed') return 'bg-error';
+    return isDraft ? 'bg-muted' : 'bg-accent';
+  })();
   return (
     <Badge
       className={cn(
@@ -24,7 +32,7 @@ export function GenerationBadge({
       )}
     >
       <span
-        className={cn('h-2 w-2 rounded-full', isDraft ? 'bg-muted' : 'bg-accent')}
+        className={cn('h-2 w-2 rounded-full', dotClass)}
         aria-hidden="true"
       />
       {isDraft ? 'Draft' : 'Render'}
