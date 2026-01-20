@@ -152,7 +152,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
 
   return (
     <DropdownMenu open={contextOpen} onOpenChange={handleMenuOpenChange}>
-      <li>
+      <li data-history-index={dataIndex}>
         <div
           className={cn(
             'group relative flex items-center rounded-lg ps-card-glass ps-card-interactive',

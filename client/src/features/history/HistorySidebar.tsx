@@ -74,7 +74,7 @@ function resolveEntryTitle(entry: PromptHistoryEntry): string {
 function condensedTitle(value: string, maxChars: number = 30): string {
   const normalized = normalizeTitle(value);
   if (!normalized) return 'Untitled';
-  return normalized.length > maxChars ? `${normalized.slice(0, maxChars).trim()}…` : normalized;
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars).trim()}...` : normalized;
 }
 
 function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {
@@ -200,8 +200,8 @@ function formatModelLabel(targetModel: string | null | undefined): string | null
 function normalizeProcessingLabel(label: string): string | null {
   const raw = label.trim();
   if (!raw) return null;
-  if (raw.endsWith('…')) return raw;
-  return `${raw}…`;
+  if (raw.endsWith('...')) return raw;
+  return `${raw}...`;
 }
 
 function resolveHistoryThumbnail(entry: PromptHistoryEntry): string | null {
@@ -440,7 +440,7 @@ export function HistorySidebar({
           ? processingLabel
           : null;
 
-      const meta = [dateLabel, durationLabel, modelLabel].filter(Boolean).join(' · ');
+      const meta = [dateLabel, durationLabel, modelLabel].filter(Boolean).join(' | ');
 
       const disambiguator =
         extractDisambiguator(entry.input) ??
@@ -452,7 +452,7 @@ export function HistorySidebar({
         })() ??
         `alt ${nextSeen}`;
 
-      const title = hasDupes ? `${baseTitle} — ${disambiguator}` : baseTitle;
+      const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
 
       const key = (entry.id || entry.uuid || `${entry.timestamp ?? ''}-${title}`) as string;
 
@@ -767,7 +767,7 @@ export function HistorySidebar({
               >
                 <span>+ New</span>
                 <span className="text-label-sm text-foreground/80">
-                  {modKey === 'Cmd' ? '⌘N' : 'Ctrl+N'}
+                  {modKey === 'Cmd' ? 'Cmd+N' : 'Ctrl+N'}
                 </span>
               </Button>
             </div>

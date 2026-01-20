@@ -1,185 +1,193 @@
-import React, { useCallback, useMemo } from 'react';
-import { CaretLeft, Icon, Image, Play } from '@promptstudio/system/components/ui';
+import React from 'react';
+import { CaretDown, CaretLeft, CaretUp, Icon, List, Plus } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
-import { createHighlightSignature } from '@/features/span-highlighting';
-import { usePromptState } from '../context/PromptStateContext';
-import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
-import { cn } from '@/utils/cn';
-import type { PromptVersionEdit } from '@hooks/types';
-import type { HighlightSnapshot } from '../PromptCanvas/types';
+import { VersionRow, type VersionEntry } from './VersionRow';
 
-type VersionPreview = {
-  generatedAt?: string;
-  imageUrl?: string | null;
-  aspectRatio?: string | null;
-};
+interface VersionsPanelProps {
+  versions: VersionEntry[];
+  selectedVersionId: string;
+  onSelectVersion: (id: string) => void;
+  onCreateVersion: () => void;
+  isCompact?: boolean;
+  onExpandDrawer?: () => void;
+  onCollapseDrawer?: () => void;
+  /** Layout direction - 'vertical' for left drawer, 'horizontal' for bottom drawer */
+  layout?: 'vertical' | 'horizontal';
+}
 
-type VersionEntry = {
-  id?: string;
-  versionId?: string;
-  label?: string;
-  version?: string | number;
-  meta?: string;
-  edits?: PromptVersionEdit[] | number;
-  editCount?: number;
-  timestamp?: string | number;
-  signature?: string;
-  prompt?: string;
-  highlights?: unknown | null;
-  isDirty?: boolean;
-  dirty?: boolean;
-  isSelected?: boolean;
-  isCurrent?: boolean;
-  hasPreview?: boolean;
-  hasVideo?: boolean;
-  preview?: VersionPreview | null;
-  video?: unknown;
-};
-
-/**
- * Extract the preview image URL from a version entry
- */
-const resolvePreviewImageUrl = (entry: VersionEntry): string | null => {
-  if (!entry.preview) return null;
-  const url = entry.preview.imageUrl;
-  if (typeof url === 'string' && url.trim()) {
-    return url.trim();
+const resolveEntryId = (entry: VersionEntry): string | null => {
+  if (typeof entry.versionId === 'string' && entry.versionId.trim()) {
+    return entry.versionId.trim();
+  }
+  if (typeof entry.id === 'string' && entry.id.trim()) {
+    return entry.id.trim();
   }
   return null;
 };
 
-const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
-  !!value &&
-  typeof value === 'object' &&
-  Array.isArray((value as HighlightSnapshot).spans);
+export const VersionsPanel = ({
+  versions,
+  selectedVersionId,
+  onSelectVersion,
+  onCreateVersion,
+  isCompact = false,
+  onExpandDrawer,
+  onCollapseDrawer,
+  layout = 'vertical',
+}: VersionsPanelProps): React.ReactElement => {
+  const orderedVersions = versions ?? [];
+  const fallbackId = orderedVersions[0] ? resolveEntryId(orderedVersions[0]) : null;
+  const resolvedSelectedId = selectedVersionId || fallbackId || '';
+  const currentVersion =
+    orderedVersions.find((entry) => {
+      const entryId = resolveEntryId(entry);
+      return entryId && entryId === resolvedSelectedId;
+    }) ?? orderedVersions[0] ?? null;
+  const versionCount = orderedVersions.length;
 
-const resolveTimestamp = (value: VersionEntry['timestamp']): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Date.parse(value);
-    if (!Number.isNaN(parsed)) return parsed;
-    const asNumber = Number(value);
-    if (!Number.isNaN(asNumber)) return asNumber;
-  }
-  return null;
-};
+  // Horizontal layout (bottom drawer)
+  if (layout === 'horizontal') {
+    const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'} - Click to expand`;
 
-const resolveMetaLabel = (entry: VersionEntry): string => {
-  if (typeof entry.meta === 'string' && entry.meta.trim()) {
-    return entry.meta.trim();
-  }
-  const count = typeof entry.editCount === 'number'
-    ? entry.editCount
-    : Array.isArray(entry.edits)
-      ? entry.edits.length
-      : typeof entry.edits === 'number'
-        ? entry.edits
-        : null;
-  if (typeof count === 'number' && Number.isFinite(count)) {
-    return `${count} edit${count === 1 ? '' : 's'}`;
-  }
-  const timestamp = resolveTimestamp(entry.timestamp);
-  if (timestamp !== null) {
-    return formatTimestamp(timestamp);
-  }
-  return '';
-};
+    // Compact horizontal bar
+    if (isCompact) {
+      return (
+        <button
+          type="button"
+          className="group flex h-full w-full items-center justify-between gap-4 rounded-t-xl border border-border bg-surface-2 px-4 text-left shadow-sm hover:bg-surface-3 transition-colors"
+          onClick={onExpandDrawer}
+          title={compactLabel}
+          aria-label={compactLabel}
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center">
+              <Icon icon={List} size="md" weight="bold" aria-hidden="true" className="text-muted" />
+              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-app">
+                {versionCount}
+              </span>
+            </div>
+            <span className="text-label-sm text-muted">
+              {versionCount} version{versionCount === 1 ? '' : 's'}
+            </span>
+            {currentVersion ? (
+              <span className="text-label-sm text-foreground font-medium">
+                • {currentVersion.label ?? 'Current'}
+              </span>
+            ) : null}
+          </div>
+          <span
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-3 text-muted transition-colors group-hover:text-foreground"
+            title="Toggle versions (`)"
+          >
+            <Icon icon={CaretUp} size="sm" weight="bold" aria-hidden="true" />
+          </span>
+        </button>
+      );
+    }
 
-const resolveVersionLabel = (entry: VersionEntry, index: number, total: number): string => {
-  if (typeof entry.label === 'string' && entry.label.trim()) {
-    return entry.label.trim();
-  }
-  if (typeof entry.version === 'string' && entry.version.trim()) {
-    return entry.version.trim();
-  }
-  if (typeof entry.version === 'number' && Number.isFinite(entry.version)) {
-    return `v${entry.version}`;
-  }
-  return `v${total - index}`;
-};
-
-type VersionsPanelProps = {
-  onCollapse?: () => void;
-};
-
-export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactElement => {
-  const {
-    promptHistory,
-    currentPromptUuid,
-    currentPromptDocId,
-    promptOptimizer,
-    setDisplayedPromptSilently,
-    applyInitialHighlightSnapshot,
-    resetEditStacks,
-    resetVersionEdits,
-    activeVersionId,
-    setActiveVersionId,
-  } = usePromptState();
-
-  const entry = useMemo(() => {
-    if (!promptHistory?.history?.length) return null;
+    // Expanded horizontal filmstrip
     return (
-      promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
-      promptHistory.history.find((item) => item.id === currentPromptDocId) ||
-      null
+      <aside className="flex h-full w-full flex-col overflow-hidden rounded-t-xl border border-border bg-surface-2">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          <div className="flex items-center gap-3">
+            <div className="text-body-sm font-semibold text-foreground">Versions</div>
+            <span className="text-label-12 text-muted">{versionCount} snapshots</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="canvas"
+              size="icon-sm"
+              onClick={onCreateVersion}
+              aria-label="Create version"
+              title="Create version"
+            >
+              <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
+            </Button>
+            {onCollapseDrawer ? (
+              <Button
+                type="button"
+                variant="canvas"
+                size="icon-sm"
+                onClick={onCollapseDrawer}
+                aria-label="Collapse versions panel"
+                title="Toggle versions (`)"
+              >
+                <Icon icon={CaretDown} size="sm" weight="bold" aria-hidden="true" />
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Horizontal scrolling filmstrip */}
+        {orderedVersions.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center text-label-12 text-muted">
+            No versions yet
+          </div>
+        ) : (
+          <div className="flex flex-1 items-stretch gap-3 overflow-x-auto px-3 py-3">
+            {orderedVersions.map((entry, index) => {
+              const versionId = resolveEntryId(entry);
+              const isSelected = versionId
+                ? versionId === resolvedSelectedId
+                : index === 0;
+              const key = versionId ?? `${entry.label ?? 'v'}-${index}`;
+
+              return (
+                <VersionRow
+                  key={key}
+                  entry={entry}
+                  index={index}
+                  total={orderedVersions.length}
+                  isSelected={isSelected}
+                  onSelect={() => {
+                    if (!versionId) return;
+                    onSelectVersion(versionId);
+                  }}
+                  layout="horizontal"
+                />
+              );
+            })}
+          </div>
+        )}
+      </aside>
     );
-  }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
+  }
 
-  const versions = useMemo<VersionEntry[]>(
-    () => (entry?.versions?.filter(Boolean) as VersionEntry[]) ?? [],
-    [entry]
-  );
+  // Original vertical layout (left drawer)
+  const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'} - Click to expand`;
 
-  const orderedVersions = useMemo(() => {
-    if (versions.length <= 1) return versions;
-    return [...versions].sort((left, right) => {
-      const leftTime = resolveTimestamp(left.timestamp);
-      const rightTime = resolveTimestamp(right.timestamp);
-      if (leftTime === null && rightTime === null) return 0;
-      if (leftTime === null) return 1;
-      if (rightTime === null) return -1;
-      return rightTime - leftTime;
-    });
-  }, [versions]);
-
-  const currentSignature = useMemo(() => {
-    const text = promptOptimizer?.displayedPrompt ?? '';
-    return createHighlightSignature(text);
-  }, [promptOptimizer?.displayedPrompt]);
-
-  const latestVersionSignature = orderedVersions[0]?.signature ?? null;
-  const hasEditsSinceLastVersion = Boolean(
-    latestVersionSignature && currentSignature && latestVersionSignature !== currentSignature
-  );
-
-  const handleSelectVersion = useCallback(
-    (version: VersionEntry) => {
-      const versionId = typeof version.versionId === 'string' ? version.versionId : null;
-      const promptText =
-        typeof version.prompt === 'string' ? version.prompt : '';
-
-      if (!promptText.trim()) return;
-
-      setActiveVersionId(versionId);
-      promptOptimizer.setOptimizedPrompt(promptText);
-      setDisplayedPromptSilently(promptText);
-
-      const highlights = isHighlightSnapshot(version.highlights) ? version.highlights : null;
-      applyInitialHighlightSnapshot(highlights, { bumpVersion: true, markPersisted: false });
-      resetEditStacks();
-      resetVersionEdits();
-    },
-    [
-      applyInitialHighlightSnapshot,
-      promptOptimizer,
-      resetEditStacks,
-      resetVersionEdits,
-      setActiveVersionId,
-      setDisplayedPromptSilently,
-    ]
-  );
+  if (isCompact) {
+    return (
+      <button
+        type="button"
+        className="group flex h-full w-12 flex-col items-center gap-4 rounded-xl border border-border bg-surface-2 py-4 text-left shadow-sm"
+        onClick={onExpandDrawer}
+        title={compactLabel}
+        aria-label={compactLabel}
+      >
+        <span
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-3 text-muted transition-colors group-hover:text-foreground"
+          title="Toggle versions ([)"
+        >
+          <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" className="rotate-180" />
+        </span>
+        <div className="relative flex items-center justify-center">
+          <Icon icon={List} size="md" weight="bold" aria-hidden="true" className="text-muted" />
+          <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-app">
+            {versionCount}
+          </span>
+        </div>
+        {currentVersion ? (
+          <span
+            className="h-2 w-2 rounded-full bg-accent ring-2 ring-accent/30"
+            title={currentVersion.label ?? 'Current version'}
+          />
+        ) : null}
+      </button>
+    );
+  }
 
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-2">
@@ -189,17 +197,30 @@ export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactEl
             <div className="text-body-lg font-semibold text-foreground">Versions</div>
             <div className="mt-1 text-label-12 text-muted">Prompt snapshots</div>
           </div>
-          {onCollapse ? (
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="canvas"
               size="icon-sm"
-              onClick={onCollapse}
-              aria-label="Collapse versions panel"
+              onClick={onCreateVersion}
+              aria-label="Create version"
+              title="Create version"
             >
-              <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" />
+              <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
             </Button>
-          ) : null}
+            {onCollapseDrawer ? (
+              <Button
+                type="button"
+                variant="canvas"
+                size="icon-sm"
+                onClick={onCollapseDrawer}
+                aria-label="Collapse versions panel"
+                title="Toggle versions ([)"
+              >
+                <Icon icon={CaretLeft} size="sm" weight="bold" aria-hidden="true" />
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       {orderedVersions.length === 0 ? (
@@ -209,70 +230,24 @@ export const VersionsPanel = ({ onCollapse }: VersionsPanelProps): React.ReactEl
       ) : (
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 pb-3">
           {orderedVersions.map((entry, index) => {
-            const isDirty = hasEditsSinceLastVersion && index === 0
-              ? true
-              : Boolean(entry.isDirty ?? entry.dirty);
-            const versionId = typeof entry.versionId === 'string' ? entry.versionId : null;
-            const isSelected = versionId && activeVersionId
-              ? versionId === activeVersionId
+            const versionId = resolveEntryId(entry);
+            const isSelected = versionId
+              ? versionId === resolvedSelectedId
               : index === 0;
-            const previewImageUrl = resolvePreviewImageUrl(entry);
-            const hasPreview = Boolean(entry.hasPreview ?? entry.preview);
-            const hasVideo = Boolean(entry.hasVideo ?? entry.video);
-            const label = resolveVersionLabel(entry, index, orderedVersions.length);
-            const meta = resolveMetaLabel(entry);
-            const key = versionId ?? entry.id ?? `${label}-${index}`;
+            const key = versionId ?? `${entry.label ?? 'v'}-${index}`;
 
             return (
-              <Button
+              <VersionRow
                 key={key}
-                type="button"
-                onClick={() => handleSelectVersion(entry)}
-                className={cn(
-                  'relative flex h-14 w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 text-left transition-colors hover:border-border-strong',
-                  isSelected && 'border-accent/50 ring-2 ring-accent/10'
-                )}
-                data-active={isSelected ? 'true' : 'false'}
-                aria-pressed={isSelected}
-                variant="ghost"
-              >
-                {isSelected && (
-                  <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-accent" aria-hidden="true" />
-                )}
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    {isDirty ? (
-                      <span className="h-2 w-2 rounded-full bg-warning ring-2 ring-warning/40" aria-hidden="true" />
-                    ) : null}
-                    <div className="truncate text-body-sm font-semibold text-foreground">{label}</div>
-                  </div>
-                  <div className="text-label-12 text-muted">{meta}</div>
-                </div>
-                {(hasPreview || hasVideo) ? (
-                  <div className="inline-flex flex-shrink-0 items-center gap-2">
-                    {hasPreview ? (
-                      <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3 text-faint">
-                        {previewImageUrl ? (
-                          <img
-                            src={previewImageUrl}
-                            alt={`${label} preview`}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" />
-                        )}
-                      </div>
-                    ) : null}
-                    {hasVideo ? (
-                      <div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-3 px-2 text-label-sm font-semibold text-muted">
-                        <Icon icon={Play} size="sm" weight="bold" aria-hidden="true" />
-                        <span>Video</span>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </Button>
+                entry={entry}
+                index={index}
+                total={orderedVersions.length}
+                isSelected={isSelected}
+                onSelect={() => {
+                  if (!versionId) return;
+                  onSelectVersion(versionId);
+                }}
+              />
             );
           })}
         </div>

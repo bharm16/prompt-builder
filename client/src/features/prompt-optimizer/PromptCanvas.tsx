@@ -9,7 +9,6 @@ import { Panel } from '@promptstudio/system/components/system/Panel';
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
-  CaretRight,
   Check,
   Copy,
   DotsThree,
@@ -34,7 +33,7 @@ import type { HighlightSnapshot, PromptCanvasProps, SuggestionItem } from './Pro
 import type { Generation } from './GenerationsPanel/types';
 
 // Relative imports - implementations
-import { useSpanLabeling, sanitizeText } from '@/features/span-highlighting';
+import { createHighlightSignature, useSpanLabeling, sanitizeText } from '@/features/span-highlighting';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '@/features/span-highlighting';
@@ -67,6 +66,7 @@ import { HighlightingErrorBoundary } from '../span-highlighting/components/Highl
 import { usePromptState } from './context/PromptStateContext';
 import { cn } from '@/utils/cn';
 import { GenerationsPanel } from './GenerationsPanel';
+import { CollapsibleDrawer, useDrawerState } from '@components/CollapsibleDrawer';
 
 
 const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -83,6 +83,24 @@ type InlineSuggestion = {
   meta: string | null;
   item: SuggestionItem | string;
 };
+
+const resolveVersionTimestamp = (value: string | number | undefined): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+    const asNumber = Number(value);
+    if (!Number.isNaN(asNumber)) return asNumber;
+  }
+  return null;
+};
+
+const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
+  !!value &&
+  typeof value === 'object' &&
+  Array.isArray((value as HighlightSnapshot).spans);
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -130,11 +148,16 @@ export function PromptCanvas({
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
-  const [versionsCollapsed, setVersionsCollapsed] = useState(false);
   const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [showDiff, setShowDiff] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const versionsDrawer = useDrawerState({
+    defaultOpen: true,
+    storageKey: 'prompt-optimizer:versions-drawer',
+    position: 'bottom',
+    desktopMode: 'push',
+  });
   
   // Refs for tracking previous state to prevent loops
   const previousSelectedSpanIdRef = useRef<string | null>(null);
@@ -149,6 +172,10 @@ export function PromptCanvas({
     currentPromptUuid,
     currentPromptDocId,
     activeVersionId,
+    setActiveVersionId,
+    setDisplayedPromptSilently,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
     latestHighlightRef,
     versionEditCountRef,
     versionEditsRef,
@@ -215,15 +242,56 @@ export function PromptCanvas({
 
   // Extract suggestions visibility state for contextual UI
   const isSuggestionsOpen = Boolean(selectedSpanId || (suggestionsData && suggestionsData.show !== false));
-  const activeVersion = useMemo(() => {
-    const entry =
+  const currentPromptEntry = useMemo(() => {
+    if (!promptHistory.history.length) return null;
+    return (
       promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
       promptHistory.history.find((item) => item.id === currentPromptDocId) ||
-      null;
-    const versions = Array.isArray(entry?.versions) ? entry.versions : [];
-    return versions.find((version) => version.versionId === activeVersionId) ?? null;
-  }, [promptHistory.history, currentPromptUuid, currentPromptDocId, activeVersionId]);
-  const promptVersionId = activeVersion?.versionId ?? activeVersionId ?? '';
+      null
+    );
+  }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
+  const currentVersions = useMemo(
+    () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
+    [currentPromptEntry]
+  );
+  const orderedVersions = useMemo(() => {
+    if (currentVersions.length <= 1) return currentVersions;
+    return [...currentVersions].sort((left, right) => {
+      const leftTime = resolveVersionTimestamp(left.timestamp);
+      const rightTime = resolveVersionTimestamp(right.timestamp);
+      if (leftTime === null && rightTime === null) return 0;
+      if (leftTime === null) return 1;
+      if (rightTime === null) return -1;
+      return rightTime - leftTime;
+    });
+  }, [currentVersions]);
+  const currentSignature = useMemo(() => {
+    if (!normalizedDisplayedPrompt) return '';
+    return createHighlightSignature(normalizedDisplayedPrompt);
+  }, [normalizedDisplayedPrompt]);
+  const latestVersionSignature = orderedVersions[0]?.signature ?? null;
+  const hasEditsSinceLastVersion = Boolean(
+    latestVersionSignature && currentSignature && latestVersionSignature !== currentSignature
+  );
+  const versionsForPanel = useMemo(
+    () =>
+      orderedVersions.map((entry, index) => ({
+        ...entry,
+        isDirty:
+          index === 0 && hasEditsSinceLastVersion
+            ? true
+            : Boolean(entry.isDirty ?? (entry as { dirty?: boolean }).dirty),
+      })),
+    [orderedVersions, hasEditsSinceLastVersion]
+  );
+  const selectedVersionId = activeVersionId ?? versionsForPanel[0]?.versionId ?? '';
+  const activeVersion = useMemo(() => {
+    if (activeVersionId) {
+      return currentVersions.find((version) => version.versionId === activeVersionId) ?? null;
+    }
+    return orderedVersions[0] ?? null;
+  }, [activeVersionId, currentVersions, orderedVersions]);
+  const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
   const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning({
     promptHistory,
     currentPromptUuid,
@@ -237,6 +305,83 @@ export function PromptCanvas({
     generationParams,
     selectedModel,
   });
+
+  const handleSelectVersion = useCallback(
+    (versionId: string): void => {
+      const target =
+        currentVersions.find((version) => version.versionId === versionId) ||
+        orderedVersions.find((version) => version.versionId === versionId) ||
+        null;
+      if (!target) return;
+      const promptText = typeof target.prompt === 'string' ? target.prompt : '';
+      if (!promptText.trim()) return;
+
+      setActiveVersionId(versionId);
+      promptOptimizer.setOptimizedPrompt(promptText);
+      setDisplayedPromptSilently(promptText);
+
+      const highlights = isHighlightSnapshot(target.highlights) ? target.highlights : null;
+      applyInitialHighlightSnapshot(highlights, { bumpVersion: true, markPersisted: false });
+      resetEditStacks();
+      resetVersionEdits();
+    },
+    [
+      applyInitialHighlightSnapshot,
+      currentVersions,
+      orderedVersions,
+      promptOptimizer,
+      resetEditStacks,
+      resetVersionEdits,
+      setActiveVersionId,
+      setDisplayedPromptSilently,
+    ]
+  );
+
+  const handleCreateVersion = useCallback((): void => {
+    if (!currentPromptUuid) return;
+    if (!currentVersions) return;
+    const promptText = (normalizedDisplayedPrompt ?? '').trim();
+    if (!promptText) return;
+
+    const signature = createHighlightSignature(promptText);
+    const lastSignature = currentVersions[currentVersions.length - 1]?.signature ?? null;
+    if (lastSignature && lastSignature === signature) {
+      return;
+    }
+
+    const editCount = versionEditCountRef.current;
+    const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
+    const nextVersion = {
+      versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      label: `v${currentVersions.length + 1}`,
+      signature,
+      prompt: promptText,
+      timestamp: new Date().toISOString(),
+      highlights: latestHighlightRef.current ?? null,
+      preview: null,
+      video: null,
+      ...(editCount > 0 ? { editCount } : {}),
+      ...(edits.length ? { edits } : {}),
+    };
+
+    promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+      ...currentVersions,
+      nextVersion,
+    ]);
+    setActiveVersionId(nextVersion.versionId);
+    resetVersionEdits();
+  }, [
+    currentPromptDocId,
+    currentPromptUuid,
+    currentVersions,
+    latestHighlightRef,
+    normalizedDisplayedPrompt,
+    promptHistory,
+    resetVersionEdits,
+    setActiveVersionId,
+    versionEditCountRef,
+    versionEditsRef,
+  ]);
 
   const handleGenerationsChange = useCallback(
     (nextGenerations: Generation[]) => {
@@ -628,6 +773,35 @@ export function PromptCanvas({
     onRedo,
     toast,
   });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      const isEditable =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+
+      if (isEditable) return;
+
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      const isMod = isMac ? event.metaKey : event.ctrlKey;
+
+      if (!isMod || !['1', '2', '3'].includes(event.key)) return;
+
+      const index = Number.parseInt(event.key, 10) - 1;
+      const version = orderedVersions[index];
+      if (version?.versionId) {
+        event.preventDefault();
+        handleSelectVersion(version.versionId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSelectVersion, orderedVersions]);
 
   const handleExport = usePromptExport({
     inputPrompt,
@@ -1058,197 +1232,179 @@ export function PromptCanvas({
         </div>
       )}
 
-	      {/* Main Content Container */}
-	      <div
-	        className={cn(
-	          'relative flex min-h-0 flex-1 flex-col gap-ps-3 p-ps-3 lg:flex-row',
-	          outlineOverlayActive && 'pointer-events-none opacity-60'
-	        )}
-	      >
-        {/* Context gutter (lg+ only) */}
-        <div
-          className={cn(
-            'hidden min-h-0 flex-col lg:flex',
-            versionsCollapsed
-              ? 'lg:flex-[0_0_56px] lg:min-w-[56px] lg:max-w-[56px] lg:items-center lg:gap-3 lg:overflow-hidden lg:rounded-xl lg:border lg:border-border lg:bg-surface-2 lg:px-4 lg:py-4 lg:shadow-sm'
-              : 'lg:flex-[0_0_25%] lg:min-w-0'
-          )}
-        >
-          {versionsCollapsed ? (
-            <CanvasButton
-              type="button"
-              size="icon-xs"
-              onClick={() => setVersionsCollapsed(false)}
-              aria-label="Expand versions panel"
-            >
-              <CaretRight weight="bold" size={iconSizes.sm} aria-hidden="true" />
-            </CanvasButton>
-          ) : (
-            <VersionsPanel onCollapse={() => setVersionsCollapsed(true)} />
-          )}
-        </div>
+      {/* Main Content Container */}
+      <div
+        className={cn(
+          'relative flex min-h-0 flex-1 flex-col gap-ps-3 p-ps-3',
+          outlineOverlayActive && 'pointer-events-none opacity-60'
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col gap-ps-3 lg:flex-row">
+          <div 
+            className="flex min-h-0 min-w-0 flex-col gap-ps-3" 
+            style={{ flex: '45 1 0%', minWidth: '300px' }}
+          >
+              {/* Main Editor Area - Optimized Prompt */}
+              <div
+                ref={editorColumnRef}
+                className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
+              >
+                <div className="flex flex-auto min-h-[200px] flex-col overflow-y-auto lg:min-h-[300px]">
+                  <div className="flex min-h-0 flex-1 w-full flex-col gap-0 px-0 pb-ps-card h-full overflow-hidden">
+                    <Panel
+                      padding="none"
+                      surface="3"
+                      className={cn(
+                        'flex min-h-0 flex-1 flex-col transition-opacity',
+                        isOutputLoading && 'opacity-80'
+                      )}
+                    >
+                      <div className="border-b border-border p-ps-card">
+                        <div className="flex flex-wrap items-baseline justify-between gap-ps-3">
+                          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
+                            {!selectedSpanId && (
+                              <div className="text-meta text-muted">Select a highlight to see suggestions</div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {!outlineOverlayActive && (
+                              <CanvasButton
+                                type="button"
+                                size="icon-sm"
+                                onClick={openOutlineOverlay}
+                                aria-label="Open outline"
+                                title="Open outline"
+                              >
+                                <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
+                              </CanvasButton>
+                            )}
+                            <Badge casing="upper" className={outputStatusStyles.text}>
+                              <span
+                                className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
+                                aria-hidden="true"
+                              />
+                              {isOutputFocused ? 'Editing' : 'LIVE'}
+                            </Badge>
+                            <CanvasButton
+                              type="button"
+                              size="icon-sm"
+                              onClick={handleCopy}
+                              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+                              title={copied ? 'Copied' : 'Copy'}
+                            >
+                              {copied ? (
+                                <Icon icon={Check} size="md" weight="bold" aria-hidden="true" />
+                              ) : (
+                                <Icon icon={Copy} size="md" weight="bold" aria-hidden="true" />
+                              )}
+                            </CanvasButton>
+                            <CanvasButton
+                              type="button"
+                              size="icon-sm"
+                              onClick={onUndo}
+                              disabled={!canUndo}
+                              aria-label="Undo"
+                            >
+                              <Icon icon={ArrowCounterClockwise} size="md" weight="bold" aria-hidden="true" />
+                            </CanvasButton>
+                            <CanvasButton
+                              type="button"
+                              size="icon-sm"
+                              onClick={onRedo}
+                              disabled={!canRedo}
+                              aria-label="Redo"
+                            >
+                              <Icon icon={ArrowClockwise} size="md" weight="bold" aria-hidden="true" />
+                            </CanvasButton>
+                            <div className="relative" ref={exportMenuRef}>
+                              <CanvasButton
+                                type="button"
+                                size="icon-sm"
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                aria-expanded={showExportMenu}
+                                aria-haspopup="menu"
+                                aria-label="More actions"
+                                title="More"
+                              >
+                                <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
+                              </CanvasButton>
+                              {showExportMenu && (
+                                <div
+                                  className="absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
+                                  role="menu"
+                                >
+                                  <CanvasButton
+                                    type="button"
+                                    onClick={() => {
+                                      setShowDiff(true);
+                                      setShowExportMenu(false);
+                                    }}
+                                    role="menuitem"
+                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                  >
+                                    Compare versions
+                                  </CanvasButton>
+                                  <div className="my-1 h-px bg-border" aria-hidden="true" />
+                                  <CanvasButton
+                                    type="button"
+                                    onClick={() => {
+                                      handleExport('text');
+                                      setShowExportMenu(false);
+                                    }}
+                                    role="menuitem"
+                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                  >
+                                    Export .txt
+                                  </CanvasButton>
+                                  <CanvasButton
+                                    type="button"
+                                    onClick={() => {
+                                      handleExport('markdown');
+                                      setShowExportMenu(false);
+                                    }}
+                                    role="menuitem"
+                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                  >
+                                    Export .md
+                                  </CanvasButton>
+                                  <CanvasButton
+                                    type="button"
+                                    onClick={() => {
+                                      handleExport('json');
+                                      setShowExportMenu(false);
+                                    }}
+                                    role="menuitem"
+                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                  >
+                                    Export .json
+                                  </CanvasButton>
+                                  <div className="my-1 h-px bg-border" aria-hidden="true" />
+                                  <CanvasButton
+                                    type="button"
+                                    onClick={() => {
+                                      handleShare();
+                                      setShowExportMenu(false);
+                                    }}
+                                    role="menuitem"
+                                    className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                  >
+                                    Share
+                                  </CanvasButton>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-        {/* Main Editor Area - Optimized Prompt */}
-        <div
-          ref={editorColumnRef}
-          className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
-        >
-          <div className="flex flex-auto min-h-[200px] flex-col overflow-y-auto lg:min-h-[300px]">
-	            <div className="flex min-h-0 flex-1 w-full flex-col gap-0 px-0 pb-ps-card h-full overflow-hidden">
-	              <Panel
-	                padding="none"
-	                surface="3"
-	                className={cn(
-	                  'flex min-h-0 flex-1 flex-col transition-opacity',
-	                  isOutputLoading && 'opacity-80'
-	                )}
-	              >
-	                <div className="border-b border-border p-ps-card">
-	                  <div className="flex flex-wrap items-baseline justify-between gap-ps-3">
-	                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-	                      <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
-	                      {!selectedSpanId && (
-	                        <div className="text-meta text-muted">Select a highlight to see suggestions</div>
-	                      )}
-	                    </div>
-	                    <div className="flex flex-wrap items-center gap-2">
-                        {!outlineOverlayActive && (
-                          <CanvasButton
-                            type="button"
-                            size="icon-sm"
-                            onClick={openOutlineOverlay}
-                            aria-label="Open outline"
-                            title="Open outline"
+                      <div className="flex min-h-0 flex-1 flex-col p-ps-card">
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-ps-4 xl:flex-row">
+                          <div
+                            className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
+                            aria-busy={isOutputLoading}
+                            ref={editorWrapperRef}
                           >
-                            <Icon icon={GridFour} size="md" weight="bold" aria-hidden="true" />
-                          </CanvasButton>
-                        )}
-                      <Badge casing="upper" className={outputStatusStyles.text}>
-                        <span
-                          className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
-                          aria-hidden="true"
-                        />
-                        {isOutputFocused ? 'Editing' : 'LIVE'}
-                      </Badge>
-                      <CanvasButton
-                        type="button"
-                        size="icon-sm"
-                        onClick={handleCopy}
-                        aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-                        title={copied ? 'Copied' : 'Copy'}
-                      >
-                        {copied ? (
-                          <Icon icon={Check} size="md" weight="bold" aria-hidden="true" />
-                        ) : (
-                          <Icon icon={Copy} size="md" weight="bold" aria-hidden="true" />
-                        )}
-	                      </CanvasButton>
-	                      <CanvasButton
-	                        type="button"
-	                        size="icon-sm"
-	                        onClick={onUndo}
-                        disabled={!canUndo}
-                        aria-label="Undo"
-                      >
-                        <Icon icon={ArrowCounterClockwise} size="md" weight="bold" aria-hidden="true" />
-                      </CanvasButton>
-                      <CanvasButton
-                        type="button"
-                        size="icon-sm"
-                        onClick={onRedo}
-                        disabled={!canRedo}
-	                        aria-label="Redo"
-	                      >
-	                        <Icon icon={ArrowClockwise} size="md" weight="bold" aria-hidden="true" />
-	                      </CanvasButton>
-	                      <div className="relative" ref={exportMenuRef}>
-	                        <CanvasButton
-	                          type="button"
-	                          size="icon-sm"
-	                          onClick={() => setShowExportMenu(!showExportMenu)}
-	                          aria-expanded={showExportMenu}
-	                          aria-haspopup="menu"
-	                          aria-label="More actions"
-	                          title="More"
-	                        >
-	                          <Icon icon={DotsThree} size="md" weight="bold" aria-hidden="true" />
-	                        </CanvasButton>
-	                        {showExportMenu && (
-	                          <div
-	                            className="absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
-	                            role="menu"
-	                          >
-	                            <CanvasButton
-	                              type="button"
-	                              onClick={() => {
-	                                setShowDiff(true);
-	                                setShowExportMenu(false);
-	                              }}
-	                              role="menuitem"
-	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-	                            >
-	                              Compare versions
-	                            </CanvasButton>
-	                            <div className="my-1 h-px bg-border" aria-hidden="true" />
-	                            <CanvasButton
-	                              type="button"
-	                              onClick={() => {
-	                                handleExport('text');
-	                                setShowExportMenu(false);
-	                              }}
-	                              role="menuitem"
-	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-	                            >
-	                              Export .txt
-	                            </CanvasButton>
-	                            <CanvasButton
-	                              type="button"
-	                              onClick={() => {
-	                                handleExport('markdown');
-	                                setShowExportMenu(false);
-	                              }}
-	                              role="menuitem"
-	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-	                            >
-	                              Export .md
-	                            </CanvasButton>
-	                            <CanvasButton
-	                              type="button"
-	                              onClick={() => {
-	                                handleExport('json');
-	                                setShowExportMenu(false);
-	                              }}
-	                              role="menuitem"
-	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-	                            >
-	                              Export .json
-	                            </CanvasButton>
-	                            <div className="my-1 h-px bg-border" aria-hidden="true" />
-	                            <CanvasButton
-	                              type="button"
-	                              onClick={() => {
-	                                handleShare();
-	                                setShowExportMenu(false);
-	                              }}
-	                              role="menuitem"
-	                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
-	                            >
-	                              Share
-	                            </CanvasButton>
-	                          </div>
-	                        )}
-	                      </div>
-	                    </div>
-	                  </div>
-	                </div>
-
-	                <div className="flex min-h-0 flex-1 flex-col p-ps-card">
-	                  <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-ps-4 xl:flex-row">
-	                    <div
-	                      className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
-	                      aria-busy={isOutputLoading}
-	                      ref={editorWrapperRef}
-	                    >
                       <PromptEditor
                         ref={editorRef as React.RefObject<HTMLDivElement>}
                         className="min-h-44 w-full flex-1 min-h-0 overflow-y-auto whitespace-pre-wrap px-ps-3 py-ps-4 text-body-xl text-foreground-warm outline-none"
@@ -1471,14 +1627,39 @@ export function PromptCanvas({
                     ) : null}
                   </div>
                 </div>
-	              </Panel>
+              </Panel>
 
             </div>
           </div>
         </div>
 
+          <CollapsibleDrawer
+            isOpen={versionsDrawer.isOpen}
+            onToggle={versionsDrawer.toggle}
+            height="180px"
+            collapsedHeight="40px"
+            position="bottom"
+            displayMode={versionsDrawer.displayMode}
+            showToggle={false}
+          >
+            <VersionsPanel
+              versions={versionsForPanel}
+              selectedVersionId={selectedVersionId}
+              onSelectVersion={handleSelectVersion}
+              onCreateVersion={handleCreateVersion}
+              isCompact={!versionsDrawer.isOpen}
+              onExpandDrawer={versionsDrawer.open}
+              onCollapseDrawer={versionsDrawer.close}
+              layout="horizontal"
+            />
+          </CollapsibleDrawer>
+        </div>
+
         {/* Right Rail - Generations */}
-        <div className="hidden min-h-0 flex-col lg:flex lg:flex-[0_0_25%] lg:min-w-0 lg:gap-6">
+        <div 
+          className="hidden min-h-0 flex-col border-l border-border pl-4 lg:flex"
+          style={{ flex: '55 1 0%', minWidth: '350px' }}
+        >
           <GenerationsPanel
             prompt={normalizedDisplayedPrompt ?? ''}
             promptVersionId={promptVersionId}
@@ -1489,6 +1670,7 @@ export function PromptCanvas({
             initialGenerations={activeVersion?.generations ?? undefined}
             onGenerationsChange={handleGenerationsChange}
           />
+        </div>
         </div>
       </div>
 
