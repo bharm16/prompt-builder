@@ -34,10 +34,19 @@ export function useGenerationsTimeline({
     if (!versions?.length) return [];
 
     const allGenerations: TimelineGeneration[] = [];
+    const seenIds = new Set<string>();
 
     for (const version of versions) {
       const gens = Array.isArray(version.generations) ? version.generations : [];
       for (const gen of gens) {
+        if (gen.promptVersionId && gen.promptVersionId !== version.versionId) {
+          continue;
+        }
+        if (seenIds.has(gen.id)) {
+          continue;
+        }
+        seenIds.add(gen.id);
+
         allGenerations.push({
           ...gen,
           _versionId: version.versionId,

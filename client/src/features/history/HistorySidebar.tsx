@@ -6,9 +6,9 @@ import {
   Sparkles,
   User as UserIcon,
 } from 'lucide-react';
-import { getAuthRepository } from '@repositories/index';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
+import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
 import { Button } from '@promptstudio/system/components/ui/button';
 import {
   Dialog,
@@ -27,13 +27,15 @@ import {
 } from '@promptstudio/system/components/ui/tooltip';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
-import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
+import { cn } from '@/utils/cn';
 import { HistoryItem } from './components/HistoryItem';
 import { AuthMenu } from './components/AuthMenu';
 import { HistoryThumbnail } from './components/HistoryThumbnail';
-import { cn } from '@/utils/cn';
-
-type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
+import { useHistoryAuthActions } from './hooks/useHistoryAuthActions';
+import { formatRelativeOrDate } from './utils/historyDates';
+import { extractDisambiguator, normalizeTitle, resolveEntryTitle } from './utils/historyTitles';
+import { formatModelLabel, normalizeProcessingLabel, resolveEntryStage } from './utils/historyStages';
+import { hasVideoArtifact, isRecentEntry, resolveHistoryThumbnail } from './utils/historyMedia';
 
 export interface HistorySidebarProps {
   showHistory: boolean; // true = expanded, false = collapsed
@@ -59,200 +61,6 @@ export interface HistorySidebarProps {
 
 const INITIAL_HISTORY_LIMIT = 5;
 const COLLAPSED_TIMELINE_MAX = 5;
-
-function formatShortDate(iso: string | undefined): string {
-  if (!iso) return 'No date';
-  const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return 'No date';
-  const now = new Date();
-  const sameYear = t.getFullYear() === now.getFullYear();
-  return t.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    ...(sameYear ? {} : { year: 'numeric' }),
-  });
-}
-
-function normalizeTitle(value: string): string {
-  return value.trim().replace(/\s+/g, ' ');
-}
-
-function resolveEntryTitle(entry: PromptHistoryEntry): string {
-  const storedTitle =
-    typeof entry.title === 'string' ? normalizeTitle(entry.title) : '';
-  if (storedTitle) return storedTitle;
-  return deriveBaseTitle(entry.input);
-}
-
-function condensedTitle(value: string, maxChars: number = 30): string {
-  const normalized = normalizeTitle(value);
-  if (!normalized) return 'Untitled';
-  return normalized.length > maxChars
-    ? `${normalized.slice(0, maxChars).trim()}...`
-    : normalized;
-}
-
-function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {
-  const hasInput =
-    typeof entry.input === 'string' && entry.input.trim().length > 0;
-  const hasOutput =
-    typeof entry.output === 'string' && entry.output.trim().length > 0;
-  if (!hasInput && !hasOutput) return 'draft';
-  if (hasInput && !hasOutput) return 'draft';
-  if (!hasOutput) return 'error';
-  if (entry.highlightCache) return 'generated';
-  return 'optimized';
-}
-
-function formatRelativeOrDate(iso: string | undefined): string {
-  if (!iso) return 'No date';
-  const t = new Date(iso);
-  const ms = t.getTime();
-  if (Number.isNaN(ms)) return 'No date';
-  const diffMs = Date.now() - ms;
-  const diffMinutes = Math.floor(diffMs / 60000);
-  if (diffMinutes < 0) return formatShortDate(iso);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatShortDate(iso);
-}
-
-function toTitleToken(token: string): string {
-  if (!token) return token;
-  if (token.toLowerCase() === 'tv') return 'TV';
-  if (token.toUpperCase() === token && token.length <= 4) return token;
-  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
-}
-
-function deriveBaseTitle(input: string): string {
-  const normalized = input.trim().replace(/\s+/g, ' ');
-  if (!normalized) return 'Untitled';
-
-  const rawTokens = normalized.split(' ');
-  const stop = new Set([
-    'a',
-    'an',
-    'the',
-    'this',
-    'that',
-    'these',
-    'those',
-    'some',
-    'my',
-    'your',
-    'our',
-    'their',
-  ]);
-
-  let start = 0;
-  while (
-    start < rawTokens.length &&
-    stop.has(rawTokens[start]?.toLowerCase() ?? '')
-  )
-    start += 1;
-
-  const tokens = rawTokens.slice(start);
-  if (tokens.length === 0) return 'Untitled';
-
-  const first = tokens[0] ?? '';
-  const second = tokens[1] ?? '';
-  const third = tokens[2] ?? '';
-  const secondLower = second.toLowerCase();
-
-  const nounFollowers = new Set([
-    'chase',
-    'battle',
-    'portrait',
-    'scene',
-    'shot',
-    'sequence',
-    'close-up',
-    'closeup',
-  ]);
-  const takeThird = secondLower.endsWith('ing') && third;
-  const takeTwo = nounFollowers.has(secondLower) || Boolean(second);
-
-  const chosen: string[] = [];
-  chosen.push(first);
-  if (takeTwo) chosen.push(second);
-  if (takeThird) chosen.push(third);
-
-  return chosen
-    .filter(Boolean)
-    .map((t) => toTitleToken(t))
-    .join(' ')
-    .trim();
-}
-
-function extractDisambiguator(input: string): string | null {
-  const lower = input.toLowerCase();
-  const priorities = [
-    { key: 'night', label: 'night' },
-    { key: 'day', label: 'day' },
-    { key: 'handheld', label: 'handheld' },
-    { key: 'wide', label: 'wide' },
-    { key: 'close-up', label: 'close-up' },
-    { key: 'closeup', label: 'close-up' },
-    { key: 'aerial', label: 'aerial' },
-    { key: 'cinematic', label: 'cinematic' },
-    { key: 'noir', label: 'noir' },
-  ] as const;
-
-  for (const p of priorities) {
-    if (lower.includes(p.key)) return p.label;
-  }
-  return null;
-}
-
-function formatModelLabel(
-  targetModel: string | null | undefined
-): string | null {
-  if (!targetModel || !targetModel.trim()) return null;
-  const normalized = targetModel.trim().replace(/\s+/g, ' ');
-  const veoMatch = normalized.match(/(veo[-\s]?\d+(?:\.\d+)?)/i);
-  if (veoMatch?.[1]) {
-    return veoMatch[1].replace(/\s+/g, '-').toLowerCase();
-  }
-  if (normalized.length <= 14) return normalized;
-  return normalized.split(' ')[0] ?? normalized;
-}
-
-function normalizeProcessingLabel(label: string): string | null {
-  const raw = label.trim();
-  if (!raw) return null;
-  if (raw.endsWith('...')) return raw;
-  return `${raw}...`;
-}
-
-function resolveHistoryThumbnail(entry: PromptHistoryEntry): string | null {
-  const versions = Array.isArray(entry.versions) ? entry.versions : [];
-  for (let i = versions.length - 1; i >= 0; i -= 1) {
-    const candidate = versions[i]?.preview?.imageUrl;
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-function hasVideoArtifact(entry: PromptHistoryEntry): boolean {
-  const versions = Array.isArray(entry.versions) ? entry.versions : [];
-  return versions.some((version) => {
-    const url = version?.video?.videoUrl;
-    return typeof url === 'string' && url.trim().length > 0;
-  });
-}
-
-function isRecentEntry(entry: PromptHistoryEntry, days: number = 7): boolean {
-  if (!entry.timestamp) return false;
-  const ms = Date.parse(entry.timestamp);
-  if (Number.isNaN(ms)) return false;
-  const diffMs = Date.now() - ms;
-  return diffMs >= 0 && diffMs <= days * 24 * 60 * 60 * 1000;
-}
 
 /**
  * History sidebar component with collapsed/expanded states
@@ -282,6 +90,7 @@ export function HistorySidebar({
     isAuthenticated: !!user,
   });
   const toast = useToast();
+  const { handleSignIn, handleSignOut } = useHistoryAuthActions(debug, toast);
   const [showAllHistory, setShowAllHistory] = React.useState<boolean>(false);
   const hoverExpandedRef = React.useRef<boolean>(false);
   const [hoveredEntryKey, setHoveredEntryKey] = React.useState<string | null>(
@@ -325,38 +134,6 @@ export function HistorySidebar({
     ? filteredByChips
     : filteredByChips.slice(0, INITIAL_HISTORY_LIMIT);
   const hasActiveFilters = filterState.videosOnly || filterState.recentOnly;
-
-  const handleSignIn = async (): Promise<void> => {
-    debug.logAction('signIn');
-    debug.startTimer('signIn');
-    try {
-      const authRepository = getAuthRepository();
-      const signedInUser = await authRepository.signInWithGoogle();
-      const displayName =
-        typeof signedInUser.displayName === 'string'
-          ? signedInUser.displayName
-          : 'User';
-      debug.endTimer('signIn', 'Sign in successful');
-      toast.success(`Welcome, ${displayName}!`);
-    } catch (error) {
-      debug.endTimer('signIn');
-      debug.logError('Sign in failed', error as Error);
-      toast.error('Failed to sign in. Please try again.');
-    }
-  };
-
-  const handleSignOut = async (): Promise<void> => {
-    debug.logAction('signOut');
-    try {
-      const authRepository = getAuthRepository();
-      await authRepository.signOut();
-      debug.logAction('signOutComplete');
-      toast.success('Signed out successfully');
-    } catch (error) {
-      debug.logError('Sign out failed', error as Error);
-      toast.error('Failed to sign out');
-    }
-  };
 
   const handleCopyPrompt = React.useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {

@@ -1,7 +1,7 @@
 /**
  * Image Generation Service
  *
- * Orchestrates preview image generation across providers.
+ * Orchestrates preview image generation across providers and stores results.
  */
 
 import { logger } from '@infrastructure/Logger';
@@ -10,25 +10,34 @@ import type {
   ImagePreviewProvider,
   ImagePreviewProviderId,
   ImagePreviewProviderSelection,
+  ImagePreviewRequest,
 } from './providers/types';
 import { buildProviderPlan } from './providers/registry';
+import { createImageAssetStore, type ImageAssetStore } from './storage';
 
 type ImageGenerationServiceConfig = {
   providers: ImagePreviewProvider[];
   defaultProvider?: ImagePreviewProviderSelection;
   fallbackOrder?: ImagePreviewProviderId[];
+  assetStore?: ImageAssetStore;
+  /** Skip storage and return provider URL directly (for testing) */
+  skipStorage?: boolean;
 };
 
 export class ImageGenerationService {
   private readonly providers: ImagePreviewProvider[];
   private readonly defaultProvider: ImagePreviewProviderSelection;
   private readonly fallbackOrder: ImagePreviewProviderId[];
+  private readonly assetStore: ImageAssetStore;
+  private readonly skipStorage: boolean;
   private readonly log = logger.child({ service: 'ImageGenerationService' });
 
   constructor(config: ImageGenerationServiceConfig) {
     this.providers = config.providers;
     this.defaultProvider = config.defaultProvider ?? 'auto';
     this.fallbackOrder = config.fallbackOrder ?? [];
+    this.assetStore = config.assetStore ?? createImageAssetStore();
+    this.skipStorage = config.skipStorage ?? false;
   }
 
   /**
@@ -64,17 +73,28 @@ export class ImageGenerationService {
 
     for (const provider of providerPlan) {
       try {
-        const result = await provider.generatePreview({
+        // Build request with only defined optional properties
+        const request: ImagePreviewRequest = {
           prompt: trimmedPrompt,
-          aspectRatio: options.aspectRatio,
           userId,
-          inputImageUrl: options.inputImageUrl,
-          seed: options.seed,
-          speedMode: options.speedMode,
-          outputQuality: options.outputQuality,
-          disablePromptTransformation: options.disablePromptTransformation,
-        });
+        };
+        if (options.aspectRatio !== undefined) request.aspectRatio = options.aspectRatio;
+        if (options.inputImageUrl !== undefined) request.inputImageUrl = options.inputImageUrl;
+        if (options.seed !== undefined) request.seed = options.seed;
+        if (options.speedMode !== undefined) request.speedMode = options.speedMode;
+        if (options.outputQuality !== undefined) request.outputQuality = options.outputQuality;
+        if (options.disablePromptTransformation !== undefined) {
+          request.disablePromptTransformation = options.disablePromptTransformation;
+        }
 
+        const result = await provider.generatePreview(request);
+
+        // Store to GCS unless skipped
+        if (!this.skipStorage) {
+          return await this.storeAndReturnResult(result, userId);
+        }
+
+        // Return provider URL directly (testing/development)
         return {
           imageUrl: result.imageUrl,
           metadata: {
@@ -90,7 +110,7 @@ export class ImageGenerationService {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.log.warn('Image preview provider failed, trying next', {
             providerId: provider.id,
-            error: errorMessage,
+            errorMessage,
             userId,
           });
         }
@@ -102,5 +122,81 @@ export class ImageGenerationService {
     }
 
     throw new Error('Image generation failed');
+  }
+
+  /**
+   * Get a signed URL for a stored image
+   */
+  public async getImageUrl(assetId: string): Promise<string | null> {
+    return await this.assetStore.getPublicUrl(assetId);
+  }
+
+  /**
+   * Check if an image exists
+   */
+  public async imageExists(assetId: string): Promise<boolean> {
+    return await this.assetStore.exists(assetId);
+  }
+
+  /**
+   * Store provider result to GCS and return enriched result
+   */
+  private async storeAndReturnResult(
+    providerResult: {
+      imageUrl: string;
+      aspectRatio: string;
+      model: string;
+      durationMs: number;
+    },
+    userId: string
+  ): Promise<ImageGenerationResult> {
+    try {
+      const stored = await this.assetStore.storeFromUrl(providerResult.imageUrl);
+
+      this.log.info('Stored generated image', {
+        assetId: stored.id,
+        sizeBytes: stored.sizeBytes,
+        userId,
+      });
+
+      // Build result with only defined optional properties
+      const result: ImageGenerationResult = {
+        imageUrl: stored.url,
+        storagePath: stored.id,
+        viewUrl: stored.url,
+        metadata: {
+          aspectRatio: providerResult.aspectRatio,
+          model: providerResult.model,
+          duration: providerResult.durationMs,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+
+      if (stored.expiresAt !== undefined) {
+        result.viewUrlExpiresAt = new Date(stored.expiresAt).toISOString();
+      }
+      if (stored.sizeBytes !== undefined) {
+        result.sizeBytes = stored.sizeBytes;
+      }
+
+      return result;
+    } catch (storageError) {
+      // Log but don't fail - return provider URL as fallback
+      this.log.error(
+        'Failed to store image to GCS, returning provider URL',
+        storageError instanceof Error ? storageError : new Error(String(storageError)),
+        { userId }
+      );
+
+      return {
+        imageUrl: providerResult.imageUrl,
+        metadata: {
+          aspectRatio: providerResult.aspectRatio,
+          model: providerResult.model,
+          duration: providerResult.durationMs,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    }
   }
 }

@@ -17,3 +17,7 @@ export type {
   ImagePreviewRequest,
   ImagePreviewResult,
 } from './providers/types';
+
+// Storage exports
+export { createImageAssetStore } from './storage';
+export type { ImageAssetStore, StoredImageAsset } from './storage';

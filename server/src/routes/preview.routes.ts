@@ -16,6 +16,7 @@ import { createVideoGenerateHandler } from './preview/handlers/videoGenerate';
 import { createVideoJobsHandler } from './preview/handlers/videoJobs';
 import { createVideoContentHandler } from './preview/handlers/videoContent';
 import { createPublicVideoContentHandler } from './preview/handlers/publicVideoContent';
+import { createImageContentHandler } from './preview/handlers/imageContent';
 
 /**
  * Create preview routes
@@ -34,6 +35,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const videoGenerateHandler = createVideoGenerateHandler(resolvedServices);
   const videoJobsHandler = createVideoJobsHandler(resolvedServices);
   const videoContentHandler = createVideoContentHandler(resolvedServices);
+  const imageContentHandler = createImageContentHandler();
 
   router.post('/generate', asyncHandler(imageGenerateHandler));
   router.post('/generate/storyboard', asyncHandler(imageStoryboardGenerateHandler));
@@ -41,6 +43,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.post('/video/generate', asyncHandler(videoGenerateHandler));
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));
   router.get('/video/content/:contentId', asyncHandler(videoContentHandler));
+  router.get('/image/content/:contentId', asyncHandler(imageContentHandler));
 
   return router;
 }

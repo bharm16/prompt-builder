@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { generateStoryboardPreview, generateVideoPreview } from '@/features/preview/api/previewApi';
+
 import type { Generation, GenerationParams } from '../types';
 import type { GenerationsAction } from './useGenerationsState';
-import { buildGeneration, compileWanPrompt, resolveGenerationOptions, waitForVideoJob } from './generationActionUtils';
+import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, waitForVideoJob } from '../api';
+import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
 
 interface UseGenerationActionsOptions {
   aspectRatio?: string;

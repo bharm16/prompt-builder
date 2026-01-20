@@ -7,9 +7,12 @@ import {
   WarningCircle,
 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
+
 import { cn } from '@/utils/cn';
-import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
+
 import type { Generation } from '../types';
+import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
+import { useGenerationProgress } from '../hooks/useGenerationProgress';
 import { GenerationBadge } from './GenerationBadge';
 import { KontextFrameStrip } from './KontextFrameStrip';
 import { VideoThumbnail } from './VideoThumbnail';
@@ -44,53 +47,8 @@ export function GenerationCard({
   const timeLabel = formatRelativeTime(
     generation.completedAt ?? generation.createdAt
   );
-  const isGenerating =
-    generation.status === 'pending' || generation.status === 'generating';
-  const isCompleted = generation.status === 'completed';
-  const isFailed = generation.status === 'failed';
-  const [now, setNow] = React.useState<number>(() => Date.now());
-
-  React.useEffect(() => {
-    if (!isGenerating) return;
-    const id = window.setInterval(() => setNow(Date.now()), 400);
-    return () => window.clearInterval(id);
-  }, [isGenerating]);
-
-  const progressPercent = React.useMemo(() => {
-    if (isCompleted) return 100;
-    if (!isGenerating) return null;
-
-    const expectedMs =
-      generation.mediaType === 'image-sequence'
-        ? 18_000
-        : generation.tier === 'render'
-          ? 65_000
-          : 35_000;
-    const elapsedMs = Math.max(0, now - generation.createdAt);
-    const timePercent = Math.max(
-      0,
-      Math.min(95, Math.floor((elapsedMs / expectedMs) * 100))
-    );
-
-    const totalSlots = generation.mediaType === 'image-sequence' ? 4 : 1;
-    const urlPercent = Math.max(
-      0,
-      Math.min(
-        99,
-        Math.round((Math.min(generation.mediaUrls.length, totalSlots) / totalSlots) * 100)
-      )
-    );
-
-    return Math.max(timePercent, urlPercent);
-  }, [
-    generation.createdAt,
-    generation.mediaType,
-    generation.mediaUrls.length,
-    generation.tier,
-    isCompleted,
-    isGenerating,
-    now,
-  ]);
+  const { progressPercent, isGenerating, isCompleted, isFailed } =
+    useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
   const showRetry = generation.status === 'failed' && Boolean(onRetry);
   const showDownload =

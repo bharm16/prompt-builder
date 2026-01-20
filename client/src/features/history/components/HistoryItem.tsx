@@ -9,10 +9,9 @@ import {
   DropdownMenuTrigger,
 } from '@promptstudio/system/components/ui/dropdown-menu';
 import type { PromptHistoryEntry } from '@hooks/types';
-import { HistoryThumbnail } from './HistoryThumbnail';
 import { cn } from '@/utils/cn';
-
-type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
+import type { PromptRowStage } from '../types';
+import { HistoryThumbnail } from './HistoryThumbnail';
 
 export interface HistoryItemProps {
   entry: PromptHistoryEntry;

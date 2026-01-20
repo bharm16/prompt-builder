@@ -12,6 +12,18 @@ interface UseDraftHistorySyncOptions {
   generationParams: CapabilityValues;
 }
 
+const areParamsEqual = (
+  a: Record<string, unknown> | null | undefined,
+  b: Record<string, unknown> | null | undefined
+): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => Object.is(a[key], b[key]));
+};
+
 export const useDraftHistorySync = ({
   currentPromptUuid,
   currentPromptDocId,
@@ -20,6 +32,7 @@ export const useDraftHistorySync = ({
   selectedModel,
   generationParams,
 }: UseDraftHistorySyncOptions): void => {
+  const { updateEntryPersisted, history } = promptHistory;
   const debouncedSave = useMemo(
     () =>
       debounce(
@@ -30,7 +43,7 @@ export const useDraftHistorySync = ({
           targetModel: string | null,
           params: CapabilityValues
         ) => {
-          promptHistory.updateEntryPersisted(uuid, docId, {
+          updateEntryPersisted(uuid, docId, {
             input,
             targetModel,
             generationParams: params,
@@ -38,25 +51,32 @@ export const useDraftHistorySync = ({
         },
         1000 // 1 second debounce
       ),
-    [promptHistory]
+    [updateEntryPersisted]
   );
 
   useEffect(() => {
     if (!currentPromptUuid) return;
     
     // Only sync if it's a draft (no output)
-    const entry = promptHistory.history.find((item) => item.uuid === currentPromptUuid);
+    const entry = history.find((item) => item.uuid === currentPromptUuid);
     if (!entry) return;
     
     const isDraft = !entry.output || !entry.output.trim();
     if (!isDraft) return;
 
+    const normalizedModel = selectedModel?.trim() ? selectedModel.trim() : null;
+    const normalizedParams = generationParams ?? null;
+    const hasInputChange = entry.input !== promptOptimizer.inputPrompt;
+    const hasModelChange = (entry.targetModel ?? null) !== normalizedModel;
+    const hasParamsChange = !areParamsEqual(entry.generationParams ?? null, normalizedParams);
+    if (!hasInputChange && !hasModelChange && !hasParamsChange) return;
+
     debouncedSave(
       currentPromptUuid,
       currentPromptDocId,
       promptOptimizer.inputPrompt,
-      selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams ?? null
+      normalizedModel,
+      normalizedParams
     );
 
     return () => {
@@ -65,7 +85,7 @@ export const useDraftHistorySync = ({
   }, [
     currentPromptUuid,
     currentPromptDocId,
-    promptHistory.history,
+    history,
     promptOptimizer.inputPrompt,
     selectedModel,
     generationParams,

@@ -5,27 +5,26 @@
  * Manages all prompt-related state in one place
  */
 
-import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { VideoCamera } from '@promptstudio/system/components/ui';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { PromptVersionEdit } from '@hooks/types';
-import type { CapabilityValues } from '@shared/capabilities';
 import type {
   PromptStateContextValue,
   PromptStateProviderProps,
-  HighlightSnapshot,
   Mode,
-  StateSnapshot,
 } from './types';
-import type { SuggestionsData } from '../PromptCanvas/types';
 import { usePromptHistoryActions } from './usePromptHistoryActions';
-import { loadGenerationParams, loadSelectedModel } from './promptStateStorage';
 import { useDraftHistorySync } from './hooks/useDraftHistorySync';
 import { usePromptStatePersistence } from './hooks/usePromptStatePersistence';
+import { usePromptConfigState } from './hooks/usePromptConfigState';
+import { usePromptUiState } from './hooks/usePromptUiState';
+import { usePromptSessionState } from './hooks/usePromptSessionState';
+import { useHighlightState } from './hooks/useHighlightState';
+import { useVersionEditTracking } from './hooks/useVersionEditTracking';
+import { useHistoryActionRefs } from './hooks/useHistoryActionRefs';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
 
@@ -60,70 +59,72 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     },
   ], []);
 
-  // UI State
-  const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [selectedModel, setSelectedModel] = useState<string>(() => loadSelectedModel()); // New: selected video model (persisted)
-  const [showHistory, setShowHistory] = useState<boolean>(false);
-  const [showResults, setShowResults] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showShortcuts, setShowShortcuts] = useState<boolean>(false);
-  const [showImprover, setShowImprover] = useState<boolean>(false);
-  const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
-  const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
-  const [generationParams, setGenerationParams] = useState<CapabilityValues>(() => loadGenerationParams());
-  const [outputSaveState, setOutputSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [outputLastSavedAt, setOutputLastSavedAt] = useState<number | null>(null);
+  const {
+    selectedMode,
+    setSelectedMode,
+    selectedModel,
+    setSelectedModel,
+    generationParams,
+    setGenerationParams,
+  } = usePromptConfigState();
 
-  // Enhancement suggestions state
-  const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
-  const [conceptElements, setConceptElements] = useState<unknown | null>(null);
-  const [promptContext, setPromptContext] = useState<PromptContext | null>(null);
-  const [currentPromptUuid, setCurrentPromptUuid] = useState<string | null>(null);
-  const [currentPromptDocId, setCurrentPromptDocId] = useState<string | null>(null);
-  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
-  const [initialHighlights, setInitialHighlights] = useState<HighlightSnapshot | null>(null);
-  const [initialHighlightsVersion, setInitialHighlightsVersion] = useState<number>(0);
-  const [canUndo, setCanUndo] = useState<boolean>(false);
-  const [canRedo, setCanRedo] = useState<boolean>(false);
+  const {
+    showHistory,
+    setShowHistory,
+    showResults,
+    setShowResults,
+    showSettings,
+    setShowSettings,
+    showShortcuts,
+    setShowShortcuts,
+    showImprover,
+    setShowImprover,
+    showBrainstorm,
+    setShowBrainstorm,
+    currentAIIndex,
+    setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
+  } = usePromptUiState();
 
-  // Refs
-  const latestHighlightRef = useRef<HighlightSnapshot | null>(null);
-  const persistedSignatureRef = useRef<string | null>(null);
-  const versionEditCountRef = useRef<number>(0);
-  const versionEditsRef = useRef<PromptVersionEdit[]>([]);
-  const undoStackRef = useRef<StateSnapshot[]>([]);
-  const redoStackRef = useRef<StateSnapshot[]>([]);
-  const isApplyingHistoryRef = useRef<boolean>(false);
-  const skipLoadFromUrlRef = useRef<boolean>(false);
+  const {
+    suggestionsData,
+    setSuggestionsData,
+    conceptElements,
+    setConceptElements,
+    promptContext,
+    setPromptContext,
+    currentPromptUuid,
+    setCurrentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+  } = usePromptSessionState();
 
-  const registerPromptEdit = useCallback(
-    ({
-      previousText,
-      nextText,
-      source = 'unknown',
-    }: {
-      previousText: string;
-      nextText: string;
-      source?: PromptVersionEdit['source'];
-    }): void => {
-      if (previousText === nextText) return;
-      versionEditCountRef.current += 1;
-      versionEditsRef.current.push({
-        timestamp: new Date().toISOString(),
-        delta: nextText.length - previousText.length,
-        source,
-      });
-      if (versionEditsRef.current.length > 50) {
-        versionEditsRef.current.shift();
-      }
-    },
-    []
-  );
+  const {
+    initialHighlights,
+    setInitialHighlights,
+    initialHighlightsVersion,
+    setInitialHighlightsVersion,
+    canUndo,
+    setCanUndo,
+    canRedo,
+    setCanRedo,
+    latestHighlightRef,
+    persistedSignatureRef,
+    undoStackRef,
+    redoStackRef,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+  } = useHighlightState();
 
-  const resetVersionEdits = useCallback((): void => {
-    versionEditCountRef.current = 0;
-    versionEditsRef.current = [];
-  }, []);
+  const { versionEditCountRef, versionEditsRef, registerPromptEdit, resetVersionEdits } =
+    useVersionEditTracking();
+
+  const { isApplyingHistoryRef, skipLoadFromUrlRef } = useHistoryActionRefs();
 
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode, selectedModel);
@@ -133,28 +134,6 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     () => modes.find((m) => m.id === selectedMode) || modes[0]!,
     [modes, selectedMode]
   );
-
-  // Helper functions
-  const applyInitialHighlightSnapshot = useCallback((
-    snapshot: HighlightSnapshot | null,
-    { bumpVersion = false, markPersisted = false }: { bumpVersion?: boolean; markPersisted?: boolean } = {}
-  ): void => {
-    setInitialHighlights(snapshot ?? null);
-    if (bumpVersion) {
-      setInitialHighlightsVersion((prev) => prev + 1);
-    }
-    latestHighlightRef.current = snapshot ?? null;
-    if (markPersisted) {
-      persistedSignatureRef.current = snapshot?.signature ?? null;
-    }
-  }, []);
-
-  const resetEditStacks = useCallback((): void => {
-    undoStackRef.current = [];
-    redoStackRef.current = [];
-    setCanUndo(false);
-    setCanRedo(false);
-  }, []);
 
   const { setDisplayedPromptSilently, handleCreateNew, loadFromHistory } = usePromptHistoryActions({
     debug,
