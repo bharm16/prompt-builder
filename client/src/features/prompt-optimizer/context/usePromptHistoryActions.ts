@@ -107,6 +107,13 @@ export const usePromptHistoryActions = ({
     persistedSignatureRef.current = null;
     resetEditStacks();
     navigate(`/prompt/${draft.uuid}`, { replace: true });
+    // Allow future URL-based loads after the draft navigation settles.
+    // Mirror the `loadFromHistory` behavior to avoid leaving this ref stuck `true`.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        skipLoadFromUrlRef.current = false;
+      });
+    });
     window.setTimeout(() => {
       window.dispatchEvent(new Event('po:focus-editor'));
     }, 0);

@@ -435,8 +435,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
   // Render
   // ============================================================================
-  const isPromptRoute = location.pathname.startsWith('/prompt/');
-  const shouldShowLoading = isLoading || (isPromptRoute && !showResults);
+  /**
+   * Only show the blocking loading UI when we are actively loading a prompt.
+   *
+   * Note: `/prompt/:uuid` can legitimately be in "draft/input" mode (e.g. when
+   * the user clicks "New prompt"), where `showResults` is false. In that case we
+   * should render the input layout, not an indefinite "Loading prompt..." state.
+   */
+  const shouldShowLoading = isLoading;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-app font-sans text-foreground">
