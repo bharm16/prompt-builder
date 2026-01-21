@@ -168,6 +168,7 @@ export interface ValidSpan {
 
 export interface PromptCanvasProps {
   user?: User | null;
+  showResults?: boolean;
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;

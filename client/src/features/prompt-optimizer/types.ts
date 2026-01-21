@@ -18,23 +18,6 @@ export interface PromptMode {
 }
 
 /**
- * Props for PromptInput component
- */
-export interface PromptInputProps {
-  inputPrompt: string;
-  onInputChange: (value: string) => void;
-  selectedModel?: string; // New: selected video model
-  onModelChange?: (modelId: string) => void; // New: handler for model change
-  generationParams: CapabilityValues;
-  onGenerationParamsChange: (params: CapabilityValues) => void;
-  onOptimize: () => void;
-  onShowBrainstorm?: () => void;
-  isProcessing: boolean;
-  aiNames?: readonly string[];
-  currentAIIndex?: number;
-}
-
-/**
  * Props for CategoryLegend component
  */
 export interface CategoryLegendProps {
@@ -103,15 +86,6 @@ export interface PromptEditorProps {
   onInput: (e: React.FormEvent<HTMLDivElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLDivElement>) => void;
-}
-
-/**
- * Props for PromptInputSection component
- */
-export interface PromptInputSectionProps {
-  aiNames?: readonly string[];
-  onOptimize: () => void;
-  onShowBrainstorm?: () => void;
 }
 
 /**

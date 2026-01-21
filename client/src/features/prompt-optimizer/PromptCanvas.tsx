@@ -136,6 +136,7 @@ const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
 // Main PromptCanvas Component
 export function PromptCanvas({
   user = null,
+  showResults = false,
   inputPrompt,
   displayedPrompt,
   previewAspectRatio = null,
@@ -279,6 +280,14 @@ export function PromptCanvas({
     () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
     [displayedPrompt]
   );
+  const hasCanvasContent = showResults || Boolean(normalizedDisplayedPrompt);
+
+  useEffect(() => {
+    if (!hasCanvasContent) {
+      setGenerationsSheetOpen(false);
+      setShowDiff(false);
+    }
+  }, [hasCanvasContent]);
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -1436,270 +1445,307 @@ export function PromptCanvas({
           outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
-        <div className="gap-ps-4 lg:gap-ps-5 flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col self-stretch lg:min-w-80 lg:flex-[9]">
-            {/* Main Editor Area - Optimized Prompt */}
-            <div
-              ref={editorColumnRef}
-              className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
-            >
-              <div className="flex min-h-[200px] flex-auto flex-col overflow-y-auto lg:min-h-[300px]">
-                <div className="pb-ps-card flex h-full min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden px-0">
-                  <div
-                    className={cn(
-                      'flex min-h-0 flex-1 flex-col transition-opacity',
-                      isOutputLoading && 'opacity-80'
-                    )}
-                  >
-                    <div className="gap-ps-3 px-ps-6 flex h-ps-9 items-center justify-between">
-                      <span className="text-label-sm text-muted">
-                        Optimized Editor
-                      </span>
-                      <div className="flex flex-wrap items-center gap-ps-2">
-                        {!outlineOverlayActive && (
-                          <CanvasButton
-                            type="button"
-                            size="icon-sm"
-                            onClick={openOutlineOverlay}
-                            aria-label="Open outline"
-                            title="Open outline"
-                          >
-                            <Icon
-                              icon={GridFour}
-                              size="sm"
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          </CanvasButton>
-                        )}
-                        <CanvasButton
-                          type="button"
-                          size="icon-sm"
-                          onClick={handleCopy}
-                          aria-label={
-                            copied ? 'Copied to clipboard' : 'Copy to clipboard'
-                          }
-                          title={copied ? 'Copied' : 'Copy'}
-                        >
-                          {copied ? (
-                            <Icon
-                              icon={Check}
-                              size="sm"
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Icon
-                              icon={Copy}
-                              size="sm"
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </CanvasButton>
-                        <CanvasButton
-                          type="button"
-                          size="icon-sm"
-                          onClick={onUndo}
-                          disabled={!canUndo}
-                          aria-label="Undo"
-                        >
-                          <Icon
-                            icon={ArrowCounterClockwise}
-                            size="sm"
-                            weight="bold"
-                            aria-hidden="true"
-                          />
-                        </CanvasButton>
-                        <CanvasButton
-                          type="button"
-                          size="icon-sm"
-                          onClick={onRedo}
-                          disabled={!canRedo}
-                          aria-label="Redo"
-                        >
-                          <Icon
-                            icon={ArrowClockwise}
-                            size="sm"
-                            weight="bold"
-                            aria-hidden="true"
-                          />
-                        </CanvasButton>
-                        <div className="relative" ref={exportMenuRef}>
-                          <CanvasButton
-                            type="button"
-                            size="icon-sm"
-                            onClick={() => setShowExportMenu(!showExportMenu)}
-                            aria-expanded={showExportMenu}
-                            aria-haspopup="menu"
-                            aria-label="More actions"
-                            title="More"
-                          >
-                            <Icon
-                              icon={DotsThree}
-                              size="sm"
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          </CanvasButton>
-                          {showExportMenu && (
-                            <div
-                              className="border-border bg-surface-3 absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border p-2 shadow-md"
-                              role="menu"
+        {/* Empty State - shown when no prompt yet */}
+        {!hasCanvasContent ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+            <div className="max-w-md space-y-4">
+              <h2 className="text-heading-24 text-foreground font-semibold">
+                Describe your shot
+              </h2>
+              <p className="text-body text-muted">
+                Enter a rough prompt in the bar above and we'll optimize it for
+                cinematic video generation.
+              </p>
+              <div className="pt-4">
+                <p className="text-label-sm text-faint">
+                  Tip: Press{' '}
+                  <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
+                    ⌘
+                  </kbd>{' '}
+                  +{' '}
+                  <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
+                    Enter
+                  </kbd>{' '}
+                  to optimize
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="gap-ps-4 lg:gap-ps-5 flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col self-stretch lg:min-w-80 lg:flex-[9]">
+              {/* Main Editor Area - Optimized Prompt */}
+              <div
+                ref={editorColumnRef}
+                className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
+              >
+                <div className="flex min-h-[200px] flex-auto flex-col overflow-y-auto lg:min-h-[300px]">
+                  <div className="pb-ps-card flex h-full min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden px-0">
+                    <div
+                      className={cn(
+                        'flex min-h-0 flex-1 flex-col transition-opacity',
+                        isOutputLoading && 'opacity-80'
+                      )}
+                    >
+                      <div className="gap-ps-3 px-ps-6 flex h-ps-9 items-center justify-between">
+                        <span className="text-label-sm text-muted">
+                          Optimized Editor
+                        </span>
+                        <div className="flex flex-wrap items-center gap-ps-2">
+                          {!outlineOverlayActive && (
+                            <CanvasButton
+                              type="button"
+                              size="icon-sm"
+                              onClick={openOutlineOverlay}
+                              aria-label="Open outline"
+                              title="Open outline"
                             >
-                              <CanvasButton
-                                type="button"
-                                onClick={() => {
-                                  setShowDiff(true);
-                                  setShowExportMenu(false);
-                                }}
-                                role="menuitem"
-                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                              >
-                                Compare versions
-                              </CanvasButton>
-                              <div
-                                className="bg-border my-1 h-px"
+                              <Icon
+                                icon={GridFour}
+                                size="sm"
+                                weight="bold"
                                 aria-hidden="true"
                               />
-                              <CanvasButton
-                                type="button"
-                                onClick={() => {
-                                  handleExport('text');
-                                  setShowExportMenu(false);
-                                }}
-                                role="menuitem"
-                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                              >
-                                Export .txt
-                              </CanvasButton>
-                              <CanvasButton
-                                type="button"
-                                onClick={() => {
-                                  handleExport('markdown');
-                                  setShowExportMenu(false);
-                                }}
-                                role="menuitem"
-                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                              >
-                                Export .md
-                              </CanvasButton>
-                              <CanvasButton
-                                type="button"
-                                onClick={() => {
-                                  handleExport('json');
-                                  setShowExportMenu(false);
-                                }}
-                                role="menuitem"
-                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                              >
-                                Export .json
-                              </CanvasButton>
-                              <div
-                                className="bg-border my-1 h-px"
-                                aria-hidden="true"
-                              />
-                              <CanvasButton
-                                type="button"
-                                onClick={() => {
-                                  handleShare();
-                                  setShowExportMenu(false);
-                                }}
-                                role="menuitem"
-                                className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                              >
-                                Share
-                              </CanvasButton>
-                            </div>
+                            </CanvasButton>
                           )}
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            onClick={handleCopy}
+                            aria-label={
+                              copied
+                                ? 'Copied to clipboard'
+                                : 'Copy to clipboard'
+                            }
+                            title={copied ? 'Copied' : 'Copy'}
+                          >
+                            {copied ? (
+                              <Icon
+                                icon={Check}
+                                size="sm"
+                                weight="bold"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <Icon
+                                icon={Copy}
+                                size="sm"
+                                weight="bold"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            onClick={onUndo}
+                            disabled={!canUndo}
+                            aria-label="Undo"
+                          >
+                            <Icon
+                              icon={ArrowCounterClockwise}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            onClick={onRedo}
+                            disabled={!canRedo}
+                            aria-label="Redo"
+                          >
+                            <Icon
+                              icon={ArrowClockwise}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </CanvasButton>
+                          <div className="relative" ref={exportMenuRef}>
+                            <CanvasButton
+                              type="button"
+                              size="icon-sm"
+                              onClick={() =>
+                                setShowExportMenu(!showExportMenu)
+                              }
+                              aria-expanded={showExportMenu}
+                              aria-haspopup="menu"
+                              aria-label="More actions"
+                              title="More"
+                            >
+                              <Icon
+                                icon={DotsThree}
+                                size="sm"
+                                weight="bold"
+                                aria-hidden="true"
+                              />
+                            </CanvasButton>
+                            {showExportMenu && (
+                              <div
+                                className="border-border bg-surface-3 absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border p-2 shadow-md"
+                                role="menu"
+                              >
+                                <CanvasButton
+                                  type="button"
+                                  onClick={() => {
+                                    setShowDiff(true);
+                                    setShowExportMenu(false);
+                                  }}
+                                  role="menuitem"
+                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                                >
+                                  Compare versions
+                                </CanvasButton>
+                                <div
+                                  className="bg-border my-1 h-px"
+                                  aria-hidden="true"
+                                />
+                                <CanvasButton
+                                  type="button"
+                                  onClick={() => {
+                                    handleExport('text');
+                                    setShowExportMenu(false);
+                                  }}
+                                  role="menuitem"
+                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                                >
+                                  Export .txt
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  onClick={() => {
+                                    handleExport('markdown');
+                                    setShowExportMenu(false);
+                                  }}
+                                  role="menuitem"
+                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                                >
+                                  Export .md
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  onClick={() => {
+                                    handleExport('json');
+                                    setShowExportMenu(false);
+                                  }}
+                                  role="menuitem"
+                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                                >
+                                  Export .json
+                                </CanvasButton>
+                                <div
+                                  className="bg-border my-1 h-px"
+                                  aria-hidden="true"
+                                />
+                                <CanvasButton
+                                  type="button"
+                                  onClick={() => {
+                                    handleShare();
+                                    setShowExportMenu(false);
+                                  }}
+                                  role="menuitem"
+                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
+                                >
+                                  Share
+                                </CanvasButton>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="px-ps-3 pb-ps-card pt-ps-4 flex min-h-0 flex-1 flex-col">
-                      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-                        <div
-                          className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col"
-                          aria-busy={isOutputLoading}
-                          ref={editorWrapperRef}
-                        >
-                          <PromptEditor
-                            ref={editorRef as React.RefObject<HTMLDivElement>}
-                            className="px-ps-3 py-ps-4 text-body-xl text-foreground-warm min-h-0 min-h-44 w-full flex-1 overflow-y-auto whitespace-pre-wrap outline-none"
-                            onTextSelection={handleTextSelection}
-                            onHighlightClick={handleHighlightClick}
-                            onHighlightMouseDown={handleHighlightMouseDown}
-                            onHighlightMouseEnter={handleHighlightMouseEnter}
-                            onHighlightMouseLeave={handleHighlightMouseLeave}
-                            onCopyEvent={handleCopyEvent}
-                            onInput={handleInput}
-                          />
+                      <div className="px-ps-3 pb-ps-card pt-ps-4 flex min-h-0 flex-1 flex-col">
+                        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                           <div
-                            ref={outputLocklineRef}
-                            className={cn(
-                              'bg-border mt-4 h-px w-full origin-left scale-x-0 transition-transform duration-300',
-                              isOutputLoading && 'scale-x-100'
-                            )}
-                            aria-hidden="true"
-                          />
-                          {enableMLHighlighting &&
-                            !outlineOverlayActive &&
-                            hoveredSpanId &&
-                            lockButtonPosition &&
-                            !isOutputLoading && (
-                              <CanvasButton
-                                ref={lockButtonRef}
-                                type="button"
-                                onClick={handleToggleLock}
-                                onMouseEnter={cancelHideLockButton}
-                                onMouseLeave={handleLockButtonMouseLeave}
-                                onMouseDown={(e) => e.preventDefault()}
-                                className={cn(
-                                  'border-border bg-surface-2 text-muted absolute z-10 -mt-1.5 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border shadow-md transition-colors',
-                                  'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
-                                  isHoveredLocked &&
-                                    'border-accent text-foreground'
-                                )}
-                                style={{
-                                  top: `${lockButtonPosition.top}px`,
-                                  left: `${lockButtonPosition.left}px`,
-                                }}
-                                data-locked={isHoveredLocked ? 'true' : 'false'}
-                                aria-label={
-                                  isHoveredLocked ? 'Unlock span' : 'Lock span'
-                                }
-                                title={
-                                  isHoveredLocked ? 'Unlock span' : 'Lock span'
-                                }
-                                aria-pressed={isHoveredLocked}
-                              >
-                                {isHoveredLocked ? (
-                                  <Icon
-                                    icon={LockOpen}
-                                    size="sm"
-                                    weight="bold"
-                                    aria-hidden="true"
-                                  />
-                                ) : (
-                                  <Icon
-                                    icon={Lock}
-                                    size="sm"
-                                    weight="bold"
-                                    aria-hidden="true"
-                                  />
-                                )}
-                              </CanvasButton>
-                            )}
-                          {isOutputLoading && (
+                            className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col"
+                            aria-busy={isOutputLoading}
+                            ref={editorWrapperRef}
+                          >
+                            <PromptEditor
+                              ref={editorRef as React.RefObject<HTMLDivElement>}
+                              className="px-ps-3 py-ps-4 text-body-xl text-foreground-warm min-h-0 min-h-44 w-full flex-1 overflow-y-auto whitespace-pre-wrap outline-none"
+                              onTextSelection={handleTextSelection}
+                              onHighlightClick={handleHighlightClick}
+                              onHighlightMouseDown={handleHighlightMouseDown}
+                              onHighlightMouseEnter={handleHighlightMouseEnter}
+                              onHighlightMouseLeave={handleHighlightMouseLeave}
+                              onCopyEvent={handleCopyEvent}
+                              onInput={handleInput}
+                            />
                             <div
-                              className="bg-surface-3/80 p-ps-4 absolute inset-0 flex items-start justify-start backdrop-blur-sm"
-                              role="status"
-                              aria-live="polite"
-                              aria-label="Optimizing prompt"
-                            >
-                              <LoadingDots size={3} className="text-faint" />
-                            </div>
-                          )}
-                        </div>
+                              ref={outputLocklineRef}
+                              className={cn(
+                                'bg-border mt-4 h-px w-full origin-left scale-x-0 transition-transform duration-300',
+                                isOutputLoading && 'scale-x-100'
+                              )}
+                              aria-hidden="true"
+                            />
+                            {enableMLHighlighting &&
+                              !outlineOverlayActive &&
+                              hoveredSpanId &&
+                              lockButtonPosition &&
+                              !isOutputLoading && (
+                                <CanvasButton
+                                  ref={lockButtonRef}
+                                  type="button"
+                                  onClick={handleToggleLock}
+                                  onMouseEnter={cancelHideLockButton}
+                                  onMouseLeave={handleLockButtonMouseLeave}
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  className={cn(
+                                    'border-border bg-surface-2 text-muted absolute z-10 -mt-1.5 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border shadow-md transition-colors',
+                                    'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
+                                    isHoveredLocked &&
+                                      'border-accent text-foreground'
+                                  )}
+                                  style={{
+                                    top: `${lockButtonPosition.top}px`,
+                                    left: `${lockButtonPosition.left}px`,
+                                  }}
+                                  data-locked={
+                                    isHoveredLocked ? 'true' : 'false'
+                                  }
+                                  aria-label={
+                                    isHoveredLocked
+                                      ? 'Unlock span'
+                                      : 'Lock span'
+                                  }
+                                  title={
+                                    isHoveredLocked
+                                      ? 'Unlock span'
+                                      : 'Lock span'
+                                  }
+                                  aria-pressed={isHoveredLocked}
+                                >
+                                  {isHoveredLocked ? (
+                                    <Icon
+                                      icon={LockOpen}
+                                      size="sm"
+                                      weight="bold"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <Icon
+                                      icon={Lock}
+                                      size="sm"
+                                      weight="bold"
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                </CanvasButton>
+                              )}
+                            {isOutputLoading && (
+                              <div
+                                className="bg-surface-3/80 p-ps-4 absolute inset-0 flex items-start justify-start backdrop-blur-sm"
+                                role="status"
+                                aria-live="polite"
+                                aria-label="Optimizing prompt"
+                              >
+                                <LoadingDots size={3} className="text-faint" />
+                              </div>
+                            )}
+                          </div>
 
                         {selectedSpanId ? (
                           <aside
@@ -1950,43 +1996,48 @@ export function PromptCanvas({
             />
           </div>
         </div>
+      )}
       </div>
 
-      <div className="border-border bg-surface-2 p-ps-3 fixed bottom-0 left-0 right-0 z-40 border-t lg:hidden">
-        <div className="flex items-center gap-3">
-          <CanvasButton
-            type="button"
-            variant="gradient"
-            className="flex-1 justify-center"
-            onClick={() => setGenerationsSheetOpen(true)}
-          >
-            Open Generations
-          </CanvasButton>
+      {hasCanvasContent && (
+        <div className="border-border bg-surface-2 p-ps-3 fixed bottom-0 left-0 right-0 z-40 border-t lg:hidden">
+          <div className="flex items-center gap-3">
+            <CanvasButton
+              type="button"
+              variant="gradient"
+              className="flex-1 justify-center"
+              onClick={() => setGenerationsSheetOpen(true)}
+            >
+              Open Generations
+            </CanvasButton>
+          </div>
         </div>
-      </div>
+      )}
 
-      <Sheet open={generationsSheetOpen} onOpenChange={setGenerationsSheetOpen}>
-        <SheetContent
-          side="bottom"
-          className="p-ps-3 h-[85vh] overflow-auto border-0 bg-transparent shadow-none [&>button]:hidden"
-        >
-          <GenerationsPanel
-            prompt={normalizedDisplayedPrompt ?? ''}
-            promptVersionId={promptVersionId}
-            aspectRatio={effectiveAspectRatio ?? '16:9'}
-            duration={durationSeconds ?? undefined}
-            fps={fpsNumber ?? undefined}
-            generationParams={generationParams ?? undefined}
-            initialGenerations={activeVersion?.generations ?? undefined}
-            onGenerationsChange={handleGenerationsChange}
-            className="h-full"
-            versions={currentVersions}
-            onRestoreVersion={handleSelectVersion}
-            onCreateVersionIfNeeded={createVersionIfNeeded}
-          />
-        </SheetContent>
-      </Sheet>
-      {showDiff && (
+      {hasCanvasContent && (
+        <Sheet open={generationsSheetOpen} onOpenChange={setGenerationsSheetOpen}>
+          <SheetContent
+            side="bottom"
+            className="p-ps-3 h-[85vh] overflow-auto border-0 bg-transparent shadow-none [&>button]:hidden"
+          >
+            <GenerationsPanel
+              prompt={normalizedDisplayedPrompt ?? ''}
+              promptVersionId={promptVersionId}
+              aspectRatio={effectiveAspectRatio ?? '16:9'}
+              duration={durationSeconds ?? undefined}
+              fps={fpsNumber ?? undefined}
+              generationParams={generationParams ?? undefined}
+              initialGenerations={activeVersion?.generations ?? undefined}
+              onGenerationsChange={handleGenerationsChange}
+              className="h-full"
+              versions={currentVersions}
+              onRestoreVersion={handleSelectVersion}
+              onCreateVersionIfNeeded={createVersionIfNeeded}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
+      {hasCanvasContent && showDiff && (
         <Dialog open={showDiff} onOpenChange={setShowDiff}>
           <DialogContent className="border-border bg-surface-3 w-full max-w-5xl gap-0 rounded-xl border p-0 shadow-lg [&>button]:hidden">
             <div className="border-border flex items-center justify-between border-b p-4">

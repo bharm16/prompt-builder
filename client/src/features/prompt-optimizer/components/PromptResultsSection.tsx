@@ -29,7 +29,7 @@ export const PromptResultsSection = ({
   onDismissAllCoherenceIssues,
   onApplyCoherenceFix,
   onScrollToCoherenceSpan,
-}: PromptResultsSectionProps): React.ReactElement | null => {
+}: PromptResultsSectionProps): React.ReactElement => {
   const {
     showResults,
     currentPromptUuid,
@@ -42,10 +42,6 @@ export const PromptResultsSection = ({
     canRedo,
     handleCreateNew,
   } = usePromptState();
-
-  if (!showResults) {
-    return null;
-  }
 
   return (
     <>
@@ -74,6 +70,7 @@ export const PromptResultsSection = ({
       )}
 
       <PromptCanvas
+        showResults={showResults}
         user={user}
         inputPrompt={promptOptimizer.inputPrompt}
         onInputPromptChange={promptOptimizer.setInputPrompt}

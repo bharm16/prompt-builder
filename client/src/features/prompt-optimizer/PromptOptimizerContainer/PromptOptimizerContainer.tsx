@@ -23,7 +23,6 @@ import {
   type CoherenceIssue,
 } from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
-import { PromptInputSection } from '../components/PromptInputSection';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
@@ -126,8 +125,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
-
-  const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'] as const;
 
   // Stabilize promptContext to prevent infinite loops
   const stablePromptContext = useMemo(() => {
@@ -484,17 +481,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           id="main-content"
           className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto transition-all duration-300"
         >
-          {/* Input Section */}
-          {!showResults && !isLoading && (
-            <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
-              <PromptInputSection
-                aiNames={aiNames}
-                onOptimize={handleOptimize}
-                onShowBrainstorm={() => setShowBrainstorm(true)}
-              />
-            </div>
-          )}
-
           {/* Loading State */}
           {isLoading && (
             <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
@@ -527,18 +513,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
             onApplyCoherenceFix={applyFix}
             onScrollToCoherenceSpan={scrollToSpanById}
           />
-
-          {/* Privacy Policy Footer */}
-          {!showResults && (
-            <footer className="mt-auto py-8 text-center">
-              <a
-                href="/privacy-policy"
-                className="text-body-sm text-muted transition-colors hover:text-foreground"
-              >
-                Privacy Policy
-              </a>
-            </footer>
-          )}
         </main>
 
         {/* Debug Button - Hidden */}

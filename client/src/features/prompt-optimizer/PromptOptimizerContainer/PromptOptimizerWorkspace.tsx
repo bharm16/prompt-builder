@@ -1,9 +1,7 @@
 /**
  * PromptOptimizerWorkspace - Main Orchestrator
  *
- * Coordinates business logic and conditionally renders the appropriate layout:
- * - PromptInputLayout: For input view (when showResults is false)
- * - PromptResultsLayout: For results/canvas view (when showResults is true)
+ * Coordinates business logic and renders the canvas view with a unified top bar.
  *
  * This component focuses on:
  * - Coordinating hooks
@@ -27,7 +25,6 @@ import {
 } from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
-import { PromptInputLayout } from '../layouts/PromptInputLayout';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
@@ -139,8 +136,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
     navigate(nextUrl, { replace: true });
   }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
-
-  const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'] as const;
 
   // Stabilize promptContext to prevent infinite loops
   const stablePromptContext = useMemo(() => {
@@ -514,13 +509,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
   // Render
   // ============================================================================
-  /**
-   * Only show the blocking loading UI when we are actively loading a prompt.
-   *
-   * Note: `/prompt/:uuid` can legitimately be in "draft/input" mode (e.g. when
-   * the user clicks "New prompt"), where `showResults` is false. In that case we
-   * should render the input layout, not an indefinite "Loading prompt..." state.
-   */
+  // Only show the blocking loading UI when we are actively loading a prompt.
   const shouldShowLoading = isLoading;
 
   return (
@@ -562,8 +551,16 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
               handleOptimize(promptToOptimize, undefined, options)}
           />
 
-          {/* Conditionally render the appropriate layout */}
-          {showResults ? (
+          {shouldShowLoading ? (
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
+              <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
+                  <p className="text-body-sm text-muted">Loading prompt...</p>
+                </div>
+              </div>
+            </main>
+          ) : (
             <PromptResultsLayout
               user={user}
               onDisplayedPromptChange={handleDisplayedPromptChangeWithAutosave}
@@ -586,21 +583,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
               onDismissAllCoherenceIssues={dismissAll}
               onApplyCoherenceFix={applyFix}
               onScrollToCoherenceSpan={scrollToSpanById}
-            />
-          ) : shouldShowLoading ? (
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
-              <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
-                  <p className="text-body-sm text-muted">Loading prompt...</p>
-                </div>
-              </div>
-            </main>
-          ) : (
-            <PromptInputLayout
-              aiNames={aiNames}
-              onOptimize={handleOptimize}
-              onShowBrainstorm={() => setShowBrainstorm(true)}
             />
           )}
         </div>

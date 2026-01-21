@@ -44,11 +44,6 @@ export const PromptTopBar = ({
     setSelectedModel,
   } = usePromptState();
 
-  // Hide on the input view (prompt input already appears in the page body)
-  if (!showResults) {
-    return null;
-  }
-
   // Hide when brainstorm modal is open
   if (showBrainstorm) {
     return null;
@@ -61,6 +56,13 @@ export const PromptTopBar = ({
   const [originalSelectedModel, setOriginalSelectedModel] = useState<
     string | undefined
   >(undefined);
+
+  // Auto-focus textarea when there are no results (initial state)
+  React.useEffect(() => {
+    if (!showResults && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [showResults]);
 
   const {
     inputPrompt,
@@ -98,7 +100,9 @@ export const PromptTopBar = ({
   );
 
   const isOptimizing = Boolean(isProcessing || isRefining);
-  const isInputLocked = !isEditing || isOptimizing;
+  // Input is locked only when we have results AND we're not in edit mode
+  // When there are no results yet, input should always be editable
+  const isInputLocked = (showResults && !isEditing) || isOptimizing;
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
 
@@ -127,7 +131,7 @@ export const PromptTopBar = ({
 
   const handleModelChange = useCallback(
     (_nextModel: string, previousModel: string | undefined): void => {
-      if (isOptimizing || isEditing) {
+      if (isOptimizing || isEditing || !showResults) {
         return;
       }
       setOriginalInputPrompt(inputPrompt);
@@ -137,7 +141,7 @@ export const PromptTopBar = ({
         textareaRef.current?.focus();
       }, 0);
     },
-    [inputPrompt, isEditing, isOptimizing]
+    [inputPrompt, isEditing, isOptimizing, showResults]
   );
 
   const handleCancel = useCallback((): void => {
@@ -209,14 +213,28 @@ export const PromptTopBar = ({
       }
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        if (isEditing) {
+        if (!showResults) {
+          // Initial optimization
+          if (inputPrompt.trim()) {
+            void onOptimize(inputPrompt);
+          }
+        } else if (isEditing) {
           handleUpdate();
         } else {
           handleReoptimize();
         }
       }
     },
-    [handleReoptimize, handleUpdate, isEditing, isProcessing, isRefining]
+    [
+      handleReoptimize,
+      handleUpdate,
+      inputPrompt,
+      isEditing,
+      isProcessing,
+      isRefining,
+      onOptimize,
+      showResults,
+    ]
   );
 
   return (
@@ -290,7 +308,33 @@ export const PromptTopBar = ({
             />
           </div>
 
-          {!isEditing ? (
+          {/* Show different buttons based on state */}
+          {!showResults ? (
+            // Initial state - show Optimize button
+            <Button
+              type="button"
+              onClick={() => {
+                if (!isReoptimizeDisabled) {
+                  debug.logAction('optimize', {
+                    promptLength: inputPrompt.length,
+                  });
+                  void onOptimize(inputPrompt);
+                }
+              }}
+              disabled={isReoptimizeDisabled}
+              variant="gradient"
+              size="lg"
+              aria-label="Optimize prompt"
+              title="Optimize (Cmd/Ctrl+Enter)"
+              className="px-4"
+            >
+              Optimize
+              <span className="ml-1" aria-hidden="true">
+                →
+              </span>
+            </Button>
+          ) : !isEditing ? (
+            // Has results, not editing - show Edit button
             <Button
               type="button"
               onClick={handleEditClick}
@@ -303,6 +347,7 @@ export const PromptTopBar = ({
               <Icon icon={Pencil} size="md" weight="bold" aria-hidden="true" />
             </Button>
           ) : (
+            // Editing mode - show Cancel and Update buttons
             <div className="gap-ps-2 flex items-start">
               <Button
                 type="button"
