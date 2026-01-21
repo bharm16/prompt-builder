@@ -12,7 +12,7 @@
     --layout-sidebar-width-collapsed: 60px;
     --layout-bento-rail-width: 44px;
     --sidebar-width: var(--layout-sidebar-width-collapsed);
-    --global-top-nav-height: 52px;
+    --global-top-nav-height: 64px;
   }
 
   html, body, #root {

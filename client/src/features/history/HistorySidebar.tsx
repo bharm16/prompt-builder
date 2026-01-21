@@ -28,8 +28,8 @@ import {
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import { cn } from '@/utils/cn';
+import { UserMenu } from '@components/navigation/AppShell/shared/UserMenu';
 import { HistoryItem } from './components/HistoryItem';
-import { AuthMenu } from './components/AuthMenu';
 import { HistoryThumbnail } from './components/HistoryThumbnail';
 import { useHistoryAuthActions } from './hooks/useHistoryAuthActions';
 import { formatRelativeOrDate } from './utils/historyDates';
@@ -90,7 +90,7 @@ export function HistorySidebar({
     isAuthenticated: !!user,
   });
   const toast = useToast();
-  const { handleSignIn, handleSignOut } = useHistoryAuthActions(debug, toast);
+  const { handleSignIn } = useHistoryAuthActions(debug, toast);
   const [showAllHistory, setShowAllHistory] = React.useState<boolean>(false);
   const hoverExpandedRef = React.useRef<boolean>(false);
   const [hoveredEntryKey, setHoveredEntryKey] = React.useState<string | null>(
@@ -718,13 +718,9 @@ export function HistorySidebar({
             )}
           </section>
 
-          <footer className="mt-auto flex h-16 items-center border-t border-[rgb(41,44,50)] px-4 py-3">
-            <AuthMenu
-              user={user}
-              onSignIn={handleSignIn}
-              onSignOut={handleSignOut}
-            />
-          </footer>
+      <footer className="mt-auto flex h-16 items-center border-t border-[rgb(41,44,50)] px-4 py-3">
+        <UserMenu user={user} variant="sidebar" />
+      </footer>
         </div>
       )}
 

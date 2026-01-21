@@ -9,20 +9,23 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
-import { PromptInputSection } from '../components/PromptInputSection';
-import { PromptResultsSection } from '../components/PromptResultsSection';
-import { PromptModals } from '../components/PromptModals';
-import { PromptSidebar } from '../components/PromptSidebar';
+import { AppShell } from '@components/navigation/AppShell';
+import DebugButton from '@components/DebugButton';
+import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
+import { useToast } from '@components/Toast';
+import { getAuthRepository } from '@/repositories';
+import { useDebugLogger } from '@hooks/useDebugLogger';
+import type { PromptHistoryEntry } from '@hooks/types';
+import type { CoherenceRecommendation } from '../types/coherence';
+import type { User } from '../context/types';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
 } from '../components/coherence/useCoherenceAnnotations';
-import DebugButton from '@components/DebugButton';
-import { useToast } from '@components/Toast';
-import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
-import { getAuthRepository } from '@/repositories';
-import { useDebugLogger } from '@hooks/useDebugLogger';
+import { PromptModals } from '../components/PromptModals';
+import { PromptInputSection } from '../components/PromptInputSection';
+import { PromptResultsSection } from '../components/PromptResultsSection';
+import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
@@ -34,8 +37,25 @@ import {
   useConceptBrainstorm,
   useEnhancementSuggestions,
 } from './hooks';
-import type { CoherenceRecommendation } from '../types/coherence';
-import type { User } from '../context/types';
+
+function resolveActiveStatusLabel(params: {
+  inputPrompt: string;
+  displayedPrompt: string;
+  isProcessing: boolean;
+  isRefining: boolean;
+  hasHighlights: boolean;
+}): string {
+  const hasInput = params.inputPrompt.trim().length > 0;
+  const hasOutput = params.displayedPrompt.trim().length > 0;
+
+  if (params.isRefining) return 'Refining';
+  if (params.isProcessing) return 'Optimizing';
+  if (!hasInput && !hasOutput) return 'Draft';
+  if (hasOutput && params.hasHighlights) return 'Generated';
+  if (hasOutput) return 'Optimized';
+  if (hasInput) return 'Draft';
+  return 'Incomplete';
+}
 
 /**
  * Inner component with access to PromptStateContext
@@ -74,6 +94,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setPromptContext,
     currentPromptUuid,
     currentPromptDocId,
+    initialHighlights,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setShowResults,
@@ -99,6 +120,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     resetEditStacks,
     setDisplayedPromptSilently,
     handleCreateNew,
+    loadFromHistory,
 
     // Navigation
     navigate,
@@ -172,6 +194,63 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setCanUndo,
     setCanRedo,
   });
+
+  const handleDuplicate = useCallback(
+    async (entry: PromptHistoryEntry): Promise<void> => {
+      const mode =
+        typeof entry.mode === 'string' && entry.mode.trim()
+          ? entry.mode.trim()
+          : 'video';
+      const result = await promptHistory.saveToHistory(
+        entry.input,
+        entry.output,
+        entry.score ?? null,
+        mode,
+        entry.targetModel ?? null,
+        (entry.generationParams as Record<string, unknown>) ?? null,
+        entry.brainstormContext ?? null,
+        entry.highlightCache ?? null,
+        null,
+        entry.title ?? null
+      );
+
+      if (result?.uuid) {
+        loadFromHistory({
+          id: result.id,
+          uuid: result.uuid,
+          timestamp: new Date().toISOString(),
+          title: entry.title ?? null,
+          input: entry.input,
+          output: entry.output,
+          score: entry.score ?? null,
+          mode,
+          targetModel: entry.targetModel ?? null,
+          generationParams: entry.generationParams ?? null,
+          brainstormContext: entry.brainstormContext ?? null,
+          highlightCache: entry.highlightCache ?? null,
+          versions: Array.isArray(entry.versions) ? entry.versions : [],
+        });
+      }
+    },
+    [promptHistory, loadFromHistory]
+  );
+
+  const handleRename = useCallback(
+    (entry: PromptHistoryEntry, title: string): void => {
+      if (!entry.uuid) return;
+      promptHistory.updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
+    },
+    [promptHistory]
+  );
+
+  const activeStatusLabel = resolveActiveStatusLabel({
+    inputPrompt: promptOptimizer.inputPrompt,
+    displayedPrompt: promptOptimizer.displayedPrompt,
+    isProcessing: promptOptimizer.isProcessing,
+    isRefining: promptOptimizer.isRefining,
+    hasHighlights: Boolean(initialHighlights),
+  });
+  const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
 
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
@@ -369,98 +448,112 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // Render
   // ============================================================================
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden bg-app text-foreground transition-colors duration-300">
-      {/* Skip to main content - positioned absolute so it doesn't affect grid layout */}
-      <a href="#main-content" className="ps-skip-link">
-        Skip to main content
-      </a>
+    <AppShell
+      showHistory={showHistory}
+      onToggleHistory={setShowHistory}
+      history={promptHistory.history}
+      filteredHistory={promptHistory.filteredHistory}
+      isLoadingHistory={promptHistory.isLoadingHistory}
+      searchQuery={promptHistory.searchQuery}
+      onSearchChange={promptHistory.setSearchQuery}
+      onLoadFromHistory={loadFromHistory}
+      onCreateNew={handleCreateNew}
+      onDelete={promptHistory.deleteFromHistory}
+      onDuplicate={handleDuplicate}
+      onRename={handleRename}
+      currentPromptUuid={currentPromptUuid}
+      currentPromptDocId={currentPromptDocId}
+      activeStatusLabel={activeStatusLabel}
+      activeModelLabel={activeModelLabel}
+    >
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden text-foreground transition-colors duration-300">
+        {/* Skip to main content - positioned absolute so it doesn't affect grid layout */}
+        <a href="#main-content" className="ps-skip-link">
+          Skip to main content
+        </a>
 
-      {/* Modals */}
-      <PromptModals
-        onImprovementComplete={handleImprovementComplete}
-        onConceptComplete={handleConceptComplete}
-        onSkipBrainstorm={handleSkipBrainstorm}
-      />
+        {/* Modals */}
+        <PromptModals
+          onImprovementComplete={handleImprovementComplete}
+          onConceptComplete={handleConceptComplete}
+          onSkipBrainstorm={handleSkipBrainstorm}
+        />
 
-      {/* Top Action Buttons */}
-      {/* History Sidebar */}
-      <PromptSidebar user={user} />
-
-      {/* Main Content */}
-      <main
-        id="main-content"
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto transition-all duration-300"
-      >
-        {/* Input Section */}
-        {!showResults && !isLoading && (
-          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
-            <PromptInputSection
-              aiNames={aiNames}
-              onOptimize={handleOptimize}
-              onShowBrainstorm={() => setShowBrainstorm(true)}
-            />
-          </div>
-        )}
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
-              <p className="text-body-sm text-muted">Loading prompt...</p>
+        {/* Main Content */}
+        <main
+          id="main-content"
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto transition-all duration-300"
+        >
+          {/* Input Section */}
+          {!showResults && !isLoading && (
+            <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+              <PromptInputSection
+                aiNames={aiNames}
+                onOptimize={handleOptimize}
+                onShowBrainstorm={() => setShowBrainstorm(true)}
+              />
             </div>
-          </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
+                <p className="text-body-sm text-muted">Loading prompt...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Results Section */}
+          <PromptResultsSection
+            user={user}
+            onDisplayedPromptChange={handleDisplayedPromptChange}
+            onReoptimize={handleOptimize}
+            onFetchSuggestions={fetchEnhancementSuggestions}
+            onSuggestionClick={handleSuggestionClick}
+            onHighlightsPersist={handleHighlightsPersist}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            stablePromptContext={stablePromptContext}
+            coherenceAffectedSpanIds={affectedSpanIds}
+            coherenceSpanIssueMap={spanIssueMap}
+            coherenceIssues={coherenceIssues}
+            isCoherenceChecking={isCoherenceChecking}
+            isCoherencePanelExpanded={isPanelExpanded}
+            onToggleCoherencePanelExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
+            onDismissCoherenceIssue={dismissIssue}
+            onDismissAllCoherenceIssues={dismissAll}
+            onApplyCoherenceFix={applyFix}
+            onScrollToCoherenceSpan={scrollToSpanById}
+          />
+
+          {/* Privacy Policy Footer */}
+          {!showResults && (
+            <footer className="mt-auto py-8 text-center">
+              <a
+                href="/privacy-policy"
+                className="text-body-sm text-muted transition-colors hover:text-foreground"
+              >
+                Privacy Policy
+              </a>
+            </footer>
+          )}
+        </main>
+
+        {/* Debug Button - Hidden */}
+        {false && (import.meta.env.DEV ||
+          new URLSearchParams(window.location.search).get('debug') === 'true') && (
+          <DebugButton
+            inputPrompt={promptOptimizer.inputPrompt}
+            displayedPrompt={promptOptimizer.displayedPrompt}
+            optimizedPrompt={promptOptimizer.optimizedPrompt}
+            selectedMode={selectedMode}
+            promptContext={stablePromptContext}
+          />
         )}
-
-        {/* Results Section */}
-        <PromptResultsSection
-          user={user}
-          onDisplayedPromptChange={handleDisplayedPromptChange}
-          onReoptimize={handleOptimize}
-          onFetchSuggestions={fetchEnhancementSuggestions}
-          onSuggestionClick={handleSuggestionClick}
-          onHighlightsPersist={handleHighlightsPersist}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          stablePromptContext={stablePromptContext}
-          coherenceAffectedSpanIds={affectedSpanIds}
-          coherenceSpanIssueMap={spanIssueMap}
-          coherenceIssues={coherenceIssues}
-          isCoherenceChecking={isCoherenceChecking}
-          isCoherencePanelExpanded={isPanelExpanded}
-          onToggleCoherencePanelExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
-          onDismissCoherenceIssue={dismissIssue}
-          onDismissAllCoherenceIssues={dismissAll}
-          onApplyCoherenceFix={applyFix}
-          onScrollToCoherenceSpan={scrollToSpanById}
-        />
-
-        {/* Privacy Policy Footer */}
-        {!showResults && (
-          <footer className="mt-auto py-8 text-center">
-            <a
-              href="/privacy-policy"
-              className="text-body-sm text-muted transition-colors hover:text-foreground"
-            >
-              Privacy Policy
-            </a>
-          </footer>
-        )}
-      </main>
-
-      {/* Debug Button - Hidden */}
-      {false && (import.meta.env.DEV ||
-        new URLSearchParams(window.location.search).get('debug') === 'true') && (
-        <DebugButton
-          inputPrompt={promptOptimizer.inputPrompt}
-          displayedPrompt={promptOptimizer.displayedPrompt}
-          optimizedPrompt={promptOptimizer.optimizedPrompt}
-          selectedMode={selectedMode}
-          promptContext={stablePromptContext}
-        />
-      )}
-
-    </div>
+      </div>
+    </AppShell>
   );
 }
 

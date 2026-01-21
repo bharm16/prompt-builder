@@ -1,29 +1,30 @@
-import React from 'react';
+import { type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { MarketingPage } from './MarketingPage';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Card } from '@promptstudio/system/components/ui/card';
 
-export function HomePage(): React.ReactElement {
+export function HomePage(): ReactElement {
   return (
     <MarketingPage
-      title="Vidra"
-      subtitle="Better prompts, faster. Keep the app focused—keep the company navigation global."
+      title="Better prompts. Better video."
+      subtitle="Optimize your AI video prompts for Sora, Veo, Runway, and more."
+      actions={
+        <>
+          <Link
+            to="/"
+            className="inline-flex h-9 items-center rounded-md bg-white px-3 text-[13px] font-semibold text-slate-900 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+          >
+            Try Vidra
+          </Link>
+          <Link
+            to="/signup"
+            className="inline-flex h-9 items-center rounded-md border border-border bg-surface-1 px-3 text-[13px] font-semibold text-foreground transition hover:border-border-strong"
+          >
+            Create account
+          </Link>
+        </>
+      }
     >
-      <div className="mt-8 flex flex-col gap-4">
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground">Prompt Builder</h2>
-          <p className="mt-2 text-muted">
-            Jump into the app to create and optimize prompts.
-          </p>
-          <div className="mt-4">
-            <Button asChild>
-              <Link to="/">Open app</Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
+      {/* Intentionally no body content on the marketing home page */}
     </MarketingPage>
   );
 }
-

@@ -24,15 +24,15 @@ const TOC: TocItem[] = [
 
 function Toc(): React.ReactElement {
   return (
-    <nav aria-label="On this page" className="text-[13px]">
-      <p className="text-[11px] font-semibold tracking-[0.22em] text-muted">
+    <nav aria-label="On this page" className="text-sm">
+      <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-muted">
         ON THIS PAGE
       </p>
       <ul className="mt-3 space-y-2">
         {TOC.map((item) => (
           <li key={item.id}>
             <a
-              className="text-muted hover:text-foreground hover:underline"
+              className="text-[rgb(170,174,187)] hover:text-foreground hover:underline"
               href={`#${item.id}`}
             >
               {item.label}
@@ -48,7 +48,7 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
   return (
     <h2
       id={id}
-      className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground"
+      className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground"
     >
       {children}
     </h2>
@@ -64,38 +64,45 @@ export function TermsOfServicePage(): React.ReactElement {
 
   return (
     <MarketingPage
+      variant="legal"
       eyebrow="LEGAL"
       title="Terms of Service"
       subtitle={`Terms for using ${productName}. Last updated ${updatedAt}.`}
     >
       <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="lg:sticky lg:top-[calc(var(--global-top-nav-height)+24px)] lg:self-start">
-          <Card className="p-5">
+          <Card className="rounded-xl bg-[rgb(23,24,31)] p-4">
             <Toc />
           </Card>
         </aside>
 
-        <div className="ps-border-gradient rounded-lg">
-          <Card className="p-6">
-            <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-muted">
+        <div className="ps-border-gradient rounded-xl">
+          <Card className="p-8">
+            <div className="space-y-12 text-base leading-5 text-[rgb(170,174,187)]">
               <section>
                 <SectionHeading id="summary">Summary</SectionHeading>
-                <p className="mt-2">
+                <p>
                   These Terms govern your use of {productName} (the “Service”). By accessing or using the Service, you agree to these Terms.
                 </p>
               </section>
 
               <section>
                 <SectionHeading id="who">Who we are</SectionHeading>
-                <p className="mt-2">
+                <p>
                   The Service is provided by {companyName} (“we”, “us”, “our”). Contact:{' '}
-                  <span className="font-medium text-foreground">{supportEmail}</span>.
+                  <a
+                    className="font-medium text-[rgb(236,72,153)] hover:underline"
+                    href={`mailto:${supportEmail}`}
+                  >
+                    {supportEmail}
+                  </a>
+                  .
                 </p>
               </section>
 
               <section>
                 <SectionHeading id="accounts">Accounts</SectionHeading>
-                <ul className="mt-2 list-disc pl-5 space-y-2">
+                <ul className="list-disc pl-6 space-y-2">
                   <li>You’re responsible for activity under your account.</li>
                   <li>Provide accurate information and keep your credentials secure.</li>
                   <li>We may suspend accounts that violate these Terms or applicable law.</li>
@@ -104,7 +111,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="acceptable-use">Acceptable use</SectionHeading>
-                <p className="mt-2">
+                <p>
                   Don’t misuse the Service. For example, don’t attempt to reverse engineer, disrupt, or overload
                   our systems, and don’t use the Service to generate content that is unlawful, harmful, or infringes
                   others’ rights.
@@ -113,11 +120,11 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="billing">Billing</SectionHeading>
-                <p className="mt-2">
+                <p>
                   Some features require payment. If you purchase a subscription, you authorize us (and our payment provider, Stripe) to charge your payment method
                   on a recurring basis until you cancel.
                 </p>
-                <ul className="mt-2 list-disc pl-5 space-y-2">
+                <ul className="mt-4 list-disc pl-6 space-y-2">
                   <li>Taxes may apply.</li>
                   <li>You can manage billing details, payment methods, and subscription changes via the billing portal (when available).</li>
                   <li>Invoices and receipts are available in the Service after payment.</li>
@@ -128,7 +135,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="privacy">Privacy</SectionHeading>
-                <p className="mt-2">
+                <p>
                   Our Privacy Policy describes how we collect and use information. By using the Service, you agree
                   to the Privacy Policy.
                 </p>
@@ -136,7 +143,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="ip">Your content</SectionHeading>
-                <p className="mt-2">
+                <p>
                   You retain ownership of content you submit. You grant us a limited license to host, store, and process
                   that content to operate and improve the Service. If you share content publicly, you are responsible
                   for what you publish.
@@ -145,7 +152,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="disclaimers">Disclaimers</SectionHeading>
-                <p className="mt-2">
+                <p>
                   The Service is provided “as is” without warranties of any kind. Outputs generated by AI models may be
                   inaccurate; verify results before relying on them.
                 </p>
@@ -153,7 +160,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="liability">Limitation of liability</SectionHeading>
-                <p className="mt-2">
+                <p>
                   To the maximum extent permitted by law, we will not be liable for indirect, incidental, special,
                   consequential, or punitive damages, or any loss of profits or revenues.
                 </p>
@@ -161,7 +168,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="termination">Termination</SectionHeading>
-                <p className="mt-2">
+                <p>
                   You may stop using the Service at any time. We may suspend or terminate access if you violate these
                   Terms or if required to comply with law.
                 </p>
@@ -169,7 +176,7 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="changes">Changes</SectionHeading>
-                <p className="mt-2">
+                <p>
                   We may update these Terms from time to time. If changes are material, we will provide notice as required.
                   Continued use after changes means you accept the updated Terms.
                 </p>
@@ -177,8 +184,15 @@ export function TermsOfServicePage(): React.ReactElement {
 
               <section>
                 <SectionHeading id="contact">Contact</SectionHeading>
-                <p className="mt-2">
-                  Questions about these Terms? Email <span className="font-medium text-foreground">{supportEmail}</span>.
+                <p>
+                  Questions about these Terms? Email{' '}
+                  <a
+                    className="font-medium text-[rgb(236,72,153)] hover:underline"
+                    href={`mailto:${supportEmail}`}
+                  >
+                    {supportEmail}
+                  </a>
+                  .
                 </p>
               </section>
             </div>

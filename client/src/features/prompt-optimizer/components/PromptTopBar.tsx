@@ -33,6 +33,7 @@ export const PromptTopBar = ({
   onOptimize,
 }: PromptTopBarProps): React.ReactElement | null => {
   const {
+    showResults,
     showHistory,
     setShowHistory,
     showBrainstorm,
@@ -42,6 +43,11 @@ export const PromptTopBar = ({
     selectedModel,
     setSelectedModel,
   } = usePromptState();
+
+  // Hide on the input view (prompt input already appears in the page body)
+  if (!showResults) {
+    return null;
+  }
 
   // Hide when brainstorm modal is open
   if (showBrainstorm) {
