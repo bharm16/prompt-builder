@@ -181,7 +181,7 @@ export const PromptInput = ({
               />
 
               {/* Connected controls bar */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {onModelChange && (
                     <ModelSelectorDropdown selectedModel={selectedModel} onModelChange={onModelChange} variant="pillDark" />
@@ -394,16 +394,6 @@ export const PromptInput = ({
               </div>
             </div>
           </section>
-
-          {/* Workflow hint (single instance) */}
-          {(!hasSeenWorkflowChip || !hasContent) && (
-            <div
-              className="flex items-center justify-center rounded-md border border-border/60 bg-surface-2 px-2.5 py-1.5 text-label-12 font-medium text-muted"
-              role="status"
-            >
-              Structure → Refine → Generate
-            </div>
-          )}
         </div>
       </div>
     </div>

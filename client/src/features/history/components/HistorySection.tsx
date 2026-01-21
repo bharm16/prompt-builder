@@ -11,7 +11,7 @@ import React, {
   useState,
   type ReactElement,
 } from 'react';
-import { Search, Sparkles } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
 import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
@@ -314,11 +314,7 @@ export function HistorySection({
       <section className="flex min-h-0 flex-1 flex-col gap-ps-4 px-4 py-ps-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-[rgb(107,114,128)]">
-            <Sparkles
-              className="h-3.5 w-3.5 text-[rgb(107,114,128)]"
-              aria-hidden="true"
-            />
-            <h2>Prompts</h2>
+            <h2>Sessions</h2>
           </div>
           <TooltipProvider delayDuration={120}>
             <Tooltip>
@@ -360,7 +356,7 @@ export function HistorySection({
               onSearchChange(event.target.value)
             }
             placeholder="Search..."
-            aria-label="Search prompts"
+            aria-label="Search sessions"
             className="h-9 rounded-lg border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] pl-9 pr-ps-3 text-body-sm text-foreground placeholder:text-faint focus-visible:border-[rgb(59,130,246)] focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
@@ -424,7 +420,7 @@ export function HistorySection({
         ) : (
           <>
             <nav
-              aria-label="Prompts list"
+              aria-label="Sessions list"
               className="ps-scrollbar-thin flex-1 overflow-y-auto"
             >
               <ul className="gap-ps-2 flex flex-col">
