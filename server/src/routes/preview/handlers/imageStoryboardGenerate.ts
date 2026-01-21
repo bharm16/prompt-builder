@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
-import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/StoryboardPreviewService';
-import type { ImagePreviewSpeedMode } from '@services/image-generation/providers/types';
+import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/constants';
+import { parseImageStoryboardGenerateRequest } from '../imageStoryboardRequest';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageStoryboardGenerateServices = Pick<
@@ -10,13 +10,18 @@ type ImageStoryboardGenerateServices = Pick<
   'storyboardPreviewService' | 'userCreditService'
 >;
 
-const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
-  'Lightly Juiced',
-  'Juiced',
-  'Extra Juiced',
-  'Real Time',
-]);
 const IMAGE_PREVIEW_CREDIT_COST = 1;
+
+const hasStatusCode = (value: unknown): value is { statusCode: number } => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  if (!('statusCode' in value)) {
+    return false;
+  }
+  const statusCode = (value as { statusCode?: unknown }).statusCode;
+  return typeof statusCode === 'number' && Number.isFinite(statusCode);
+};
 
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
@@ -31,66 +36,15 @@ export const createImageStoryboardGenerateHandler = ({
       });
     }
 
-    const { prompt, aspectRatio, seedImageUrl, speedMode, seed } = (req.body || {}) as {
-      prompt?: unknown;
-      aspectRatio?: unknown;
-      seedImageUrl?: unknown;
-      speedMode?: unknown;
-      seed?: unknown;
-    };
-
-    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    const parsedRequest = parseImageStoryboardGenerateRequest(req.body);
+    if (!parsedRequest.ok) {
       return res.status(400).json({
         success: false,
-        error: 'Prompt must be a non-empty string',
+        error: parsedRequest.error,
       });
     }
 
-    if (aspectRatio !== undefined && typeof aspectRatio !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'aspectRatio must be a string',
-      });
-    }
-
-    let normalizedSeedImageUrl: string | undefined;
-    if (seedImageUrl !== undefined) {
-      if (typeof seedImageUrl !== 'string' || seedImageUrl.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'seedImageUrl must be a non-empty string',
-        });
-      }
-      normalizedSeedImageUrl = seedImageUrl.trim();
-    }
-
-    let normalizedSeed: number | undefined;
-    if (seed !== undefined) {
-      if (typeof seed !== 'number' || !Number.isFinite(seed)) {
-        return res.status(400).json({
-          success: false,
-          error: 'seed must be a finite number',
-        });
-      }
-      normalizedSeed = seed;
-    }
-
-    let normalizedSpeedMode: ImagePreviewSpeedMode | undefined;
-    if (speedMode !== undefined) {
-      if (typeof speedMode !== 'string') {
-        return res.status(400).json({
-          success: false,
-          error: 'speedMode must be a string',
-        });
-      }
-      if (!SPEED_MODE_OPTIONS.has(speedMode as ImagePreviewSpeedMode)) {
-        return res.status(400).json({
-          success: false,
-          error: 'speedMode must be one of: Lightly Juiced, Juiced, Extra Juiced, Real Time',
-        });
-      }
-      normalizedSpeedMode = speedMode as ImagePreviewSpeedMode;
-    }
+    const { prompt, aspectRatio, seedImageUrl, speedMode, seed } = parsedRequest.data;
 
     const userId = await getAuthenticatedUserId(req);
     if (!userId) {
@@ -112,7 +66,7 @@ export const createImageStoryboardGenerateHandler = ({
       });
     }
 
-    const storyboardFrames = normalizedSeedImageUrl
+    const storyboardFrames = seedImageUrl
       ? Math.max(0, STORYBOARD_FRAME_COUNT - 1)
       : STORYBOARD_FRAME_COUNT;
     const previewCost = storyboardFrames * IMAGE_PREVIEW_CREDIT_COST;
@@ -127,11 +81,11 @@ export const createImageStoryboardGenerateHandler = ({
 
     try {
       const result = await storyboardPreviewService.generateStoryboard({
-        prompt: prompt.trim(),
+        prompt,
         ...(aspectRatio ? { aspectRatio } : {}),
-        ...(normalizedSeedImageUrl ? { seedImageUrl: normalizedSeedImageUrl } : {}),
-        ...(normalizedSpeedMode ? { speedMode: normalizedSpeedMode } : {}),
-        ...(normalizedSeed !== undefined ? { seed: normalizedSeed } : {}),
+        ...(seedImageUrl ? { seedImageUrl } : {}),
+        ...(speedMode ? { speedMode } : {}),
+        ...(seed !== undefined ? { seed } : {}),
         ...(userId ? { userId } : {}),
       });
 
@@ -146,7 +100,7 @@ export const createImageStoryboardGenerateHandler = ({
     } catch (error: unknown) {
       await userCreditService.refundCredits(userId, previewCost);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
+      const statusCode = hasStatusCode(error) ? error.statusCode : 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
 
       logger.error('Storyboard preview generation failed', errorInstance, {

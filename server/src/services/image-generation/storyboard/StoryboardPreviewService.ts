@@ -2,13 +2,16 @@ import { logger } from '@infrastructure/Logger';
 import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import type { ImagePreviewSpeedMode } from '@services/image-generation/providers/types';
 import { StoryboardFramePlanner } from './StoryboardFramePlanner';
+import { BASE_PROVIDER, EDIT_PROVIDER, STORYBOARD_FRAME_COUNT } from './constants';
+import { buildEditPrompt } from './prompts';
+import {
+  computeEditSeed,
+  computeSeedBase,
+  normalizeSeedImageUrl,
+  resolveChainingUrl,
+} from './storyboardUtils';
 
-export const STORYBOARD_FRAME_COUNT = 4;
-const CONTINUITY_HEADER =
-  'Continuity: preserve the same character identity, wardrobe, scene, lighting, and style. Apply only the change described.';
-
-const buildEditPrompt = (basePrompt: string, delta: string): string =>
-  `${CONTINUITY_HEADER}\nBase prompt: ${basePrompt}\nEdit instruction: ${delta}`;
+export { STORYBOARD_FRAME_COUNT } from './constants';
 
 export interface StoryboardPreviewRequest {
   prompt: string;
@@ -58,62 +61,33 @@ export class StoryboardPreviewService {
 
     this.log.info('Storyboard deltas planned', {
       userId,
-      deltas: deltas.map((delta) => delta.substring(0, 140)),
+      deltaCount: deltas.length,
     });
 
-    const seedImageUrl =
-      typeof request.seedImageUrl === 'string' && request.seedImageUrl.trim().length > 0
-        ? request.seedImageUrl.trim()
-        : undefined;
+    const seedImageUrl = normalizeSeedImageUrl(request.seedImageUrl);
+    const { baseImageUrl, baseProviderUrl } = await this.resolveBaseImage({
+      prompt: trimmedPrompt,
+      aspectRatio: request.aspectRatio,
+      seedImageUrl,
+      userId,
+    });
 
-    let baseImageUrl: string;
-    let baseProviderUrl: string; // For chaining - must be publicly accessible
-    if (seedImageUrl) {
-      baseImageUrl = seedImageUrl;
-      baseProviderUrl = seedImageUrl; // Assume seed URL is publicly accessible
-    } else {
-      const baseResult = await this.imageGenerationService.generatePreview(trimmedPrompt, {
-        ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
-        provider: 'replicate-flux-schnell',
-        userId,
-        disablePromptTransformation: true,
-      });
-      baseImageUrl = baseResult.imageUrl;
-      // Use providerUrl for chaining (publicly accessible), fall back to imageUrl
-      baseProviderUrl = baseResult.providerUrl ?? baseResult.imageUrl;
-    }
-
-    const imageUrls: string[] = [baseImageUrl];
-    let previousUrl = baseProviderUrl; // Use provider URL for Replicate API calls
-    const seedBase =
-      typeof request.seed === 'number' && Number.isFinite(request.seed)
-        ? Math.round(request.seed)
-        : undefined;
-
-    for (let index = 0; index < deltas.length; index += 1) {
-      const delta = deltas[index];
-      const editPrompt = buildEditPrompt(trimmedPrompt, delta);
-      const editSeed = seedBase !== undefined ? seedBase + index : undefined;
-
-      const result = await this.imageGenerationService.generatePreview(editPrompt, {
-        ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
-        provider: 'replicate-flux-kontext-fast',
-        inputImageUrl: previousUrl, // Uses providerUrl (publicly accessible)
-        ...(request.speedMode ? { speedMode: request.speedMode } : {}),
-        userId,
-        ...(editSeed !== undefined ? { seed: editSeed } : {}),
-        disablePromptTransformation: true,
-      });
-
-      // Use providerUrl for next iteration (must be publicly accessible for Replicate)
-      previousUrl = result.providerUrl ?? result.imageUrl;
-      // Return storage URL to client
-      imageUrls.push(result.imageUrl);
-    }
+    const imageUrls = await this.generateEditFrames({
+      baseImageUrl,
+      baseProviderUrl,
+      deltas,
+      prompt: trimmedPrompt,
+      aspectRatio: request.aspectRatio,
+      speedMode: request.speedMode,
+      seed: request.seed,
+      userId,
+    });
 
     this.log.info('Storyboard frames generated', {
       userId,
-      imageUrls: imageUrls.map((url) => url.substring(0, 120)),
+      imageCount: imageUrls.length,
+      baseProvider: BASE_PROVIDER,
+      editProvider: EDIT_PROVIDER,
     });
 
     return {
@@ -121,5 +95,67 @@ export class StoryboardPreviewService {
       deltas,
       baseImageUrl,
     };
+  }
+
+  private async resolveBaseImage(options: {
+    prompt: string;
+    aspectRatio?: string;
+    seedImageUrl?: string;
+    userId: string;
+  }): Promise<{ baseImageUrl: string; baseProviderUrl: string }> {
+    if (options.seedImageUrl) {
+      return {
+        baseImageUrl: options.seedImageUrl,
+        baseProviderUrl: options.seedImageUrl,
+      };
+    }
+
+    const baseResult = await this.imageGenerationService.generatePreview(options.prompt, {
+      ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+      provider: BASE_PROVIDER,
+      userId: options.userId,
+      disablePromptTransformation: true,
+    });
+
+    return {
+      baseImageUrl: baseResult.imageUrl,
+      baseProviderUrl: resolveChainingUrl(baseResult),
+    };
+  }
+
+  private async generateEditFrames(options: {
+    baseImageUrl: string;
+    baseProviderUrl: string;
+    deltas: string[];
+    prompt: string;
+    aspectRatio?: string;
+    speedMode?: ImagePreviewSpeedMode;
+    seed?: number;
+    userId: string;
+  }): Promise<string[]> {
+    const imageUrls: string[] = [options.baseImageUrl];
+    let previousUrl = options.baseProviderUrl;
+    const seedBase = computeSeedBase(options.seed);
+
+    for (let index = 0; index < options.deltas.length; index += 1) {
+      const delta = options.deltas[index];
+      const editPrompt = buildEditPrompt(options.prompt, delta);
+      const editSeed = computeEditSeed(seedBase, index);
+
+      const result = await this.imageGenerationService.generatePreview(editPrompt, {
+        ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+        provider: EDIT_PROVIDER,
+        inputImageUrl: previousUrl,
+        ...(options.speedMode ? { speedMode: options.speedMode } : {}),
+        userId: options.userId,
+        ...(editSeed !== undefined ? { seed: editSeed } : {}),
+        disablePromptTransformation: true,
+      });
+
+      previousUrl = resolveChainingUrl(result);
+      imageUrls.push(result.imageUrl);
+    }
+
+    return imageUrls;
   }
 }

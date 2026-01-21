@@ -39,6 +39,11 @@ function normalizeBucketName(raw: string): { bucketName: string; changed: boolea
     }
   }
 
+  bucketName = bucketName.replace(/^\/+/, '').split(/[/?#]/)[0] || '';
+  if (!bucketName) {
+    return null;
+  }
+
   if (bucketName.endsWith('.firebasestorage.app')) {
     bucketName = bucketName.replace(/\.firebasestorage\.app$/, '.appspot.com');
   }
