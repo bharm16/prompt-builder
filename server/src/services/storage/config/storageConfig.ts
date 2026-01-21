@@ -2,8 +2,13 @@
  * Storage configuration for GCS
  */
 
+const bucketName = process.env.GCS_BUCKET_NAME?.trim();
+if (!bucketName) {
+  throw new Error('Missing required env var: GCS_BUCKET_NAME');
+}
+
 export const STORAGE_CONFIG = {
-  bucketName: process.env.GCS_BUCKET_NAME || 'promptcanvas-media-dev',
+  bucketName,
   paths: {
     previewImage: 'users/{userId}/previews/images/{timestamp}-{hash}.webp',
     previewVideo: 'users/{userId}/previews/videos/{timestamp}-{hash}.mp4',

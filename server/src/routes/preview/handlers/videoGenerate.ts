@@ -93,7 +93,6 @@ export const createVideoGenerateHandler = ({
     const operation = 'generateVideoPreview';
     const requestId = (req as Request & { id?: string }).id;
     const costModel = availability.resolvedModelId || model;
-    const estimatedCost = getVideoCost(costModel);
 
     const normalized = normalizeGenerationParams({
       generationParams,
@@ -131,6 +130,10 @@ export const createVideoGenerateHandler = ({
       paramDurationS != null && ['4', '8', '12'].includes(String(paramDurationS))
         ? (String(paramDurationS) as VideoGenerationOptions['seconds'])
         : undefined;
+
+    // Calculate cost based on model and duration (per-second pricing)
+    const durationForCost = paramDurationS ?? 8; // Default to 8 seconds if not specified
+    const estimatedCost = getVideoCost(costModel, durationForCost);
 
     const size =
       typeof paramResolution === 'string' &&

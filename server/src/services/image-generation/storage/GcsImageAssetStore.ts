@@ -2,12 +2,13 @@
  * GCS Image Asset Store
  *
  * Stores generated images to Google Cloud Storage.
+ * Uses @google-cloud/storage directly with GOOGLE_APPLICATION_CREDENTIALS.
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Bucket, File } from '@google-cloud/storage';
-import { admin } from '@infrastructure/firebaseAdmin';
+import { Storage, type Bucket, type File } from '@google-cloud/storage';
 import { logger } from '@infrastructure/Logger';
+import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import type { ImageAssetStore, StoredImageAsset } from './types';
 
 interface GcsImageAssetStoreOptions {
@@ -18,22 +19,29 @@ interface GcsImageAssetStoreOptions {
 }
 
 export class GcsImageAssetStore implements ImageAssetStore {
-  private readonly bucket: Bucket;
+  private readonly storage: Storage;
+  private readonly bucketName: string;
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
   private readonly log = logger.child({ service: 'GcsImageAssetStore' });
 
   constructor(options: GcsImageAssetStoreOptions) {
-    this.bucket = admin.storage().bucket(options.bucketName);
+    ensureGcsCredentials();
+    this.storage = new Storage();
+    this.bucketName = options.bucketName;
     this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
   }
 
+  private get bucket(): Bucket {
+    return this.storage.bucket(this.bucketName);
+  }
+
   async storeFromUrl(sourceUrl: string, contentType?: string): Promise<StoredImageAsset> {
     const id = uuidv4();
-    const file = this.bucket.file(this.objectPath(id));
+    const objectPath = this.objectPath(id);
 
     this.log.debug('Fetching image from source URL', { sourceUrl: sourceUrl.slice(0, 100) });
 
@@ -46,17 +54,9 @@ export class GcsImageAssetStore implements ImageAssetStore {
     const resolvedContentType =
       contentType || response.headers.get('content-type') || 'image/webp';
 
-    await file.save(buffer, {
-      contentType: resolvedContentType,
-      resumable: false,
-      metadata: {
-        cacheControl: this.cacheControl,
-        metadata: {
-          sourceUrl: sourceUrl.slice(0, 500),
-        },
-      },
-    });
+    await this.uploadBuffer(objectPath, buffer, resolvedContentType, sourceUrl.slice(0, 500));
 
+    const file = this.bucket.file(objectPath);
     const [metadata] = await file.getMetadata();
     const { url, expiresAt } = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
@@ -80,16 +80,11 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
   async storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredImageAsset> {
     const id = uuidv4();
-    const file = this.bucket.file(this.objectPath(id));
+    const objectPath = this.objectPath(id);
 
-    await file.save(buffer, {
-      contentType,
-      resumable: false,
-      metadata: {
-        cacheControl: this.cacheControl,
-      },
-    });
+    await this.uploadBuffer(objectPath, buffer, contentType);
 
+    const file = this.bucket.file(objectPath);
     const [metadata] = await file.getMetadata();
     const { url, expiresAt } = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
@@ -158,6 +153,43 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
   private objectPath(assetId: string): string {
     return `${this.basePath}/${assetId}`;
+  }
+
+  private async uploadBuffer(
+    objectPath: string,
+    buffer: Buffer,
+    contentType: string,
+    sourceUrl?: string
+  ): Promise<void> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Create fresh file reference for each attempt to avoid stale stream state
+        const file = this.bucket.file(objectPath);
+        await file.save(buffer, {
+          resumable: false,
+          validation: false,
+          contentType,
+          metadata: {
+            cacheControl: this.cacheControl,
+            ...(sourceUrl ? { metadata: { sourceUrl } } : {}),
+          },
+        });
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt < maxRetries && lastError.message.includes('stream was destroyed')) {
+          this.log.warn('GCS upload stream error, retrying', { attempt, maxRetries });
+          await new Promise((r) => setTimeout(r, 100 * attempt));
+        } else {
+          throw lastError;
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   private async getSignedUrl(file: File): Promise<{ url: string; expiresAt: number }> {

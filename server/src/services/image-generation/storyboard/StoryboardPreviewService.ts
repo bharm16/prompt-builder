@@ -67,8 +67,10 @@ export class StoryboardPreviewService {
         : undefined;
 
     let baseImageUrl: string;
+    let baseProviderUrl: string; // For chaining - must be publicly accessible
     if (seedImageUrl) {
       baseImageUrl = seedImageUrl;
+      baseProviderUrl = seedImageUrl; // Assume seed URL is publicly accessible
     } else {
       const baseResult = await this.imageGenerationService.generatePreview(trimmedPrompt, {
         ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
@@ -77,10 +79,12 @@ export class StoryboardPreviewService {
         disablePromptTransformation: true,
       });
       baseImageUrl = baseResult.imageUrl;
+      // Use providerUrl for chaining (publicly accessible), fall back to imageUrl
+      baseProviderUrl = baseResult.providerUrl ?? baseResult.imageUrl;
     }
 
     const imageUrls: string[] = [baseImageUrl];
-    let previousUrl = baseImageUrl;
+    let previousUrl = baseProviderUrl; // Use provider URL for Replicate API calls
     const seedBase =
       typeof request.seed === 'number' && Number.isFinite(request.seed)
         ? Math.round(request.seed)
@@ -94,14 +98,16 @@ export class StoryboardPreviewService {
       const result = await this.imageGenerationService.generatePreview(editPrompt, {
         ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
         provider: 'replicate-flux-kontext-fast',
-        inputImageUrl: previousUrl,
+        inputImageUrl: previousUrl, // Uses providerUrl (publicly accessible)
         ...(request.speedMode ? { speedMode: request.speedMode } : {}),
         userId,
         ...(editSeed !== undefined ? { seed: editSeed } : {}),
         disablePromptTransformation: true,
       });
 
-      previousUrl = result.imageUrl;
+      // Use providerUrl for next iteration (must be publicly accessible for Replicate)
+      previousUrl = result.providerUrl ?? result.imageUrl;
+      // Return storage URL to client
       imageUrls.push(result.imageUrl);
     }
 

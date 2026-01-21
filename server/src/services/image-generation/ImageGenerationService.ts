@@ -97,6 +97,7 @@ export class ImageGenerationService {
         // Return provider URL directly (testing/development)
         return {
           imageUrl: result.imageUrl,
+          providerUrl: result.imageUrl, // Same URL when skipping storage
           metadata: {
             aspectRatio: result.aspectRatio,
             model: result.model,
@@ -150,6 +151,8 @@ export class ImageGenerationService {
     },
     userId: string
   ): Promise<ImageGenerationResult> {
+    const providerUrl = providerResult.imageUrl;
+
     try {
       const stored = await this.assetStore.storeFromUrl(providerResult.imageUrl);
 
@@ -159,9 +162,9 @@ export class ImageGenerationService {
         userId,
       });
 
-      // Build result with only defined optional properties
       const result: ImageGenerationResult = {
         imageUrl: stored.url,
+        providerUrl,
         storagePath: stored.id,
         viewUrl: stored.url,
         metadata: {
@@ -180,16 +183,16 @@ export class ImageGenerationService {
       }
 
       return result;
-    } catch (storageError) {
-      // Log but don't fail - return provider URL as fallback
+    } catch (error) {
       this.log.error(
         'Failed to store image to GCS, returning provider URL',
-        storageError instanceof Error ? storageError : new Error(String(storageError)),
+        error instanceof Error ? error : new Error(String(error)),
         { userId }
       );
 
       return {
-        imageUrl: providerResult.imageUrl,
+        imageUrl: providerUrl,
+        providerUrl,
         metadata: {
           aspectRatio: providerResult.aspectRatio,
           model: providerResult.model,

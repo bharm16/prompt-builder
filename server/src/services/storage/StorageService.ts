@@ -2,6 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import { SignedUrlService } from './services/SignedUrlService';
 import { UploadService } from './services/UploadService';
 import { RetentionService } from './services/RetentionService';
+import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import {
   STORAGE_CONFIG,
   STORAGE_TYPES,
@@ -42,6 +43,9 @@ export class StorageService {
     uploadService?: UploadService;
     retentionService?: RetentionService;
   } = {}) {
+    if (!dependencies.storage) {
+      ensureGcsCredentials();
+    }
     this.storage = dependencies.storage || new Storage();
     this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
     this.signedUrlService = dependencies.signedUrlService || new SignedUrlService(this.storage);

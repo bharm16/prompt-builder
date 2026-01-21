@@ -6,33 +6,52 @@ export type CreditPack = {
   description: string;
 };
 
+/**
+ * Credit Packs (January 2026 Rebalance)
+ *
+ * One-time credit purchases for top-ups and overage.
+ * Priced slightly higher than subscription rates to encourage subscriptions.
+ *
+ * Per-credit economics:
+ * - Starter: $0.050/credit
+ * - Booster: $0.047/credit
+ * - Pro: $0.043/credit
+ * - Studio: $0.040/credit
+ *
+ * NOTE: priceIds kept as original Stripe values.
+ * Update STRIPE_PRICE_CREDITS env var to map these to new credit amounts:
+ *   price_credits_250=300
+ *   price_credits_500=600
+ *   price_credits_1000=1200
+ *   price_credits_2500=3000
+ */
 export const CREDIT_PACKS: CreditPack[] = [
   {
     priceId: 'price_credits_250',
     name: 'Starter Pack',
-    credits: 250,
+    credits: 300,
     price: '$15',
-    description: 'Quick top-up for extra previews and drafts.',
+    description: 'Quick top-up. ~10 WAN previews + 2 Sora videos.',
   },
   {
     priceId: 'price_credits_500',
     name: 'Booster Pack',
-    credits: 500,
+    credits: 600,
     price: '$28',
-    description: 'Extra room for weekend sprints and iterations.',
+    description: 'Weekend sprint. ~21 WAN previews + 5 Sora videos.',
   },
   {
     priceId: 'price_credits_1000',
     name: 'Pro Pack',
-    credits: 1000,
+    credits: 1200,
     price: '$52',
-    description: 'Solid buffer for heavier rendering weeks.',
+    description: 'Heavy week. ~42 WAN previews + 10 Sora videos.',
   },
   {
     priceId: 'price_credits_2500',
     name: 'Studio Pack',
-    credits: 2500,
+    credits: 3000,
     price: '$120',
-    description: 'Bulk credits for big launches and campaigns.',
+    description: 'Big launch. ~107 WAN previews + 26 Sora videos.',
   },
 ];

@@ -29,8 +29,8 @@ PromptCanvas lets you preview your video with fast, inexpensive models before co
 | Stage | Model | Credit cost | Time | Purpose |
 |-------|-------|-------------|------|--------|
 | **Image Preview** | Flux Schnell | 1 credit / image | 5-10s | Validate framing, lighting, mood |
-| **Video Preview** | Wan 2.2 | 5 credits | 30-60s | Test motion, pacing, camera |
-| **Final Generation** | Sora 2, Veo 3, Kling, Luma | 30-80 credits | 2-5min | Production-ready output |
+| **Video Preview** | Wan 2.2 | 28 credits (8s) | 30-60s | Test motion, pacing, camera |
+| **Final Generation** | Sora 2, Veo 3, Kling, Luma | 48-192 credits (8s) | 2-5min | Production-ready output |
 
 **The workflow:**
 1. **Write** → Interactive editor with semantic highlighting
@@ -144,9 +144,9 @@ npm start
 | Plan | Price | Credits/month |
 |------|-------|---------------|
 | Free | $0 | n/a |
-| Explorer | $19 | 400 |
-| Creator | $59 | 1,500 |
-| Agency | $179 | 5,000 |
+| Explorer | $19 | 500 |
+| Creator | $59 | 1,800 |
+| Agency | $179 | 6,000 |
 
 **Plan highlights (from the pricing page):**
 - Free: Local history, core prompt optimization, upgrade anytime
@@ -158,20 +158,30 @@ npm start
 
 | Pack | Credits | Price |
 |------|---------|-------|
-| Starter Pack | 250 | $15 |
-| Booster Pack | 500 | $28 |
-| Pro Pack | 1,000 | $52 |
-| Studio Pack | 2,500 | $120 |
+| Starter Pack | 300 | $15 |
+| Booster Pack | 600 | $28 |
+| Pro Pack | 1,200 | $52 |
+| Studio Pack | 3,000 | $120 |
 
 Stripe setup: map price IDs to credit amounts via `STRIPE_PRICE_CREDITS` (include both subscriptions and packs).
 Credit packs are one-time top-ups applied after checkout completes.
 
-### Generation costs
+### Generation costs (per-second pricing)
 
-- Image previews: 1 credit per image
-- Wan previews (Draft/Pro): 5 credits
-- Final renders: Sora 2 (80), Sora 2 Pro (80), Luma Ray‑3 (40), Kling v2.1 (35), Veo 3 (30), Artistic (30), Tier 1 (15)
-- Default video cost (if model is unknown): 40 credits
+Video credits are charged per second. Default duration is 8 seconds.
+
+| Model | Credits/sec | 8s Video |
+|-------|-------------|----------|
+| WAN Draft | 3.5 | 28 credits |
+| WAN Pro | 5 | 40 credits |
+| Sora 2 | 6 | 48 credits |
+| Sora 2 Pro | 14 | 112 credits |
+| Veo 3 | 24 | 192 credits |
+| Luma Ray-3 | 7 | 56 credits |
+| Kling v2.1 | 5 | 40 credits |
+| Minimax | 4 | 32 credits |
+
+Image previews: 1 credit per image.
 
 Credits are reserved at request time and refunded automatically if a preview or generation fails.
 Preview and generation requests require authentication; anonymous users can’t consume credits.
@@ -373,7 +383,7 @@ See `.env.example` for full list.
 |-----|----------|
 | **[OVERVIEW.md](OVERVIEW.md)** | Full product documentation, architecture, features |
 | **[docs/API.md](docs/API.md)** | API reference |
-| **[docs/billing/PROMPTCANVAS_BILLING_AND_MODEL_CREDITS_ANALYSIS.md](docs/billing/PROMPTCANVAS_BILLING_AND_MODEL_CREDITS_ANALYSIS.md)** | Billing + credits system analysis and recommendations |
+| **[docs/billing/BILLING_SYSTEM_JAN2026.md](docs/billing/BILLING_SYSTEM_JAN2026.md)** | Current billing system documentation |
 | **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | Development guide |
 | **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment instructions |
 
