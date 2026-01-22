@@ -22,7 +22,6 @@ import { BillingPage } from './pages/BillingPage';
 import { BillingInvoicesPage } from './pages/BillingInvoicesPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { AssetsPage } from './pages/AssetsPage';
-import { ConsistentGenerationPage } from './pages/ConsistentGenerationPage';
 
 function MarketingShell(): React.ReactElement {
   return (
@@ -86,11 +85,7 @@ function AppRoutes(): React.ReactElement {
       />
       <Route
         path="/consistent"
-        element={
-          <FeatureErrorBoundary featureName="Consistent Generation">
-            <ConsistentGenerationPage />
-          </FeatureErrorBoundary>
-        }
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/prompt/:uuid"

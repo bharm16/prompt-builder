@@ -45,7 +45,7 @@ export interface CreateAssetRequest {
   type: AssetType;
   trigger: string;
   name: string;
-  textDefinition: string;
+  textDefinition?: string;
   negativePrompt?: string;
 }
 

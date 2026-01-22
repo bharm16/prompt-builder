@@ -16,6 +16,7 @@ import DebugButton from '@components/DebugButton';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
 import { getAuthRepository } from '@/repositories';
+import type { Asset, AssetType } from '@shared/types/asset';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { CoherenceRecommendation } from '../types/coherence';
 import type { User } from '../context/types';
@@ -25,10 +26,15 @@ import {
 } from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
+import { AssetsSidebar, useAssetsSidebar } from '../components/AssetsSidebar';
+import { DetectedAssets } from '../components/DetectedAssets';
+import { QuickCharacterCreate } from '../components/QuickCharacterCreate';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
+import AssetEditor from '@/features/assets/components/AssetEditor';
+import { assetApi } from '@/features/assets/api/assetApi';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -63,6 +69,17 @@ function resolveActiveStatusLabel(params: {
  */
 function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
   const location = useLocation();
+  const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
+  const [sidebarTab, setSidebarTab] = React.useState<'history' | 'assets'>('history');
+  const [assetEditorState, setAssetEditorState] = React.useState<{
+    mode: 'create' | 'edit';
+    asset?: Asset | null;
+    preselectedType?: AssetType | null;
+  } | null>(null);
+  const [quickCreateState, setQuickCreateState] = React.useState<{
+    isOpen: boolean;
+    prefillTrigger?: string;
+  }>({ isOpen: false });
 
   const toast = useToast();
   const {
@@ -123,6 +140,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
+  const assetsSidebar = useAssetsSidebar();
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -332,6 +350,135 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     [promptHistory]
   );
 
+  const insertTriggerAtCursor = useCallback(
+    (trigger: string, range?: { start: number; end: number }): void => {
+      const input = promptInputRef.current;
+      const currentText = promptOptimizer.inputPrompt;
+      const normalizedTrigger = trigger.startsWith('@') ? trigger : `@${trigger}`;
+
+      if (!input) {
+        promptOptimizer.setInputPrompt(`${currentText}${normalizedTrigger}`);
+        return;
+      }
+
+      const isFocused = document.activeElement === input;
+      const start = range?.start ?? (isFocused ? input.selectionStart ?? currentText.length : currentText.length);
+      const end = range?.end ?? (isFocused ? input.selectionEnd ?? currentText.length : currentText.length);
+      const before = currentText.slice(0, start);
+      const after = currentText.slice(end);
+      const needsSpaceBefore = before.length > 0 && !/\s$/.test(before);
+      const needsSpaceAfter = after.length > 0 && !/^\s/.test(after);
+      const insertion = `${needsSpaceBefore ? ' ' : ''}${normalizedTrigger}${
+        needsSpaceAfter ? ' ' : ''
+      }`;
+      const nextText = `${before}${insertion}${after}`;
+
+      promptOptimizer.setInputPrompt(nextText);
+      const nextCursor = before.length + insertion.length;
+      requestAnimationFrame(() => {
+        input.focus();
+        input.setSelectionRange(nextCursor, nextCursor);
+      });
+    },
+    [promptOptimizer]
+  );
+
+  const handleEditAsset = useCallback(
+    (assetId: string): void => {
+      const asset = assetsSidebar.assets.find((item) => item.id === assetId) ?? null;
+      if (!asset) return;
+      setAssetEditorState({ mode: 'edit', asset });
+      setSidebarTab('assets');
+    },
+    [assetsSidebar.assets]
+  );
+
+  const handleCreateAsset = useCallback((type: AssetType): void => {
+    if (type === 'character') {
+      setQuickCreateState({ isOpen: true });
+      return;
+    }
+    setAssetEditorState({ mode: 'create', preselectedType: type });
+    setSidebarTab('assets');
+  }, []);
+
+  const handleCreateFromTrigger = useCallback((trigger: string): void => {
+    const trimmed = trigger.replace(/^@/, '');
+    setQuickCreateState({ isOpen: true, prefillTrigger: trimmed });
+    setSidebarTab('assets');
+  }, []);
+
+  const closeAssetEditor = useCallback(() => {
+    setAssetEditorState(null);
+  }, []);
+
+  const handleAssetCreate = useCallback(
+    async (data: {
+      type: AssetType;
+      trigger: string;
+      name: string;
+      textDefinition?: string;
+      negativePrompt?: string;
+    }): Promise<Asset> => {
+      const asset = await assetApi.create(data);
+      await assetsSidebar.refresh();
+      return asset;
+    },
+    [assetsSidebar]
+  );
+
+  const handleAssetUpdate = useCallback(
+    async (
+      assetId: string,
+      data: { trigger?: string; name?: string; textDefinition?: string; negativePrompt?: string }
+    ): Promise<Asset> => {
+      const asset = await assetApi.update(assetId, data);
+      await assetsSidebar.refresh();
+      return asset;
+    },
+    [assetsSidebar]
+  );
+
+  const handleAddAssetImage = useCallback(
+    async (
+      assetId: string,
+      file: File,
+      metadata: Record<string, string | undefined>
+    ): Promise<void> => {
+      await assetApi.addImage(assetId, file, metadata);
+      await assetsSidebar.refresh();
+    },
+    [assetsSidebar]
+  );
+
+  const handleDeleteAssetImage = useCallback(
+    async (assetId: string, imageId: string): Promise<void> => {
+      await assetApi.deleteImage(assetId, imageId);
+      await assetsSidebar.refresh();
+    },
+    [assetsSidebar]
+  );
+
+  const handleSetPrimaryAssetImage = useCallback(
+    async (assetId: string, imageId: string): Promise<void> => {
+      await assetApi.setPrimaryImage(assetId, imageId);
+      await assetsSidebar.refresh();
+    },
+    [assetsSidebar]
+  );
+
+  const closeQuickCreate = useCallback(() => {
+    setQuickCreateState({ isOpen: false });
+  }, []);
+
+  const handleQuickCreateComplete = useCallback(
+    async (_asset: Asset): Promise<void> => {
+      await assetsSidebar.refresh();
+      setQuickCreateState({ isOpen: false });
+    },
+    [assetsSidebar]
+  );
+
   const activeStatusLabel = resolveActiveStatusLabel({
     inputPrompt: promptOptimizer.inputPrompt,
     displayedPrompt: promptOptimizer.displayedPrompt,
@@ -340,6 +487,12 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     hasHighlights: Boolean(initialHighlights),
   });
   const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
+  const promptForAssets = useMemo(() => {
+    if (showResults && promptOptimizer.displayedPrompt) {
+      return promptOptimizer.displayedPrompt;
+    }
+    return promptOptimizer.inputPrompt;
+  }, [promptOptimizer.displayedPrompt, promptOptimizer.inputPrompt, showResults]);
 
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
@@ -530,6 +683,21 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       currentPromptDocId={currentPromptDocId}
       activeStatusLabel={activeStatusLabel}
       activeModelLabel={activeModelLabel}
+      sidebarTab={sidebarTab}
+      onSidebarTabChange={setSidebarTab}
+      assetsSidebar={(
+        <AssetsSidebar
+          assets={assetsSidebar.assets}
+          byType={assetsSidebar.byType}
+          isLoading={assetsSidebar.isLoading}
+          error={assetsSidebar.error}
+          expandedSections={assetsSidebar.expandedSections}
+          onToggleSection={assetsSidebar.toggleSection}
+          onInsertTrigger={insertTriggerAtCursor}
+          onEditAsset={handleEditAsset}
+          onCreateAsset={handleCreateAsset}
+        />
+      )}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
         {/* Skip to main content */}
@@ -543,12 +711,41 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           onConceptComplete={handleConceptComplete}
           onSkipBrainstorm={handleSkipBrainstorm}
         />
+        <QuickCharacterCreate
+          isOpen={quickCreateState.isOpen}
+          prefillTrigger={quickCreateState.prefillTrigger}
+          onClose={closeQuickCreate}
+          onCreate={handleQuickCreateComplete}
+        />
+        {assetEditorState && (
+          <AssetEditor
+            mode={assetEditorState.mode}
+            asset={assetEditorState.asset || undefined}
+            preselectedType={assetEditorState.preselectedType || undefined}
+            onClose={closeAssetEditor}
+            onCreate={handleAssetCreate}
+            onUpdate={handleAssetUpdate}
+            onAddImage={handleAddAssetImage}
+            onDeleteImage={handleDeleteAssetImage}
+            onSetPrimaryImage={handleSetPrimaryAssetImage}
+          />
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {/* Top Action Buttons */}
           <PromptTopBar
             onOptimize={(promptToOptimize, options) =>
               handleOptimize(promptToOptimize, undefined, options)}
+            inputRef={promptInputRef}
+            assets={assetsSidebar.assets}
+            onInsertTrigger={insertTriggerAtCursor}
+            onCreateFromTrigger={handleCreateFromTrigger}
+          />
+          <DetectedAssets
+            prompt={promptForAssets}
+            assets={assetsSidebar.assets}
+            onEditAsset={handleEditAsset}
+            onCreateFromTrigger={handleCreateFromTrigger}
           />
 
           {shouldShowLoading ? (

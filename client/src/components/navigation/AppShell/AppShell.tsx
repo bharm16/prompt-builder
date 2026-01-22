@@ -35,6 +35,9 @@ export function AppShell({
   currentPromptDocId,
   activeStatusLabel,
   activeModelLabel,
+  assetsSidebar,
+  sidebarTab,
+  onSidebarTabChange,
 }: AppShellProps): ReactElement {
   const { variant, navItems } = useNavigationConfig();
   const [user, setUser] = useState<User | null>(null);
@@ -72,6 +75,9 @@ export function AppShell({
         onLoadFromHistory={onLoadFromHistory}
         onCreateNew={onCreateNew}
         onDelete={onDelete}
+        assetsSidebar={assetsSidebar}
+        sidebarTab={sidebarTab}
+        onSidebarTabChange={onSidebarTabChange}
         {...(typeof onDuplicate === 'function' ? { onDuplicate } : {})}
         {...(typeof onRename === 'function' ? { onRename } : {})}
         {...(currentPromptUuid !== undefined ? { currentPromptUuid } : {})}

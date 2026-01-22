@@ -60,10 +60,11 @@ export class AssetService {
       throw new Error('Asset name must be 50 characters or less');
     }
 
-    if (!textDefinition || textDefinition.trim().length === 0) {
-      throw new Error('Text definition is required');
+    const trimmedDefinition = textDefinition?.trim() ?? '';
+    if (type !== 'character' && trimmedDefinition.length === 0) {
+      throw new Error('Text definition is required for this asset type');
     }
-    if (textDefinition.length > 1000) {
+    if (trimmedDefinition.length > 1000) {
       throw new Error('Text definition must be 1000 characters or less');
     }
 
@@ -71,7 +72,7 @@ export class AssetService {
       type,
       trigger: normalizedTrigger,
       name: name.trim(),
-      textDefinition: textDefinition.trim(),
+      textDefinition: trimmedDefinition,
       negativePrompt: negativePrompt?.trim() || '',
     });
   }
@@ -115,7 +116,7 @@ export class AssetService {
   }
 
   async updateAsset(userId: string, assetId: string, updates: UpdateAssetRequest): Promise<Asset | null> {
-    await this.getAsset(userId, assetId);
+    const asset = await this.getAsset(userId, assetId);
 
     const allowedUpdates: Partial<Asset> = {};
 
@@ -145,13 +146,14 @@ export class AssetService {
     }
 
     if (updates.textDefinition !== undefined) {
-      if (updates.textDefinition.trim().length === 0) {
+      const trimmedDefinition = updates.textDefinition.trim();
+      if (trimmedDefinition.length === 0 && asset.type !== 'character') {
         throw new Error('Text definition cannot be empty');
       }
-      if (updates.textDefinition.length > 1000) {
+      if (trimmedDefinition.length > 1000) {
         throw new Error('Text definition must be 1000 characters or less');
       }
-      allowedUpdates.textDefinition = updates.textDefinition.trim();
+      allowedUpdates.textDefinition = trimmedDefinition;
     }
 
     if (updates.negativePrompt !== undefined) {

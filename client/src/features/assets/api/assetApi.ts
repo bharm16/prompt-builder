@@ -38,7 +38,7 @@ export const assetApi = {
     type: string;
     trigger: string;
     name: string;
-    textDefinition: string;
+    textDefinition?: string;
     negativePrompt?: string;
   }): Promise<Asset> {
     const response = await fetch(API_BASE, {

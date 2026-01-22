@@ -25,6 +25,7 @@ export interface NavItem {
 
 /** Available shell variants based on route */
 export type ShellVariant = 'topnav' | 'sidebar' | 'none';
+export type SidebarTab = 'history' | 'assets';
 
 // -----------------------------------------------------------------------------
 // Component Props
@@ -80,6 +81,9 @@ export interface WorkspaceSidebarProps extends HistorySectionProps {
   readonly user: User | null;
   readonly isExpanded: boolean;
   readonly onToggleExpanded: (expanded: boolean) => void;
+  readonly assetsSidebar?: ReactNode;
+  readonly sidebarTab?: SidebarTab;
+  readonly onSidebarTabChange?: (tab: SidebarTab) => void;
 }
 
 /** Props for main AppShell component */
@@ -87,6 +91,9 @@ export interface AppShellProps extends Partial<HistorySectionProps> {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
+  readonly assetsSidebar?: ReactNode;
+  readonly sidebarTab?: SidebarTab;
+  readonly onSidebarTabChange?: (tab: SidebarTab) => void;
 }
 
 // -----------------------------------------------------------------------------

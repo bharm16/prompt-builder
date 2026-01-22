@@ -14,12 +14,18 @@ import type { OptimizationOptions } from '../types';
 import { PromptControlsRow } from './PromptControlsRow';
 import { sanitizeText } from '@/features/span-highlighting';
 import { cn } from '@/utils/cn';
+import type { Asset } from '@shared/types/asset';
+import { TriggerAutocomplete, useTriggerAutocomplete } from './TriggerAutocomplete';
 
 type PromptTopBarProps = {
   onOptimize: (
     promptToOptimize?: string,
     options?: OptimizationOptions
   ) => Promise<void>;
+  inputRef?: React.RefObject<HTMLTextAreaElement>;
+  assets?: Asset[];
+  onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
+  onCreateFromTrigger?: (trigger: string) => void;
 };
 
 const iconSizes = {
@@ -31,6 +37,10 @@ const iconSizes = {
  */
 export const PromptTopBar = ({
   onOptimize,
+  inputRef,
+  assets = [],
+  onInsertTrigger,
+  onCreateFromTrigger,
 }: PromptTopBarProps): React.ReactElement | null => {
   const {
     showResults,
@@ -50,7 +60,8 @@ export const PromptTopBar = ({
   }
 
   const debug = useDebugLogger('PromptTopBar');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const localTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = inputRef ?? localTextareaRef;
   const [isEditing, setIsEditing] = useState(false);
   const [originalInputPrompt, setOriginalInputPrompt] = useState('');
   const [originalSelectedModel, setOriginalSelectedModel] = useState<
@@ -105,6 +116,27 @@ export const PromptTopBar = ({
   const isInputLocked = (showResults && !isEditing) || isOptimizing;
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
+
+  const {
+    isOpen: autocompleteOpen,
+    suggestions: autocompleteSuggestions,
+    selectedIndex: autocompleteSelectedIndex,
+    position: autocompletePosition,
+    query: autocompleteQuery,
+    handleKeyDown: handleAutocompleteKeyDown,
+    selectSuggestion: selectAutocompleteSuggestion,
+    setSelectedIndex: setAutocompleteSelectedIndex,
+    close: closeAutocomplete,
+    updateFromCursor: updateAutocompletePosition,
+  } = useTriggerAutocomplete({
+    inputRef: textareaRef,
+    prompt: inputPrompt,
+    assets,
+    isEnabled: !isInputLocked,
+    onSelect: (asset, range) => {
+      onInsertTrigger?.(asset.trigger, range);
+    },
+  });
 
   const handleInputPromptChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
@@ -208,6 +240,9 @@ export const PromptTopBar = ({
 
   const handleInputPromptKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      if (handleAutocompleteKeyDown(event)) {
+        return;
+      }
       if (isProcessing || isRefining) {
         return;
       }
@@ -226,6 +261,7 @@ export const PromptTopBar = ({
       }
     },
     [
+      handleAutocompleteKeyDown,
       handleReoptimize,
       handleUpdate,
       inputPrompt,
@@ -287,7 +323,7 @@ export const PromptTopBar = ({
             </div>
           ) : null}
 
-          <div className="flex min-w-72 flex-1 items-center">
+          <div className="relative flex min-w-72 flex-1 items-center">
             <label htmlFor="prompt-topbar-input" className="ps-sr-only">
               Input prompt
             </label>
@@ -297,6 +333,9 @@ export const PromptTopBar = ({
               value={inputPrompt}
               onChange={handleInputPromptChange}
               onKeyDown={handleInputPromptKeyDown}
+              onKeyUp={updateAutocompletePosition}
+              onClick={updateAutocompletePosition}
+              onBlur={closeAutocomplete}
               placeholder="Describe your shot..."
               readOnly={isInputLocked}
               rows={1}
@@ -305,6 +344,25 @@ export const PromptTopBar = ({
               aria-label="Original prompt input"
               aria-readonly={isInputLocked}
               aria-busy={isOptimizing}
+            />
+            <TriggerAutocomplete
+              isOpen={autocompleteOpen}
+              suggestions={autocompleteSuggestions}
+              selectedIndex={autocompleteSelectedIndex}
+              position={autocompletePosition}
+              query={autocompleteQuery}
+              onSelect={(asset) => {
+                const index = autocompleteSuggestions.findIndex((item) => item.id === asset.id);
+                if (index >= 0) {
+                  selectAutocompleteSuggestion(index);
+                }
+              }}
+              onCreateNew={(trigger) => {
+                onCreateFromTrigger?.(trigger);
+                closeAutocomplete();
+              }}
+              onClose={closeAutocomplete}
+              onHoverIndex={setAutocompleteSelectedIndex}
             />
           </div>
 

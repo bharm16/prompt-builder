@@ -35,6 +35,7 @@ export {
   // Media / Video
   VideoCamera,
   FilmSlate,
+  FilmStrip,
   Camera,
   Play,
   Pause,

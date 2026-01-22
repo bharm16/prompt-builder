@@ -2,11 +2,13 @@ import React, { useCallback, useMemo } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
+import type { Asset } from '@shared/types/asset';
 import type { Generation, GenerationsPanelProps } from './types';
 import { GenerationHeader } from './components/GenerationHeader';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
 import { KeyframeSelector, type SelectedKeyframe } from './components/KeyframeSelector';
+import { KeyframeStep } from './components/KeyframeStep';
 import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
@@ -90,7 +92,32 @@ export function GenerationsPanel({
     null
   );
 
-  const { referenceImages: assetReferenceImages } = useAssetReferenceImages(prompt);
+  const [keyframeStep, setKeyframeStep] = React.useState<{
+    isActive: boolean;
+    character: Asset | null;
+    approvedKeyframeUrl: string | null;
+    pendingModel: string | null;
+  }>({
+    isActive: false,
+    character: null,
+    approvedKeyframeUrl: null,
+    pendingModel: null,
+  });
+
+  const { referenceImages: assetReferenceImages, resolvedPrompt } = useAssetReferenceImages(prompt);
+  const detectedCharacter = useMemo(
+    () => resolvedPrompt?.characters?.[0] ?? null,
+    [resolvedPrompt]
+  );
+
+  React.useEffect(() => {
+    setKeyframeStep({
+      isActive: false,
+      character: null,
+      approvedKeyframeUrl: null,
+      pendingModel: null,
+    });
+  }, [prompt]);
 
   const activeDraftModel = useMemo(
     () => getLatestByTier('draft')?.model ?? null,
@@ -113,12 +140,14 @@ export function GenerationsPanel({
     [generateDraft, onCreateVersionIfNeeded, prompt]
   );
 
-  const handleRender = useCallback(
-    (model: string) => {
+  const runRender = useCallback(
+    (model: string, startImageOverride?: { url: string; source: 'keyframe' } | null) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
       let startImage = null;
-      if (selectedKeyframe) {
+      if (startImageOverride) {
+        startImage = { url: startImageOverride.url, source: startImageOverride.source };
+      } else if (selectedKeyframe) {
         startImage = {
           url: selectedKeyframe.url,
           source: selectedKeyframe.source,
@@ -141,6 +170,12 @@ export function GenerationsPanel({
         startImage,
       });
       setSelectedKeyframe(null);
+      setKeyframeStep({
+        isActive: false,
+        character: null,
+        approvedKeyframeUrl: null,
+        pendingModel: null,
+      });
     },
     [
       assetReferenceImages,
@@ -150,6 +185,46 @@ export function GenerationsPanel({
       selectedKeyframe,
     ]
   );
+
+  const handleRender = useCallback(
+    (model: string) => {
+      if (!prompt.trim()) return;
+      if (keyframeStep.isActive) {
+        setKeyframeStep((prev) => ({ ...prev, pendingModel: model }));
+        return;
+      }
+      if (detectedCharacter) {
+        setKeyframeStep({
+          isActive: true,
+          character: detectedCharacter,
+          approvedKeyframeUrl: null,
+          pendingModel: model,
+        });
+        return;
+      }
+
+      runRender(model, null);
+    },
+    [
+      detectedCharacter,
+      keyframeStep.isActive,
+      prompt,
+      runRender,
+    ]
+  );
+
+  const handleApproveKeyframe = useCallback(
+    (keyframeUrl: string) => {
+      const modelToUse = keyframeStep.pendingModel ?? 'sora';
+      runRender(modelToUse, { url: keyframeUrl, source: 'keyframe' });
+    },
+    [keyframeStep.pendingModel, runRender]
+  );
+
+  const handleSkipKeyframe = useCallback(() => {
+    const modelToUse = keyframeStep.pendingModel ?? 'sora';
+    runRender(modelToUse, null);
+  }, [keyframeStep.pendingModel, runRender]);
 
   const handleDelete = useCallback(
     (generation: Generation) => {
@@ -213,14 +288,24 @@ export function GenerationsPanel({
         onClearKeyframe={() => setSelectedKeyframe(null)}
         assetReferenceImages={assetReferenceImages}
       />
-      <div className="border-b border-border px-4 py-3">
-        <KeyframeSelector
-          generations={generations}
-          selectedKeyframe={selectedKeyframe}
-          onSelect={setSelectedKeyframe}
-          onClear={() => setSelectedKeyframe(null)}
+      {keyframeStep.isActive && keyframeStep.character ? (
+        <KeyframeStep
+          prompt={prompt}
+          character={keyframeStep.character}
+          aspectRatio={aspectRatio}
+          onApprove={handleApproveKeyframe}
+          onSkip={handleSkipKeyframe}
         />
-      </div>
+      ) : (
+        <div className="border-b border-border px-4 py-3">
+          <KeyframeSelector
+            generations={generations}
+            selectedKeyframe={selectedKeyframe}
+            onSelect={setSelectedKeyframe}
+            onClear={() => setSelectedKeyframe(null)}
+          />
+        </div>
+      )}
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {timeline.length === 0 ? (
           <EmptyState

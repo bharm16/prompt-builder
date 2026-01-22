@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { assetApi } from '@/features/assets/api/assetApi';
+import type { ResolvedPrompt } from '@shared/types/asset';
 
 interface ReferenceImage {
   assetId: string;
@@ -10,6 +11,7 @@ interface ReferenceImage {
 
 interface UseAssetReferenceImagesReturn {
   referenceImages: ReferenceImage[];
+  resolvedPrompt: ResolvedPrompt | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -19,12 +21,14 @@ export function useAssetReferenceImages(
   prompt: string
 ): UseAssetReferenceImagesReturn {
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  const [resolvedPrompt, setResolvedPrompt] = useState<ResolvedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReferenceImages = useCallback(async () => {
     if (!prompt || !/@[a-zA-Z]/.test(prompt)) {
       setReferenceImages([]);
+      setResolvedPrompt(null);
       setIsLoading(false);
       setError(null);
       return;
@@ -36,9 +40,11 @@ export function useAssetReferenceImages(
     try {
       const result = await assetApi.resolve(prompt);
       setReferenceImages(result.referenceImages || []);
+      setResolvedPrompt(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resolve assets');
       setReferenceImages([]);
+      setResolvedPrompt(null);
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +57,7 @@ export function useAssetReferenceImages(
 
   return {
     referenceImages,
+    resolvedPrompt,
     isLoading,
     error,
     refresh: fetchReferenceImages,

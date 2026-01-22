@@ -69,4 +69,67 @@ describe('AssetService', () => {
       expect.objectContaining({ trigger: '@alice' })
     );
   });
+
+  it('allows empty text definitions for character assets', async () => {
+    const mockAsset = {
+      id: 'asset-2',
+      userId: 'user-1',
+      type: 'character',
+      trigger: '@mara',
+      name: 'Mara',
+      textDefinition: '',
+      negativePrompt: '',
+      referenceImages: [],
+      faceEmbedding: null,
+      usageCount: 0,
+      lastUsedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const repository = {
+      triggerExists: vi.fn().mockResolvedValue(false),
+      create: vi.fn().mockResolvedValue(mockAsset),
+    };
+
+    const service = new AssetService(
+      repository as any,
+      {} as any,
+      {} as any,
+      new TriggerValidationService(),
+      null
+    );
+
+    const result = await service.createAsset('user-1', {
+      type: 'character',
+      trigger: '@Mara',
+      name: 'Mara',
+    });
+
+    expect(result.textDefinition).toBe('');
+  });
+
+  it('requires text definitions for non-character assets', async () => {
+    const repository = {
+      triggerExists: vi.fn().mockResolvedValue(false),
+      create: vi.fn(),
+    };
+
+    const service = new AssetService(
+      repository as any,
+      {} as any,
+      {} as any,
+      new TriggerValidationService(),
+      null
+    );
+
+    await expect(
+      service.createAsset('user-1', {
+        type: 'style',
+        trigger: '@Noir',
+        name: 'Noir',
+        textDefinition: '   ',
+      })
+    ).rejects.toThrow('Text definition is required for this asset type');
+  });
 });

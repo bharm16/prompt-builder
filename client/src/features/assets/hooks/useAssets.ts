@@ -31,7 +31,7 @@ export function useAssets() {
       type: AssetType;
       trigger: string;
       name: string;
-      textDefinition: string;
+      textDefinition?: string;
       negativePrompt?: string;
     }): Promise<Asset> => await withLoading(() => assetApi.create(payload)),
     [withLoading]

@@ -23,7 +23,7 @@ interface AssetEditorProps {
     type: AssetType;
     trigger: string;
     name: string;
-    textDefinition: string;
+    textDefinition?: string;
     negativePrompt?: string;
   }) => Promise<Asset>;
   onUpdate: (
@@ -72,19 +72,23 @@ export function AssetEditor({
     setIsSaving(true);
     setError(null);
     try {
+      if (type !== 'character' && !textDefinition.trim()) {
+        setError('Description is required for this asset type.');
+        return;
+      }
       if (mode === 'create') {
         await onCreate({
           type,
           trigger,
           name,
-          textDefinition,
+          ...(textDefinition.trim() ? { textDefinition } : {}),
           negativePrompt,
         });
       } else if (asset) {
         await onUpdate(asset.id, {
           trigger,
           name,
-          textDefinition,
+          textDefinition: textDefinition.trim(),
           negativePrompt,
         });
       }
@@ -153,7 +157,12 @@ export function AssetEditor({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Description</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Description
+              <span className="ml-2 text-xs text-muted">
+                {type === 'character' ? 'Optional - images drive consistency' : 'Required'}
+              </span>
+            </label>
             <Textarea
               value={textDefinition}
               onChange={(event) => setTextDefinition(event.target.value)}
@@ -186,6 +195,11 @@ export function AssetEditor({
 
           {showReferenceImages && asset && (
             <div className="space-y-4">
+              {asset.type === 'character' && (
+                <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
+                  Character consistency comes from strong reference photos. Add a few clear face shots below.
+                </div>
+              )}
               <ReferenceImageUploader
                 assetType={asset.type}
                 onUpload={(file, metadata) => onAddImage(asset.id, file, metadata)}

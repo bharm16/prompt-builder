@@ -32,6 +32,9 @@ export function WorkspaceSidebar({
   currentPromptDocId,
   activeStatusLabel,
   activeModelLabel,
+  assetsSidebar,
+  sidebarTab,
+  onSidebarTabChange,
 }: WorkspaceSidebarProps): ReactElement {
   const hoverExpandedRef = useRef(false);
 
@@ -92,6 +95,9 @@ export function WorkspaceSidebar({
           onLoadFromHistory={onLoadFromHistory}
           onCreateNew={onCreateNew}
           onDelete={onDelete}
+          assetsSidebar={assetsSidebar}
+          sidebarTab={sidebarTab}
+          onSidebarTabChange={onSidebarTabChange}
           {...duplicateProps}
           {...renameProps}
           {...promptIdProps}
@@ -138,6 +144,9 @@ function ExpandedContent({
   currentPromptDocId,
   activeStatusLabel,
   activeModelLabel,
+  assetsSidebar,
+  sidebarTab,
+  onSidebarTabChange,
 }: ExpandedContentProps): ReactElement {
   const duplicateProps = typeof onDuplicate === 'function' ? { onDuplicate } : {};
   const renameProps = typeof onRename === 'function' ? { onRename } : {};
@@ -149,6 +158,9 @@ function ExpandedContent({
     currentPromptUuid !== undefined ? { currentPromptUuid } : {};
   const promptDocProps =
     currentPromptDocId !== undefined ? { currentPromptDocId } : {};
+  const hasAssetsTab = Boolean(assetsSidebar);
+  const activeTab = sidebarTab ?? 'history';
+  const handleTabChange = onSidebarTabChange ?? (() => {});
 
   return (
     <div className="flex h-full flex-col">
@@ -171,22 +183,53 @@ function ExpandedContent({
 
       <div className="mx-4 h-px bg-[rgb(41,44,50)]" />
 
-      <HistorySection
-        history={history}
-        filteredHistory={filteredHistory}
-        isLoadingHistory={isLoadingHistory}
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-        onLoadFromHistory={onLoadFromHistory}
-        onCreateNew={onCreateNew}
-        onDelete={onDelete}
-        {...duplicateProps}
-        {...renameProps}
-        {...promptIdProps}
-        {...promptDocProps}
-        {...statusProps}
-        {...modelProps}
-      />
+      {hasAssetsTab && (
+        <div className="mx-4 mt-3 flex rounded-lg border border-border bg-surface-1 p-1">
+          <button
+            type="button"
+            onClick={() => handleTabChange('history')}
+            className={cn(
+              'flex-1 rounded-md px-2 py-1 text-xs font-semibold text-muted transition',
+              activeTab === 'history' && 'bg-surface-2 text-foreground'
+            )}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange('assets')}
+            className={cn(
+              'flex-1 rounded-md px-2 py-1 text-xs font-semibold text-muted transition',
+              activeTab === 'assets' && 'bg-surface-2 text-foreground'
+            )}
+          >
+            Assets
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">
+        {activeTab === 'assets' && hasAssetsTab ? (
+          <div className="min-h-0 flex-1 overflow-hidden">{assetsSidebar}</div>
+        ) : (
+          <HistorySection
+            history={history}
+            filteredHistory={filteredHistory}
+            isLoadingHistory={isLoadingHistory}
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            onLoadFromHistory={onLoadFromHistory}
+            onCreateNew={onCreateNew}
+            onDelete={onDelete}
+            {...duplicateProps}
+            {...renameProps}
+            {...promptIdProps}
+            {...promptDocProps}
+            {...statusProps}
+            {...modelProps}
+          />
+        )}
+      </div>
 
       <footer className="mt-auto border-t border-[rgb(41,44,50)] px-4 py-3">
         <UserMenu user={user} variant="sidebar" />
