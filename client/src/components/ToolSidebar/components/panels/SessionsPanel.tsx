@@ -1,8 +1,3 @@
-/**
- * Core history list functionality.
- * Extracted from HistorySidebar to allow embedding in different shells.
- */
-
 import React, {
   useCallback,
   useEffect,
@@ -33,30 +28,46 @@ import {
 } from '@promptstudio/system/components/ui/tooltip';
 import type { PromptHistoryEntry } from '@hooks/types';
 import { cn } from '@utils/cn';
-import type { HistorySectionProps } from '@components/navigation/AppShell/types';
-import { HistoryItem } from './HistoryItem';
-import { formatRelativeOrDate } from '../utils/historyDates';
+import { HistoryItem } from '@features/history/components/HistoryItem';
+import { formatRelativeOrDate } from '@features/history/utils/historyDates';
 import {
   extractDisambiguator,
   normalizeTitle,
   resolveEntryTitle,
-} from '../utils/historyTitles';
+} from '@features/history/utils/historyTitles';
 import {
   formatModelLabel,
   normalizeProcessingLabel,
   resolveEntryStage,
-} from '../utils/historyStages';
+} from '@features/history/utils/historyStages';
 import {
   hasVideoArtifact,
   isRecentEntry,
   resolveHistoryThumbnail,
-} from '../utils/historyMedia';
+} from '@features/history/utils/historyMedia';
 
 const INITIAL_HISTORY_LIMIT = 5;
 
-export function HistorySection({
+interface SessionsPanelProps {
+  history: PromptHistoryEntry[];
+  filteredHistory: PromptHistoryEntry[];
+  isLoading: boolean;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onLoadFromHistory: (entry: PromptHistoryEntry) => void;
+  onCreateNew: () => void;
+  onDelete: (id: string) => void;
+  onDuplicate?: (entry: PromptHistoryEntry) => void;
+  onRename?: (entry: PromptHistoryEntry, title: string) => void;
+  currentPromptUuid?: string | null;
+  currentPromptDocId?: string | null;
+  activeStatusLabel?: string;
+  activeModelLabel?: string;
+}
+
+export function SessionsPanel({
   filteredHistory,
-  isLoadingHistory,
+  isLoading,
   searchQuery,
   onSearchChange,
   onLoadFromHistory,
@@ -68,7 +79,7 @@ export function HistorySection({
   currentPromptDocId,
   activeStatusLabel,
   activeModelLabel,
-}: HistorySectionProps): ReactElement {
+}: SessionsPanelProps): ReactElement {
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = useState<boolean>(false);
   const [focusedEntryKey, setFocusedEntryKey] = useState<string | null>(null);
@@ -311,21 +322,17 @@ export function HistorySection({
 
   return (
     <>
-      <section className="flex min-h-0 flex-1 flex-col gap-ps-4 px-4 py-ps-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-[rgb(107,114,128)]">
-            <h2>Sessions</h2>
-          </div>
+      <div className="flex flex-col h-full">
+        <div className="h-12 px-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-white">Sessions</h2>
           <TooltipProvider delayDuration={120}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  type="button"
+                  onClick={onCreateNew}
+                  className="h-7 px-2.5 bg-[#2C3037] rounded-md text-xs font-medium text-[#A1AFC5]"
                   variant="ghost"
                   size="sm"
-                  className="h-7 rounded-md bg-[rgb(44,48,55)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] shadow-none hover:bg-[rgb(36,42,56)] hover:text-foreground"
-                  onClick={onCreateNew}
-                  aria-label="New prompt"
                 >
                   + New
                 </Button>
@@ -343,33 +350,35 @@ export function HistorySection({
           </TooltipProvider>
         </div>
 
-        <div className="ps-focus-glow relative rounded-lg">
-          <Search
-            className="left-ps-3 text-faint absolute top-1/2 h-4 w-4 -translate-y-1/2"
-            aria-hidden="true"
-          />
-          <Input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-              onSearchChange(event.target.value)
-            }
-            placeholder="Search..."
-            aria-label="Search sessions"
-            className="h-9 rounded-lg border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] pl-9 pr-ps-3 text-body-sm text-foreground placeholder:text-faint focus-visible:border-[rgb(59,130,246)] focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
+        <div className="px-4 py-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C839C]" />
+            <Input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                onSearchChange(event.target.value)
+              }
+              placeholder="Search..."
+              aria-label="Search sessions"
+              className={cn(
+                'w-full h-9 pl-9 pr-3 rounded-lg',
+                'bg-[#1E1F25] border border-[#29292D]',
+                'text-sm text-white placeholder:text-[#7C839C]',
+                'focus-visible:border-[#3B82F6] focus-visible:ring-0'
+              )}
+            />
+          </div>
         </div>
 
-        <div className="gap-ps-2 flex flex-wrap items-center">
-          <Button
+        <div className="px-4 py-2 flex gap-2">
+          <button
             type="button"
-            variant="ghost"
-            size="xs"
             className={cn(
-              'h-7 rounded-md border border-[rgb(44,48,55)] bg-[rgb(30,31,37)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] transition-colors hover:bg-[rgb(39,42,55)] hover:text-foreground',
-              filterState.videosOnly &&
-                'border-[rgb(67,70,81)] bg-[rgb(44,48,55)] text-foreground'
+              'h-7 px-2.5 rounded-md border border-[#2C3037] bg-[#1E1F25] text-xs font-medium text-[#A1AFC5]',
+              'transition-colors hover:bg-[#2C3037] hover:text-white',
+              filterState.videosOnly && 'bg-[#2C3037] text-white'
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -379,15 +388,13 @@ export function HistorySection({
             }
           >
             Videos only
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            variant="ghost"
-            size="xs"
             className={cn(
-              'h-7 rounded-md border border-[rgb(44,48,55)] bg-[rgb(30,31,37)] px-[10px] py-1 text-[12px] font-medium text-[rgb(198,201,210)] transition-colors hover:bg-[rgb(39,42,55)] hover:text-foreground',
-              filterState.recentOnly &&
-                'border-[rgb(67,70,81)] bg-[rgb(44,48,55)] text-foreground'
+              'h-7 px-2.5 rounded-md border border-[#2C3037] bg-[#1E1F25] text-xs font-medium text-[#A1AFC5]',
+              'transition-colors hover:bg-[#2C3037] hover:text-white',
+              filterState.recentOnly && 'bg-[#2C3037] text-white'
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -397,89 +404,91 @@ export function HistorySection({
             }
           >
             Last 7 days
-          </Button>
+          </button>
         </div>
 
-        {isLoadingHistory ? (
-          <div className="text-label-sm text-faint flex flex-col items-center gap-2 py-6 text-center">
-            <div className="ps-spinner-sm" />
-            <p>Loading...</p>
-          </div>
-        ) : filteredByChips.length === 0 ? (
-          searchQuery ? (
-            <div className="text-label-sm text-faint py-6 text-center">
-              <p>No results for &quot;{searchQuery}&quot;.</p>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {isLoading ? (
+            <div className="text-label-sm text-[#7C839C] flex flex-col items-center gap-2 py-6 text-center">
+              <div className="ps-spinner-sm" />
+              <p>Loading...</p>
             </div>
-          ) : hasActiveFilters ? (
-            <div className="text-label-sm text-faint py-6 text-center">
-              <p>No prompts match these filters.</p>
-            </div>
+          ) : filteredByChips.length === 0 ? (
+            searchQuery ? (
+              <div className="text-label-sm text-[#7C839C] py-6 text-center">
+                <p>No results for &quot;{searchQuery}&quot;.</p>
+              </div>
+            ) : hasActiveFilters ? (
+              <div className="text-label-sm text-[#7C839C] py-6 text-center">
+                <p>No prompts match these filters.</p>
+              </div>
+            ) : (
+              <HistoryEmptyState onCreateNew={onCreateNew} />
+            )
           ) : (
-            <HistoryEmptyState onCreateNew={onCreateNew} />
-          )
-        ) : (
-          <>
-            <nav
-              aria-label="Sessions list"
-              className="ps-scrollbar-thin flex-1 overflow-y-auto"
-            >
-              <ul className="gap-ps-2 flex flex-col">
-                {promptRows.map(
-                  (
-                    {
-                      entry,
-                      title,
-                      meta,
-                      stage,
-                      isSelected,
-                      processingLabel,
-                      key,
-                      thumbnailUrl,
-                    },
-                    index
-                  ) => {
-                    const externalHover =
-                      focusedEntryKey !== null &&
-                      (entry.id === focusedEntryKey ||
-                        entry.uuid === focusedEntryKey ||
-                        key === focusedEntryKey);
-                    return (
-                      <HistoryItem
-                        key={key}
-                        entry={entry}
-                        onLoad={onLoadFromHistory}
-                        onDelete={onDelete}
-                        isSelected={isSelected}
-                        isExternallyHovered={externalHover}
-                        title={title}
-                        meta={meta}
-                        stage={stage}
-                        processingLabel={processingLabel}
-                        thumbnailUrl={thumbnailUrl}
-                        onCopyPrompt={handleCopyPrompt}
-                        onOpenInNewTab={handleOpenInNewTab}
-                        dataIndex={index}
-                        {...duplicateProps}
-                        {...renameProps}
-                      />
-                    );
-                  }
-                )}
-              </ul>
-            </nav>
-            {filteredByChips.length > INITIAL_HISTORY_LIMIT && (
-              <Button
-                onClick={() => setShowAllHistory(!showAllHistory)}
-                variant="ghost"
-                size="sm"
-                className="text-label-sm text-faint w-full justify-start"
+            <>
+              <nav
+                aria-label="Sessions list"
+                className="ps-scrollbar-thin flex-1 overflow-y-auto"
               >
-                {showAllHistory ? 'See less' : 'See more...'}
-              </Button>
-            )}
-          </>
-        )}
-      </section>
+                <ul className="flex flex-col gap-2">
+                  {promptRows.map(
+                    (
+                      {
+                        entry,
+                        title,
+                        meta,
+                        stage,
+                        isSelected,
+                        processingLabel,
+                        key,
+                        thumbnailUrl,
+                      },
+                      index
+                    ) => {
+                      const externalHover =
+                        focusedEntryKey !== null &&
+                        (entry.id === focusedEntryKey ||
+                          entry.uuid === focusedEntryKey ||
+                          key === focusedEntryKey);
+                      return (
+                        <HistoryItem
+                          key={key}
+                          entry={entry}
+                          onLoad={onLoadFromHistory}
+                          onDelete={onDelete}
+                          isSelected={isSelected}
+                          isExternallyHovered={externalHover}
+                          title={title}
+                          meta={meta}
+                          stage={stage}
+                          processingLabel={processingLabel}
+                          thumbnailUrl={thumbnailUrl}
+                          onCopyPrompt={handleCopyPrompt}
+                          onOpenInNewTab={handleOpenInNewTab}
+                          dataIndex={index}
+                          {...duplicateProps}
+                          {...renameProps}
+                        />
+                      );
+                    }
+                  )}
+                </ul>
+              </nav>
+              {filteredByChips.length > INITIAL_HISTORY_LIMIT && (
+                <Button
+                  onClick={() => setShowAllHistory(!showAllHistory)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-label-sm text-[#7C839C] w-full justify-start"
+                >
+                  {showAllHistory ? 'See less' : 'See more...'}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
       <Dialog
         open={Boolean(renameEntry)}

@@ -13,6 +13,31 @@
     --layout-bento-rail-width: 44px;
     --sidebar-width: var(--layout-sidebar-width-collapsed);
     --global-top-nav-height: 64px;
+
+    /* ToolSidebar Sizing */
+    --tool-rail-width: 60px;
+    --tool-panel-width: 400px;
+    --tool-panel-min-width: 400px;
+    --tool-rail-padding: 10px;
+    --tool-panel-padding: 16px;
+    --tool-header-height: 48px;
+    --tool-footer-height: 72px;
+
+    /* ToolSidebar Colors */
+    --tool-rail-bg: #131416;
+    --tool-panel-bg: #131416;
+    --tool-panel-inner-bg: #12131A;
+    --tool-rail-border: #1B1E23;
+    --tool-nav-active-bg: #2C3037;
+    --tool-tab-active-bg: #2F3237;
+    --tool-border-primary: #2C3037;
+    --tool-border-dark: #29292D;
+    --tool-border-dashed: #2F3237;
+    --tool-text-primary: #FFFFFF;
+    --tool-text-secondary: #A1AFC5;
+    --tool-text-muted: #A0AEC0;
+    --tool-text-placeholder: #7C839C;
+    --tool-accent-purple: #B3AFFD;
   }
 
   html, body, #root {

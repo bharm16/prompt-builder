@@ -25,6 +25,7 @@ import {
 import { PromptModals } from '../components/PromptModals';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
+import { GenerationControlsProvider } from '../context/GenerationControlsContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
@@ -557,7 +558,9 @@ function PromptOptimizerContainer(): React.ReactElement {
 
   return (
     <PromptStateProvider user={user}>
-      <PromptOptimizerContent user={user} />
+      <GenerationControlsProvider>
+        <PromptOptimizerContent user={user} />
+      </GenerationControlsProvider>
     </PromptStateProvider>
   );
 }

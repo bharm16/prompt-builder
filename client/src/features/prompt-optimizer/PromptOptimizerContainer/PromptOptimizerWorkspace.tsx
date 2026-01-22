@@ -26,15 +26,20 @@ import {
 } from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
-import { AssetsSidebar, useAssetsSidebar } from '../components/AssetsSidebar';
+import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { DetectedAssets } from '../components/DetectedAssets';
 import { QuickCharacterCreate } from '../components/QuickCharacterCreate';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
+import {
+  GenerationControlsProvider,
+  useGenerationControlsContext,
+} from '../context/GenerationControlsContext';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import AssetEditor from '@/features/assets/components/AssetEditor';
 import { assetApi } from '@/features/assets/api/assetApi';
+import { uploadPreviewImage } from '@/features/preview/api/previewApi';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -70,7 +75,6 @@ function resolveActiveStatusLabel(params: {
 function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
   const location = useLocation();
   const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
-  const [sidebarTab, setSidebarTab] = React.useState<'history' | 'assets'>('history');
   const [assetEditorState, setAssetEditorState] = React.useState<{
     mode: 'create' | 'edit';
     asset?: Asset | null;
@@ -88,6 +92,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     selectedModel,
     setSelectedModel,
     generationParams,
+    setGenerationParams,
     showResults,
     showSettings,
     setShowSettings,
@@ -141,6 +146,11 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     uuid,
   } = usePromptState();
   const assetsSidebar = useAssetsSidebar();
+  const {
+    controls: generationControls,
+    startImage,
+    setStartImage,
+  } = useGenerationControlsContext();
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -388,7 +398,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       const asset = assetsSidebar.assets.find((item) => item.id === assetId) ?? null;
       if (!asset) return;
       setAssetEditorState({ mode: 'edit', asset });
-      setSidebarTab('assets');
     },
     [assetsSidebar.assets]
   );
@@ -399,13 +408,11 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       return;
     }
     setAssetEditorState({ mode: 'create', preselectedType: type });
-    setSidebarTab('assets');
   }, []);
 
   const handleCreateFromTrigger = useCallback((trigger: string): void => {
     const trimmed = trigger.replace(/^@/, '');
     setQuickCreateState({ isOpen: true, prefillTrigger: trimmed });
-    setSidebarTab('assets');
   }, []);
 
   const closeAssetEditor = useCallback(() => {
@@ -467,6 +474,37 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     [assetsSidebar]
   );
 
+  const handleImageUpload = useCallback(
+    async (file: File): Promise<void> => {
+      const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+      const maxBytes = 10 * 1024 * 1024;
+
+      if (!allowedTypes.has(file.type)) {
+        toast.warning('Only PNG, JPEG, and WebP files are supported.');
+        return;
+      }
+      if (file.size > maxBytes) {
+        toast.warning('Image must be 10MB or smaller.');
+        return;
+      }
+
+      try {
+        const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
+        if (!response.success || !response.data) {
+          throw new Error(response.error || response.message || 'Failed to upload image');
+        }
+        const imageUrl = response.data.viewUrl || response.data.imageUrl;
+        if (!imageUrl) {
+          throw new Error('Upload did not return an image URL');
+        }
+        setStartImage({ url: imageUrl, source: 'upload' });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
+      }
+    },
+    [setStartImage, toast]
+  );
+
   const closeQuickCreate = useCallback(() => {
     setQuickCreateState({ isOpen: false });
   }, []);
@@ -487,6 +525,61 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     hasHighlights: Boolean(initialHighlights),
   });
   const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
+  const promptForGeneration =
+    promptOptimizer.displayedPrompt?.trim() || promptOptimizer.inputPrompt;
+  const isGenerating = generationControls?.isGenerating ?? false;
+  const isGenerationReady = Boolean(generationControls);
+
+  const effectiveAspectRatio = useMemo(() => {
+    const fromParams = generationParams?.aspect_ratio;
+    if (typeof fromParams === 'string' && fromParams.trim()) {
+      return fromParams.trim();
+    }
+    return '16:9';
+  }, [generationParams?.aspect_ratio]);
+
+  const durationSeconds = useMemo(() => {
+    const durationValue = generationParams?.duration_s;
+    if (typeof durationValue === 'number') {
+      return Number.isFinite(durationValue) ? durationValue : 5;
+    }
+    if (typeof durationValue === 'string') {
+      const parsed = Number.parseFloat(durationValue);
+      return Number.isFinite(parsed) ? parsed : 5;
+    }
+    return 5;
+  }, [generationParams?.duration_s]);
+
+  const handleAspectRatioChange = useCallback(
+    (ratio: string): void => {
+      if (generationParams?.aspect_ratio === ratio) return;
+      setGenerationParams({ ...(generationParams ?? {}), aspect_ratio: ratio });
+    },
+    [generationParams, setGenerationParams]
+  );
+
+  const handleDurationChange = useCallback(
+    (nextDuration: number): void => {
+      if (generationParams?.duration_s === nextDuration) return;
+      setGenerationParams({ ...(generationParams ?? {}), duration_s: nextDuration });
+    },
+    [generationParams, setGenerationParams]
+  );
+
+  const handleDraft = useCallback(
+    (model: 'flux-kontext' | 'wan-2.2'): void => {
+      generationControls?.onDraft?.(model);
+    },
+    [generationControls]
+  );
+
+  const handleRender = useCallback(
+    (model: string): void => {
+      generationControls?.onRender?.(model);
+    },
+    [generationControls]
+  );
+
   const promptForAssets = useMemo(() => {
     if (showResults && promptOptimizer.displayedPrompt) {
       return promptOptimizer.displayedPrompt;
@@ -683,21 +776,27 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       currentPromptDocId={currentPromptDocId}
       activeStatusLabel={activeStatusLabel}
       activeModelLabel={activeModelLabel}
-      sidebarTab={sidebarTab}
-      onSidebarTabChange={setSidebarTab}
-      assetsSidebar={(
-        <AssetsSidebar
-          assets={assetsSidebar.assets}
-          byType={assetsSidebar.byType}
-          isLoading={assetsSidebar.isLoading}
-          error={assetsSidebar.error}
-          expandedSections={assetsSidebar.expandedSections}
-          onToggleSection={assetsSidebar.toggleSection}
-          onInsertTrigger={insertTriggerAtCursor}
-          onEditAsset={handleEditAsset}
-          onCreateAsset={handleCreateAsset}
-        />
-      )}
+      prompt={promptForGeneration}
+      aspectRatio={effectiveAspectRatio}
+      duration={durationSeconds}
+      selectedModel={selectedModel}
+      onModelChange={setSelectedModel}
+      onAspectRatioChange={handleAspectRatioChange}
+      onDurationChange={handleDurationChange}
+      onDraft={handleDraft}
+      onRender={handleRender}
+      isDraftDisabled={!promptForGeneration.trim() || !isGenerationReady || isGenerating}
+      isRenderDisabled={!promptForGeneration.trim() || !isGenerationReady || isGenerating}
+      startImage={startImage}
+      onImageUpload={handleImageUpload}
+      onClearStartImage={() => setStartImage(null)}
+      activeDraftModel={generationControls?.activeDraftModel ?? null}
+      assets={assetsSidebar.assets}
+      assetsByType={assetsSidebar.byType}
+      isLoadingAssets={assetsSidebar.isLoading}
+      onInsertTrigger={insertTriggerAtCursor}
+      onEditAsset={handleEditAsset}
+      onCreateAsset={handleCreateAsset}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
         {/* Skip to main content */}
@@ -817,7 +916,9 @@ function PromptOptimizerWorkspace(): React.ReactElement {
 
   return (
     <PromptStateProvider user={user}>
-      <PromptOptimizerContent user={user} />
+      <GenerationControlsProvider>
+        <PromptOptimizerContent user={user} />
+      </GenerationControlsProvider>
     </PromptStateProvider>
   );
 }

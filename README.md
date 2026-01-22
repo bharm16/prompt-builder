@@ -1,4 +1,4 @@
-# PromptCanvas
+# Vidra
 
 > **Preview first. Generate once.**
 
@@ -24,7 +24,7 @@ By the time you get what you wanted, you've burned through half your credits on 
 
 **Draft cheap. Render perfect.**
 
-PromptCanvas lets you preview your video with fast, inexpensive models before committing to final generation:
+Vidra lets you preview your video with fast, inexpensive models before committing to final generation:
 
 | Stage | Model | Credit cost | Time | Purpose |
 |-------|-------|-------------|------|--------|
@@ -46,7 +46,7 @@ PromptCanvas lets you preview your video with fast, inexpensive models before co
 
 <!-- TODO: Add GIF showing the click-to-enhance flow -->
 
-**PromptCanvas is NOT another paste-and-optimize tool.**
+**Vidra is NOT another paste-and-optimize tool.**
 
 It's an interactive editing canvas where:
 
@@ -66,31 +66,7 @@ It's an interactive editing canvas where:
 
 ## Quick Start
 
-```bash
-# Clone
-git clone https://github.com/yourusername/prompt-builder.git
-cd prompt-builder
-
-# Install
-npm install
-
-# Configure
-cp .env.example .env
-# Add your API keys to .env
-
-# Run
-npm start
-# Open http://localhost:5173
-```
-
-**Required:**
-- Node.js >= 20.0.0
-- OpenAI API key
-
-**Optional (but recommended):**
-- Groq API key (free, enables sub-300ms drafts)
-- Replicate API token (enables visual preview generation with Flux Schnell)
-- Firebase account (for auth and history)
+Moved to `docs/QUICKSTART.md`.
 
 ---
 
@@ -134,6 +110,12 @@ npm start
 | **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
 | **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
 | **Consistency Tracking** | Suggestions respect your edit history to maintain coherence |
+| **Integrated Asset System** | Create and reuse **characters, styles, locations, and objects** directly inside the prompt optimizer for consistent production output |
+| **`@trigger` Prompt Assembly** | Reference assets via `@trigger` tokens with UX support (autocomplete/detection) so prompt building becomes reusable “building blocks” |
+| **Reference Image Library** | Upload/manage reference images (standalone + asset-attached) to support identity + visual continuity |
+| **Keyframe / Image-to-Video Workflow** | Use a start frame/keyframe (from uploads, library, or assets) to guide generation instead of text-only video |
+| **Face-Consistent Keyframes (PuLID)** | Higher-quality face identity preservation for character consistency (with fallback behavior when not configured) |
+| **Consistent Generation Workflow** | Supports “generate keyframe → approve → generate video” for multi-shot/series production patterns |
 
 ---
 
@@ -199,13 +181,13 @@ AI video models (Sora, Runway, Veo3) are sensitive to prompt quality. The differ
 
 **The problem:** Most people don't know cinematographic language.
 
-**The solution:** PromptCanvas shows you what elements your prompt has, what's missing, and lets you refine each element with AI assistance.
+**The solution:** Vidra shows you what elements your prompt has, what's missing, and lets you refine each element with AI assistance.
 
 ---
 
 ## Supported Ecosystem
 
-PromptCanvas is designed to be the all-in-one studio for the AI video ecosystem. It optimizes prompts AND directly generates video with:
+Vidra is designed to be the all-in-one studio for the AI video ecosystem. It optimizes prompts AND directly generates video with:
 
 *   **OpenAI Sora 2** (Physics simulation & continuity)
 *   **Google Veo 4** (Cinematic lighting & atmosphere)
@@ -354,38 +336,16 @@ npm run build       # Production build
 
 ---
 
-## Environment Variables
-
-```env
-# Required
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-
-# Optional (enables fast drafts)
-GROQ_API_KEY=gsk_...
-
-# Optional (enables visual preview generation)
-REPLICATE_API_TOKEN=r8_...
-
-# Firebase (for auth/history)
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-```
-
-See `.env.example` for full list.
-
----
-
 ## Documentation
 
 | Doc | Contents |
 |-----|----------|
 | **[OVERVIEW.md](OVERVIEW.md)** | Full product documentation, architecture, features |
+| **[docs/QUICKSTART.md](docs/QUICKSTART.md)** | Minimal local setup |
 | **[docs/API.md](docs/API.md)** | API reference |
 | **[docs/billing/BILLING_SYSTEM_JAN2026.md](docs/billing/BILLING_SYSTEM_JAN2026.md)** | Current billing system documentation |
-| **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | Development guide |
-| **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment instructions |
+| **[docs/development/IMPLEMENTATION_GUIDE.md](docs/development/IMPLEMENTATION_GUIDE.md)** | Development guide |
+| **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** | Deployment instructions |
 
 ---
 

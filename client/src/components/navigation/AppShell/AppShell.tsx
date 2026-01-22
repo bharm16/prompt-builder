@@ -11,16 +11,15 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { getAuthRepository } from '@repositories/index';
 import { useNavigationConfig } from './hooks/useNavigationConfig';
 import { TopNavbar } from './variants/TopNavbar';
-import { WorkspaceSidebar } from './variants/WorkspaceSidebar';
+import { ToolSidebar } from '@components/ToolSidebar';
 import type { AppShellProps } from './types';
 import type { User } from '@hooks/types';
+import type { Asset, AssetType } from '@shared/types/asset';
 
 const noop = (..._args: unknown[]): void => {};
 
 export function AppShell({
   children,
-  showHistory = true,
-  onToggleHistory,
   history = [],
   filteredHistory = [],
   isLoadingHistory = false,
@@ -35,12 +34,37 @@ export function AppShell({
   currentPromptDocId,
   activeStatusLabel,
   activeModelLabel,
-  assetsSidebar,
-  sidebarTab,
-  onSidebarTabChange,
+  prompt = '',
+  aspectRatio = '16:9',
+  duration = 5,
+  selectedModel = '',
+  onModelChange = noop,
+  onAspectRatioChange = noop,
+  onDurationChange = noop,
+  onDraft = noop,
+  onRender = noop,
+  isDraftDisabled = true,
+  isRenderDisabled = true,
+  startImage = null,
+  onImageUpload,
+  onClearStartImage,
+  activeDraftModel = null,
+  assets = [],
+  assetsByType,
+  isLoadingAssets = false,
+  onInsertTrigger = noop,
+  onEditAsset = noop,
+  onCreateAsset = noop,
 }: AppShellProps): ReactElement {
   const { variant, navItems } = useNavigationConfig();
   const [user, setUser] = useState<User | null>(null);
+  const emptyAssetsByType: Record<AssetType, Asset[]> = {
+    character: [],
+    style: [],
+    location: [],
+    object: [],
+  };
+  const resolvedAssetsByType = assetsByType ?? emptyAssetsByType;
 
   useEffect(() => {
     const unsubscribe = getAuthRepository().onAuthStateChanged(setUser);
@@ -62,11 +86,8 @@ export function AppShell({
 
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
-      <WorkspaceSidebar
-        navItems={navItems.sidebar}
+      <ToolSidebar
         user={user}
-        isExpanded={showHistory}
-        onToggleExpanded={onToggleHistory ?? noop}
         history={history}
         filteredHistory={filteredHistory}
         isLoadingHistory={isLoadingHistory}
@@ -75,15 +96,33 @@ export function AppShell({
         onLoadFromHistory={onLoadFromHistory}
         onCreateNew={onCreateNew}
         onDelete={onDelete}
-        assetsSidebar={assetsSidebar}
-        sidebarTab={sidebarTab}
-        onSidebarTabChange={onSidebarTabChange}
         {...(typeof onDuplicate === 'function' ? { onDuplicate } : {})}
         {...(typeof onRename === 'function' ? { onRename } : {})}
         {...(currentPromptUuid !== undefined ? { currentPromptUuid } : {})}
         {...(currentPromptDocId !== undefined ? { currentPromptDocId } : {})}
         {...(typeof activeStatusLabel === 'string' ? { activeStatusLabel } : {})}
         {...(typeof activeModelLabel === 'string' ? { activeModelLabel } : {})}
+        prompt={prompt}
+        aspectRatio={aspectRatio}
+        duration={duration}
+        selectedModel={selectedModel}
+        onModelChange={onModelChange}
+        onAspectRatioChange={onAspectRatioChange}
+        onDurationChange={onDurationChange}
+        onDraft={onDraft}
+        onRender={onRender}
+        isDraftDisabled={isDraftDisabled}
+        isRenderDisabled={isRenderDisabled}
+        startImage={startImage}
+        {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
+        {...(typeof onClearStartImage === 'function' ? { onClearStartImage } : {})}
+        {...(activeDraftModel !== null ? { activeDraftModel } : {})}
+        assets={assets}
+        assetsByType={resolvedAssetsByType}
+        isLoadingAssets={isLoadingAssets}
+        onInsertTrigger={onInsertTrigger}
+        onEditAsset={onEditAsset}
+        onCreateAsset={onCreateAsset}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {children}

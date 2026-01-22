@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import type { Generation, GenerationsPanelProps } from './types';
-import { GenerationHeader } from './components/GenerationHeader';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
 import { KeyframeSelector, type SelectedKeyframe } from './components/KeyframeSelector';
@@ -13,8 +12,14 @@ import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
 import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
+import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
+type StartImageOverride = {
+  url: string;
+  assetId?: string;
+  source: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe';
+};
 
 const EmptyState = ({
   onRunDraft,
@@ -78,15 +83,20 @@ export function GenerationsPanel({
     promptVersionId,
   });
 
-  const { generateDraft, generateRender, retryGeneration, cancelGeneration } =
-    useGenerationActions(dispatch, {
+  const generationActionsOptions = useMemo(
+    () => ({
       aspectRatio,
       duration,
       fps,
       generationParams,
       promptVersionId,
       generations,
-    });
+    }),
+    [aspectRatio, duration, fps, generationParams, promptVersionId, generations]
+  );
+
+  const { generateDraft, generateRender, retryGeneration, cancelGeneration } =
+    useGenerationActions(dispatch, generationActionsOptions);
 
   const [selectedKeyframe, setSelectedKeyframe] = React.useState<SelectedKeyframe | null>(
     null
@@ -105,6 +115,7 @@ export function GenerationsPanel({
   });
 
   const { referenceImages: assetReferenceImages, resolvedPrompt } = useAssetReferenceImages(prompt);
+  const { setControls, startImage } = useGenerationControlsContext();
   const detectedCharacter = useMemo(
     () => resolvedPrompt?.characters?.[0] ?? null,
     [resolvedPrompt]
@@ -141,12 +152,16 @@ export function GenerationsPanel({
   );
 
   const runRender = useCallback(
-    (model: string, startImageOverride?: { url: string; source: 'keyframe' } | null) => {
+    (model: string, startImageOverride?: StartImageOverride | null) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
       let startImage = null;
       if (startImageOverride) {
-        startImage = { url: startImageOverride.url, source: startImageOverride.source };
+        startImage = {
+          url: startImageOverride.url,
+          source: startImageOverride.source,
+          ...(startImageOverride.assetId ? { assetId: startImageOverride.assetId } : {}),
+        };
       } else if (selectedKeyframe) {
         startImage = {
           url: selectedKeyframe.url,
@@ -189,6 +204,14 @@ export function GenerationsPanel({
   const handleRender = useCallback(
     (model: string) => {
       if (!prompt.trim()) return;
+      if (startImage) {
+        runRender(model, {
+          url: startImage.url,
+          source: startImage.source as StartImageOverride['source'],
+          ...(startImage.assetId ? { assetId: startImage.assetId } : {}),
+        });
+        return;
+      }
       if (keyframeStep.isActive) {
         setKeyframeStep((prev) => ({ ...prev, pendingModel: model }));
         return;
@@ -210,6 +233,7 @@ export function GenerationsPanel({
       keyframeStep.isActive,
       prompt,
       runRender,
+      startImage,
     ]
   );
 
@@ -276,18 +300,23 @@ export function GenerationsPanel({
 
   const timeline = useGenerationsTimeline({ versions: versionsForTimeline });
 
+  const controlsPayload = useMemo(
+    () => ({
+      onDraft: handleDraft,
+      onRender: handleRender,
+      isGenerating,
+      activeDraftModel,
+    }),
+    [handleDraft, handleRender, isGenerating, activeDraftModel]
+  );
+
+  useEffect(() => {
+    setControls(controlsPayload);
+    return () => setControls(null);
+  }, [controlsPayload, setControls]);
+
   return (
     <div className={cn('flex h-full flex-col overflow-hidden', className)}>
-      <GenerationHeader
-        onDraft={handleDraft}
-        onRender={handleRender}
-        isDraftDisabled={!prompt.trim() || isGenerating}
-        isRenderDisabled={!prompt.trim() || isGenerating}
-        activeDraftModel={activeDraftModel}
-        selectedKeyframe={selectedKeyframe}
-        onClearKeyframe={() => setSelectedKeyframe(null)}
-        assetReferenceImages={assetReferenceImages}
-      />
       {keyframeStep.isActive && keyframeStep.character ? (
         <KeyframeStep
           prompt={prompt}

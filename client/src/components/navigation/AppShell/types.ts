@@ -5,7 +5,8 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { PromptHistoryEntry, User } from '@hooks/types';
+import type { User } from '@hooks/types';
+import type { ToolSidebarProps } from '@components/ToolSidebar/types';
 
 // -----------------------------------------------------------------------------
 // Navigation Item Types
@@ -25,8 +26,6 @@ export interface NavItem {
 
 /** Available shell variants based on route */
 export type ShellVariant = 'topnav' | 'sidebar' | 'none';
-export type SidebarTab = 'history' | 'assets';
-
 // -----------------------------------------------------------------------------
 // Component Props
 // -----------------------------------------------------------------------------
@@ -57,43 +56,11 @@ export interface TopNavbarProps {
   readonly user: User | null;
 }
 
-/** History-related props passed to WorkspaceSidebar */
-export interface HistorySectionProps {
-  readonly history: readonly PromptHistoryEntry[];
-  readonly filteredHistory: readonly PromptHistoryEntry[];
-  readonly isLoadingHistory: boolean;
-  readonly searchQuery: string;
-  readonly onSearchChange: (query: string) => void;
-  readonly onLoadFromHistory: (entry: PromptHistoryEntry) => void;
-  readonly onCreateNew: () => void;
-  readonly onDelete: (id: string) => void;
-  readonly onDuplicate?: (entry: PromptHistoryEntry) => void;
-  readonly onRename?: (entry: PromptHistoryEntry, title: string) => void;
-  readonly currentPromptUuid?: string | null;
-  readonly currentPromptDocId?: string | null;
-  readonly activeStatusLabel?: string;
-  readonly activeModelLabel?: string;
-}
-
-/** Props for WorkspaceSidebar variant */
-export interface WorkspaceSidebarProps extends HistorySectionProps {
-  readonly navItems: readonly NavItem[];
-  readonly user: User | null;
-  readonly isExpanded: boolean;
-  readonly onToggleExpanded: (expanded: boolean) => void;
-  readonly assetsSidebar?: ReactNode;
-  readonly sidebarTab?: SidebarTab;
-  readonly onSidebarTabChange?: (tab: SidebarTab) => void;
-}
-
 /** Props for main AppShell component */
-export interface AppShellProps extends Partial<HistorySectionProps> {
+export interface AppShellProps extends Partial<Omit<ToolSidebarProps, 'user'>> {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
-  readonly assetsSidebar?: ReactNode;
-  readonly sidebarTab?: SidebarTab;
-  readonly onSidebarTabChange?: (tab: SidebarTab) => void;
 }
 
 // -----------------------------------------------------------------------------
