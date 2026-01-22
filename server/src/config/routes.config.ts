@@ -75,6 +75,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     assetService: container.resolve('assetService'),
     consistentVideoService: container.resolve('consistentVideoService'),
     userCreditService: container.resolve('userCreditService'),
+    referenceImageService: container.resolve('referenceImageService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
@@ -118,6 +119,8 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       videoJobStore: container.resolve('videoJobStore'),
       videoContentAccessService: container.resolve('videoContentAccessService'),
       userCreditService,
+      keyframeService: container.resolve('keyframeService'),
+      assetService: container.resolve('assetService'),
     });
     app.use('/api/preview', apiAuthMiddleware, previewRoutes);
   }

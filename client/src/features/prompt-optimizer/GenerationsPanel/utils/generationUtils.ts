@@ -13,6 +13,7 @@ export const resolveGenerationOptions = (
   duration: overrides?.duration ?? base?.duration ?? null,
   fps: overrides?.fps ?? base?.fps ?? null,
   generationParams: overrides?.generationParams ?? base?.generationParams,
+  startImage: overrides?.startImage ?? base?.startImage ?? null,
 });
 
 export const buildGeneration = (

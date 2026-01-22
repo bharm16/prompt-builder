@@ -10,6 +10,8 @@ import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
+import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import type { AssetService } from '@services/asset/AssetService';
 
 /**
  * Services object for preview routes
@@ -21,6 +23,8 @@ export interface PreviewRoutesServices {
   videoJobStore?: VideoJobStore | null;
   videoContentAccessService?: VideoContentAccessService | null;
   userCreditService?: UserCreditService | null;
+  keyframeService?: KeyframeGenerationService | null;
+  assetService?: AssetService | null;
 }
 
 /**

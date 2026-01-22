@@ -11,15 +11,19 @@ import { getCapabilityModelIds } from '../availability';
 import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
 
+const KEYFRAME_CREDIT_COST = 2;
+
 type VideoGenerateServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'userCreditService'
+  'videoGenerationService' | 'videoJobStore' | 'userCreditService' | 'keyframeService' | 'assetService'
 >;
 
 export const createVideoGenerateHandler = ({
   videoGenerationService,
   videoJobStore,
   userCreditService,
+  keyframeService,
+  assetService,
 }: VideoGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService || !videoJobStore) {
@@ -38,21 +42,32 @@ export const createVideoGenerateHandler = ({
       });
     }
 
-    const { prompt, aspectRatio, model, startImage, inputReference, generationParams } =
-      parsed.payload;
+    const {
+      prompt,
+      aspectRatio,
+      model,
+      startImage,
+      inputReference,
+      generationParams,
+      characterAssetId,
+      autoKeyframe = true,
+    } = parsed.payload;
     const { cleaned: cleanedPrompt, wasStripped: promptWasStripped } =
       stripVideoPreviewPrompt(prompt);
     const userId = await getAuthenticatedUserId(req);
+    const requestId = (req as Request & { id?: string }).id;
 
     logger.info('Video preview request received', {
       operation: 'generateVideoPreview',
-      requestId: (req as Request & { id?: string }).id,
+      requestId,
       promptLength: cleanedPrompt.length,
       promptWasStripped,
       aspectRatio,
       model,
       hasStartImage: Boolean(startImage),
       hasInputReference: Boolean(inputReference),
+      hasCharacterAssetId: Boolean(characterAssetId),
+      autoKeyframe,
     });
 
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
@@ -74,8 +89,103 @@ export const createVideoGenerateHandler = ({
       });
     }
 
+    let resolvedStartImage = startImage;
+    let generatedKeyframeUrl: string | null = null;
+    let keyframeCost = 0;
+
+    if (characterAssetId && autoKeyframe && !startImage) {
+      if (!keyframeService) {
+        logger.warn('Keyframe service unavailable, falling back to direct generation', {
+          requestId,
+          characterAssetId,
+        });
+      } else if (!assetService) {
+        logger.warn('Asset service unavailable, falling back to direct generation', {
+          requestId,
+          characterAssetId,
+        });
+      } else {
+        try {
+          logger.info('Generating IP-Adapter keyframe for character', {
+            requestId,
+            characterAssetId,
+            userId,
+          });
+
+          const hasKeyframeCredits = await userCreditService.reserveCredits(
+            userId,
+            KEYFRAME_CREDIT_COST
+          );
+          if (!hasKeyframeCredits) {
+            return res.status(402).json({
+              success: false,
+              error: 'Insufficient credits',
+              message: `Character-consistent generation requires ${KEYFRAME_CREDIT_COST} credits for keyframe plus video credits.`,
+            });
+          }
+          keyframeCost = KEYFRAME_CREDIT_COST;
+
+          const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
+
+          if (!characterData.primaryImageUrl) {
+            await userCreditService.refundCredits(userId, keyframeCost);
+            return res.status(400).json({
+              success: false,
+              error: 'Character has no reference image',
+              message:
+                'The character asset must have at least one reference image for face-consistent generation.',
+            });
+          }
+
+          const keyframeResult = await keyframeService.generateKeyframe({
+            prompt: cleanedPrompt,
+            character: {
+              primaryImageUrl: characterData.primaryImageUrl,
+              negativePrompt: characterData.negativePrompt,
+              faceEmbedding: characterData.faceEmbedding,
+            },
+            aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4' | undefined,
+            faceStrength: 0.7,
+          });
+
+          resolvedStartImage = keyframeResult.imageUrl;
+          generatedKeyframeUrl = keyframeResult.imageUrl;
+
+          logger.info('IP-Adapter keyframe generated successfully', {
+            requestId,
+            characterAssetId,
+            keyframeUrl: generatedKeyframeUrl,
+            faceStrength: keyframeResult.faceStrength,
+          });
+        } catch (error) {
+          if (keyframeCost > 0) {
+            await userCreditService.refundCredits(userId, keyframeCost);
+          }
+
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error(
+            'Keyframe generation failed',
+            error instanceof Error ? error : new Error(errorMessage),
+            {
+              requestId,
+              characterAssetId,
+            }
+          );
+
+          return res.status(500).json({
+            success: false,
+            error: 'Keyframe generation failed',
+            message: `Failed to generate character-consistent keyframe: ${errorMessage}`,
+          });
+        }
+      }
+    }
+
     const availability = videoGenerationService.getModelAvailability(model);
     if (!availability.available) {
+      if (keyframeCost > 0) {
+        await userCreditService.refundCredits(userId, keyframeCost);
+      }
       const report = videoGenerationService.getAvailabilityReport(getCapabilityModelIds());
       const statusCode = availability.statusCode || 424;
       return res.status(statusCode).json({
@@ -91,7 +201,6 @@ export const createVideoGenerateHandler = ({
     }
 
     const operation = 'generateVideoPreview';
-    const requestId = (req as Request & { id?: string }).id;
     const costModel = availability.resolvedModelId || model;
 
     const normalized = normalizeGenerationParams({
@@ -103,6 +212,9 @@ export const createVideoGenerateHandler = ({
     });
 
     if (normalized.error) {
+      if (keyframeCost > 0) {
+        await userCreditService.refundCredits(userId, keyframeCost);
+      }
       return res.status(normalized.error.status).json({
         success: false,
         error: normalized.error.error,
@@ -133,7 +245,7 @@ export const createVideoGenerateHandler = ({
 
     // Calculate cost based on model and duration (per-second pricing)
     const durationForCost = paramDurationS ?? 8; // Default to 8 seconds if not specified
-    const estimatedCost = getVideoCost(costModel, durationForCost);
+    const videoCost = getVideoCost(costModel, durationForCost);
 
     const size =
       typeof paramResolution === 'string' &&
@@ -146,12 +258,15 @@ export const createVideoGenerateHandler = ({
         ? Math.max(1, Math.min(300, Math.round(paramDurationS * paramFps)))
         : undefined;
 
-    const hasCredits = await userCreditService.reserveCredits(userId, estimatedCost);
+    const hasCredits = await userCreditService.reserveCredits(userId, videoCost);
     if (!hasCredits) {
+      if (keyframeCost > 0) {
+        await userCreditService.refundCredits(userId, keyframeCost);
+      }
       return res.status(402).json({
         success: false,
         error: 'Insufficient credits',
-        message: `This generation requires ${estimatedCost} credits.`,
+        message: `This generation requires ${videoCost} credits${keyframeCost > 0 ? ` (plus ${keyframeCost} already reserved for keyframe)` : ''}.`,
       });
     }
 
@@ -163,8 +278,8 @@ export const createVideoGenerateHandler = ({
     if (model) {
       options.model = model as NonNullable<VideoGenerationOptions['model']>;
     }
-    if (startImage) {
-      options.startImage = startImage;
+    if (resolvedStartImage) {
+      options.startImage = resolvedStartImage;
     }
     if (inputReference) {
       options.inputReference = inputReference;
@@ -190,7 +305,10 @@ export const createVideoGenerateHandler = ({
       promptWasStripped,
       aspectRatio,
       model,
-      estimatedCost,
+      videoCost,
+      keyframeCost,
+      totalCost: videoCost + keyframeCost,
+      usedKeyframe: Boolean(generatedKeyframeUrl),
     });
 
     try {
@@ -200,7 +318,7 @@ export const createVideoGenerateHandler = ({
           prompt: cleanedPrompt,
           options,
         },
-        creditsReserved: estimatedCost,
+        creditsReserved: videoCost,
       });
 
       logger.info(`${operation} queued`, {
@@ -208,7 +326,9 @@ export const createVideoGenerateHandler = ({
         requestId,
         userId,
         jobId: job.id,
-        cost: estimatedCost,
+        videoCost,
+        keyframeCost,
+        keyframeUrl: generatedKeyframeUrl,
       });
 
       scheduleInlineVideoPreviewProcessing({
@@ -223,11 +343,16 @@ export const createVideoGenerateHandler = ({
         success: true,
         jobId: job.id,
         status: job.status,
-        creditsReserved: estimatedCost,
-        creditsDeducted: estimatedCost,
+        creditsReserved: videoCost,
+        creditsDeducted: videoCost + keyframeCost,
+        keyframeGenerated: Boolean(generatedKeyframeUrl),
+        keyframeUrl: generatedKeyframeUrl,
       });
     } catch (error: unknown) {
-      await userCreditService.refundCredits(userId, estimatedCost);
+      await userCreditService.refundCredits(userId, videoCost);
+      if (keyframeCost > 0) {
+        await userCreditService.refundCredits(userId, keyframeCost);
+      }
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
@@ -237,7 +362,7 @@ export const createVideoGenerateHandler = ({
         operation,
         requestId,
         userId,
-        refundAmount: estimatedCost,
+        refundAmount: videoCost + keyframeCost,
         statusCode,
       });
 

@@ -53,6 +53,7 @@ import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import { userCreditService } from '@services/credits/UserCreditService';
 import AssetService from '@services/asset/AssetService';
+import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import ConsistentVideoService from '@services/generation/ConsistentVideoService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
 
@@ -624,8 +625,39 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
+    'referenceImageService',
+    () => {
+      try {
+        return new ReferenceImageService();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Reference image service disabled', { error: errorMessage });
+        return null;
+      }
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
     'keyframeGenerationService',
     () => new KeyframeGenerationService(),
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'keyframeService',
+    () => {
+      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      if (!replicateToken) {
+        logger.warn(
+          'KeyframeGenerationService: REPLICATE_API_TOKEN not set, service will be unavailable'
+        );
+        return null;
+      }
+      return new KeyframeGenerationService({ apiToken: replicateToken });
+    },
     [],
     { singleton: true }
   );

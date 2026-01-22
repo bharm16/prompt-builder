@@ -6,6 +6,7 @@
 
 import type { Router } from 'express';
 import express from 'express';
+import multer from 'multer';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import type { PreviewRoutesServices } from './types';
@@ -17,6 +18,12 @@ import { createVideoJobsHandler } from './preview/handlers/videoJobs';
 import { createVideoContentHandler } from './preview/handlers/videoContent';
 import { createPublicVideoContentHandler } from './preview/handlers/publicVideoContent';
 import { createImageContentHandler } from './preview/handlers/imageContent';
+import { createImageUploadHandler } from './preview/handlers/imageUpload';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 /**
  * Create preview routes
@@ -27,6 +34,8 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const resolvedServices: PreviewRoutesServices = {
     ...services,
     userCreditService: services.userCreditService ?? defaultUserCreditService,
+    keyframeService: services.keyframeService,
+    assetService: services.assetService,
   };
 
   const imageGenerateHandler = createImageGenerateHandler(resolvedServices);
@@ -36,9 +45,11 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const videoJobsHandler = createVideoJobsHandler(resolvedServices);
   const videoContentHandler = createVideoContentHandler(resolvedServices);
   const imageContentHandler = createImageContentHandler();
+  const imageUploadHandler = createImageUploadHandler();
 
   router.post('/generate', asyncHandler(imageGenerateHandler));
   router.post('/generate/storyboard', asyncHandler(imageStoryboardGenerateHandler));
+  router.post('/upload', upload.single('file'), asyncHandler(imageUploadHandler));
   router.get('/video/availability', asyncHandler(videoAvailabilityHandler));
   router.post('/video/generate', asyncHandler(videoGenerateHandler));
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));

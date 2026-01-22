@@ -128,6 +128,42 @@ export class StorageService {
     };
   }
 
+  async uploadBuffer(
+    userId: string,
+    type: StorageType,
+    buffer: Buffer,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    viewUrl: string;
+    expiresAt: string;
+    sizeBytes: number;
+    contentType: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const uploadResult = await this.uploadService.uploadBuffer(
+      buffer,
+      userId,
+      type,
+      contentType,
+      metadata
+    );
+
+    const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+      uploadResult.storagePath
+    );
+
+    return {
+      ...uploadResult,
+      viewUrl,
+      expiresAt,
+    };
+  }
+
   async confirmUpload(userId: string, storagePath: string): Promise<{
     storagePath: string;
     sizeBytes: number;

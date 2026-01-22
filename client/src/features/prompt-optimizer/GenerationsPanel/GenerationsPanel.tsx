@@ -6,9 +6,11 @@ import type { Generation, GenerationsPanelProps } from './types';
 import { GenerationHeader } from './components/GenerationHeader';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
+import { KeyframeSelector, type SelectedKeyframe } from './components/KeyframeSelector';
 import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
+import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
 
@@ -76,13 +78,19 @@ export function GenerationsPanel({
 
   const { generateDraft, generateRender, retryGeneration, cancelGeneration } =
     useGenerationActions(dispatch, {
-    aspectRatio,
-    duration,
-    fps,
-    generationParams,
-    promptVersionId,
-    generations,
-  });
+      aspectRatio,
+      duration,
+      fps,
+      generationParams,
+      promptVersionId,
+      generations,
+    });
+
+  const [selectedKeyframe, setSelectedKeyframe] = React.useState<SelectedKeyframe | null>(
+    null
+  );
+
+  const { referenceImages: assetReferenceImages } = useAssetReferenceImages(prompt);
 
   const activeDraftModel = useMemo(
     () => getLatestByTier('draft')?.model ?? null,
@@ -109,9 +117,38 @@ export function GenerationsPanel({
     (model: string) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
-      generateRender(model, prompt, { promptVersionId: versionId });
+      let startImage = null;
+      if (selectedKeyframe) {
+        startImage = {
+          url: selectedKeyframe.url,
+          source: selectedKeyframe.source,
+        };
+      } else if (assetReferenceImages.length > 0) {
+        const characterReference = assetReferenceImages.find(
+          (reference) => reference.assetType === 'character'
+        );
+        if (characterReference) {
+          startImage = {
+            url: characterReference.imageUrl,
+            assetId: characterReference.assetId,
+            source: 'asset' as const,
+          };
+        }
+      }
+
+      generateRender(model, prompt, {
+        promptVersionId: versionId,
+        startImage,
+      });
+      setSelectedKeyframe(null);
     },
-    [generateRender, onCreateVersionIfNeeded, prompt]
+    [
+      assetReferenceImages,
+      generateRender,
+      onCreateVersionIfNeeded,
+      prompt,
+      selectedKeyframe,
+    ]
   );
 
   const handleDelete = useCallback(
@@ -142,6 +179,13 @@ export function GenerationsPanel({
     }
   }, []);
 
+  const handleUseAsKeyframe = useCallback((generation: Generation) => {
+    const url = generation.mediaUrls[0];
+    if (url) {
+      setSelectedKeyframe({ url, generationId: generation.id, source: 'preview' });
+    }
+  }, []);
+
   const versionsForTimeline = useMemo(() => {
     if (!versions.length || !promptVersionId) return versions;
     const index = versions.findIndex(
@@ -165,7 +209,18 @@ export function GenerationsPanel({
         isDraftDisabled={!prompt.trim() || isGenerating}
         isRenderDisabled={!prompt.trim() || isGenerating}
         activeDraftModel={activeDraftModel}
+        selectedKeyframe={selectedKeyframe}
+        onClearKeyframe={() => setSelectedKeyframe(null)}
+        assetReferenceImages={assetReferenceImages}
       />
+      <div className="border-b border-border px-4 py-3">
+        <KeyframeSelector
+          generations={generations}
+          selectedKeyframe={selectedKeyframe}
+          onSelect={setSelectedKeyframe}
+          onClear={() => setSelectedKeyframe(null)}
+        />
+      </div>
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {timeline.length === 0 ? (
           <EmptyState
@@ -193,6 +248,7 @@ export function GenerationsPanel({
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 onCancel={handleCancel}
+                onUseAsKeyframe={handleUseAsKeyframe}
                 onClick={() => onRestoreVersion(item.generation._versionId)}
               />
             );

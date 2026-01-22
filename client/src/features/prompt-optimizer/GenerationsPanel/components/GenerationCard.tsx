@@ -4,6 +4,7 @@ import {
   Check,
   DotsThree,
   Download,
+  FilmStrip,
   WarningCircle,
 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
@@ -23,6 +24,7 @@ interface GenerationCardProps {
   onDelete?: (generation: Generation) => void;
   onDownload?: (generation: Generation) => void;
   onCancel?: (generation: Generation) => void;
+  onUseAsKeyframe?: (generation: Generation) => void;
   isActive?: boolean;
   onClick?: () => void;
 }
@@ -40,6 +42,7 @@ export function GenerationCard({
   onDelete,
   onDownload,
   onCancel,
+  onUseAsKeyframe,
   isActive = false,
   onClick,
 }: GenerationCardProps): React.ReactElement {
@@ -56,6 +59,11 @@ export function GenerationCard({
     generation.status === 'completed' &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
+  const showUseAsKeyframe =
+    generation.mediaType === 'image-sequence' &&
+    generation.status === 'completed' &&
+    generation.mediaUrls.length > 0 &&
+    Boolean(onUseAsKeyframe);
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
     const target = event.target as Element;
@@ -175,7 +183,7 @@ export function GenerationCard({
           </span>
         )}
 
-        {(showRetry || showDownload) && (
+        {(showRetry || showDownload || showUseAsKeyframe) && (
           <div className="ml-auto flex items-center gap-2">
             {showRetry && onRetry && (
               <Button
@@ -203,6 +211,20 @@ export function GenerationCard({
               >
                 <Download size={14} aria-hidden="true" />
                 Download
+              </Button>
+            )}
+            {showUseAsKeyframe && onUseAsKeyframe && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-label-sm h-8 gap-1 px-2"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onUseAsKeyframe(generation);
+                }}
+              >
+                <FilmStrip size={14} aria-hidden="true" />
+                Use as Keyframe
               </Button>
             )}
           </div>

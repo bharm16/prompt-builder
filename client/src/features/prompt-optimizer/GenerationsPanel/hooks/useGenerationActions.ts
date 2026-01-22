@@ -141,7 +141,13 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
+        const isCharacterAsset =
+          resolved.startImage?.source === 'asset' && Boolean(resolved.startImage?.assetId);
         const response = await generateVideoPreview(prompt, resolved.aspectRatio ?? undefined, model, {
+          ...(!isCharacterAsset && resolved.startImage?.url
+            ? { startImage: resolved.startImage.url }
+            : {}),
+          ...(isCharacterAsset ? { characterAssetId: resolved.startImage?.assetId } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
         });
         if (controller.signal.aborted) return;

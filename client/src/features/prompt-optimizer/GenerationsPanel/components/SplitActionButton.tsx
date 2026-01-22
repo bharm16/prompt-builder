@@ -24,6 +24,7 @@ export interface SplitActionButtonProps {
   onModelChange: (model: string) => void;
   disabled?: boolean;
   variant?: SplitActionButtonVariant;
+  renderItemSuffix?: (id: string, config: ModelOption) => React.ReactNode;
 }
 
 const MODEL_SEPARATOR = '\u00b7';
@@ -63,6 +64,7 @@ export function SplitActionButton({
   onModelChange,
   disabled = false,
   variant = 'default',
+  renderItemSuffix,
 }: SplitActionButtonProps): React.ReactElement {
   const options = useMemo(() => Object.entries(models), [models]);
   const modelLabel = selectedModel
@@ -125,7 +127,10 @@ export function SplitActionButton({
               config.credits
             )}`}
           >
-            {config.label}
+            <div className="flex w-full items-center gap-2">
+              <span className="min-w-0 flex-1 truncate">{config.label}</span>
+              {renderItemSuffix?.(id, config)}
+            </div>
           </SelectItem>
         ))}
       </SelectContent>

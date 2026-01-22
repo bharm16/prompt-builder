@@ -94,6 +94,12 @@ export const createVideoJobsHandler = ({
       if (typeof job.result.sizeBytes === 'number') {
         response.sizeBytes = job.result.sizeBytes;
       }
+      if (job.result.inputMode) {
+        response.inputMode = job.result.inputMode;
+      }
+      if (job.result.startImageUrl) {
+        response.startImageUrl = job.result.startImageUrl;
+      }
     }
 
     if (job.status === 'failed') {

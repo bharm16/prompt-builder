@@ -30,6 +30,11 @@ export interface GenerationParams {
   duration?: number | null;
   fps?: number | null;
   generationParams?: Record<string, unknown>;
+  startImage?: {
+    url: string;
+    assetId?: string;
+    source?: 'preview' | 'upload' | 'asset' | 'library';
+  } | null;
 }
 
 export interface GenerationsPanelProps {

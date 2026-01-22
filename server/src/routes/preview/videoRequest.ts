@@ -9,6 +9,8 @@ export interface VideoPreviewPayload {
   startImage?: string;
   inputReference?: string;
   generationParams?: unknown;
+  characterAssetId?: string;
+  autoKeyframe?: boolean;
 }
 
 interface VideoPreviewParseSuccess {
@@ -25,13 +27,24 @@ interface VideoPreviewParseFailure {
 export type VideoPreviewParseResult = VideoPreviewParseSuccess | VideoPreviewParseFailure;
 
 export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult => {
-  const { prompt, aspectRatio, model, startImage, inputReference, generationParams } = (body || {}) as {
+  const {
+    prompt,
+    aspectRatio,
+    model,
+    startImage,
+    inputReference,
+    generationParams,
+    characterAssetId,
+    autoKeyframe,
+  } = (body || {}) as {
     prompt?: unknown;
     aspectRatio?: VideoAspectRatio;
     model?: string;
     startImage?: unknown;
     inputReference?: unknown;
     generationParams?: unknown;
+    characterAssetId?: unknown;
+    autoKeyframe?: unknown;
   };
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -46,6 +59,20 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     return { ok: false, status: 400, error: 'inputReference must be a string URL' };
   }
 
+  if (characterAssetId !== undefined && typeof characterAssetId !== 'string') {
+    return { ok: false, status: 400, error: 'characterAssetId must be a string' };
+  }
+
+  if (autoKeyframe !== undefined && typeof autoKeyframe !== 'boolean') {
+    return { ok: false, status: 400, error: 'autoKeyframe must be a boolean' };
+  }
+
+  const resolvedCharacterAssetId =
+    typeof characterAssetId === 'string' && characterAssetId.trim().length > 0
+      ? characterAssetId.trim()
+      : undefined;
+  const resolvedAutoKeyframe = autoKeyframe !== false;
+
   return {
     ok: true,
     payload: {
@@ -55,6 +82,8 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
       ...(startImage ? { startImage } : {}),
       ...(inputReference ? { inputReference } : {}),
       ...(generationParams !== undefined ? { generationParams } : {}),
+      ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
+      autoKeyframe: resolvedAutoKeyframe,
     },
   };
 };

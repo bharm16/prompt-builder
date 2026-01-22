@@ -33,6 +33,8 @@ export async function generateVideoWorkflow(
   log: LogSink
 ): Promise<VideoGenerationResult> {
   const modelSelection = typeof options.model === 'string' ? options.model.trim() : options.model;
+  const startImageUrl = options.startImage || options.inputReference;
+  const inputMode: VideoGenerationResult['inputMode'] = startImageUrl ? 'i2v' : 't2v';
   const availability = getModelAvailability(modelSelection, getProviderAvailability(clients), log);
   if (!availability.available) {
     throw new AppError(
@@ -70,7 +72,7 @@ export async function generateVideoWorkflow(
         assetStore,
         log
       );
-      return formatResult(asset);
+      return formatResult(asset, inputMode, startImageUrl);
     }
 
     if (isLumaModel(modelId)) {
@@ -79,7 +81,7 @@ export async function generateVideoWorkflow(
       }
       const url = await generateLumaVideo(clients.luma, prompt, options, log);
       const asset = await storeVideoFromUrl(assetStore, url, log);
-      return formatResult(asset);
+      return formatResult(asset, inputMode, startImageUrl);
     }
 
     if (isKlingModel(modelId)) {
@@ -95,7 +97,7 @@ export async function generateVideoWorkflow(
         log
       );
       const asset = await storeVideoFromUrl(assetStore, url, log);
-      return formatResult(asset);
+      return formatResult(asset, inputMode, startImageUrl);
     }
 
     if (isVeoModel(modelId)) {
@@ -109,7 +111,7 @@ export async function generateVideoWorkflow(
         assetStore,
         log
       );
-      return formatResult(asset);
+      return formatResult(asset, inputMode, startImageUrl);
     }
 
     if (!clients.replicate) {
@@ -118,7 +120,7 @@ export async function generateVideoWorkflow(
 
     const url = await generateReplicateVideo(clients.replicate, prompt, modelId, options, log);
     const asset = await storeVideoFromUrl(assetStore, url, log);
-    return formatResult(asset);
+    return formatResult(asset, inputMode, startImageUrl);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log.error('Video generation failed', error instanceof Error ? error : new Error(errorMessage));
@@ -126,10 +128,16 @@ export async function generateVideoWorkflow(
   }
 }
 
-function formatResult(asset: StoredVideoAsset): VideoGenerationResult {
+function formatResult(
+  asset: StoredVideoAsset,
+  inputMode?: VideoGenerationResult['inputMode'],
+  startImageUrl?: string
+): VideoGenerationResult {
   return {
     assetId: asset.id,
     videoUrl: asset.url,
     contentType: asset.contentType,
+    ...(inputMode ? { inputMode } : {}),
+    ...(startImageUrl ? { startImageUrl } : {}),
   };
 }

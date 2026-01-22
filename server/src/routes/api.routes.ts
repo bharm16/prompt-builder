@@ -18,6 +18,8 @@ import { createEnhancementRoutes } from './enhancement.routes';
 import { createStorageRoutes } from './storage.routes';
 import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
+import { createReferenceImagesRoutes } from './reference-images.routes';
+import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
 
 interface ApiServices {
   promptOptimizationService: any;
@@ -29,6 +31,7 @@ interface ApiServices {
   assetService?: any;
   consistentVideoService?: any;
   userCreditService?: any;
+  referenceImageService?: ReferenceImageService | null;
 }
 
 /**
@@ -49,6 +52,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     assetService,
     consistentVideoService,
     userCreditService,
+    referenceImageService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -81,6 +85,10 @@ export function createAPIRoutes(services: ApiServices): Router {
 
   if (assetService) {
     router.use('/assets', createAssetRoutes(assetService));
+  }
+
+  if (referenceImageService) {
+    router.use('/reference-images', createReferenceImagesRoutes(referenceImageService));
   }
 
   if (consistentVideoService) {

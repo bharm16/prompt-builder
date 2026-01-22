@@ -34,12 +34,18 @@ export interface VideoGenerationOptions {
   inputReference?: string;
   seconds?: '4' | '8' | '12';
   size?: string;
+  /** Asset ID of a character - triggers automatic IP-Adapter keyframe generation */
+  characterAssetId?: string;
+  /** If true (default), automatically generate keyframe for character assets */
+  autoKeyframe?: boolean;
 }
 
 export interface VideoGenerationResult {
   assetId: string;
   videoUrl: string;
   contentType: string;
+  inputMode?: 't2v' | 'i2v';
+  startImageUrl?: string;
   storagePath?: string;
   viewUrl?: string;
   viewUrlExpiresAt?: string;

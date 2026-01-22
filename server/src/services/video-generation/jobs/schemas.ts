@@ -22,6 +22,8 @@ export const VideoJobResultSchema = z.object({
   assetId: z.string(),
   videoUrl: z.string(),
   contentType: z.string(),
+  inputMode: z.enum(['t2v', 'i2v']).optional(),
+  startImageUrl: z.string().optional(),
   storagePath: z.string().optional(),
   viewUrl: z.string().optional(),
   viewUrlExpiresAt: z.string().optional(),

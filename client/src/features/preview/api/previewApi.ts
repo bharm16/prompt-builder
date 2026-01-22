@@ -6,6 +6,7 @@
 
 import { apiClient } from '@/services/ApiClient';
 import { API_CONFIG } from '@/config/api.config';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 export type PreviewProvider =
   | 'replicate-flux-schnell'
@@ -38,6 +39,20 @@ export interface GeneratePreviewResponse {
       duration: number;
       generatedAt: string;
     };
+  };
+  error?: string;
+  message?: string;
+}
+
+export interface UploadPreviewImageResponse {
+  success: boolean;
+  data?: {
+    imageUrl: string;
+    storagePath?: string;
+    viewUrl?: string;
+    viewUrlExpiresAt?: string;
+    sizeBytes?: number;
+    contentType?: string;
   };
   error?: string;
   message?: string;
@@ -128,6 +143,46 @@ export async function generateStoryboardPreview(
   ) as Promise<GenerateStoryboardPreviewResponse>;
 }
 
+export async function uploadPreviewImage(
+  file: File,
+  metadata: Record<string, unknown> = {},
+  options: { source?: string; label?: string } = {}
+): Promise<UploadPreviewImageResponse> {
+  const authHeaders = await buildFirebaseAuthHeaders();
+  const formData = new FormData();
+  formData.append('file', file);
+  if (Object.keys(metadata).length > 0) {
+    formData.append('metadata', JSON.stringify(metadata));
+  }
+  if (options.source) {
+    formData.append('source', options.source);
+  }
+  if (options.label) {
+    formData.append('label', options.label);
+  }
+
+  const response = await fetch(`${API_CONFIG.baseURL}/preview/upload`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders,
+    },
+    body: formData,
+  });
+
+  let payload: UploadPreviewImageResponse | null = null;
+  try {
+    payload = (await response.json()) as UploadPreviewImageResponse;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error || payload?.message || 'Failed to upload image');
+  }
+
+  return payload || { success: false, error: 'Failed to upload image' };
+}
+
 export interface GenerateVideoResponse {
   success: boolean;
   videoUrl?: string;
@@ -135,10 +190,14 @@ export interface GenerateVideoResponse {
   viewUrl?: string;
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
+  inputMode?: 't2v' | 'i2v';
+  startImageUrl?: string;
   jobId?: string;
   status?: VideoJobStatus;
   creditsReserved?: number;
   creditsDeducted?: number;
+  keyframeGenerated?: boolean;
+  keyframeUrl?: string;
   error?: string;
   message?: string;
 }
@@ -156,6 +215,8 @@ export interface VideoJobStatusResponse {
   viewUrl?: string;
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
+  inputMode?: 't2v' | 'i2v';
+  startImageUrl?: string;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;
@@ -166,6 +227,8 @@ export interface GenerateVideoPreviewOptions {
   startImage?: string;
   inputReference?: string;
   generationParams?: Record<string, unknown>;
+  characterAssetId?: string;
+  autoKeyframe?: boolean;
 }
 
 /**
@@ -188,6 +251,8 @@ export async function generateVideoPreview(
     ...(options?.startImage ? { startImage: options.startImage } : {}),
     ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
     ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
+    ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
+    ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
   }, {
     timeout: API_CONFIG.timeout.video
   }) as Promise<GenerateVideoResponse>;
