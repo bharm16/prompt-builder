@@ -72,6 +72,9 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     sceneDetectionService: container.resolve('sceneDetectionService'),
     promptCoherenceService: container.resolve('promptCoherenceService'),
     videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
+    assetService: container.resolve('assetService'),
+    consistentVideoService: container.resolve('consistentVideoService'),
+    userCreditService: container.resolve('userCreditService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);

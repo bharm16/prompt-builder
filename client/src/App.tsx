@@ -21,6 +21,8 @@ import { ContactSupportPage } from './pages/ContactSupportPage';
 import { BillingPage } from './pages/BillingPage';
 import { BillingInvoicesPage } from './pages/BillingInvoicesPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { AssetsPage } from './pages/AssetsPage';
+import { ConsistentGenerationPage } from './pages/ConsistentGenerationPage';
 
 function MarketingShell(): React.ReactElement {
   return (
@@ -71,6 +73,22 @@ function AppRoutes(): React.ReactElement {
         element={
           <FeatureErrorBoundary featureName="Prompt Optimizer">
             <PromptOptimizerContainer />
+          </FeatureErrorBoundary>
+        }
+      />
+      <Route
+        path="/assets"
+        element={
+          <FeatureErrorBoundary featureName="Asset Library">
+            <AssetsPage />
+          </FeatureErrorBoundary>
+        }
+      />
+      <Route
+        path="/consistent"
+        element={
+          <FeatureErrorBoundary featureName="Consistent Generation">
+            <ConsistentGenerationPage />
           </FeatureErrorBoundary>
         }
       />

@@ -82,6 +82,11 @@ import { usePromptExport } from './PromptCanvas/hooks/usePromptExport';
 import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInteractions';
 import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
+import { useTriggerAutocomplete } from '@features/assets/hooks/useTriggerAutocomplete';
+import TriggerAutocomplete from '@features/assets/components/TriggerAutocomplete';
+import { assetApi } from '@features/assets/api/assetApi';
+import debounce from 'lodash/debounce';
+import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
 
 // Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
@@ -280,6 +285,41 @@ export function PromptCanvas({
     () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
     [displayedPrompt]
   );
+  const {
+    isOpen: autocompleteOpen,
+    suggestions: autocompleteSuggestions,
+    selectedIndex: autocompleteSelectedIndex,
+    position: autocompletePosition,
+    isLoading: autocompleteLoading,
+    handleInputChange: handleAutocomplete,
+    handleKeyDown: handleAutocompleteKeyDown,
+    setSelectedIndex: setAutocompleteSelectedIndex,
+    close: closeAutocomplete,
+  } = useTriggerAutocomplete();
+
+  const debouncedValidateTriggers = useMemo(
+    () =>
+      debounce(async (text: string) => {
+        if (!text.trim() || !text.includes('@')) {
+          return;
+        }
+        try {
+          const validation = await assetApi.validate(text);
+          if (!validation.isValid) {
+            console.warn('Missing triggers:', validation.missingTriggers);
+          }
+        } catch (error) {
+          console.error('Trigger validation failed:', error);
+        }
+      }, 500),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedValidateTriggers.cancel();
+    };
+  }, [debouncedValidateTriggers]);
   const hasCanvasContent = showResults || Boolean(normalizedDisplayedPrompt);
 
   useEffect(() => {
@@ -1042,8 +1082,78 @@ export function PromptCanvas({
       if (onDisplayedPromptChange) {
         onDisplayedPromptChange(normalizedText);
       }
+
+      const selection = window.getSelection();
+      let cursorPosition = normalizedText.length;
+      let caretRect: DOMRect | null = null;
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const offsets = getSelectionOffsets(editorRef.current, range);
+        if (offsets) {
+          cursorPosition = offsets.end;
+        }
+        const rect = range.getBoundingClientRect();
+        if (rect && rect.width + rect.height > 0) {
+          caretRect = rect;
+        } else {
+          const rects = range.getClientRects();
+          if (rects.length > 0) {
+            caretRect = rects[0];
+          }
+        }
+      }
+
+      handleAutocomplete(normalizedText, cursorPosition, editorRef.current || undefined, caretRect);
+      debouncedValidateTriggers(normalizedText);
     },
-    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
+    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, handleAutocomplete, debouncedValidateTriggers]
+  );
+
+  const insertTrigger = useCallback(
+    (asset: { trigger: string }) => {
+      const editor = editorRef.current;
+      const text = normalizedDisplayedPrompt ?? '';
+      const selection = window.getSelection();
+      if (!editor || !selection || selection.rangeCount === 0) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const offsets = getSelectionOffsets(editor, range);
+      const cursorPos = offsets?.end ?? text.length;
+      const beforeCursor = text.slice(0, cursorPos);
+      const triggerStart = beforeCursor.lastIndexOf('@');
+      if (triggerStart === -1) {
+        return;
+      }
+
+      const newText =
+        text.slice(0, triggerStart) + asset.trigger + text.slice(cursorPos);
+      onDisplayedPromptChange?.(newText);
+
+      const newCursorPos = triggerStart + asset.trigger.length;
+      setTimeout(() => {
+        restoreSelectionFromOffsets(editor, newCursorPos, newCursorPos);
+        editor.focus();
+      }, 0);
+
+      closeAutocomplete();
+    },
+    [normalizedDisplayedPrompt, onDisplayedPromptChange, closeAutocomplete]
+  );
+
+  const handleEditorKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const result = handleAutocompleteKeyDown(event);
+      if (result && typeof result === 'object' && 'selected' in result) {
+        insertTrigger(result.selected);
+        return;
+      }
+      if (result === true) {
+        return;
+      }
+    },
+    [handleAutocompleteKeyDown, insertTrigger]
   );
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
@@ -1672,7 +1782,23 @@ export function PromptCanvas({
                               onHighlightMouseLeave={handleHighlightMouseLeave}
                               onCopyEvent={handleCopyEvent}
                               onInput={handleInput}
+                              onKeyDown={handleEditorKeyDown}
+                              onBlur={() => closeAutocomplete()}
                             />
+                            {autocompleteOpen && (
+                              <TriggerAutocomplete
+                                isOpen={autocompleteOpen}
+                                suggestions={autocompleteSuggestions}
+                                selectedIndex={autocompleteSelectedIndex}
+                                position={autocompletePosition}
+                                isLoading={autocompleteLoading}
+                                onSelect={(asset) => {
+                                  insertTrigger(asset);
+                                }}
+                                onClose={closeAutocomplete}
+                                setSelectedIndex={setAutocompleteSelectedIndex}
+                              />
+                            )}
                             <div
                               ref={outputLocklineRef}
                               className={cn(

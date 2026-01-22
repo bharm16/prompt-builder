@@ -4,7 +4,7 @@
  * @see STYLE_RULES.md Section 3 - No Magic Strings
  */
 
-import { Clock, CreditCard, FileText, Home, MessageCircle, Package } from 'lucide-react';
+import { Clock, CreditCard, FileText, Home, MessageCircle, Package, Layers, Video } from 'lucide-react';
 import type { NavItem } from './types';
 
 // -----------------------------------------------------------------------------
@@ -29,7 +29,7 @@ export const AUTH_ROUTES = [
 export const WORKSPACE_ROUTE_PREFIXES = ['/prompt/'] as const;
 
 /** Exact routes that trigger sidebar variant */
-export const WORKSPACE_ROUTES_EXACT = ['/'] as const;
+export const WORKSPACE_ROUTES_EXACT = ['/', '/assets', '/consistent'] as const;
 
 // -----------------------------------------------------------------------------
 // Navigation Items
@@ -43,6 +43,8 @@ export const WORKSPACE_ROUTES_EXACT = ['/'] as const;
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/home', label: 'Home', icon: Home, showInTopNav: false, showInSidebar: true },
+  { to: '/assets', label: 'Assets', icon: Layers, showInTopNav: false, showInSidebar: true },
+  { to: '/consistent', label: 'Consistency', icon: Video, showInTopNav: false, showInSidebar: true },
   { to: '/products', label: 'Products', icon: Package, showInTopNav: true, showInSidebar: true },
   { to: '/pricing', label: 'Pricing', icon: CreditCard, showInTopNav: true, showInSidebar: true },
   { to: '/docs', label: 'Docs', icon: FileText, showInTopNav: true, showInSidebar: true },

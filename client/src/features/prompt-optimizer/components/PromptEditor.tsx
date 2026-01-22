@@ -15,6 +15,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
   onHighlightMouseLeave,
   onCopyEvent,
   onInput,
+  onKeyDown,
   onFocus,
   onBlur,
 }, ref): React.ReactElement => {
@@ -35,6 +36,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       onMouseLeave={onHighlightMouseLeave}
       onCopy={onCopyEvent}
       onInput={onInput}
+      onKeyDown={onKeyDown}
       onFocus={onFocus}
       onBlur={onBlur}
       contentEditable

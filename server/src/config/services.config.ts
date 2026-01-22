@@ -52,6 +52,9 @@ import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import { userCreditService } from '@services/credits/UserCreditService';
+import AssetService from '@services/asset/AssetService';
+import ConsistentVideoService from '@services/generation/ConsistentVideoService';
+import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -603,6 +606,52 @@ export async function configureServices(): Promise<DIContainer> {
       });
     },
     ['videoAssetStore']
+  );
+
+  container.register(
+    'assetService',
+    () => {
+      try {
+        return new AssetService();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Asset service disabled', { error: errorMessage });
+        return null;
+      }
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'keyframeGenerationService',
+    () => new KeyframeGenerationService(),
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'consistentVideoService',
+    (
+      videoGenerationService: VideoGenerationService | null,
+      assetService: AssetService | null,
+      keyframeGenerationService: KeyframeGenerationService
+    ) => {
+      if (!videoGenerationService || !assetService) {
+        logger.warn('Consistent video service disabled', {
+          videoGenerationServiceAvailable: Boolean(videoGenerationService),
+          assetServiceAvailable: Boolean(assetService),
+        });
+        return null;
+      }
+
+      return new ConsistentVideoService({
+        videoGenerationService,
+        assetService,
+        keyframeService: keyframeGenerationService,
+      });
+    },
+    ['videoGenerationService', 'assetService', 'keyframeGenerationService']
   );
 
   container.register(

@@ -1,0 +1,242 @@
+import express, { type Request, type Response, type Router } from 'express';
+import multer from 'multer';
+import { asyncHandler } from '@middleware/asyncHandler';
+import type { AssetType } from '@shared/types/asset';
+import type { AssetService } from '@services/asset/AssetService';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+type RequestWithUser = Request & { user?: { uid?: string } };
+
+function requireUserId(req: RequestWithUser, res: Response): string | null {
+  const userId = req.user?.uid;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required' });
+    return null;
+  }
+  return userId;
+}
+
+function normalizeAssetType(raw?: string | null): AssetType | null {
+  if (!raw) return null;
+  const normalized = raw.trim().toLowerCase();
+  if (['character', 'style', 'location', 'object'].includes(normalized)) {
+    return normalized as AssetType;
+  }
+  return null;
+}
+
+export function createAssetRoutes(assetService: AssetService): Router {
+  const router = express.Router();
+
+  router.get(
+    '/',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const typeParam = typeof req.query.type === 'string' ? req.query.type : null;
+      const type = normalizeAssetType(typeParam);
+
+      if (typeParam && !type) {
+        res.status(400).json({ error: 'Invalid asset type filter' });
+        return;
+      }
+
+      if (type) {
+        const assets = await assetService.listAssetsByType(userId, type);
+        const byType = { character: 0, style: 0, location: 0, object: 0 };
+        byType[type] = assets.length;
+        res.json({ assets, total: assets.length, byType });
+        return;
+      }
+
+      const result = await assetService.listAssets(userId);
+      res.json(result);
+    })
+  );
+
+  router.post(
+    '/',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const { type, trigger, name, textDefinition, negativePrompt } = req.body || {};
+      const asset = await assetService.createAsset(userId, {
+        type,
+        trigger,
+        name,
+        textDefinition,
+        negativePrompt,
+      });
+
+      res.status(201).json(asset);
+    })
+  );
+
+  router.get(
+    '/suggestions',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const query = typeof req.query.q === 'string' ? req.query.q : '';
+      if (!query.trim()) {
+        res.json([]);
+        return;
+      }
+
+      const suggestions = await assetService.getSuggestions(userId, query);
+      res.json(suggestions);
+    })
+  );
+
+  router.post(
+    '/resolve',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const { prompt } = req.body || {};
+      if (!prompt || typeof prompt !== 'string') {
+        res.status(400).json({ error: 'prompt is required' });
+        return;
+      }
+
+      const resolved = await assetService.resolvePrompt(userId, prompt);
+      res.json(resolved);
+    })
+  );
+
+  router.post(
+    '/validate',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const { prompt } = req.body || {};
+      if (!prompt || typeof prompt !== 'string') {
+        res.status(400).json({ error: 'prompt is required' });
+        return;
+      }
+
+      const validation = await assetService.validateTriggers(userId, prompt);
+      res.json(validation);
+    })
+  );
+
+  router.get(
+    '/:id',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const asset = await assetService.getAsset(userId, req.params.id);
+      res.json(asset);
+    })
+  );
+
+  router.patch(
+    '/:id',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const { trigger, name, textDefinition, negativePrompt } = req.body || {};
+      const asset = await assetService.updateAsset(userId, req.params.id, {
+        trigger,
+        name,
+        textDefinition,
+        negativePrompt,
+      });
+      res.json(asset);
+    })
+  );
+
+  router.delete(
+    '/:id',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      await assetService.deleteAsset(userId, req.params.id);
+      res.status(204).send();
+    })
+  );
+
+  router.post(
+    '/:id/images',
+    upload.single('image'),
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      if (!req.file) {
+        res.status(400).json({ error: 'No image file provided' });
+        return;
+      }
+
+      const metadata = {
+        angle: req.body?.angle,
+        expression: req.body?.expression,
+        styleType: req.body?.styleType,
+        timeOfDay: req.body?.timeOfDay,
+        lighting: req.body?.lighting,
+      };
+
+      const result = await assetService.addReferenceImage(
+        userId,
+        req.params.id,
+        req.file.buffer,
+        metadata
+      );
+
+      res.status(201).json(result);
+    })
+  );
+
+  router.delete(
+    '/:id/images/:imageId',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      await assetService.deleteReferenceImage(userId, req.params.id, req.params.imageId);
+      res.status(204).send();
+    })
+  );
+
+  router.patch(
+    '/:id/images/:imageId/primary',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const asset = await assetService.setPrimaryImage(
+        userId,
+        req.params.id,
+        req.params.imageId
+      );
+      res.json(asset);
+    })
+  );
+
+  router.get(
+    '/:id/for-generation',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+
+      const assetData = await assetService.getAssetForGeneration(userId, req.params.id);
+      res.json(assetData);
+    })
+  );
+
+  return router;
+}
+
+export default createAssetRoutes;

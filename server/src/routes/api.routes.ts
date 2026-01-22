@@ -16,6 +16,8 @@ import { createVideoRoutes } from './video.routes';
 import { createCapabilitiesRoutes } from './capabilities.routes';
 import { createEnhancementRoutes } from './enhancement.routes';
 import { createStorageRoutes } from './storage.routes';
+import { createAssetRoutes } from './asset.routes';
+import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 
 interface ApiServices {
   promptOptimizationService: any;
@@ -24,6 +26,9 @@ interface ApiServices {
   promptCoherenceService: any;
   videoConceptService?: any | null;
   metricsService?: any;
+  assetService?: any;
+  consistentVideoService?: any;
+  userCreditService?: any;
 }
 
 /**
@@ -41,6 +46,9 @@ export function createAPIRoutes(services: ApiServices): Router {
     promptCoherenceService,
     videoConceptService,
     metricsService,
+    assetService,
+    consistentVideoService,
+    userCreditService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -70,6 +78,17 @@ export function createAPIRoutes(services: ApiServices): Router {
 
   // Mount storage routes under /storage
   router.use('/storage', createStorageRoutes());
+
+  if (assetService) {
+    router.use('/assets', createAssetRoutes(assetService));
+  }
+
+  if (consistentVideoService) {
+    router.use(
+      '/generate/consistent',
+      createConsistentGenerationRoutes(consistentVideoService, userCreditService)
+    );
+  }
 
   // Capabilities registry routes (schema-driven UI)
   router.use('/', createCapabilitiesRoutes());
