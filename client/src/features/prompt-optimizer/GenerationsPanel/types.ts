@@ -33,7 +33,7 @@ export interface GenerationParams {
   startImage?: {
     url: string;
     assetId?: string;
-    source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe';
+    source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation';
   } | null;
 }
 

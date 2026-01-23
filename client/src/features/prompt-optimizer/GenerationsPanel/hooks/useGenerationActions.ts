@@ -14,6 +14,10 @@ interface UseGenerationActionsOptions {
   generations?: Generation[];
 }
 
+interface StoryboardParams extends GenerationParams {
+  seedImageUrl?: string | null;
+}
+
 export function useGenerationActions(
   dispatch: React.Dispatch<GenerationsAction>,
   options: UseGenerationActionsOptions = {}
@@ -130,6 +134,45 @@ export function useGenerationActions(
     [dispatch, finalizeGeneration, options]
   );
 
+  const generateStoryboard = useCallback(
+    async (prompt: string, params: StoryboardParams) => {
+      const { seedImageUrl, ...baseParams } = params;
+      const resolved = resolveGenerationOptions(options, baseParams);
+      const generation = buildGeneration('draft', 'flux-kontext', prompt, resolved);
+      dispatch({ type: 'ADD_GENERATION', payload: generation });
+      dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
+
+      const controller = new AbortController();
+      inFlightRef.current.set(generation.id, controller);
+
+      try {
+        const response = await generateStoryboardPreview(prompt, {
+          ...(resolved.aspectRatio ? { aspectRatio: resolved.aspectRatio } : {}),
+          ...(seedImageUrl ? { seedImageUrl } : {}),
+        });
+        if (controller.signal.aborted) return;
+        if (!response.success || !response.data?.imageUrls?.length) {
+          throw new Error(response.error || response.message || 'Failed to generate storyboard');
+        }
+        const urls = response.data.imageUrls;
+        finalizeGeneration(generation.id, {
+          status: 'completed',
+          completedAt: Date.now(),
+          mediaUrls: urls,
+          thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+        });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        finalizeGeneration(generation.id, {
+          status: 'failed',
+          completedAt: Date.now(),
+          error: error instanceof Error ? error.message : 'Storyboard failed',
+        });
+      }
+    },
+    [dispatch, finalizeGeneration, options]
+  );
+
   const generateRender = useCallback(
     async (model: string, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(options, params);
@@ -211,5 +254,5 @@ export function useGenerationActions(
     [generateDraft, generateRender, options]
   );
 
-  return { generateDraft, generateRender, cancelGeneration, retryGeneration };
+  return { generateDraft, generateRender, generateStoryboard, cancelGeneration, retryGeneration };
 }

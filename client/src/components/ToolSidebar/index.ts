@@ -6,5 +6,6 @@ export type {
   ToolPanelProps,
   ToolNavItem,
   DraftModel,
-  StartImage,
+  KeyframeTile,
+  VideoTier,
 } from './types';

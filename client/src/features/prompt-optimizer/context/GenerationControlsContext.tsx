@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
-import type { DraftModel, StartImage } from '@components/ToolSidebar/types';
+import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import type { DraftModel, KeyframeTile } from '@components/ToolSidebar/types';
 
 export interface GenerationControlsHandlers {
   onDraft: (model: DraftModel) => void;
   onRender: (model: string) => void;
+  onStoryboard: () => void;
   isGenerating: boolean;
   activeDraftModel: string | null;
 }
@@ -11,23 +12,49 @@ export interface GenerationControlsHandlers {
 interface GenerationControlsContextValue {
   controls: GenerationControlsHandlers | null;
   setControls: (controls: GenerationControlsHandlers | null) => void;
-  startImage: StartImage | null;
-  setStartImage: (image: StartImage | null) => void;
+  keyframes: KeyframeTile[];
+  addKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
+  removeKeyframe: (id: string) => void;
+  clearKeyframes: () => void;
+  onStoryboard: (() => void) | null;
 }
 
 const GenerationControlsContext = createContext<GenerationControlsContextValue | null>(null);
 
 export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
-  const [startImage, setStartImage] = useState<StartImage | null>(null);
+  const [keyframes, setKeyframes] = useState<KeyframeTile[]>([]);
+
+  const addKeyframe = useCallback((tile: Omit<KeyframeTile, 'id'>): void => {
+    setKeyframes((prev) => {
+      if (prev.length >= 3) return prev;
+      const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `keyframe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return [...prev, { id, ...tile }];
+    });
+  }, []);
+
+  const removeKeyframe = useCallback((id: string): void => {
+    setKeyframes((prev) => prev.filter((tile) => tile.id !== id));
+  }, []);
+
+  const clearKeyframes = useCallback((): void => {
+    setKeyframes([]);
+  }, []);
+
+  const onStoryboard = useMemo(() => controls?.onStoryboard ?? null, [controls]);
 
   return (
     <GenerationControlsContext.Provider
       value={{
         controls,
         setControls,
-        startImage,
-        setStartImage,
+        keyframes,
+        addKeyframe,
+        removeKeyframe,
+        clearKeyframes,
+        onStoryboard,
       }}
     >
       {children}

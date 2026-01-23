@@ -20,10 +20,10 @@ import {
   Wand2,
 } from 'lucide-react';
 import { cn } from '@utils/cn';
-import { ModelSelectorDropdown } from '@features/prompt-optimizer/components/ModelSelectorDropdown';
 import { resolveFieldState } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
-import type { DraftModel, StartImage } from '../../types';
+import { STORYBOARD_COST, VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
+import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
 
 const DEFAULT_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:5'];
 const DEFAULT_DURATIONS = [5, 10, 15];
@@ -43,8 +43,13 @@ interface GenerationControlsPanelProps {
   isRenderDisabled: boolean;
   onBack?: () => void;
   onImageUpload?: (file: File) => void | Promise<void>;
-  startImage?: StartImage | null;
-  onClearStartImage?: () => void;
+  keyframes: KeyframeTile[];
+  onAddKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
+  onRemoveKeyframe: (id: string) => void;
+  onClearKeyframes?: () => void;
+  tier: VideoTier;
+  onTierChange: (tier: VideoTier) => void;
+  onStoryboard: () => void;
   activeDraftModel?: string | null;
 }
 
@@ -57,14 +62,19 @@ export function GenerationControlsPanel({
   onModelChange,
   onAspectRatioChange,
   onDurationChange,
-  onDraft: _onDraft,
+  onDraft,
   onRender,
-  isDraftDisabled: _isDraftDisabled,
+  isDraftDisabled,
   isRenderDisabled,
   onBack,
   onImageUpload,
-  startImage,
-  onClearStartImage,
+  keyframes,
+  onAddKeyframe: _onAddKeyframe,
+  onRemoveKeyframe,
+  onClearKeyframes: _onClearKeyframes,
+  tier,
+  onTierChange,
+  onStoryboard,
   activeDraftModel: _activeDraftModel,
 }: GenerationControlsPanelProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,9 +83,28 @@ export function GenerationControlsPanel({
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'video' | 'image'>('video');
   const [imageSubTab, setImageSubTab] = useState<'references' | 'styles'>('references');
-  const isUploadDisabled = !onImageUpload || isUploading;
+  const keyframeSlots = useMemo(
+    () => Array.from({ length: 3 }, (_, index) => keyframes[index] ?? null),
+    [keyframes]
+  );
+  const isKeyframeLimitReached = keyframes.length >= 3;
+  const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
 
-  const { schema } = useCapabilities(selectedModel);
+  const renderModelId = useMemo(() => {
+    if (selectedModel && VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)) {
+      return selectedModel;
+    }
+    return VIDEO_RENDER_MODELS[0]?.id ?? '';
+  }, [selectedModel]);
+
+  const capabilitiesModelId = useMemo(() => {
+    if (activeTab === 'video') {
+      return tier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId;
+    }
+    return renderModelId;
+  }, [activeTab, renderModelId, tier]);
+
+  const { schema } = useCapabilities(capabilitiesModelId);
 
   const currentParams = useMemo(
     () => ({
@@ -132,7 +161,7 @@ export function GenerationControlsPanel({
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (!onImageUpload) return;
+      if (isUploadDisabled || !onImageUpload) return;
       const result = onImageUpload(file);
       if (result && typeof (result as Promise<void>).then === 'function') {
         setIsUploading(true);
@@ -143,7 +172,7 @@ export function GenerationControlsPanel({
         }
       }
     },
-    [onImageUpload]
+    [isUploadDisabled, onImageUpload]
   );
 
   const handleDrop = useCallback(
@@ -175,6 +204,14 @@ export function GenerationControlsPanel({
       // ignore
     }
   }, [prompt]);
+
+  const isImageGenerateDisabled = activeTab === 'image' && keyframes.length === 0;
+  const isVideoGenerateDisabled = activeTab === 'video' && !prompt.trim();
+  const isStoryboardDisabled = !prompt.trim() && keyframes.length === 0;
+  const isGenerateDisabled =
+    (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
+    isImageGenerateDisabled ||
+    isVideoGenerateDisabled;
 
   return (
     <div className="flex h-full flex-col">
@@ -235,63 +272,96 @@ export function GenerationControlsPanel({
 
       {activeTab === 'video' ? (
         <>
-          <div className="h-[74px] px-3 pt-3 flex gap-1.5">
-            <div className="relative w-[110px] h-[62px]">
-              <button
-                type="button"
-                className={cn(
-                  'w-full h-full rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]',
-                  'flex items-center justify-center cursor-pointer overflow-hidden',
-                  isDragging && 'shadow-[inset_0_0_0_1px_#B3AFFD]'
-                )}
-                onClick={() => {
-                  if (isUploadDisabled) return;
-                  inputRef.current?.click();
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (!isUploadDisabled) {
-                    setIsDragging(true);
-                  }
-                }}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragging(false);
-                }}
-                onDrop={handleDrop}
-                aria-disabled={isUploadDisabled}
-              >
-                {startImage ? (
-                  <img
-                    src={startImage.url}
-                    alt="Start frame"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <Plus className="w-4 h-4 text-white" />
-                )}
-              </button>
-
-              {startImage && onClearStartImage && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onClearStartImage();
-                  }}
-                  className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
-                >
-                  Clear
-                </button>
+          <div className="px-3 pt-3 flex gap-1">
+            <button
+              type="button"
+              onClick={() => onTierChange('draft')}
+              className={cn(
+                'h-7 px-2 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+                tier === 'draft'
+                  ? 'bg-[#2F3237] text-white'
+                  : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
               )}
-            </div>
+            >
+              Draft
+            </button>
+            <button
+              type="button"
+              onClick={() => onTierChange('render')}
+              className={cn(
+                'h-7 px-2 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+                tier === 'render'
+                  ? 'bg-[#2F3237] text-white'
+                  : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+              )}
+            >
+              Render
+            </button>
+          </div>
 
-            <div className="flex gap-1.5">
-              <div className="w-[110px] h-[62px] rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]" />
-              <div className="w-[110px] h-[62px] rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]" />
-            </div>
+          <div className="h-[74px] px-3 pt-3 flex gap-1.5">
+            {keyframeSlots.map((tile, index) => {
+              const isEmpty = !tile;
+              const canUpload = isEmpty && !isUploadDisabled;
+              return (
+                <div
+                  key={tile?.id ?? `keyframe-slot-${index}`}
+                  className="relative w-[110px] h-[62px]"
+                >
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full h-full rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]',
+                      'flex items-center justify-center overflow-hidden',
+                      isEmpty && 'cursor-pointer',
+                      isEmpty && !canUpload && 'opacity-60 cursor-not-allowed',
+                      isDragging && canUpload && 'shadow-[inset_0_0_0_1px_#B3AFFD]'
+                    )}
+                    onClick={() => {
+                      if (!canUpload) return;
+                      inputRef.current?.click();
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (canUpload) {
+                        setIsDragging(true);
+                      }
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setIsDragging(false);
+                    }}
+                    onDrop={handleDrop}
+                    aria-disabled={!canUpload}
+                  >
+                    {tile ? (
+                      <img
+                        src={tile.url}
+                        alt={`Keyframe ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <Plus className="w-4 h-4 text-white" />
+                    )}
+                  </button>
+
+                  {tile && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onRemoveKeyframe?.(tile.id);
+                      }}
+                      className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div className="flex-1 min-h-0 overflow-hidden px-3">
@@ -324,67 +394,82 @@ export function GenerationControlsPanel({
             <div className="flex flex-col flex-1 min-h-0 relative border border-[#2C3037] rounded-lg overflow-auto">
               {/* Image Slot Row */}
               <div className="flex gap-1.5 pt-3 px-3" data-layout-mode="single-row">
-                {/* Interactive Slot */}
-                <div className="relative block min-w-[62px] w-[110px] h-[62px] group">
-                  <button
-                    type="button"
-                    className={cn(
-                      'w-full h-full flex items-center justify-center',
-                      'bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
-                      'cursor-pointer overflow-hidden',
-                      isUploadDisabled && 'opacity-60 cursor-not-allowed'
-                    )}
-                    onClick={() => {
-                      if (isUploadDisabled) return;
-                      inputRef.current?.click();
-                    }}
-                    aria-label="Add an image reference"
-                    disabled={isUploadDisabled}
-                  >
-                    {startImage ? (
-                      <img
-                        src={startImage.url}
-                        alt="Reference"
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <Plus className="w-4 h-4 text-white" />
-                    )}
-                  </button>
-
-                  {/* Hover Buttons */}
-                  <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037] group-hover:flex">
-                    <button
-                      type="button"
-                      className="w-6 h-6 flex items-center justify-center bg-transparent border border-[#2C3037] rounded text-[#A1AFC5] cursor-pointer hover:bg-[#12131A]"
-                      aria-label="Sketch your scene"
-                      onClick={() => {
-                        // placeholder for future sketch flow
-                      }}
-                      disabled={isUploadDisabled}
+                {keyframeSlots.map((tile, index) => {
+                  const isEmpty = !tile;
+                  const canUpload = isEmpty && !isUploadDisabled;
+                  return (
+                    <div
+                      key={tile?.id ?? `reference-slot-${index}`}
+                      className="relative block min-w-[62px] w-[110px] h-[62px] group"
                     >
-                      <Highlighter className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="w-6 h-6 flex items-center justify-center bg-white rounded text-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Add an image reference"
-                      onClick={() => {
-                        if (isUploadDisabled) return;
-                        inputRef.current?.click();
-                      }}
-                      disabled={isUploadDisabled}
-                    >
-                      <Upload className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                      <button
+                        type="button"
+                        className={cn(
+                          'w-full h-full flex items-center justify-center',
+                          'bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
+                          'overflow-hidden',
+                          isEmpty && 'cursor-pointer',
+                          isEmpty && !canUpload && 'opacity-60 cursor-not-allowed'
+                        )}
+                        onClick={() => {
+                          if (!canUpload) return;
+                          inputRef.current?.click();
+                        }}
+                        aria-label="Add an image reference"
+                        aria-disabled={!canUpload}
+                      >
+                        {tile ? (
+                          <img
+                            src={tile.url}
+                            alt={`Reference ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <Plus className="w-4 h-4 text-white" />
+                        )}
+                      </button>
 
-                {/* Placeholder Slots */}
-                <div className="flex gap-1.5">
-                  <div className="w-[110px] h-[62px] flex items-center justify-center bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]" />
-                  <div className="w-[110px] h-[62px] flex items-center justify-center bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]" />
-                </div>
+                      {tile ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onRemoveKeyframe?.(tile.id);
+                          }}
+                          className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
+                        >
+                          Clear
+                        </button>
+                      ) : (
+                        <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037] group-hover:flex">
+                          <button
+                            type="button"
+                            className="w-6 h-6 flex items-center justify-center bg-transparent border border-[#2C3037] rounded text-[#A1AFC5] cursor-pointer hover:bg-[#12131A]"
+                            aria-label="Sketch your scene"
+                            onClick={() => {
+                              // placeholder for future sketch flow
+                            }}
+                            disabled={!canUpload}
+                          >
+                            <Highlighter className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="w-6 h-6 flex items-center justify-center bg-white rounded text-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Add an image reference"
+                            onClick={() => {
+                              if (!canUpload) return;
+                              inputRef.current?.click();
+                            }}
+                            disabled={!canUpload}
+                          >
+                            <Upload className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Text Editor */}
@@ -724,12 +809,25 @@ export function GenerationControlsPanel({
 
           <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
             <div className="flex items-center gap-2">
-              <ModelSelectorDropdown
-                selectedModel={selectedModel}
-                onModelChange={onModelChange}
-                variant="pillDark"
-                buttonClassName="h-10 rounded-lg px-3"
-              />
+              {tier === 'draft' ? (
+                <div className="h-10 rounded-lg px-3 bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold flex items-center gap-2">
+                  <span>{VIDEO_DRAFT_MODEL.label}</span>
+                  <span className="text-[11px] text-[#7C839C]">{VIDEO_DRAFT_MODEL.cost}</span>
+                </div>
+              ) : (
+                <select
+                  className="h-10 px-3 rounded-lg bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold"
+                  value={renderModelId}
+                  onChange={(event) => onModelChange(event.target.value)}
+                  aria-label="Render model"
+                >
+                  {VIDEO_RENDER_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label} · {model.cost}
+                    </option>
+                  ))}
+                </select>
+              )}
               <button
                 type="button"
                 className="w-7 h-7 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
@@ -739,14 +837,33 @@ export function GenerationControlsPanel({
               </button>
             </div>
 
-            <button
-              type="button"
-              className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold"
-              onClick={() => onRender(selectedModel || 'sora-2')}
-              disabled={isRenderDisabled || !prompt.trim()}
-            >
-              Generate
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="h-10 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => onStoryboard()}
+                disabled={isStoryboardDisabled}
+              >
+                <span className="flex items-center gap-1">
+                  <Images className="w-4 h-4" />
+                  Storyboard · {STORYBOARD_COST}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (tier === 'draft') {
+                    onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
+                    return;
+                  }
+                  onRender(renderModelId || selectedModel || 'sora-2');
+                }}
+                disabled={isGenerateDisabled}
+              >
+                Generate
+              </button>
+            </div>
           </footer>
         </>
       )}

@@ -7,6 +7,15 @@ export type ToolPanelType = 'sessions' | 'tool' | 'characters' | 'styles';
 
 export type DraftModel = 'flux-kontext' | 'wan-2.2';
 
+export type VideoTier = 'draft' | 'render';
+
+export interface KeyframeTile {
+  id: string;
+  url: string;
+  source: 'upload' | 'library' | 'generation' | 'asset';
+  assetId?: string;
+}
+
 export interface StartImage {
   url: string;
   source: string;
@@ -45,9 +54,14 @@ export interface ToolSidebarProps {
   onRender: (model: string) => void;
   isDraftDisabled: boolean;
   isRenderDisabled: boolean;
-  startImage?: StartImage | null;
   onImageUpload?: (file: File) => void | Promise<void>;
-  onClearStartImage?: () => void;
+  keyframes: KeyframeTile[];
+  onAddKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
+  onRemoveKeyframe: (id: string) => void;
+  onClearKeyframes?: () => void;
+  tier: VideoTier;
+  onTierChange: (tier: VideoTier) => void;
+  onStoryboard: () => void;
   activeDraftModel?: string | null;
 
   // Characters panel

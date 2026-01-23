@@ -46,9 +46,14 @@ export function AppShell({
   onRender = noop,
   isDraftDisabled = true,
   isRenderDisabled = true,
-  startImage = null,
   onImageUpload,
-  onClearStartImage,
+  keyframes = [],
+  onAddKeyframe = noop,
+  onRemoveKeyframe = noop,
+  onClearKeyframes,
+  tier = 'render',
+  onTierChange = noop,
+  onStoryboard = noop,
   activeDraftModel = null,
   assets = [],
   assetsByType,
@@ -115,9 +120,14 @@ export function AppShell({
         onRender={onRender}
         isDraftDisabled={isDraftDisabled}
         isRenderDisabled={isRenderDisabled}
-        startImage={startImage}
         {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-        {...(typeof onClearStartImage === 'function' ? { onClearStartImage } : {})}
+        keyframes={keyframes}
+        onAddKeyframe={onAddKeyframe}
+        onRemoveKeyframe={onRemoveKeyframe}
+        {...(typeof onClearKeyframes === 'function' ? { onClearKeyframes } : {})}
+        tier={tier}
+        onTierChange={onTierChange}
+        onStoryboard={onStoryboard}
         {...(activeDraftModel !== null ? { activeDraftModel } : {})}
         assets={assets}
         assetsByType={resolvedAssetsByType}

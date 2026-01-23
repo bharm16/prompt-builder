@@ -25,6 +25,10 @@ export const DRAFT_MODELS: Record<string, ModelConfig> = {
 };
 
 export const RENDER_MODELS: Record<string, ModelConfig> = {
+  'sora-2': { label: 'Sora', credits: 80, eta: '2-4m', mediaType: 'video' },
+  'kling-v2-1-master': { label: 'Kling', credits: 35, eta: '2m', mediaType: 'video' },
+  'google/veo-3': { label: 'Veo', credits: 30, eta: '2-3m', mediaType: 'video' },
+  'luma-ray3': { label: 'Luma', credits: 40, eta: '75s', mediaType: 'video' },
   sora: { label: 'Sora', credits: 80, eta: '2-4m', mediaType: 'video' },
   veo: { label: 'Veo', credits: 30, eta: '2-3m', mediaType: 'video' },
   runway: { label: 'Runway', credits: 40, eta: '90s', mediaType: 'video' },

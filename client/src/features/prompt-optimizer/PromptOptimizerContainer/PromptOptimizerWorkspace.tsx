@@ -35,6 +35,7 @@ import {
   GenerationControlsProvider,
   useGenerationControlsContext,
 } from '../context/GenerationControlsContext';
+import type { VideoTier } from '@components/ToolSidebar/types';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import AssetEditor from '@/features/assets/components/AssetEditor';
@@ -148,9 +149,12 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   const assetsSidebar = useAssetsSidebar();
   const {
     controls: generationControls,
-    startImage,
-    setStartImage,
+    keyframes,
+    addKeyframe,
+    removeKeyframe,
+    clearKeyframes,
   } = useGenerationControlsContext();
+  const [videoTier, setVideoTier] = React.useState<VideoTier>('render');
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -497,12 +501,12 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         if (!imageUrl) {
           throw new Error('Upload did not return an image URL');
         }
-        setStartImage({ url: imageUrl, source: 'upload' });
+        addKeyframe({ url: imageUrl, source: 'upload' });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Upload failed');
       }
     },
-    [setStartImage, toast]
+    [addKeyframe, toast]
   );
 
   const closeQuickCreate = useCallback(() => {
@@ -525,8 +529,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     hasHighlights: Boolean(initialHighlights),
   });
   const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
-  const promptForGeneration =
-    promptOptimizer.displayedPrompt?.trim() || promptOptimizer.inputPrompt;
+  const promptForGeneration = promptOptimizer.inputPrompt;
   const isGenerating = generationControls?.isGenerating ?? false;
   const isGenerationReady = Boolean(generationControls);
 
@@ -590,6 +593,10 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     },
     [generationControls]
   );
+
+  const handleStoryboard = useCallback((): void => {
+    generationControls?.onStoryboard?.();
+  }, [generationControls]);
 
   const promptForAssets = useMemo(() => {
     if (showResults && promptOptimizer.displayedPrompt) {
@@ -799,9 +806,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       onRender={handleRender}
       isDraftDisabled={!promptForGeneration.trim() || !isGenerationReady || isGenerating}
       isRenderDisabled={!promptForGeneration.trim() || !isGenerationReady || isGenerating}
-      startImage={startImage}
+      keyframes={keyframes}
+      onAddKeyframe={addKeyframe}
+      onRemoveKeyframe={removeKeyframe}
+      onClearKeyframes={clearKeyframes}
+      tier={videoTier}
+      onTierChange={setVideoTier}
+      onStoryboard={handleStoryboard}
       onImageUpload={handleImageUpload}
-      onClearStartImage={() => setStartImage(null)}
       activeDraftModel={generationControls?.activeDraftModel ?? null}
       assets={assetsSidebar.assets}
       assetsByType={assetsSidebar.byType}

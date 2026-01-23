@@ -18,7 +18,7 @@ type DraftModel = 'flux-kontext' | 'wan-2.2';
 type StartImageOverride = {
   url: string;
   assetId?: string;
-  source: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe';
+  source: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation';
 };
 
 const EmptyState = ({
@@ -83,20 +83,30 @@ export function GenerationsPanel({
     promptVersionId,
   });
 
+  const mergedGenerationParams = useMemo(() => {
+    if (!keyframes.length) return generationParams;
+    return { ...(generationParams ?? {}), keyframes };
+  }, [generationParams, keyframes]);
+
   const generationActionsOptions = useMemo(
     () => ({
       aspectRatio,
       duration,
       fps,
-      generationParams,
+      generationParams: mergedGenerationParams,
       promptVersionId,
       generations,
     }),
-    [aspectRatio, duration, fps, generationParams, promptVersionId, generations]
+    [aspectRatio, duration, fps, mergedGenerationParams, promptVersionId, generations]
   );
 
-  const { generateDraft, generateRender, retryGeneration, cancelGeneration } =
-    useGenerationActions(dispatch, generationActionsOptions);
+  const {
+    generateDraft,
+    generateRender,
+    generateStoryboard,
+    retryGeneration,
+    cancelGeneration,
+  } = useGenerationActions(dispatch, generationActionsOptions);
 
   const [selectedKeyframe, setSelectedKeyframe] = React.useState<SelectedKeyframe | null>(
     null
@@ -115,7 +125,7 @@ export function GenerationsPanel({
   });
 
   const { referenceImages: assetReferenceImages, resolvedPrompt } = useAssetReferenceImages(prompt);
-  const { setControls, startImage } = useGenerationControlsContext();
+  const { setControls, keyframes } = useGenerationControlsContext();
   const detectedCharacter = useMemo(
     () => resolvedPrompt?.characters?.[0] ?? null,
     [resolvedPrompt]
@@ -139,7 +149,7 @@ export function GenerationsPanel({
     if (activeDraftModel === 'flux-kontext' || activeDraftModel === 'wan-2.2') {
       return activeDraftModel;
     }
-    return 'flux-kontext';
+    return 'wan-2.2';
   }, [activeDraftModel]);
 
   const handleDraft = useCallback(
@@ -204,11 +214,12 @@ export function GenerationsPanel({
   const handleRender = useCallback(
     (model: string) => {
       if (!prompt.trim()) return;
-      if (startImage) {
+      const primaryKeyframe = keyframes[0];
+      if (primaryKeyframe) {
         runRender(model, {
-          url: startImage.url,
-          source: startImage.source as StartImageOverride['source'],
-          ...(startImage.assetId ? { assetId: startImage.assetId } : {}),
+          url: primaryKeyframe.url,
+          source: primaryKeyframe.source,
+          ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
         });
         return;
       }
@@ -231,22 +242,29 @@ export function GenerationsPanel({
     [
       detectedCharacter,
       keyframeStep.isActive,
+      keyframes,
       prompt,
       runRender,
-      startImage,
     ]
   );
 
+  const handleStoryboard = useCallback(() => {
+    const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
+    const versionId = onCreateVersionIfNeeded();
+    const seedImageUrl = keyframes[0]?.url ?? null;
+    generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
+  }, [generateStoryboard, keyframes, onCreateVersionIfNeeded, prompt]);
+
   const handleApproveKeyframe = useCallback(
     (keyframeUrl: string) => {
-      const modelToUse = keyframeStep.pendingModel ?? 'sora';
+      const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
       runRender(modelToUse, { url: keyframeUrl, source: 'keyframe' });
     },
     [keyframeStep.pendingModel, runRender]
   );
 
   const handleSkipKeyframe = useCallback(() => {
-    const modelToUse = keyframeStep.pendingModel ?? 'sora';
+    const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
     runRender(modelToUse, null);
   }, [keyframeStep.pendingModel, runRender]);
 
@@ -304,10 +322,11 @@ export function GenerationsPanel({
     () => ({
       onDraft: handleDraft,
       onRender: handleRender,
+      onStoryboard: handleStoryboard,
       isGenerating,
       activeDraftModel,
     }),
-    [handleDraft, handleRender, isGenerating, activeDraftModel]
+    [handleDraft, handleRender, handleStoryboard, isGenerating, activeDraftModel]
   );
 
   useEffect(() => {

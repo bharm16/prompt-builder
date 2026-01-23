@@ -42,9 +42,14 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     onRender,
     isDraftDisabled,
     isRenderDisabled,
-    startImage,
     onImageUpload,
-    onClearStartImage,
+    keyframes,
+    onAddKeyframe,
+    onRemoveKeyframe,
+    onClearKeyframes,
+    tier,
+    onTierChange,
+    onStoryboard,
     activeDraftModel,
     assets,
     assetsByType,
@@ -100,9 +105,14 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             onRender={onRender}
             isDraftDisabled={isDraftDisabled}
             isRenderDisabled={isRenderDisabled}
-            startImage={startImage ?? null}
             {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-            {...(typeof onClearStartImage === 'function' ? { onClearStartImage } : {})}
+            keyframes={keyframes}
+            onAddKeyframe={onAddKeyframe}
+            onRemoveKeyframe={onRemoveKeyframe}
+            {...(typeof onClearKeyframes === 'function' ? { onClearKeyframes } : {})}
+            tier={tier}
+            onTierChange={onTierChange}
+            onStoryboard={onStoryboard}
             {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
             onBack={() => setActivePanel('sessions')}
           />
