@@ -35,6 +35,7 @@ export function AppShell({
   activeStatusLabel,
   activeModelLabel,
   prompt = '',
+  onPromptChange,
   aspectRatio = '16:9',
   duration = 5,
   selectedModel = '',
@@ -103,6 +104,7 @@ export function AppShell({
         {...(typeof activeStatusLabel === 'string' ? { activeStatusLabel } : {})}
         {...(typeof activeModelLabel === 'string' ? { activeModelLabel } : {})}
         prompt={prompt}
+        {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
         aspectRatio={aspectRatio}
         duration={duration}
         selectedModel={selectedModel}

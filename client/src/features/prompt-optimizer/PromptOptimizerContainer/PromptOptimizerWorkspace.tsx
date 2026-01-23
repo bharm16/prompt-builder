@@ -530,6 +530,17 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   const isGenerating = generationControls?.isGenerating ?? false;
   const isGenerationReady = Boolean(generationControls);
 
+  const handleSidebarPromptChange = useCallback(
+    (nextPrompt: string): void => {
+      promptOptimizer.setInputPrompt(nextPrompt);
+      if (promptOptimizer.displayedPrompt?.trim()) {
+        setDisplayedPromptSilently('');
+        setShowResults(false);
+      }
+    },
+    [promptOptimizer, setDisplayedPromptSilently, setShowResults]
+  );
+
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
     if (typeof fromParams === 'string' && fromParams.trim()) {
@@ -777,6 +788,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       activeStatusLabel={activeStatusLabel}
       activeModelLabel={activeModelLabel}
       prompt={promptForGeneration}
+      onPromptChange={handleSidebarPromptChange}
       aspectRatio={effectiveAspectRatio}
       duration={durationSeconds}
       selectedModel={selectedModel}

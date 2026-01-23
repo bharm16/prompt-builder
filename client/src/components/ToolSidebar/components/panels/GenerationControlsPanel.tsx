@@ -1,26 +1,36 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Image, Upload, Video } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronDown,
+  Copy,
+  Folder,
+  GraduationCap,
+  Highlighter,
+  Image,
+  Images,
+  Info,
+  Palette,
+  Plus,
+  ScanEye,
+  Settings2,
+  Trash2,
+  Upload,
+  Video,
+  Wand2,
+} from 'lucide-react';
 import { cn } from '@utils/cn';
 import { ModelSelectorDropdown } from '@features/prompt-optimizer/components/ModelSelectorDropdown';
-import { SplitActionButton } from '@features/prompt-optimizer/GenerationsPanel/components/SplitActionButton';
-import { DRAFT_MODELS, RENDER_MODELS } from '@features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 import { resolveFieldState } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import type { DraftModel, StartImage } from '../../types';
-
-const I2V_SUPPORTED_MODELS = new Set([
-  'sora-2',
-  'sora-2-pro',
-  'luma-ray3',
-  'kling-v2-1-master',
-  'wan-2.2',
-]);
 
 const DEFAULT_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:5'];
 const DEFAULT_DURATIONS = [5, 10, 15];
 
 interface GenerationControlsPanelProps {
   prompt: string;
+  onPromptChange?: (prompt: string) => void;
   aspectRatio: string;
   duration: number;
   selectedModel: string;
@@ -31,6 +41,7 @@ interface GenerationControlsPanelProps {
   onRender: (model: string) => void;
   isDraftDisabled: boolean;
   isRenderDisabled: boolean;
+  onBack?: () => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   startImage?: StartImage | null;
   onClearStartImage?: () => void;
@@ -39,26 +50,29 @@ interface GenerationControlsPanelProps {
 
 export function GenerationControlsPanel({
   prompt,
+  onPromptChange,
   aspectRatio,
   duration,
   selectedModel,
   onModelChange,
   onAspectRatioChange,
   onDurationChange,
-  onDraft,
+  onDraft: _onDraft,
   onRender,
-  isDraftDisabled,
+  isDraftDisabled: _isDraftDisabled,
   isRenderDisabled,
+  onBack,
   onImageUpload,
   startImage,
   onClearStartImage,
-  activeDraftModel,
+  activeDraftModel: _activeDraftModel,
 }: GenerationControlsPanelProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
+  const promptEditorRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [draftModel, setDraftModel] = useState<string>(activeDraftModel ?? 'flux-kontext');
-  const [renderModel, setRenderModel] = useState<string>('sora');
+  const [activeTab, setActiveTab] = useState<'video' | 'image'>('video');
+  const [imageSubTab, setImageSubTab] = useState<'references' | 'styles'>('references');
   const isUploadDisabled = !onImageUpload || isUploading;
 
   const { schema } = useCapabilities(selectedModel);
@@ -75,6 +89,7 @@ export function GenerationControlsPanel({
     (fieldName: string) => {
       if (!schema?.fields?.[fieldName]) return null;
       const field = schema.fields[fieldName];
+      if (!field) return null;
       const state = resolveFieldState(field, currentParams);
       if (!state.available) return null;
       const allowedValues =
@@ -106,10 +121,14 @@ export function GenerationControlsPanel({
   }, [durationInfo?.allowedValues]);
 
   useEffect(() => {
-    if (activeDraftModel) {
-      setDraftModel(activeDraftModel);
+    const editor = promptEditorRef.current;
+    if (!editor) return;
+    const isFocused = typeof document !== 'undefined' && document.activeElement === editor;
+    if (isFocused) return;
+    if ((editor.textContent ?? '') !== prompt) {
+      editor.textContent = prompt;
     }
-  }, [activeDraftModel]);
+  }, [prompt]);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -128,7 +147,7 @@ export function GenerationControlsPanel({
   );
 
   const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
+    (event: React.DragEvent<HTMLElement>) => {
       event.preventDefault();
       event.stopPropagation();
       setIsDragging(false);
@@ -142,191 +161,595 @@ export function GenerationControlsPanel({
     [handleFile, isUploadDisabled]
   );
 
+  const handlePromptInput = useCallback(() => {
+    if (!onPromptChange) return;
+    const next = promptEditorRef.current?.textContent ?? '';
+    onPromptChange(next);
+  }, [onPromptChange]);
+
+  const handleCopy = useCallback(async () => {
+    if (!prompt.trim()) return;
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch {
+      // ignore
+    }
+  }, [prompt]);
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="h-12 px-4 flex items-center gap-2">
+    <div className="flex h-full flex-col">
+      <header className="h-12 px-4 flex items-center gap-2">
         <button
           type="button"
-          className="h-7 px-2 pl-1 bg-[#2F3237] rounded-md text-white text-sm font-medium flex items-center gap-1"
+          className="w-7 h-7 -ml-1 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+          onClick={onBack}
+          aria-label="Back"
         >
-          <Video className="w-4 h-4" />
-          Video
+          <ArrowLeft className="w-4 h-4" />
         </button>
-        <button
-          type="button"
-          className="h-7 px-2 pl-1 rounded-md text-[#A0AEC0] text-sm font-medium flex items-center gap-1"
-          disabled
-        >
-          <Image className="w-4 h-4" />
-          Image
-        </button>
-      </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-4">
-        <div
-          className={cn(
-            'w-full aspect-video rounded-md',
-            'bg-black border border-dashed border-[#2F3237]',
-            'flex flex-col items-center justify-center',
-            isDragging && 'border-[#B3AFFD] bg-[#1B1E23]'
-          )}
-          onDragOver={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (!isUploadDisabled) {
-              setIsDragging(true);
-            }
-          }}
-          onDragLeave={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setIsDragging(false);
-          }}
-          onDrop={handleDrop}
-          onClick={() => {
-            if (isUploadDisabled) return;
-            inputRef.current?.click();
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              if (!isUploadDisabled) {
-                inputRef.current?.click();
-              }
-            }
-          }}
-          aria-disabled={isUploadDisabled}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void handleFile(file);
-              }
-              event.target.value = '';
-            }}
-            disabled={isUploadDisabled}
-          />
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('video')}
+            className={cn(
+              'h-7 px-2 pl-1 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+              activeTab === 'video'
+                ? 'bg-[#2F3237] text-white'
+                : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+            )}
+          >
+            <Video className="w-4 h-4" />
+            Video
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('image')}
+            className={cn(
+              'h-7 px-2 pl-1 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+              activeTab === 'image'
+                ? 'bg-[#2F3237] text-white'
+                : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+            )}
+          >
+            <Image className="w-4 h-4" />
+            Image
+          </button>
+        </div>
+      </header>
 
-          {startImage ? (
-            <div className="relative w-full h-full">
-              <img
-                src={startImage.url}
-                alt="Start frame"
-                className="w-full h-full object-cover rounded-md"
-              />
-              {onClearStartImage && (
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            void handleFile(file);
+          }
+          event.target.value = '';
+        }}
+        disabled={isUploadDisabled}
+      />
+
+      {activeTab === 'video' ? (
+        <>
+          <div className="h-[74px] px-3 pt-3 flex gap-1.5">
+            <div className="relative w-[110px] h-[62px]">
+              <button
+                type="button"
+                className={cn(
+                  'w-full h-full rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]',
+                  'flex items-center justify-center cursor-pointer overflow-hidden',
+                  isDragging && 'shadow-[inset_0_0_0_1px_#B3AFFD]'
+                )}
+                onClick={() => {
+                  if (isUploadDisabled) return;
+                  inputRef.current?.click();
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!isUploadDisabled) {
+                    setIsDragging(true);
+                  }
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsDragging(false);
+                }}
+                onDrop={handleDrop}
+                aria-disabled={isUploadDisabled}
+              >
+                {startImage ? (
+                  <img
+                    src={startImage.url}
+                    alt="Start frame"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <Plus className="w-4 h-4 text-white" />
+                )}
+              </button>
+
+              {startImage && onClearStartImage && (
                 <button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     onClearStartImage();
                   }}
-                  className="absolute right-2 top-2 rounded-md bg-[#1B1E23] px-2 py-1 text-xs text-[#A1AFC5]"
+                  className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
                 >
                   Clear
                 </button>
               )}
             </div>
-          ) : (
-            <>
-              <Upload className="w-8 h-8 text-[#B3AFFD]" />
-              <p className="mt-3 text-white">
-                {isUploading ? 'Uploading image...' : 'Drop an image or click to upload'}
-              </p>
+
+            <div className="flex gap-1.5">
+              <div className="w-[110px] h-[62px] rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]" />
+              <div className="w-[110px] h-[62px] rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]" />
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-hidden px-3">
+            <div
+              ref={promptEditorRef}
+              className={cn(
+                'h-full overflow-y-auto p-3',
+                'text-white text-sm leading-6 whitespace-pre-wrap',
+                'outline-none',
+                !onPromptChange && 'opacity-80'
+              )}
+              role="textbox"
+              contentEditable={Boolean(onPromptChange)}
+              suppressContentEditableWarning
+              aria-label="Text Prompt Input"
+              onInput={handlePromptInput}
+              onPaste={(event) => {
+                if (!onPromptChange) return;
+                event.preventDefault();
+                const text = event.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+              }}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden px-4 pt-3">
+          {/* Text Editor Panel (Runway-style) */}
+          <div className="flex flex-col overflow-hidden">
+            <div className="flex flex-col flex-1 min-h-0 relative border border-[#2C3037] rounded-lg overflow-auto">
+              {/* Image Slot Row */}
+              <div className="flex gap-1.5 pt-3 px-3" data-layout-mode="single-row">
+                {/* Interactive Slot */}
+                <div className="relative block min-w-[62px] w-[110px] h-[62px] group">
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full h-full flex items-center justify-center',
+                      'bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
+                      'cursor-pointer overflow-hidden',
+                      isUploadDisabled && 'opacity-60 cursor-not-allowed'
+                    )}
+                    onClick={() => {
+                      if (isUploadDisabled) return;
+                      inputRef.current?.click();
+                    }}
+                    aria-label="Add an image reference"
+                    disabled={isUploadDisabled}
+                  >
+                    {startImage ? (
+                      <img
+                        src={startImage.url}
+                        alt="Reference"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <Plus className="w-4 h-4 text-white" />
+                    )}
+                  </button>
+
+                  {/* Hover Buttons */}
+                  <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037] group-hover:flex">
+                    <button
+                      type="button"
+                      className="w-6 h-6 flex items-center justify-center bg-transparent border border-[#2C3037] rounded text-[#A1AFC5] cursor-pointer hover:bg-[#12131A]"
+                      aria-label="Sketch your scene"
+                      onClick={() => {
+                        // placeholder for future sketch flow
+                      }}
+                      disabled={isUploadDisabled}
+                    >
+                      <Highlighter className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-6 h-6 flex items-center justify-center bg-white rounded text-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Add an image reference"
+                      onClick={() => {
+                        if (isUploadDisabled) return;
+                        inputRef.current?.click();
+                      }}
+                      disabled={isUploadDisabled}
+                    >
+                      <Upload className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Placeholder Slots */}
+                <div className="flex gap-1.5">
+                  <div className="w-[110px] h-[62px] flex items-center justify-center bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]" />
+                  <div className="w-[110px] h-[62px] flex items-center justify-center bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]" />
+                </div>
+              </div>
+
+              {/* Text Editor */}
+              <div className="relative flex flex-col min-h-[128px] rounded-lg overflow-hidden">
+                <div
+                  ref={promptEditorRef}
+                  className={cn(
+                    'flex-1 p-3 bg-transparent text-white text-base leading-6',
+                    'overflow-y-auto whitespace-pre-wrap break-words',
+                    'outline-none',
+                    !onPromptChange && 'opacity-80'
+                  )}
+                  contentEditable={Boolean(onPromptChange)}
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label="Text Prompt Input"
+                  spellCheck
+                  onInput={handlePromptInput}
+                  onPaste={(event) => {
+                    if (!onPromptChange) return;
+                    event.preventDefault();
+                    const text = event.clipboardData.getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                  }}
+                />
+
+                {/* Placeholder */}
+                {Boolean(onPromptChange) && !prompt.trim() && (
+                  <span className="absolute top-3 left-3 text-base leading-6 text-[#7C839C]">
+                    Describe your shot,{' '}
+                    <button
+                      type="button"
+                      className="text-[#A1AFC5] underline cursor-pointer bg-transparent border-0 p-0"
+                      onClick={() => {
+                        setImageSubTab('references');
+                      }}
+                    >
+                      add image references
+                    </button>
+                    , or{' '}
+                    <button
+                      type="button"
+                      className="text-[#A1AFC5] underline cursor-pointer bg-transparent border-0 p-0"
+                      onClick={() => {
+                        // placeholder for future sketch flow
+                      }}
+                    >
+                      sketch a scene
+                    </button>
+                    .{' '}
+                  </span>
+                )}
+
+                {/* Toolbar */}
+                <div className="flex items-center justify-between gap-2 p-3 min-h-[40px]">
+                  <div className="flex items-center gap-1 flex-1">
+                    <button
+                      type="button"
+                      aria-label="Copy text"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                      onClick={() => void handleCopy()}
+                      disabled={!prompt.trim()}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Clear text"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                      onClick={() => onPromptChange?.('')}
+                      disabled={!onPromptChange || !prompt.trim()}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label="View guide"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                      onClick={() => {
+                        window.open('https://help.runwayml.com/hc/en-us/articles/40042718905875', '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <GraduationCap className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Generate prompt from image"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                      onClick={() => {
+                        // placeholder for future "generate from image" flow
+                      }}
+                    >
+                      <ScanEye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Header */}
+          <div className="flex items-center justify-between">
+            {/* Tab List */}
+            <div className="flex gap-2" role="tablist" aria-orientation="horizontal">
+              {/* References Tab */}
               <button
                 type="button"
-                className="mt-3 h-8 px-3 border border-[#2C3037] rounded-md text-[#A1AFC5] text-sm"
-                disabled={isUploadDisabled}
+                onClick={() => setImageSubTab('references')}
+                className={cn(
+                  'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
+                  'text-sm font-medium leading-5 cursor-pointer',
+                  imageSubTab === 'references'
+                    ? 'bg-[#2C3037] border border-[#2C3037] text-white'
+                    : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+                )}
+                role="tab"
+                aria-selected={imageSubTab === 'references'}
               >
-                Select
+                <Images className="w-4 h-4" />
+                <span className="px-0.5">References</span>
               </button>
-            </>
-          )}
-        </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#A1AFC5]">
-            Model
-          </div>
-          <ModelSelectorDropdown
-            selectedModel={selectedModel}
-            onModelChange={onModelChange}
-            variant="pillDark"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#A1AFC5]">
-              Aspect Ratio
+              {/* Styles Tab */}
+              <button
+                type="button"
+                onClick={() => setImageSubTab('styles')}
+                className={cn(
+                  'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
+                  'text-sm font-medium leading-5 cursor-pointer',
+                  imageSubTab === 'styles'
+                    ? 'bg-[#2C3037] border border-[#2C3037] text-white'
+                    : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+                )}
+                role="tab"
+                aria-selected={imageSubTab === 'styles'}
+              >
+                <Palette className="w-4 h-4" />
+                <span className="px-0.5">Styles</span>
+              </button>
             </div>
-            <select
-              className="h-9 px-3 rounded-md bg-[#1E1F25] border border-[#29292D] text-white text-sm"
-              value={aspectRatio}
-              onChange={(event) => onAspectRatioChange(event.target.value)}
-              disabled={aspectRatioInfo?.state.disabled}
+
+            {/* Close Button */}
+            <button
+              type="button"
+              className="flex items-center justify-center w-7 h-7 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
+              aria-label="Close Panel"
+              onClick={onBack}
             >
-              {aspectRatioOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+              <ChevronDown className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex flex-col gap-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#A1AFC5]">
-              Duration
+
+          {/* Tab Panel */}
+          <div className="flex-1 min-h-0 overflow-hidden" role="tabpanel">
+            <div className="rounded-md">
+              <div className="relative flex flex-col flex-1 min-h-0 rounded-md overflow-hidden">
+                {/* Body */}
+                <div className="flex flex-col items-center justify-center flex-1 gap-6 px-4 pb-4 bg-[#1B1E23] rounded-md text-center min-h-[310px]">
+                  {/* Image Stack */}
+                  <div className="relative w-[280px] h-[120px] flex items-center justify-center">
+                    {/* Center Image */}
+                    <img
+                      className="absolute w-[160px] h-[90px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-[15px] left-[60px] translate-y-2"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-center.jpeg"
+                      width="160"
+                      height="90"
+                      alt=""
+                    />
+                    {/* Left Image */}
+                    <img
+                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 -translate-x-24 translate-y-5"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-left.jpeg"
+                      width="71"
+                      height="40"
+                      alt=""
+                    />
+                    {/* Right Image */}
+                    <img
+                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 translate-x-[84px] -translate-y-7"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-right.jpeg"
+                      width="71"
+                      height="40"
+                      alt=""
+                    />
+                  </div>
+
+                  {/* Text Content */}
+                  <div className="flex flex-col items-center w-[336px]">
+                    <div>
+                      {/* Title */}
+                      <h2 className="text-base font-semibold text-white leading-6 text-center mb-0">
+                        Create consistent scenes with References
+                      </h2>
+                      {/* Description */}
+                      <p className="text-sm font-normal text-[#A0AEC0] leading-5 text-center mt-0">
+                        Use 1-3 character or location images to build your scene. Place characters in new settings or generate new angles.
+                        <br />
+                        <a
+                          className="font-medium underline cursor-pointer text-[#A0AEC0]"
+                          href="https://help.runwayml.com/hc/en-us/articles/40042718905875"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Learn more
+                        </a>
+                        .
+                      </p>
+                    </div>
+
+                    {/* Button Group */}
+                    <div className="flex justify-center gap-2 pt-4">
+                      {/* Assets Button (Outline) */}
+                      <button
+                        type="button"
+                        className="flex items-center justify-center gap-2 h-8 px-3 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
+                      >
+                        <Folder className="w-3.5 h-3.5" />
+                        Assets
+                      </button>
+                      {/* Upload Button (Primary White) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isUploadDisabled) {
+                            inputRef.current?.click();
+                          }
+                        }}
+                        disabled={isUploadDisabled}
+                        className="flex items-center justify-center gap-2 h-8 px-3 bg-white rounded-md text-black text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <select
-              className="h-9 px-3 rounded-md bg-[#1E1F25] border border-[#29292D] text-white text-sm"
-              value={duration}
-              onChange={(event) => onDurationChange(Number(event.target.value))}
-              disabled={durationInfo?.state.disabled}
-            >
-              {durationOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}s
-                </option>
-              ))}
-            </select>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="px-4 py-4 flex flex-col gap-2 border-t border-[#29292D]">
-        <SplitActionButton
-          label="Draft"
-          selectedModel={draftModel}
-          models={DRAFT_MODELS}
-          onRun={() => onDraft(draftModel as DraftModel)}
-          onModelChange={setDraftModel}
-          disabled={isDraftDisabled || !prompt.trim()}
-          variant="default"
-        />
-        <SplitActionButton
-          label="Render"
-          selectedModel={renderModel}
-          models={RENDER_MODELS}
-          onRun={() => onRender(renderModel)}
-          onModelChange={setRenderModel}
-          disabled={isRenderDisabled || !prompt.trim()}
-          variant="accent"
-          renderItemSuffix={(id) =>
-            I2V_SUPPORTED_MODELS.has(id) ? (
-              <span className="ml-auto rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent">
-                i2v
-              </span>
-            ) : null
-          }
-        />
-      </div>
+      {activeTab === 'video' && (
+        <>
+          <div className="h-12 flex items-center justify-between px-3 py-3 min-h-[40px] gap-2">
+            <div className="flex items-center gap-1 flex-1">
+              <button
+                type="button"
+                aria-label="Copy text"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                onClick={() => void handleCopy()}
+                disabled={!prompt.trim()}
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Clear text"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+                onClick={() => onPromptChange?.('')}
+                disabled={!onPromptChange || !prompt.trim()}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="View guide"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23] opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <BookOpen className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Generate prompt"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23] opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <Wand2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="h-[52px] px-4 py-3 flex items-center justify-between">
+            <div className="flex gap-1" />
+
+            <div className="flex gap-1">
+              <button
+                type="button"
+                className="w-[37px] h-7 px-2 rounded-md bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm"
+                disabled
+              >
+                1
+              </button>
+              <select
+                className="h-7 px-2 rounded-md bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm"
+                value={aspectRatio}
+                onChange={(event) => onAspectRatioChange(event.target.value)}
+                disabled={aspectRatioInfo?.state.disabled}
+                aria-label="Aspect ratio"
+              >
+                {aspectRatioOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="h-7 px-2 rounded-md bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm"
+                value={duration}
+                onChange={(event) => onDurationChange(Number(event.target.value))}
+                disabled={durationInfo?.state.disabled}
+                aria-label="Duration"
+              >
+                {durationOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}s
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="w-7 h-7 rounded-md bg-[#1E1F25] border border-[#29292D] flex items-center justify-center text-[#A1AFC5]"
+                aria-label="Advanced settings"
+                disabled
+              >
+                <Settings2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
+            <div className="flex items-center gap-2">
+              <ModelSelectorDropdown
+                selectedModel={selectedModel}
+                onModelChange={onModelChange}
+                variant="pillDark"
+                buttonClassName="h-10 rounded-lg px-3"
+              />
+              <button
+                type="button"
+                className="w-7 h-7 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+                aria-label="Info"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold"
+              onClick={() => onRender(selectedModel || 'sora-2')}
+              disabled={isRenderDisabled || !prompt.trim()}
+            >
+              Generate
+            </button>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

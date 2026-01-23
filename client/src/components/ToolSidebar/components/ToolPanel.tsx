@@ -8,7 +8,8 @@ export function ToolPanel({ activePanel, children }: ToolPanelProps): ReactEleme
       className={cn(
         'w-[400px] min-w-[400px] h-full',
         'bg-[#131416] flex flex-col overflow-hidden',
-        'flex-none'
+        'relative text-white text-base leading-4',
+        'flex-[25_1_0px] basis-0'
       )}
       data-panel={activePanel}
     >

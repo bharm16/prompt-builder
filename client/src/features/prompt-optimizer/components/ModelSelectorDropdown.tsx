@@ -15,7 +15,16 @@ export const ModelSelectorDropdown = memo<{
   disabled?: boolean;
   variant?: 'default' | 'pill' | 'pillDark';
   prefixLabel?: string;
-}>(({ selectedModel, onModelChange, disabled = false, variant = 'default', prefixLabel }): React.ReactElement => {
+  buttonClassName?: string;
+}>(
+  ({
+    selectedModel,
+    onModelChange,
+    disabled = false,
+    variant = 'default',
+    prefixLabel,
+    buttonClassName,
+  }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -179,7 +188,8 @@ export const ModelSelectorDropdown = memo<{
           'inline-flex h-8 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-label-12 font-semibold text-foreground transition-colors',
           'hover:bg-surface-3 hover:border-border-strong',
           'data-[open=true]:border-accent/70 data-[open=true]:ring-2 data-[open=true]:ring-accent/10',
-          'disabled:cursor-not-allowed disabled:opacity-60'
+          'disabled:cursor-not-allowed disabled:opacity-60',
+          buttonClassName
         )}
         data-open={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"

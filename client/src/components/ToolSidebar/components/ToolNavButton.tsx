@@ -22,14 +22,16 @@ export function ToolNavButton({
       <button
         type="button"
         className={cn(
-          'w-11 h-[34px] px-1.5 py-px flex flex-col items-center gap-1',
+          'w-11 h-[34px] px-1.5 py-px flex flex-col items-center justify-center gap-1',
           'cursor-pointer'
         )}
         onClick={onClick}
         aria-label={label}
       >
         <Icon className="w-4 h-4 text-[#A1AFC5]" />
-        <span className="text-[11px] font-medium text-[#A1AFC5]">{label}</span>
+        <span className="text-[11px] leading-none font-medium text-[#A1AFC5]">
+          {label}
+        </span>
       </button>
     );
   }
@@ -38,29 +40,22 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        'w-10 h-[50px] px-1.5 py-px flex flex-col items-center gap-1',
+        'w-11 h-[34px] px-1.5 py-px flex flex-col items-center justify-center gap-1',
         'cursor-pointer'
       )}
       onClick={onClick}
       aria-label={label}
       aria-pressed={isActive}
     >
-      <div
+      <Icon
         className={cn(
-          'w-8 h-8 rounded-lg flex items-center justify-center',
-          isActive ? 'bg-[#2C3037]' : 'bg-transparent'
+          'w-4 h-4 stroke-[1.2px]',
+          isActive ? 'text-white' : 'text-[#A1AFC5]'
         )}
-      >
-        <Icon
-          className={cn(
-            'w-5 h-5 stroke-[1.2px]',
-            isActive ? 'text-white' : 'text-[#A1AFC5]'
-          )}
-        />
-      </div>
+      />
       <span
         className={cn(
-          'text-[11px] font-medium',
+          'text-[11px] leading-none font-medium',
           isActive ? 'text-white' : 'text-[#A1AFC5]'
         )}
       >

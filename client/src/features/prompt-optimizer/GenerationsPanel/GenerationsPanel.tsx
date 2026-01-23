@@ -46,7 +46,7 @@ const EmptyState = ({
       <Button
         type="button"
         variant="outline"
-        className="mt-4 h-8 px-3 text-sm font-semibold rounded-md"
+        className="mt-4 h-8 px-3 rounded-md text-sm font-semibold tracking-[0.14px] border-[#2C3037] text-[#A1AFC5] shadow-none"
         onClick={onRunDraft}
         disabled={isRunDraftDisabled}
       >

@@ -34,6 +34,7 @@ export interface ToolSidebarProps {
 
   // Generation controls panel
   prompt: string;
+  onPromptChange?: (prompt: string) => void;
   aspectRatio: string;
   duration: number;
   selectedModel: string;

@@ -31,6 +31,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     activeStatusLabel,
     activeModelLabel,
     prompt,
+    onPromptChange,
     aspectRatio,
     duration,
     selectedModel,
@@ -88,6 +89,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
         {activePanel === 'tool' && (
           <GenerationControlsPanel
             prompt={prompt}
+            {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
             aspectRatio={aspectRatio}
             duration={duration}
             selectedModel={selectedModel}
@@ -102,6 +104,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
             {...(typeof onClearStartImage === 'function' ? { onClearStartImage } : {})}
             {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
+            onBack={() => setActivePanel('sessions')}
           />
         )}
 
