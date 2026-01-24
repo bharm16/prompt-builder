@@ -1,4 +1,5 @@
 import type { Asset, AssetListResponse } from '@shared/types/asset';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 const API_BASE = '/api/assets';
 
@@ -17,7 +18,11 @@ async function handleError(response: Response, fallback: string): Promise<never>
 export const assetApi = {
   async list(type: string | null = null): Promise<AssetListResponse> {
     const url = type ? `${API_BASE}?type=${type}` : API_BASE;
-    const response = await fetch(url, { credentials: 'include' });
+    const authHeaders = await buildFirebaseAuthHeaders();
+    const response = await fetch(url, {
+      headers: authHeaders,
+      credentials: 'include',
+    });
     if (!response.ok) {
       return await handleError(response, 'Failed to fetch assets');
     }
@@ -25,7 +30,9 @@ export const assetApi = {
   },
 
   async get(assetId: string): Promise<Asset> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
+      headers: authHeaders,
       credentials: 'include',
     });
     if (!response.ok) {
@@ -41,9 +48,13 @@ export const assetApi = {
     textDefinition?: string;
     negativePrompt?: string;
   }): Promise<Asset> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(API_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       credentials: 'include',
       body: JSON.stringify(data),
     });
@@ -62,9 +73,13 @@ export const assetApi = {
       negativePrompt?: string;
     }
   ): Promise<Asset> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       credentials: 'include',
       body: JSON.stringify(data),
     });
@@ -75,8 +90,10 @@ export const assetApi = {
   },
 
   async delete(assetId: string): Promise<boolean> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
       method: 'DELETE',
+      headers: authHeaders,
       credentials: 'include',
     });
     if (!response.ok) {
@@ -86,9 +103,11 @@ export const assetApi = {
   },
 
   async getSuggestions(query: string) {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(
       `${API_BASE}/suggestions?q=${encodeURIComponent(query)}`,
       {
+        headers: authHeaders,
         credentials: 'include',
       }
     );
@@ -99,9 +118,13 @@ export const assetApi = {
   },
 
   async resolve(prompt: string) {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/resolve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       credentials: 'include',
       body: JSON.stringify({ prompt }),
     });
@@ -112,9 +135,13 @@ export const assetApi = {
   },
 
   async validate(prompt: string) {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/validate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       credentials: 'include',
       body: JSON.stringify({ prompt }),
     });
@@ -137,8 +164,10 @@ export const assetApi = {
       }
     });
 
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/images`, {
       method: 'POST',
+      headers: authHeaders,
       credentials: 'include',
       body: formData,
     });
@@ -149,8 +178,10 @@ export const assetApi = {
   },
 
   async deleteImage(assetId: string, imageId: string): Promise<boolean> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/images/${imageId}`, {
       method: 'DELETE',
+      headers: authHeaders,
       credentials: 'include',
     });
     if (!response.ok) {
@@ -160,10 +191,12 @@ export const assetApi = {
   },
 
   async setPrimaryImage(assetId: string, imageId: string): Promise<Asset> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(
       `${API_BASE}/${assetId}/images/${imageId}/primary`,
       {
         method: 'PATCH',
+        headers: authHeaders,
         credentials: 'include',
       }
     );
@@ -174,7 +207,9 @@ export const assetApi = {
   },
 
   async getForGeneration(assetId: string) {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/for-generation`, {
+      headers: authHeaders,
       credentials: 'include',
     });
     if (!response.ok) {

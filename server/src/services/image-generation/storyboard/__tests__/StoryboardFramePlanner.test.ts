@@ -50,6 +50,19 @@ describe('StoryboardFramePlanner', () => {
       expect(result).toEqual(buildFallbackDeltas(3));
     });
 
+    it('pads missing deltas with fallback when repair also returns too few', async () => {
+      const { client, completeMock } = createClient();
+      completeMock
+        .mockResolvedValueOnce(buildResponse('{"deltas": ["first", "second"]}'))
+        .mockResolvedValueOnce(buildResponse('{"deltas": ["only one"]}'));
+
+      const planner = new StoryboardFramePlanner({ llmClient: client });
+      const result = await planner.planDeltas('prompt', 4);
+
+      const fallback = buildFallbackDeltas(3);
+      expect(result).toEqual(['first', 'second', fallback[2]]);
+    });
+
     it('recovers by using repair output after an invalid plan response', async () => {
       const { client, completeMock } = createClient();
       completeMock

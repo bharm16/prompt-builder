@@ -3,6 +3,7 @@ import { VideoGenerationService } from '@services/video-generation/VideoGenerati
 import type { ResolvedPrompt } from '@shared/types/asset';
 import KeyframeGenerationService, { type KeyframeResult } from './KeyframeGenerationService';
 import AssetService from '@services/asset/AssetService';
+import { logger } from '@infrastructure/Logger';
 
 export interface ConsistentVideoRequest {
   userId: string;
@@ -17,6 +18,7 @@ export class ConsistentVideoService {
   private readonly keyframeService: KeyframeGenerationService;
   private readonly assetService: AssetService;
   private readonly videoGenerationService: VideoGenerationService;
+  private readonly log = logger.child({ service: 'ConsistentVideoService' });
 
   constructor(options: {
     keyframeService?: KeyframeGenerationService;
@@ -45,66 +47,104 @@ export class ConsistentVideoService {
     validation?: { isValid: boolean; confidence: number | null };
     character?: { id: string; name: string; trigger: string };
   }> {
-    onProgress?.({ stage: 'resolve', message: 'Resolving assets...' });
-    const resolved = await this.assetService.resolvePrompt(userId, prompt);
+    const operation = 'generateConsistentVideo';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      promptLength: prompt.length,
+      videoModel,
+      aspectRatio,
+      duration,
+    });
 
-    if (!resolved.requiresKeyframe || resolved.characters.length === 0) {
+    try {
+      onProgress?.({ stage: 'resolve', message: 'Resolving assets...' });
+      const resolved = await this.assetService.resolvePrompt(userId, prompt);
+
+      if (!resolved.requiresKeyframe || resolved.characters.length === 0) {
+        onProgress?.({ stage: 'video', message: 'Generating video...' });
+        const video = await this.generateVideoFromPrompt({
+          prompt: resolved.expandedText,
+          model: videoModel,
+          aspectRatio,
+          duration,
+        });
+        this.log.info('Operation completed.', {
+          operation,
+          userId,
+          duration: Math.round(performance.now() - startTime),
+          usedKeyframe: false,
+          videoModel,
+        });
+        return { video, resolved };
+      }
+
+      const primaryCharacter = resolved.characters[0];
+      const characterData = await this.assetService.getAssetForGeneration(
+        userId,
+        primaryCharacter.id
+      );
+
+      onProgress?.({
+        stage: 'keyframe',
+        message: `Generating keyframe with ${characterData.name}...`,
+      });
+
+      const keyframe = await this.keyframeService.generateKeyframe({
+        prompt: resolved.expandedText,
+        character: {
+          primaryImageUrl: characterData.primaryImageUrl,
+          negativePrompt: characterData.negativePrompt,
+          faceEmbedding: characterData.faceEmbedding,
+        },
+        aspectRatio: this.resolveKeyframeAspectRatio(aspectRatio),
+      });
+
+      const validation = await this.keyframeService.validateKeyframeFace(
+        keyframe.imageUrl,
+        primaryCharacter
+      );
+
       onProgress?.({ stage: 'video', message: 'Generating video...' });
-      const video = await this.generateVideoFromPrompt({
+      const video = await this.generateVideoFromKeyframe({
+        keyframeUrl: keyframe.imageUrl,
         prompt: resolved.expandedText,
         model: videoModel,
         aspectRatio,
         duration,
       });
-      return { video, resolved };
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+        usedKeyframe: true,
+        videoModel,
+        validationConfidence: validation.confidence,
+      });
+
+      return {
+        keyframe,
+        video,
+        resolved,
+        validation,
+        character: {
+          id: characterData.id,
+          name: characterData.name,
+          trigger: characterData.trigger,
+        },
+      };
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+        videoModel,
+      });
+      throw error;
     }
-
-    const primaryCharacter = resolved.characters[0];
-    const characterData = await this.assetService.getAssetForGeneration(
-      userId,
-      primaryCharacter.id
-    );
-
-    onProgress?.({
-      stage: 'keyframe',
-      message: `Generating keyframe with ${characterData.name}...`,
-    });
-
-    const keyframe = await this.keyframeService.generateKeyframe({
-      prompt: resolved.expandedText,
-      character: {
-        primaryImageUrl: characterData.primaryImageUrl,
-        negativePrompt: characterData.negativePrompt,
-        faceEmbedding: characterData.faceEmbedding,
-      },
-      aspectRatio: this.resolveKeyframeAspectRatio(aspectRatio),
-    });
-
-    const validation = await this.keyframeService.validateKeyframeFace(
-      keyframe.imageUrl,
-      primaryCharacter
-    );
-
-    onProgress?.({ stage: 'video', message: 'Generating video...' });
-    const video = await this.generateVideoFromKeyframe({
-      keyframeUrl: keyframe.imageUrl,
-      prompt: resolved.expandedText,
-      model: videoModel,
-      aspectRatio,
-      duration,
-    });
-
-    return {
-      keyframe,
-      video,
-      resolved,
-      validation,
-      character: {
-        id: characterData.id,
-        name: characterData.name,
-        trigger: characterData.trigger,
-      },
-    };
   }
 
   async generateVideoFromKeyframe({

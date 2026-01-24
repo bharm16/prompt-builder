@@ -98,6 +98,8 @@ export class FalPulidKeyframeProvider {
       throw new Error('Face reference image URL is required');
     }
 
+    const operation = 'generateKeyframe';
+    const startTime = performance.now();
     const aspectRatio = options.aspectRatio ?? DEFAULT_ASPECT_RATIO;
     const dimensions = (aspectRatio in ASPECT_RATIO_DIMENSIONS)
       ? ASPECT_RATIO_DIMENSIONS[aspectRatio as AspectRatio]
@@ -117,27 +119,38 @@ export class FalPulidKeyframeProvider {
     };
 
     this.log.info('Generating PuLID keyframe', {
-      prompt: options.prompt.substring(0, 100),
+      operation,
+      promptLength: options.prompt.length,
       aspectRatio,
       idWeight,
       dimensions,
+      hasNegativePrompt: Boolean(options.negativePrompt),
+      hasSeed: options.seed !== undefined,
     });
-
-    const startTime = Date.now();
 
     try {
       const result = await this.callFalApi<FalPulidResponse>(FAL_PULID_MODEL, input);
-      const durationMs = Date.now() - startTime;
+      const durationMs = Math.round(performance.now() - startTime);
 
       const imageUrl = this.extractImageUrl(result);
       if (!imageUrl) {
         throw new Error('PuLID generation returned no output image');
       }
 
+      let imageHost: string | undefined;
+      try {
+        imageHost = new URL(imageUrl).host;
+      } catch {
+        imageHost = undefined;
+      }
+
       this.log.info('PuLID keyframe generated successfully', {
-        imageUrl: imageUrl.substring(0, 100),
+        operation,
+        ...(imageHost ? { imageHost } : {}),
         durationMs,
         seed: result.seed,
+        aspectRatio,
+        idWeight,
       });
 
       return {
@@ -151,7 +164,11 @@ export class FalPulidKeyframeProvider {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.error('PuLID keyframe generation failed', error as Error, {
-        prompt: options.prompt.substring(0, 100),
+        operation,
+        durationMs: Math.round(performance.now() - startTime),
+        promptLength: options.prompt.length,
+        aspectRatio,
+        idWeight,
       });
       throw new Error(`PuLID keyframe generation failed: ${errorMessage}`);
     }
@@ -182,6 +199,7 @@ export class FalPulidKeyframeProvider {
    * Call the fal.ai API with queue support
    */
   private async callFalApi<T>(model: string, input: Record<string, unknown>): Promise<T> {
+    const operation = 'callFalApi';
     const baseUrl = 'https://queue.fal.run';
     const submitUrl = `${baseUrl}/${model}`;
 
@@ -203,7 +221,7 @@ export class FalPulidKeyframeProvider {
     const submitResult = await submitResponse.json() as { request_id: string; status_url: string; response_url: string };
     const { request_id, status_url, response_url } = submitResult;
 
-    this.log.debug('Fal request submitted', { requestId: request_id });
+    this.log.debug('Fal request submitted', { operation, model, requestId: request_id });
 
     // Poll for completion
     const maxWaitTime = 120000; // 2 minutes
@@ -242,7 +260,7 @@ export class FalPulidKeyframeProvider {
       if (status.logs && status.logs.length > 0) {
         const lastLog = status.logs[status.logs.length - 1];
         if (lastLog) {
-          this.log.debug('Fal progress', { message: lastLog.message });
+          this.log.debug('Fal progress', { operation, requestId: request_id, message: lastLog.message });
         }
       }
 

@@ -3,6 +3,7 @@ import { SignedUrlService } from './services/SignedUrlService';
 import { UploadService } from './services/UploadService';
 import { RetentionService } from './services/RetentionService';
 import { ensureGcsCredentials } from '@utils/gcsCredentials';
+import { logger } from '@infrastructure/Logger';
 import {
   STORAGE_CONFIG,
   STORAGE_TYPES,
@@ -30,12 +31,23 @@ function isAllowedContentType(type: StorageType, contentType: string): boolean {
   return allowed.some((allowedType) => normalized.startsWith(allowedType));
 }
 
+function safeUrlHost(value: string): string | null {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+type SuccessLogLevel = 'debug' | 'info';
+
 export class StorageService {
   private readonly storage: Storage;
   private readonly bucket;
   private readonly signedUrlService: SignedUrlService;
   private readonly uploadService: UploadService;
   private readonly retentionService: RetentionService;
+  private readonly log = logger.child({ service: 'StorageService' });
 
   constructor(dependencies: {
     storage?: Storage;
@@ -51,6 +63,38 @@ export class StorageService {
     this.signedUrlService = dependencies.signedUrlService || new SignedUrlService(this.storage);
     this.uploadService = dependencies.uploadService || new UploadService(this.storage);
     this.retentionService = dependencies.retentionService || new RetentionService(this.storage);
+  }
+
+  private async withTiming<T>(
+    operation: string,
+    meta: Record<string, unknown>,
+    fn: () => Promise<T>,
+    successLevel: SuccessLogLevel = 'info'
+  ): Promise<T> {
+    const startTime = Date.now();
+    this.log.debug('Storage operation started', { operation, ...meta });
+
+    try {
+      const result = await fn();
+      const duration = Date.now() - startTime;
+      const payload = { operation, duration, ...meta };
+
+      if (successLevel === 'info') {
+        this.log.info('Storage operation completed', payload);
+      } else {
+        this.log.debug('Storage operation completed', payload);
+      }
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.log.error('Storage operation failed', error as Error, {
+        operation,
+        duration,
+        ...meta,
+      });
+      throw error;
+    }
   }
 
   async getUploadUrl(
@@ -77,20 +121,34 @@ export class StorageService {
     const path = generateStoragePath(userId, type, extension);
     const maxSize = STORAGE_CONFIG.maxFileSize[resolveStorageTypeKey(type)];
 
-    const { uploadUrl, expiresAt } = await this.signedUrlService.getUploadUrl(
-      path,
-      normalizedContentType,
-      maxSize
+    const result = await this.withTiming(
+      'getUploadUrl',
+      {
+        userId,
+        type,
+        contentType: normalizedContentType,
+        maxSizeBytes: maxSize,
+        storagePath: path,
+      },
+      async () => {
+        const { uploadUrl, expiresAt } = await this.signedUrlService.getUploadUrl(
+          path,
+          normalizedContentType,
+          maxSize
+        );
+
+        void _metadata;
+
+        return {
+          uploadUrl,
+          storagePath: path,
+          expiresAt,
+          maxSizeBytes: maxSize,
+        };
+      }
     );
 
-    void _metadata;
-
-    return {
-      uploadUrl,
-      storagePath: path,
-      expiresAt,
-      maxSizeBytes: maxSize,
-    };
+    return result;
   }
 
   async saveFromUrl(
@@ -110,22 +168,34 @@ export class StorageService {
       throw new Error(`Invalid storage type: ${type}`);
     }
 
-    const uploadResult = await this.uploadService.uploadFromUrl(
-      sourceUrl,
-      userId,
-      type,
-      metadata
+    const result = await this.withTiming(
+      'saveFromUrl',
+      {
+        userId,
+        type,
+        sourceHost: safeUrlHost(sourceUrl),
+      },
+      async () => {
+        const uploadResult = await this.uploadService.uploadFromUrl(
+          sourceUrl,
+          userId,
+          type,
+          metadata
+        );
+
+        const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+          uploadResult.storagePath
+        );
+
+        return {
+          ...uploadResult,
+          viewUrl,
+          expiresAt,
+        };
+      }
     );
 
-    const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-      uploadResult.storagePath
-    );
-
-    return {
-      ...uploadResult,
-      viewUrl,
-      expiresAt,
-    };
+    return result;
   }
 
   async uploadBuffer(
@@ -145,23 +215,36 @@ export class StorageService {
       throw new Error(`Invalid storage type: ${type}`);
     }
 
-    const uploadResult = await this.uploadService.uploadBuffer(
-      buffer,
-      userId,
-      type,
-      contentType,
-      metadata
+    const result = await this.withTiming(
+      'uploadBuffer',
+      {
+        userId,
+        type,
+        contentType: normalizeContentType(contentType),
+        sizeBytes: buffer.length,
+      },
+      async () => {
+        const uploadResult = await this.uploadService.uploadBuffer(
+          buffer,
+          userId,
+          type,
+          contentType,
+          metadata
+        );
+
+        const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+          uploadResult.storagePath
+        );
+
+        return {
+          ...uploadResult,
+          viewUrl,
+          expiresAt,
+        };
+      }
     );
 
-    const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-      uploadResult.storagePath
-    );
-
-    return {
-      ...uploadResult,
-      viewUrl,
-      expiresAt,
-    };
+    return result;
   }
 
   async confirmUpload(userId: string, storagePath: string): Promise<{
@@ -170,7 +253,11 @@ export class StorageService {
     contentType: string | undefined;
     createdAt: string;
   }> {
-    return this.uploadService.confirmUpload(storagePath, userId);
+    return this.withTiming(
+      'confirmUpload',
+      { userId, storagePath },
+      async () => this.uploadService.confirmUpload(storagePath, userId)
+    );
   }
 
   async getViewUrl(
@@ -181,7 +268,12 @@ export class StorageService {
       throw new Error('Unauthorized - cannot access files belonging to other users');
     }
 
-    return this.signedUrlService.getViewUrl(storagePath);
+    return this.withTiming(
+      'getViewUrl',
+      { userId, storagePath },
+      async () => this.signedUrlService.getViewUrl(storagePath),
+      'debug'
+    );
   }
 
   async getDownloadUrl(
@@ -193,25 +285,48 @@ export class StorageService {
       throw new Error('Unauthorized - cannot access files belonging to other users');
     }
 
-    return this.signedUrlService.getDownloadUrl(storagePath, filename);
+    return this.withTiming(
+      'getDownloadUrl',
+      { userId, storagePath, hasFilename: Boolean(filename) },
+      async () => this.signedUrlService.getDownloadUrl(storagePath, filename),
+      'debug'
+    );
   }
 
   async listFiles(
     userId: string,
     options: { type?: string | null; limit?: number; pageToken?: string | null } = {}
   ): Promise<{ items: unknown[]; nextCursor: string | null }> {
-    return this.retentionService.listUserFiles(userId, options);
+    return this.withTiming(
+      'listFiles',
+      {
+        userId,
+        type: options.type ?? null,
+        limit: options.limit ?? null,
+        hasPageToken: Boolean(options.pageToken),
+      },
+      async () => this.retentionService.listUserFiles(userId, options),
+      'debug'
+    );
   }
 
   async deleteFile(userId: string, storagePath: string): Promise<{ deleted: boolean; path: string }> {
-    return this.retentionService.deleteFile(storagePath, userId);
+    return this.withTiming(
+      'deleteFile',
+      { userId, storagePath },
+      async () => this.retentionService.deleteFile(storagePath, userId)
+    );
   }
 
   async deleteFiles(
     userId: string,
     storagePaths: string[]
   ): Promise<{ deleted: number; failed: number; details: unknown[] }> {
-    return this.retentionService.deleteFiles(storagePaths, userId);
+    return this.withTiming(
+      'deleteFiles',
+      { userId, pathsCount: storagePaths.length },
+      async () => this.retentionService.deleteFiles(storagePaths, userId)
+    );
   }
 
   async getStorageUsage(userId: string): Promise<{
@@ -220,13 +335,25 @@ export class StorageService {
     byType: Record<string, number>;
     fileCount: number;
   }> {
-    return this.retentionService.getUserStorageUsage(userId);
+    return this.withTiming(
+      'getStorageUsage',
+      { userId },
+      async () => this.retentionService.getUserStorageUsage(userId),
+      'debug'
+    );
   }
 
   async fileExists(storagePath: string): Promise<boolean> {
-    const file = this.bucket.file(storagePath);
-    const [exists] = await file.exists();
-    return exists;
+    return this.withTiming(
+      'fileExists',
+      { storagePath },
+      async () => {
+        const file = this.bucket.file(storagePath);
+        const [exists] = await file.exists();
+        return exists;
+      },
+      'debug'
+    );
   }
 
   async getFileMetadata(
@@ -244,17 +371,24 @@ export class StorageService {
       throw new Error('Unauthorized');
     }
 
-    const file = this.bucket.file(storagePath);
-    const [metadata] = await file.getMetadata();
+    return this.withTiming(
+      'getFileMetadata',
+      { userId, storagePath },
+      async () => {
+        const file = this.bucket.file(storagePath);
+        const [metadata] = await file.getMetadata();
 
-    return {
-      storagePath,
-      sizeBytes: Number.parseInt(metadata.size || '0', 10),
-      contentType: metadata.contentType,
-      createdAt: metadata.timeCreated,
-      updatedAt: metadata.updated,
-      metadata: metadata.metadata || {},
-    };
+        return {
+          storagePath,
+          sizeBytes: Number.parseInt(metadata.size || '0', 10),
+          contentType: metadata.contentType,
+          createdAt: metadata.timeCreated,
+          updatedAt: metadata.updated,
+          metadata: metadata.metadata || {},
+        };
+      },
+      'debug'
+    );
   }
 }
 

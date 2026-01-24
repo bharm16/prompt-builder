@@ -62,14 +62,14 @@ export class ConflictDetectionService {
     
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       filledElementCount: filledElements.length,
       totalElements: Object.keys(params.elements).length,
     });
 
     if (filledElements.length < 2) {
-      this.log.debug(`${operation}: Insufficient elements for conflict detection`, {
+      this.log.debug('Insufficient elements for conflict detection.', {
         operation,
         filledElementCount: filledElements.length,
         duration: Math.round(performance.now() - startTime),
@@ -145,7 +145,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
       const allConflicts = [...conflicts, ...descriptorConflicts];
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         llmConflictCount: conflicts.length,
@@ -156,7 +156,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
       return { conflicts: allConflicts };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         filledElementCount: filledElements.length,

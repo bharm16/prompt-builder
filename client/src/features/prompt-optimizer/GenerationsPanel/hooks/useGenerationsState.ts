@@ -17,6 +17,36 @@ export type GenerationsAction =
 const deriveIsGenerating = (generations: Generation[]): boolean =>
   generations.some((gen) => gen.status === 'pending' || gen.status === 'generating');
 
+const serializeGeneration = (gen: Generation): string =>
+  [
+    gen.id,
+    gen.status,
+    gen.tier,
+    gen.model,
+    gen.promptVersionId ?? '',
+    gen.createdAt,
+    gen.completedAt ?? '',
+    gen.estimatedCost ?? '',
+    gen.actualCost ?? '',
+    gen.aspectRatio ?? '',
+    gen.duration ?? '',
+    gen.fps ?? '',
+    gen.thumbnailUrl ?? '',
+    gen.error ?? '',
+    gen.mediaType,
+    gen.mediaUrls.join('|'),
+  ].join('|');
+
+const areGenerationsEqual = (
+  left?: Generation[] | null,
+  right?: Generation[] | null
+): boolean => {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  if (left.length !== right.length) return false;
+  return left.map(serializeGeneration).join('||') === right.map(serializeGeneration).join('||');
+};
+
 const buildInitialState = (initial?: Generation[]): GenerationsState => {
   const generations = initial ?? [];
   const activeGenerationId = generations.length ? generations[generations.length - 1].id : null;
@@ -79,21 +109,30 @@ export function useGenerationsState({
     buildInitialState
   );
   const initialRef = useRef<Generation[] | undefined>(initialGenerations);
+  const suppressOnChangeRef = useRef(false);
 
   useEffect(() => {
-    if (!initialGenerations || initialRef.current === initialGenerations) return;
+    const hasInitial = Boolean(initialGenerations);
+    const sameRef = initialRef.current === initialGenerations;
+    const sameContent = areGenerationsEqual(initialGenerations, state.generations);
     const hasLocalForVersion = Boolean(
       promptVersionId &&
+        Array.isArray(initialGenerations) &&
         initialGenerations.length === 0 &&
         state.generations.some((gen) => gen.promptVersionId === promptVersionId)
     );
-    if (hasLocalForVersion) return;
+    if (!hasInitial || sameRef || sameContent || hasLocalForVersion) return;
 
     initialRef.current = initialGenerations;
+    suppressOnChangeRef.current = true;
     dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations });
   }, [initialGenerations, promptVersionId, state.generations]);
 
   useEffect(() => {
+    if (suppressOnChangeRef.current) {
+      suppressOnChangeRef.current = false;
+      return;
+    }
     onGenerationsChange?.(state.generations);
   }, [onGenerationsChange, state.generations]);
 

@@ -34,7 +34,7 @@ export interface VideoGenerationOptions {
   inputReference?: string;
   seconds?: '4' | '8' | '12';
   size?: string;
-  /** Asset ID of a character - triggers automatic IP-Adapter keyframe generation */
+  /** Asset ID of a character - triggers automatic PuLID keyframe generation */
   characterAssetId?: string;
   /** If true (default), automatically generate keyframe for character assets */
   autoKeyframe?: boolean;

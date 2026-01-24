@@ -32,14 +32,15 @@ export class ShotInterpreterService {
     const operation = 'interpret';
     
     if (!prompt || !prompt.trim()) {
-      this.log.debug(`${operation} skipped - empty prompt`, {
+      this.log.debug('Operation skipped.', {
         operation,
+        reason: 'empty_prompt',
         duration: Math.round(performance.now() - startTime),
       });
       return null;
     }
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       promptLength: prompt.length,
     });
@@ -80,7 +81,7 @@ export class ShotInterpreterService {
         ...(signal ? { signal } : {}),
       });
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         shotType: parsed.shot_type,
@@ -89,7 +90,7 @@ export class ShotInterpreterService {
 
       return parsed as ShotPlan;
     } catch (error) {
-      this.log.warn(`${operation} failed - continuing without structured plan`, {
+      this.log.warn('Operation failed; continuing without structured plan.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         error: (error as Error).message,

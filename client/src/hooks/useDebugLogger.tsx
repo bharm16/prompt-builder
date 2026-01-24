@@ -55,7 +55,7 @@ export function useDebugLogger(
 
   // Log renders
   if (options.logRenders) {
-    log.debug(`Render #${renderCount.current}`);
+    log.debug('Render', { renderCount: renderCount.current });
   }
 
   // Log props changes
@@ -88,7 +88,7 @@ export function useDebugLogger(
   // Memoized logging functions
   const logState = useCallback(
     (name: string, value: unknown) => {
-      log.debug(`State: ${name}`, { value: summarize(value) });
+      log.debug('State change', { name, value: summarize(value) });
     },
     [componentName]
   );
@@ -96,11 +96,11 @@ export function useDebugLogger(
   const logEffect = useCallback(
     (description: string, deps?: unknown[] | Record<string, unknown>) => {
       if (!deps) {
-        log.debug(`Effect: ${description}`);
+        log.debug('Effect triggered', { description });
       } else if (Array.isArray(deps)) {
-        log.debug(`Effect: ${description}`, { deps: deps.map(summarize) });
+        log.debug('Effect triggered', { description, deps: deps.map(summarize) });
       } else {
-        log.debug(`Effect: ${description}`, deps);
+        log.debug('Effect triggered', { description, deps });
       }
     },
     [componentName]
@@ -108,7 +108,7 @@ export function useDebugLogger(
 
   const logAction = useCallback(
     (action: string, payload?: unknown) => {
-      log.info(`Action: ${action}`, payload ? { payload: summarize(payload) } : undefined);
+      log.info('Action dispatched', payload ? { action, payload: summarize(payload) } : { action });
     },
     [componentName]
   );
@@ -131,9 +131,14 @@ export function useDebugLogger(
     (operationId: string, description?: string) => {
       const duration = logger.endTimer(`${componentName}:${operationId}`);
       if (duration !== undefined) {
-        log.debug(description || `Operation ${operationId} completed`, {
+        const meta: Record<string, unknown> = {
+          operationId,
           duration: `${duration}ms`,
-        });
+        };
+        if (description) {
+          meta.description = description;
+        }
+        log.debug('Operation completed', meta);
       }
     },
     [componentName]

@@ -106,7 +106,7 @@ export const createVideoGenerateHandler = ({
         });
       } else {
         try {
-          logger.info('Generating IP-Adapter keyframe for character', {
+          logger.info('Generating PuLID keyframe for character', {
             requestId,
             characterAssetId,
             userId,
@@ -151,7 +151,7 @@ export const createVideoGenerateHandler = ({
           resolvedStartImage = keyframeResult.imageUrl;
           generatedKeyframeUrl = keyframeResult.imageUrl;
 
-          logger.info('IP-Adapter keyframe generated successfully', {
+          logger.info('PuLID keyframe generated successfully', {
             requestId,
             characterAssetId,
             keyframeUrl: generatedKeyframeUrl,
@@ -297,7 +297,7 @@ export const createVideoGenerateHandler = ({
       options.numFrames = numFrames;
     }
 
-    logger.debug(`Queueing ${operation}`, {
+    logger.debug('Queueing operation.', {
       operation,
       requestId,
       userId,
@@ -321,7 +321,7 @@ export const createVideoGenerateHandler = ({
         creditsReserved: videoCost,
       });
 
-      logger.info(`${operation} queued`, {
+      logger.info('Operation queued.', {
         operation,
         requestId,
         userId,
@@ -358,7 +358,7 @@ export const createVideoGenerateHandler = ({
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
 
-      logger.error(`${operation} failed`, errorInstance, {
+      logger.error('Operation failed.', errorInstance, {
         operation,
         requestId,
         userId,

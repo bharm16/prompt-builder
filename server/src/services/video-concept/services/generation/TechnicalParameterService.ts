@@ -32,7 +32,7 @@ export class TechnicalParameterService {
     
     const elementCount = Object.entries(params.elements).filter(([_, v]) => v).length;
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementCount,
     });
@@ -102,7 +102,7 @@ Return ONLY a JSON object:
       ) as Record<string, unknown>;
       
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         elementCount,
@@ -112,7 +112,7 @@ Return ONLY a JSON object:
       return { technicalParams };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         elementCount,
@@ -121,4 +121,3 @@ Return ONLY a JSON object:
     }
   }
 }
-

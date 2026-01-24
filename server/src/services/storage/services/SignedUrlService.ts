@@ -1,85 +1,140 @@
 import { Storage } from '@google-cloud/storage';
 import { STORAGE_CONFIG } from '../config/storageConfig';
+import { logger } from '@infrastructure/Logger';
+
+type SuccessLogLevel = 'debug' | 'info';
 
 export class SignedUrlService {
   private readonly storage: Storage;
   private readonly bucket;
+  private readonly log = logger.child({ service: 'SignedUrlService' });
 
   constructor(storage?: Storage) {
     this.storage = storage || new Storage();
     this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
   }
 
+  private async withTiming<T>(
+    operation: string,
+    meta: Record<string, unknown>,
+    fn: () => Promise<T>,
+    successLevel: SuccessLogLevel = 'debug'
+  ): Promise<T> {
+    const startTime = Date.now();
+    this.log.debug('Signed URL operation started', { operation, ...meta });
+
+    try {
+      const result = await fn();
+      const duration = Date.now() - startTime;
+      const payload = { operation, duration, ...meta };
+
+      if (successLevel === 'info') {
+        this.log.info('Signed URL operation completed', payload);
+      } else {
+        this.log.debug('Signed URL operation completed', payload);
+      }
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.log.error('Signed URL operation failed', error as Error, {
+        operation,
+        duration,
+        ...meta,
+      });
+      throw error;
+    }
+  }
+
   async getUploadUrl(path: string, contentType: string, maxSize?: number | null): Promise<{
     uploadUrl: string;
     expiresAt: string;
   }> {
-    const file = this.bucket.file(path);
-    const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.upload;
+    return this.withTiming(
+      'getUploadUrl',
+      { path, contentType, maxSizeBytes: maxSize ?? null },
+      async () => {
+        const file = this.bucket.file(path);
+        const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.upload;
 
-    const options: Record<string, unknown> = {
-      version: 'v4',
-      action: 'write',
-      expires: expiresAtMs,
-      contentType,
-    };
+        const options: Record<string, unknown> = {
+          version: 'v4',
+          action: 'write',
+          expires: expiresAtMs,
+          contentType,
+        };
 
-    if (maxSize) {
-      options.extensionHeaders = {
-        'x-goog-content-length-range': `0,${maxSize}`,
-      };
-    }
+        if (maxSize) {
+          options.extensionHeaders = {
+            'x-goog-content-length-range': `0,${maxSize}`,
+          };
+        }
 
-    const [url] = await file.getSignedUrl(options);
-    return {
-      uploadUrl: url,
-      expiresAt: new Date(expiresAtMs).toISOString(),
-    };
+        const [url] = await file.getSignedUrl(options);
+        return {
+          uploadUrl: url,
+          expiresAt: new Date(expiresAtMs).toISOString(),
+        };
+      },
+      'info'
+    );
   }
 
   async getViewUrl(path: string, disposition = 'inline'): Promise<{
     viewUrl: string;
     expiresAt: string;
   }> {
-    const file = this.bucket.file(path);
-    const [exists] = await file.exists();
-    if (!exists) {
-      throw new Error(`File not found: ${path}`);
-    }
+    return this.withTiming(
+      'getViewUrl',
+      { path, disposition },
+      async () => {
+        const file = this.bucket.file(path);
+        const [exists] = await file.exists();
+        if (!exists) {
+          throw new Error(`File not found: ${path}`);
+        }
 
-    const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.view;
-    const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: expiresAtMs,
-      responseDisposition: disposition,
-    });
+        const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.view;
+        const [url] = await file.getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: expiresAtMs,
+          responseDisposition: disposition,
+        });
 
-    return {
-      viewUrl: url,
-      expiresAt: new Date(expiresAtMs).toISOString(),
-    };
+        return {
+          viewUrl: url,
+          expiresAt: new Date(expiresAtMs).toISOString(),
+        };
+      }
+    );
   }
 
   async getDownloadUrl(path: string, filename?: string | null): Promise<{
     downloadUrl: string;
     expiresAt: string;
   }> {
-    const file = this.bucket.file(path);
-    const downloadName = filename || path.split('/').pop() || 'download';
-    const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.download;
+    return this.withTiming(
+      'getDownloadUrl',
+      { path, hasFilename: Boolean(filename) },
+      async () => {
+        const file = this.bucket.file(path);
+        const downloadName = filename || path.split('/').pop() || 'download';
+        const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.download;
 
-    const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: expiresAtMs,
-      responseDisposition: `attachment; filename="${downloadName}"`,
-    });
+        const [url] = await file.getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: expiresAtMs,
+          responseDisposition: `attachment; filename="${downloadName}"`,
+        });
 
-    return {
-      downloadUrl: url,
-      expiresAt: new Date(expiresAtMs).toISOString(),
-    };
+        return {
+          downloadUrl: url,
+          expiresAt: new Date(expiresAtMs).toISOString(),
+        };
+      }
+    );
   }
 }
 

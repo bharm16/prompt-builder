@@ -44,14 +44,14 @@ export class CompatibilityService {
 
     // Check cache first
     if (this.semanticCache.has(cacheKey)) {
-      this.log.debug(`${operation} cache hit`, {
+      this.log.debug('Cache hit.', {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
       return this.semanticCache.get(cacheKey)!;
     }
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       suggestionLength: suggestion.text.length,
       elementCount: Object.keys(existingElements).length,
@@ -93,7 +93,7 @@ Score:`;
       const normalizedScore = isNaN(score) ? 0.5 : Math.min(1, Math.max(0, score));
       this.semanticCache.set(cacheKey, normalizedScore);
 
-      this.log.debug(`${operation} completed`, {
+      this.log.debug('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: normalizedScore,
@@ -101,7 +101,7 @@ Score:`;
 
       return normalizedScore;
     } catch (error) {
-      this.log.warn(`${operation} failed`, {
+      this.log.warn('Operation failed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         error: error instanceof Error ? error.message : String(error),
@@ -124,7 +124,7 @@ Score:`;
     const startTime = performance.now();
     const operation = 'filterBySemanticCompatibility';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       suggestionCount: suggestions.length,
       elementType: params.elementType,
@@ -162,7 +162,7 @@ Score:`;
           .slice(0, 8)
       : filtered;
 
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       inputCount: suggestions.length,
@@ -184,7 +184,7 @@ Score:`;
     const startTime = performance.now();
     const operation = 'checkCompatibility';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       valueLength: params.value.length,
@@ -192,8 +192,9 @@ Score:`;
     });
 
     if (!params.value || Object.keys(params.existingElements).length === 0) {
-      this.log.debug(`${operation} skipped - no value or elements`, {
+      this.log.debug('Operation skipped.', {
         operation,
+        reason: 'no_value_or_elements',
         duration: Math.round(performance.now() - startTime),
       });
       return { score: 1, feedback: 'No conflicts detected' };
@@ -240,7 +241,7 @@ Respond with ONLY a JSON object:
         }
       ) as CompatibilityResult;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: result.score,
@@ -249,7 +250,7 @@ Respond with ONLY a JSON object:
       
       return result;
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,
@@ -265,4 +266,3 @@ Respond with ONLY a JSON object:
     this.semanticCache.clear();
   }
 }
-

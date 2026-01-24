@@ -243,7 +243,7 @@ function getOrCreateGlinerWorker(): Worker | null {
   const operation = 'getOrCreateGlinerWorker';
 
   if (process.env.NODE_ENV === 'test' || typeof import.meta?.url !== 'string' || !import.meta.url.startsWith('file:')) {
-    log.debug(`${operation}: Skipping worker thread in current environment`);
+    log.debug('Skipping worker thread in current environment.', { operation });
     return null;
   }
 
@@ -269,7 +269,7 @@ function getOrCreateGlinerWorker(): Worker | null {
       glinerWorkerReady = false;
       glinerWorkerInitFailed = true;
       glinerWorkerInitPromise = null;
-      log.error(`${operation}: Worker error`, error as Error, { operation });
+      log.error('GLiNER worker error.', error as Error, { operation });
       failPendingGlinerRequests('GLiNER worker error');
     });
     glinerWorker.on('exit', (code) => {
@@ -278,7 +278,7 @@ function getOrCreateGlinerWorker(): Worker | null {
       glinerWorkerInitPromise = null;
       glinerWorkerInitFailed = code !== 0;
       if (code !== 0) {
-        log.warn(`${operation}: Worker exited`, { operation, code });
+        log.warn('GLiNER worker exited.', { operation, code });
       }
       failPendingGlinerRequests('GLiNER worker exited');
     });
@@ -286,7 +286,7 @@ function getOrCreateGlinerWorker(): Worker | null {
     return glinerWorker;
   } catch (error) {
     glinerWorkerInitFailed = true;
-    log.error(`${operation}: Failed to start worker`, error as Error, { operation });
+    log.error('Failed to start GLiNER worker.', error as Error, { operation });
     return null;
   }
 }
@@ -336,15 +336,15 @@ async function initializeGlinerWorker(): Promise<boolean> {
       glinerWorkerInitFailed = !glinerWorkerReady;
       const duration = Math.round(performance.now() - startTime);
       if (glinerWorkerReady) {
-        log.info(`${operation}: GLiNER worker initialized`, { operation, duration });
+        log.info('GLiNER worker initialized.', { operation, duration });
       } else {
-        log.warn(`${operation}: GLiNER worker initialization failed`, { operation, duration });
+        log.warn('GLiNER worker initialization failed.', { operation, duration });
       }
       return glinerWorkerReady;
     } catch (error) {
       glinerWorkerInitFailed = true;
       const duration = Math.round(performance.now() - startTime);
-      log.error(`${operation}: Failed`, error as Error, { operation, duration });
+      log.error('GLiNER worker initialization failed.', error as Error, { operation, duration });
       return false;
     }
   })();
@@ -367,7 +367,7 @@ async function initializeGliner(): Promise<boolean> {
 
     try {
       if (!existsSync(modelPath)) {
-        log.warn(`${operation}: Model file not found`, {
+        log.warn('GLiNER model file not found.', {
           operation,
           modelPath,
           hint: 'Download from: https://huggingface.co/onnx-community/gliner_small-v2.1/tree/main/onnx',
@@ -395,7 +395,7 @@ async function initializeGliner(): Promise<boolean> {
       glinerInitialized = true;
 
       const duration = Math.round(performance.now() - startTime);
-      log.info(`${operation}: GLiNER initialized`, {
+      log.info('GLiNER initialized.', {
         operation,
         duration,
         modelPath,
@@ -406,7 +406,7 @@ async function initializeGliner(): Promise<boolean> {
     } catch (error) {
       glinerInitFailed = true;
       const duration = Math.round(performance.now() - startTime);
-      log.error(`${operation}: Failed`, error as Error, {
+      log.error('GLiNER initialization failed.', error as Error, {
         operation,
         duration,
         modelPath,
@@ -612,10 +612,11 @@ export async function warmupGliner(): Promise<{ success: boolean; message: strin
     }
     const duration = Math.round(performance.now() - startTime);
 
-    log.info(`${operation} ${ready ? 'completed' : 'failed'}`, {
+    log.info('GLiNER warmup finished.', {
       operation,
       duration,
       success: ready,
+      status: ready ? 'completed' : 'failed',
     });
 
     return {
@@ -623,7 +624,7 @@ export async function warmupGliner(): Promise<{ success: boolean; message: strin
       message: ready ? 'GLiNER initialized' : 'GLiNER initialization failed'
     };
   } catch (error) {
-    log.error(`${operation} failed`, error as Error, { operation });
+    log.error('GLiNER warmup failed.', error as Error, { operation });
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error'

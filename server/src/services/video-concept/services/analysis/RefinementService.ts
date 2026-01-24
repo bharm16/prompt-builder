@@ -31,14 +31,14 @@ export class RefinementService {
     
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       filledElementCount: filledElements.length,
       totalElements: Object.keys(params.elements).length,
     });
 
     if (filledElements.length < 2) {
-      this.log.debug(`${operation}: Insufficient elements for refinement`, {
+      this.log.debug('Insufficient elements for refinement.', {
         operation,
         filledElementCount: filledElements.length,
         duration: Math.round(performance.now() - startTime),
@@ -84,7 +84,7 @@ Return ONLY a JSON object:
       const duration = Math.round(performance.now() - startTime);
       const refinementCount = Object.values(refinements).reduce((sum, arr) => sum + arr.length, 0);
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         elementCount: Object.keys(refinements).length,
@@ -94,7 +94,7 @@ Return ONLY a JSON object:
       return { refinements };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         filledElementCount: filledElements.length,
@@ -103,4 +103,3 @@ Return ONLY a JSON object:
     }
   }
 }
-

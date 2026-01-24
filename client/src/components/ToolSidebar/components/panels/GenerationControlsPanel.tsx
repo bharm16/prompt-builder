@@ -22,7 +22,7 @@ import {
 import { cn } from '@utils/cn';
 import { resolveFieldState } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
-import { STORYBOARD_COST, VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
+import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
 import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
 
 const DEFAULT_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:5'];
@@ -213,6 +213,66 @@ export function GenerationControlsPanel({
     isImageGenerateDisabled ||
     isVideoGenerateDisabled;
 
+  const generationFooter = (
+    <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
+      <div className="flex items-center gap-2">
+        {tier === 'draft' ? (
+          <div className="h-10 rounded-lg px-3 bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold flex items-center gap-2">
+            <span>{VIDEO_DRAFT_MODEL.label}</span>
+          </div>
+        ) : (
+          <select
+            className="h-10 px-3 rounded-lg bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold"
+            value={renderModelId}
+            onChange={(event) => onModelChange(event.target.value)}
+            aria-label="Render model"
+          >
+            {VIDEO_RENDER_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          className="w-7 h-7 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+          aria-label="Info"
+        >
+          <Info className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="h-10 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => onStoryboard()}
+          disabled={isStoryboardDisabled}
+        >
+          <span className="flex items-center gap-1">
+            <Images className="w-4 h-4" />
+            Storyboard
+          </span>
+        </button>
+        <button
+          type="button"
+          className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => {
+            if (tier === 'draft') {
+              onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
+              return;
+            }
+            onRender(renderModelId || selectedModel || 'sora-2');
+          }}
+          disabled={isGenerateDisabled}
+        >
+          Generate
+        </button>
+      </div>
+    </footer>
+  );
+
   return (
     <div className="flex h-full flex-col">
       <header className="h-12 px-4 flex items-center gap-2">
@@ -364,27 +424,150 @@ export function GenerationControlsPanel({
             })}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-hidden px-3">
-            <div
-              ref={promptEditorRef}
-              className={cn(
-                'h-full overflow-y-auto p-3',
-                'text-white text-sm leading-6 whitespace-pre-wrap',
-                'outline-none',
-                !onPromptChange && 'opacity-80'
+          <div className="flex-1 min-h-0 overflow-y-auto px-3">
+            <div className="relative">
+              <div
+                ref={promptEditorRef}
+                className={cn(
+                  'min-h-[180px] p-3',
+                  'text-white text-sm leading-6 whitespace-pre-wrap',
+                  'outline-none',
+                  !onPromptChange && 'opacity-80'
+                )}
+                role="textbox"
+                contentEditable={Boolean(onPromptChange)}
+                suppressContentEditableWarning
+                aria-label="Text Prompt Input"
+                onInput={handlePromptInput}
+                onPaste={(event) => {
+                  if (!onPromptChange) return;
+                  event.preventDefault();
+                  const text = event.clipboardData.getData('text/plain');
+                  document.execCommand('insertText', false, text);
+                }}
+              />
+
+              {Boolean(onPromptChange) && !prompt.trim() && (
+                <span
+                  className="pointer-events-none absolute top-3 left-3 text-sm font-medium leading-6 text-[#7C839C]"
+                  aria-hidden="true"
+                >
+                  Describe your shot...
+                </span>
               )}
-              role="textbox"
-              contentEditable={Boolean(onPromptChange)}
-              suppressContentEditableWarning
-              aria-label="Text Prompt Input"
-              onInput={handlePromptInput}
-              onPaste={(event) => {
-                if (!onPromptChange) return;
-                event.preventDefault();
-                const text = event.clipboardData.getData('text/plain');
-                document.execCommand('insertText', false, text);
-              }}
-            />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-2" role="tablist" aria-orientation="horizontal">
+                <button
+                  type="button"
+                  onClick={() => setImageSubTab('references')}
+                  className={cn(
+                    'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
+                    'text-sm font-medium leading-5 cursor-pointer',
+                    imageSubTab === 'references'
+                      ? 'bg-[#2C3037] border border-[#2C3037] text-white'
+                      : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+                  )}
+                  role="tab"
+                  aria-selected={imageSubTab === 'references'}
+                >
+                  <Images className="w-4 h-4" />
+                  <span className="px-0.5">References</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setImageSubTab('styles')}
+                  className={cn(
+                    'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
+                    'text-sm font-medium leading-5 cursor-pointer',
+                    imageSubTab === 'styles'
+                      ? 'bg-[#2C3037] border border-[#2C3037] text-white'
+                      : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+                  )}
+                  role="tab"
+                  aria-selected={imageSubTab === 'styles'}
+                >
+                  <Palette className="w-4 h-4" />
+                  <span className="px-0.5">Styles</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-md" role="tabpanel">
+              <div className="relative flex flex-col rounded-md overflow-hidden">
+                <div className="flex flex-col items-center justify-center gap-6 px-4 pb-4 bg-[#1B1E23] rounded-md text-center min-h-[310px]">
+                  <div className="relative w-[280px] h-[120px] flex items-center justify-center">
+                    <img
+                      className="absolute w-[160px] h-[90px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-[15px] left-[60px] translate-y-2"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-center.jpeg"
+                      width="160"
+                      height="90"
+                      alt=""
+                    />
+                    <img
+                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 -translate-x-24 translate-y-5"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-left.jpeg"
+                      width="71"
+                      height="40"
+                      alt=""
+                    />
+                    <img
+                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 translate-x-[84px] -translate-y-7"
+                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-right.jpeg"
+                      width="71"
+                      height="40"
+                      alt=""
+                    />
+                  </div>
+
+                  <div className="flex flex-col items-center w-[336px]">
+                    <div>
+                      <h2 className="text-base font-semibold text-white leading-6 text-center mb-0">
+                        Create consistent scenes with References
+                      </h2>
+                      <p className="text-sm font-normal text-[#A0AEC0] leading-5 text-center mt-0">
+                        Use 1-3 character or location images to build your scene. Place characters in new settings or generate new angles.
+                        <br />
+                        <a
+                          className="font-medium underline cursor-pointer text-[#A0AEC0]"
+                          href="https://help.runwayml.com/hc/en-us/articles/40042718905875"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Learn more
+                        </a>
+                        .
+                      </p>
+                    </div>
+
+                    <div className="flex justify-center gap-2 pt-4">
+                      <button
+                        type="button"
+                        className="flex items-center justify-center gap-2 h-8 px-3 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
+                      >
+                        <Folder className="w-3.5 h-3.5" />
+                        Assets
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isUploadDisabled) {
+                            inputRef.current?.click();
+                          }
+                        }}
+                        disabled={isUploadDisabled}
+                        className="flex items-center justify-center gap-2 h-8 px-3 bg-white rounded-md text-black text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       ) : (
@@ -626,91 +809,95 @@ export function GenerationControlsPanel({
           </div>
 
           {/* Tab Panel */}
-          <div className="flex-1 min-h-0 overflow-hidden" role="tabpanel">
-            <div className="rounded-md">
-              <div className="relative flex flex-col flex-1 min-h-0 rounded-md overflow-hidden">
-                {/* Body */}
-                <div className="flex flex-col items-center justify-center flex-1 gap-6 px-4 pb-4 bg-[#1B1E23] rounded-md text-center min-h-[310px]">
-                  {/* Image Stack */}
-                  <div className="relative w-[280px] h-[120px] flex items-center justify-center">
-                    {/* Center Image */}
-                    <img
-                      className="absolute w-[160px] h-[90px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-[15px] left-[60px] translate-y-2"
-                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-center.jpeg"
-                      width="160"
-                      height="90"
-                      alt=""
-                    />
-                    {/* Left Image */}
-                    <img
-                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 -translate-x-24 translate-y-5"
-                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-left.jpeg"
-                      width="71"
-                      height="40"
-                      alt=""
-                    />
-                    {/* Right Image */}
-                    <img
-                      className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 translate-x-[84px] -translate-y-7"
-                      src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-right.jpeg"
-                      width="71"
-                      height="40"
-                      alt=""
-                    />
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="flex flex-col items-center w-[336px]">
-                    <div>
-                      {/* Title */}
-                      <h2 className="text-base font-semibold text-white leading-6 text-center mb-0">
-                        Create consistent scenes with References
-                      </h2>
-                      {/* Description */}
-                      <p className="text-sm font-normal text-[#A0AEC0] leading-5 text-center mt-0">
-                        Use 1-3 character or location images to build your scene. Place characters in new settings or generate new angles.
-                        <br />
-                        <a
-                          className="font-medium underline cursor-pointer text-[#A0AEC0]"
-                          href="https://help.runwayml.com/hc/en-us/articles/40042718905875"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Learn more
-                        </a>
-                        .
-                      </p>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col" role="tabpanel">
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="rounded-md h-full">
+                <div className="relative flex flex-col flex-1 min-h-0 rounded-md overflow-hidden h-full">
+                  {/* Body */}
+                  <div className="flex flex-col items-center justify-center flex-1 gap-6 px-4 pb-4 bg-[#1B1E23] rounded-md text-center min-h-[310px]">
+                    {/* Image Stack */}
+                    <div className="relative w-[280px] h-[120px] flex items-center justify-center">
+                      {/* Center Image */}
+                      <img
+                        className="absolute w-[160px] h-[90px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-[15px] left-[60px] translate-y-2"
+                        src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-center.jpeg"
+                        width="160"
+                        height="90"
+                        alt=""
+                      />
+                      {/* Left Image */}
+                      <img
+                        className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 -translate-x-24 translate-y-5"
+                        src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-left.jpeg"
+                        width="71"
+                        height="40"
+                        alt=""
+                      />
+                      {/* Right Image */}
+                      <img
+                        className="absolute w-[71px] h-[40px] rounded-sm shadow-[0_4px_8px_rgba(0,0,0,0.3)] overflow-clip top-10 left-1/2 translate-x-[84px] -translate-y-7"
+                        src="https://d3phaj0sisr2ct.cloudfront.net/app/gen4/ref-onboarding-right.jpeg"
+                        width="71"
+                        height="40"
+                        alt=""
+                      />
                     </div>
 
-                    {/* Button Group */}
-                    <div className="flex justify-center gap-2 pt-4">
-                      {/* Assets Button (Outline) */}
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 h-8 px-3 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
-                      >
-                        <Folder className="w-3.5 h-3.5" />
-                        Assets
-                      </button>
-                      {/* Upload Button (Primary White) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isUploadDisabled) {
-                            inputRef.current?.click();
-                          }
-                        }}
-                        disabled={isUploadDisabled}
-                        className="flex items-center justify-center gap-2 h-8 px-3 bg-white rounded-md text-black text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        Upload
-                      </button>
+                    {/* Text Content */}
+                    <div className="flex flex-col items-center w-[336px]">
+                      <div>
+                        {/* Title */}
+                        <h2 className="text-base font-semibold text-white leading-6 text-center mb-0">
+                          Create consistent scenes with References
+                        </h2>
+                        {/* Description */}
+                        <p className="text-sm font-normal text-[#A0AEC0] leading-5 text-center mt-0">
+                          Use 1-3 character or location images to build your scene. Place characters in new settings or generate new angles.
+                          <br />
+                          <a
+                            className="font-medium underline cursor-pointer text-[#A0AEC0]"
+                            href="https://help.runwayml.com/hc/en-us/articles/40042718905875"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Learn more
+                          </a>
+                          .
+                        </p>
+                      </div>
+
+                      {/* Button Group */}
+                      <div className="flex justify-center gap-2 pt-4">
+                        {/* Assets Button (Outline) */}
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 h-8 px-3 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
+                        >
+                          <Folder className="w-3.5 h-3.5" />
+                          Assets
+                        </button>
+                        {/* Upload Button (Primary White) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isUploadDisabled) {
+                              inputRef.current?.click();
+                            }
+                          }}
+                          disabled={isUploadDisabled}
+                          className="flex items-center justify-center gap-2 h-8 px-3 bg-white rounded-md text-black text-sm font-semibold tracking-[0.14px] leading-5 cursor-pointer overflow-hidden hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          Upload
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            {generationFooter}
           </div>
         </div>
       )}
@@ -807,64 +994,7 @@ export function GenerationControlsPanel({
             </div>
           </div>
 
-          <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
-            <div className="flex items-center gap-2">
-              {tier === 'draft' ? (
-                <div className="h-10 rounded-lg px-3 bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold flex items-center gap-2">
-                  <span>{VIDEO_DRAFT_MODEL.label}</span>
-                  <span className="text-[11px] text-[#7C839C]">{VIDEO_DRAFT_MODEL.cost}</span>
-                </div>
-              ) : (
-                <select
-                  className="h-10 px-3 rounded-lg bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold"
-                  value={renderModelId}
-                  onChange={(event) => onModelChange(event.target.value)}
-                  aria-label="Render model"
-                >
-                  {VIDEO_RENDER_MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label} · {model.cost}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                type="button"
-                className="w-7 h-7 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
-                aria-label="Info"
-              >
-                <Info className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="h-10 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => onStoryboard()}
-                disabled={isStoryboardDisabled}
-              >
-                <span className="flex items-center gap-1">
-                  <Images className="w-4 h-4" />
-                  Storyboard · {STORYBOARD_COST}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => {
-                  if (tier === 'draft') {
-                    onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
-                    return;
-                  }
-                  onRender(renderModelId || selectedModel || 'sora-2');
-                }}
-                disabled={isGenerateDisabled}
-              >
-                Generate
-              </button>
-            </div>
-          </footer>
+          {generationFooter}
         </>
       )}
     </div>

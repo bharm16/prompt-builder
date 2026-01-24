@@ -77,6 +77,15 @@ export interface GenerateStoryboardPreviewResponse {
   message?: string;
 }
 
+export interface MediaViewUrlResponse {
+  success: boolean;
+  data?: {
+    viewUrl: string;
+  };
+  error?: string;
+  message?: string;
+}
+
 /**
  * Generate a preview image from a prompt
  *
@@ -141,6 +150,24 @@ export async function generateStoryboardPreview(
       timeout: API_CONFIG.timeout.storyboard,
     }
   ) as Promise<GenerateStoryboardPreviewResponse>;
+}
+
+export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
+  if (!assetId || typeof assetId !== 'string' || assetId.trim().length === 0) {
+    throw new Error('assetId is required');
+  }
+
+  const encoded = encodeURIComponent(assetId.trim());
+  return apiClient.get(`/preview/image/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
+}
+
+export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
+  if (!assetId || typeof assetId !== 'string' || assetId.trim().length === 0) {
+    throw new Error('assetId is required');
+  }
+
+  const encoded = encodeURIComponent(assetId.trim());
+  return apiClient.get(`/preview/video/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
 }
 
 export async function uploadPreviewImage(

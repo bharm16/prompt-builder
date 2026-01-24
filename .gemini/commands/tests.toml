@@ -1,0 +1,10 @@
+description = "Add or update tests using Vitest and Playwright."
+prompt = """
+Add or update tests for the change.
+
+Testing stack:
+- Unit/integration: Vitest (config/test/vitest.config.js)
+- E2E: Playwright (config/test/playwright.config.js)
+
+Show which test files you will touch before implementing.
+"""

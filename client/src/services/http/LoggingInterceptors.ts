@@ -49,12 +49,13 @@ export function createRequestLoggingInterceptor() {
     }
 
     logger.setTraceId(traceId);
-    logger.debug(`→ ${request.init.method || 'GET'} ${endpoint}`, {
+    logger.debug('API request', {
       operation: 'apiRequest',
       requestId: traceId,
       method: request.init.method || 'GET',
       endpoint,
       url: request.url,
+      direction: 'outbound',
       headers: Object.fromEntries(
         Object.entries(request.init.headers || {}).filter(
           ([key]) => !key.toLowerCase().includes('auth') && !key.toLowerCase().includes('key')
@@ -93,26 +94,28 @@ export function createResponseLoggingInterceptor() {
         const body = await clonedResponse.json();
 
         if (response.ok) {
-          logger.debug(`← ${response.status} ${endpoint}`, {
+          logger.debug('API response', {
             operation: 'apiResponse',
             requestId: metadata?.traceId,
             status: response.status,
             endpoint,
             duration,
+            ok: true,
             response: summarizePayload(body),
           });
         } else {
-          logger.warn(`← ${response.status} ${endpoint}`, {
+          logger.warn('API response error', {
             operation: 'apiResponse',
             requestId: metadata?.traceId,
             status: response.status,
             endpoint,
             duration,
+            ok: false,
             error: body,
           });
         }
       } else {
-        logger.debug(`← ${response.status} ${endpoint}`, {
+        logger.debug('API response', {
           operation: 'apiResponse',
           requestId: metadata?.traceId,
           status: response.status,
@@ -122,7 +125,7 @@ export function createResponseLoggingInterceptor() {
         });
       }
     } catch {
-      logger.debug(`← ${response.status} ${endpoint}`, {
+      logger.debug('API response', {
         operation: 'apiResponse',
         requestId: metadata?.traceId,
         status: response.status,

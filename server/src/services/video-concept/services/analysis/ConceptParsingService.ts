@@ -25,7 +25,7 @@ export class ConceptParsingService {
     const startTime = performance.now();
     const operation = 'parseConcept';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       conceptLength: params.concept.length,
     });
@@ -73,7 +73,7 @@ Return ONLY a JSON object with ALL elements:
         }
       ) as Record<string, string>;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementCount: Object.keys(elements).length,
@@ -81,7 +81,7 @@ Return ONLY a JSON object with ALL elements:
       
       return { elements };
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -99,4 +99,3 @@ Return ONLY a JSON object with ALL elements:
     }
   }
 }
-

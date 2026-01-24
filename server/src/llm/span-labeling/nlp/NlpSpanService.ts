@@ -155,7 +155,7 @@ export async function extractSemanticSpans(
 
     const totalTime = Math.round(performance.now() - startTime);
 
-    log.info(`${operation} completed`, {
+    log.info('Operation completed.', {
       operation,
       duration: totalTime,
       totalSpans: outputSpans.length,
@@ -190,7 +190,7 @@ export async function extractSemanticSpans(
       }
     };
   } catch (error) {
-    log.error(`${operation} failed`, error as Error, { operation });
+    log.error('Operation failed.', error as Error, { operation });
     throw error;
   }
 }
@@ -249,13 +249,14 @@ export async function warmupNlpServices(): Promise<{
   lighting: { success: boolean; latencyMs: number };
 }> {
   const operation = 'warmupNlpServices';
-  log.info(`${operation}: Starting warmup of all NLP services`);
+  log.info('Starting warmup of all NLP services.', { operation });
 
   const glinerResult = await warmupGliner();
   const compromiseResult = await warmupCompromise();
   const lightingResult = await warmupLightingService();
 
-  log.info(`${operation}: Warmup complete`, {
+  log.info('Warmup complete.', {
+    operation,
     gliner: glinerResult.success,
     compromise: compromiseResult.success,
     compromiseLatencyMs: compromiseResult.latencyMs,

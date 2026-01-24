@@ -178,10 +178,14 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   for (const serviceName of serviceNames) {
     try {
       container.resolve(serviceName);
-      logger.info(`✅ ${serviceName} initialized`);
+      logger.info('Service initialized', { serviceName });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`❌ Failed to initialize ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Service initialization failed',
+        error instanceof Error ? error : new Error(String(error)),
+        { serviceName }
+      );
       throw new Error(`Service initialization failed for ${serviceName}: ${errorMessage}`);
     }
   }
@@ -202,7 +206,9 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       if (glinerResult.success) {
         logger.info('✅ GLiNER model warmed up for semantic extraction');
       } else {
-        logger.warn('⚠️ GLiNER warmup skipped: ' + (glinerResult.message || 'Unknown reason'));
+        logger.warn('⚠️ GLiNER warmup skipped', {
+          reason: glinerResult.message || 'Unknown reason',
+        });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -210,7 +216,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     }
   } else {
     const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'prewarm disabled or GLiNER disabled';
-    logger.info(`ℹ️ GLiNER warmup skipped (${reason})`);
+    logger.info('ℹ️ GLiNER warmup skipped', { reason });
   }
 
   if (!isTestEnv && !promptOutputOnly) {

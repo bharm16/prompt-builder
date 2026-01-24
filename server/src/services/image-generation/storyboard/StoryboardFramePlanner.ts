@@ -44,27 +44,42 @@ export class StoryboardFramePlanner {
     }
 
     this.log.warn('Storyboard plan parse failed; attempting repair', {
-      error: parsed.error,
+      parseError: parsed.error,
       expectedCount,
       responseLength: responseText.length,
+      partialCount: parsed.partial?.actualCount ?? 0,
+      partialSource: parsed.partial?.source,
     });
 
-    const repairText = await this.requestRepair(trimmed, responseText, expectedCount);
+    const repairText = await this.requestRepair(
+      trimmed,
+      responseText,
+      expectedCount,
+      parsed.partial?.deltas
+    );
     const repaired = this.parseDeltas(repairText, expectedCount);
     if (repaired.ok) {
       return repaired.deltas;
     }
 
-    const repairErrorInstance = new Error(repaired.error);
-    this.log.error(
-      'Storyboard plan parse failed after repair; using fallback deltas',
-      repairErrorInstance,
-      {
-        error: repaired.error,
+    const bestPartial = this.pickBestPartial(parsed.partial, repaired.partial);
+    if (bestPartial) {
+      this.log.warn('Storyboard plan parse failed after repair; padding with fallback deltas', {
+        parseError: repaired.error,
         expectedCount,
         responseLength: repairText.length,
-      }
-    );
+        partialCount: bestPartial.actualCount,
+        partialSource: bestPartial.source,
+      });
+
+      return this.padDeltas(bestPartial.deltas, expectedCount);
+    }
+
+    this.log.warn('Storyboard plan parse failed after repair; using fallback deltas', {
+      parseError: repaired.error,
+      expectedCount,
+      responseLength: repairText.length,
+    });
 
     return buildFallbackDeltas(expectedCount);
   }
@@ -88,12 +103,19 @@ export class StoryboardFramePlanner {
   private async requestRepair(
     prompt: string,
     responseText: string,
-    expectedCount: number
+    expectedCount: number,
+    partialDeltas?: string[]
   ): Promise<string> {
+    const partialSection =
+      partialDeltas && partialDeltas.length > 0
+        ? `\n\nParsed deltas (${partialDeltas.length}):\n${partialDeltas
+            .map((delta, index) => `${index + 1}. ${delta}`)
+            .join('\n')}\n\nReturn a full list of ${expectedCount} deltas, reusing these when valid.`
+        : '';
     const repairResponse = await this.llmClient.complete(
       buildRepairSystemPrompt(expectedCount),
       {
-        userMessage: `Base prompt:\n${prompt}\n\nInvalid response:\n${responseText}`,
+        userMessage: `Base prompt:\n${prompt}\n\nPrevious response:\n${responseText}${partialSection}`,
         maxTokens: 400,
         temperature: 0,
         timeout: this.timeoutMs,
@@ -116,5 +138,28 @@ export class StoryboardFramePlanner {
       });
     }
     return parsed;
+  }
+
+  private pickBestPartial(
+    ...partials: Array<StoryboardDeltasParseResult['partial'] | undefined>
+  ): StoryboardDeltasParseResult['partial'] | undefined {
+    let best: StoryboardDeltasParseResult['partial'] | undefined;
+    for (const partial of partials) {
+      if (!partial || partial.actualCount <= 0) {
+        continue;
+      }
+      if (!best || partial.actualCount > best.actualCount) {
+        best = partial;
+      }
+    }
+    return best;
+  }
+
+  private padDeltas(deltas: string[], expectedCount: number): string[] {
+    if (deltas.length >= expectedCount) {
+      return deltas.slice(0, expectedCount);
+    }
+    const fallback = buildFallbackDeltas(expectedCount);
+    return deltas.concat(fallback.slice(deltas.length));
   }
 }

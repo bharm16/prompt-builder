@@ -97,6 +97,14 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
 
+function getUrlHost(value: string): string | null {
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
+}
+
 export class ReferenceImageService {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
@@ -139,61 +147,95 @@ export class ReferenceImageService {
     buffer: Buffer,
     input: CreateReferenceImageInput = {}
   ): Promise<ReferenceImageRecord> {
+    const operation = 'createFromBuffer';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      bufferSize: buffer.length,
+      hasLabel: Boolean(input.label),
+      hasSource: Boolean(input.source),
+      hasOriginalName: Boolean(input.originalName),
+    });
+
     const imageId = `ref_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
     const storagePath = `users/${userId}/reference-images/${imageId}.jpg`;
     const thumbnailPath = `users/${userId}/reference-images/${imageId}_thumb.jpg`;
 
-    const processedImage = await this.processor.processImage(buffer);
-    const thumbnail = await this.processor.generateThumbnail(processedImage.buffer);
+    try {
+      const processedImage = await this.processor.processImage(buffer);
+      const thumbnail = await this.processor.generateThumbnail(processedImage.buffer);
 
-    const imageToken = uuidv4();
-    const thumbnailToken = uuidv4();
+      const imageToken = uuidv4();
+      const thumbnailToken = uuidv4();
 
-    await this.bucket.file(storagePath).save(processedImage.buffer, {
-      resumable: false,
-      contentType: 'image/jpeg',
-      metadata: {
-        cacheControl: 'public, max-age=31536000',
+      await this.bucket.file(storagePath).save(processedImage.buffer, {
+        resumable: false,
+        contentType: 'image/jpeg',
         metadata: {
-          firebaseStorageDownloadTokens: imageToken,
+          cacheControl: 'public, max-age=31536000',
+          metadata: {
+            firebaseStorageDownloadTokens: imageToken,
+          },
         },
-      },
-    });
+      });
 
-    await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
-      resumable: false,
-      contentType: 'image/jpeg',
-      metadata: {
-        cacheControl: 'public, max-age=31536000',
+      await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
+        resumable: false,
+        contentType: 'image/jpeg',
         metadata: {
-          firebaseStorageDownloadTokens: thumbnailToken,
+          cacheControl: 'public, max-age=31536000',
+          metadata: {
+            firebaseStorageDownloadTokens: thumbnailToken,
+          },
         },
-      },
-    });
+      });
 
-    const now = new Date().toISOString();
-    const record: ReferenceImageRecord = {
-      id: imageId,
-      userId,
-      imageUrl: buildDownloadUrl(this.bucketName, storagePath, imageToken),
-      thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
-      storagePath,
-      thumbnailPath,
-      label: input.label ?? null,
-      metadata: {
+      const now = new Date().toISOString();
+      const record: ReferenceImageRecord = {
+        id: imageId,
+        userId,
+        imageUrl: buildDownloadUrl(this.bucketName, storagePath, imageToken),
+        thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
+        storagePath,
+        thumbnailPath,
+        label: input.label ?? null,
+        metadata: {
+          width: processedImage.width,
+          height: processedImage.height,
+          sizeBytes: processedImage.sizeBytes,
+          contentType: 'image/jpeg',
+          source: input.source ?? null,
+          originalName: input.originalName ?? null,
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await this.collection(userId).doc(imageId).set(record);
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+        imageId,
+        storagePath,
+        thumbnailPath,
+        sizeBytes: processedImage.sizeBytes,
         width: processedImage.width,
         height: processedImage.height,
-        sizeBytes: processedImage.sizeBytes,
-        contentType: 'image/jpeg',
-        source: input.source ?? null,
-        originalName: input.originalName ?? null,
-      },
-      createdAt: now,
-      updatedAt: now,
-    };
+      });
 
-    await this.collection(userId).doc(imageId).set(record);
-    return record;
+      return record;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async createFromUrl(
@@ -201,8 +243,23 @@ export class ReferenceImageService {
     sourceUrl: string,
     input: CreateReferenceImageInput = {}
   ): Promise<ReferenceImageRecord> {
+    const operation = 'createFromUrl';
+    const sourceHost = getUrlHost(sourceUrl);
+    this.log.debug('Fetching reference image.', {
+      operation,
+      userId,
+      ...(sourceHost ? { sourceHost } : {}),
+    });
+
     const response = await fetch(sourceUrl);
     if (!response.ok) {
+      this.log.warn('Failed to fetch reference image.', {
+        operation,
+        userId,
+        status: response.status,
+        statusText: response.statusText,
+        ...(sourceHost ? { sourceHost } : {}),
+      });
       throw new Error(`Failed to fetch reference image: ${response.status} ${response.statusText}`);
     }
 
@@ -214,9 +271,21 @@ export class ReferenceImageService {
   }
 
   async deleteImage(userId: string, imageId: string): Promise<boolean> {
+    const operation = 'deleteImage';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, imageId });
+
     const docRef = this.collection(userId).doc(imageId);
     const snapshot = await docRef.get();
     if (!snapshot.exists) {
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        imageId,
+        duration: Math.round(performance.now() - startTime),
+        deleted: false,
+        reason: 'not_found',
+      });
       return false;
     }
 
@@ -225,12 +294,15 @@ export class ReferenceImageService {
       (path): path is string => typeof path === 'string' && path.length > 0
     );
 
+    let failedDeletes = 0;
     for (const path of paths) {
       try {
         await this.bucket.file(path).delete();
       } catch (error) {
+        failedDeletes += 1;
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log.warn('Failed to delete reference image from storage', {
+          operation,
           userId,
           imageId,
           path,
@@ -240,6 +312,15 @@ export class ReferenceImageService {
     }
 
     await docRef.delete();
+    this.log.info('Operation completed.', {
+      operation,
+      userId,
+      imageId,
+      duration: Math.round(performance.now() - startTime),
+      deleted: true,
+      deletedPaths: paths.length - failedDeletes,
+      failedDeletes,
+    });
     return true;
   }
 }

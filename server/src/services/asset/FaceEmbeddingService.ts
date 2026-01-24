@@ -1,4 +1,5 @@
 import Replicate from 'replicate';
+import { logger } from '@infrastructure/Logger';
 
 type ReplicateFace = {
   bbox: [number, number, number, number];
@@ -9,6 +10,7 @@ type ReplicateFace = {
 
 export class FaceEmbeddingService {
   private readonly replicate: Replicate;
+  private readonly log = logger.child({ service: 'FaceEmbeddingService' });
 
   constructor(replicateClient?: Replicate, apiToken?: string) {
     if (replicateClient) {
@@ -32,6 +34,20 @@ export class FaceEmbeddingService {
     confidence: number | null;
     landmarks?: number[][] | number[] | null;
   }> {
+    const operation = 'extractEmbedding';
+    const startTime = performance.now();
+    let host: string | undefined;
+    try {
+      host = new URL(imageUrl).host;
+    } catch {
+      host = undefined;
+    }
+
+    this.log.debug('Starting operation.', {
+      operation,
+      ...(host ? { imageHost: host } : {}),
+    });
+
     try {
       const output = (await this.replicate.run(
         'lucataco/insightface:dd4eb613b88738c7efe5f1c3f8837f32a0e68e79e17da5e9683bfe5bc2f5ca05',
@@ -59,14 +75,28 @@ export class FaceEmbeddingService {
         throw new Error('Could not extract face embedding');
       }
 
-      return {
+      const result = {
         embedding: primaryFace.embedding,
         bbox: primaryFace.bbox,
         confidence: primaryFace.det_score ?? null,
         landmarks: primaryFace.landmark ?? null,
       };
+
+      this.log.debug('Operation completed.', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        confidence: result.confidence,
+        ...(host ? { imageHost: host } : {}),
+      });
+
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log.error('Operation failed.', error instanceof Error ? error : new Error(errorMessage), {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        ...(host ? { imageHost: host } : {}),
+      });
       throw new Error(`Face embedding extraction failed: ${errorMessage}`);
     }
   }
@@ -93,31 +123,68 @@ export class FaceEmbeddingService {
     imageUrls: string[],
     threshold = 0.6
   ): Promise<{ isValid: boolean; similarity?: number; mismatchedImages?: [number, number] }> {
+    const operation = 'validateSamePerson';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      imageCount: imageUrls.length,
+      threshold,
+    });
+
     if (imageUrls.length < 2) {
-      return { isValid: true };
+      const result = { isValid: true };
+      this.log.debug('Operation completed.', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        isValid: true,
+        imageCount: imageUrls.length,
+      });
+      return result;
     }
 
-    const embeddings = await Promise.all(
-      imageUrls.map((url) => this.extractEmbedding(url))
-    );
+    try {
+      const embeddings = await Promise.all(
+        imageUrls.map((url) => this.extractEmbedding(url))
+      );
 
-    for (let i = 0; i < embeddings.length; i += 1) {
-      for (let j = i + 1; j < embeddings.length; j += 1) {
-        const similarity = this.computeSimilarity(
-          embeddings[i].embedding,
-          embeddings[j].embedding
-        );
-        if (similarity < threshold) {
-          return {
-            isValid: false,
-            similarity,
-            mismatchedImages: [i, j],
-          };
+      for (let i = 0; i < embeddings.length; i += 1) {
+        for (let j = i + 1; j < embeddings.length; j += 1) {
+          const similarity = this.computeSimilarity(
+            embeddings[i].embedding,
+            embeddings[j].embedding
+          );
+          if (similarity < threshold) {
+            const result = {
+              isValid: false,
+              similarity,
+              mismatchedImages: [i, j] as [number, number],
+            };
+            this.log.info('Operation completed.', {
+              operation,
+              duration: Math.round(performance.now() - startTime),
+              isValid: false,
+              similarity,
+              mismatch: result.mismatchedImages,
+            });
+            return result;
+          }
         }
       }
-    }
 
-    return { isValid: true };
+      this.log.info('Operation completed.', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        isValid: true,
+      });
+      return { isValid: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log.error('Operation failed.', error instanceof Error ? error : new Error(errorMessage), {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   serializeEmbedding(embedding: number[]): string {

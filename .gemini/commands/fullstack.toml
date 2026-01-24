@@ -1,0 +1,14 @@
+description = "Plan a full-stack change with an explicit API contract (backend first, then frontend)."
+prompt = """
+You are working in the Vidra (PromptCanvas) repo.
+
+Backend first:
+- Pattern: PromptOptimizationService (server/src/services/prompt-optimization/PromptOptimizationService.js)
+- Define the API contract (route, method, request/response shape)
+
+Frontend next:
+- Pattern: VideoConceptBuilder (client/src/components/VideoConceptBuilder/)
+- Orchestrator + hooks/useReducer + api/ + UI components
+
+Show the complete proposed file structure before writing code.
+"""

@@ -149,7 +149,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService): {
 
           const apiTime = Math.round(performance.now() - apiStartTime);
 
-          logger.info(`${operation} completed`, {
+          logger.info('Operation completed.', {
             operation,
             requestId,
             userId,

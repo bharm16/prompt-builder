@@ -12,16 +12,48 @@ interface UseDraftHistorySyncOptions {
   generationParams: CapabilityValues;
 }
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 const areParamsEqual = (
   a: Record<string, unknown> | null | undefined,
   b: Record<string, unknown> | null | undefined
 ): boolean => {
-  if (a === b) return true;
+  if (Object.is(a, b)) return true;
   if (!a || !b) return false;
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  return aKeys.every((key) => Object.is(a[key], b[key]));
+
+  const stack: Array<[unknown, unknown]> = [[a, b]];
+
+  while (stack.length) {
+    const [left, right] = stack.pop() as [unknown, unknown];
+    if (Object.is(left, right)) {
+      continue;
+    }
+
+    if (Array.isArray(left) || Array.isArray(right)) {
+      if (!Array.isArray(left) || !Array.isArray(right)) return false;
+      if (left.length !== right.length) return false;
+      for (let i = 0; i < left.length; i += 1) {
+        stack.push([left[i], right[i]]);
+      }
+      continue;
+    }
+
+    if (isObject(left) && isObject(right)) {
+      const leftKeys = Object.keys(left);
+      const rightKeys = Object.keys(right);
+      if (leftKeys.length !== rightKeys.length) return false;
+      for (const key of leftKeys) {
+        if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+        stack.push([left[key], right[key]]);
+      }
+      continue;
+    }
+
+    return false;
+  }
+
+  return true;
 };
 
 export const useDraftHistorySync = ({

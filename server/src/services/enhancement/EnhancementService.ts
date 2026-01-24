@@ -159,7 +159,7 @@ export class EnhancementService {
     const operation = 'getEnhancementSuggestions';
     
     try {
-      this.log.debug(`Starting ${operation}`, {
+      this.log.debug('Starting operation.', {
         operation,
         highlightedLength: highlightedText?.length,
         highlightedCategory: highlightedCategory || null,
@@ -353,7 +353,7 @@ export class EnhancementService {
       });
       this.metricsLogger.checkLatency(metrics);
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: metrics.total,
         suggestionCount: this._countSuggestions(result.suggestions),
@@ -379,7 +379,7 @@ export class EnhancementService {
         error as Error
       );
       
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: metrics.total,
         highlightedCategory: highlightedCategory ?? null,
@@ -403,7 +403,7 @@ export class EnhancementService {
     const startTime = performance.now();
     const operation = 'getCustomSuggestions';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       customRequestLength: customRequest?.length || 0,
       highlightedLength: highlightedText?.length,
@@ -475,7 +475,7 @@ export class EnhancementService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       count: diverseSuggestions.length,

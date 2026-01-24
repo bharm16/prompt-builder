@@ -105,9 +105,9 @@ const service = new KeyframeGenerationService();
 
 // Check which provider is available
 const provider = service.getAvailableProvider();
-// Returns: 'pulid' | 'ip-adapter-legacy' | null
+// Returns: 'pulid' | null
 
-// Generate keyframe (uses PuLID if available)
+// Generate keyframe (requires PuLID)
 const keyframe = await service.generateKeyframe({
   prompt: "Portrait in cinematic lighting",
   character: {
@@ -116,14 +116,6 @@ const keyframe = await service.generateKeyframe({
   aspectRatio: "16:9",
   faceStrength: 0.8,
 });
-```
-
-## Fallback Behavior
-
-If `FAL_KEY` is not configured but `REPLICATE_API_TOKEN` is available, the service falls back to the legacy IP-Adapter FaceID Plus v2 approach. A warning is logged when this happens:
-
-```
-WARN: Using legacy IP-Adapter. Consider configuring FAL_KEY for better results with PuLID.
 ```
 
 ## Best Practices

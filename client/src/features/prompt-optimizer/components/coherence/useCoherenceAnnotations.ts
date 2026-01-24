@@ -6,6 +6,10 @@ import type {
   CoherenceRecommendation,
   CoherenceSpan,
 } from '@features/prompt-optimizer/types/coherence';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useCoherenceAnnotations');
 
 export interface CoherenceIssue {
   id: string;
@@ -130,7 +134,12 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
           );
         }
       } catch (err) {
-        console.warn('Coherence check failed:', err);
+        const info = sanitizeError(err);
+        log.warn('Coherence check failed', {
+          operation: 'runCheck',
+          error: info.message,
+          errorName: info.name,
+        });
       } finally {
         setIsChecking(false);
       }
@@ -158,7 +167,12 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
       try {
         applied = await onApplyFix(recommendation, issue);
       } catch (error) {
-        console.warn('Failed to apply coherence fix:', error);
+        const info = sanitizeError(error);
+        log.warn('Failed to apply coherence fix', {
+          operation: 'applyFix',
+          error: info.message,
+          errorName: info.name,
+        });
       }
       if (!applied) {
         toast.info('Fix could not be applied');

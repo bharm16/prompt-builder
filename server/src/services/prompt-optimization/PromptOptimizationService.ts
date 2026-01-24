@@ -114,7 +114,7 @@ export class PromptOptimizationService {
     
     const finalMode: OptimizationMode = 'video';
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode: finalMode,
       promptLength: prompt.length,
@@ -336,7 +336,7 @@ export class PromptOptimizationService {
     
     const finalMode: OptimizationMode = 'video';
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode: finalMode,
       promptLength: prompt.length,
@@ -600,7 +600,7 @@ export class PromptOptimizationService {
       // Log metrics
       this.logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         mode: finalMode,
@@ -614,14 +614,14 @@ export class PromptOptimizationService {
 
     } catch (error) {
       if ((error as Error)?.name === 'AbortError') {
-        this.log.info(`${operation} aborted`, {
+        this.log.info('Operation aborted.', {
           operation,
           duration: Math.round(performance.now() - startTime),
           mode: finalMode,
         });
         throw error;
       }
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         mode: finalMode,
@@ -714,7 +714,7 @@ export class PromptOptimizationService {
       }
     };
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -799,7 +799,7 @@ export class PromptOptimizationService {
       currentPrompt = finalOptimized;
     }
 
-    this.log.info(`${operation} complete`, {
+    this.log.info('Operation completed.', {
       operation,
       finalScore: bestScore,
       iterations: maxIterations,
@@ -824,7 +824,7 @@ export class PromptOptimizationService {
     const startTime = performance.now();
     const operation = 'applyConstitutionalAI';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -839,7 +839,7 @@ export class PromptOptimizationService {
 
       const sampleRate = OptimizationConfig.constitutionalAI?.sampleRate ?? 1;
       if (sampleRate < 1 && Math.random() > Math.max(0, Math.min(1, sampleRate))) {
-        this.log.debug(`${operation} skipped (sampled out)`, {
+        this.log.debug('Operation skipped (sampled out).', {
           operation,
           sampleRate,
         });
@@ -877,14 +877,14 @@ export class PromptOptimizationService {
         return reviewResult.output;
       }
 
-      this.log.debug(`${operation} completed - no revisions needed`, {
+      this.log.debug('Operation completed; no revisions needed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
 
       return prompt;
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });

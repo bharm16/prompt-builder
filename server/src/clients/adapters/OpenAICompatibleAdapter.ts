@@ -114,7 +114,7 @@ export class OpenAICompatibleAdapter {
     let lastError: Error | null = null;
     let attempt = 0;
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       model: options.model || this.defaultModel,
       maxTokens: options.maxTokens,
@@ -151,7 +151,7 @@ export class OpenAICompatibleAdapter {
           }
         }
 
-        this.log.info(`${operation} completed`, {
+        this.log.info('Operation completed.', {
           operation,
           duration: Math.round(performance.now() - startTime),
           attempt: attempt + 1,
@@ -175,7 +175,7 @@ export class OpenAICompatibleAdapter {
           continue;
         }
 
-        this.log.error(`${operation} failed`, error as Error, {
+        this.log.error('Operation failed.', error as Error, {
           operation,
           duration: Math.round(performance.now() - startTime),
           attempt: attempt + 1,

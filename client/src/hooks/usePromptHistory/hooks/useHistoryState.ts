@@ -33,6 +33,10 @@ export function useHistoryState(): UseHistoryStateReturn {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const setSearchQueryWithLog = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
   const setHistory = useCallback((newHistory: PromptHistoryEntry[]) => {
     setHistoryInternal(newHistory);
   }, []);
@@ -81,7 +85,7 @@ export function useHistoryState(): UseHistoryStateReturn {
     clearEntries,
     setIsLoadingHistory,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: setSearchQueryWithLog,
     filteredHistory,
   };
 }

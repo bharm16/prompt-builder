@@ -36,7 +36,7 @@ export class SceneCompletionService {
 
     const filledCount = Object.keys(params.existingElements).length - emptyElements.length;
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       emptyElementCount: emptyElements.length,
       filledElementCount: filledCount,
@@ -44,7 +44,7 @@ export class SceneCompletionService {
     });
 
     if (emptyElements.length === 0) {
-      this.log.debug(`${operation}: No empty elements to complete`, {
+      this.log.debug('No empty elements to complete.', {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -95,7 +95,7 @@ Return ONLY a JSON object with the missing elements:
       const duration = Math.round(performance.now() - startTime);
       const completedCount = Object.keys(suggestions).length;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         emptyElementCount: emptyElements.length,
@@ -105,7 +105,7 @@ Return ONLY a JSON object with the missing elements:
       return { suggestions: { ...params.existingElements, ...suggestions } };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         emptyElementCount: emptyElements.length,
@@ -114,4 +114,3 @@ Return ONLY a JSON object with the missing elements:
     }
   }
 }
-

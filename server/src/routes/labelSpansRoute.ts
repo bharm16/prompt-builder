@@ -26,7 +26,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
     const userId = extractUserId(req);
     const operation = 'labelSpansStream';
 
-    logger.debug(`Starting ${operation}`, {
+    logger.debug('Starting operation.', {
       operation,
       requestId,
       userId,
@@ -58,7 +58,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
     const requestId = (req as Request & { id?: string }).id;
     const userId = extractUserId(req);
 
-    logger.debug(`Starting ${operation}`, {
+    logger.debug('Starting operation.', {
       operation,
       requestId,
       userId,
@@ -92,7 +92,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       return res.json(toPublicLabelSpansResult(result));
     } catch (error) {
-      logger.error(`${operation} failed`, error as Error, {
+      logger.error('Operation failed.', error as Error, {
         operation,
         requestId,
         userId,

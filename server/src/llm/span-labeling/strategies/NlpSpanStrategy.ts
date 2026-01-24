@@ -340,8 +340,10 @@ export class NlpSpanStrategy {
 
         if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
           const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
-          this.log.debug(`NLP Fast-Path coverage below threshold but accepted due to ${acceptanceReason}`, {
+          this.log.debug('NLP Fast-Path coverage below threshold but accepted', {
             operation: 'extractSpans',
+            acceptanceReason,
+            validationMode: 'strict',
             spanCount: assessment.spanCount,
             expectedMinSpans: assessment.expectedMinSpans,
             coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
@@ -435,8 +437,10 @@ export class NlpSpanStrategy {
 
         if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
           const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
-          this.log.debug(`NLP Fast-Path coverage below threshold but accepted due to ${acceptanceReason} (lenient)`, {
+          this.log.debug('NLP Fast-Path coverage below threshold but accepted', {
             operation: 'extractSpans',
+            acceptanceReason,
+            validationMode: 'lenient',
             spanCount: assessment.spanCount,
             expectedMinSpans: assessment.expectedMinSpans,
             coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,

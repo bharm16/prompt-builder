@@ -10,6 +10,11 @@ describe('parseStoryboardDeltas', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBe('Storyboard planner returned insufficient deltas, expected 3');
+        expect(result.partial).toEqual({
+          deltas: ['a', 'b'],
+          actualCount: 2,
+          source: 'plan',
+        });
       }
     });
 
@@ -19,6 +24,7 @@ describe('parseStoryboardDeltas', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBe('Storyboard planner returned insufficient deltas, expected 2');
+        expect(result.partial).toBeUndefined();
       }
     });
   });

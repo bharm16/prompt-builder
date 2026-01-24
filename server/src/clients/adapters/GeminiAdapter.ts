@@ -124,7 +124,7 @@ export class GeminiAdapter {
       const data = (await response.json()) as GeminiResponse;
       const result = this.responseParser.parseResponse(data);
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         responseLength: result.text?.length || 0,
         model: options.model || this.defaultModel,
@@ -141,7 +141,7 @@ export class GeminiAdapter {
     const startTime = performance.now();
     const operation = 'complete';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       model: options.model || this.defaultModel,
       maxTokens: options.maxTokens,
@@ -347,7 +347,7 @@ export class GeminiAdapter {
       return clientAbortError;
     }
 
-    this.log.error(`${operation} failed`, errorObj, {
+    this.log.error('Operation failed.', errorObj, {
       operation,
       duration: Math.round(performance.now() - startTime),
     });

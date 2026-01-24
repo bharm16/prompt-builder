@@ -5,11 +5,8 @@
  *
  * Provider Priority (Jan 2026):
  * 1. PuLID via fal.ai (Flux + PuLID) - Current standard for face identity
- * 2. Legacy IP-Adapter via Replicate - Fallback for users without FAL_KEY
  *
- * The IP-Adapter FaceID Plus v2 approach is considered legacy as of 2025/2026.
- * PuLID on Flux provides superior face identity preservation and is the
- * recommended approach for new implementations.
+ * Legacy IP-Adapter paths have been removed from default execution.
  */
 
 import Replicate from 'replicate';
@@ -29,7 +26,7 @@ export interface KeyframeOptions {
     faceEmbedding?: string | null | undefined;
   };
   aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3' | '3:4' | undefined;
-  faceStrength?: number | undefined; // Maps to idWeight for PuLID, ip_adapter_scale for legacy
+  faceStrength?: number | undefined; // Maps to idWeight for PuLID
 }
 
 export interface KeyframeResult {
@@ -39,7 +36,7 @@ export interface KeyframeResult {
   faceStrength: number;
   prompt: string;
   seed?: number | undefined;
-  provider: 'pulid' | 'ip-adapter-legacy';
+  provider: 'pulid';
 }
 
 export class KeyframeGenerationService {
@@ -60,7 +57,7 @@ export class KeyframeGenerationService {
       options.falApiKey ? { apiKey: options.falApiKey } : {}
     );
 
-    // Legacy Replicate provider (fallback)
+    // Optional Replicate client (used only for face embedding validation)
     if (options.replicate) {
       this.replicate = options.replicate;
     } else {
@@ -81,12 +78,9 @@ export class KeyframeGenerationService {
   /**
    * Check which provider is available
    */
-  public getAvailableProvider(): 'pulid' | 'ip-adapter-legacy' | null {
+  public getAvailableProvider(): 'pulid' | null {
     if (this.pulidProvider.isAvailable()) {
       return 'pulid';
-    }
-    if (this.replicate) {
-      return 'ip-adapter-legacy';
     }
     return null;
   }
@@ -104,30 +98,16 @@ export class KeyframeGenerationService {
       throw new Error('Character must have a primary reference image');
     }
 
-    // Try PuLID first (preferred for quality)
-    if (this.pulidProvider.isAvailable()) {
-      return this.generateWithPulid({
-        prompt,
-        character,
-        aspectRatio,
-        faceStrength,
-      });
+    if (!this.pulidProvider.isAvailable()) {
+      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY to enable face-consistent keyframes.');
     }
 
-    // Fall back to legacy IP-Adapter
-    if (this.replicate) {
-      this.log.warn('Using legacy IP-Adapter. Consider configuring FAL_KEY for better results with PuLID.');
-      return this.generateWithLegacyIpAdapter({
-        prompt,
-        character,
-        aspectRatio,
-        faceStrength,
-      });
-    }
-
-    throw new Error(
-      'No keyframe provider is configured. Set FAL_KEY for PuLID or REPLICATE_API_TOKEN for legacy IP-Adapter.'
-    );
+    return this.generateWithPulid({
+      prompt,
+      character,
+      aspectRatio,
+      faceStrength,
+    });
   }
 
   /**
@@ -143,9 +123,13 @@ export class KeyframeGenerationService {
       throw new Error('Character must have a primary reference image');
     }
 
+    const operation = 'generateWithPulid';
+    const startTime = performance.now();
     this.log.info('Generating keyframe with PuLID', {
+      operation,
       aspectRatio,
       idWeight: faceStrength,
+      promptLength: prompt.length,
     });
 
     const result: FalPulidKeyframeResult = await this.pulidProvider.generateKeyframe({
@@ -154,6 +138,15 @@ export class KeyframeGenerationService {
       aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4',
       idWeight: faceStrength ?? undefined,
       negativePrompt: character.negativePrompt ?? undefined,
+    });
+
+    this.log.info('Keyframe generated', {
+      operation,
+      duration: Math.round(performance.now() - startTime),
+      model: result.model,
+      aspectRatio: result.aspectRatio,
+      idWeight: result.idWeight,
+      provider: 'pulid',
     });
 
     return {
@@ -165,68 +158,6 @@ export class KeyframeGenerationService {
       ...(result.seed !== undefined ? { seed: result.seed } : {}),
       provider: 'pulid',
     } as KeyframeResult;
-  }
-
-  /**
-   * Generate using legacy IP-Adapter via Replicate
-   * @deprecated Use PuLID instead for better results
-   */
-  private async generateWithLegacyIpAdapter({
-    prompt,
-    character,
-    aspectRatio = '16:9',
-    faceStrength = 0.7,
-  }: KeyframeOptions): Promise<KeyframeResult> {
-    if (!this.replicate) {
-      throw new Error('Replicate provider is not configured.');
-    }
-
-    if (!character?.primaryImageUrl) {
-      throw new Error('Character must have a primary reference image');
-    }
-
-    const dimensions = this.getDimensions(aspectRatio);
-    const modelId = 'lucataco/ip-adapter-faceid-plusv2';
-
-    this.log.info('Generating keyframe with legacy IP-Adapter', {
-      modelId,
-      aspectRatio,
-      faceStrength,
-    });
-
-    try {
-      const output = (await this.replicate.run(modelId as any, {
-        input: {
-          prompt: this.enhancePromptForKeyframe(prompt),
-          face_image: character.primaryImageUrl,
-          negative_prompt: this.buildNegativePrompt(character.negativePrompt),
-          num_outputs: 1,
-          guidance_scale: 7.5,
-          ip_adapter_scale: faceStrength,
-          num_inference_steps: 30,
-          width: dimensions.width,
-          height: dimensions.height,
-        },
-      })) as unknown;
-
-      const imageUrl = this.extractOutputUrl(output);
-      if (!imageUrl) {
-        throw new Error('Keyframe generation returned no output');
-      }
-
-      return {
-        imageUrl,
-        model: modelId,
-        aspectRatio: aspectRatio ?? '16:9',
-        faceStrength,
-        prompt,
-        provider: 'ip-adapter-legacy',
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.error('Legacy IP-Adapter keyframe generation failed', error as Error);
-      throw new Error(`Keyframe generation failed: ${errorMessage}`);
-    }
   }
 
   /**
@@ -243,39 +174,30 @@ export class KeyframeGenerationService {
     aspectRatio?: KeyframeOptions['aspectRatio'];
     count?: number;
   }): Promise<KeyframeResult[]> {
-    // Use PuLID if available
-    if (this.pulidProvider.isAvailable() && character?.primaryImageUrl) {
-      const results = await this.pulidProvider.generateKeyframeOptions({
-        prompt,
-        faceImageUrl: character.primaryImageUrl,
-        aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4',
-        negativePrompt: character.negativePrompt ?? undefined,
-        count,
-      });
-
-      return results.map(result => ({
-        imageUrl: result.imageUrl,
-        model: result.model,
-        aspectRatio: result.aspectRatio,
-        faceStrength: result.idWeight,
-        prompt: result.prompt,
-        ...(result.seed !== undefined ? { seed: result.seed } : {}),
-        provider: 'pulid' as const,
-      } as KeyframeResult));
+    if (!this.pulidProvider.isAvailable()) {
+      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY to enable face-consistent keyframes.');
+    }
+    if (!character?.primaryImageUrl) {
+      throw new Error('Character must have a primary reference image');
     }
 
-    // Fall back to legacy provider
-    const options = Array.from({ length: count }, (_, index) => {
-      const faceStrength = 0.6 + index * 0.1;
-      return this.generateKeyframe({
-        prompt,
-        character,
-        aspectRatio,
-        faceStrength,
-      });
+    const results = await this.pulidProvider.generateKeyframeOptions({
+      prompt,
+      faceImageUrl: character.primaryImageUrl,
+      aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4',
+      negativePrompt: character.negativePrompt ?? undefined,
+      count,
     });
 
-    return Promise.all(options);
+    return results.map(result => ({
+      imageUrl: result.imageUrl,
+      model: result.model,
+      aspectRatio: result.aspectRatio,
+      faceStrength: result.idWeight,
+      prompt: result.prompt,
+      ...(result.seed !== undefined ? { seed: result.seed } : {}),
+      provider: 'pulid' as const,
+    } as KeyframeResult));
   }
 
   /**
@@ -288,6 +210,9 @@ export class KeyframeGenerationService {
     if (!character.faceEmbedding || !this.embeddingService) {
       return { isValid: true, confidence: null };
     }
+
+    const operation = 'validateKeyframeFace';
+    const startTime = performance.now();
 
     try {
       const keyframeResult = await this.embeddingService.extractEmbedding(keyframeUrl);
@@ -304,59 +229,20 @@ export class KeyframeGenerationService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('Face validation failed', { error: errorMessage });
+      let keyframeHost: string | undefined;
+      try {
+        keyframeHost = new URL(keyframeUrl).host;
+      } catch {
+        keyframeHost = undefined;
+      }
+      this.log.warn('Face validation failed', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        error: errorMessage,
+        ...(keyframeHost ? { keyframeHost } : {}),
+      });
       return { isValid: true, confidence: null };
     }
-  }
-
-  // Helper methods
-
-  enhancePromptForKeyframe(prompt: string): string {
-    const qualityTerms = ['high quality', '4k', 'detailed', 'sharp focus'];
-    const hasQuality = qualityTerms.some((term) => prompt.toLowerCase().includes(term));
-    return hasQuality ? prompt : `${prompt}, high quality, detailed, sharp focus`;
-  }
-
-  buildNegativePrompt(customNegative?: string): string {
-    const baseNegative = 'blurry, low quality, distorted face, deformed, ugly, bad anatomy';
-    if (customNegative) {
-      return `${baseNegative}, ${customNegative}`;
-    }
-    return baseNegative;
-  }
-
-  getDimensions(aspectRatio?: string): { width: number; height: number } {
-    const DEFAULT_DIMENSIONS = { width: 1024, height: 576 };
-    const dimensions: Record<string, { width: number; height: number }> = {
-      '16:9': { width: 1024, height: 576 },
-      '9:16': { width: 576, height: 1024 },
-      '1:1': { width: 768, height: 768 },
-      '4:3': { width: 896, height: 672 },
-      '3:4': { width: 672, height: 896 },
-    };
-
-    const key = aspectRatio ?? '16:9';
-    const result = dimensions[key];
-    return result ?? DEFAULT_DIMENSIONS;
-  }
-
-  private extractOutputUrl(output: unknown): string | null {
-    if (typeof output === 'string') {
-      return output;
-    }
-
-    if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      return output[0];
-    }
-
-    if (output && typeof output === 'object' && 'url' in output) {
-      const urlFn = (output as { url?: () => string }).url;
-      if (typeof urlFn === 'function') {
-        return urlFn().toString();
-      }
-    }
-
-    return null;
   }
 }
 

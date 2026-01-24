@@ -17,10 +17,24 @@ type FieldOverrides = Record<string, Partial<CapabilityField>>;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+type LogMeta = Record<string, unknown>;
+
+const LOG_PREFIX = '[capabilities]';
+const formatLogMessage = (message: string): string => `${LOG_PREFIX} ${message}`;
+
 const log = {
-  info: (message: string) => console.log(`[capabilities] ${message}`),
-  warn: (message: string) => console.warn(`[capabilities] ${message}`),
-  error: (message: string) => console.error(`[capabilities] ${message}`),
+  info: (message: string, meta?: LogMeta) =>
+    meta
+      ? console.log(formatLogMessage(message), meta)
+      : console.log(formatLogMessage(message)),
+  warn: (message: string, meta?: LogMeta) =>
+    meta
+      ? console.warn(formatLogMessage(message), meta)
+      : console.warn(formatLogMessage(message)),
+  error: (message: string, meta?: LogMeta) =>
+    meta
+      ? console.error(formatLogMessage(message), meta)
+      : console.error(formatLogMessage(message)),
 };
 
 const sanitizeUrlForLog = (url: string): string => {
@@ -75,7 +89,7 @@ const resolveEnvFile = (): string => {
 const envPath = resolveEnvFile();
 const envResult = dotenv.config({ path: envPath });
 if (envResult.error) {
-  log.warn(`Unable to load env file at ${envPath}. Using existing process.env values.`);
+  log.warn('Unable to load env file; using existing process.env values.', { envPath });
 }
 
 const GENERATED_AT = new Date().toISOString();
@@ -152,7 +166,7 @@ const applySchemaUpdate = (options: {
   }
 
   if (!baseSchema) {
-    log.warn(`Missing base schema (and no template found) for ${provider}/${model}, skipping update.`);
+    log.warn('Missing base schema; skipping update.', { provider, model, reason: 'no_template' });
     return false;
   }
 
@@ -178,7 +192,7 @@ const applySchemaUpdate = (options: {
   };
 
   if (isNew) {
-    log.info(`Discovered and created new model: ${provider}/${model}`);
+    log.info('Discovered and created new model.', { provider, model });
   }
 
   return true;
@@ -869,10 +883,10 @@ const updateOpenAI = async (
         .filter((id): id is string => typeof id === 'string' && id.includes('sora'));
         
       if (liveModels.length > 0) {
-        log.info(`OpenAI discovery found models: ${liveModels.join(', ')}`);
+        log.info('OpenAI discovery found models.', { models: liveModels });
       }
     } catch (error) {
-      log.warn(`OpenAI model discovery failed: ${formatError(error)}`);
+      log.warn('OpenAI model discovery failed.', { error: formatError(error) });
     }
   } else {
     log.warn('OPENAI_API_KEY not set; skipping live model discovery.');
@@ -880,7 +894,7 @@ const updateOpenAI = async (
 
   // 2. Specification Phase: Fetch Docs to get capabilities
   try {
-    log.info(`OpenAI docs sync: fetching OpenAPI spec from ${sanitizeUrlForLog(docsUrl)}`);
+    log.info('OpenAI docs sync fetching OpenAPI spec.', { url: sanitizeUrlForLog(docsUrl) });
     const openapiSource = await fetchText(docsUrl);
     const { fieldOverrides, modelIds: specModels, features, unknownFields } = extractOpenAIVideoOverridesFromOpenApi(openapiSource);
 
@@ -927,11 +941,11 @@ const updateOpenAI = async (
     }
     
     if (updated.length > 0) {
-      log.info(`OpenAI sync complete. Updated/Created: ${updated.join(', ')}`);
+      log.info('OpenAI sync complete.', { updated });
     }
 
   } catch (error) {
-    log.warn(`OpenAI docs sync failed: ${formatError(error)}`);
+    log.warn('OpenAI docs sync failed.', { error: formatError(error) });
   }
 };
 
@@ -959,7 +973,7 @@ const updateLuma = async (
       log.warn('Luma docs sync missing OpenAPI schema; checking SDK.');
     }
   } catch (error) {
-    log.warn(`Luma docs sync failed: ${formatError(error)}`);
+    log.warn('Luma docs sync failed.', { error: formatError(error) });
   }
 
   // Try SDK for model discovery (always) and overrides (if needed)
@@ -978,7 +992,7 @@ const updateLuma = async (
       overridesSource = 'luma.sdk';
     }
   } catch (error) {
-    log.warn(`Luma SDK sync failed: ${formatError(error)}`);
+    log.warn('Luma SDK sync failed.', { error: formatError(error) });
   }
 
   // 2. Discover Models via API
@@ -1012,11 +1026,11 @@ const updateLuma = async (
           
           liveModels = allIds.filter(id => id.includes('ray'));
           if (liveModels.length > 0) {
-             log.info(`Luma discovery found models: ${liveModels.join(', ')}`);
+             log.info('Luma discovery found models.', { models: liveModels });
           }
         }
       } catch (error) {
-        log.warn(`Luma model discovery failed: ${formatError(error)}`);
+        log.warn('Luma model discovery failed.', { error: formatError(error) });
       }
     }
   }
@@ -1024,7 +1038,7 @@ const updateLuma = async (
   // Fallback: If API returned nothing, use SDK discovered models
   if (liveModels.length === 0 && sdkModelIds.length > 0) {
       liveModels = sdkModelIds;
-      log.info(`Luma discovery using SDK models: ${liveModels.join(', ')}`);
+      log.info('Luma discovery using SDK models.', { models: liveModels });
   }
 
   // 3. Apply Updates
@@ -1064,7 +1078,7 @@ const updateLuma = async (
   }
   
   if (updated.length > 0) {
-    log.info(`Luma sync complete. Updated/Created: ${updated.join(', ')}`);
+    log.info('Luma sync complete.', { updated });
   }
 };
 
@@ -1089,10 +1103,10 @@ const updateGoogle = async (
       liveModels = modelIds.filter((id) => id.toLowerCase().includes('veo'));
       
       if (liveModels.length > 0) {
-        log.info(`Google discovery found models: ${liveModels.join(', ')}`);
+        log.info('Google discovery found models.', { models: liveModels });
       }
     } catch (error) {
-      log.warn(`Google model list sync failed: ${formatError(error)}`);
+      log.warn('Google model list sync failed.', { error: formatError(error) });
     }
   } else {
     log.warn('GOOGLE_API_KEY/GEMINI_API_KEY not set; skipping live model discovery.');
@@ -1190,7 +1204,7 @@ const updateGoogle = async (
   }
 
   if (updated.length > 0) {
-    log.info(`Google sync complete. Updated/Created: ${updated.join(', ')}`);
+    log.info('Google sync complete.', { updated });
   }
 };
 
@@ -1229,7 +1243,7 @@ const updateFal = async (
       } : undefined)) as Record<string, unknown>;
       const inputSchema = extractFalInputSchema(openapi);
       if (!inputSchema) {
-        log.warn(`Fal sync missing input schema for ${entry.endpointId}`);
+        log.warn('Fal sync missing input schema.', { endpointId: entry.endpointId });
         continue;
       }
 
@@ -1245,10 +1259,10 @@ const updateFal = async (
         unknownFields,
       });
       if (updated) {
-        log.info(`Fal sync updated: ${entry.provider}/${entry.model}`);
+        log.info('Fal sync updated.', { provider: entry.provider, model: entry.model });
       }
     } catch (error) {
-      log.warn(`Fal sync failed for ${entry.endpointId}: ${formatError(error)}`);
+      log.warn('Fal sync failed.', { endpointId: entry.endpointId, error: formatError(error) });
     }
   }
 };
@@ -1309,12 +1323,12 @@ const main = async (): Promise<void> => {
   await updateGoogle(registry, GENERATED_AT);
 
   fs.writeFileSync(OUTPUT_PATH, `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
-  log.info(`Wrote ${OUTPUT_PATH}`);
+  log.info('Wrote capabilities registry.', { outputPath: OUTPUT_PATH });
   
   printReport(registry);
 };
 
 main().catch((error) => {
-  log.error(`Sync failed: ${formatError(error)}`);
+  log.error('Sync failed.', { error: formatError(error) });
   process.exit(1);
 });

@@ -33,7 +33,7 @@ export async function handleLabelSpansStreamRequest({
     }
     res.end();
   } catch (error) {
-    logger.error(`${operation} failed`, error as Error, {
+    logger.error('Operation failed.', error as Error, {
       operation,
       requestId,
       userId,

@@ -49,7 +49,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       const operation = 'healthReady';
       const requestId = req.id;
       
-      logger.debug(`Starting ${operation}`, {
+      logger.debug('Starting operation.', {
         operation,
         requestId,
       });
@@ -96,7 +96,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         (c) => c.healthy !== false
       );
 
-      logger.info(`${operation} completed`, {
+      logger.info('Operation completed.', {
         operation,
         requestId,
         duration: Math.round(performance.now() - startTime),
@@ -149,7 +149,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     const operation = 'stats';
     const requestId = req.id;
     
-    logger.debug(`Starting ${operation}`, {
+    logger.debug('Starting operation.', {
       operation,
       requestId,
     });
@@ -159,7 +159,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     const groqStats = groqClient ? groqClient.getStats() : null;
     const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
-    logger.info(`${operation} completed`, {
+    logger.info('Operation completed.', {
       operation,
       requestId,
       duration: Math.round(performance.now() - startTime),

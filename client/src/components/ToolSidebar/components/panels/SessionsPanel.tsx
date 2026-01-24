@@ -100,6 +100,13 @@ export function SessionsPanel({
     }
   }, [renameEntry]);
 
+  const handleSearchChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>): void => {
+      onSearchChange(event.target.value);
+    },
+    [onSearchChange]
+  );
+
   const filteredByChips = useMemo(() => {
     return filteredHistory.filter((entry) => {
       if (filterState.videosOnly && !hasVideoArtifact(entry)) {
@@ -357,9 +364,7 @@ export function SessionsPanel({
               ref={searchInputRef}
               type="text"
               value={searchQuery}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                onSearchChange(event.target.value)
-              }
+              onChange={handleSearchChange}
               placeholder="Search..."
               aria-label="Search sessions"
               className={cn(

@@ -12,6 +12,7 @@ import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
 import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
+import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
@@ -83,6 +84,10 @@ export function GenerationsPanel({
     promptVersionId,
   });
 
+  useGenerationMediaRefresh(generations, dispatch);
+
+  const { setControls, keyframes } = useGenerationControlsContext();
+
   const mergedGenerationParams = useMemo(() => {
     if (!keyframes.length) return generationParams;
     return { ...(generationParams ?? {}), keyframes };
@@ -125,7 +130,6 @@ export function GenerationsPanel({
   });
 
   const { referenceImages: assetReferenceImages, resolvedPrompt } = useAssetReferenceImages(prompt);
-  const { setControls, keyframes } = useGenerationControlsContext();
   const detectedCharacter = useMemo(
     () => resolvedPrompt?.characters?.[0] ?? null,
     [resolvedPrompt]

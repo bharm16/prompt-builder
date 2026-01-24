@@ -37,135 +37,291 @@ export class AssetService {
   async createAsset(userId: string, payload: CreateAssetRequest): Promise<Asset> {
     const { type, trigger, name, textDefinition, negativePrompt } = payload;
     const validTypes: AssetType[] = ['character', 'style', 'location', 'object'];
+    const operation = 'createAsset';
+    const startTime = performance.now();
 
-    if (!validTypes.includes(type)) {
-      throw new Error(`Invalid asset type: ${type}. Must be one of: ${validTypes.join(', ')}`);
-    }
-
-    const triggerResult = this.triggerValidation.validate(trigger);
-    if (!triggerResult.isValid) {
-      throw new Error(`Invalid trigger: ${triggerResult.errors.join(', ')}`);
-    }
-
-    const normalizedTrigger = this.triggerValidation.normalize(trigger);
-    const exists = await this.repository.triggerExists(userId, normalizedTrigger);
-    if (exists) {
-      throw new Error(`Trigger "${trigger}" is already in use`);
-    }
-
-    if (!name || name.trim().length === 0) {
-      throw new Error('Asset name is required');
-    }
-    if (name.length > 50) {
-      throw new Error('Asset name must be 50 characters or less');
-    }
-
-    const trimmedDefinition = textDefinition?.trim() ?? '';
-    if (type !== 'character' && trimmedDefinition.length === 0) {
-      throw new Error('Text definition is required for this asset type');
-    }
-    if (trimmedDefinition.length > 1000) {
-      throw new Error('Text definition must be 1000 characters or less');
-    }
-
-    return await this.repository.create(userId, {
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
       type,
-      trigger: normalizedTrigger,
-      name: name.trim(),
-      textDefinition: trimmedDefinition,
-      negativePrompt: negativePrompt?.trim() || '',
+      triggerLength: trigger.length,
+      nameLength: name.length,
+      hasTextDefinition: Boolean(textDefinition?.trim()),
+      hasNegativePrompt: Boolean(negativePrompt?.trim()),
     });
+
+    try {
+      if (!validTypes.includes(type)) {
+        throw new Error(`Invalid asset type: ${type}. Must be one of: ${validTypes.join(', ')}`);
+      }
+
+      const triggerResult = this.triggerValidation.validate(trigger);
+      if (!triggerResult.isValid) {
+        throw new Error(`Invalid trigger: ${triggerResult.errors.join(', ')}`);
+      }
+
+      const normalizedTrigger = this.triggerValidation.normalize(trigger);
+      const exists = await this.repository.triggerExists(userId, normalizedTrigger);
+      if (exists) {
+        throw new Error(`Trigger "${trigger}" is already in use`);
+      }
+
+      if (!name || name.trim().length === 0) {
+        throw new Error('Asset name is required');
+      }
+      if (name.length > 50) {
+        throw new Error('Asset name must be 50 characters or less');
+      }
+
+      const trimmedDefinition = textDefinition?.trim() ?? '';
+      if (type !== 'character' && trimmedDefinition.length === 0) {
+        throw new Error('Text definition is required for this asset type');
+      }
+      if (trimmedDefinition.length > 1000) {
+        throw new Error('Text definition must be 1000 characters or less');
+      }
+
+      const asset = await this.repository.create(userId, {
+        type,
+        trigger: normalizedTrigger,
+        name: name.trim(),
+        textDefinition: trimmedDefinition,
+        negativePrompt: negativePrompt?.trim() || '',
+      });
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId: asset.id,
+        type: asset.type,
+        duration: Math.round(performance.now() - startTime),
+      });
+
+      return asset;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        type,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async getAsset(userId: string, assetId: string): Promise<Asset> {
-    const asset = await this.repository.getById(userId, assetId);
-    if (!asset) {
-      throw new Error(`Asset not found: ${assetId}`);
+    const operation = 'getAsset';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId });
+
+    try {
+      const asset = await this.repository.getById(userId, assetId);
+      if (!asset) {
+        throw new Error(`Asset not found: ${assetId}`);
+      }
+      this.log.debug('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return asset;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
     }
-    return asset;
   }
 
   async listAssets(
     userId: string,
     options: { limit?: number; orderByField?: string; type?: AssetType | null } = {}
   ): Promise<AssetListResponse> {
-    const assets = await this.repository.getAll(userId, options);
+    const operation = 'listAssets';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      type: options.type ?? null,
+      limit: options.limit,
+      orderByField: options.orderByField,
+    });
 
-    const byType: AssetListResponse['byType'] = {
-      character: 0,
-      style: 0,
-      location: 0,
-      object: 0,
-    };
+    try {
+      const assets = await this.repository.getAll(userId, options);
 
-    for (const asset of assets) {
-      if (asset.type in byType) {
-        byType[asset.type] += 1;
+      const byType: AssetListResponse['byType'] = {
+        character: 0,
+        style: 0,
+        location: 0,
+        object: 0,
+      };
+
+      for (const asset of assets) {
+        if (asset.type in byType) {
+          byType[asset.type] += 1;
+        }
       }
-    }
 
-    return {
-      assets,
-      total: assets.length,
-      byType,
-    };
+      const result = {
+        assets,
+        total: assets.length,
+        byType,
+      };
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        total: result.total,
+        duration: Math.round(performance.now() - startTime),
+      });
+
+      return result;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async listAssetsByType(userId: string, type: AssetType): Promise<Asset[]> {
-    return await this.repository.getByType(userId, type);
+    const operation = 'listAssetsByType';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, type });
+
+    try {
+      const assets = await this.repository.getByType(userId, type);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        type,
+        count: assets.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return assets;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        type,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async updateAsset(userId: string, assetId: string, updates: UpdateAssetRequest): Promise<Asset | null> {
-    const asset = await this.getAsset(userId, assetId);
+    const operation = 'updateAsset';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      assetId,
+      updateKeys: Object.keys(updates),
+    });
 
-    const allowedUpdates: Partial<Asset> = {};
+    try {
+      const asset = await this.getAsset(userId, assetId);
 
-    if (updates.trigger !== undefined) {
-      const triggerResult = this.triggerValidation.validate(updates.trigger);
-      if (!triggerResult.isValid) {
-        throw new Error(`Invalid trigger: ${triggerResult.errors.join(', ')}`);
+      const allowedUpdates: Partial<Asset> = {};
+
+      if (updates.trigger !== undefined) {
+        const triggerResult = this.triggerValidation.validate(updates.trigger);
+        if (!triggerResult.isValid) {
+          throw new Error(`Invalid trigger: ${triggerResult.errors.join(', ')}`);
+        }
+
+        const normalized = this.triggerValidation.normalize(updates.trigger);
+        const exists = await this.repository.triggerExists(userId, normalized, assetId);
+        if (exists) {
+          throw new Error(`Trigger "${updates.trigger}" is already in use`);
+        }
+
+        allowedUpdates.trigger = normalized;
       }
 
-      const normalized = this.triggerValidation.normalize(updates.trigger);
-      const exists = await this.repository.triggerExists(userId, normalized, assetId);
-      if (exists) {
-        throw new Error(`Trigger "${updates.trigger}" is already in use`);
+      if (updates.name !== undefined) {
+        if (updates.name.trim().length === 0) {
+          throw new Error('Asset name cannot be empty');
+        }
+        if (updates.name.length > 50) {
+          throw new Error('Asset name must be 50 characters or less');
+        }
+        allowedUpdates.name = updates.name.trim();
       }
 
-      allowedUpdates.trigger = normalized;
+      if (updates.textDefinition !== undefined) {
+        const trimmedDefinition = updates.textDefinition.trim();
+        if (trimmedDefinition.length === 0 && asset.type !== 'character') {
+          throw new Error('Text definition cannot be empty');
+        }
+        if (trimmedDefinition.length > 1000) {
+          throw new Error('Text definition must be 1000 characters or less');
+        }
+        allowedUpdates.textDefinition = trimmedDefinition;
+      }
+
+      if (updates.negativePrompt !== undefined) {
+        allowedUpdates.negativePrompt = updates.negativePrompt.trim();
+      }
+
+      const updated = await this.repository.update(userId, assetId, allowedUpdates);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return updated;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
     }
-
-    if (updates.name !== undefined) {
-      if (updates.name.trim().length === 0) {
-        throw new Error('Asset name cannot be empty');
-      }
-      if (updates.name.length > 50) {
-        throw new Error('Asset name must be 50 characters or less');
-      }
-      allowedUpdates.name = updates.name.trim();
-    }
-
-    if (updates.textDefinition !== undefined) {
-      const trimmedDefinition = updates.textDefinition.trim();
-      if (trimmedDefinition.length === 0 && asset.type !== 'character') {
-        throw new Error('Text definition cannot be empty');
-      }
-      if (trimmedDefinition.length > 1000) {
-        throw new Error('Text definition must be 1000 characters or less');
-      }
-      allowedUpdates.textDefinition = trimmedDefinition;
-    }
-
-    if (updates.negativePrompt !== undefined) {
-      allowedUpdates.negativePrompt = updates.negativePrompt.trim();
-    }
-
-    return await this.repository.update(userId, assetId, allowedUpdates);
   }
 
   async deleteAsset(userId: string, assetId: string): Promise<boolean> {
-    await this.getAsset(userId, assetId);
-    return await this.repository.delete(userId, assetId);
+    const operation = 'deleteAsset';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId });
+
+    try {
+      await this.getAsset(userId, assetId);
+      const deleted = await this.repository.delete(userId, assetId);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        deleted,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return deleted;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async addReferenceImage(
@@ -174,90 +330,250 @@ export class AssetService {
     imageBuffer: Buffer,
     metadata: ReferenceImageMetadataInput = {}
   ): Promise<{ image: Asset['referenceImages'][number]; warnings: string[] }> {
-    const asset = await this.getAsset(userId, assetId);
-
-    const maxImages = asset.type === 'character' ? 10 : 5;
-    if ((asset.referenceImages || []).length >= maxImages) {
-      throw new Error(`Maximum ${maxImages} reference images per ${asset.type}`);
-    }
-
-    const validation = await this.imageService.validateForAssetType(imageBuffer, asset.type);
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(', '));
-    }
-
-    const processedImage = await this.imageService.processImage(imageBuffer);
-    const thumbnail = await this.imageService.generateThumbnail(processedImage.buffer);
-
-    const referenceImage = await this.repository.addReferenceImage(
+    const operation = 'addReferenceImage';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
       userId,
       assetId,
-      {
-        buffer: processedImage.buffer,
-        width: processedImage.width,
-        height: processedImage.height,
-        sizeBytes: processedImage.sizeBytes,
-        format: processedImage.format,
-      },
-      {
-        buffer: thumbnail.buffer,
-        width: thumbnail.width,
-        height: thumbnail.height,
-        sizeBytes: thumbnail.sizeBytes,
-        format: thumbnail.format,
-      },
-      {
-        ...metadata,
-        width: processedImage.width,
-        height: processedImage.height,
-      }
-    );
+      bufferSize: imageBuffer.length,
+      metadataKeys: Object.keys(metadata).length,
+    });
+    try {
+      const asset = await this.getAsset(userId, assetId);
 
-    if (asset.type === 'character' && this.embeddingService) {
-      const updatedAsset = await this.getAsset(userId, assetId);
-      const isPrimary =
-        referenceImage.isPrimary ||
-        (updatedAsset.referenceImages || []).length === 1;
-      if (isPrimary) {
-        try {
-          await this.extractAndStoreFaceEmbedding(userId, assetId);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.log.warn('Face embedding extraction failed', { assetId, message });
+      const maxImages = asset.type === 'character' ? 10 : 5;
+      if ((asset.referenceImages || []).length >= maxImages) {
+        throw new Error(`Maximum ${maxImages} reference images per ${asset.type}`);
+      }
+
+      const validation = await this.imageService.validateForAssetType(imageBuffer, asset.type);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '));
+      }
+
+      const processedImage = await this.imageService.processImage(imageBuffer);
+      const thumbnail = await this.imageService.generateThumbnail(processedImage.buffer);
+
+      const referenceImage = await this.repository.addReferenceImage(
+        userId,
+        assetId,
+        {
+          buffer: processedImage.buffer,
+          width: processedImage.width,
+          height: processedImage.height,
+          sizeBytes: processedImage.sizeBytes,
+          format: processedImage.format,
+        },
+        {
+          buffer: thumbnail.buffer,
+          width: thumbnail.width,
+          height: thumbnail.height,
+          sizeBytes: thumbnail.sizeBytes,
+          format: thumbnail.format,
+        },
+        {
+          ...metadata,
+          width: processedImage.width,
+          height: processedImage.height,
+        }
+      );
+
+      if (asset.type === 'character' && this.embeddingService) {
+        const updatedAsset = await this.getAsset(userId, assetId);
+        const isPrimary =
+          referenceImage.isPrimary ||
+          (updatedAsset.referenceImages || []).length === 1;
+        if (isPrimary) {
+          try {
+            await this.extractAndStoreFaceEmbedding(userId, assetId);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.log.warn('Face embedding extraction failed', {
+              operation,
+              userId,
+              assetId,
+              message,
+            });
+          }
         }
       }
-    }
 
-    return {
-      image: referenceImage,
-      warnings: validation.warnings,
-    };
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        imageId: referenceImage.id,
+        warnings: validation.warnings.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+
+      return {
+        image: referenceImage,
+        warnings: validation.warnings,
+      };
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async deleteReferenceImage(userId: string, assetId: string, imageId: string): Promise<boolean> {
-    await this.getAsset(userId, assetId);
-    return await this.repository.deleteReferenceImage(userId, assetId, imageId);
+    const operation = 'deleteReferenceImage';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+
+    try {
+      await this.getAsset(userId, assetId);
+      const deleted = await this.repository.deleteReferenceImage(userId, assetId, imageId);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        imageId,
+        deleted,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return deleted;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        imageId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async setPrimaryImage(userId: string, assetId: string, imageId: string): Promise<Asset | null> {
-    const asset = await this.getAsset(userId, assetId);
-    const imageExists = asset.referenceImages?.some((img) => img.id === imageId);
-    if (!imageExists) {
-      throw new Error(`Image not found: ${imageId}`);
+    const operation = 'setPrimaryImage';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+
+    try {
+      const asset = await this.getAsset(userId, assetId);
+      const imageExists = asset.referenceImages?.some((img) => img.id === imageId);
+      if (!imageExists) {
+        throw new Error(`Image not found: ${imageId}`);
+      }
+      const updated = await this.repository.setPrimaryImage(userId, assetId, imageId);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        imageId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return updated;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        imageId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
     }
-    return await this.repository.setPrimaryImage(userId, assetId, imageId);
   }
 
   async resolvePrompt(userId: string, rawPrompt: string) {
-    return await this.resolver.resolvePrompt(userId, rawPrompt);
+    const operation = 'resolvePrompt';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      promptLength: rawPrompt.length,
+    });
+
+    try {
+      const result = await this.resolver.resolvePrompt(userId, rawPrompt);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetCount: result.assets.length,
+        requiresKeyframe: result.requiresKeyframe,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return result;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async getSuggestions(userId: string, partialTrigger: string) {
-    return await this.resolver.getSuggestions(userId, partialTrigger);
+    const operation = 'getSuggestions';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      queryLength: partialTrigger.length,
+    });
+
+    try {
+      const suggestions = await this.resolver.getSuggestions(userId, partialTrigger);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        suggestionCount: suggestions.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return suggestions;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async validateTriggers(userId: string, rawPrompt: string) {
-    return await this.resolver.validateTriggers(userId, rawPrompt);
+    const operation = 'validateTriggers';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', {
+      operation,
+      userId,
+      promptLength: rawPrompt.length,
+    });
+
+    try {
+      const result = await this.resolver.validateTriggers(userId, rawPrompt);
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        missingCount: result.missingTriggers.length,
+        foundCount: result.foundAssets.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return result;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
   }
 
   async getAssetForGeneration(userId: string, assetId: string): Promise<{
@@ -271,28 +587,54 @@ export class AssetService {
     referenceImages: Asset['referenceImages'];
     faceEmbedding?: string | null;
   }> {
-    const asset = await this.getAsset(userId, assetId);
+    const operation = 'getAssetForGeneration';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId });
 
-    if (asset.type === 'character' && !(asset.referenceImages || []).length) {
-      throw new Error('Character has no reference images. Add at least one reference image.');
+    try {
+      const asset = await this.getAsset(userId, assetId);
+
+      if (asset.type === 'character' && !(asset.referenceImages || []).length) {
+        throw new Error('Character has no reference images. Add at least one reference image.');
+      }
+
+      const primaryImage =
+        asset.referenceImages?.find((image) => image.isPrimary) || asset.referenceImages?.[0];
+
+      await this.repository.incrementUsage(userId, assetId);
+
+      const result = {
+        id: asset.id,
+        type: asset.type,
+        trigger: asset.trigger,
+        name: asset.name,
+        textDefinition: asset.textDefinition,
+        negativePrompt: asset.negativePrompt,
+        primaryImageUrl: primaryImage?.url || null,
+        referenceImages: asset.referenceImages || [],
+        faceEmbedding: asset.faceEmbedding,
+      };
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        type: asset.type,
+        referenceImageCount: result.referenceImages.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+
+      return result;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
     }
-
-    const primaryImage =
-      asset.referenceImages?.find((image) => image.isPrimary) || asset.referenceImages?.[0];
-
-    await this.repository.incrementUsage(userId, assetId);
-
-    return {
-      id: asset.id,
-      type: asset.type,
-      trigger: asset.trigger,
-      name: asset.name,
-      textDefinition: asset.textDefinition,
-      negativePrompt: asset.negativePrompt,
-      primaryImageUrl: primaryImage?.url || null,
-      referenceImages: asset.referenceImages || [],
-      faceEmbedding: asset.faceEmbedding,
-    };
   }
 
   async generateDescriptionFromImage(_userId: string, _assetId: string, _imageId?: string | null) {
@@ -300,30 +642,53 @@ export class AssetService {
   }
 
   async extractAndStoreFaceEmbedding(userId: string, assetId: string) {
-    if (!this.embeddingService) {
-      throw new Error('Face embedding service is not configured');
+    const operation = 'extractAndStoreFaceEmbedding';
+    const startTime = performance.now();
+    this.log.debug('Starting operation.', { operation, userId, assetId });
+
+    try {
+      if (!this.embeddingService) {
+        throw new Error('Face embedding service is not configured');
+      }
+      const asset = await this.getAsset(userId, assetId);
+
+      if (asset.type !== 'character') {
+        throw new Error('Face embedding only available for character assets');
+      }
+
+      const primaryImage =
+        asset.referenceImages?.find((image) => image.isPrimary) || asset.referenceImages?.[0];
+
+      if (!primaryImage) {
+        throw new Error('No reference image available for embedding extraction');
+      }
+
+      const result = await this.embeddingService.extractEmbedding(primaryImage.url);
+      const serializedEmbedding = this.embeddingService.serializeEmbedding(result.embedding);
+
+      await this.repository.update(userId, assetId, {
+        faceEmbedding: serializedEmbedding,
+      });
+
+      this.log.info('Operation completed.', {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+        confidence: result.confidence,
+      });
+
+      return result;
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.log.error('Operation failed.', errorObj, {
+        operation,
+        userId,
+        assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
     }
-    const asset = await this.getAsset(userId, assetId);
-
-    if (asset.type !== 'character') {
-      throw new Error('Face embedding only available for character assets');
-    }
-
-    const primaryImage =
-      asset.referenceImages?.find((image) => image.isPrimary) || asset.referenceImages?.[0];
-
-    if (!primaryImage) {
-      throw new Error('No reference image available for embedding extraction');
-    }
-
-    const result = await this.embeddingService.extractEmbedding(primaryImage.url);
-    const serializedEmbedding = this.embeddingService.serializeEmbedding(result.embedding);
-
-    await this.repository.update(userId, assetId, {
-      faceEmbedding: serializedEmbedding,
-    });
-
-    return result;
   }
 }
 

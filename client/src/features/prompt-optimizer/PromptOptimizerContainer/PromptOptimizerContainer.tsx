@@ -14,6 +14,8 @@ import DebugButton from '@components/DebugButton';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
 import { getAuthRepository } from '@/repositories';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { CoherenceRecommendation } from '../types/coherence';
@@ -37,6 +39,8 @@ import {
   useConceptBrainstorm,
   useEnhancementSuggestions,
 } from './hooks';
+
+const log = logger.child('PromptOptimizerContainer');
 
 function resolveActiveStatusLabel(params: {
   inputPrompt: string;
@@ -331,7 +335,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         try {
           promptHistory.updateEntryOutput(currentPromptUuid, currentPromptDocId, result.updatedPrompt);
         } catch (error) {
-          console.warn('Failed to persist coherence edits:', error);
+          const info = sanitizeError(error);
+          log.warn('Failed to persist coherence edits', {
+            operation: 'updateEntryOutput',
+            promptUuid: currentPromptUuid,
+            promptDocId: currentPromptDocId,
+            error: info.message,
+            errorName: info.name,
+          });
         }
       }
 

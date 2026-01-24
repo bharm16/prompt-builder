@@ -72,7 +72,7 @@ export async function startServer(
  */
 export function setupGracefulShutdown(server: Server, container: DIContainer): void {
   const shutdown = async (signal: string) => {
-    logger.info(`${signal} signal received: closing HTTP server`);
+    logger.info('Signal received; closing HTTP server.', { signal });
 
     // Stop accepting new connections
     server.close(async () => {

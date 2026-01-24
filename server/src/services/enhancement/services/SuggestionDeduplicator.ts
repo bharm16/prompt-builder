@@ -222,7 +222,8 @@ Provide a JSON object with the new suggestion:
       }
       return alternative;
     } catch (error) {
-      logger.warn('Failed to generate diverse alternative', { error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('Failed to generate diverse alternative', { error: errorMessage });
       // Fallback: return original with slight modification
       return {
         text: `${original.text} (alternative approach)`,

@@ -37,7 +37,7 @@ export function createSuggestionsHandlers({
       const requestId = req.id;
       const userId = extractUserId(req);
 
-      logger.debug(`Starting ${operation}`, {
+      logger.debug('Starting operation.', {
         operation,
         requestId,
         userId,
@@ -55,7 +55,7 @@ export function createSuggestionsHandlers({
 
         const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info(`${operation} completed`, {
+        logger.info('Operation completed.', {
           operation,
           requestId,
           userId,
@@ -70,7 +70,7 @@ export function createSuggestionsHandlers({
       } catch (error: any) {
         const responseTime = Math.round(performance.now() - startTime);
         logger.error(
-          `${operation} failed`,
+          'Operation failed.',
           error instanceof Error ? error : new Error(String(error)),
           {
             operation,
@@ -105,7 +105,7 @@ export function createSuggestionsHandlers({
       const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
       try {
-        logger.debug(`Starting ${operation}`, {
+        logger.debug('Starting operation.', {
           operation,
           requestId,
           userId,
@@ -121,7 +121,7 @@ export function createSuggestionsHandlers({
 
         const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info(`${operation} completed`, {
+        logger.info('Operation completed.', {
           operation,
           requestId,
           userId,
@@ -137,7 +137,7 @@ export function createSuggestionsHandlers({
         const responseTime = Math.round(performance.now() - startTime);
 
         logger.error(
-          `${operation} failed`,
+          'Operation failed.',
           error instanceof Error ? error : new Error(String(error)),
           {
             operation,
@@ -172,7 +172,7 @@ export function createSuggestionsHandlers({
       const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
       try {
-        logger.debug(`Starting ${operation}`, {
+        logger.debug('Starting operation.', {
           operation,
           requestId,
           setACount: setA.length,
@@ -188,7 +188,7 @@ export function createSuggestionsHandlers({
 
         const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info(`${operation} completed`, {
+        logger.info('Operation completed.', {
           operation,
           requestId,
           duration: responseTime,
@@ -204,7 +204,7 @@ export function createSuggestionsHandlers({
         const responseTime = Math.round(performance.now() - startTime);
 
         logger.error(
-          `${operation} failed`,
+          'Operation failed.',
           error instanceof Error ? error : new Error(String(error)),
           {
             operation,

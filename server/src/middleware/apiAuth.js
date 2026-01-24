@@ -65,6 +65,7 @@ export async function apiAuthMiddleware(req, res, next) {
     });
 
     req.apiKey = apiKeyCandidate;
+    req.user = { uid: `api-key:${apiKeyCandidate}` };
     return next();
   }
 

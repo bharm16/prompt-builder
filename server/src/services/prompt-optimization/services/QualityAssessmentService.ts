@@ -25,7 +25,7 @@ export class QualityAssessmentService {
     const operation = 'assessQuality';
     const startTime = performance.now();
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -45,7 +45,7 @@ export class QualityAssessmentService {
       const assessment = this.parseAssessment(rawOutput);
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         overallScore: assessment.score,
@@ -56,7 +56,7 @@ export class QualityAssessmentService {
       return assessment;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         mode,
@@ -85,7 +85,7 @@ export class QualityAssessmentService {
     const operation = 'identifyWeaknesses';
     const startTime = performance.now();
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       overallScore: assessment.score,
     });
@@ -110,7 +110,7 @@ export class QualityAssessmentService {
     }
 
     const duration = Math.round(performance.now() - startTime);
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration,
       weaknessCount: weaknesses.length,

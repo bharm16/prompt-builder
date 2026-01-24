@@ -641,7 +641,18 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'keyframeGenerationService',
-    () => new KeyframeGenerationService(),
+    () => {
+      const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY;
+      if (!falKey) {
+        logger.warn('KeyframeGenerationService: FAL_KEY not set, service will be unavailable');
+        return null;
+      }
+      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      return new KeyframeGenerationService({
+        falApiKey: falKey,
+        ...(replicateToken ? { apiToken: replicateToken } : {}),
+      });
+    },
     [],
     { singleton: true }
   );
@@ -649,14 +660,16 @@ export async function configureServices(): Promise<DIContainer> {
   container.register(
     'keyframeService',
     () => {
-      const replicateToken = process.env.REPLICATE_API_TOKEN;
-      if (!replicateToken) {
-        logger.warn(
-          'KeyframeGenerationService: REPLICATE_API_TOKEN not set, service will be unavailable'
-        );
+      const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY;
+      if (!falKey) {
+        logger.warn('KeyframeGenerationService: FAL_KEY not set, service will be unavailable');
         return null;
       }
-      return new KeyframeGenerationService({ apiToken: replicateToken });
+      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      return new KeyframeGenerationService({
+        falApiKey: falKey,
+        ...(replicateToken ? { apiToken: replicateToken } : {}),
+      });
     },
     [],
     { singleton: true }
@@ -667,12 +680,13 @@ export async function configureServices(): Promise<DIContainer> {
     (
       videoGenerationService: VideoGenerationService | null,
       assetService: AssetService | null,
-      keyframeGenerationService: KeyframeGenerationService
+      keyframeGenerationService: KeyframeGenerationService | null
     ) => {
-      if (!videoGenerationService || !assetService) {
+      if (!videoGenerationService || !assetService || !keyframeGenerationService) {
         logger.warn('Consistent video service disabled', {
           videoGenerationServiceAvailable: Boolean(videoGenerationService),
           assetServiceAvailable: Boolean(assetService),
+          keyframeGenerationServiceAvailable: Boolean(keyframeGenerationService),
         });
         return null;
       }

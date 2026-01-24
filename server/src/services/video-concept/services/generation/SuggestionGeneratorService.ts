@@ -106,7 +106,7 @@ export class SuggestionGeneratorService {
       ? TAXONOMY.SUBJECT.id 
       : FIELD_CATEGORY_MAP[params.elementType];
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       normalizedElementType,
@@ -126,7 +126,7 @@ export class SuggestionGeneratorService {
 
     const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'creative-suggestions');
     if (cached) {
-      this.log.debug(`${operation} cache hit`, {
+      this.log.debug('Cache hit.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         suggestionCount: cached.suggestions.length,
@@ -218,7 +218,7 @@ export class SuggestionGeneratorService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       elementType: normalizedElementType,
@@ -306,7 +306,7 @@ export class SuggestionGeneratorService {
     const startTime = performance.now();
     const operation = 'getAlternativePhrasings';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       valueLength: params.value.length,
@@ -349,7 +349,7 @@ Return ONLY a JSON array:
         }
       ) as AlternativePhrasing[];
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         alternativeCount: alternatives.length,
@@ -357,7 +357,7 @@ Return ONLY a JSON array:
       
       return { alternatives };
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,
@@ -366,4 +366,3 @@ Return ONLY a JSON array:
     }
   }
 }
-
