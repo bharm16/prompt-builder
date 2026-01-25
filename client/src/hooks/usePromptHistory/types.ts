@@ -1,69 +1,21 @@
 /**
  * Types for usePromptHistory hook
+ *
+ * Re-exports shared types from @hooks/types and defines hook-specific types.
  */
 
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+// Re-export shared types to maintain backward compatibility
+export type {
+  User,
+  PromptHistoryEntry,
+  PromptVersionEdit,
+  PromptVersionPreview,
+  PromptVersionVideo,
+  PromptVersionEntry,
+  Toast,
+} from '@hooks/types';
 
-export interface User {
-  uid: string;
-  [key: string]: unknown;
-}
-
-export interface PromptHistoryEntry {
-  id?: string;
-  uuid?: string;
-  timestamp?: string;
-  title?: string | null;
-  input: string;
-  output: string;
-  score?: number | null;
-  mode?: string;
-  targetModel?: string | null;
-  generationParams?: Record<string, unknown> | null;
-  brainstormContext?: unknown | null;
-  highlightCache?: unknown | null;
-  versions?: PromptVersionEntry[];
-}
-
-export interface PromptVersionEdit {
-  timestamp: string;
-  delta?: number;
-  source?: 'manual' | 'suggestion' | 'unknown';
-}
-
-export interface PromptVersionPreview {
-  generatedAt: string;
-  imageUrl?: string | null;
-  aspectRatio?: string | null;
-}
-
-export interface PromptVersionVideo {
-  generatedAt: string;
-  videoUrl?: string | null;
-  model?: string | null;
-  generationParams?: Record<string, unknown> | null;
-}
-
-export interface PromptVersionEntry {
-  versionId: string;
-  label?: string;
-  signature: string;
-  prompt: string;
-  timestamp: string;
-  highlights?: unknown | null;
-  editCount?: number;
-  edits?: PromptVersionEdit[];
-  preview?: PromptVersionPreview | null;
-  video?: PromptVersionVideo | null;
-  generations?: Generation[] | null;
-}
-
-export interface Toast {
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
-  warning: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
-}
+import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 
 export interface HistoryState {
   history: PromptHistoryEntry[];

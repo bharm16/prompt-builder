@@ -193,7 +193,7 @@ export function GenerationsPanel({
     );
     if (index < 0) return versions;
     const target = versions[index];
-    if (target?.generations === generations) return versions;
+    if (!target || target.generations === generations) return versions;
     const next = [...versions];
     next[index] = { ...target, generations };
     return next;

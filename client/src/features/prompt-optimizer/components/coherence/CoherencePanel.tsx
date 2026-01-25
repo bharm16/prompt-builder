@@ -20,7 +20,7 @@ interface CoherencePanelProps {
   onDismissIssue: (issueId: string) => void;
   onDismissAll: () => void;
   onApplyFix: (issueId: string, recommendation: CoherenceRecommendation) => void;
-  onScrollToSpan?: (spanId: string) => void;
+  onScrollToSpan?: ((spanId: string) => void) | undefined;
 }
 
 export function CoherencePanel({

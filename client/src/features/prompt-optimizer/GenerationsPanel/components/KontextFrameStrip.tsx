@@ -6,9 +6,9 @@ interface KontextFrameStripProps {
   frames: Array<string | null>;
   duration: number;
   isGenerating: boolean;
-  progressPercent?: number | null;
-  onFrameClick?: (index: number, url: string | null) => void;
-  selectedFrameUrl?: string | null;
+  progressPercent?: number | null | undefined;
+  onFrameClick?: ((index: number, url: string | null) => void) | undefined;
+  selectedFrameUrl?: string | null | undefined;
 }
 
 export function KontextFrameStrip({

@@ -65,10 +65,11 @@ export class KeyframeGenerationService {
       this.replicate = token ? new Replicate({ auth: token }) : null;
     }
 
-    // Embedding service for face validation
+    // Embedding service for face validation (requires explicit opt-in)
+    const enableFaceEmbedding = process.env.ENABLE_FACE_EMBEDDING === 'true';
     if (options.embeddingService) {
       this.embeddingService = options.embeddingService;
-    } else if (this.replicate) {
+    } else if (enableFaceEmbedding && this.replicate) {
       this.embeddingService = new FaceEmbeddingService(this.replicate);
     } else {
       this.embeddingService = null;

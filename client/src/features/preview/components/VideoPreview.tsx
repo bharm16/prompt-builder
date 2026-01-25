@@ -13,8 +13,8 @@ import { useVideoPreview } from '../hooks/useVideoPreview';
 
 interface VideoPreviewProps {
   prompt: string;
-  aspectRatio?: string | null;
-  model?: string;
+  aspectRatio?: string | null | undefined;
+  model?: string | undefined;
   generationParams?: Record<string, unknown>;
   inputReference?: string;
   startImage?: string | null;

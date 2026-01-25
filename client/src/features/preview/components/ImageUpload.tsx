@@ -7,10 +7,10 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 export interface ImageUploadResult {
   imageUrl: string;
-  storagePath?: string;
-  viewUrlExpiresAt?: string;
-  sizeBytes?: number;
-  contentType?: string;
+  storagePath?: string | undefined;
+  viewUrlExpiresAt?: string | undefined;
+  sizeBytes?: number | undefined;
+  contentType?: string | undefined;
 }
 
 interface ImageUploadProps {

@@ -31,32 +31,32 @@ const buildCoherenceSpansFromSnapshot = (
     return [];
   }
 
-  return snapshot.spans
-    .map((span, index) => {
-      const start = typeof span.start === 'number' ? span.start : null;
-      const end = typeof span.end === 'number' ? span.end : null;
-      if (start === null || end === null || end <= start) {
-        return null;
-      }
+  const mapped = snapshot.spans.map((span, index): CoherenceSpan | null => {
+    const start = typeof span.start === 'number' ? span.start : null;
+    const end = typeof span.end === 'number' ? span.end : null;
+    if (start === null || end === null || end <= start) {
+      return null;
+    }
 
-      const safeStart = Math.max(0, Math.min(start, prompt.length));
-      const safeEnd = Math.max(safeStart, Math.min(end, prompt.length));
-      const text = prompt.slice(safeStart, safeEnd).trim();
-      if (!text) {
-        return null;
-      }
+    const safeStart = Math.max(0, Math.min(start, prompt.length));
+    const safeEnd = Math.max(safeStart, Math.min(end, prompt.length));
+    const text = prompt.slice(safeStart, safeEnd).trim();
+    if (!text) {
+      return null;
+    }
 
-      return {
-        id: `span_${safeStart}_${safeEnd}_${index}`,
-        start: safeStart,
-        end: safeEnd,
-        category: span.category,
-        confidence: span.confidence,
-        text,
-        quote: text,
-      };
-    })
-    .filter((span): span is CoherenceSpan => Boolean(span));
+    return {
+      id: `span_${safeStart}_${safeEnd}_${index}`,
+      start: safeStart,
+      end: safeEnd,
+      category: span.category,
+      confidence: span.confidence,
+      text,
+      quote: text,
+    };
+  });
+
+  return mapped.filter((span): span is CoherenceSpan => span !== null);
 };
 
 interface UseSuggestionApplyParams {
@@ -74,7 +74,7 @@ interface UseSuggestionApplyParams {
   promptHistory: {
     updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   };
-  onCoherenceCheck?: (payload: CoherenceCheckRequest) => Promise<void> | void;
+  onCoherenceCheck?: ((payload: CoherenceCheckRequest) => Promise<void> | void) | undefined;
 }
 
 /**

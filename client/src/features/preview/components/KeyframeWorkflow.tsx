@@ -6,7 +6,7 @@ import { VideoPreview } from './VideoPreview';
 
 interface KeyframeWorkflowProps {
   prompt: string;
-  aspectRatio?: string;
+  aspectRatio?: string | null | undefined;
   targetModel?: string;
   modelCapabilities?: Record<string, { supportsImageInput: boolean }>;
 }

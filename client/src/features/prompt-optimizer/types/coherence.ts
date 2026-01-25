@@ -1,58 +1,58 @@
 export type CoherenceEdit =
   | {
       type: 'replaceSpanText';
-      spanId?: string;
-      replacementText?: string;
-      anchorQuote?: string;
+      spanId?: string | undefined;
+      replacementText?: string | undefined;
+      anchorQuote?: string | undefined;
     }
   | {
       type: 'removeSpan';
-      spanId?: string;
-      anchorQuote?: string;
+      spanId?: string | undefined;
+      anchorQuote?: string | undefined;
     };
 
 export interface CoherenceRecommendation {
-  id?: string;
+  id?: string | undefined;
   title: string;
   rationale: string;
   edits: CoherenceEdit[];
-  confidence?: number;
+  confidence?: number | undefined;
 }
 
 export interface CoherenceFinding {
-  id?: string;
-  severity?: 'low' | 'medium' | 'high' | 'suggestion';
+  id?: string | undefined;
+  severity?: 'low' | 'medium' | 'high' | 'suggestion' | undefined;
   message: string;
   reasoning: string;
-  involvedSpanIds?: string[];
+  involvedSpanIds?: string[] | undefined;
   recommendations: CoherenceRecommendation[];
 }
 
 export interface CoherenceSpan {
-  id?: string;
-  category?: string;
-  text?: string;
-  quote?: string;
-  start?: number;
-  end?: number;
-  confidence?: number;
-  leftCtx?: string;
-  rightCtx?: string;
+  id?: string | undefined;
+  category?: string | undefined;
+  text?: string | undefined;
+  quote?: string | undefined;
+  start?: number | undefined;
+  end?: number | undefined;
+  confidence?: number | undefined;
+  leftCtx?: string | undefined;
+  rightCtx?: string | undefined;
   [key: string]: unknown;
 }
 
 export interface AppliedChange {
-  spanId?: string;
-  category?: string;
-  oldText?: string;
-  newText?: string;
+  spanId?: string | undefined;
+  category?: string | undefined;
+  oldText?: string | undefined;
+  newText?: string | undefined;
 }
 
 export interface CoherenceCheckRequest {
   beforePrompt: string;
   afterPrompt: string;
-  appliedChange?: AppliedChange;
-  spans?: CoherenceSpan[];
+  appliedChange?: AppliedChange | undefined;
+  spans?: CoherenceSpan[] | undefined;
 }
 
 export interface CoherenceCheckResult {
@@ -63,6 +63,6 @@ export interface CoherenceCheckResult {
 export interface CoherenceReviewData extends CoherenceCheckResult {
   beforePrompt: string;
   afterPrompt: string;
-  appliedChange?: AppliedChange;
+  appliedChange?: AppliedChange | undefined;
   spans: CoherenceSpan[];
 }

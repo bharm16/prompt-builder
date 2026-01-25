@@ -19,9 +19,9 @@ interface AutocompletePosition {
 
 interface TriggerDetection {
   triggered: boolean;
-  query?: string;
-  startIndex?: number;
-  endIndex?: number;
+  query?: string | undefined;
+  startIndex?: number | undefined;
+  endIndex?: number | undefined;
 }
 
 interface TriggerAutocompleteOptions {

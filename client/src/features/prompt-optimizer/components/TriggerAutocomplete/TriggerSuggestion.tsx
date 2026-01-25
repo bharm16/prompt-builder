@@ -25,6 +25,7 @@ export function TriggerSuggestion({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
+  const primaryImageUrl = primaryImage?.thumbnailUrl || primaryImage?.url;
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
   const triggerLabel = asset.trigger.startsWith('@')
@@ -43,12 +44,12 @@ export function TriggerSuggestion({
       <div
         className={cn(
           'flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md',
-          primaryImage ? 'bg-surface-3' : config.bgClass
+          primaryImageUrl ? 'bg-surface-3' : config.bgClass
         )}
       >
-        {primaryImage ? (
+        {primaryImageUrl ? (
           <img
-            src={primaryImage.thumbnailUrl}
+            src={primaryImageUrl}
             alt=""
             className="h-full w-full object-cover"
           />

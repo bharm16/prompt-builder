@@ -16,7 +16,7 @@ interface AssetCardProps {
   onSelect: (asset: Asset) => void;
   onEdit: (asset: Asset) => void;
   onDelete: (assetId: string) => void;
-  onUseInGeneration?: (asset: Asset) => void;
+  onUseInGeneration?: ((asset: Asset) => void) | undefined;
 }
 
 export function AssetCard({

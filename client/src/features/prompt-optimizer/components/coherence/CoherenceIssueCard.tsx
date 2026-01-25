@@ -9,7 +9,7 @@ interface CoherenceIssueCardProps {
   issue: CoherenceIssue;
   onDismiss: () => void;
   onApplyFix: (recommendation: CoherenceRecommendation) => void;
-  onScrollToSpan?: (spanId: string) => void;
+  onScrollToSpan?: ((spanId: string) => void) | undefined;
 }
 
 export function CoherenceIssueCard({
@@ -71,7 +71,7 @@ export function CoherenceIssueCard({
                 <p className="truncate text-xs font-medium text-[rgb(235,236,239)]">
                   {rec.title}
                 </p>
-                {showDiff && rec.edits?.[0] && (
+                {showDiff && rec.edits?.[0]?.type === 'replaceSpanText' && (
                   <div className="mt-2 flex items-center gap-2 text-xs">
                     <span className="text-[rgb(170,174,187)] line-through">
                       {rec.edits[0].anchorQuote?.slice(0, 30)}...

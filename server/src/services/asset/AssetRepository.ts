@@ -89,6 +89,96 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
 
+/**
+ * Extract the token from a Firebase Storage download URL
+ */
+function extractTokenFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.get('token');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract the bucket name from a Firebase Storage download URL
+ * Returns null if URL doesn't match expected Firebase Storage format
+ */
+function extractBucketFromUrl(url: string): string | null {
+  try {
+    // Match Firebase Storage URL pattern: firebasestorage.googleapis.com/v0/b/{bucket}/o/
+    const match = url.match(/firebasestorage\.googleapis\.com\/v0\/b\/([^/]+)\/o\//);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a URL appears to be a valid Firebase Storage download URL
+ */
+function isValidFirebaseStorageUrl(url: string): boolean {
+  const bucket = extractBucketFromUrl(url);
+  const token = extractTokenFromUrl(url);
+  // Valid if we can extract both bucket and token
+  return bucket !== null && token !== null;
+}
+
+/**
+ * Refresh a reference image's URLs only if they are malformed
+ *
+ * IMPORTANT: We preserve URLs that already point to valid buckets (even if different
+ * from the current bucket), because files may be stored in different buckets
+ * (e.g., Firebase Storage vs GCS bucket).
+ */
+function refreshImageUrls(
+  image: AssetReferenceImage,
+  bucketName: string
+): AssetReferenceImage {
+  // If we don't have storage paths, we can't refresh
+  if (!image.storagePath) {
+    return image;
+  }
+
+  // If the URL is already a valid Firebase Storage URL (regardless of which bucket),
+  // preserve it as-is. The files exist in their original bucket.
+  if (isValidFirebaseStorageUrl(image.url)) {
+    return image;
+  }
+
+  // Only refresh if URL is malformed or missing expected components
+  const imageToken = extractTokenFromUrl(image.url);
+  const thumbToken = image.thumbnailUrl ? extractTokenFromUrl(image.thumbnailUrl) : null;
+
+  // If we can't extract tokens, return as-is
+  if (!imageToken) {
+    return image;
+  }
+
+  return {
+    ...image,
+    url: buildDownloadUrl(bucketName, image.storagePath, imageToken),
+    thumbnailUrl: image.thumbnailPath && thumbToken
+      ? buildDownloadUrl(bucketName, image.thumbnailPath, thumbToken)
+      : image.thumbnailUrl,
+  };
+}
+
+/**
+ * Refresh all reference image URLs in an asset to use the current bucket
+ */
+function refreshAssetUrls(asset: Asset, bucketName: string): Asset {
+  if (!asset.referenceImages?.length) {
+    return asset;
+  }
+
+  return {
+    ...asset,
+    referenceImages: asset.referenceImages.map((img) => refreshImageUrls(img, bucketName)),
+  };
+}
+
 export class AssetRepository {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
@@ -176,7 +266,8 @@ export class AssetRepository {
     if (!snapshot.exists) {
       return null;
     }
-    return snapshot.data() as Asset;
+    const asset = snapshot.data() as Asset;
+    return refreshAssetUrls(asset, this.bucketName);
   }
 
   async getByTrigger(userId: string, trigger: string): Promise<Asset | null> {
@@ -187,7 +278,8 @@ export class AssetRepository {
       .get();
 
     if (snapshot.empty) return null;
-    return snapshot.docs[0]?.data() as Asset;
+    const asset = snapshot.docs[0]?.data() as Asset | undefined;
+    return asset ? refreshAssetUrls(asset, this.bucketName) : null;
   }
 
   async getByTriggers(userId: string, triggers: string[]): Promise<Asset[]> {
@@ -204,7 +296,9 @@ export class AssetRepository {
       const snapshot = await this.getAssetsCollection(userId)
         .where('trigger', 'in', batch)
         .get();
-      results.push(...snapshot.docs.map((doc) => doc.data() as Asset));
+      results.push(
+        ...snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName))
+      );
     }
 
     return results;
@@ -228,7 +322,7 @@ export class AssetRepository {
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map((doc) => doc.data() as Asset);
+    return snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName));
   }
 
   async getByType(userId: string, type: AssetType): Promise<Asset[]> {
@@ -236,7 +330,7 @@ export class AssetRepository {
       .where('type', '==', type)
       .orderBy('updatedAt', 'desc')
       .get();
-    return snapshot.docs.map((doc) => doc.data() as Asset);
+    return snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName));
   }
 
   async update(

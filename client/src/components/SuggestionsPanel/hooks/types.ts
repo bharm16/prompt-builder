@@ -3,12 +3,12 @@
  */
 
 export interface SuggestionItem {
-  id?: string;
-  text?: string;
-  category?: string;
-  suggestions?: SuggestionItem[];
-  compatibility?: number;
-  explanation?: string;
+  id?: string | undefined;
+  text?: string | undefined;
+  category?: string | undefined;
+  suggestions?: SuggestionItem[] | undefined;
+  compatibility?: number | undefined;
+  explanation?: string | undefined;
   [key: string]: unknown;
 }
 

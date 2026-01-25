@@ -13,7 +13,7 @@ interface QuickCharacterCreateProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (asset: Asset) => void;
-  prefillTrigger?: string;
+  prefillTrigger?: string | undefined;
 }
 
 export function QuickCharacterCreate({

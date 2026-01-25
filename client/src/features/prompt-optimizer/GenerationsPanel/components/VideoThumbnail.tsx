@@ -4,9 +4,9 @@ import { cn } from '@/utils/cn';
 
 interface VideoThumbnailProps {
   videoUrl: string | null;
-  thumbnailUrl?: string | null;
+  thumbnailUrl?: string | null | undefined;
   isGenerating: boolean;
-  onPlay?: () => void;
+  onPlay?: (() => void) | undefined;
 }
 
 export function VideoThumbnail({

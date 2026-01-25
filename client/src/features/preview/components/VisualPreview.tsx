@@ -18,7 +18,7 @@ import { cn } from '@/utils/cn';
 
 interface VisualPreviewProps {
   prompt: string;
-  aspectRatio?: string | null;
+  aspectRatio?: string | null | undefined;
   isVisible: boolean;
   seedImageUrl?: string | null;
   generateRequestId?: number;

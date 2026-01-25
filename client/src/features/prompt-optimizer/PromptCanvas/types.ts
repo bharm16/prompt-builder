@@ -83,12 +83,12 @@ export interface SpanClickPayload {
 }
 
 export interface SuggestionItem {
-  id?: string;
-  text?: string;
-  category?: string;
-  suggestions?: SuggestionItem[];
-  compatibility?: number;
-  explanation?: string;
+  id?: string | undefined;
+  text?: string | undefined;
+  category?: string | undefined;
+  suggestions?: SuggestionItem[] | undefined;
+  compatibility?: number | undefined;
+  explanation?: string | undefined;
   [key: string]: unknown;
 }
 
@@ -167,15 +167,15 @@ export interface ValidSpan {
 }
 
 export interface PromptCanvasProps {
-  user?: User | null;
-  showResults?: boolean;
+  user?: User | null | undefined;
+  showResults?: boolean | undefined;
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   displayedPrompt: string | null;
   optimizedPrompt: string;
-  previewPrompt?: string | null;
-  previewAspectRatio?: string | null;
+  previewPrompt?: string | null | undefined;
+  previewAspectRatio?: string | null | undefined;
   qualityScore: number | null;
   selectedMode: string;
   currentMode: Mode;
@@ -183,12 +183,12 @@ export interface PromptCanvasProps {
   promptContext: PromptContext | null;
   onDisplayedPromptChange: (text: string) => void;
   suggestionsData: SuggestionsData | null;
-  onFetchSuggestions?: (payload: SuggestionPayload) => void;
-  onSuggestionClick?: (suggestion: SuggestionItem | string) => void;
+  onFetchSuggestions?: ((payload: SuggestionPayload) => void) | undefined;
+  onSuggestionClick?: ((suggestion: SuggestionItem | string) => void) | undefined;
   onCreateNew: () => void;
-  initialHighlights?: HighlightSnapshot | null;
-  initialHighlightsVersion?: number;
-  onHighlightsPersist?: (result: {
+  initialHighlights?: HighlightSnapshot | null | undefined;
+  initialHighlightsVersion?: number | undefined;
+  onHighlightsPersist?: ((result: {
     spans: Array<{
       start: number;
       end: number;
@@ -200,29 +200,29 @@ export interface PromptCanvasProps {
     cacheId?: string | null;
     source?: string;
     [key: string]: unknown;
-  }) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  isDraftReady?: boolean;
-  isRefining?: boolean;
-  isProcessing?: boolean;
-  draftSpans?: SpansData | null;
-  refinedSpans?: SpansData | null;
-  coherenceAffectedSpanIds?: Set<string>;
-  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
+  }) => void) | undefined;
+  onUndo?: (() => void) | undefined;
+  onRedo?: (() => void) | undefined;
+  canUndo?: boolean | undefined;
+  canRedo?: boolean | undefined;
+  isDraftReady?: boolean | undefined;
+  isRefining?: boolean | undefined;
+  isProcessing?: boolean | undefined;
+  draftSpans?: SpansData | null | undefined;
+  refinedSpans?: SpansData | null | undefined;
+  coherenceAffectedSpanIds?: Set<string> | undefined;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
 
   // Coherence panel (inline, collapsible)
-  coherenceIssues?: CoherenceIssue[];
-  isCoherenceChecking?: boolean;
-  isCoherencePanelExpanded?: boolean;
-  onToggleCoherencePanelExpanded?: () => void;
-  onDismissCoherenceIssue?: (issueId: string) => void;
-  onDismissAllCoherenceIssues?: () => void;
-  onApplyCoherenceFix?: (
+  coherenceIssues?: CoherenceIssue[] | undefined;
+  isCoherenceChecking?: boolean | undefined;
+  isCoherencePanelExpanded?: boolean | undefined;
+  onToggleCoherencePanelExpanded?: (() => void) | undefined;
+  onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
+  onDismissAllCoherenceIssues?: (() => void) | undefined;
+  onApplyCoherenceFix?: ((
     issueId: string,
     recommendation: CoherenceRecommendation
-  ) => void;
-  onScrollToCoherenceSpan?: (spanId: string) => void;
+  ) => void) | undefined;
+  onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
 }

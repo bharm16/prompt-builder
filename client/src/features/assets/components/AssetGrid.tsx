@@ -8,7 +8,7 @@ interface AssetGridProps {
   onSelect: (asset: Asset) => void;
   onEdit: (asset: Asset) => void;
   onDelete: (assetId: string) => void;
-  onSelectForGeneration?: (asset: Asset) => void;
+  onSelectForGeneration?: ((asset: Asset) => void) | undefined;
 }
 
 export function AssetGrid({

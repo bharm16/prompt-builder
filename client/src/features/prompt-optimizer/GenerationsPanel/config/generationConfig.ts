@@ -5,7 +5,7 @@ type ModelConfig = {
   credits: number;
   eta: string;
   mediaType: GenerationMediaType;
-  frameCount?: number;
+  frameCount?: number | undefined;
 };
 
 export const DRAFT_MODELS: Record<string, ModelConfig> = {
@@ -37,8 +37,10 @@ export const RENDER_MODELS: Record<string, ModelConfig> = {
 };
 
 export const getModelConfig = (modelId: string): ModelConfig | null => {
-  if (modelId in DRAFT_MODELS) return DRAFT_MODELS[modelId];
-  if (modelId in RENDER_MODELS) return RENDER_MODELS[modelId];
+  const draftConfig = DRAFT_MODELS[modelId];
+  if (draftConfig) return draftConfig;
+  const renderConfig = RENDER_MODELS[modelId];
+  if (renderConfig) return renderConfig;
   return null;
 };
 

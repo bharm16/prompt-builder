@@ -14,26 +14,26 @@
  * Uses the most complete definition from HighlightSpan as the base
  */
 export interface Span {
-  id?: string;
+  id?: string | undefined;
   start: number;
   end: number;
-  displayStart?: number;
-  displayEnd?: number;
-  text?: string;
-  quote?: string;
-  displayQuote?: string;
-  category?: string;
-  role?: string;
-  confidence?: number;
-  source?: string;
-  startGrapheme?: number;
-  endGrapheme?: number;
-  validatorPass?: boolean;
-  idempotencyKey?: string;
-  leftCtx?: string;
-  rightCtx?: string;
-  displayLeftCtx?: string;
-  displayRightCtx?: string;
+  displayStart?: number | undefined;
+  displayEnd?: number | undefined;
+  text?: string | undefined;
+  quote?: string | undefined;
+  displayQuote?: string | undefined;
+  category?: string | undefined;
+  role?: string | undefined;
+  confidence?: number | undefined;
+  source?: string | undefined;
+  startGrapheme?: number | undefined;
+  endGrapheme?: number | undefined;
+  validatorPass?: boolean | undefined;
+  idempotencyKey?: string | undefined;
+  leftCtx?: string | undefined;
+  rightCtx?: string | undefined;
+  displayLeftCtx?: string | undefined;
+  displayRightCtx?: string | undefined;
   [key: string]: unknown;
 }
 

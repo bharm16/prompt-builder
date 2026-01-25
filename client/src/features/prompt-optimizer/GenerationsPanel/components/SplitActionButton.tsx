@@ -73,11 +73,15 @@ export function SplitActionButton({
   const isRunDisabled = disabled || !selectedModel;
   const styles = VARIANT_STYLES[variant];
 
+  // Build Select props conditionally to satisfy exactOptionalPropertyTypes
+  // When selectedModel is null, we omit the value prop entirely
+  const selectProps = selectedModel !== null
+    ? { value: selectedModel, onValueChange: onModelChange, disabled }
+    : { onValueChange: onModelChange, disabled };
+
   return (
     <Select
-      value={selectedModel ?? undefined}
-      onValueChange={onModelChange}
-      disabled={disabled}
+      {...selectProps}
     >
       <div
         className={cn(

@@ -3,8 +3,8 @@ import { cn } from '@/utils/cn';
 
 interface ImagePreviewProps {
   src: string | null;
-  alt?: string;
-  className?: string;
+  alt?: string | undefined;
+  className?: string | undefined;
   onError?: () => void;
 }
 

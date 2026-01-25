@@ -98,7 +98,7 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
         const newIssues: CoherenceIssue[] = [
           ...conflicts.map((finding, index) => ({
             id: finding.id ?? `conflict_${timestamp}_${index}`,
-            type: 'conflict',
+            type: 'conflict' as const,
             severity: resolveConflictSeverity(finding.severity),
             message: finding.message,
             reasoning: finding.reasoning,
@@ -111,8 +111,8 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
           })),
           ...harmonizations.map((finding, index) => ({
             id: finding.id ?? `harmonization_${timestamp}_${index}`,
-            type: 'harmonization',
-            severity: 'low',
+            type: 'harmonization' as const,
+            severity: 'low' as const,
             message: finding.message,
             reasoning: finding.reasoning,
             involvedSpanIds: (finding.involvedSpanIds ?? []).filter(

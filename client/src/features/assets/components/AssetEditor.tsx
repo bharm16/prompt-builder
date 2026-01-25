@@ -16,8 +16,8 @@ import ReferenceImageGrid from './ReferenceImageGrid';
 
 interface AssetEditorProps {
   mode: 'create' | 'edit';
-  asset?: Asset | null;
-  preselectedType?: AssetType | null;
+  asset?: Asset | undefined;
+  preselectedType?: AssetType | undefined;
   onClose: () => void;
   onCreate: (data: {
     type: AssetType;

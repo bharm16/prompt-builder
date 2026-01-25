@@ -2,12 +2,12 @@ import { cn } from '@/utils/cn';
 
 interface VideoPlayerProps {
   src: string | null;
-  className?: string;
-  controls?: boolean;
-  autoPlay?: boolean;
-  loop?: boolean;
-  muted?: boolean;
-  poster?: string;
+  className?: string | undefined;
+  controls?: boolean | undefined;
+  autoPlay?: boolean | undefined;
+  loop?: boolean | undefined;
+  muted?: boolean | undefined;
+  poster?: string | undefined;
   onError?: () => void;
 }
 

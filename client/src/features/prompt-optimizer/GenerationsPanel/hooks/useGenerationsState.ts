@@ -20,7 +20,8 @@ const deriveIsGenerating = (generations: Generation[]): boolean =>
 
 const buildInitialState = (initial?: Generation[]): GenerationsState => {
   const generations = initial ?? [];
-  const activeGenerationId = generations.length ? generations[generations.length - 1].id : null;
+  const lastGeneration = generations.length > 0 ? generations[generations.length - 1]! : null;
+  const activeGenerationId = lastGeneration?.id ?? null;
   return { generations, activeGenerationId, isGenerating: deriveIsGenerating(generations) };
 };
 
@@ -58,10 +59,11 @@ function generationsReducer(
     case 'SET_GENERATIONS': {
       const generations = action.payload ?? [];
       // Bug 15 fix: preserve activeGenerationId if it still exists in the new set
+      const lastGeneration = generations.length > 0 ? generations[generations.length - 1]! : null;
       const preservedActiveId =
         state.activeGenerationId && generations.some((g) => g.id === state.activeGenerationId)
           ? state.activeGenerationId
-          : (generations.length ? generations[generations.length - 1].id : null);
+          : (lastGeneration?.id ?? null);
       return {
         generations,
         activeGenerationId: preservedActiveId,
@@ -74,9 +76,9 @@ function generationsReducer(
 }
 
 interface UseGenerationsStateOptions {
-  initialGenerations?: Generation[];
-  onGenerationsChange?: (generations: Generation[]) => void;
-  promptVersionId?: string | null;
+  initialGenerations?: Generation[] | undefined;
+  onGenerationsChange?: ((generations: Generation[]) => void) | undefined;
+  promptVersionId?: string | null | undefined;
 }
 
 export function useGenerationsState({
@@ -111,7 +113,7 @@ export function useGenerationsState({
 
     initialRef.current = initialGenerations;
     suppressOnChangeRef.current = true;
-    dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations });
+    dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations ?? [] });
   }, [initialGenerations, promptVersionId]);
 
   // Emit changes to parent

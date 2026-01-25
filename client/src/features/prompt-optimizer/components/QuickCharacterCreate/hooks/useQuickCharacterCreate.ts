@@ -5,12 +5,12 @@ import { assetApi } from '@/features/assets/api/assetApi';
 export interface UploadImageItem {
   file: File;
   preview: string;
-  isPrimary?: boolean;
+  isPrimary?: boolean | undefined;
 }
 
 interface UseQuickCharacterCreateArgs {
   isOpen: boolean;
-  prefillTrigger?: string;
+  prefillTrigger?: string | undefined;
 }
 
 export function useQuickCharacterCreate({
@@ -108,7 +108,7 @@ export function useQuickCharacterCreate({
         ...(negativePrompt.trim() ? { negativePrompt: negativePrompt.trim() } : {}),
       });
 
-      const uploads = [] as Array<{ id: string | undefined; isPrimary?: boolean }>;
+      const uploads = [] as Array<{ id: string | undefined; isPrimary?: boolean | undefined }>;
       for (const image of images) {
         const result = await assetApi.addImage(asset.id, image.file);
         uploads.push({ id: result?.image?.id, isPrimary: image.isPrimary });

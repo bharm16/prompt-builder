@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/utils/cn';
 
 interface FaceMatchIndicatorProps {
-  score?: number;
+  score?: number | undefined;
 }
 
 export function FaceMatchIndicator({ score }: FaceMatchIndicatorProps): React.ReactElement {

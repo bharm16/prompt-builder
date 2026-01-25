@@ -20,15 +20,15 @@ import { VideoThumbnail } from './VideoThumbnail';
 
 interface GenerationCardProps {
   generation: Generation;
-  onRetry?: (generation: Generation) => void;
-  onDelete?: (generation: Generation) => void;
-  onDownload?: (generation: Generation) => void;
-  onCancel?: (generation: Generation) => void;
-  onSelectFrame?: (url: string, index: number, generationId: string) => void;
-  onClearSelectedFrame?: () => void;
-  selectedFrameUrl?: string | null;
-  isActive?: boolean;
-  onClick?: () => void;
+  onRetry?: ((generation: Generation) => void) | undefined;
+  onDelete?: ((generation: Generation) => void) | undefined;
+  onDownload?: ((generation: Generation) => void) | undefined;
+  onCancel?: ((generation: Generation) => void) | undefined;
+  onSelectFrame?: ((url: string, index: number, generationId: string) => void) | undefined;
+  onClearSelectedFrame?: (() => void) | undefined;
+  selectedFrameUrl?: string | null | undefined;
+  isActive?: boolean | undefined;
+  onClick?: (() => void) | undefined;
 }
 
 const statusLabel = (status: Generation['status']): string => {

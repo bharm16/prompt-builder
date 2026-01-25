@@ -42,7 +42,7 @@ export interface UseEnhancementSuggestionsParams {
   promptHistory: {
     updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   };
-  onCoherenceCheck?: (payload: CoherenceCheckRequest) => Promise<void> | void;
+  onCoherenceCheck?: ((payload: CoherenceCheckRequest) => Promise<void> | void) | undefined;
 }
 
 export interface UseEnhancementSuggestionsReturn {

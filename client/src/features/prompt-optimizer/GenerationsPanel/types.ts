@@ -13,39 +13,39 @@ export interface Generation {
   promptVersionId: string | null;
   createdAt: number;
   completedAt: number | null;
-  estimatedCost?: number | null;
-  actualCost?: number | null;
-  aspectRatio?: string | null;
-  duration?: number | null;
-  fps?: number | null;
+  estimatedCost?: number | null | undefined;
+  actualCost?: number | null | undefined;
+  aspectRatio?: string | null | undefined;
+  duration?: number | null | undefined;
+  fps?: number | null | undefined;
   mediaType: GenerationMediaType;
   mediaUrls: string[];
-  mediaAssetIds?: string[];
-  thumbnailUrl?: string | null;
-  error?: string | null;
+  mediaAssetIds?: string[] | undefined;
+  thumbnailUrl?: string | null | undefined;
+  error?: string | null | undefined;
 }
 
 export interface GenerationParams {
-  promptVersionId?: string | null;
-  aspectRatio?: string | null;
-  duration?: number | null;
-  fps?: number | null;
-  generationParams?: Record<string, unknown>;
+  promptVersionId?: string | null | undefined;
+  aspectRatio?: string | null | undefined;
+  duration?: number | null | undefined;
+  fps?: number | null | undefined;
+  generationParams?: Record<string, unknown> | undefined;
   startImage?: {
     url: string;
-    assetId?: string;
-    source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation';
-  } | null;
+    assetId?: string | undefined;
+    source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation' | undefined;
+  } | null | undefined;
 }
 
 export interface GenerationsPanelProps {
   prompt: string;
   promptVersionId: string;
   aspectRatio: string;
-  duration?: number;
-  fps?: number;
-  generationParams?: Record<string, unknown>;
-  initialGenerations?: Generation[];
+  duration?: number | undefined;
+  fps?: number | undefined;
+  generationParams?: Record<string, unknown> | undefined;
+  initialGenerations?: Generation[] | undefined;
   onGenerationsChange?: (generations: Generation[]) => void;
   className?: string;
   versions: PromptVersionEntry[];

@@ -100,16 +100,16 @@ export interface PromptVersionVideo {
 
 export interface PromptVersionEntry {
   versionId: string;
-  label?: string;
+  label?: string | undefined;
   signature: string;
   prompt: string;
   timestamp: string;
-  highlights?: unknown | null;
-  editCount?: number;
-  edits?: PromptVersionEdit[];
-  preview?: PromptVersionPreview | null;
-  video?: PromptVersionVideo | null;
-  generations?: Generation[] | null;
+  highlights?: unknown | null | undefined;
+  editCount?: number | undefined;
+  edits?: PromptVersionEdit[] | undefined;
+  preview?: PromptVersionPreview | null | undefined;
+  video?: PromptVersionVideo | null | undefined;
+  generations?: Generation[] | null | undefined;
 }
 
 export interface Toast {

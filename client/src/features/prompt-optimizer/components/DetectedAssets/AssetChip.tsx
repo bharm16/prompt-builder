@@ -19,7 +19,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 
 interface AssetChipProps {
   asset: Asset;
-  onEdit?: () => void;
+  onEdit?: (() => void) | undefined;
 }
 
 export function AssetChip({ asset, onEdit }: AssetChipProps): React.ReactElement {

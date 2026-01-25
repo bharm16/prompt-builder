@@ -32,22 +32,22 @@ interface PromptResultsLayoutProps {
   onRedo: () => void;
   stablePromptContext: PromptContext | null;
   suggestionsData: SuggestionsData | null;
-  displayedPrompt?: string;
-  coherenceAffectedSpanIds?: Set<string>;
-  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'>;
+  displayedPrompt?: string | undefined;
+  coherenceAffectedSpanIds?: Set<string> | undefined;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
 
   // Coherence panel (inline, collapsible)
-  coherenceIssues?: CoherenceIssue[];
-  isCoherenceChecking?: boolean;
-  isCoherencePanelExpanded?: boolean;
-  onToggleCoherencePanelExpanded?: () => void;
-  onDismissCoherenceIssue?: (issueId: string) => void;
-  onDismissAllCoherenceIssues?: () => void;
-  onApplyCoherenceFix?: (
+  coherenceIssues?: CoherenceIssue[] | undefined;
+  isCoherenceChecking?: boolean | undefined;
+  isCoherencePanelExpanded?: boolean | undefined;
+  onToggleCoherencePanelExpanded?: (() => void) | undefined;
+  onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
+  onDismissAllCoherenceIssues?: (() => void) | undefined;
+  onApplyCoherenceFix?: ((
     issueId: string,
     recommendation: CoherenceRecommendation
-  ) => void;
-  onScrollToCoherenceSpan?: (spanId: string) => void;
+  ) => void) | undefined;
+  onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
 }
 
 export const PromptResultsLayout = ({

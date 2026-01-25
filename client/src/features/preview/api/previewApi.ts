@@ -106,8 +106,8 @@ export async function generatePreview(
 ): Promise<GeneratePreviewResponse> {
   requireNonEmptyString(prompt, 'Prompt');
 
-  const resolvedOptions =
-    typeof options === 'string' ? ({ aspectRatio: options } as const) : options;
+  const resolvedOptions: Omit<GeneratePreviewRequest, 'prompt'> | undefined =
+    typeof options === 'string' ? { aspectRatio: options } : options;
   const inputImageUrl = resolvedOptions?.inputImageUrl?.trim();
   const isKontext =
     resolvedOptions?.provider === 'replicate-flux-kontext-fast' || Boolean(inputImageUrl);
@@ -250,11 +250,11 @@ export interface VideoJobStatusResponse {
 }
 
 export interface GenerateVideoPreviewOptions {
-  startImage?: string;
-  inputReference?: string;
-  generationParams?: Record<string, unknown>;
-  characterAssetId?: string;
-  autoKeyframe?: boolean;
+  startImage?: string | undefined;
+  inputReference?: string | undefined;
+  generationParams?: Record<string, unknown> | undefined;
+  characterAssetId?: string | undefined;
+  autoKeyframe?: boolean | undefined;
 }
 
 /**

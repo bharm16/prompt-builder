@@ -6,16 +6,16 @@ import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, wait
 import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
 
 interface UseGenerationActionsOptions {
-  aspectRatio?: string;
-  duration?: number;
-  fps?: number;
-  generationParams?: Record<string, unknown>;
-  promptVersionId?: string | null;
-  generations?: Generation[];
+  aspectRatio?: string | undefined;
+  duration?: number | undefined;
+  fps?: number | undefined;
+  generationParams?: Record<string, unknown> | undefined;
+  promptVersionId?: string | null | undefined;
+  generations?: Generation[] | undefined;
 }
 
 interface StoryboardParams extends GenerationParams {
-  seedImageUrl?: string | null;
+  seedImageUrl?: string | null | undefined;
 }
 
 export function useGenerationActions(
