@@ -13,6 +13,7 @@ mkdir -p docs/architecture
 # Copy the template files
 cp /path/to/CLAUDE_CODE_TEMPLATES.md docs/architecture/
 cp /path/to/CLAUDE_CODE_CHEATSHEET.md docs/architecture/
+cp /path/to/CLAUDE_CODE_RULES.md docs/architecture/
 
 # Commit them
 git add docs/architecture/
@@ -26,58 +27,37 @@ git commit -m "Add Claude Code architecture templates"
 1. Open your project in Claude UI
 2. Go to Project Settings
 3. Add these files to Project Knowledge:
+   - `docs/architecture/CLAUDE_CODE_RULES.md`
    - `docs/architecture/CLAUDE_CODE_TEMPLATES.md`
-   - `docs/architecture/CLAUDE_CODE_CHEATSHEET.md`
-   - `client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md` (if not already added)
+   - `client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md`
    
 4. Wait for indexing to complete
 
-**Why:** Claude Code can search project knowledge when referenced, making it easier to find patterns.
-
 ---
 
-## Step 3: Create Aliases for Validation (2 minutes)
+## Step 3: Create Review Aliases (2 minutes)
 
 Add to your `~/.bashrc` (Linux) or `~/.zshrc` (Mac):
 
 ```bash
-# Quick validation commands
-alias cc-check="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' \) -exec wc -l {} + | sort -rn | head -20"
+# List largest files for manual review
+alias cc-review="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' \) -exec wc -l {} + | sort -rn | head -20"
 
-# Flag components for SRP review (threshold ~200 lines)
-alias cc-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"⚠️  Review for SRP: \" \$0}'"
-
-# Flag orchestrators for SRP review (threshold ~500 lines)
-alias cc-fe-main="find client/src -name '*.jsx' ! -path '*/components/*' -exec wc -l {} + | awk '\$1 > 500 {print \"⚠️  Review for SRP: \" \$0}'"
-
-# Flag service orchestrators for SRP review (threshold ~500 lines)
-alias cc-be-main="find server/src/services -maxdepth 1 -name '*.js' -exec wc -l {} + | awk '\$1 > 500 {print \"⚠️  Review for SRP: \" \$0}'"
-
-# Flag specialized services for SRP review (threshold ~300 lines)
-alias cc-be-spec="find server/src/services -mindepth 2 -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"⚠️  Review for SRP: \" \$0}'"
-
-alias cc-all="find client/src server/src -name '*.js' -o -name '*.jsx' | xargs wc -l | sort -rn"
+# These flag files for COHESION REVIEW, not automatic splitting
+# Ask: "Does this have multiple responsibilities?"
+alias cc-review-fe="echo 'Review these for multiple responsibilities:' && find client/src -name '*.jsx' -exec wc -l {} + | sort -rn | head -10"
+alias cc-review-be="echo 'Review these for multiple responsibilities:' && find server/src/services -name '*.js' -exec wc -l {} + | sort -rn | head -10"
 ```
 
 Then reload: `source ~/.bashrc` or `source ~/.zshrc`
 
-Now you can run:
-```bash
-cc-check      # Check top 20 largest files
-cc-fe         # Flag UI components for SRP review (~200 threshold)
-cc-fe-main    # Flag orchestrators for SRP review (~500 threshold)
-cc-be-main    # Flag service orchestrators for SRP review (~500 threshold)
-cc-be-spec    # Flag specialized services for SRP review (~300 threshold)
-```
-
-**IMPORTANT:** These commands flag files for REVIEW, not auto-splitting.
-A 250-line component with ONE cohesive responsibility is fine - don't split it.
+**IMPORTANT:** These commands help you find files to *review*, not files to automatically split. A long file with one responsibility is fine.
 
 ---
 
-## Step 4: Create Text Snippets (5 minutes - OPTIONAL but saves tons of time)
+## Step 4: Create Text Snippets (Optional - 5 minutes)
 
-### Option A: VS Code Snippets
+### VS Code Snippets
 
 Create `.vscode/claude-code.code-snippets`:
 
@@ -89,11 +69,12 @@ Create `.vscode/claude-code.code-snippets`:
       "Add ${1:FEATURE_NAME}",
       "",
       "ARCHITECTURE: VideoConceptBuilder pattern",
-      "- ${2:ComponentName}.jsx (orchestrator, max 500 lines)",
-      "- hooks/use${2:ComponentName}State.js (useReducer)",
-      "- api/${3:apiName}Api.js (fetch calls)",
-      "- components/ (UI < 200 lines each)",
+      "- ${2:ComponentName}.jsx (orchestration only, no business logic)",
+      "- hooks/ (state + handlers, testable with ≤2 mocks)",
+      "- api/ (fetch + parsing)",
+      "- components/ (display only, props in JSX out)",
       "",
+      "RESPONSIBILITY CHECK: Each file = one sentence, no 'and'",
       "REFERENCE: client/src/components/VideoConceptBuilder/",
       "SHOW STRUCTURE FIRST"
     ],
@@ -105,11 +86,12 @@ Create `.vscode/claude-code.code-snippets`:
       "Add ${1:SERVICE_NAME}",
       "",
       "ARCHITECTURE: PromptOptimizationService pattern",
-      "- ${2:MainService}.js (orchestrator, max 500 lines)",
-      "- services/${3:service-name}/ (specialized services < 300 lines)",
+      "- MainService.js (coordination only, delegates everything)",
+      "- services/ (one responsibility per service, testable with ≤2 mocks)",
       "- templates/ (.md files for prompts)",
       "",
-      "REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js",
+      "RESPONSIBILITY CHECK: Each service = one reason to change",
+      "REFERENCE: server/src/services/PromptOptimizationService.js",
       "SHOW STRUCTURE FIRST"
     ],
     "description": "Template for new backend service"
@@ -119,141 +101,116 @@ Create `.vscode/claude-code.code-snippets`:
     "body": [
       "Modify ${1:FILE_PATH} to ${2:DESCRIPTION}",
       "",
-      "CURRENT: ${1:FILE_PATH} ($(wc -l ${1:FILE_PATH}))",
-      "CONSTRAINTS:",
-      "- Maintain existing pattern",
-      "- No file over ${3:[500 orchestrator | 200 component | 300 service]} lines",
-      "- If exceeds, refactor first",
+      "BEFORE CHANGING:",
+      "- Does this add a new responsibility? → Extract first",
+      "- Can I still describe this file in one sentence? → If not, split by responsibility",
       "",
       "SHOW WHAT CHANGES BEFORE implementing"
     ],
     "description": "Template for modifying existing code"
+  },
+  "Claude Code Refactor": {
+    "prefix": "cc-refactor",
+    "body": [
+      "Refactor ${1:FILE_PATH}",
+      "",
+      "PROBLEM: ${2:describe actual issue—multiple responsibilities, hard to test, etc.}",
+      "NOT: 'it's too long'",
+      "",
+      "RESPONSIBILITIES IDENTIFIED:",
+      "1. ${3:first responsibility} → will become ${4:location}",
+      "2. ${5:second responsibility} → will become ${6:location}",
+      "",
+      "VALIDATION:",
+      "- Each file describable in ≤10 words",
+      "- Each file testable with ≤2 mocks",
+      "",
+      "REFERENCE: VideoConceptBuilder/REFACTORING_SUMMARY.md",
+      "SHOW PLAN FIRST"
+    ],
+    "description": "Template for refactoring"
   }
 }
 ```
 
 **Usage:** Type `cc-frontend` and press Tab in VS Code.
 
-### Option B: Text Expansion Tool (Mac: Text Expander, Windows: AutoHotkey)
-
-Create shortcuts:
-- `;ccfe` → Expands to frontend template
-- `;ccbe` → Expands to backend template
-- `;ccmod` → Expands to modify template
-
 ---
 
-## Step 5: Keep Cheatsheet Visible (CRITICAL)
+## Step 5: Keep Cheatsheet Visible
 
 **Option A: Browser Tab**
 ```bash
-# Open in browser (Mac)
 open docs/architecture/CLAUDE_CODE_CHEATSHEET.md
-
-# Or serve it locally
-npx serve docs/architecture/
-# Then open http://localhost:3000/CLAUDE_CODE_CHEATSHEET.md
 ```
 
-**Option B: Terminal Split**
-```bash
-# In a terminal split/pane, keep this running:
-watch -n 1 cat docs/architecture/CLAUDE_CODE_CHEATSHEET.md
-```
+**Option B: Second Monitor**
+Open the cheatsheet on your second monitor.
 
-**Option C: Printed Copy** (seriously)
-Print `CLAUDE_CODE_CHEATSHEET.md` and keep it next to your monitor during development.
-
-**Option D: Second Monitor**
-Just open the cheatsheet on your second monitor.
+**Option C: Print It**
+Seriously. Print `EMERGENCY_REFERENCE.md` and stick it next to your monitor.
 
 ---
 
 ## Step 6: Test Your Setup (3 minutes)
 
-### Test 1: Validate Commands Work
-```bash
-cd /path/to/your/project
-cc-check
-# Should show top 20 largest files
-```
-
-### Test 2: Project Knowledge Works
+### Test 1: Project Knowledge Works
 In Claude UI:
 ```
-What's the architecture pattern for frontend components?
+What's the principle behind splitting files in this project?
 ```
-Should reference `VideoConceptBuilder` from your docs.
+Should reference "one reason to change" and responsibility, NOT line counts.
 
-### Test 3: Full Claude Code Request
+### Test 2: Full Claude Code Request
 ```bash
 claude-code "Add a simple ToastMessage component
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- ToastMessage.jsx (UI component, max 200 lines)
-- hooks/useToast.js (max 150 lines)
+- ToastMessage.jsx (display only)
+- hooks/useToast.js (state + show/hide handlers)
 
-REFERENCE: client/src/components/VideoConceptBuilder/components/
+RESPONSIBILITY CHECK: Each file does one thing
+REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST"
 ```
 
 Claude Code should:
 1. Show you the proposed structure
-2. Ask for confirmation
+2. Confirm each file has one responsibility
 3. Follow the pattern
 
 ---
 
 ## Daily Workflow
 
-### Morning Setup (30 seconds)
-```bash
-# Open project
-cd ~/projects/prompt-builder
+### When Making a Feature Request
 
-# Open cheatsheet in browser tab
-open docs/architecture/CLAUDE_CODE_CHEATSHEET.md
+1. **Copy appropriate template** from cheatsheet
+2. **Fill in specifics**
+3. **State the responsibility** of each proposed file
+4. **Add "SHOW STRUCTURE FIRST"**
 
-# Or print to terminal
-cat docs/architecture/CLAUDE_CODE_CHEATSHEET.md
-```
+### After Claude Code Runs
 
-### When Making a Feature Request (2 minutes)
+Ask yourself:
+1. Can I describe each new file in ≤10 words?
+2. Can I test each piece with ≤2 mocks?
+3. Do files that change together live together?
 
-1. **Open cheatsheet** (you already have it open)
-2. **Copy appropriate template**
-   - New frontend? Copy "New Frontend Feature" template
-   - New backend? Copy "New Backend Service" template
-   - Modifying? Copy "Modify Existing Code" template
-3. **Fill in the blanks** (component names, feature description)
-4. **Add reference** to similar existing code
-5. **Paste into claude-code request**
+If any answer is "no," refactor by responsibility.
 
-### After Claude Code Runs (30 seconds)
+### Before Committing
 
 ```bash
-# Check file sizes
-cc-check
-
-# Any violations?
-cc-fe
-cc-be
-
-# If violations found, fix before continuing
-```
-
-### Before Committing (1 minute)
-
-```bash
-# Final check
-cc-check
-
 # Run tests
 npm test
 
-# If all good, commit
-git add .
-git commit -m "Add [feature] following architecture patterns"
+# Quick review of largest files
+cc-review
+
+# For each large file, ask: "Does this have ONE responsibility?"
+# If yes → fine
+# If no → refactor by responsibility
 ```
 
 ---
@@ -261,45 +218,37 @@ git commit -m "Add [feature] following architecture patterns"
 ## Example: Real Usage Session
 
 ```bash
-# 1. Morning: Open cheatsheet
-open docs/architecture/CLAUDE_CODE_CHEATSHEET.md
-
-# 2. Need to add export feature
+# 1. Need to add export feature
 # Copy "New Frontend Feature" template from cheatsheet
-# Fill in blanks:
-#   - FEATURE: export to PDF functionality
-#   - ComponentName: ExportButton
-#   - Reference: similar buttons in VideoConceptBuilder
 
-# 3. Run claude-code with completed template
+# 2. Run claude-code with responsibility-focused template
 claude-code "Add export to PDF functionality
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- ExportButton.jsx (UI component, max 200 lines)
-- hooks/usePdfExport.js (max 150 lines)
-- api/promptOptimizerApi.js (add exportToPdf method)
+- ExportButton.jsx (display: renders button, receives onClick)
+- hooks/usePdfExport.js (logic: handles generation, loading state)
+- api/exportApi.js (network: PDF endpoint calls)
 
-REFERENCE: client/src/components/VideoConceptBuilder/components/
+RESPONSIBILITY CHECK:
+- ExportButton: 'Renders the export button' (one thing)
+- usePdfExport: 'Manages PDF generation state' (one thing)
+- exportApi: 'Calls PDF endpoint' (one thing)
+
+REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST"
 
-# 4. Claude Code shows structure, looks good, implement
+# 3. Claude Code shows structure, confirm each file has one job
 
-# 5. After implementation, validate
-cc-check
-# Shows ExportButton.jsx: 145 lines ✅
-# Shows usePdfExport.js: 89 lines ✅
+# 4. After implementation, verify
+# Can I describe each file in ≤10 words? Yes
+# Can I test each with ≤2 mocks? Yes
 
-# 6. Run tests
+# 5. Run tests
 npm test
 
-# 7. Commit
-git add .
+# 6. Commit
 git commit -m "Add PDF export following VideoConceptBuilder pattern"
 ```
-
-**Time spent:** ~5 minutes including validation
-**Quality:** Follows architecture patterns automatically
-**Technical debt:** Zero
 
 ---
 
@@ -307,226 +256,60 @@ git commit -m "Add PDF export following VideoConceptBuilder pattern"
 
 ### "Claude Code isn't following the patterns"
 
-**Solution:** Be more explicit. Instead of:
+Be more explicit about responsibilities:
 ```bash
-claude-code "add export feature"
-```
-
-Do:
-```bash
-claude-code "Add export feature
-
-ARCHITECTURE: VideoConceptBuilder pattern (see client/src/components/VideoConceptBuilder/)
-CONSTRAINTS:
-- Orchestrator max 500 lines
-- UI components max 200 lines
-- Hooks max 150 lines
-- API calls in api/ layer
-
-SHOW STRUCTURE BEFORE implementing"
-```
-
-### "File flagged as exceeding threshold"
-
-**Solution:** First, ask if it SHOULD be split:
-1. Does it have multiple distinct responsibilities?
-2. Does it have multiple reasons to change?
-3. Would splitting improve cohesion?
-
-**If YES to any → Split by responsibility:**
-```bash
-claude-code "Refactor [file] - it has multiple responsibilities:
-1. [responsibility 1]
-2. [responsibility 2]
-
-SRP CHECK: These have different reasons to change.
-
-Follow VideoConceptBuilder/REFACTORING_SUMMARY.md pattern.
-SHOW REFACTORING PLAN FIRST"
-```
-
-**If NO to all → Leave it cohesive.** A 250-line component with ONE responsibility is fine.
-
-### "I keep forgetting to check for SRP violations"
-
-**Solution:** Add to git pre-commit hook (WARNING mode, not blocking):
-
-Create `.git/hooks/pre-commit`:
-```bash
-#!/bin/bash
-
-echo "Checking for potential SRP violations..."
-echo "(Files over threshold should be REVIEWED, not auto-split)"
-echo ""
-
-# Flag UI components for SRP review (threshold ~200 lines)
-violations=$(find client/src -name "*.jsx" -path "*/components/*" -exec wc -l {} + | awk '$1 > 200 {print $0}')
-if [ ! -z "$violations" ]; then
-  echo "⚠️  UI components over 200 lines (review for SRP):"
-  echo "$violations"
-  echo ""
-fi
-
-# Flag orchestrator components for SRP review (threshold ~500 lines)
-violations=$(find client/src -name "*.jsx" ! -path "*/components/*" -exec wc -l {} + | awk '$1 > 500 {print $0}')
-if [ ! -z "$violations" ]; then
-  echo "⚠️  Orchestrators over 500 lines (review for SRP):"
-  echo "$violations"
-  echo ""
-fi
-
-# Flag specialized services for SRP review (threshold ~300 lines)
-violations=$(find server/src/services -mindepth 2 -name "*.js" -exec wc -l {} + | awk '$1 > 300 {print $0}')
-if [ ! -z "$violations" ]; then
-  echo "⚠️  Specialized services over 300 lines (review for SRP):"
-  echo "$violations"
-  echo ""
-fi
-
-# Flag orchestrator services for SRP review (threshold ~500 lines)
-violations=$(find server/src/services -maxdepth 1 -name "*.js" -exec wc -l {} + | awk '$1 > 500 {print $0}')
-if [ ! -z "$violations" ]; then
-  echo "⚠️  Service orchestrators over 500 lines (review for SRP):"
-  echo "$violations"
-  echo ""
-fi
-
-echo "Remember: A 250-line file with ONE responsibility is fine."
-echo "Only split if file has MULTIPLE distinct responsibilities."
-echo ""
-echo "✅ Pre-commit check complete"
-exit 0  # Don't block - these are warnings for review
-```
-
-Make executable: `chmod +x .git/hooks/pre-commit`
-
-**Note:** This hook WARNS but doesn't block. A file over threshold with ONE cohesive responsibility is fine.
-
----
-
-## Advanced: Create a Helper Script
-
-Create `scripts/claude-code-helper.sh`:
-
-```bash
-#!/bin/bash
-
-# Claude Code Helper Script
-# Usage: ./scripts/claude-code-helper.sh [new-frontend|new-backend|modify|check]
-
-case "$1" in
-  new-frontend)
-    echo "Enter feature name:"
-    read feature
-    echo "Enter component name:"
-    read component
-    cat << EOF
-
-Add $feature
+claude-code "Add feature
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- $component.jsx (orchestrator, max 500 lines)
-- hooks/use${component}State.js (useReducer)
-- api/${component,,}Api.js (fetch calls)
-- components/ (UI < 200 lines each)
 
-REFERENCE: client/src/components/VideoConceptBuilder/
-SHOW STRUCTURE FIRST
-EOF
-    ;;
-    
-  new-backend)
-    echo "Enter service name:"
-    read service
-    cat << EOF
+RESPONSIBILITY ASSIGNMENT:
+- MainComponent.jsx → orchestration only (wires pieces, no logic)
+- hooks/useFeatureState.js → state logic (testable without rendering)
+- api/featureApi.js → network (one place for endpoint changes)
 
-Add $service
-
-ARCHITECTURE: PromptOptimizationService pattern
-- ${service}.js (orchestrator, max 500 lines)
-- services/${service,,}/ (specialized services < 300 lines)
-- templates/ (.md files for prompts)
-
-REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
-SHOW STRUCTURE FIRST
-EOF
-    ;;
-    
-  modify)
-    echo "Enter file path:"
-    read filepath
-    lines=$(wc -l "$filepath" 2>/dev/null | awk '{print $1}')
-    echo "Describe what to modify:"
-    read description
-    cat << EOF
-
-Modify $filepath to $description
-
-CURRENT: $filepath ($lines lines)
-CONSTRAINTS:
-- Maintain existing pattern
-- No file over [500 orchestrator | 200 UI component | 300 service]
-- If exceeds, refactor first
-
-SHOW WHAT CHANGES BEFORE implementing
-EOF
-    ;;
-    
-  check)
-    echo "Checking file sizes..."
-    find client/src server/src -type f \( -name "*.js" -o -name "*.jsx" \) -exec wc -l {} + | sort -rn | head -20
-    ;;
-    
-  *)
-    echo "Usage: $0 {new-frontend|new-backend|modify|check}"
-    exit 1
-    ;;
-esac
+Each file must be describable in one sentence without 'and'.
+SHOW STRUCTURE FIRST"
 ```
 
-Make executable: `chmod +x scripts/claude-code-helper.sh`
+### "Should I split this file?"
 
-**Usage:**
-```bash
-# Generate frontend template
-./scripts/claude-code-helper.sh new-frontend
-# Follow prompts, copy output to claude-code
+Ask these questions:
+1. **Does it have multiple responsibilities?** (multiple reasons to change)
+2. **Can I describe it in one sentence without 'and'?**
+3. **Can I test it with ≤2 mocks?**
 
-# Check sizes
-./scripts/claude-code-helper.sh check
-```
+If answers are: No, Yes, Yes → Don't split. It's fine.
+If any answer differs → Split by responsibility.
+
+### "I keep creating files that change together"
+
+That's a sign you split wrong. The rule is:
+- Files that change together should live together
+- Split by responsibility, not by arbitrary boundaries
+
+If `ComponentA.jsx` and `useComponentA.js` always change together for the same reason, maybe they should be one file.
 
 ---
 
-## Summary: Your New Process
+## Summary
 
-**Before using Claude Code:**
-1. ✅ Cheatsheet is visible
-2. ✅ Validation aliases are set up
-3. ✅ Templates are accessible
+**The principle:**
+> Split by responsibility, not by size.
 
-**When using Claude Code:**
-1. Copy template from cheatsheet
-2. Fill in specifics
-3. Reference existing code
-4. Say "SHOW STRUCTURE FIRST"
-5. Validate with `cc-check`
+**The test:**
+> "Can I describe this in one sentence without 'and'?"
 
-**Result:**
-- Consistent architecture
-- No god objects
-- No technical debt
-- Fast development
+**The workflow:**
+1. Copy template
+2. State each file's single responsibility
+3. Ask for structure first
+4. Verify each file does one thing
 
 ---
 
 ## Next Steps
 
-1. ✅ Run Step 1-3 now (5 minutes)
-2. ✅ Test with a small feature (10 minutes)
+1. ✅ Run Steps 1-3 now (5 minutes)
+2. ✅ Test with a small feature
 3. ✅ Use templates for all future requests
-4. ✅ Check sizes after every claude-code run
-
-**That's it. You're set up.**
-
-Keep the cheatsheet visible and reference it every time you use Claude Code. After ~10 requests, it'll become muscle memory.
+4. ✅ Ask "what's the responsibility?" not "how long is it?"

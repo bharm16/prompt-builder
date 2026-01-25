@@ -1,75 +1,100 @@
 # Prompt Builder Refactoring Pattern
 
-## Core Principle: SRP/SoC Over Line Counts
+## Core Principle
 
-**Before refactoring ANY file, answer these questions:**
+> **"How many reasons does this have to change?"**
 
-1. **How many distinct responsibilities** does this file have?
-2. **How many reasons to change?** (different stakeholders, different triggers)
-3. **Would splitting improve or harm cohesion?**
+If 1 → don't refactor.
+If 2+ → split by responsibility.
 
-**If a file has ONE cohesive responsibility → Don't split, even if over 500 lines.**
+---
+
+## Before Refactoring Anything
+
+Answer these:
+
+1. **Can I describe this file in one sentence without "and"?**
+   - Yes → Don't split
+   - No → Identify the distinct responsibilities
+
+2. **Can I test this with ≤2 mocks?**
+   - Yes → Coupling is fine
+   - No → Extract what you're mocking
+
+3. **If I change X, does only X's file change?**
+   - Yes → Boundaries are good
+   - No → Consolidate or clarify boundaries
 
 ---
 
 ## Our Standard Architecture
 
-Based on successful VideoConceptBuilder refactoring:
 ```
 ComponentName/
-├── ComponentName.jsx         (~300-500 lines, orchestration only)
-├── hooks/                    (business logic, state management)
-├── api/                      (all fetch calls)
-├── utils/                    (pure functions)
-├── config/                   (configuration)
-└── components/               (presentational components - only if reusable)
+├── ComponentName.jsx     → Orchestration: wires pieces, no logic
+├── hooks/                → State + handlers: testable without rendering
+├── api/                  → Fetch + parsing: one place for endpoint changes
+├── utils/                → Pure transforms: no dependencies
+├── config/               → Constants: change without touching logic
+└── components/           → Display: props in, JSX out (only if reused)
 ```
 
-**Only create subdirectories for files with DISTINCT responsibilities.**
+**Only create subdirectories for DISTINCT responsibilities.**
 
 ---
 
 ## Refactoring Checklist
 
-When refactoring a component with MULTIPLE RESPONSIBILITIES:
+When a component has MULTIPLE RESPONSIBILITIES:
 
-1. [ ] Create directory structure
-2. [ ] Extract API calls to api/
-3. [ ] Convert useState to useReducer in hooks/
-4. [ ] Extract config to config/
-5. [ ] Extract business logic to hooks/
-6. [ ] Break JSX into components/
-7. [ ] Wire everything together in main component
-8. [ ] Verify tests pass
-9. [ ] Create REFACTORING_SUMMARY.md
+1. [ ] Identify distinct responsibilities (list them)
+2. [ ] Create one location per responsibility
+3. [ ] Extract API calls → api/
+4. [ ] Extract state logic → hooks/ (useReducer)
+5. [ ] Extract pure transforms → utils/
+6. [ ] Extract constants → config/
+7. [ ] Extract reusable display → components/
+8. [ ] Main file becomes orchestration only
+9. [ ] Each piece testable with ≤2 mocks
+10. [ ] Document in REFACTORING_SUMMARY.md
 
-## Claude Code Requests
+---
 
-Use this template:
+## Claude Code Refactoring Template
 
-"Refactor [Component] following the pattern in VideoConceptBuilder/REFACTORING_SUMMARY.md
+```
+Refactor [Component]
 
-SRP CHECK (answer before implementing):
-1. How many distinct responsibilities does this have?
-2. How many reasons to change?
-3. If only 1 responsibility → explain why split is needed anyway
+PROBLEM: [describe actual issue—multiple responsibilities, hard to test, etc.]
+NOT: "it's too long"
 
-[Paste specific requirements]
+RESPONSIBILITY ANALYSIS:
+1. [Responsibility A] → will become hooks/useX.js
+2. [Responsibility B] → will become api/xApi.js
+3. [Responsibility C] → will become utils/xUtils.js
 
-Show me the proposed structure before implementing."
+VALIDATION:
+- Each file describable in ≤10 words
+- Each file testable with ≤2 mocks
+- Main file has no business logic
+
+REFERENCE: VideoConceptBuilder/REFACTORING_SUMMARY.md
+SHOW PLAN FIRST
+```
 
 ---
 
 ## ❌ When NOT to Refactor
 
-- File exceeds line threshold but has ONE cohesive responsibility
-- Splitting would create components only used in one place
-- Extracted code would always change together with parent
-- Splitting adds indirection without improving cohesion
+- Splitting would create files that always change together
+- Splitting would create components used in exactly one place
+- The file has one responsibility (even if it's long)
+- You're adding indirection without improving testability
 
 ## ✅ When to Refactor
 
 - File has multiple distinct responsibilities
 - Different parts have different reasons to change
-- Extracted pieces would be reusable elsewhere
-- Orchestration is mixed with implementation details
+- You want to test parts independently
+- Parts could be reused elsewhere
+- Orchestration is mixed with implementation

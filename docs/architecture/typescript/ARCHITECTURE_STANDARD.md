@@ -8,24 +8,24 @@ This document defines the directory structure and file organization patterns for
 
 ## 1. Frontend Component Structure
 
-**When to Use This Structure:** Components that have **multiple distinct responsibilities** (e.g., state management + API calls + complex UI logic) should be split following this pattern. Line count is a secondary indicator—a 400-line component with a single cohesive responsibility may be fine, while a 150-line component mixing concerns should be split.
+**When to Use This Structure:** Components that have **multiple distinct responsibilities** (e.g., state management + API calls + complex UI logic) should be split following this pattern. The test: can you describe each file in one sentence without "and"? If not, split by responsibility.
 
 ```text
 ComponentName/
-├── ComponentName.tsx         // Orchestration & JSX only (max 500 lines)
+├── ComponentName.tsx         // Orchestration only—wires pieces, no business logic
 ├── index.ts                  // Re-exports (barrel file)
 ├── types.ts                  // Interfaces: Props, State, Domain Objects
 ├── constants.ts              // Static data, magic strings as const
-├── hooks/                    // Business logic & State Management
-│   ├── useComponentState.ts  // Main hook with useReducer (max 150 lines)
-│   └── useSpecificFeature.ts // Specialized sub-hooks (max 150 lines)
-├── api/                      // Data Fetching & Validation
-│   ├── index.ts              // Exported fetch functions (max 150 lines)
+├── hooks/                    // State + handlers—testable without rendering
+│   ├── useComponentState.ts  // Main hook with useReducer
+│   └── useSpecificFeature.ts // Specialized sub-hooks (one responsibility each)
+├── api/                      // Fetch + parsing—one place for endpoint changes
+│   ├── index.ts              // Exported fetch functions
 │   └── schemas.ts            // Zod schemas for API responses
-├── components/               // Sub-components (pure presentational)
-│   ├── SubComponent.tsx      // (max 200 lines each)
+├── components/               // Display only—props in, JSX out (only if reused)
+│   ├── SubComponent.tsx      
 │   └── types.ts              // Props for sub-components (optional)
-└── utils/                    // Pure functions (max 100 lines per file)
+└── utils/                    // Pure transforms—no dependencies
     └── helpers.ts
 ```
 
@@ -112,11 +112,11 @@ export const FEATURE_FLAGS = {
 
 ## 2. Backend Service Structure
 
-**When to Use This Structure:** Services that have **multiple reasons to change** (different stakeholders, different data flows) should be split using the orchestrator pattern. A 350-line service doing one thing well is preferable to artificially splitting cohesive logic.
+**When to Use This Structure:** Services that have **multiple reasons to change** (different stakeholders, different data flows) should be split using the orchestrator pattern. The test: can you test each service with ≤2 mocks? If not, it knows too much.
 
 ```text
 services/feature-name/
-├── FeatureService.ts         // Orchestrator (max 500 lines)
+├── FeatureService.ts         // Orchestrator—coordinates, doesn't implement
 ├── index.ts                  // Re-exports
 ├── types/                    // TypeScript interfaces
 │   ├── index.ts              // Barrel exports
@@ -124,13 +124,13 @@ services/feature-name/
 │   └── requests.ts           // Request/Response types
 ├── contracts/                // Interface definitions for DI
 │   └── IFeatureService.ts    // Public contract
-├── services/                 // Specialized sub-services
-│   ├── ProcessingService.ts  // Heavy logic (max 300 lines)
-│   └── ValidationService.ts  // Validation logic (max 300 lines)
+├── services/                 // One responsibility per service
+│   ├── ProcessingService.ts  
+│   └── ValidationService.ts  
 ├── strategies/               // Strategy pattern implementations
 │   ├── IStrategy.ts          // Strategy interface
-│   ├── VideoStrategy.ts      // (max 300 lines)
-│   └── ResearchStrategy.ts   // (max 300 lines)
+│   ├── VideoStrategy.ts      
+│   └── ResearchStrategy.ts   
 ├── schemas/                  // Zod schemas
 │   ├── requests.ts           // Input validation
 │   └── responses.ts          // Output validation
@@ -228,34 +228,27 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 ---
 
-## 4. File Size Guidelines (Heuristics, Not Hard Limits)
+## 4. When to Split
 
-**Core Principle:** Line counts are smell indicators, not splitting triggers. A file exceeding these thresholds should be **evaluated for SRP/SoC violations**, not automatically split.
+**The only question:** How many reasons does this have to change?
 
-| File Type | Warning Threshold | When to Split |
-|-----------|-------------------|---------------|
-| Orchestrator (.tsx/.ts) | ~500 lines | Multiple unrelated orchestration flows |
-| UI Component (.tsx) | ~200 lines | Mixed presentation + business logic |
-| React Hook (.ts) | ~150 lines | Managing unrelated state domains |
-| Specialized Service (.ts) | ~300 lines | Multiple reasons to change |
-| Utility (.ts) | ~100 lines | Functions with different concerns |
-| Types (.ts) | ~200 lines | Types for unrelated domains |
-| Schemas (.ts) | ~150 lines | Schemas for unrelated APIs |
-| Constants (.ts) | ~100 lines | Config for different features |
-| API Layer (.ts) | ~150 lines | Calls to unrelated endpoints |
+### Split when:
+- File has multiple distinct responsibilities
+- Different parts have different reasons to change
+- You want to test parts independently
+- Parts could be reused elsewhere
 
-### When NOT to Split (Even If Over Threshold)
-
-- A reducer with 200 lines handling one cohesive state domain
-- A form component with 250 lines but a single logical flow
-- A service with many edge cases for one responsibility
-- A config file that's large but logically unified
+### Don't split when:
+- File has one responsibility (even if it's long)
+- Pieces always change together
+- Pieces only make sense together
+- You're just hitting some arbitrary threshold
 
 ### ❌ Mechanical Splitting (Anti-Pattern)
 
 ```typescript
-// BAD: Split because 210 > 200, but these change together
-UserProfile.tsx (180 lines) + UserProfileHeader.tsx (30 lines)
+// BAD: Split because "it was too long", but these change together
+UserProfile.tsx + UserProfileHeader.tsx
 ```
 
 If `UserProfileHeader` is only used by `UserProfile` and they always change together, this split adds indirection without improving cohesion.
@@ -264,10 +257,10 @@ If `UserProfileHeader` is only used by `UserProfile` and they always change toge
 
 ```typescript
 // GOOD: Split because different responsibilities
-UserProfile.tsx (orchestration) + UserAvatar.tsx (reusable presentation)
+UserProfile.tsx (orchestration) + UserAvatar.tsx (reusable, independent)
 ```
 
-`UserAvatar` is reused elsewhere and encapsulates avatar-specific logic independent of the profile.
+`UserAvatar` is reused elsewhere and has its own reason to change.
 
 ---
 

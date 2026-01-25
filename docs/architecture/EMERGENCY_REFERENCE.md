@@ -1,16 +1,21 @@
 # Claude Code Emergency Reference (Print This)
 
-## The 3 Rules
+## The Only Rule
 
-1. **SRP/SoC Check**: "How many responsibilities? How many reasons to change?"
-2. **Always specify pattern**: "Follow [VideoConceptBuilder | PromptOptimizationService] pattern"
-3. **Always request structure first**: "SHOW STRUCTURE FIRST"
+> **"How many reasons does this have to change?"**
 
-## 🔴 Critical: Line Counts Are Heuristics
+If 1 → don't touch it.
+If 2+ → split by responsibility.
 
-**Before splitting ANY file:**
-- If 1 responsibility → Don't split, even if over threshold
-- If multiple responsibilities → Split by responsibility, not line count
+---
+
+## Quick Tests
+
+| Test | How | Fail = Problem |
+|------|-----|----------------|
+| **Responsibility** | Describe in one sentence without "and" | Mixed concerns |
+| **Testability** | Mock ≤2 things to test it | Too much coupling |
+| **Change isolation** | Change X, only X's file changes | Shotgun surgery |
 
 ---
 
@@ -19,8 +24,12 @@
 ### Frontend Feature
 ```
 Add [feature name]
-ARCHITECTURE: VideoConceptBuilder pattern
-- Orchestrator max 500 lines, UI components max 200 lines
+PATTERN: VideoConceptBuilder
+- Orchestrator: wiring only, no business logic
+- hooks/: state + handlers (testable alone)
+- api/: fetch + parsing
+- components/: display only
+
 REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST
 ```
@@ -28,87 +37,75 @@ SHOW STRUCTURE FIRST
 ### Backend Service
 ```
 Add [service name]
-ARCHITECTURE: PromptOptimizationService pattern
-- Orchestrator max 500 lines, specialized services max 300 lines
-REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
+PATTERN: PromptOptimizationService
+- MainService: coordination only, delegates everything
+- services/: one responsibility each
+- templates/: external .md files
+
+REFERENCE: server/src/services/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 ```
 
 ### Modify Existing
 ```
-Modify [file path] to [do what]
-CURRENT: [file path] ([run: wc -l file])
-CONSTRAINTS: No file over [500 orchestrators | 200 UI | 300 services]
-SHOW WHAT CHANGES BEFORE implementing
+Modify [file] to [do what]
+
+BEFORE CHANGING:
+- Does this add a new responsibility? → Extract first
+- Will this keep the file's description to one sentence? → If not, split
+
+SHOW WHAT CHANGES FIRST
 ```
 
 ---
 
-## Size Guidelines (Warning Thresholds)
+## Where Things Go
 
-| Type | Warning | When to Split |
-|------|---------|---------------|
-| Orchestrator | ~500 | Multiple unrelated flows |
-| UI Component | ~200 | Mixed concerns |
-| Hook | ~150 | Unrelated state domains |
-| Service | ~300 | Multiple reasons to change |
-| Utility | ~100 | Different concerns |
-
-**250 lines with 1 responsibility > 3 artificially split files**
+| Thing | Location |
+|-------|----------|
+| HTTP calls | api/ |
+| State logic | hooks/ |
+| Business rules | hooks/ (FE) or services/ (BE) |
+| Pure transforms | utils/ |
+| Display | components/ |
+| Constants | config/ |
 
 ---
 
-## Validation Commands
+## Red Flags
 
-```bash
-# Check sizes (set up alias first - see SETUP_GUIDE.md)
-cc-check
+❌ **Stop if you see:**
+- Splitting "because it's too long"
+- Component used in exactly one place
+- Extracting code that always changes with its caller
+- `if` statements in orchestrator
 
-# Or manual:
-find client/src server/src -name "*.js" -o -name "*.jsx" | xargs wc -l | sort -rn | head -20
+⚠️ **Investigate if you see:**
+- Mocking 3+ things to test one function
+- One change touching 5+ files
+- Can't describe file in ≤10 words
+
+---
+
+## When Things Break
+
+```
+Refactor [file]
+
+PROBLEM: [actual issue—not "too long"]
+PATTERN: [VideoConceptBuilder | PromptOptimizationService]
+SPLIT BY: responsibility
+
+SHOW PLAN FIRST
 ```
 
 ---
 
-## Reference Examples
+## References
 
 **Frontend:** `client/src/components/VideoConceptBuilder/`
-**Backend:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
+**Backend:** `server/src/services/PromptOptimizationService.js`
 
 ---
 
-## When It Breaks
-
-```
-Refactor [file] following [pattern] pattern
-CURRENT: [X lines]
-TARGET: Follow [reference file]
-SHOW REFACTORING PLAN FIRST
-```
-
----
-
-## ❌ Never Do This
-
-- Split solely because line threshold exceeded
-- Create components only used in one place
-- Extract code that always changes together
-
-## ✅ Do This Instead
-
-- Split by RESPONSIBILITY, not line count
-- Extract when reusable elsewhere
-- Separate orchestration from implementation
-
-## Code Quality Issues
-
-- API calls inline (should be in api/)
-- Multiple useState (should be useReducer)
-- Mixed UI + business logic
-- Hardcoded config (should be in config/)
-
----
-
-**Full docs:** `docs/architecture/CLAUDE_CODE_TEMPLATES.md`
-**Quick ref:** `docs/architecture/CLAUDE_CODE_CHEATSHEET.md`
-**Setup:** `docs/architecture/SETUP_GUIDE.md`
+**Full docs:** `docs/architecture/CLAUDE_CODE_RULES.md`
