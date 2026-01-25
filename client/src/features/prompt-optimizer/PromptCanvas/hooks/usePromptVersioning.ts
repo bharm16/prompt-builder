@@ -122,7 +122,9 @@ const mergeGenerationsById = (
   incoming: Generation[]
 ): Generation[] => {
   if (!persisted?.length) return incoming;
-  if (!incoming.length) return [];
+  // Bug 18 safeguard: if incoming is empty, preserve persisted data rather than wiping it.
+  // This prevents a stale callback with an empty array from erasing completed generations.
+  if (!incoming.length) return persisted;
 
   const persistedMap = new Map<string, Generation>();
   for (const gen of persisted) {
@@ -191,28 +193,13 @@ export function usePromptVersioning({
 
   const persistVersions = useCallback(
     (versions: PromptVersionEntry[]): void => {
-      if (!currentPromptUuid) {
-        console.debug('[PERSIST-DEBUG][persistVersions] SKIPPED: no currentPromptUuid');
-        return;
-      }
+      if (!currentPromptUuid) return;
       // Eagerly update ref so concurrent callbacks in the same render cycle
       // read fresh data instead of overwriting each other's changes
       currentVersionsRef.current = versions;
       // Bug 13 fix: read entry from ref to avoid stale docId after draft promotion
       const entry = currentPromptEntryRef.current;
       const resolvedDocId = entry?.id ?? currentPromptDocId;
-
-      const generationCount = versions.reduce(
-        (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
-        0
-      );
-      console.debug('[PERSIST-DEBUG][persistVersions] calling updateEntryVersions', {
-        uuid: currentPromptUuid,
-        docId: resolvedDocId,
-        versionCount: versions.length,
-        generationCount,
-      });
-
       promptHistory.updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
     [promptHistory, currentPromptUuid, currentPromptDocId]
@@ -361,46 +348,16 @@ export function usePromptVersioning({
   // Bug 12 fix: read currentVersions/currentPromptEntry from refs to avoid stale closures
   const syncVersionGenerations = useCallback(
     (generations: Generation[]): void => {
-      console.debug('[PERSIST-DEBUG][syncVersionGenerations] called', {
-        currentPromptUuid,
-        hasEntry: Boolean(currentPromptEntryRef.current),
-        activeVersionId,
-        incomingCount: generations.length,
-        incomingSummary: generations.map((g) => ({
-          id: g.id.slice(-6),
-          status: g.status,
-          mediaType: g.mediaType,
-          mediaUrlCount: g.mediaUrls?.length ?? 0,
-          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-          hasThumbnail: Boolean(g.thumbnailUrl),
-        })),
-      });
-
-      if (!currentPromptUuid) {
-        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no currentPromptUuid');
-        return;
-      }
-      if (!currentPromptEntryRef.current) {
-        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no currentPromptEntry');
-        return;
-      }
+      if (!currentPromptUuid) return;
+      if (!currentPromptEntryRef.current) return;
 
       const versions = currentVersionsRef.current;
-      if (!versions.length) {
-        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no versions');
-        return;
-      }
+      if (!versions.length) return;
 
       const index = activeVersionId
         ? versions.findIndex((version) => version.versionId === activeVersionId)
         : versions.length - 1;
-      if (index < 0) {
-        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: version index not found', {
-          activeVersionId,
-          versionIds: versions.map((v) => v.versionId),
-        });
-        return;
-      }
+      if (index < 0) return;
 
       const target = versions[index];
       if (!target) return;
@@ -423,27 +380,7 @@ export function usePromptVersioning({
       // Check if generations changed or if we have a new thumbnail to persist
       const generationsChanged = !areGenerationsEqual(target.generations, mergedGenerations);
 
-      console.debug('[PERSIST-DEBUG][syncVersionGenerations] merge result', {
-        versionId: target.versionId,
-        targetGenerationCount: target.generations?.length ?? 0,
-        incomingCount: generations.length,
-        mergedCount: mergedGenerations.length,
-        generationsChanged,
-        shouldUpdatePreview,
-        mergedSummary: mergedGenerations.map((g) => ({
-          id: g.id.slice(-6),
-          status: g.status,
-          mediaType: g.mediaType,
-          mediaUrlCount: g.mediaUrls?.length ?? 0,
-          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-          hasThumbnail: Boolean(g.thumbnailUrl),
-        })),
-      });
-
-      if (!generationsChanged && !shouldUpdatePreview) {
-        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no changes to persist');
-        return;
-      }
+      if (!generationsChanged && !shouldUpdatePreview) return;
 
       const updated: PromptVersionEntry = {
         ...target,
@@ -462,16 +399,6 @@ export function usePromptVersioning({
 
       const updatedVersions = [...versions];
       updatedVersions[index] = updated;
-
-      console.debug('[PERSIST-DEBUG][syncVersionGenerations] PERSISTING', {
-        versionId: target.versionId,
-        versionCount: updatedVersions.length,
-        generationCount: mergedGenerations.length,
-        completedCount: mergedGenerations.filter((g) => g.status === 'completed').length,
-        hasMediaUrls: mergedGenerations.some((g) => g.mediaUrls.length > 0),
-        hasMediaAssetIds: mergedGenerations.some((g) => (g.mediaAssetIds?.length ?? 0) > 0),
-        generationIds: mergedGenerations.map((g) => `${g.id.slice(-6)}:${g.status}`).join(', '),
-      });
 
       persistVersions(updatedVersions);
     },

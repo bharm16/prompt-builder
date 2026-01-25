@@ -393,30 +393,12 @@ export function PromptCanvas({
   const selectedVersionId =
     activeVersionId ?? versionsForPanel[0]?.versionId ?? '';
   const activeVersion = useMemo(() => {
-    let resolved;
     if (activeVersionId) {
-      resolved = currentVersions.find(
+      return currentVersions.find(
         (version) => version.versionId === activeVersionId
       ) ?? null;
-    } else {
-      resolved = orderedVersions[0] ?? null;
     }
-    console.debug('[PERSIST-DEBUG][PromptCanvas] activeVersion resolved', {
-      activeVersionId,
-      resolvedVersionId: resolved?.versionId ?? null,
-      generationCount: resolved?.generations?.length ?? 0,
-      generationSummary: resolved?.generations?.map((g) => ({
-        id: g.id.slice(-6),
-        status: g.status,
-        mediaType: g.mediaType,
-        mediaUrlCount: g.mediaUrls?.length ?? 0,
-        mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-        hasThumbnail: Boolean(g.thumbnailUrl),
-        firstUrl: g.mediaUrls?.[0]?.slice(0, 60) ?? null,
-      })),
-      totalVersions: currentVersions.length,
-    });
-    return resolved;
+    return orderedVersions[0] ?? null;
   }, [activeVersionId, currentVersions, orderedVersions]);
   const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
   const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning(
@@ -627,22 +609,9 @@ export function PromptCanvas({
 
   const handleGenerationsChange = useCallback(
     (nextGenerations: Generation[]) => {
-      console.debug('[PERSIST-DEBUG][PromptCanvas] handleGenerationsChange called', {
-        generationCount: nextGenerations.length,
-        promptVersionId,
-        currentPromptUuid,
-        generationSummary: nextGenerations.map((g) => ({
-          id: g.id.slice(-6),
-          status: g.status,
-          mediaType: g.mediaType,
-          mediaUrlCount: g.mediaUrls?.length ?? 0,
-          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-          hasThumbnail: Boolean(g.thumbnailUrl),
-        })),
-      });
       syncVersionGenerations(nextGenerations);
     },
-    [syncVersionGenerations, promptVersionId, currentPromptUuid]
+    [syncVersionGenerations]
   );
 
   const setShowExportMenu = useCallback(

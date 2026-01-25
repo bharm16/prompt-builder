@@ -97,6 +97,11 @@ export function useHistoryPersistence({
     isLoadingHistoryRef.current = isLoadingHistory;
   }, [isLoadingHistory]);
 
+  // Bug 18 safeguard: monotonic flag that becomes true after the first successful load.
+  // This is a belt-and-suspenders guard - even if isLoadingHistory gets set incorrectly,
+  // we never write to Firestore until we've loaded data at least once.
+  const initialLoadCompleteRef = useRef(false);
+
   // Bug 17 fix: debounce Firestore version writes to prevent concurrent writes
   // from clobbering each other. Local state (updateEntry) is always immediate;
   // only the Firestore write is debounced so the last data always wins.
@@ -119,10 +124,12 @@ export function useHistoryPersistence({
         if (pending) {
           pendingVersionWriteRef.current = null;
           // Bug 18 fix: don't flush stale data on unmount while loading
-          if (isLoadingHistoryRef.current) {
-            log.debug('Skipping unmount flush — history still loading', {
+          if (isLoadingHistoryRef.current || !initialLoadCompleteRef.current) {
+            log.debug('Skipping unmount flush — history not ready', {
               uuid: pending.uuid,
               versionCount: pending.versions.length,
+              isLoading: isLoadingHistoryRef.current,
+              initialLoadComplete: initialLoadCompleteRef.current,
             });
             return;
           }
@@ -143,6 +150,8 @@ export function useHistoryPersistence({
       try {
         const entries = await loadFromFirestore(userId);
         setHistory(entries);
+        // Bug 18 safeguard: mark initial load as complete so writes are allowed
+        initialLoadCompleteRef.current = true;
 
         const syncResult = syncToLocalStorage(entries);
         if (syncResult.trimmed) {
@@ -157,6 +166,8 @@ export function useHistoryPersistence({
         try {
           const localEntries = await loadFromLocalStorage();
           setHistory(localEntries);
+          // Even on fallback, mark load complete so writes can proceed
+          initialLoadCompleteRef.current = true;
         } catch (localError) {
           log.error('Error loading from localStorage fallback', localError as Error);
         }
@@ -171,6 +182,8 @@ export function useHistoryPersistence({
     try {
       const entries = await loadFromLocalStorage();
       setHistory(entries);
+      // Mark load complete for non-authenticated users
+      initialLoadCompleteRef.current = true;
     } catch (error) {
       log.error('Error loading history from localStorage', error as Error);
     }
@@ -333,25 +346,11 @@ export function useHistoryPersistence({
         (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
         0
       );
-      const generationSummary = versions.flatMap((v) =>
-        (v.generations ?? []).map((g) => ({
-          versionId: v.versionId,
-          genId: g.id.slice(-6),
-          status: g.status,
-          mediaType: g.mediaType,
-          mediaUrlCount: g.mediaUrls?.length ?? 0,
-          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-          hasThumbnail: Boolean(g.thumbnailUrl),
-        }))
-      );
-      console.debug('[PERSIST-DEBUG][useHistoryPersistence.updateEntryVersions] called', {
+      log.debug('updateEntryVersions called', {
         uuid,
         docId,
-        hasUser: Boolean(user?.uid),
-        isDraftId: typeof docId === 'string' && docId.startsWith('draft-'),
         versionCount: versions.length,
         generationCount,
-        generationSummary,
       });
 
       updateEntry(uuid, { versions });
@@ -422,15 +421,8 @@ export function useHistoryPersistence({
       // earlier write with stale data can land after a later write with complete data.
       // By debouncing, only the latest (most complete) data is written.
       if (versionWriteTimerRef.current !== null) {
-        console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: clearing previous timer', { uuid, docId });
         clearTimeout(versionWriteTimerRef.current);
       }
-      console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: scheduling write (150ms)', {
-        uuid,
-        docId,
-        versionCount: versions.length,
-        generationCount,
-      });
       pendingVersionWriteRef.current = { uuid, docId, versions };
       versionWriteTimerRef.current = setTimeout(() => {
         versionWriteTimerRef.current = null;
@@ -441,11 +433,14 @@ export function useHistoryPersistence({
           // stale localStorage data. Writing this to Firestore would overwrite the
           // real data. Once loadFromFirestore completes and calls setHistory(),
           // isLoadingHistory becomes false and normal writes resume.
-          if (isLoadingHistoryRef.current) {
-            console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: SKIPPED — history still loading (would overwrite Firestore)', {
+          //
+          // Belt-and-suspenders: also check initialLoadCompleteRef. Even if
+          // isLoadingHistory gets set incorrectly, we never write before first load.
+          if (isLoadingHistoryRef.current || !initialLoadCompleteRef.current) {
+            log.debug('Version write skipped — history not ready', {
               uuid: pending.uuid,
-              docId: pending.docId,
-              versionCount: pending.versions.length,
+              isLoading: isLoadingHistoryRef.current,
+              initialLoadComplete: initialLoadCompleteRef.current,
             });
             pendingVersionWriteRef.current = null;
             return;
@@ -455,20 +450,6 @@ export function useHistoryPersistence({
             (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
             0
           );
-          console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: EXECUTING write', {
-            uuid: pending.uuid,
-            docId: pending.docId,
-            versionCount: pending.versions.length,
-            generationCount: debouncedGenerationCount,
-            generationSummary: pending.versions.flatMap((v) =>
-              (v.generations ?? []).map((g) => ({
-                genId: g.id.slice(-6),
-                status: g.status,
-                mediaUrlCount: g.mediaUrls?.length ?? 0,
-                mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
-              }))
-            ),
-          });
           log.debug('Debounced version write executing', {
             uuid: pending.uuid,
             versionCount: pending.versions.length,

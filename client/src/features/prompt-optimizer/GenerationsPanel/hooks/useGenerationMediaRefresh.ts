@@ -176,15 +176,6 @@ export function useGenerationMediaRefresh(
       }
     }
 
-    console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] evaluating generations for refresh', {
-      total: generations.length,
-      completed: generations.filter((g) => g.status === 'completed').length,
-      withMedia: generations.filter((g) => g.mediaUrls.length > 0).length,
-      withAssetIds: generations.filter((g) => g.mediaAssetIds?.length).length,
-      processedCount: processedRef.current.size,
-      inFlightCount: inFlightRef.current.size,
-    });
-
     generations.forEach((generation) => {
       if (generation.status !== 'completed') return;
       if (!generation.mediaUrls.length && !generation.thumbnailUrl) return;
@@ -193,28 +184,12 @@ export function useGenerationMediaRefresh(
       if (processedRef.current.get(generation.id) === signature) return;
       if (inFlightRef.current.has(generation.id)) return;
 
-      console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] starting refresh for generation', {
-        id: generation.id.slice(-6),
-        mediaType: generation.mediaType,
-        mediaUrlCount: generation.mediaUrls.length,
-        mediaAssetIdCount: generation.mediaAssetIds?.length ?? 0,
-        hasThumbnail: Boolean(generation.thumbnailUrl),
-        firstUrl: generation.mediaUrls[0]?.slice(0, 80) ?? null,
-        firstAssetId: generation.mediaAssetIds?.[0]?.slice(0, 80) ?? null,
-      });
-
       inFlightRef.current.add(generation.id);
 
       void resolveGenerationMedia(generation)
         .then((result) => {
           if (!isActive) return;
           if (result) {
-            console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] refresh completed with changes', {
-              id: generation.id.slice(-6),
-              mediaUrlsChanged: result.updates.mediaUrls !== undefined,
-              thumbnailChanged: result.updates.thumbnailUrl !== undefined,
-              newFirstUrl: result.updates.mediaUrls?.[0]?.slice(0, 80) ?? '(unchanged)',
-            });
             log.debug('Refreshed generation media', {
               id: generation.id,
               mediaUrlsChanged: result.updates.mediaUrls !== undefined,
@@ -227,16 +202,9 @@ export function useGenerationMediaRefresh(
             processedRef.current.set(generation.id, result.signature);
             return;
           }
-          console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] no changes needed', {
-            id: generation.id.slice(-6),
-          });
           processedRef.current.set(generation.id, signature);
         })
         .catch((error) => {
-          console.error('[PERSIST-DEBUG][useGenerationMediaRefresh] refresh FAILED', {
-            id: generation.id.slice(-6),
-            error: error instanceof Error ? error.message : String(error),
-          });
           log.error('Error refreshing generation media', error instanceof Error ? error : undefined, {
             id: generation.id,
           });

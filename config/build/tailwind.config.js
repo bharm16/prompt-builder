@@ -16,7 +16,6 @@ export default {
       '../../packages/promptstudio-system/src/**/*.{js,ts,jsx,tsx}'
     ),
   ],
-  darkMode: false, // Disable dark mode completely
   presets: [promptStudioPreset],
   theme: {
     extend: {

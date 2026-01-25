@@ -70,11 +70,12 @@ function normalizeBucketName(raw: string): string {
 }
 
 function resolveBucketName(explicit?: string): string {
+  // Prefer server-side env vars over VITE_ (client-side) config
   const envBucket =
     explicit ||
-    process.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    process.env.GCS_BUCKET_NAME ||
     process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.GCS_BUCKET_NAME;
+    process.env.VITE_FIREBASE_STORAGE_BUCKET;
   if (!envBucket) {
     throw new Error(
       'Missing storage bucket config: VITE_FIREBASE_STORAGE_BUCKET or GCS_BUCKET_NAME'
@@ -416,7 +417,7 @@ export class AssetRepository {
       const referenceImages = [...(asset?.referenceImages || []), referenceImage];
 
       if (referenceImages.length === 1) {
-        referenceImages[0] = { ...referenceImages[0], isPrimary: true };
+        referenceImages[0] = { ...referenceImages[0], isPrimary: true } as AssetReferenceImage;
       }
 
       await this.update(userId, assetId, { referenceImages });
@@ -472,7 +473,7 @@ export class AssetRepository {
 
       const referenceImages = asset.referenceImages.filter((img) => img.id !== imageId);
       if (image.isPrimary && referenceImages.length > 0) {
-        referenceImages[0] = { ...referenceImages[0], isPrimary: true };
+        referenceImages[0] = { ...referenceImages[0], isPrimary: true } as AssetReferenceImage;
       }
 
       await this.update(userId, assetId, { referenceImages });
