@@ -25,27 +25,48 @@ export function useGenerationActions(
   const inFlightRef = useRef<Map<string, AbortController>>(new Map());
   const generationsRef = useRef<Generation[]>(options.generations ?? []);
   const promptVersionRef = useRef<string | null>(options.promptVersionId ?? null);
+  // Bug 9 fix: ref for options to avoid callback churn
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   useEffect(() => {
     generationsRef.current = options.generations ?? [];
   }, [options.generations]);
+
+  const markGenerationCancelled = useCallback(
+    (id: string, reason: string) => {
+      dispatch({
+        type: 'UPDATE_GENERATION',
+        payload: { id, updates: { status: 'failed', error: reason, completedAt: Date.now() } },
+      });
+      inFlightRef.current.delete(id);
+    },
+    [dispatch]
+  );
 
   const abortAll = useCallback(() => {
     inFlightRef.current.forEach((controller) => controller.abort());
     inFlightRef.current.clear();
   }, []);
 
-  const abortMismatched = useCallback((nextPromptVersionId: string | null) => {
-    const entries = Array.from(inFlightRef.current.entries());
-    for (const [id, controller] of entries) {
-      const generation = generationsRef.current.find((item) => item.id === id);
-      const generationVersionId = generation?.promptVersionId ?? null;
-      if (!generation || generationVersionId !== nextPromptVersionId) {
-        controller.abort();
-        inFlightRef.current.delete(id);
+  const abortMismatched = useCallback(
+    (nextPromptVersionId: string | null) => {
+      const entries = Array.from(inFlightRef.current.entries());
+      for (const [id, controller] of entries) {
+        const generation = generationsRef.current.find((item) => item.id === id);
+        const generationVersionId = generation?.promptVersionId ?? null;
+        if (!generation || generationVersionId !== nextPromptVersionId) {
+          controller.abort();
+          if (generation && (generation.status === 'generating' || generation.status === 'pending')) {
+            markGenerationCancelled(id, 'Prompt version changed');
+          } else {
+            inFlightRef.current.delete(id);
+          }
+        }
       }
-    }
-  }, []);
+    },
+    [markGenerationCancelled]
+  );
 
   useEffect(() => {
     const nextPromptVersionId = options.promptVersionId ?? null;
@@ -64,9 +85,10 @@ export function useGenerationActions(
     [dispatch]
   );
 
+  // Bug 9 fix: read options from ref to avoid callback recreation on every options change
   const generateDraft = useCallback(
     async (model: 'flux-kontext' | 'wan-2.2', prompt: string, params: GenerationParams) => {
-      const resolved = resolveGenerationOptions(options, params);
+      const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('draft', model, prompt, resolved);
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
@@ -81,7 +103,7 @@ export function useGenerationActions(
           });
           if (controller.signal.aborted) return;
           if (!response.success || !response.data?.imageUrls?.length) {
-            throw new Error(response.error || response.message || 'Failed to generate frames');
+            throw new Error(response.message || response.error || 'Failed to generate frames');
           }
           const urls = response.data.imageUrls;
           finalizeGeneration(generation.id, {
@@ -131,13 +153,13 @@ export function useGenerationActions(
         });
       }
     },
-    [dispatch, finalizeGeneration, options]
+    [dispatch, finalizeGeneration]
   );
 
   const generateStoryboard = useCallback(
     async (prompt: string, params: StoryboardParams) => {
       const { seedImageUrl, ...baseParams } = params;
-      const resolved = resolveGenerationOptions(options, baseParams);
+      const resolved = resolveGenerationOptions(optionsRef.current, baseParams);
       const generation = buildGeneration('draft', 'flux-kontext', prompt, resolved);
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
@@ -152,9 +174,15 @@ export function useGenerationActions(
         });
         if (controller.signal.aborted) return;
         if (!response.success || !response.data?.imageUrls?.length) {
-          throw new Error(response.error || response.message || 'Failed to generate storyboard');
+          throw new Error(response.message || response.error || 'Failed to generate storyboard');
         }
         const urls = response.data.imageUrls;
+        console.debug('[Storyboard] Generation completed:', {
+          id: generation.id,
+          urlCount: urls.length,
+          baseImageUrl: response.data.baseImageUrl?.slice(0, 100),
+          firstUrl: urls[0]?.slice(0, 100),
+        });
         finalizeGeneration(generation.id, {
           status: 'completed',
           completedAt: Date.now(),
@@ -163,6 +191,10 @@ export function useGenerationActions(
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        console.error('[Storyboard] Generation failed:', {
+          id: generation.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
         finalizeGeneration(generation.id, {
           status: 'failed',
           completedAt: Date.now(),
@@ -170,12 +202,12 @@ export function useGenerationActions(
         });
       }
     },
-    [dispatch, finalizeGeneration, options]
+    [dispatch, finalizeGeneration]
   );
 
   const generateRender = useCallback(
     async (model: string, prompt: string, params: GenerationParams) => {
-      const resolved = resolveGenerationOptions(options, params);
+      const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('render', model, prompt, resolved);
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
@@ -218,32 +250,29 @@ export function useGenerationActions(
         });
       }
     },
-    [dispatch, finalizeGeneration, options]
+    [dispatch, finalizeGeneration]
   );
 
   const cancelGeneration = useCallback(
     (id: string) => {
       const controller = inFlightRef.current.get(id);
       if (controller) controller.abort();
-      inFlightRef.current.delete(id);
-      dispatch({
-        type: 'UPDATE_GENERATION',
-        payload: { id, updates: { status: 'failed', error: 'Cancelled', completedAt: Date.now() } },
-      });
+      markGenerationCancelled(id, 'Cancelled');
     },
-    [dispatch]
+    [markGenerationCancelled]
   );
 
   const retryGeneration = useCallback(
     (id: string) => {
       const generation = generationsRef.current.find((item) => item.id === id);
       if (!generation) return;
+      const opts = optionsRef.current;
       const params: GenerationParams = {
-        promptVersionId: generation.promptVersionId ?? options.promptVersionId ?? null,
-        aspectRatio: generation.aspectRatio ?? options.aspectRatio ?? null,
-        duration: generation.duration ?? options.duration ?? null,
-        fps: generation.fps ?? options.fps ?? null,
-        generationParams: options.generationParams,
+        promptVersionId: generation.promptVersionId ?? opts.promptVersionId ?? null,
+        aspectRatio: generation.aspectRatio ?? opts.aspectRatio ?? null,
+        duration: generation.duration ?? opts.duration ?? null,
+        fps: generation.fps ?? opts.fps ?? null,
+        generationParams: opts.generationParams,
       };
       if (generation.tier === 'draft') {
         generateDraft(generation.model as 'flux-kontext' | 'wan-2.2', generation.prompt, params);
@@ -251,7 +280,7 @@ export function useGenerationActions(
       }
       generateRender(generation.model, generation.prompt, params);
     },
-    [generateDraft, generateRender, options]
+    [generateDraft, generateRender]
   );
 
   return { generateDraft, generateRender, generateStoryboard, cancelGeneration, retryGeneration };

@@ -130,7 +130,7 @@ export function useImagePreview({
             setImageUrl(baseUrl);
             setImageUrls(urls);
           } else {
-            throw new Error(response.error || response.message || 'Failed to generate storyboard');
+            throw new Error(response.message || response.error || 'Failed to generate storyboard');
           }
           return;
         }
@@ -151,7 +151,7 @@ export function useImagePreview({
         if (response.success && response.data?.imageUrl) {
           setImageUrl(response.data.imageUrl);
         } else {
-          throw new Error(response.error || response.message || 'Failed to generate preview');
+          throw new Error(response.message || response.error || 'Failed to generate preview');
         }
       } catch (err) {
         // Don't set error if request was aborted

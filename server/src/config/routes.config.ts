@@ -160,10 +160,17 @@ export function registerErrorHandlers(app: Application): void {
     res: Response & { sentry?: string },
     next: (err?: Error) => void
   ): void {
-    // The error id is attached to `res.sentry` to be returned
-    // and optionally displayed to the user for support.
-    res.statusCode = 500;
-    res.end((res.sentry || '') + '\n');
+    // Only short-circuit when Sentry has attached an error id.
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    if (res.sentry) {
+      res.statusCode = 500;
+      res.end(`${res.sentry}\n`);
+      return;
+    }
+    next(err);
   });
 
   // Custom error handler (must be last)

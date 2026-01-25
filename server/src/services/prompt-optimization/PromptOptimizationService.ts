@@ -12,6 +12,7 @@ import { StrategyFactory } from './services/StrategyFactory';
 import { ShotInterpreterService } from './services/ShotInterpreterService';
 import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
+import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
 import { templateService } from './services/TemplateService';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
 import type { CapabilityValues } from '@shared/capabilities';
@@ -53,6 +54,7 @@ export class PromptOptimizationService {
   private readonly shotInterpreter: ShotInterpreterService;
   private readonly draftService: DraftGenerationService;
   private readonly optimizationCache: OptimizationCacheService;
+  private readonly compilationService: VideoPromptCompilationService | null;
   private readonly videoPromptService: VideoPromptService | null;
   private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly log: ILogger;
@@ -70,6 +72,9 @@ export class PromptOptimizationService {
     this.shotInterpreter = new ShotInterpreterService(aiService);
     this.draftService = new DraftGenerationService(aiService);
     this.optimizationCache = new OptimizationCacheService();
+    this.compilationService = videoPromptService
+      ? new VideoPromptCompilationService(videoPromptService, this.qualityAssessment)
+      : null;
 
     // Template versions (moved to config)
     this.templateVersions = OptimizationConfig.templateVersions;
@@ -497,100 +502,19 @@ export class PromptOptimizationService {
       handleMetadata({ genericPrompt: optimizedPrompt });
 
       // STAGE 3: Model-Specific Compilation (The "Compiler" Phase)
-      // If we are in video mode and have the video service, compile the generic LLM output
-      // into the exact syntax required by the target model (Runway, Luma, Veo, etc.)
-      if (finalMode === 'video' && this.videoPromptService) {
-        // 1. Determine target model (explicit request > detection)
-        // Ensure we treat empty string as "Auto-detect" (null/undefined/empty)
-        const explicitModel = targetModel && targetModel.trim() !== '' ? targetModel : undefined;
-        
-        // Resolve explicit model ID to full strategy ID if needed
-        let resolvedTargetModel = explicitModel;
-        if (resolvedTargetModel && VideoPromptService.MODEL_ID_MAP[resolvedTargetModel]) {
-          resolvedTargetModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
-        }
+      if (finalMode === 'video' && this.compilationService) {
+        const compilation = await this.compilationService.compileOptimizedPrompt({
+          operation,
+          originalPrompt: prompt,
+          optimizedPrompt,
+          targetModel,
+          mode: finalMode,
+          qualityAssessment,
+        });
 
-        // Only detect if no explicit model was provided
-        if (!resolvedTargetModel) {
-          resolvedTargetModel = (this.videoPromptService.detectTargetModel(prompt) || 
-                                this.videoPromptService.detectTargetModel(optimizedPrompt)) ?? undefined; // Check both inputs
-        }
-        
-        if (resolvedTargetModel) {
-          this.log.info('Compiling prompt for target model', {
-            operation,
-            targetModel: resolvedTargetModel,
-            genericLength: optimizedPrompt.length
-          });
-
-          try {
-            // 2. Compile using the Strategy Pipeline (Analyzer -> IR -> Synthesizer)
-            // Pass the full generic prompt so the analyzer can extract narrative + technical specs.
-            const compilationResult = await this.videoPromptService.optimizeForModel(
-              optimizedPrompt,
-              resolvedTargetModel
-            );
-
-            // 3. Update the prompt with the compiled version
-            // For JSON outputs (Veo), this will be a stringified object
-            const compiledPrompt = typeof compilationResult.prompt === 'string'
-              ? compilationResult.prompt
-              : JSON.stringify(compilationResult.prompt, null, 2);
-            const compiledIsStructured = typeof compilationResult.prompt !== 'string';
-
-            this.log.info('Prompt compiled successfully', {
-              operation,
-              targetModel: resolvedTargetModel,
-              compiledLength: compiledPrompt.length,
-              changes: compilationResult.metadata.phases.flatMap(p => p.changes).length
-            });
-
-            const genericScore = qualityAssessment?.score ?? 0;
-            let compiledScore: number | null = null;
-            let keepCompiled = true;
-
-            if (!compiledIsStructured) {
-              const compiledAssessment = await this.qualityAssessment.assessQuality(compiledPrompt, finalMode);
-              compiledScore = compiledAssessment.score;
-              const dropThreshold = OptimizationConfig.iterativeRefinement.improvementThreshold;
-              const minScore = OptimizationConfig.quality.minAcceptableScore;
-
-              keepCompiled = compiledScore >= minScore && compiledScore + dropThreshold >= genericScore;
-
-              if (!keepCompiled) {
-                this.log.warn('Compiled prompt failed quality gate; returning generic prompt', {
-                  operation,
-                  targetModel: resolvedTargetModel,
-                  genericScore,
-                  compiledScore,
-                });
-              }
-            }
-
-            if (keepCompiled) {
-              optimizedPrompt = compiledPrompt;
-            }
-
-            // Merge compilation metadata
-            handleMetadata({
-              compiledFor: resolvedTargetModel,
-              compilationMeta: compilationResult.metadata,
-              compilationQuality: {
-                genericScore,
-                compiledScore,
-                keptCompiled: keepCompiled,
-                structuredOutput: compiledIsStructured,
-              },
-              ...(keepCompiled ? {} : { compilationWarning: 'compiled_quality_drop' }),
-            });
-
-          } catch (compilationError) {
-            this.log.error('Model compilation failed, reverting to generic optimization', compilationError as Error, {
-              operation,
-              targetModel: resolvedTargetModel
-            });
-            // Fallback: optimizedPrompt remains the generic LLM output
-          }
+        optimizedPrompt = compilation.prompt;
+        if (compilation.metadata) {
+          handleMetadata(compilation.metadata);
         }
       }
 
@@ -647,46 +571,12 @@ export class PromptOptimizationService {
     metadata: Record<string, unknown> | null;
     targetModel: string;
   }> {
-    const operation = 'compilePrompt';
-
-    if (!this.videoPromptService) {
+    void context;
+    if (!this.compilationService) {
       throw new Error('Video prompt service unavailable');
     }
 
-    let resolvedTargetModel = targetModel.trim();
-    if (!resolvedTargetModel) {
-      throw new Error('Target model is required for compilation');
-    }
-
-    const mappedModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
-    if (mappedModel) {
-      resolvedTargetModel = mappedModel;
-    }
-
-    this.log.info('Compiling prompt for target model', {
-      operation,
-      targetModel: resolvedTargetModel,
-      promptLength: prompt.length,
-    });
-
-    const compilationResult = await this.videoPromptService.optimizeForModel(
-      prompt,
-      resolvedTargetModel
-    );
-
-    const compiledPrompt = typeof compilationResult.prompt === 'string'
-      ? compilationResult.prompt
-      : JSON.stringify(compilationResult.prompt, null, 2);
-
-    return {
-      compiledPrompt,
-      metadata: {
-        compiledFor: resolvedTargetModel,
-        genericPrompt: prompt,
-        compilationMeta: compilationResult.metadata,
-      },
-      targetModel: resolvedTargetModel,
-    };
+    return this.compilationService.compilePrompt(prompt, targetModel);
   }
 
   /**

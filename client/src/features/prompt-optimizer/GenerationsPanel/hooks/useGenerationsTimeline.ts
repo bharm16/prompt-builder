@@ -35,14 +35,18 @@ export function useGenerationsTimeline({
 
     const allGenerations: TimelineGeneration[] = [];
     const seenIds = new Set<string>();
+    let mismatchCount = 0;
+    let duplicateCount = 0;
 
     for (const version of versions) {
       const gens = Array.isArray(version.generations) ? version.generations : [];
       for (const gen of gens) {
         if (gen.promptVersionId && gen.promptVersionId !== version.versionId) {
+          mismatchCount += 1;
           continue;
         }
         if (seenIds.has(gen.id)) {
+          duplicateCount += 1;
           continue;
         }
         seenIds.add(gen.id);

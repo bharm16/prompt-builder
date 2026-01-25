@@ -2,25 +2,19 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
-import type { Asset } from '@shared/types/asset';
 import type { Generation, GenerationsPanelProps } from './types';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
-import { KeyframeSelector, type SelectedKeyframe } from './components/KeyframeSelector';
 import { KeyframeStep } from './components/KeyframeStep';
 import { useGenerationsState } from './hooks/useGenerationsState';
 import { useGenerationActions } from './hooks/useGenerationActions';
 import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
 import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
 import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
+import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
-type StartImageOverride = {
-  url: string;
-  assetId?: string;
-  source: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation';
-};
 
 const EmptyState = ({
   onRunDraft,
@@ -113,36 +107,11 @@ export function GenerationsPanel({
     cancelGeneration,
   } = useGenerationActions(dispatch, generationActionsOptions);
 
-  const [selectedKeyframe, setSelectedKeyframe] = React.useState<SelectedKeyframe | null>(
-    null
-  );
-
-  const [keyframeStep, setKeyframeStep] = React.useState<{
-    isActive: boolean;
-    character: Asset | null;
-    approvedKeyframeUrl: string | null;
-    pendingModel: string | null;
-  }>({
-    isActive: false,
-    character: null,
-    approvedKeyframeUrl: null,
-    pendingModel: null,
-  });
-
   const { referenceImages: assetReferenceImages, resolvedPrompt } = useAssetReferenceImages(prompt);
   const detectedCharacter = useMemo(
     () => resolvedPrompt?.characters?.[0] ?? null,
     [resolvedPrompt]
   );
-
-  React.useEffect(() => {
-    setKeyframeStep({
-      isActive: false,
-      character: null,
-      approvedKeyframeUrl: null,
-      pendingModel: null,
-    });
-  }, [prompt]);
 
   const activeDraftModel = useMemo(
     () => getLatestByTier('draft')?.model ?? null,
@@ -165,92 +134,22 @@ export function GenerationsPanel({
     [generateDraft, onCreateVersionIfNeeded, prompt]
   );
 
-  const runRender = useCallback(
-    (model: string, startImageOverride?: StartImageOverride | null) => {
-      if (!prompt.trim()) return;
-      const versionId = onCreateVersionIfNeeded();
-      let startImage = null;
-      if (startImageOverride) {
-        startImage = {
-          url: startImageOverride.url,
-          source: startImageOverride.source,
-          ...(startImageOverride.assetId ? { assetId: startImageOverride.assetId } : {}),
-        };
-      } else if (selectedKeyframe) {
-        startImage = {
-          url: selectedKeyframe.url,
-          source: selectedKeyframe.source,
-        };
-      } else if (assetReferenceImages.length > 0) {
-        const characterReference = assetReferenceImages.find(
-          (reference) => reference.assetType === 'character'
-        );
-        if (characterReference) {
-          startImage = {
-            url: characterReference.imageUrl,
-            assetId: characterReference.assetId,
-            source: 'asset' as const,
-          };
-        }
-      }
-
-      generateRender(model, prompt, {
-        promptVersionId: versionId,
-        startImage,
-      });
-      setSelectedKeyframe(null);
-      setKeyframeStep({
-        isActive: false,
-        character: null,
-        approvedKeyframeUrl: null,
-        pendingModel: null,
-      });
-    },
-    [
-      assetReferenceImages,
-      generateRender,
-      onCreateVersionIfNeeded,
-      prompt,
-      selectedKeyframe,
-    ]
-  );
-
-  const handleRender = useCallback(
-    (model: string) => {
-      if (!prompt.trim()) return;
-      const primaryKeyframe = keyframes[0];
-      if (primaryKeyframe) {
-        runRender(model, {
-          url: primaryKeyframe.url,
-          source: primaryKeyframe.source,
-          ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
-        });
-        return;
-      }
-      if (keyframeStep.isActive) {
-        setKeyframeStep((prev) => ({ ...prev, pendingModel: model }));
-        return;
-      }
-      if (detectedCharacter) {
-        setKeyframeStep({
-          isActive: true,
-          character: detectedCharacter,
-          approvedKeyframeUrl: null,
-          pendingModel: model,
-        });
-        return;
-      }
-
-      runRender(model, null);
-    },
-    [
-      detectedCharacter,
-      keyframeStep.isActive,
-      keyframes,
-      prompt,
-      runRender,
-    ]
-  );
+  const {
+    keyframeStep,
+    selectedKeyframe,
+    handleRender,
+    handleApproveKeyframe,
+    handleSkipKeyframe,
+    handleSelectFrame,
+    handleClearSelectedFrame,
+  } = useKeyframeWorkflow({
+    prompt,
+    keyframes,
+    assetReferenceImages,
+    detectedCharacter,
+    onCreateVersionIfNeeded,
+    generateRender,
+  });
 
   const handleStoryboard = useCallback(() => {
     const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
@@ -258,19 +157,6 @@ export function GenerationsPanel({
     const seedImageUrl = keyframes[0]?.url ?? null;
     generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
   }, [generateStoryboard, keyframes, onCreateVersionIfNeeded, prompt]);
-
-  const handleApproveKeyframe = useCallback(
-    (keyframeUrl: string) => {
-      const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-      runRender(modelToUse, { url: keyframeUrl, source: 'keyframe' });
-    },
-    [keyframeStep.pendingModel, runRender]
-  );
-
-  const handleSkipKeyframe = useCallback(() => {
-    const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-    runRender(modelToUse, null);
-  }, [keyframeStep.pendingModel, runRender]);
 
   const handleDelete = useCallback(
     (generation: Generation) => {
@@ -297,13 +183,6 @@ export function GenerationsPanel({
     const url = generation.mediaUrls[0];
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }, []);
-
-  const handleUseAsKeyframe = useCallback((generation: Generation) => {
-    const url = generation.mediaUrls[0];
-    if (url) {
-      setSelectedKeyframe({ url, generationId: generation.id, source: 'preview' });
     }
   }, []);
 
@@ -348,16 +227,7 @@ export function GenerationsPanel({
           onApprove={handleApproveKeyframe}
           onSkip={handleSkipKeyframe}
         />
-      ) : (
-        <div className="border-b border-border px-4 py-3">
-          <KeyframeSelector
-            generations={generations}
-            selectedKeyframe={selectedKeyframe}
-            onSelect={setSelectedKeyframe}
-            onClear={() => setSelectedKeyframe(null)}
-          />
-        </div>
-      )}
+      ) : null}
       <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {timeline.length === 0 ? (
           <EmptyState
@@ -385,7 +255,9 @@ export function GenerationsPanel({
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 onCancel={handleCancel}
-                onUseAsKeyframe={handleUseAsKeyframe}
+                onSelectFrame={handleSelectFrame}
+                onClearSelectedFrame={handleClearSelectedFrame}
+                selectedFrameUrl={selectedKeyframe?.url ?? null}
                 onClick={() => onRestoreVersion(item.generation._versionId)}
               />
             );

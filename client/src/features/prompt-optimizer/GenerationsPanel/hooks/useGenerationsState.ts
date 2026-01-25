@@ -18,24 +18,24 @@ const deriveIsGenerating = (generations: Generation[]): boolean =>
   generations.some((gen) => gen.status === 'pending' || gen.status === 'generating');
 
 const serializeGeneration = (gen: Generation): string =>
-  [
-    gen.id,
-    gen.status,
-    gen.tier,
-    gen.model,
-    gen.promptVersionId ?? '',
-    gen.createdAt,
-    gen.completedAt ?? '',
-    gen.estimatedCost ?? '',
-    gen.actualCost ?? '',
-    gen.aspectRatio ?? '',
-    gen.duration ?? '',
-    gen.fps ?? '',
-    gen.thumbnailUrl ?? '',
-    gen.error ?? '',
-    gen.mediaType,
-    gen.mediaUrls.join('|'),
-  ].join('|');
+  JSON.stringify({
+    id: gen.id,
+    status: gen.status,
+    tier: gen.tier,
+    model: gen.model,
+    promptVersionId: gen.promptVersionId ?? null,
+    createdAt: gen.createdAt,
+    completedAt: gen.completedAt ?? null,
+    estimatedCost: gen.estimatedCost ?? null,
+    actualCost: gen.actualCost ?? null,
+    aspectRatio: gen.aspectRatio ?? null,
+    duration: gen.duration ?? null,
+    fps: gen.fps ?? null,
+    thumbnailUrl: gen.thumbnailUrl ?? null,
+    error: gen.error ?? null,
+    mediaType: gen.mediaType,
+    mediaUrls: gen.mediaUrls ?? [],
+  });
 
 const areGenerationsEqual = (
   left?: Generation[] | null,
@@ -44,7 +44,12 @@ const areGenerationsEqual = (
   if (!left && !right) return true;
   if (!left || !right) return false;
   if (left.length !== right.length) return false;
-  return left.map(serializeGeneration).join('||') === right.map(serializeGeneration).join('||');
+  for (let i = 0; i < left.length; i += 1) {
+    if (serializeGeneration(left[i]) !== serializeGeneration(right[i])) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const buildInitialState = (initial?: Generation[]): GenerationsState => {
@@ -59,7 +64,7 @@ function generationsReducer(
 ): GenerationsState {
   switch (action.type) {
     case 'ADD_GENERATION': {
-      const next = { ...action.payload, status: 'pending' } as Generation;
+      const next = { ...action.payload };
       const generations = [...state.generations, next];
       return {
         generations,
@@ -85,7 +90,16 @@ function generationsReducer(
       return { ...state, activeGenerationId: action.payload };
     case 'SET_GENERATIONS': {
       const generations = action.payload ?? [];
-      return buildInitialState(generations);
+      // Bug 15 fix: preserve activeGenerationId if it still exists in the new set
+      const preservedActiveId =
+        state.activeGenerationId && generations.some((g) => g.id === state.activeGenerationId)
+          ? state.activeGenerationId
+          : (generations.length ? generations[generations.length - 1].id : null);
+      return {
+        generations,
+        activeGenerationId: preservedActiveId,
+        isGenerating: deriveIsGenerating(generations),
+      };
     }
     default:
       return state;
@@ -110,29 +124,39 @@ export function useGenerationsState({
   );
   const initialRef = useRef<Generation[] | undefined>(initialGenerations);
   const suppressOnChangeRef = useRef(false);
+  const generationsRef = useRef(state.generations);
+  generationsRef.current = state.generations;
 
+  // Sync initialGenerations into local state
+  // Bug 7 fix: read state.generations via ref to avoid re-triggering on local changes
   useEffect(() => {
     const hasInitial = Boolean(initialGenerations);
     const sameRef = initialRef.current === initialGenerations;
-    const sameContent = areGenerationsEqual(initialGenerations, state.generations);
+    const sameContent = areGenerationsEqual(initialGenerations, generationsRef.current);
     const hasLocalForVersion = Boolean(
       promptVersionId &&
         Array.isArray(initialGenerations) &&
         initialGenerations.length === 0 &&
-        state.generations.some((gen) => gen.promptVersionId === promptVersionId)
+        generationsRef.current.some((gen) => gen.promptVersionId === promptVersionId)
     );
     if (!hasInitial || sameRef || sameContent || hasLocalForVersion) return;
 
     initialRef.current = initialGenerations;
     suppressOnChangeRef.current = true;
     dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations });
-  }, [initialGenerations, promptVersionId, state.generations]);
+  }, [initialGenerations, promptVersionId]);
 
+  // Emit changes to parent
+  // Bug 8 fix: skip when only callback reference changed but generations didn't
+  const prevGenerationsRef = useRef(state.generations);
   useEffect(() => {
     if (suppressOnChangeRef.current) {
       suppressOnChangeRef.current = false;
+      prevGenerationsRef.current = state.generations;
       return;
     }
+    if (prevGenerationsRef.current === state.generations) return;
+    prevGenerationsRef.current = state.generations;
     onGenerationsChange?.(state.generations);
   }, [onGenerationsChange, state.generations]);
 

@@ -99,11 +99,16 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
-    const [exists] = await file.exists();
-    if (!exists) {
+    try {
+      return await this.getSignedUrl(file);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log.warn('Failed to generate video signed URL', {
+        assetId,
+        error: errorMessage,
+      });
       return null;
     }
-    return await this.getSignedUrl(file);
   }
 
   async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {

@@ -123,11 +123,12 @@ export class KeyframeGenerationService {
       throw new Error('Character must have a primary reference image');
     }
 
+    const normalizedAspectRatio = this.normalizeAspectRatio(aspectRatio);
     const operation = 'generateWithPulid';
     const startTime = performance.now();
     this.log.info('Generating keyframe with PuLID', {
       operation,
-      aspectRatio,
+      aspectRatio: normalizedAspectRatio,
       idWeight: faceStrength,
       promptLength: prompt.length,
     });
@@ -135,7 +136,7 @@ export class KeyframeGenerationService {
     const result: FalPulidKeyframeResult = await this.pulidProvider.generateKeyframe({
       prompt,
       faceImageUrl: character.primaryImageUrl,
-      aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4',
+      aspectRatio: normalizedAspectRatio,
       idWeight: faceStrength ?? undefined,
       negativePrompt: character.negativePrompt ?? undefined,
     });
@@ -181,10 +182,11 @@ export class KeyframeGenerationService {
       throw new Error('Character must have a primary reference image');
     }
 
+    const normalizedAspectRatio = this.normalizeAspectRatio(aspectRatio);
     const results = await this.pulidProvider.generateKeyframeOptions({
       prompt,
       faceImageUrl: character.primaryImageUrl,
-      aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4',
+      aspectRatio: normalizedAspectRatio,
       negativePrompt: character.negativePrompt ?? undefined,
       count,
     });
@@ -243,6 +245,15 @@ export class KeyframeGenerationService {
       });
       return { isValid: true, confidence: null };
     }
+  }
+
+  private normalizeAspectRatio(
+    aspectRatio?: KeyframeOptions['aspectRatio']
+  ): '16:9' | '9:16' | '1:1' | '4:3' | '3:4' {
+    const allowed = ['16:9', '9:16', '1:1', '4:3', '3:4'] as const;
+    return allowed.includes(aspectRatio as (typeof allowed)[number])
+      ? (aspectRatio as (typeof allowed)[number])
+      : '16:9';
   }
 }
 

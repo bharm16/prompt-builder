@@ -4,6 +4,7 @@
  * Refactored to follow SRP/SOC principles:
  * - usePromptHistory.ts: Orchestrator (coordination only)
  * - hooks/useHistoryState.ts: State management
+ * - hooks/useHistoryPersistence.ts: Persistence + draft promotion
  * - api/historyRepository.ts: Repository operations
  * - types.ts: Type definitions
  */

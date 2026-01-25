@@ -410,7 +410,7 @@ export async function configureServices(): Promise<DIContainer> {
       categoryAligner: CategoryAlignmentService,
       metrics: EnhancementMetricsService
     ) =>
-      new EnhancementService(
+      new EnhancementService({
         aiService,
         placeholderDetector,
         videoService,
@@ -419,8 +419,8 @@ export async function configureServices(): Promise<DIContainer> {
         validationService,
         diversityEnforcer,
         categoryAligner,
-        metrics
-      ),
+        metricsService: metrics,
+      }),
     [
       'aiService',
       'placeholderDetector',

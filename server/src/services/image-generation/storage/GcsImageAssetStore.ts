@@ -102,12 +102,17 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
-    const [exists] = await file.exists();
-    if (!exists) {
+    try {
+      const { url } = await this.getSignedUrl(file);
+      return url;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log.warn('Failed to generate image signed URL', {
+        assetId,
+        error: errorMessage,
+      });
       return null;
     }
-    const { url } = await this.getSignedUrl(file);
-    return url;
   }
 
   async exists(assetId: string): Promise<boolean> {

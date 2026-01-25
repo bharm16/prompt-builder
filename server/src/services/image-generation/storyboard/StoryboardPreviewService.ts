@@ -50,6 +50,14 @@ export class StoryboardPreviewService {
     }
 
     const userId = request.userId ?? 'anonymous';
+    this.log.info('Storyboard preview generation started', {
+      userId,
+      promptLength: trimmedPrompt.length,
+      aspectRatio: request.aspectRatio,
+      speedMode: request.speedMode,
+      seedProvided: request.seed !== undefined,
+      hasSeedImage: Boolean(request.seedImageUrl),
+    });
     const deltas = await this.storyboardFramePlanner.planDeltas(
       trimmedPrompt,
       STORYBOARD_FRAME_COUNT
@@ -70,6 +78,11 @@ export class StoryboardPreviewService {
       aspectRatio: request.aspectRatio,
       seedImageUrl,
       userId,
+    });
+    this.log.info('Storyboard base image resolved', {
+      userId,
+      baseProvider: BASE_PROVIDER,
+      usedSeedImage: Boolean(seedImageUrl),
     });
 
     const imageUrls = await this.generateEditFrames({
@@ -110,12 +123,27 @@ export class StoryboardPreviewService {
       };
     }
 
-    const baseResult = await this.imageGenerationService.generatePreview(options.prompt, {
-      ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
-      provider: BASE_PROVIDER,
-      userId: options.userId,
-      disablePromptTransformation: true,
-    });
+    let baseResult;
+    try {
+      baseResult = await this.imageGenerationService.generatePreview(options.prompt, {
+        ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+        provider: BASE_PROVIDER,
+        userId: options.userId,
+        disablePromptTransformation: true,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log.error(
+        'Storyboard base image generation failed',
+        error instanceof Error ? error : new Error(errorMessage),
+        {
+          userId: options.userId,
+          provider: BASE_PROVIDER,
+          aspectRatio: options.aspectRatio,
+        }
+      );
+      throw error;
+    }
 
     return {
       baseImageUrl: baseResult.imageUrl,
@@ -142,18 +170,38 @@ export class StoryboardPreviewService {
       const editPrompt = buildEditPrompt(options.prompt, delta);
       const editSeed = computeEditSeed(seedBase, index);
 
-      const result = await this.imageGenerationService.generatePreview(editPrompt, {
-        ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
-        provider: EDIT_PROVIDER,
-        inputImageUrl: previousUrl,
-        ...(options.speedMode ? { speedMode: options.speedMode } : {}),
-        userId: options.userId,
-        ...(editSeed !== undefined ? { seed: editSeed } : {}),
-        disablePromptTransformation: true,
-      });
+      try {
+        this.log.debug('Storyboard edit frame generation started', {
+          userId: options.userId,
+          frameIndex: index + 1,
+        });
 
-      previousUrl = resolveChainingUrl(result);
-      imageUrls.push(result.imageUrl);
+        const result = await this.imageGenerationService.generatePreview(editPrompt, {
+          ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+          provider: EDIT_PROVIDER,
+          inputImageUrl: previousUrl,
+          ...(options.speedMode ? { speedMode: options.speedMode } : {}),
+          userId: options.userId,
+          ...(editSeed !== undefined ? { seed: editSeed } : {}),
+          disablePromptTransformation: true,
+        });
+
+        previousUrl = resolveChainingUrl(result);
+        imageUrls.push(result.imageUrl);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log.error(
+          'Storyboard edit frame generation failed',
+          error instanceof Error ? error : new Error(errorMessage),
+          {
+            userId: options.userId,
+            frameIndex: index + 1,
+            deltaPreview: delta.slice(0, 160),
+            provider: EDIT_PROVIDER,
+          }
+        );
+        throw error;
+      }
     }
 
     return imageUrls;

@@ -82,6 +82,7 @@ export interface SaveEntryParams {
   generationParams?: Record<string, unknown> | null;
   brainstormContext?: unknown | null;
   highlightCache?: unknown | null;
+  versions?: PromptVersionEntry[];
 }
 
 export interface SaveResult {

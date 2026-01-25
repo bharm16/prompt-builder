@@ -23,12 +23,26 @@ const hasStatusCode = (value: unknown): value is { statusCode: number } => {
   return typeof statusCode === 'number' && Number.isFinite(statusCode);
 };
 
+const extractHost = (value: string | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
+};
+
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
   userCreditService,
 }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
+      logger.warn('Storyboard preview service unavailable for request', {
+        path: req.path,
+      });
       return res.status(503).json({
         success: false,
         error: 'Storyboard preview service is not available',
@@ -38,6 +52,10 @@ export const createImageStoryboardGenerateHandler = ({
 
     const parsedRequest = parseImageStoryboardGenerateRequest(req.body);
     if (!parsedRequest.ok) {
+      logger.warn('Storyboard preview request validation failed', {
+        path: req.path,
+        error: parsedRequest.error,
+      });
       return res.status(400).json({
         success: false,
         error: parsedRequest.error,
@@ -70,8 +88,25 @@ export const createImageStoryboardGenerateHandler = ({
       ? Math.max(0, STORYBOARD_FRAME_COUNT - 1)
       : STORYBOARD_FRAME_COUNT;
     const previewCost = storyboardFrames * IMAGE_PREVIEW_CREDIT_COST;
+
+    logger.info('Storyboard preview generation requested', {
+      userId,
+      promptLength: prompt.length,
+      aspectRatio,
+      speedMode,
+      seedProvided: seed !== undefined,
+      hasSeedImage: Boolean(seedImageUrl),
+      previewCost,
+      storyboardFrames,
+    });
+
     const hasCredits = await userCreditService.reserveCredits(userId, previewCost);
     if (!hasCredits) {
+      logger.warn('Insufficient credits for storyboard preview', {
+        userId,
+        previewCost,
+        storyboardFrames,
+      });
       return res.status(402).json({
         success: false,
         error: 'Insufficient credits',
@@ -87,6 +122,21 @@ export const createImageStoryboardGenerateHandler = ({
         ...(speedMode ? { speedMode } : {}),
         ...(seed !== undefined ? { seed } : {}),
         ...(userId ? { userId } : {}),
+      });
+
+      const imageHosts = Array.from(
+        new Set(
+          result.imageUrls
+            .map((url) => extractHost(url))
+            .filter((host): host is string => Boolean(host))
+        )
+      );
+
+      logger.info('Storyboard preview generation succeeded', {
+        userId,
+        imageCount: result.imageUrls.length,
+        baseImageHost: extractHost(result.baseImageUrl),
+        imageHosts,
       });
 
       return res.json({

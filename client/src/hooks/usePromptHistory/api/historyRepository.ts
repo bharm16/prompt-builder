@@ -111,6 +111,7 @@ export async function saveEntry(
       ...(params.generationParams ? { generationParams: params.generationParams } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
+      ...(Array.isArray(params.versions) ? { versions: params.versions } : {}),
     });
 
     const duration = logger.endTimer('saveEntry');
@@ -232,9 +233,15 @@ export async function updateVersions(
     try {
       if (isFirestoreRepo) {
         if (!canUseFirestoreDoc) {
+          log.warn('Skipping Firestore version update — draft or invalid docId', {
+            uuid,
+            docId,
+            versionCount: versions.length,
+          });
           return;
         }
         await repository.updateVersions(docId, versions);
+        log.debug('Versions persisted to Firestore', { uuid, docId, versionCount: versions.length });
         return;
       }
       await repository.updateVersions(uuid, versions);

@@ -41,6 +41,7 @@ import {
   DEFAULT_LABELING_POLICY,
   TEMPLATE_VERSIONS,
 } from '@config/performance.config';
+import { logger } from '@/services/LoggingService';
 
 // Relative imports - types first
 import type {
@@ -110,6 +111,8 @@ const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 CanvasButton.displayName = 'CanvasButton';
+
+const log = logger.child('PromptCanvas');
 
 type InlineSuggestion = {
   key: string;
@@ -217,6 +220,8 @@ export function PromptCanvas({
     promptHistory,
     currentPromptUuid,
     currentPromptDocId,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
     activeVersionId,
     setActiveVersionId,
     setDisplayedPromptSilently,
@@ -306,10 +311,13 @@ export function PromptCanvas({
         try {
           const validation = await assetApi.validate(text);
           if (!validation.isValid) {
-            console.warn('Missing triggers:', validation.missingTriggers);
+            log.warn('Missing triggers', {
+              missingTriggers: validation.missingTriggers,
+            });
           }
         } catch (error) {
-          console.error('Trigger validation failed:', error);
+          const errorObj = error instanceof Error ? error : new Error(String(error));
+          log.error('Trigger validation failed', errorObj);
         }
       }, 500),
     []
@@ -447,11 +455,35 @@ export function PromptCanvas({
     ]
   );
 
+  const ensureDraftEntry = useCallback((): { uuid: string; docId: string } => {
+    if (currentPromptUuid) {
+      return { uuid: currentPromptUuid, docId: currentPromptDocId ?? '' };
+    }
+    const draft = promptHistory.createDraft({
+      mode: selectedMode,
+      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
+      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+    });
+    setCurrentPromptUuid(draft.uuid);
+    setCurrentPromptDocId(draft.id);
+    return { uuid: draft.uuid, docId: draft.id };
+  }, [
+    currentPromptDocId,
+    currentPromptUuid,
+    generationParams,
+    promptHistory,
+    selectedMode,
+    selectedModel,
+    setCurrentPromptDocId,
+    setCurrentPromptUuid,
+  ]);
+
   const handleCreateVersion = useCallback((): void => {
-    if (!currentPromptUuid) return;
     if (!currentVersions) return;
-    const promptText = (normalizedDisplayedPrompt ?? '').trim();
+    const promptText =
+      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
     if (!promptText) return;
+    const { uuid, docId } = ensureDraftEntry();
 
     const signature = createHighlightSignature(promptText);
     const lastSignature =
@@ -477,16 +509,16 @@ export function PromptCanvas({
       ...(edits.length ? { edits } : {}),
     };
 
-    promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+    promptHistory.updateEntryVersions(uuid, docId || null, [
       ...currentVersions,
       nextVersion,
     ]);
     setActiveVersionId(nextVersion.versionId);
     resetVersionEdits();
   }, [
-    currentPromptDocId,
-    currentPromptUuid,
+    ensureDraftEntry,
     currentVersions,
+    inputPrompt,
     latestHighlightRef,
     normalizedDisplayedPrompt,
     promptHistory,
@@ -497,14 +529,12 @@ export function PromptCanvas({
   ]);
 
   const createVersionIfNeeded = useCallback((): string => {
-    const promptText = (normalizedDisplayedPrompt ?? '').trim();
+    const promptText =
+      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
     if (!promptText) {
       return activeVersion?.versionId ?? '';
     }
-
-    if (!currentPromptUuid) {
-      return activeVersion?.versionId ?? '';
-    }
+    const { uuid, docId } = ensureDraftEntry();
 
     const signature = createHighlightSignature(promptText);
 
@@ -527,7 +557,7 @@ export function PromptCanvas({
         ...(edits.length ? { edits } : {}),
       };
 
-      promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+      promptHistory.updateEntryVersions(uuid, docId || null, [
         newVersion,
       ]);
       setActiveVersionId(newVersion.versionId);
@@ -558,7 +588,7 @@ export function PromptCanvas({
       ...(edits.length ? { edits } : {}),
     };
 
-    promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, [
+    promptHistory.updateEntryVersions(uuid, docId || null, [
       ...currentVersions,
       newVersion,
     ]);
@@ -567,9 +597,9 @@ export function PromptCanvas({
     return newVersion.versionId;
   }, [
     activeVersion?.versionId,
-    currentPromptDocId,
-    currentPromptUuid,
     currentVersions,
+    ensureDraftEntry,
+    inputPrompt,
     latestHighlightRef,
     normalizedDisplayedPrompt,
     promptHistory,

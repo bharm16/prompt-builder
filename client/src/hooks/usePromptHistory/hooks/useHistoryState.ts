@@ -70,11 +70,11 @@ export function useHistoryState(): UseHistoryStateReturn {
     );
   }, [history, searchQuery]);
 
-  const state: HistoryState = {
-    history,
-    isLoadingHistory,
-    searchQuery,
-  };
+  // Bug 6 fix: memoize state object to prevent unnecessary re-renders
+  const state = useMemo<HistoryState>(
+    () => ({ history, isLoadingHistory, searchQuery }),
+    [history, isLoadingHistory, searchQuery]
+  );
 
   return {
     state,

@@ -4,8 +4,8 @@ import {
   Check,
   DotsThree,
   Download,
-  FilmStrip,
   WarningCircle,
+  X,
 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 
@@ -24,7 +24,9 @@ interface GenerationCardProps {
   onDelete?: (generation: Generation) => void;
   onDownload?: (generation: Generation) => void;
   onCancel?: (generation: Generation) => void;
-  onUseAsKeyframe?: (generation: Generation) => void;
+  onSelectFrame?: (url: string, index: number, generationId: string) => void;
+  onClearSelectedFrame?: () => void;
+  selectedFrameUrl?: string | null;
   isActive?: boolean;
   onClick?: () => void;
 }
@@ -42,7 +44,9 @@ export function GenerationCard({
   onDelete,
   onDownload,
   onCancel,
-  onUseAsKeyframe,
+  onSelectFrame,
+  onClearSelectedFrame,
+  selectedFrameUrl = null,
   isActive = false,
   onClick,
 }: GenerationCardProps): React.ReactElement {
@@ -59,11 +63,15 @@ export function GenerationCard({
     generation.status === 'completed' &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
-  const showUseAsKeyframe =
+  const canSelectFrames =
     generation.mediaType === 'image-sequence' &&
     generation.status === 'completed' &&
     generation.mediaUrls.length > 0 &&
-    Boolean(onUseAsKeyframe);
+    Boolean(onSelectFrame);
+  const hasSelectedFrame =
+    canSelectFrames &&
+    Boolean(selectedFrameUrl) &&
+    generation.mediaUrls.includes(selectedFrameUrl);
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
     const target = event.target as Element;
@@ -156,16 +164,40 @@ export function GenerationCard({
 
       <div className="mt-3">
         {generation.mediaType === 'image-sequence' ? (
-          <KontextFrameStrip
-            frames={
-              generation.mediaUrls.length
-                ? generation.mediaUrls
-                : Array.from({ length: 4 }, () => null)
+          (() => {
+            if (generation.status === 'completed' && generation.mediaUrls.length === 0) {
+              console.warn('[GenerationCard] Image-sequence generation completed but no mediaUrls:', {
+                id: generation.id,
+                model: generation.model,
+                mediaType: generation.mediaType,
+              });
             }
-            duration={generation.duration ?? 5}
-            isGenerating={isGenerating}
-            progressPercent={progressPercent}
-          />
+            return (
+              <KontextFrameStrip
+                frames={
+                  generation.mediaUrls.length
+                    ? generation.mediaUrls
+                    : Array.from({ length: 4 }, () => null)
+                }
+                duration={generation.duration ?? 5}
+                isGenerating={isGenerating}
+                progressPercent={progressPercent}
+                selectedFrameUrl={selectedFrameUrl}
+                onFrameClick={
+                  canSelectFrames
+                    ? (index, url) => {
+                        if (!url) return;
+                        if (selectedFrameUrl === url) {
+                          onClearSelectedFrame?.();
+                          return;
+                        }
+                        onSelectFrame?.(url, index, generation.id);
+                      }
+                    : undefined
+                }
+              />
+            );
+          })()
         ) : (
           <VideoThumbnail
             videoUrl={mediaUrl}
@@ -175,6 +207,28 @@ export function GenerationCard({
         )}
       </div>
 
+      {hasSelectedFrame && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2">
+          <Check size={14} weight="bold" className="text-accent" aria-hidden="true" />
+          <span className="text-xs text-foreground flex-1">
+            Frame selected as keyframe
+          </span>
+          {onClearSelectedFrame && (
+            <button
+              type="button"
+              className="text-muted hover:text-foreground transition-colors"
+              onClick={(event) => {
+                event.stopPropagation();
+                onClearSelectedFrame();
+              }}
+              aria-label="Clear selected keyframe"
+            >
+              <X size={14} weight="bold" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {generation.status === 'failed' && (
           <span className="text-error inline-flex items-center gap-1 text-label-sm">
@@ -183,7 +237,7 @@ export function GenerationCard({
           </span>
         )}
 
-        {(showRetry || showDownload || showUseAsKeyframe) && (
+        {(showRetry || showDownload) && (
           <div className="ml-auto flex items-center gap-2">
             {showRetry && onRetry && (
               <Button
@@ -211,20 +265,6 @@ export function GenerationCard({
               >
                 <Download size={14} aria-hidden="true" />
                 Download
-              </Button>
-            )}
-            {showUseAsKeyframe && onUseAsKeyframe && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-label-sm h-8 gap-1 px-2"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onUseAsKeyframe(generation);
-                }}
-              >
-                <FilmStrip size={14} aria-hidden="true" />
-                Use as Keyframe
               </Button>
             )}
           </div>

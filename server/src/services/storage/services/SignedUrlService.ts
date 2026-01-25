@@ -89,11 +89,6 @@ export class SignedUrlService {
       { path, disposition },
       async () => {
         const file = this.bucket.file(path);
-        const [exists] = await file.exists();
-        if (!exists) {
-          throw new Error(`File not found: ${path}`);
-        }
-
         const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.view;
         const [url] = await file.getSignedUrl({
           version: 'v4',

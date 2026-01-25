@@ -50,24 +50,24 @@ const toIsoString = (value: number | string): string => {
 };
 
 const serializeGeneration = (gen: Generation): string =>
-  [
-    gen.id,
-    gen.tier,
-    gen.status,
-    gen.model,
-    gen.mediaType,
-    gen.promptVersionId ?? '',
-    gen.createdAt,
-    gen.completedAt ?? '',
-    gen.estimatedCost ?? '',
-    gen.actualCost ?? '',
-    gen.aspectRatio ?? '',
-    gen.duration ?? '',
-    gen.fps ?? '',
-    gen.thumbnailUrl ?? '',
-    gen.error ?? '',
-    gen.mediaUrls.join('|'),
-  ].join('|');
+  JSON.stringify({
+    id: gen.id,
+    tier: gen.tier,
+    status: gen.status,
+    model: gen.model,
+    mediaType: gen.mediaType,
+    promptVersionId: gen.promptVersionId ?? null,
+    createdAt: gen.createdAt,
+    completedAt: gen.completedAt ?? null,
+    estimatedCost: gen.estimatedCost ?? null,
+    actualCost: gen.actualCost ?? null,
+    aspectRatio: gen.aspectRatio ?? null,
+    duration: gen.duration ?? null,
+    fps: gen.fps ?? null,
+    thumbnailUrl: gen.thumbnailUrl ?? null,
+    error: gen.error ?? null,
+    mediaUrls: gen.mediaUrls ?? [],
+  });
 
 const areGenerationsEqual = (
   left?: Generation[] | null,
@@ -76,7 +76,12 @@ const areGenerationsEqual = (
   if (!left && !right) return true;
   if (!left || !right) return false;
   if (left.length !== right.length) return false;
-  return left.map(serializeGeneration).join('||') === right.map(serializeGeneration).join('||');
+  for (let i = 0; i < left.length; i += 1) {
+    if (serializeGeneration(left[i]) !== serializeGeneration(right[i])) {
+      return false;
+    }
+  }
+  return true;
 };
 
 /**
@@ -147,10 +152,19 @@ export function usePromptVersioning({
     [currentPromptEntry]
   );
 
+  // Bug 12/13 fix: refs for fresh values in callbacks to avoid stale closures
+  const currentVersionsRef = useRef(currentVersions);
+  currentVersionsRef.current = currentVersions;
+  const currentPromptEntryRef = useRef(currentPromptEntry);
+  currentPromptEntryRef.current = currentPromptEntry;
+
   const persistVersions = useCallback(
     (versions: PromptVersionEntry[]): void => {
       if (!currentPromptUuid) return;
-      promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, versions);
+      // Bug 13 fix: read entry from ref to avoid stale docId after draft promotion
+      const entry = currentPromptEntryRef.current;
+      const resolvedDocId = entry?.id ?? currentPromptDocId;
+      promptHistory.updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
     [promptHistory, currentPromptUuid, currentPromptDocId]
   );
@@ -191,12 +205,13 @@ export function usePromptVersioning({
   const upsertVersionOutput = useCallback(
     (params: UpsertVersionOutputParams): void => {
       if (!currentPromptUuid) return;
-      if (!currentPromptEntry) return;
+      if (!currentPromptEntryRef.current) return;
       const promptText = params.prompt.trim();
       if (!promptText) return;
 
+      const versions = currentVersionsRef.current;
       const signature = createHighlightSignature(promptText);
-      const lastVersion = currentVersions[currentVersions.length - 1] ?? null;
+      const lastVersion = versions[versions.length - 1] ?? null;
       const hasEditsSinceLastVersion = !lastVersion || lastVersion.signature !== signature;
 
       const previewPayload =
@@ -226,7 +241,7 @@ export function usePromptVersioning({
           preview: previewPayload ?? null,
           video: videoPayload ?? null,
         });
-        persistVersions([...currentVersions, newVersion]);
+        persistVersions([...versions, newVersion]);
         resetVersionEdits();
         return;
       }
@@ -237,13 +252,11 @@ export function usePromptVersioning({
         ...(previewPayload ? { preview: previewPayload } : {}),
         ...(videoPayload ? { video: videoPayload } : {}),
       };
-      const updatedVersions = [...currentVersions.slice(0, -1), updatedLast];
+      const updatedVersions = [...versions.slice(0, -1), updatedLast];
       persistVersions(updatedVersions);
     },
     [
       currentPromptUuid,
-      currentPromptEntry,
-      currentVersions,
       createVersionEntry,
       effectiveAspectRatio,
       generationParams,
@@ -257,10 +270,10 @@ export function usePromptVersioning({
   const syncVersionHighlights = useCallback(
     (snapshot: HighlightSnapshot, promptText: string): void => {
       if (!currentPromptUuid) return;
-      if (!currentPromptEntry) return;
+      if (!currentPromptEntryRef.current) return;
       if (!snapshot?.signature) return;
 
-      const versions = currentVersions;
+      const versions = currentVersionsRef.current;
       if (versions.length === 0) {
         const fallbackPrompt = promptText.trim();
         if (!fallbackPrompt) return;
@@ -290,26 +303,27 @@ export function usePromptVersioning({
     },
     [
       createVersionEntry,
-      currentPromptEntry,
       currentPromptUuid,
-      currentVersions,
       persistVersions,
       resetVersionEdits,
     ]
   );
 
+  // Bug 12 fix: read currentVersions/currentPromptEntry from refs to avoid stale closures
   const syncVersionGenerations = useCallback(
     (generations: Generation[]): void => {
       if (!currentPromptUuid) return;
-      if (!currentPromptEntry) return;
-      if (!currentVersions.length) return;
+      if (!currentPromptEntryRef.current) return;
+
+      const versions = currentVersionsRef.current;
+      if (!versions.length) return;
 
       const index = activeVersionId
-        ? currentVersions.findIndex((version) => version.versionId === activeVersionId)
-        : currentVersions.length - 1;
+        ? versions.findIndex((version) => version.versionId === activeVersionId)
+        : versions.length - 1;
       if (index < 0) return;
 
-      const target = currentVersions[index];
+      const target = versions[index];
       if (!target) return;
 
       // Extract thumbnail from completed generations for the preview field
@@ -347,11 +361,11 @@ export function usePromptVersioning({
         lastPersistedThumbnailRef.current = thumbnailUrl;
       }
 
-      const updatedVersions = [...currentVersions];
+      const updatedVersions = [...versions];
       updatedVersions[index] = updated;
       persistVersions(updatedVersions);
     },
-    [activeVersionId, currentPromptEntry, currentPromptUuid, currentVersions, persistVersions]
+    [activeVersionId, currentPromptUuid, persistVersions]
   );
 
   return { upsertVersionOutput, syncVersionHighlights, syncVersionGenerations };
