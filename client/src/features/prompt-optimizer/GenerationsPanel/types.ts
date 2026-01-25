@@ -20,6 +20,7 @@ export interface Generation {
   fps?: number | null;
   mediaType: GenerationMediaType;
   mediaUrls: string[];
+  mediaAssetIds?: string[];
   thumbnailUrl?: string | null;
   error?: string | null;
 }

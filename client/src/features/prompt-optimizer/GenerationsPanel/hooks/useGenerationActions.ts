@@ -106,10 +106,12 @@ export function useGenerationActions(
             throw new Error(response.message || response.error || 'Failed to generate frames');
           }
           const urls = response.data.imageUrls;
+          const storagePaths = response.data.storagePaths;
           finalizeGeneration(generation.id, {
             status: 'completed',
             completedAt: Date.now(),
             mediaUrls: urls,
+            ...(storagePaths?.length ? { mediaAssetIds: storagePaths } : {}),
             thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
           });
           return;
@@ -128,12 +130,12 @@ export function useGenerationActions(
         });
         if (controller.signal.aborted) return;
 
-        const videoUrl =
-          response.success && response.videoUrl
-            ? response.videoUrl
-            : response.success && response.jobId
-              ? await waitForVideoJob(response.jobId, controller.signal)
-              : null;
+        let videoUrl: string | null = null;
+        if (response.success && response.videoUrl) {
+          videoUrl = response.videoUrl;
+        } else if (response.success && response.jobId) {
+          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+        }
 
         if (controller.signal.aborted) return;
         if (!videoUrl) {
@@ -177,24 +179,38 @@ export function useGenerationActions(
           throw new Error(response.message || response.error || 'Failed to generate storyboard');
         }
         const urls = response.data.imageUrls;
-        console.debug('[Storyboard] Generation completed:', {
-          id: generation.id,
+        const storagePaths = response.data.storagePaths;
+        console.debug('[PERSIST-DEBUG][useGenerationActions] storyboard API response received', {
+          generationId: generation.id,
           urlCount: urls.length,
-          baseImageUrl: response.data.baseImageUrl?.slice(0, 100),
-          firstUrl: urls[0]?.slice(0, 100),
+          urls: urls.map((u: string) => u.slice(0, 80)),
+          storagePathCount: storagePaths?.length ?? 0,
+          storagePaths: storagePaths?.map((p: string) => p.slice(0, 80)),
+          baseImageUrl: response.data.baseImageUrl?.slice(0, 80) ?? null,
+          promptVersionId: generation.promptVersionId,
         });
-        finalizeGeneration(generation.id, {
-          status: 'completed',
+        const finalizationPayload = {
+          status: 'completed' as const,
           completedAt: Date.now(),
           mediaUrls: urls,
+          ...(storagePaths?.length ? { mediaAssetIds: storagePaths } : {}),
           thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+        };
+        console.debug('[PERSIST-DEBUG][useGenerationActions] finalizing storyboard generation', {
+          generationId: generation.id,
+          payload: {
+            status: finalizationPayload.status,
+            mediaUrlCount: finalizationPayload.mediaUrls.length,
+            hasMediaAssetIds: 'mediaAssetIds' in finalizationPayload,
+            mediaAssetIdCount: (finalizationPayload as Record<string, unknown>).mediaAssetIds
+              ? (finalizationPayload as { mediaAssetIds?: string[] }).mediaAssetIds?.length
+              : 0,
+            thumbnailUrl: finalizationPayload.thumbnailUrl?.slice(0, 80) ?? null,
+          },
         });
+        finalizeGeneration(generation.id, finalizationPayload);
       } catch (error) {
         if (controller.signal.aborted) return;
-        console.error('[Storyboard] Generation failed:', {
-          id: generation.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
         finalizeGeneration(generation.id, {
           status: 'failed',
           completedAt: Date.now(),
@@ -226,12 +242,14 @@ export function useGenerationActions(
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
         });
         if (controller.signal.aborted) return;
-        const videoUrl =
-          response.success && response.videoUrl
-            ? response.videoUrl
-            : response.success && response.jobId
-              ? await waitForVideoJob(response.jobId, controller.signal)
-              : null;
+
+        let videoUrl: string | null = null;
+        if (response.success && response.videoUrl) {
+          videoUrl = response.videoUrl;
+        } else if (response.success && response.jobId) {
+          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+        }
+
         if (controller.signal.aborted) return;
         if (!videoUrl) {
           throw new Error(response.error || response.message || 'Failed to render video');

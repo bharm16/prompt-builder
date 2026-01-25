@@ -116,7 +116,7 @@ export interface CacheKeyGenerator {
 export interface RedisClient {
   status?: string;
   get?: (key: string) => Promise<string | null>;
-  set?: (...args: any[]) => Promise<unknown>;
+  set?: (...args: [string, string | number, ...string[]]) => Promise<unknown>;
   del?: (...keys: string[]) => Promise<number>;
   keys?: (pattern: string) => Promise<string[]>;
 }

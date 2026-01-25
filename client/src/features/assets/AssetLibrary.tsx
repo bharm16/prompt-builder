@@ -1,16 +1,23 @@
 import React, { useEffect, useCallback } from 'react';
 import { Plus, User, Palette, MapPin, Box, Layers } from 'lucide-react';
-import type { Asset, AssetType } from '@shared/types/asset';
+import type { Asset, AssetType, CreateAssetRequest, UpdateAssetRequest } from '@shared/types/asset';
 import { useAssetState } from './hooks/useAssetState';
 import { assetApi } from './api/assetApi';
 import AssetGrid from './components/AssetGrid';
 import AssetEditor from './components/AssetEditor';
 import { ASSET_TYPE_LIST } from './config/assetConfig';
 
+const ASSET_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  character: User,
+  style: Palette,
+  location: MapPin,
+  object: Box,
+};
+
 export function AssetLibrary({
   onSelectForGeneration,
 }: {
-  onSelectForGeneration?: (asset: any) => void;
+  onSelectForGeneration?: (asset: Record<string, unknown>) => void;
 }): React.ReactElement {
   const { state, actions, filteredAssets } = useAssetState();
   const {
@@ -40,7 +47,7 @@ export function AssetLibrary({
   }, [loadAssets]);
 
   const handleCreateAsset = useCallback(
-    async (data: any) => {
+    async (data: CreateAssetRequest) => {
       try {
         const asset = await assetApi.create(data);
         actions.addAsset(asset);
@@ -54,7 +61,7 @@ export function AssetLibrary({
   );
 
   const handleUpdateAsset = useCallback(
-    async (assetId: string, data: any) => {
+    async (assetId: string, data: UpdateAssetRequest) => {
       try {
         const asset = await assetApi.update(assetId, data);
         actions.updateAsset(asset);
@@ -81,7 +88,7 @@ export function AssetLibrary({
   );
 
   const handleAddImage = useCallback(
-    async (assetId: string, file: File, metadata: any) => {
+    async (assetId: string, file: File, metadata: Record<string, string | undefined>) => {
       try {
         const result = await assetApi.addImage(assetId, file, metadata);
         const updated = await assetApi.get(assetId);
@@ -171,12 +178,7 @@ export function AssetLibrary({
 
         {ASSET_TYPE_LIST.map((typeConfig) => {
           const count = byType[typeConfig.id as keyof typeof byType] || 0;
-          const Icon = {
-            character: User,
-            style: Palette,
-            location: MapPin,
-            object: Box,
-          }[typeConfig.id];
+          const Icon = ASSET_TYPE_ICONS[typeConfig.id] ?? Box;
 
           return (
             <button
@@ -224,12 +226,7 @@ export function AssetLibrary({
           </p>
           <div className="mt-5 grid w-full max-w-md grid-cols-2 gap-3">
             {ASSET_TYPE_LIST.map((typeConfig) => {
-              const Icon = {
-                character: User,
-                style: Palette,
-                location: MapPin,
-                object: Box,
-              }[typeConfig.id];
+              const Icon = ASSET_TYPE_ICONS[typeConfig.id] ?? Box;
 
               return (
                 <button

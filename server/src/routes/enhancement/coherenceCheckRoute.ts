@@ -5,9 +5,15 @@ import { validateRequest } from '@middleware/validateRequest';
 import { PerformanceMonitor } from '@middleware/performanceMonitor';
 import { coherenceCheckSchema } from '@utils/validation';
 
+interface CoherenceCheckResult {
+  conflicts?: unknown[];
+  harmonizations?: unknown[];
+  [key: string]: unknown;
+}
+
 interface CoherenceCheckDeps {
   promptCoherenceService: {
-    checkCoherence: (payload: Record<string, unknown>) => Promise<any>;
+    checkCoherence: (payload: Record<string, unknown>) => Promise<CoherenceCheckResult>;
   };
   perfMonitor: PerformanceMonitor;
 }
@@ -69,8 +75,8 @@ export function registerCoherenceCheckRoute(
         });
 
         res.json(result);
-      } catch (error: any) {
-        logger.error('Coherence check request failed', error, {
+      } catch (error) {
+        logger.error('Coherence check request failed', error instanceof Error ? error : new Error(String(error)), {
           operation,
           requestId,
           duration: Date.now() - startTime,

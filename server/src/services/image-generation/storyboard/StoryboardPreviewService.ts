@@ -24,6 +24,7 @@ export interface StoryboardPreviewRequest {
 
 export interface StoryboardPreviewResult {
   imageUrls: string[];
+  storagePaths: string[];
   deltas: string[];
   baseImageUrl: string;
 }
@@ -73,10 +74,10 @@ export class StoryboardPreviewService {
     });
 
     const seedImageUrl = normalizeSeedImageUrl(request.seedImageUrl);
-    const { baseImageUrl, baseProviderUrl } = await this.resolveBaseImage({
+    const { baseImageUrl, baseProviderUrl, baseStoragePath } = await this.resolveBaseImage({
       prompt: trimmedPrompt,
-      aspectRatio: request.aspectRatio,
-      seedImageUrl,
+      ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+      ...(seedImageUrl ? { seedImageUrl } : {}),
       userId,
     });
     this.log.info('Storyboard base image resolved', {
@@ -85,14 +86,15 @@ export class StoryboardPreviewService {
       usedSeedImage: Boolean(seedImageUrl),
     });
 
-    const imageUrls = await this.generateEditFrames({
+    const { imageUrls, storagePaths } = await this.generateEditFrames({
       baseImageUrl,
       baseProviderUrl,
+      ...(baseStoragePath ? { baseStoragePath } : {}),
       deltas,
       prompt: trimmedPrompt,
-      aspectRatio: request.aspectRatio,
-      speedMode: request.speedMode,
-      seed: request.seed,
+      ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+      ...(request.speedMode ? { speedMode: request.speedMode } : {}),
+      ...(request.seed !== undefined ? { seed: request.seed } : {}),
       userId,
     });
 
@@ -105,6 +107,7 @@ export class StoryboardPreviewService {
 
     return {
       imageUrls,
+      storagePaths,
       deltas,
       baseImageUrl,
     };
@@ -115,7 +118,7 @@ export class StoryboardPreviewService {
     aspectRatio?: string;
     seedImageUrl?: string;
     userId: string;
-  }): Promise<{ baseImageUrl: string; baseProviderUrl: string }> {
+  }): Promise<{ baseImageUrl: string; baseProviderUrl: string; baseStoragePath?: string }> {
     if (options.seedImageUrl) {
       return {
         baseImageUrl: options.seedImageUrl,
@@ -148,20 +151,23 @@ export class StoryboardPreviewService {
     return {
       baseImageUrl: baseResult.imageUrl,
       baseProviderUrl: resolveChainingUrl(baseResult),
+      ...(baseResult.storagePath ? { baseStoragePath: baseResult.storagePath } : {}),
     };
   }
 
   private async generateEditFrames(options: {
     baseImageUrl: string;
     baseProviderUrl: string;
+    baseStoragePath?: string;
     deltas: string[];
     prompt: string;
     aspectRatio?: string;
     speedMode?: ImagePreviewSpeedMode;
     seed?: number;
     userId: string;
-  }): Promise<string[]> {
+  }): Promise<{ imageUrls: string[]; storagePaths: string[] }> {
     const imageUrls: string[] = [options.baseImageUrl];
+    const storagePaths: string[] = [options.baseStoragePath ?? ''];
     let previousUrl = options.baseProviderUrl;
     const seedBase = computeSeedBase(options.seed);
 
@@ -188,6 +194,7 @@ export class StoryboardPreviewService {
 
         previousUrl = resolveChainingUrl(result);
         imageUrls.push(result.imageUrl);
+        storagePaths.push(result.storagePath ?? '');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log.error(
@@ -204,6 +211,6 @@ export class StoryboardPreviewService {
       }
     }
 
-    return imageUrls;
+    return { imageUrls, storagePaths };
   }
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { User, Palette, MapPin, Box, Loader2 } from 'lucide-react';
 import { getAssetTypeConfig } from '../config/assetConfig';
+import type { AssetSuggestion } from '../hooks/useTriggerAutocomplete';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   character: User,
@@ -11,17 +12,11 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 
 interface TriggerAutocompleteProps {
   isOpen: boolean;
-  suggestions: Array<{
-    id: string;
-    type: string;
-    trigger: string;
-    name: string;
-    thumbnailUrl?: string;
-  }>;
+  suggestions: AssetSuggestion[];
   selectedIndex: number;
   position: { top: number; left: number };
   isLoading: boolean;
-  onSelect: (asset: any) => void;
+  onSelect: (asset: AssetSuggestion) => void;
   onClose: () => void;
   setSelectedIndex: (index: number) => void;
 }

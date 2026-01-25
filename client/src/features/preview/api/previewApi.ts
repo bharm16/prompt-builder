@@ -8,6 +8,12 @@ import { apiClient } from '@/services/ApiClient';
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
+function requireNonEmptyString(value: unknown, name: string): asserts value is string {
+  if (!value || typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${name} is required and must be a non-empty string`);
+  }
+}
+
 export type PreviewProvider =
   | 'replicate-flux-schnell'
   | 'replicate-flux-kontext-fast'
@@ -70,6 +76,7 @@ export interface GenerateStoryboardPreviewResponse {
   success: boolean;
   data?: {
     imageUrls: string[];
+    storagePaths?: string[];
     deltas: string[];
     baseImageUrl: string;
   };
@@ -97,9 +104,7 @@ export async function generatePreview(
   prompt: string,
   options?: string | Omit<GeneratePreviewRequest, 'prompt'>
 ): Promise<GeneratePreviewResponse> {
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    throw new Error('Prompt is required and must be a non-empty string');
-  }
+  requireNonEmptyString(prompt, 'Prompt');
 
   const resolvedOptions =
     typeof options === 'string' ? ({ aspectRatio: options } as const) : options;
@@ -131,9 +136,7 @@ export async function generateStoryboardPreview(
   prompt: string,
   options?: Omit<GenerateStoryboardPreviewRequest, 'prompt'>
 ): Promise<GenerateStoryboardPreviewResponse> {
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    throw new Error('Prompt is required and must be a non-empty string');
-  }
+  requireNonEmptyString(prompt, 'Prompt');
 
   const seedImageUrl = options?.seedImageUrl?.trim();
 
@@ -153,18 +156,14 @@ export async function generateStoryboardPreview(
 }
 
 export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
-  if (!assetId || typeof assetId !== 'string' || assetId.trim().length === 0) {
-    throw new Error('assetId is required');
-  }
+  requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
   return apiClient.get(`/preview/image/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
 }
 
 export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
-  if (!assetId || typeof assetId !== 'string' || assetId.trim().length === 0) {
-    throw new Error('assetId is required');
-  }
+  requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
   return apiClient.get(`/preview/video/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
@@ -267,9 +266,7 @@ export async function generateVideoPreview(
   model?: string,
   options?: GenerateVideoPreviewOptions
 ): Promise<GenerateVideoResponse> {
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    throw new Error('Prompt is required and must be a non-empty string');
-  }
+  requireNonEmptyString(prompt, 'Prompt');
 
   return apiClient.post('/preview/video/generate', {
     prompt: prompt.trim(),

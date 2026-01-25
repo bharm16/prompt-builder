@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type { Generation, GenerationTier } from '../types';
+import { areGenerationsEqual } from '../utils/generationComparison';
 
 export type GenerationsState = {
   generations: Generation[];
@@ -17,41 +18,6 @@ export type GenerationsAction =
 const deriveIsGenerating = (generations: Generation[]): boolean =>
   generations.some((gen) => gen.status === 'pending' || gen.status === 'generating');
 
-const serializeGeneration = (gen: Generation): string =>
-  JSON.stringify({
-    id: gen.id,
-    status: gen.status,
-    tier: gen.tier,
-    model: gen.model,
-    promptVersionId: gen.promptVersionId ?? null,
-    createdAt: gen.createdAt,
-    completedAt: gen.completedAt ?? null,
-    estimatedCost: gen.estimatedCost ?? null,
-    actualCost: gen.actualCost ?? null,
-    aspectRatio: gen.aspectRatio ?? null,
-    duration: gen.duration ?? null,
-    fps: gen.fps ?? null,
-    thumbnailUrl: gen.thumbnailUrl ?? null,
-    error: gen.error ?? null,
-    mediaType: gen.mediaType,
-    mediaUrls: gen.mediaUrls ?? [],
-  });
-
-const areGenerationsEqual = (
-  left?: Generation[] | null,
-  right?: Generation[] | null
-): boolean => {
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  if (left.length !== right.length) return false;
-  for (let i = 0; i < left.length; i += 1) {
-    if (serializeGeneration(left[i]) !== serializeGeneration(right[i])) {
-      return false;
-    }
-  }
-  return true;
-};
-
 const buildInitialState = (initial?: Generation[]): GenerationsState => {
   const generations = initial ?? [];
   const activeGenerationId = generations.length ? generations[generations.length - 1].id : null;
@@ -66,6 +32,14 @@ function generationsReducer(
     case 'ADD_GENERATION': {
       const next = { ...action.payload };
       const generations = [...state.generations, next];
+      console.debug('[PERSIST-DEBUG][generationsReducer] ADD_GENERATION', {
+        id: next.id,
+        tier: next.tier,
+        model: next.model,
+        mediaType: next.mediaType,
+        status: next.status,
+        totalGenerations: generations.length,
+      });
       return {
         generations,
         activeGenerationId: next.id,
@@ -73,9 +47,18 @@ function generationsReducer(
       };
     }
     case 'UPDATE_GENERATION': {
+      const updates = action.payload.updates;
       const generations = state.generations.map((gen) =>
-        gen.id === action.payload.id ? { ...gen, ...action.payload.updates } : gen
+        gen.id === action.payload.id ? { ...gen, ...updates } : gen
       );
+      console.debug('[PERSIST-DEBUG][generationsReducer] UPDATE_GENERATION', {
+        id: action.payload.id,
+        updatedFields: Object.keys(updates),
+        newStatus: updates.status ?? '(unchanged)',
+        mediaUrlCount: updates.mediaUrls?.length ?? '(unchanged)',
+        mediaAssetIdCount: updates.mediaAssetIds?.length ?? '(unchanged)',
+        hasThumbnail: updates.thumbnailUrl !== undefined ? Boolean(updates.thumbnailUrl) : '(unchanged)',
+      });
       return { ...state, generations, isGenerating: deriveIsGenerating(generations) };
     }
     case 'REMOVE_GENERATION': {
@@ -95,6 +78,19 @@ function generationsReducer(
         state.activeGenerationId && generations.some((g) => g.id === state.activeGenerationId)
           ? state.activeGenerationId
           : (generations.length ? generations[generations.length - 1].id : null);
+      console.debug('[PERSIST-DEBUG][generationsReducer] SET_GENERATIONS (from initialGenerations)', {
+        incomingCount: generations.length,
+        previousCount: state.generations.length,
+        generationSummary: generations.map((g) => ({
+          id: g.id.slice(-6),
+          status: g.status,
+          mediaType: g.mediaType,
+          mediaUrlCount: g.mediaUrls?.length ?? 0,
+          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+          hasThumbnail: Boolean(g.thumbnailUrl),
+          firstUrl: g.mediaUrls?.[0]?.slice(0, 60) ?? null,
+        })),
+      });
       return {
         generations,
         activeGenerationId: preservedActiveId,
@@ -139,6 +135,25 @@ export function useGenerationsState({
         initialGenerations.length === 0 &&
         generationsRef.current.some((gen) => gen.promptVersionId === promptVersionId)
     );
+
+    console.debug('[PERSIST-DEBUG][useGenerationsState] sync check', {
+      hasInitial,
+      sameRef,
+      sameContent,
+      hasLocalForVersion,
+      initialCount: initialGenerations?.length ?? 0,
+      localCount: generationsRef.current.length,
+      promptVersionId,
+      willSkip: !hasInitial || sameRef || sameContent || hasLocalForVersion,
+      initialSummary: initialGenerations?.map((g) => ({
+        id: g.id.slice(-6),
+        status: g.status,
+        mediaType: g.mediaType,
+        mediaUrlCount: g.mediaUrls?.length ?? 0,
+        mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+      })),
+    });
+
     if (!hasInitial || sameRef || sameContent || hasLocalForVersion) return;
 
     initialRef.current = initialGenerations;
@@ -151,11 +166,26 @@ export function useGenerationsState({
   const prevGenerationsRef = useRef(state.generations);
   useEffect(() => {
     if (suppressOnChangeRef.current) {
+      console.debug('[PERSIST-DEBUG][useGenerationsState] emit SUPPRESSED (initial sync)', {
+        generationCount: state.generations.length,
+      });
       suppressOnChangeRef.current = false;
       prevGenerationsRef.current = state.generations;
       return;
     }
     if (prevGenerationsRef.current === state.generations) return;
+    console.debug('[PERSIST-DEBUG][useGenerationsState] emitting generations to parent', {
+      count: state.generations.length,
+      hasCallback: Boolean(onGenerationsChange),
+      generationSummary: state.generations.map((g) => ({
+        id: g.id.slice(-6),
+        status: g.status,
+        mediaType: g.mediaType,
+        mediaUrlCount: g.mediaUrls?.length ?? 0,
+        mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+        hasThumbnail: Boolean(g.thumbnailUrl),
+      })),
+    });
     prevGenerationsRef.current = state.generations;
     onGenerationsChange?.(state.generations);
   }, [onGenerationsChange, state.generations]);

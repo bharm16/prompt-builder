@@ -47,6 +47,34 @@ export async function loadFromFirestore(userId: string): Promise<PromptHistoryEn
     const normalized = normalizeEntries(prompts);
 
     const duration = logger.endTimer('loadFromFirestore');
+
+    // Log generation data from loaded entries for persistence debugging
+    const entriesWithGenerations = normalized.filter(
+      (entry) => entry.versions?.some((v) => Array.isArray(v.generations) && v.generations.length > 0)
+    );
+    console.debug('[PERSIST-DEBUG][loadFromFirestore] loaded entries', {
+      totalEntries: normalized.length,
+      entriesWithGenerations: entriesWithGenerations.length,
+      generationDetails: entriesWithGenerations.slice(0, 5).map((entry) => ({
+        uuid: entry.uuid,
+        docId: entry.id,
+        versionCount: entry.versions?.length ?? 0,
+        versions: entry.versions?.map((v) => ({
+          versionId: v.versionId,
+          generationCount: v.generations?.length ?? 0,
+          generations: v.generations?.map((g) => ({
+            id: g.id.slice(-6),
+            status: g.status,
+            mediaType: g.mediaType,
+            mediaUrlCount: g.mediaUrls?.length ?? 0,
+            mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+            hasThumbnail: Boolean(g.thumbnailUrl),
+            firstUrl: g.mediaUrls?.[0]?.slice(0, 60) ?? null,
+          })),
+        })),
+      })),
+    });
+
     log.info('Loaded from Firestore', {
       entryCount: normalized.length,
       duration,
@@ -230,28 +258,93 @@ export async function updateVersions(
     const isFirestoreRepo = 'collectionName' in repository && userId;
     const canUseFirestoreDoc = isValidFirestoreDocId(docId);
 
+    const generationCount = versions.reduce(
+      (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+      0
+    );
+
+    // Detailed generation data logging for persistence debugging
+    const generationDetails = versions.flatMap((v) =>
+      (v.generations ?? []).map((g) => ({
+        versionId: v.versionId,
+        genId: g.id.slice(-6),
+        status: g.status,
+        mediaType: g.mediaType,
+        mediaUrlCount: g.mediaUrls?.length ?? 0,
+        mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+        hasThumbnail: Boolean(g.thumbnailUrl),
+        firstUrl: g.mediaUrls?.[0]?.slice(0, 60) ?? null,
+        firstAssetId: g.mediaAssetIds?.[0]?.slice(0, 60) ?? null,
+      }))
+    );
+
+    console.debug('[PERSIST-DEBUG][historyRepository.updateVersions] called', {
+      userId: userId ? userId.slice(0, 8) + '...' : null,
+      uuid,
+      docId,
+      isFirestoreRepo,
+      canUseFirestoreDoc,
+      versionCount: versions.length,
+      generationCount,
+      generationDetails,
+    });
+
     try {
       if (isFirestoreRepo) {
         if (!canUseFirestoreDoc) {
+          console.warn('[PERSIST-DEBUG][historyRepository.updateVersions] SKIPPED — draft/invalid docId', {
+            uuid,
+            docId,
+            versionCount: versions.length,
+            generationCount,
+          });
           log.warn('Skipping Firestore version update — draft or invalid docId', {
             uuid,
             docId,
             versionCount: versions.length,
+            generationCount,
           });
           return;
         }
         await repository.updateVersions(docId, versions);
-        log.debug('Versions persisted to Firestore', { uuid, docId, versionCount: versions.length });
+        console.debug('[PERSIST-DEBUG][historyRepository.updateVersions] SUCCESS (Firestore)', {
+          uuid,
+          docId,
+          versionCount: versions.length,
+          generationCount,
+        });
+        log.debug('Versions persisted to Firestore', {
+          uuid,
+          docId,
+          versionCount: versions.length,
+          generationCount,
+        });
         return;
       }
       await repository.updateVersions(uuid, versions);
+      console.debug('[PERSIST-DEBUG][historyRepository.updateVersions] SUCCESS (localStorage)', {
+        uuid,
+        versionCount: versions.length,
+        generationCount,
+      });
     } catch (error) {
-      log.warn('Unable to persist updated versions', {
+      console.error('[PERSIST-DEBUG][historyRepository.updateVersions] FAILED', {
         uuid,
         docId,
         error: error instanceof Error ? error.message : String(error),
       });
+      log.error('Failed to persist versions to Firestore', error as Error, {
+        uuid,
+        docId,
+        versionCount: versions.length,
+        generationCount,
+      });
     }
+  } else {
+    console.warn('[PERSIST-DEBUG][historyRepository.updateVersions] repository has no updateVersions method', {
+      uuid,
+      docId,
+    });
   }
 }
 

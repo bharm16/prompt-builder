@@ -29,11 +29,15 @@ tests/           # E2E, load, and evaluation suites
 npm start           # Dev orchestrator (client + server)
 npm run dev         # Vite client only
 npm run server      # API server only
+npm run restart     # Kill ports 3001/5173 and restart dev
 npm run build       # Production build
 npm run lint        # ESLint
 npm run lint:fix    # ESLint with auto-fix
+npm run lint:all    # ESLint + Stylelint
+npm run format      # Prettier format all files
 npm run test:unit   # Run unit tests
 npm run test:e2e    # Playwright e2e tests
+npm run test:coverage # Unit tests with coverage report
 ```
 
 ## Architecture Patterns
@@ -106,7 +110,12 @@ Before modifying code, ask:
 1. Copy `.env.example` to `.env`
 2. Required for local dev:
    - `VITE_FIREBASE_*` (all Firebase config vars)
-   - At least one LLM key (e.g., `OPENAI_API_KEY`, `GOOGLE_API_KEY`)
+   - At least one LLM key (e.g., `OPENAI_API_KEY`, `GROQ_API_KEY`)
+   - `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON for GCS/Firebase Admin)
+3. Optional:
+   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (billing)
+   - `REDIS_URL` (caching, defaults to in-memory)
+   - `API_KEY` (production API auth)
 
 ## Documentation References
 

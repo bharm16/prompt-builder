@@ -57,8 +57,9 @@ export async function startServer(
         reject(error);
       });
 
-    } catch (error: any) {
-      logger.error('Failed to start server', error);
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to start server', errorObj);
       reject(error);
     }
   });
@@ -92,8 +93,9 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
 
         logger.info('All resources cleaned up successfully');
         process.exit(0);
-      } catch (error: any) {
-        logger.error('Error during graceful shutdown', error);
+      } catch (error) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Error during graceful shutdown', errorObj);
         process.exit(1);
       }
     });

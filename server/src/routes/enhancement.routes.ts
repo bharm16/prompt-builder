@@ -6,11 +6,20 @@ import { registerSceneChangeRoute } from './enhancement/sceneChangeRoute';
 import { registerNlpTestRoute } from './enhancement/nlpTestRoute';
 import { registerCoherenceCheckRoute } from './enhancement/coherenceCheckRoute';
 
-interface EnhancementServices {
-  enhancementService: any;
-  sceneDetectionService: any;
-  promptCoherenceService: any;
-  metricsService?: any;
+export interface EnhancementServices {
+  enhancementService: {
+    getEnhancementSuggestions: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    getCustomSuggestions: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  };
+  sceneDetectionService: {
+    detectSceneChange: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  };
+  promptCoherenceService: {
+    checkCoherence: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  };
+  metricsService?: {
+    recordAlert?: (name: string, payload: Record<string, unknown>) => void;
+  } | undefined;
 }
 
 /**

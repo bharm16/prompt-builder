@@ -4,9 +4,14 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { validateRequest } from '@middleware/validateRequest';
 import { sceneChangeSchema } from '@utils/validation';
 
+interface SceneChangeResult {
+  isSceneChange?: boolean;
+  [key: string]: unknown;
+}
+
 interface SceneChangeDeps {
   sceneDetectionService: {
-    detectSceneChange: (payload: Record<string, unknown>) => Promise<any>;
+    detectSceneChange: (payload: Record<string, unknown>) => Promise<SceneChangeResult>;
   };
 }
 
@@ -60,8 +65,8 @@ export function registerSceneChangeRoute(
         });
 
         res.json(result);
-      } catch (error: any) {
-        logger.error('Scene change detection request failed', error, {
+      } catch (error) {
+        logger.error('Scene change detection request failed', error instanceof Error ? error : new Error(String(error)), {
           operation,
           requestId,
           duration: Date.now() - startTime,

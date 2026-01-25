@@ -6,9 +6,15 @@ import { PerformanceMonitor } from '@middleware/performanceMonitor';
 import { suggestionSchema } from '@utils/validation';
 import { countSuggestions } from './utils';
 
+interface EnhancementSuggestionsResult {
+  suggestions?: unknown[];
+  fromCache?: boolean;
+  [key: string]: unknown;
+}
+
 interface EnhancementSuggestionsDeps {
   enhancementService: {
-    getEnhancementSuggestions: (payload: Record<string, unknown>) => Promise<any>;
+    getEnhancementSuggestions: (payload: Record<string, unknown>) => Promise<EnhancementSuggestionsResult>;
   };
   perfMonitor: PerformanceMonitor;
 }
@@ -94,8 +100,8 @@ export function registerEnhancementSuggestionsRoute(
         });
 
         res.json(result);
-      } catch (error: any) {
-        logger.error('Enhancement suggestions request failed', error, {
+      } catch (error) {
+        logger.error('Enhancement suggestions request failed', error instanceof Error ? error : new Error(String(error)), {
           operation,
           requestId,
           duration: Date.now() - startTime,

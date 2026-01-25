@@ -143,6 +143,7 @@ export const createImageStoryboardGenerateHandler = ({
         success: true,
         data: {
           imageUrls: result.imageUrls,
+          storagePaths: result.storagePaths,
           deltas: result.deltas,
           baseImageUrl: result.baseImageUrl,
         },

@@ -18,102 +18,106 @@ export interface SuggestionsContext {
   isVideoPrompt?: boolean;
 }
 
+function validationError(message: string): ValidationFailure {
+  return { ok: false, status: 400, error: 'Invalid request', message };
+}
+
+function extractContext(
+  context: unknown
+): ValidationResult<SuggestionsContext> {
+  const ctx = context as Record<string, unknown> | undefined;
+  if (!ctx || !ctx.highlightedText) {
+    return validationError('context.highlightedText is required');
+  }
+  return {
+    ok: true,
+    data: { highlightedText: ctx.highlightedText as string, ...ctx } as SuggestionsContext,
+  };
+}
+
+function withOptionalRubric<T extends Record<string, unknown>>(
+  data: T,
+  rubric: unknown
+): T & { rubric?: string } {
+  if (typeof rubric === 'string') {
+    return { ...data, rubric };
+  }
+  return data;
+}
+
 export function validateEvaluateRequest(
-  body: any
+  body: Record<string, unknown>
 ): ValidationResult<{
   suggestions: Array<{ text: string }>;
   context: SuggestionsContext;
   rubric?: string;
 }> {
-  const { suggestions, context, rubric } = body || {};
+  const { suggestions, context, rubric } = body;
 
   if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'suggestions must be a non-empty array',
-    };
+    return validationError('suggestions must be a non-empty array');
   }
 
-  if (!context || !context.highlightedText) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'context.highlightedText is required',
-    };
-  }
+  const ctxResult = extractContext(context);
+  if (!ctxResult.ok) return ctxResult;
 
   return {
     ok: true,
-    data: { suggestions, context, rubric },
+    data: withOptionalRubric(
+      { suggestions: suggestions as Array<{ text: string }>, context: ctxResult.data },
+      rubric
+    ),
   };
 }
 
 export function validateSingleEvaluationRequest(
-  body: any
+  body: Record<string, unknown>
 ): ValidationResult<{
   suggestion: string;
   context: SuggestionsContext;
   rubric?: string;
 }> {
-  const { suggestion, context, rubric } = body || {};
+  const { suggestion, context, rubric } = body;
 
   if (!suggestion || typeof suggestion !== 'string') {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'suggestion must be a string',
-    };
+    return validationError('suggestion must be a string');
   }
 
-  if (!context || !context.highlightedText) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'context.highlightedText is required',
-    };
-  }
+  const ctxResult = extractContext(context);
+  if (!ctxResult.ok) return ctxResult;
 
   return {
     ok: true,
-    data: { suggestion, context, rubric },
+    data: withOptionalRubric({ suggestion, context: ctxResult.data }, rubric),
   };
 }
 
 export function validateCompareRequest(
-  body: any
+  body: Record<string, unknown>
 ): ValidationResult<{
   setA: Array<{ text: string }>;
   setB: Array<{ text: string }>;
   context: SuggestionsContext;
   rubric?: string;
 }> {
-  const { setA, setB, context, rubric } = body || {};
+  const { setA, setB, context, rubric } = body;
 
   if (!Array.isArray(setA) || !Array.isArray(setB)) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'setA and setB must be arrays',
-    };
+    return validationError('setA and setB must be arrays');
   }
 
-  if (!context || !context.highlightedText) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid request',
-      message: 'context.highlightedText is required',
-    };
-  }
+  const ctxResult = extractContext(context);
+  if (!ctxResult.ok) return ctxResult;
 
   return {
     ok: true,
-    data: { setA, setB, context, rubric },
+    data: withOptionalRubric(
+      {
+        setA: setA as Array<{ text: string }>,
+        setB: setB as Array<{ text: string }>,
+        context: ctxResult.data,
+      },
+      rubric
+    ),
   };
 }

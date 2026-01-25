@@ -41,7 +41,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     return null;
   }
 
-  let payload: any = null;
+  let payload: Record<string, unknown> | null = null;
   try {
     payload = await response.json();
   } catch {
@@ -49,7 +49,8 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error || payload?.message || 'Reference image API error');
+    const errorMsg = (payload?.error ?? payload?.message ?? 'Reference image API error') as string;
+    throw new Error(errorMsg);
   }
 
   return payload;
@@ -80,7 +81,7 @@ export const referenceImageApi = {
       body: formData,
     });
 
-    return payload as ReferenceImage;
+    return payload as unknown as ReferenceImage;
   },
 
   async uploadFromUrl(
@@ -95,7 +96,7 @@ export const referenceImageApi = {
         ...(options.source ? { source: options.source } : {}),
       }),
     });
-    return payload as ReferenceImage;
+    return payload as unknown as ReferenceImage;
   },
 
   async delete(imageId: string): Promise<void> {

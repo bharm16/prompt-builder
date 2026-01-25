@@ -8,8 +8,11 @@ import {
   extractStorageObjectPath,
   extractVideoContentAssetId,
 } from '@/utils/storageUrl';
+import { logger } from '@/services/LoggingService';
 import type { Generation } from '../types';
 import type { GenerationsAction } from './useGenerationsState';
+
+const log = logger.child('MediaRefresh');
 
 type AssetKind = 'image' | 'video';
 
@@ -41,17 +44,12 @@ const resolveViaAssetId = async (
         ? await getVideoAssetViewUrl(assetId)
         : await getImageAssetViewUrl(assetId);
     if (!response.success) {
-      console.warn('[MediaRefresh] Asset view URL request failed:', {
-        assetId,
-        kind,
-        error: response.error,
-        message: response.message,
-      });
+      log.warn('Asset view URL request failed', { assetId, kind, error: response.error });
       return null;
     }
     return response.data?.viewUrl ?? null;
   } catch (error) {
-    console.warn('[MediaRefresh] Failed to resolve asset view URL:', {
+    log.warn('Failed to resolve asset view URL', {
       assetId,
       kind,
       error: error instanceof Error ? error.message : String(error),
@@ -62,32 +60,38 @@ const resolveViaAssetId = async (
 
 const resolveMediaUrl = async (
   rawUrl: string,
-  kind: AssetKind
+  kind: AssetKind,
+  storagePath?: string
 ): Promise<string> => {
   if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
 
+  // Prefer explicit storage path when available (reliable refresh)
+  if (storagePath) {
+    if (storagePath.startsWith('users/')) {
+      const refreshed = await resolveViaStoragePath(storagePath);
+      if (refreshed) return refreshed;
+    }
+
+    const assetId = getAssetIdFromPath(storagePath);
+    if (assetId) {
+      const refreshed = await resolveViaAssetId(assetId, kind);
+      if (refreshed) return refreshed;
+    }
+  }
+
+  // Fall back to parsing storage path from URL (legacy generations)
   const objectPath = extractStorageObjectPath(rawUrl);
   if (objectPath) {
     if (objectPath.startsWith('users/')) {
       const refreshed = await resolveViaStoragePath(objectPath);
-      if (refreshed) {
-        console.debug('[MediaRefresh] Refreshed URL via storage path:', { objectPath });
-      }
       return refreshed || rawUrl;
     }
 
     const assetId = getAssetIdFromPath(objectPath);
     if (assetId) {
       const refreshed = await resolveViaAssetId(assetId, kind);
-      if (refreshed) {
-        console.debug('[MediaRefresh] Refreshed URL via asset ID:', { assetId, kind });
-      } else {
-        console.warn('[MediaRefresh] Failed to refresh URL, using original:', {
-          assetId,
-          kind,
-          objectPath,
-          urlPreview: rawUrl.slice(0, 100),
-        });
+      if (!refreshed) {
+        log.warn('Failed to refresh URL, using original', { assetId, kind, objectPath });
       }
       return refreshed || rawUrl;
     }
@@ -115,9 +119,12 @@ const resolveGenerationMedia = async (
   }
 
   const mediaKind: AssetKind = generation.mediaType === 'video' ? 'video' : 'image';
+  const assetIds = generation.mediaAssetIds;
   const resolvedMediaUrls = hasMedia
     ? await Promise.all(
-        generation.mediaUrls.map((url) => resolveMediaUrl(url, mediaKind))
+        generation.mediaUrls.map((url, index) =>
+          resolveMediaUrl(url, mediaKind, assetIds?.[index] || undefined)
+        )
       )
     : generation.mediaUrls;
 
@@ -169,6 +176,15 @@ export function useGenerationMediaRefresh(
       }
     }
 
+    console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] evaluating generations for refresh', {
+      total: generations.length,
+      completed: generations.filter((g) => g.status === 'completed').length,
+      withMedia: generations.filter((g) => g.mediaUrls.length > 0).length,
+      withAssetIds: generations.filter((g) => g.mediaAssetIds?.length).length,
+      processedCount: processedRef.current.size,
+      inFlightCount: inFlightRef.current.size,
+    });
+
     generations.forEach((generation) => {
       if (generation.status !== 'completed') return;
       if (!generation.mediaUrls.length && !generation.thumbnailUrl) return;
@@ -177,19 +193,29 @@ export function useGenerationMediaRefresh(
       if (processedRef.current.get(generation.id) === signature) return;
       if (inFlightRef.current.has(generation.id)) return;
 
-      inFlightRef.current.add(generation.id);
-
-      console.debug('[MediaRefresh] Starting refresh for generation:', {
-        id: generation.id,
+      console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] starting refresh for generation', {
+        id: generation.id.slice(-6),
         mediaType: generation.mediaType,
-        urlCount: generation.mediaUrls.length,
+        mediaUrlCount: generation.mediaUrls.length,
+        mediaAssetIdCount: generation.mediaAssetIds?.length ?? 0,
+        hasThumbnail: Boolean(generation.thumbnailUrl),
+        firstUrl: generation.mediaUrls[0]?.slice(0, 80) ?? null,
+        firstAssetId: generation.mediaAssetIds?.[0]?.slice(0, 80) ?? null,
       });
+
+      inFlightRef.current.add(generation.id);
 
       void resolveGenerationMedia(generation)
         .then((result) => {
           if (!isActive) return;
           if (result) {
-            console.debug('[MediaRefresh] Refreshed generation media:', {
+            console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] refresh completed with changes', {
+              id: generation.id.slice(-6),
+              mediaUrlsChanged: result.updates.mediaUrls !== undefined,
+              thumbnailChanged: result.updates.thumbnailUrl !== undefined,
+              newFirstUrl: result.updates.mediaUrls?.[0]?.slice(0, 80) ?? '(unchanged)',
+            });
+            log.debug('Refreshed generation media', {
               id: generation.id,
               mediaUrlsChanged: result.updates.mediaUrls !== undefined,
               thumbnailChanged: result.updates.thumbnailUrl !== undefined,
@@ -201,15 +227,18 @@ export function useGenerationMediaRefresh(
             processedRef.current.set(generation.id, result.signature);
             return;
           }
-          console.debug('[MediaRefresh] No changes needed for generation:', {
-            id: generation.id,
+          console.debug('[PERSIST-DEBUG][useGenerationMediaRefresh] no changes needed', {
+            id: generation.id.slice(-6),
           });
           processedRef.current.set(generation.id, signature);
         })
         .catch((error) => {
-          console.error('[MediaRefresh] Error refreshing generation media:', {
-            id: generation.id,
+          console.error('[PERSIST-DEBUG][useGenerationMediaRefresh] refresh FAILED', {
+            id: generation.id.slice(-6),
             error: error instanceof Error ? error.message : String(error),
+          });
+          log.error('Error refreshing generation media', error instanceof Error ? error : undefined, {
+            id: generation.id,
           });
         })
         .finally(() => {

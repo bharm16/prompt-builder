@@ -13,6 +13,15 @@ Express API server for the Vidra video prompt editor.
 - Redis (optional) for caching
 - Pino for structured logging
 
+## Commands
+
+```bash
+npm run server      # Start dev server (port 3001)
+npm run server:e2e  # Start server in test mode
+npm run test:unit   # Run unit tests (from root)
+npm run lint        # ESLint (from root)
+```
+
 ## Structure
 
 ```

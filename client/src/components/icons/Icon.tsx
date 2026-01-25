@@ -1,10 +1,3 @@
-/**
- * Icon Component
- * Wrapper component for Lucide icons with consistent styling
- * 
- * Provides a unified API for using icons throughout the application
- */
-
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { iconSizes } from '@/styles/tokens';
@@ -70,7 +63,7 @@ export function Icon({
   'aria-label': ariaLabel,
   'aria-hidden': ariaHidden,
 }: IconProps): React.ReactElement | null {
-  const LucideIcon = LucideIcons[name] as unknown as React.ComponentType<any> | undefined;
+  const LucideIcon = LucideIcons[name] as unknown as React.ComponentType<Record<string, unknown>> | undefined;
   
   if (!LucideIcon) {
     logger.warn('Icon not found', {
@@ -80,7 +73,6 @@ export function Icon({
     return null;
   }
   
-  // Calculate size
   const sizeValue = typeof size === 'number' ? size : Number.parseInt(iconSizes[size] || iconSizes.md, 10);
   
   const iconStyle: CSSProperties = {
@@ -103,9 +95,8 @@ export function Icon({
  * Create an icon component from an icon name
  * Useful for creating icon components that can be passed around
  */
-export function createIconComponent(name: IconName) {
+export function createIconComponent(name: IconName): (props: Omit<IconProps, 'name'>) => React.ReactElement | null {
   return function IconComponent(props: Omit<IconProps, 'name'>) {
     return <Icon name={name} {...props} />;
   };
 }
-

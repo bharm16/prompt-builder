@@ -127,7 +127,7 @@ export async function generateReplicateVideo(
     isI2V: Boolean(options.startImage),
   });
 
-  const output = (await replicate.run(resolvedModelId as any, { input })) as unknown;
+  const output = (await replicate.run(resolvedModelId as `${string}/${string}`, { input })) as unknown;
 
   log.info('replicate.run finished', {
     outputType: typeof output,
@@ -143,10 +143,11 @@ export async function generateReplicateVideo(
   }
 
   if (output && typeof output === 'object') {
-    if ('url' in output && typeof (output as any).url === 'function') {
-      const url = (output as any).url();
-      log.info('Extracted URL from FileOutput', { url: url.toString() });
-      return url.toString();
+    const outputRecord = output as Record<string, unknown>;
+    if ('url' in outputRecord && typeof outputRecord.url === 'function') {
+      const url = (outputRecord.url as () => unknown)();
+      log.info('Extracted URL from FileOutput', { url: String(url) });
+      return String(url);
     }
 
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {

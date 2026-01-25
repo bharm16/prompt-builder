@@ -4,9 +4,14 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { validateRequest } from '@middleware/validateRequest';
 import { customSuggestionSchema } from '@utils/validation';
 
+interface CustomSuggestionsResult {
+  suggestions?: unknown[];
+  [key: string]: unknown;
+}
+
 interface CustomSuggestionsDeps {
   enhancementService: {
-    getCustomSuggestions: (payload: Record<string, unknown>) => Promise<any>;
+    getCustomSuggestions: (payload: Record<string, unknown>) => Promise<CustomSuggestionsResult>;
   };
 }
 
@@ -40,14 +45,14 @@ export function registerCustomSuggestionsRoute(
       });
 
       try {
-      const result = await enhancementService.getCustomSuggestions({
-        highlightedText,
-        customRequest,
-        fullPrompt,
-        contextBefore,
-        contextAfter,
-        metadata,
-      });
+        const result = await enhancementService.getCustomSuggestions({
+          highlightedText,
+          customRequest,
+          fullPrompt,
+          contextBefore,
+          contextAfter,
+          metadata,
+        });
 
         logger.info('Custom suggestions request completed', {
           operation,
@@ -57,8 +62,8 @@ export function registerCustomSuggestionsRoute(
         });
 
         res.json(result);
-      } catch (error: any) {
-        logger.error('Custom suggestions request failed', error, {
+      } catch (error) {
+        logger.error('Custom suggestions request failed', error instanceof Error ? error : new Error(String(error)), {
           operation,
           requestId,
           duration: Date.now() - startTime,

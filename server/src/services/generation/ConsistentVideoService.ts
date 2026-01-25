@@ -160,14 +160,7 @@ export class ConsistentVideoService {
     aspectRatio?: VideoGenerationOptions['aspectRatio'];
     duration?: number;
   }): Promise<VideoGenerationResult> {
-    const options: VideoGenerationOptions = {
-      model,
-      startImage: keyframeUrl,
-      ...(aspectRatio ? { aspectRatio } : {}),
-      ...(this.resolveSeconds(duration) ? { seconds: this.resolveSeconds(duration) } : {}),
-    };
-
-    return await this.videoGenerationService.generateVideo(prompt, options);
+    return this.buildAndGenerate(prompt, model, aspectRatio, duration, keyframeUrl);
   }
 
   async generateVideoFromPrompt({
@@ -181,13 +174,24 @@ export class ConsistentVideoService {
     aspectRatio?: VideoGenerationOptions['aspectRatio'];
     duration?: number;
   }): Promise<VideoGenerationResult> {
+    return this.buildAndGenerate(prompt, model, aspectRatio, duration);
+  }
+
+  private buildAndGenerate(
+    prompt: string,
+    model: string,
+    aspectRatio?: VideoGenerationOptions['aspectRatio'],
+    duration?: number,
+    startImage?: string
+  ): Promise<VideoGenerationResult> {
+    const seconds = this.resolveSeconds(duration);
     const options: VideoGenerationOptions = {
       model,
+      ...(startImage ? { startImage } : {}),
       ...(aspectRatio ? { aspectRatio } : {}),
-      ...(this.resolveSeconds(duration) ? { seconds: this.resolveSeconds(duration) } : {}),
+      ...(seconds ? { seconds } : {}),
     };
-
-    return await this.videoGenerationService.generateVideo(prompt, options);
+    return this.videoGenerationService.generateVideo(prompt, options);
   }
 
   async generateKeyframeOnly({
@@ -266,8 +270,10 @@ export class ConsistentVideoService {
     aspectRatio?: VideoGenerationOptions['aspectRatio']
   ): '16:9' | '9:16' | '1:1' | '4:3' | '3:4' {
     if (!aspectRatio) return '16:9';
-    const allowed = new Set(['16:9', '9:16', '1:1', '4:3', '3:4']);
-    return allowed.has(aspectRatio) ? (aspectRatio as any) : '16:9';
+    const allowed = new Set<string>(['16:9', '9:16', '1:1', '4:3', '3:4']);
+    return allowed.has(aspectRatio)
+      ? (aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4')
+      : '16:9';
   }
 }
 

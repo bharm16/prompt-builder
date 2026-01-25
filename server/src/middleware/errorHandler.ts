@@ -74,49 +74,48 @@ function redactSensitiveData(obj: unknown): unknown {
 type RequestWithId = Request & { id?: string; body?: Record<string, unknown> };
 
 export function errorHandler(
-  err: any,
+  err: unknown,
   req: RequestWithId,
   res: Response,
   _next: NextFunction
 ): void {
-  // Log the error
   const meta: Record<string, unknown> = {
     requestId: req.id,
     method: req.method,
     path: req.path,
   };
 
-  // Always redact request bodies (even in development) to prevent PII leakage in logs
   if (req.body && Object.keys(req.body).length > 0) {
     try {
       const redactedBody = redactSensitiveData(req.body);
       const bodyStr = JSON.stringify(redactedBody);
       meta.bodyPreview = bodyStr.substring(0, 300);
-      meta.bodyLength = JSON.stringify(req.body).length; // Original length
+      meta.bodyLength = JSON.stringify(req.body).length;
     } catch {
       // ignore serialization errors
     }
   }
 
-  logger.error('Request error', err, meta);
+  const errorObj = err instanceof Error ? err : new Error(String(err));
+  logger.error('Request error', errorObj, meta);
 
-  // Determine status code
-  const statusCode = err.statusCode || err.status || 500;
+  const httpErr = err as Record<string, unknown>;
+  const statusCode =
+    (typeof httpErr === 'object' && httpErr !== null
+      ? (httpErr.statusCode as number) ?? (httpErr.status as number)
+      : undefined) ?? 500;
 
-  // Build error response
   const errorResponse: Record<string, unknown> = {
-    error: err.message || 'Internal server error',
+    error: errorObj.message || 'Internal server error',
     requestId: req.id,
   };
 
-  // Add stack trace in development
   if (process.env.NODE_ENV === 'development') {
-    errorResponse.stack = err.stack;
+    errorResponse.stack = errorObj.stack;
   }
 
-  // Add additional error details if available
-  if (err.details) {
-    errorResponse.details = err.details;
+  if (typeof httpErr === 'object' && httpErr !== null && 'details' in httpErr) {
+    errorResponse.details = httpErr.details;
   }
 
   res.status(statusCode).json(errorResponse);

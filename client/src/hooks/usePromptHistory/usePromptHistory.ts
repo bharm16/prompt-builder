@@ -43,6 +43,7 @@ export const usePromptHistory = (user: User | null) => {
   } = useHistoryPersistence({
     user,
     history: state.history,
+    isLoadingHistory: state.isLoadingHistory,
     setHistory,
     addEntry,
     updateEntry,
@@ -58,6 +59,12 @@ export const usePromptHistory = (user: User | null) => {
     let isActive = true;
 
     if (user) {
+      // Bug 18 fix: set loading=true immediately so the debounced version-write guard
+      // in useHistoryPersistence sees isLoadingHistory=true before the 150ms debounce
+      // fires. Without this, syncVersionHighlights (which runs on mount) would
+      // persist stale localStorage data to Firestore before loadFromFirestore returns.
+      setIsLoadingHistory(true);
+
       const timerId = window.setTimeout(() => {
         if (isActive) {
           void loadHistoryFromFirestore(user.uid);
@@ -73,7 +80,7 @@ export const usePromptHistory = (user: User | null) => {
         isActive = false;
       };
     }
-  }, [user, loadHistoryFromFirestore, loadHistoryFromLocalStorage]);
+  }, [user, loadHistoryFromFirestore, loadHistoryFromLocalStorage, setIsLoadingHistory]);
 
   return {
     history: state.history,

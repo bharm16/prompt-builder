@@ -99,7 +99,7 @@ export interface TwoStageOptimizationRequest {
   generationParams?: CapabilityValues | null;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
-  onDraft?: ((draft: string, spans: any) => void) | null;
+  onDraft?: ((draft: string, spans: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
   onDraftChunk?: ((delta: string) => void) | null;
   onRefinedChunk?: ((delta: string) => void) | null;
   signal?: AbortSignal;

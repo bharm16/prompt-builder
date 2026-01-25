@@ -65,6 +65,21 @@ export function GenerationsPanel({
   onRestoreVersion,
   onCreateVersionIfNeeded,
 }: GenerationsPanelProps): React.ReactElement {
+  // Log what initial generations we receive from the parent version
+  console.debug('[PERSIST-DEBUG][GenerationsPanel] rendered with initialGenerations', {
+    promptVersionId,
+    initialGenerationCount: initialGenerations?.length ?? 0,
+    initialSummary: initialGenerations?.map((g) => ({
+      id: g.id.slice(-6),
+      status: g.status,
+      mediaType: g.mediaType,
+      mediaUrlCount: g.mediaUrls?.length ?? 0,
+      mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+      hasThumbnail: Boolean(g.thumbnailUrl),
+      firstUrl: g.mediaUrls?.[0]?.slice(0, 60) ?? null,
+    })),
+  });
+
   const {
     generations,
     activeGenerationId,

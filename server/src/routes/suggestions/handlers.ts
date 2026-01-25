@@ -67,21 +67,18 @@ export function createSuggestionsHandlers({
           evaluation,
           responseTime,
         });
-      } catch (error: any) {
+      } catch (error) {
         const responseTime = Math.round(performance.now() - startTime);
-        logger.error(
-          'Operation failed.',
-          error instanceof Error ? error : new Error(String(error)),
-          {
-            operation,
-            requestId,
-            duration: responseTime,
-          }
-        );
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Operation failed.', errorObj, {
+          operation,
+          requestId,
+          duration: responseTime,
+        });
 
         return res.status(500).json({
           error: 'Evaluation failed',
-          message: error.message,
+          message: errorObj.message,
           responseTime,
         });
       }
@@ -133,23 +130,19 @@ export function createSuggestionsHandlers({
           evaluation,
           responseTime,
         });
-      } catch (error: any) {
+      } catch (error) {
         const responseTime = Math.round(performance.now() - startTime);
-
-        logger.error(
-          'Operation failed.',
-          error instanceof Error ? error : new Error(String(error)),
-          {
-            operation,
-            requestId,
-            userId,
-            duration: responseTime,
-          }
-        );
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Operation failed.', errorObj, {
+          operation,
+          requestId,
+          userId,
+          duration: responseTime,
+        });
 
         return res.status(500).json({
           error: 'Evaluation failed',
-          message: error.message,
+          message: errorObj.message,
           responseTime,
         });
       }
@@ -200,22 +193,18 @@ export function createSuggestionsHandlers({
           comparison,
           responseTime,
         });
-      } catch (error: any) {
+      } catch (error) {
         const responseTime = Math.round(performance.now() - startTime);
-
-        logger.error(
-          'Operation failed.',
-          error instanceof Error ? error : new Error(String(error)),
-          {
-            operation,
-            requestId,
-            duration: responseTime,
-          }
-        );
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Operation failed.', errorObj, {
+          operation,
+          requestId,
+          duration: responseTime,
+        });
 
         return res.status(500).json({
           error: 'Evaluation failed',
-          message: error.message,
+          message: errorObj.message,
           responseTime,
         });
       }

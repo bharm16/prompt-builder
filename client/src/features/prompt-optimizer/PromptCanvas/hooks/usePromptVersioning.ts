@@ -3,6 +3,7 @@ import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
 import type { HighlightSnapshot } from '../types';
 import type { PromptHistory } from '../../context/types';
 
@@ -49,41 +50,6 @@ const toIsoString = (value: number | string): string => {
   return new Date().toISOString();
 };
 
-const serializeGeneration = (gen: Generation): string =>
-  JSON.stringify({
-    id: gen.id,
-    tier: gen.tier,
-    status: gen.status,
-    model: gen.model,
-    mediaType: gen.mediaType,
-    promptVersionId: gen.promptVersionId ?? null,
-    createdAt: gen.createdAt,
-    completedAt: gen.completedAt ?? null,
-    estimatedCost: gen.estimatedCost ?? null,
-    actualCost: gen.actualCost ?? null,
-    aspectRatio: gen.aspectRatio ?? null,
-    duration: gen.duration ?? null,
-    fps: gen.fps ?? null,
-    thumbnailUrl: gen.thumbnailUrl ?? null,
-    error: gen.error ?? null,
-    mediaUrls: gen.mediaUrls ?? [],
-  });
-
-const areGenerationsEqual = (
-  left?: Generation[] | null,
-  right?: Generation[] | null
-): boolean => {
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  if (left.length !== right.length) return false;
-  for (let i = 0; i < left.length; i += 1) {
-    if (serializeGeneration(left[i]) !== serializeGeneration(right[i])) {
-      return false;
-    }
-  }
-  return true;
-};
-
 /**
  * Extract the best thumbnail URL from a list of generations.
  * Prioritizes: explicit thumbnailUrl > image mediaUrls > first media URL
@@ -120,6 +86,71 @@ const extractThumbnailFromGenerations = (generations: Generation[]): string | nu
   }
 
   return null;
+};
+
+/**
+ * Determine which of two Generation records is "more complete".
+ * A generation is considered more complete when it has a terminal status
+ * (completed/failed) and/or has populated media data.  This prevents a
+ * concurrent persist triggered by a newly-added (still "generating")
+ * generation from erasing an already-completed sibling generation's data.
+ */
+const generationCompleteness = (gen: Generation): number => {
+  let score = 0;
+  if (gen.status === 'completed') score += 10;
+  if (gen.status === 'failed') score += 5;
+  if (gen.mediaUrls.length > 0) score += 3;
+  if (gen.thumbnailUrl) score += 1;
+  if (gen.completedAt) score += 1;
+  return score;
+};
+
+/**
+ * Merge an incoming generations array with the already-persisted generations
+ * on the version entry.  For each generation ID that appears in both arrays,
+ * the more complete record wins (see `generationCompleteness`).  Generations
+ * that only exist in the persisted set are preserved; generations that only
+ * exist in the incoming set are appended.  The order follows the incoming
+ * array, with any persisted-only entries appended at the end.
+ *
+ * This avoids the race where a persist for gen2 (status: "generating")
+ * overwrites gen1 (status: "completed") because the callback read a stale
+ * snapshot that didn't include gen1's completed data.
+ */
+const mergeGenerationsById = (
+  persisted: Generation[] | null | undefined,
+  incoming: Generation[]
+): Generation[] => {
+  if (!persisted?.length) return incoming;
+  if (!incoming.length) return [];
+
+  const persistedMap = new Map<string, Generation>();
+  for (const gen of persisted) {
+    persistedMap.set(gen.id, gen);
+  }
+
+  const incomingIds = new Set<string>();
+  const merged: Generation[] = incoming.map((incomingGen) => {
+    incomingIds.add(incomingGen.id);
+    const persistedGen = persistedMap.get(incomingGen.id);
+    if (!persistedGen) return incomingGen;
+
+    // Pick the more complete record
+    const incomingScore = generationCompleteness(incomingGen);
+    const persistedScore = generationCompleteness(persistedGen);
+    return incomingScore >= persistedScore ? incomingGen : persistedGen;
+  });
+
+  // Append any persisted generations not present in the incoming array.
+  // These are generations that the current local state doesn't know about
+  // (e.g., completed gen1 that was persisted but lost from local state).
+  for (const gen of persisted) {
+    if (!incomingIds.has(gen.id)) {
+      merged.push(gen);
+    }
+  }
+
+  return merged;
 };
 
 export function usePromptVersioning({
@@ -160,10 +191,28 @@ export function usePromptVersioning({
 
   const persistVersions = useCallback(
     (versions: PromptVersionEntry[]): void => {
-      if (!currentPromptUuid) return;
+      if (!currentPromptUuid) {
+        console.debug('[PERSIST-DEBUG][persistVersions] SKIPPED: no currentPromptUuid');
+        return;
+      }
+      // Eagerly update ref so concurrent callbacks in the same render cycle
+      // read fresh data instead of overwriting each other's changes
+      currentVersionsRef.current = versions;
       // Bug 13 fix: read entry from ref to avoid stale docId after draft promotion
       const entry = currentPromptEntryRef.current;
       const resolvedDocId = entry?.id ?? currentPromptDocId;
+
+      const generationCount = versions.reduce(
+        (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+        0
+      );
+      console.debug('[PERSIST-DEBUG][persistVersions] calling updateEntryVersions', {
+        uuid: currentPromptUuid,
+        docId: resolvedDocId,
+        versionCount: versions.length,
+        generationCount,
+      });
+
       promptHistory.updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
     [promptHistory, currentPromptUuid, currentPromptDocId]
@@ -312,26 +361,58 @@ export function usePromptVersioning({
   // Bug 12 fix: read currentVersions/currentPromptEntry from refs to avoid stale closures
   const syncVersionGenerations = useCallback(
     (generations: Generation[]): void => {
-      if (!currentPromptUuid) return;
-      if (!currentPromptEntryRef.current) return;
+      console.debug('[PERSIST-DEBUG][syncVersionGenerations] called', {
+        currentPromptUuid,
+        hasEntry: Boolean(currentPromptEntryRef.current),
+        activeVersionId,
+        incomingCount: generations.length,
+        incomingSummary: generations.map((g) => ({
+          id: g.id.slice(-6),
+          status: g.status,
+          mediaType: g.mediaType,
+          mediaUrlCount: g.mediaUrls?.length ?? 0,
+          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+          hasThumbnail: Boolean(g.thumbnailUrl),
+        })),
+      });
+
+      if (!currentPromptUuid) {
+        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no currentPromptUuid');
+        return;
+      }
+      if (!currentPromptEntryRef.current) {
+        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no currentPromptEntry');
+        return;
+      }
 
       const versions = currentVersionsRef.current;
-      if (!versions.length) return;
+      if (!versions.length) {
+        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no versions');
+        return;
+      }
 
       const index = activeVersionId
         ? versions.findIndex((version) => version.versionId === activeVersionId)
         : versions.length - 1;
-      if (index < 0) return;
+      if (index < 0) {
+        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: version index not found', {
+          activeVersionId,
+          versionIds: versions.map((v) => v.versionId),
+        });
+        return;
+      }
 
       const target = versions[index];
       if (!target) return;
 
-      // Extract thumbnail from completed generations for the preview field
-      const thumbnailUrl = extractThumbnailFromGenerations(generations);
+      // Merge incoming generations with already-persisted ones by ID,
+      // preferring the more complete record for each generation.
+      const mergedGenerations = mergeGenerationsById(target.generations, generations);
+
+      // Extract thumbnail from the merged set (includes all completed generations)
+      const thumbnailUrl = extractThumbnailFromGenerations(mergedGenerations);
       const existingPreviewUrl = target.preview?.imageUrl;
 
-      // Use ref to prevent infinite loops - only update if thumbnail actually changed
-      // and we haven't just persisted this same thumbnail
       const alreadyPersisted = thumbnailUrl === lastPersistedThumbnailRef.current;
       const shouldUpdatePreview = Boolean(
         thumbnailUrl &&
@@ -340,14 +421,33 @@ export function usePromptVersioning({
       );
 
       // Check if generations changed or if we have a new thumbnail to persist
-      const generationsChanged = !areGenerationsEqual(target.generations, generations);
+      const generationsChanged = !areGenerationsEqual(target.generations, mergedGenerations);
+
+      console.debug('[PERSIST-DEBUG][syncVersionGenerations] merge result', {
+        versionId: target.versionId,
+        targetGenerationCount: target.generations?.length ?? 0,
+        incomingCount: generations.length,
+        mergedCount: mergedGenerations.length,
+        generationsChanged,
+        shouldUpdatePreview,
+        mergedSummary: mergedGenerations.map((g) => ({
+          id: g.id.slice(-6),
+          status: g.status,
+          mediaType: g.mediaType,
+          mediaUrlCount: g.mediaUrls?.length ?? 0,
+          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+          hasThumbnail: Boolean(g.thumbnailUrl),
+        })),
+      });
+
       if (!generationsChanged && !shouldUpdatePreview) {
+        console.debug('[PERSIST-DEBUG][syncVersionGenerations] SKIPPED: no changes to persist');
         return;
       }
 
       const updated: PromptVersionEntry = {
         ...target,
-        generations: generations.length ? generations : [],
+        generations: mergedGenerations.length ? mergedGenerations : [],
       };
 
       // Update preview with thumbnail from generations if available
@@ -357,12 +457,22 @@ export function usePromptVersioning({
           imageUrl: thumbnailUrl,
           aspectRatio: target.preview?.aspectRatio ?? null,
         };
-        // Track that we've persisted this thumbnail to prevent re-triggering
         lastPersistedThumbnailRef.current = thumbnailUrl;
       }
 
       const updatedVersions = [...versions];
       updatedVersions[index] = updated;
+
+      console.debug('[PERSIST-DEBUG][syncVersionGenerations] PERSISTING', {
+        versionId: target.versionId,
+        versionCount: updatedVersions.length,
+        generationCount: mergedGenerations.length,
+        completedCount: mergedGenerations.filter((g) => g.status === 'completed').length,
+        hasMediaUrls: mergedGenerations.some((g) => g.mediaUrls.length > 0),
+        hasMediaAssetIds: mergedGenerations.some((g) => (g.mediaAssetIds?.length ?? 0) > 0),
+        generationIds: mergedGenerations.map((g) => `${g.id.slice(-6)}:${g.status}`).join(', '),
+      });
+
       persistVersions(updatedVersions);
     },
     [activeVersionId, currentPromptUuid, persistVersions]

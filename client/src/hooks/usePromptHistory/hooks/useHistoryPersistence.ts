@@ -25,6 +25,7 @@ import type { UpdatePromptOptions } from '../../../repositories/promptRepository
 interface UseHistoryPersistenceOptions {
   user: User | null;
   history: PromptHistoryEntry[];
+  isLoadingHistory: boolean;
   setHistory: (history: PromptHistoryEntry[]) => void;
   addEntry: (entry: PromptHistoryEntry) => void;
   updateEntry: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
@@ -69,6 +70,7 @@ const log = logger.child('useHistoryPersistence');
 export function useHistoryPersistence({
   user,
   history,
+  isLoadingHistory,
   setHistory,
   addEntry,
   updateEntry,
@@ -86,6 +88,53 @@ export function useHistoryPersistence({
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
+
+  // Bug 18 fix: ref for isLoadingHistory so debounced callbacks read the latest value.
+  // While history is loading from Firestore, Firestore writes are suppressed to prevent
+  // stale localStorage data from overwriting good Firestore data.
+  const isLoadingHistoryRef = useRef(isLoadingHistory);
+  useEffect(() => {
+    isLoadingHistoryRef.current = isLoadingHistory;
+  }, [isLoadingHistory]);
+
+  // Bug 17 fix: debounce Firestore version writes to prevent concurrent writes
+  // from clobbering each other. Local state (updateEntry) is always immediate;
+  // only the Firestore write is debounced so the last data always wins.
+  const versionWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingVersionWriteRef = useRef<{
+    uuid: string;
+    docId: string | null;
+    versions: PromptVersionEntry[];
+  } | null>(null);
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // Flush any pending debounced version write on unmount
+  useEffect(() => {
+    return () => {
+      if (versionWriteTimerRef.current !== null) {
+        clearTimeout(versionWriteTimerRef.current);
+        versionWriteTimerRef.current = null;
+        const pending = pendingVersionWriteRef.current;
+        if (pending) {
+          pendingVersionWriteRef.current = null;
+          // Bug 18 fix: don't flush stale data on unmount while loading
+          if (isLoadingHistoryRef.current) {
+            log.debug('Skipping unmount flush — history still loading', {
+              uuid: pending.uuid,
+              versionCount: pending.versions.length,
+            });
+            return;
+          }
+          log.debug('Flushing debounced version write on unmount', {
+            uuid: pending.uuid,
+            versionCount: pending.versions.length,
+          });
+          updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
+        }
+      }
+    };
+  }, []);
 
   const loadHistoryFromFirestore = useCallback(
     async (userId: string) => {
@@ -280,6 +329,31 @@ export function useHistoryPersistence({
 
   const updateEntryVersions = useCallback(
     (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => {
+      const generationCount = versions.reduce(
+        (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+        0
+      );
+      const generationSummary = versions.flatMap((v) =>
+        (v.generations ?? []).map((g) => ({
+          versionId: v.versionId,
+          genId: g.id.slice(-6),
+          status: g.status,
+          mediaType: g.mediaType,
+          mediaUrlCount: g.mediaUrls?.length ?? 0,
+          mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+          hasThumbnail: Boolean(g.thumbnailUrl),
+        }))
+      );
+      console.debug('[PERSIST-DEBUG][useHistoryPersistence.updateEntryVersions] called', {
+        uuid,
+        docId,
+        hasUser: Boolean(user?.uid),
+        isDraftId: typeof docId === 'string' && docId.startsWith('draft-'),
+        versionCount: versions.length,
+        generationCount,
+        generationSummary,
+      });
+
       updateEntry(uuid, { versions });
 
       const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
@@ -341,7 +415,68 @@ export function useHistoryPersistence({
         return;
       }
 
-      updateVersions(user?.uid, uuid, docId, versions);
+      // Bug 17 fix: debounce the Firestore write. Rapid successive calls
+      // (e.g., ADD_GENERATION → UPDATE_GENERATION → media refresh) each trigger
+      // syncVersionGenerations → persistVersions → updateEntryVersions. Without
+      // debouncing, multiple concurrent Firestore writes race each other and an
+      // earlier write with stale data can land after a later write with complete data.
+      // By debouncing, only the latest (most complete) data is written.
+      if (versionWriteTimerRef.current !== null) {
+        console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: clearing previous timer', { uuid, docId });
+        clearTimeout(versionWriteTimerRef.current);
+      }
+      console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: scheduling write (150ms)', {
+        uuid,
+        docId,
+        versionCount: versions.length,
+        generationCount,
+      });
+      pendingVersionWriteRef.current = { uuid, docId, versions };
+      versionWriteTimerRef.current = setTimeout(() => {
+        versionWriteTimerRef.current = null;
+        const pending = pendingVersionWriteRef.current;
+        if (pending) {
+          // Bug 18 fix: while Firestore history is still loading, skip the write.
+          // On mount, highlights/generations sync may trigger persistVersions with
+          // stale localStorage data. Writing this to Firestore would overwrite the
+          // real data. Once loadFromFirestore completes and calls setHistory(),
+          // isLoadingHistory becomes false and normal writes resume.
+          if (isLoadingHistoryRef.current) {
+            console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: SKIPPED — history still loading (would overwrite Firestore)', {
+              uuid: pending.uuid,
+              docId: pending.docId,
+              versionCount: pending.versions.length,
+            });
+            pendingVersionWriteRef.current = null;
+            return;
+          }
+          pendingVersionWriteRef.current = null;
+          const debouncedGenerationCount = pending.versions.reduce(
+            (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+            0
+          );
+          console.debug('[PERSIST-DEBUG][useHistoryPersistence] debounce: EXECUTING write', {
+            uuid: pending.uuid,
+            docId: pending.docId,
+            versionCount: pending.versions.length,
+            generationCount: debouncedGenerationCount,
+            generationSummary: pending.versions.flatMap((v) =>
+              (v.generations ?? []).map((g) => ({
+                genId: g.id.slice(-6),
+                status: g.status,
+                mediaUrlCount: g.mediaUrls?.length ?? 0,
+                mediaAssetIdCount: g.mediaAssetIds?.length ?? 0,
+              }))
+            ),
+          });
+          log.debug('Debounced version write executing', {
+            uuid: pending.uuid,
+            versionCount: pending.versions.length,
+            generationCount: debouncedGenerationCount,
+          });
+          updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
+        }
+      }, 150);
     },
     [user, updateEntry]
   );

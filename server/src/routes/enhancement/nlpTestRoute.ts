@@ -41,8 +41,8 @@ export function registerNlpTestRoute(router: Router): void {
         });
 
         return res.json(result);
-      } catch (error: any) {
-        logger.error('NLP test request failed', error, {
+      } catch (error) {
+        logger.error('NLP test request failed', error instanceof Error ? error : new Error(String(error)), {
           operation,
           requestId,
           duration: Date.now() - startTime,

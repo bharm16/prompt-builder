@@ -14,23 +14,23 @@ import express, { type Router } from 'express';
 import { createOptimizeRoutes } from './optimize.routes';
 import { createVideoRoutes } from './video.routes';
 import { createCapabilitiesRoutes } from './capabilities.routes';
-import { createEnhancementRoutes } from './enhancement.routes';
+import { createEnhancementRoutes, type EnhancementServices } from './enhancement.routes';
 import { createStorageRoutes } from './storage.routes';
 import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 import { createReferenceImagesRoutes } from './reference-images.routes';
+import type { OptimizeServices } from './optimize/types';
+import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
+import type { AssetService } from '@services/asset/AssetService';
+import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { UserCreditService } from '@services/credits/UserCreditService';
 
-interface ApiServices {
-  promptOptimizationService: any;
-  enhancementService: any;
-  sceneDetectionService: any;
-  promptCoherenceService: any;
-  videoConceptService?: any | null;
-  metricsService?: any;
-  assetService?: any;
-  consistentVideoService?: any;
-  userCreditService?: any;
+interface ApiServices extends OptimizeServices, EnhancementServices {
+  videoConceptService?: VideoServices['videoConceptService'] | null;
+  assetService?: AssetService;
+  consistentVideoService?: ConsistentVideoService;
+  userCreditService?: UserCreditService;
   referenceImageService?: ReferenceImageService | null;
 }
 

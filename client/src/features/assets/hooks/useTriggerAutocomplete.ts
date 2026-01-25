@@ -1,7 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { KeyboardEvent } from 'react';
 import debounce from 'lodash/debounce';
+import { logger } from '@/services/LoggingService';
 import { assetApi } from '../api/assetApi';
+
+export interface AssetSuggestion {
+  id: string;
+  type: string;
+  trigger: string;
+  name: string;
+  thumbnailUrl?: string;
+}
 
 interface AutocompletePosition {
   top: number;
@@ -23,7 +32,7 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
   const { debounceMs = 150 } = options;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<AssetSuggestion[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [query, setQuery] = useState('');
   const [position, setPosition] = useState<AutocompletePosition>({ top: 0, left: 0 });
@@ -43,7 +52,7 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
           setSuggestions(results);
           setSelectedIndex(0);
         } catch (error) {
-          console.error('Failed to fetch suggestions:', error);
+          logger.warn('Failed to fetch asset suggestions', { error: error instanceof Error ? error.message : String(error) });
           setSuggestions([]);
         } finally {
           setIsLoading(false);
@@ -112,7 +121,7 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
   );
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent): false | true | { selected: any } => {
+    (e: KeyboardEvent): false | true | { selected: AssetSuggestion } => {
       if (!isOpen || suggestions.length === 0) return false;
 
       switch (e.key) {
@@ -142,7 +151,7 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
     [isOpen, suggestions, selectedIndex]
   );
 
-  const selectSuggestion = useCallback((suggestion: any) => {
+  const selectSuggestion = useCallback((suggestion: AssetSuggestion) => {
     setIsOpen(false);
     setQuery('');
     setSuggestions([]);
