@@ -7,6 +7,7 @@ import {
   dimensionToStep,
   stepToDimension,
 } from '../utils/helpers';
+import { getOptionsForDimension } from './useConvergenceSession.options';
 import { initialState } from './useConvergenceSession.state';
 
 // ============================================================================
@@ -52,9 +53,20 @@ export function convergenceReducer(
         ...state,
         sessionId: action.payload.sessionId,
         step: 'direction',
+        direction: null,
+        lockedDimensions: [],
         currentImages: action.payload.images,
         currentOptions: action.payload.options,
+        depthMapUrl: null,
+        cameraPaths: [],
+        selectedCameraMotion: null,
+        cameraMotionFallbackMode: false,
+        subjectMotion: '',
+        subjectMotionVideoUrl: null,
+        finalPrompt: null,
+        regenerationCounts: new Map(),
         imageHistory: new Map([['direction', action.payload.images]]),
+        pendingResumeSession: null,
         isLoading: false,
         loadingOperation: null,
         abortController: null,
@@ -299,6 +311,7 @@ export function convergenceReducer(
 
     case 'GO_BACK': {
       const prevStep = getPreviousStep(state.step);
+      const isBeforeCameraMotion = getStepOrder(prevStep) < getStepOrder('camera_motion');
 
       // If going back from a dimension step, unlock the most recent dimension
       const currentDimension = stepToDimension(state.step);
@@ -320,6 +333,10 @@ export function convergenceReducer(
       // Restore images from history if available
       const prevDimension = stepToDimension(prevStep);
       const cachedImages = prevDimension ? state.imageHistory.get(prevDimension) : undefined;
+      const prevOptions =
+        prevDimension && prevDimension !== 'camera_motion'
+          ? getOptionsForDimension(prevDimension)
+          : [];
 
       return {
         ...state,
@@ -327,7 +344,11 @@ export function convergenceReducer(
         direction: newDirection,
         lockedDimensions: newLockedDimensions,
         currentImages: cachedImages ?? state.currentImages,
-        selectedCameraMotion: prevStep === 'camera_motion' ? null : state.selectedCameraMotion,
+        currentOptions: prevOptions,
+        selectedCameraMotion: isBeforeCameraMotion ? null : state.selectedCameraMotion,
+        depthMapUrl: isBeforeCameraMotion ? null : state.depthMapUrl,
+        cameraPaths: isBeforeCameraMotion ? [] : state.cameraPaths,
+        cameraMotionFallbackMode: isBeforeCameraMotion ? false : state.cameraMotionFallbackMode,
         focusedOptionIndex: 0,
         error: null,
       };
@@ -335,10 +356,15 @@ export function convergenceReducer(
 
     case 'JUMP_TO_STEP': {
       const { step, lockedDimensions } = action.payload;
+      const isBeforeCameraMotion = getStepOrder(step) < getStepOrder('camera_motion');
 
       // Restore images from history if available
       const targetDimension = stepToDimension(step);
       const cachedImages = targetDimension ? state.imageHistory.get(targetDimension) : undefined;
+      const currentOptions =
+        targetDimension && targetDimension !== 'camera_motion'
+          ? getOptionsForDimension(targetDimension)
+          : [];
 
       // Clear direction if jumping to direction step
       const newDirection = step === 'direction' ? null : state.direction;
@@ -349,7 +375,11 @@ export function convergenceReducer(
         direction: newDirection,
         lockedDimensions,
         currentImages: cachedImages ?? [],
-        selectedCameraMotion: getStepOrder(step) <= getStepOrder('camera_motion') ? null : state.selectedCameraMotion,
+        currentOptions,
+        selectedCameraMotion: isBeforeCameraMotion ? null : state.selectedCameraMotion,
+        depthMapUrl: isBeforeCameraMotion ? null : state.depthMapUrl,
+        cameraPaths: isBeforeCameraMotion ? [] : state.cameraPaths,
+        cameraMotionFallbackMode: isBeforeCameraMotion ? false : state.cameraMotionFallbackMode,
         focusedOptionIndex: 0,
         error: null,
       };
@@ -403,6 +433,10 @@ export function convergenceReducer(
       const currentImages = currentDimension
         ? imageHistoryMap.get(currentDimension) ?? session.generatedImages
         : session.generatedImages;
+      const currentOptions =
+        currentDimension && currentDimension !== 'camera_motion'
+          ? getOptionsForDimension(currentDimension)
+          : [];
 
       return {
         ...state,
@@ -412,9 +446,13 @@ export function convergenceReducer(
         direction: session.direction,
         lockedDimensions: session.lockedDimensions,
         currentImages,
+        currentOptions,
         depthMapUrl: session.depthMapUrl,
+        cameraPaths: [],
+        cameraMotionFallbackMode: false,
         selectedCameraMotion: session.cameraMotion,
         subjectMotion: session.subjectMotion ?? '',
+        subjectMotionVideoUrl: null,
         finalPrompt: session.finalPrompt,
         imageHistory: imageHistoryMap,
         regenerationCounts: regenerationCountsMap,
@@ -524,6 +562,12 @@ export function convergenceReducer(
     // ========================================================================
     // Generic Error Action
     // ========================================================================
+
+    case 'CLEAR_ERROR':
+      return {
+        ...state,
+        error: null,
+      };
 
     case 'GENERIC_ERROR':
       return {

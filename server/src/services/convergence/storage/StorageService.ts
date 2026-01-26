@@ -299,6 +299,15 @@ export class GCSStorageService implements StorageService {
    * Extract object path from a signed or unsigned GCS URL.
    */
   private extractObjectPath(url: string): string | null {
+    if (!url) {
+      return null;
+    }
+
+    if (!url.includes('://')) {
+      const path = url.replace(/^\/+/, '');
+      return path || null;
+    }
+
     try {
       const urlObj = new URL(url);
       const host = urlObj.hostname;

@@ -16,7 +16,7 @@ import type { Firestore, DocumentData, Timestamp } from 'firebase-admin/firestor
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 import type { ConvergenceSession, GeneratedImage, LockedDimension } from '../types';
-import { SESSION_TTL_MS } from '../constants';
+import { DEFAULT_ASPECT_RATIO, SESSION_TTL_MS } from '../constants';
 
 const COLLECTION_NAME = 'convergence_sessions';
 
@@ -39,6 +39,7 @@ interface ConvergenceSessionDocument {
   id: string;
   userId: string;
   intent: string;
+  aspectRatio?: string;
   direction: string | null;
   lockedDimensions: LockedDimension[];
   currentStep: string;
@@ -62,6 +63,7 @@ function documentToSession(doc: DocumentData): ConvergenceSession {
     id: doc.id,
     userId: doc.userId,
     intent: doc.intent,
+    aspectRatio: typeof doc.aspectRatio === 'string' ? doc.aspectRatio : DEFAULT_ASPECT_RATIO,
     direction: doc.direction,
     lockedDimensions: doc.lockedDimensions || [],
     currentStep: doc.currentStep,
@@ -110,6 +112,7 @@ function sessionToDocument(
     id: session.id,
     userId: session.userId,
     intent: session.intent,
+    aspectRatio: session.aspectRatio,
     direction: session.direction,
     lockedDimensions: session.lockedDimensions,
     currentStep: session.currentStep,

@@ -9,6 +9,11 @@ import type { CameraPath, Direction } from './types';
 // ============================================================================
 
 /**
+ * Default aspect ratio for generated images
+ */
+export const DEFAULT_ASPECT_RATIO = '16:9';
+
+/**
  * Available direction options for the direction fork
  * Each direction represents a high-level creative style
  */

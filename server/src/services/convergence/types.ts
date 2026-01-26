@@ -126,6 +126,7 @@ export interface ConvergenceSession {
   id: string; // UUID v4
   userId: string; // Firebase Auth UID
   intent: string; // Original user input
+  aspectRatio: string; // Aspect ratio for generated images
   direction: Direction | null; // Selected direction
   lockedDimensions: LockedDimension[]; // Array of locked selections
   currentStep: ConvergenceStep; // Current step in flow

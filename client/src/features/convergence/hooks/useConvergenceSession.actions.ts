@@ -5,6 +5,7 @@ import { logger } from '@/services/LoggingService';
 
 import type {
   ConvergenceStep,
+  ConvergenceSession,
   DimensionType,
   Direction,
   GeneratedImage,
@@ -272,6 +273,43 @@ export function useConvergenceSessionActions(
   );
 
   /**
+   * Generate camera motion options and depth map
+   */
+  const generateCameraMotion = useCallback(async (): Promise<void> => {
+    if (!state.sessionId) {
+      dispatch({ type: 'GENERIC_ERROR', payload: 'No active session' });
+      return;
+    }
+
+    const controller = new AbortController();
+    dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
+    dispatch({ type: 'GENERATE_CAMERA_MOTION_REQUEST' });
+
+    try {
+      const result = await convergenceApi.generateCameraMotion(
+        state.sessionId,
+        controller.signal
+      );
+      dispatch({
+        type: 'GENERATE_CAMERA_MOTION_SUCCESS',
+        payload: {
+          depthMapUrl: result.depthMapUrl,
+          cameraPaths: result.cameraPaths,
+          fallbackMode: result.fallbackMode,
+        },
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        dispatch({ type: 'CANCEL_GENERATION' });
+        return;
+      }
+      const normalizedError = toError(error);
+      handleApiError(normalizedError, dispatch, 'generateCameraMotion');
+      dispatch({ type: 'GENERATE_CAMERA_MOTION_FAILURE', payload: normalizedError.message });
+    }
+  }, [state.sessionId]);
+
+  /**
    * Set the subject motion text
    */
   const setSubjectMotion = useCallback((motion: string): void => {
@@ -381,6 +419,13 @@ export function useConvergenceSessionActions(
   }, []);
 
   /**
+   * Prompt the user to resume a session
+   */
+  const promptResume = useCallback((session: ConvergenceSession): void => {
+    dispatch({ type: 'PROMPT_RESUME', payload: session });
+  }, []);
+
+  /**
    * Abandon the pending session and start fresh (Task 17.4.5)
    * Calls the API to abandon the session and clean up resources
    */
@@ -454,6 +499,13 @@ export function useConvergenceSessionActions(
     dispatch({ type: 'HIDE_SESSION_EXPIRED_MODAL' });
   }, []);
 
+  /**
+   * Clear the current error message
+   */
+  const clearError = useCallback((): void => {
+    dispatch({ type: 'CLEAR_ERROR' });
+  }, []);
+
   // ========================================================================
   // Memoized Actions Object
   // ========================================================================
@@ -467,6 +519,7 @@ export function useConvergenceSessionActions(
       goBack,
       jumpToStep,
       selectCameraMotion,
+      generateCameraMotion,
       setSubjectMotion,
       generateSubjectMotionPreview,
       skipSubjectMotion,
@@ -474,11 +527,13 @@ export function useConvergenceSessionActions(
       reset,
       cancelGeneration,
       resumeSession,
+      promptResume,
       abandonAndStartFresh,
       moveFocus,
       selectFocused,
       hideCreditsModal,
       hideSessionExpiredModal,
+      clearError,
     }),
     [
       setIntent,
@@ -488,6 +543,7 @@ export function useConvergenceSessionActions(
       goBack,
       jumpToStep,
       selectCameraMotion,
+      generateCameraMotion,
       setSubjectMotion,
       generateSubjectMotionPreview,
       skipSubjectMotion,
@@ -495,11 +551,13 @@ export function useConvergenceSessionActions(
       reset,
       cancelGeneration,
       resumeSession,
+      promptResume,
       abandonAndStartFresh,
       moveFocus,
       selectFocused,
       hideCreditsModal,
       hideSessionExpiredModal,
+      clearError,
     ]
   );
 

@@ -8,7 +8,7 @@
  * - Requirement 4.1: Maintain a library of prompt fragments for each dimension option
  */
 
-import type { Direction, DimensionConfig } from '../types';
+import type { Direction, DimensionConfig, DimensionOption, DimensionType } from '../types';
 
 // ============================================================================
 // Direction Fragments (Task 3.1.1)
@@ -282,7 +282,7 @@ export const ALL_DIMENSIONS: DimensionConfig[] = [
 /**
  * Get a dimension configuration by type.
  */
-export function getDimensionConfig(type: string): DimensionConfig | undefined {
+export function getDimensionConfig(type: DimensionType): DimensionConfig | undefined {
   return ALL_DIMENSIONS.find((d) => d.type === type);
 }
 
@@ -290,9 +290,9 @@ export function getDimensionConfig(type: string): DimensionConfig | undefined {
  * Get a dimension option by type and option ID.
  */
 export function getDimensionOption(
-  type: string,
+  type: DimensionType,
   optionId: string
-): { id: string; label: string; promptFragments: string[] } | undefined {
+): DimensionOption | undefined {
   const dimension = getDimensionConfig(type);
   return dimension?.options.find((o) => o.id === optionId);
 }

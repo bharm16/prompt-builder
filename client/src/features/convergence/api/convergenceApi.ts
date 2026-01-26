@@ -39,7 +39,6 @@ import type {
 import {
   AbandonSessionResponseSchema,
   ActiveSessionResponseSchema,
-  ConvergenceSessionSchema,
   FinalizeSessionResponseSchema,
   GenerateCameraMotionResponseSchema,
   GenerateSubjectMotionResponseSchema,
@@ -401,11 +400,17 @@ export async function getActiveSession(): Promise<ConvergenceSession | null> {
  * @throws ConvergenceError if session not found
  */
 export async function getSession(sessionId: string): Promise<ConvergenceSession> {
-  return fetchWithAuth<ConvergenceSession>(
+  const response = await fetchWithAuth<{ session: ConvergenceSession | null }>(
     `/session/${sessionId}`,
     { method: 'GET' },
-    ConvergenceSessionSchema
+    ActiveSessionResponseSchema
   );
+
+  if (!response.session) {
+    throw new ConvergenceError('SESSION_NOT_FOUND', 'Session not found');
+  }
+
+  return response.session;
 }
 
 /**

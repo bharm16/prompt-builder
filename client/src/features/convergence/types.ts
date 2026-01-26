@@ -125,6 +125,7 @@ export interface ConvergenceSession {
   id: string;
   userId: string;
   intent: string;
+  aspectRatio: string;
   direction: Direction | null;
   lockedDimensions: LockedDimension[];
   currentStep: ConvergenceStep;

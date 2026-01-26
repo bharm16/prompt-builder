@@ -196,6 +196,8 @@ export type ConvergenceAction =
   | { type: 'RESET_FOCUS' }
   // Reset action
   | { type: 'RESET' }
+  // Clear error
+  | { type: 'CLEAR_ERROR' }
   // Generic error action
   | { type: 'GENERIC_ERROR'; payload: string };
 
@@ -221,6 +223,8 @@ export interface ConvergenceActions {
   jumpToStep: (step: ConvergenceStep) => void;
   /** Select a camera motion */
   selectCameraMotion: (motionId: string) => Promise<void>;
+  /** Generate camera motion options */
+  generateCameraMotion: () => Promise<void>;
   /** Set the subject motion text */
   setSubjectMotion: (motion: string) => void;
   /** Generate subject motion preview video */
@@ -235,6 +239,8 @@ export interface ConvergenceActions {
   cancelGeneration: () => void;
   /** Resume the pending session */
   resumeSession: () => void;
+  /** Prompt the user to resume a session */
+  promptResume: (session: ConvergenceSession) => void;
   /** Abandon the pending session and start fresh */
   abandonAndStartFresh: () => Promise<void>;
   /** Move focus for keyboard navigation */
@@ -245,6 +251,8 @@ export interface ConvergenceActions {
   hideCreditsModal: () => void;
   /** Hide the session expired modal and reset state (Task 37.4) */
   hideSessionExpiredModal: () => void;
+  /** Clear the current error message */
+  clearError: () => void;
 }
 
 // ============================================================================

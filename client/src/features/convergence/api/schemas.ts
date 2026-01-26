@@ -25,6 +25,8 @@ import {
   type Position3D,
 } from '../types';
 
+const DEFAULT_ASPECT_RATIO = '16:9';
+
 export const ConvergenceErrorCodeSchema: z.ZodType<ConvergenceErrorCode> = z.enum(
   CONVERGENCE_ERROR_CODES
 );
@@ -116,6 +118,7 @@ export const ConvergenceSessionSchema: z.ZodType<ConvergenceSession> = z.object(
   id: z.string(),
   userId: z.string(),
   intent: z.string(),
+  aspectRatio: z.string().optional().default(DEFAULT_ASPECT_RATIO),
   direction: DirectionSchema.nullable(),
   lockedDimensions: z.array(LockedDimensionSchema),
   currentStep: ConvergenceStepSchema,

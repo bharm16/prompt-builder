@@ -515,6 +515,45 @@ function createGetActiveSessionHandler(convergenceService: ConvergenceService) {
 }
 
 /**
+ * GET /session/:sessionId - Get session by ID with ownership validation
+ *
+ * Requirement 1.3: Allow retrieval of session by identifier
+ */
+function createGetSessionHandler(convergenceService: ConvergenceService) {
+  return async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = getUserId(req);
+    const sessionId = req.params.sessionId;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'sessionId is required',
+        requestId,
+      });
+    }
+
+    logger.info('Getting session by ID', {
+      requestId,
+      userId,
+      sessionId,
+    });
+
+    try {
+      const session = await convergenceService.getSessionForUser(sessionId, userId);
+
+      return res.status(200).json({
+        success: true,
+        session,
+      });
+    } catch (error) {
+      return handleConvergenceError(error, res, requestId);
+    }
+  };
+}
+
+/**
  * POST /session/abandon - Abandon an existing session
  *
  * Allows users to explicitly abandon their active session so they can start fresh.
@@ -586,6 +625,7 @@ export function createConvergenceRoutes(services: ConvergenceRoutesServices): Ro
   router.post('/start', asyncHandler(createStartHandler(convergenceService)));
   router.post('/finalize', asyncHandler(createFinalizeHandler(convergenceService)));
   router.get('/session/active', asyncHandler(createGetActiveSessionHandler(convergenceService)));
+  router.get('/session/:sessionId', asyncHandler(createGetSessionHandler(convergenceService)));
   router.post('/session/abandon', asyncHandler(createAbandonSessionHandler(convergenceService)));
 
   // Dimension selection

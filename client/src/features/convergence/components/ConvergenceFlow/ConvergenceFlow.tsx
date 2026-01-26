@@ -120,12 +120,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
       try {
         const session = await convergenceApi.getActiveSession();
         if (session && session.status === 'active') {
-          // Dispatch PROMPT_RESUME action to show the resume modal
-          // This is handled internally by the hook when we call resumeSession
-          // For now, we need to manually trigger the prompt
-          actions.resumeSession();
-          // Actually, we need to set the pending session first
-          // The hook should handle this, but let's check if there's a session
+          actions.promptResume(session);
         }
       } catch (error) {
         // No active session or error, continue to IntentInput
@@ -144,6 +139,18 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   // ========================================================================
   // Keyboard Navigation Handler (Task 29.3)
   // ========================================================================
+
+  useEffect(() => {
+    if (state.step !== 'camera_motion') {
+      return;
+    }
+
+    if (state.cameraPaths.length > 0 || state.isLoading || state.error) {
+      return;
+    }
+
+    actions.generateCameraMotion();
+  }, [state.step, state.cameraPaths.length, state.isLoading, state.error, actions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -267,9 +274,8 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
    * Handle error dismissal
    */
   const handleDismissError = useCallback(() => {
-    // Reset error by triggering a state update
-    // The error will be cleared on the next action
-  }, []);
+    actions.clearError();
+  }, [actions]);
 
   /**
    * Handle retry for failed operations (Task 37.2)
@@ -290,8 +296,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
         actions.regenerate();
         break;
       case 'camera_motion':
-        // Retry depth estimation by re-selecting the last lighting option
-        // For now, just clear the error
+        actions.generateCameraMotion();
         break;
       case 'subject_motion':
         actions.generateSubjectMotionPreview();
@@ -314,7 +319,12 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
    */
   useEffect(() => {
     const doFinalize = async () => {
-      if (state.step === 'preview' && !finalizeResponse && !state.isLoading) {
+      if (
+        state.step === 'preview' &&
+        !finalizeResponse &&
+        !state.isLoading &&
+        !state.error
+      ) {
         const response = await actions.finalize();
         if (response) {
           setFinalizeResponse(response);
@@ -323,7 +333,13 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
     };
 
     doFinalize();
-  }, [state.step, finalizeResponse, state.isLoading, actions]);
+  }, [state.step, finalizeResponse, state.isLoading, state.error, actions]);
+
+  useEffect(() => {
+    if (state.step !== 'preview' && finalizeResponse) {
+      setFinalizeResponse(null);
+    }
+  }, [state.step, finalizeResponse]);
 
   // ========================================================================
   // Render Helpers
@@ -459,6 +475,22 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
 
       case 'preview': {
         if (!finalizeResponse) {
+          if (state.error) {
+            return (
+              <div className="flex items-center justify-center min-h-[400px] px-4">
+                <div className="w-full max-w-lg">
+                  <ErrorDisplay
+                    error={state.error}
+                    onRetry={handleRetry}
+                    onDismiss={handleDismissError}
+                    isRetrying={state.isLoading}
+                    variant="inline"
+                  />
+                </div>
+              </div>
+            );
+          }
+
           // Show loading state while finalizing
           return (
             <div className="flex items-center justify-center min-h-[400px]">
