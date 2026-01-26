@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
 
-export type ToolPanelType = 'sessions' | 'tool' | 'characters' | 'styles';
+export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
 
 export type DraftModel = 'flux-kontext' | 'wan-2.2';
 

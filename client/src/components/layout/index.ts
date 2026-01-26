@@ -14,6 +14,7 @@
  * - Grid: Organizes content in columns and rows
  * - Container: Provides consistent max-width
  * - Section: Provides consistent vertical spacing
+ * - MainWorkspace: Conditional renderer for Create/Studio tools
  */
 
 export { Box, type BoxProps } from './Box';
@@ -21,3 +22,4 @@ export { Flex, type FlexProps } from './Flex';
 export { Grid, type GridProps } from './Grid';
 export { Container, type ContainerProps } from './Container';
 export { Section, type SectionProps } from './Section';
+export { MainWorkspace } from './MainWorkspace';

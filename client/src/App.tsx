@@ -4,7 +4,8 @@ import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import SharedPrompt from './components/SharedPrompt';
 import { ToastProvider } from './components/Toast';
-import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
+import { AppShellProvider } from './contexts/AppShellContext';
+import { MainWorkspace } from './components/layout/MainWorkspace';
 import { HomePage } from './pages/HomePage';
 import { ProductsPage } from './pages/ProductsPage';
 import { PricingPage } from './pages/PricingPage';
@@ -70,8 +71,8 @@ function AppRoutes(): React.ReactElement {
       <Route
         path="/"
         element={
-          <FeatureErrorBoundary featureName="Prompt Optimizer">
-            <PromptOptimizerContainer />
+          <FeatureErrorBoundary featureName="Main Workspace">
+            <MainWorkspace />
           </FeatureErrorBoundary>
         }
       />
@@ -90,8 +91,8 @@ function AppRoutes(): React.ReactElement {
       <Route
         path="/prompt/:uuid"
         element={
-          <FeatureErrorBoundary featureName="Prompt Optimizer">
-            <PromptOptimizerContainer />
+          <FeatureErrorBoundary featureName="Main Workspace">
+            <MainWorkspace />
           </FeatureErrorBoundary>
         }
       />
@@ -106,9 +107,11 @@ function App(): React.ReactElement {
       message="The application encountered an unexpected error. Please refresh the page to continue."
     >
       <ToastProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <AppShellProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </AppShellProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

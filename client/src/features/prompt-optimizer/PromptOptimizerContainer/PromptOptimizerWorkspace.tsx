@@ -9,7 +9,7 @@
  * - Conditional layout rendering
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import DebugButton from '@components/DebugButton';
@@ -22,6 +22,7 @@ import type { Asset, AssetType } from '@shared/types/asset';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { CoherenceRecommendation } from '../types/coherence';
 import type { User } from '../context/types';
+import type { ConvergenceHandoff } from '@/features/convergence/types';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
@@ -34,7 +35,6 @@ import { QuickCharacterCreate } from '../components/QuickCharacterCreate';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import {
-  GenerationControlsProvider,
   useGenerationControlsContext,
 } from '../context/GenerationControlsContext';
 import type { VideoTier } from '@components/ToolSidebar/types';
@@ -77,7 +77,13 @@ function resolveActiveStatusLabel(params: {
 /**
  * Inner component with access to PromptStateContext
  */
-function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
+interface PromptOptimizerContentProps {
+  user: User | null;
+  /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
+  convergenceHandoff?: ConvergenceHandoff | null | undefined;
+}
+
+function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
   const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
   const [assetEditorState, setAssetEditorState] = React.useState<{
@@ -89,6 +95,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     isOpen: boolean;
     prefillTrigger?: string;
   }>({ isOpen: false });
+  // Track if we've already applied the handoff to prevent re-applying
+  const handoffAppliedRef = React.useRef<string | null>(null);
 
   const toast = useToast();
   const {
@@ -172,6 +180,41 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
     navigate(nextUrl, { replace: true });
   }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
+
+  /**
+   * Handle convergence handoff - pre-fill prompt when coming from Create mode
+   * (Requirement 17.2: Switch to Studio mode with converged prompt pre-filled)
+   */
+  useEffect(() => {
+    if (!convergenceHandoff) return;
+    
+    // Create a unique key for this handoff to prevent re-applying
+    const handoffKey = `${convergenceHandoff.prompt.slice(0, 50)}-${convergenceHandoff.cameraMotion}`;
+    
+    // Skip if we've already applied this handoff
+    if (handoffAppliedRef.current === handoffKey) return;
+    
+    // Mark this handoff as applied
+    handoffAppliedRef.current = handoffKey;
+    
+    // Pre-fill the input prompt with the converged prompt
+    promptOptimizer.setInputPrompt(convergenceHandoff.prompt);
+    
+    // Clear any existing displayed prompt to show the input
+    setDisplayedPromptSilently('');
+    setShowResults(false);
+    
+    // Show a toast notification
+    toast.success('Prompt loaded from Visual Convergence');
+    
+    // Log the handoff for debugging
+    log.info('Applied convergence handoff', {
+      promptLength: convergenceHandoff.prompt.length,
+      lockedDimensionsCount: convergenceHandoff.lockedDimensions.length,
+      cameraMotion: convergenceHandoff.cameraMotion,
+      hasSubjectMotion: Boolean(convergenceHandoff.subjectMotion),
+    });
+  }, [convergenceHandoff, promptOptimizer, setDisplayedPromptSilently, setShowResults, toast]);
 
   // Stabilize promptContext to prevent infinite loops
   const stablePromptContext = useMemo(() => {
@@ -937,7 +980,12 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 /**
  * Outer component with auth state management
  */
-function PromptOptimizerWorkspace(): React.ReactElement {
+interface PromptOptimizerWorkspaceProps {
+  /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
+  convergenceHandoff?: ConvergenceHandoff | null;
+}
+
+function PromptOptimizerWorkspace({ convergenceHandoff }: PromptOptimizerWorkspaceProps): React.ReactElement {
   const [user, setUser] = React.useState<User | null>(null);
 
   // Listen for auth state changes
@@ -951,9 +999,7 @@ function PromptOptimizerWorkspace(): React.ReactElement {
 
   return (
     <PromptStateProvider user={user}>
-      <GenerationControlsProvider>
-        <PromptOptimizerContent user={user} />
-      </GenerationControlsProvider>
+      <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
     </PromptStateProvider>
   );
 }

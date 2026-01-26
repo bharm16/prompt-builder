@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
+import { useAppShell } from '@/contexts/AppShellContext';
 
 export function ToolRail({
   activePanel,
@@ -11,6 +12,7 @@ export function ToolRail({
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
+  const { activeTool, setActiveTool } = useAppShell();
   const headerItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
@@ -20,6 +22,35 @@ export function ToolRail({
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
   const userActionLabel = user ? 'Account' : 'Sign in';
+
+  /**
+   * Handle panel change with tool switching for Create/Studio
+   * Requirement 16.3-16.4: Tool switching via left panel
+   */
+  const handlePanelChange = (panelId: typeof activePanel): void => {
+    if (panelId === 'create') {
+      setActiveTool('create');
+      onPanelChange(panelId);
+    } else if (panelId === 'studio') {
+      setActiveTool('studio');
+      onPanelChange(panelId);
+    } else {
+      onPanelChange(panelId);
+    }
+  };
+
+  /**
+   * Determine if a panel is active, considering both panel state and tool state
+   */
+  const isPanelActive = (panelId: typeof activePanel): boolean => {
+    if (panelId === 'create') {
+      return activeTool === 'create';
+    }
+    if (panelId === 'studio') {
+      return activeTool === 'studio';
+    }
+    return activePanel === panelId;
+  };
 
   return (
     <aside
@@ -33,7 +64,7 @@ export function ToolRail({
               icon={headerItem.icon}
               label={headerItem.label}
               isActive={activePanel === headerItem.id}
-              onClick={() => onPanelChange(headerItem.id)}
+              onClick={() => handlePanelChange(headerItem.id)}
               variant="header"
             />
           )}
@@ -46,8 +77,8 @@ export function ToolRail({
               key={item.id}
               icon={item.icon}
               label={item.label}
-              isActive={activePanel === item.id}
-              onClick={() => onPanelChange(item.id)}
+              isActive={isPanelActive(item.id)}
+              onClick={() => handlePanelChange(item.id)}
             />
           ))}
         </nav>

@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { NextFunction, Request, Response } from 'express';
+import { isConvergenceError } from '@services/convergence';
 
 /**
  * Redact sensitive data from strings
@@ -94,6 +95,27 @@ export function errorHandler(
     } catch {
       // ignore serialization errors
     }
+  }
+
+  // Handle ConvergenceError with proper HTTP status mapping
+  if (isConvergenceError(err)) {
+    const statusCode = err.getHttpStatus();
+    const userMessage = err.getUserMessage();
+
+    logger.warn('Convergence error', {
+      ...meta,
+      errorCode: err.code,
+      statusCode,
+      details: err.details,
+    });
+
+    res.status(statusCode).json({
+      error: err.code,
+      message: userMessage,
+      details: err.details,
+      requestId: req.id,
+    });
+    return;
   }
 
   const errorObj = err instanceof Error ? err : new Error(String(err));

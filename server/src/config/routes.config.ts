@@ -27,7 +27,20 @@ import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
+import { createConvergenceRoutes } from '@routes/convergence/convergence.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
+
+// Import convergence services
+import {
+  ConvergenceService,
+  getSessionStore,
+  getPromptBuilderService,
+  getCreditsService,
+  getGCSStorageService,
+  createDepthEstimationService,
+  createVideoPreviewService,
+} from '@services/convergence';
+import type { ImageGenerationService } from '@services/image-generation';
 
 /**
  * Register all application routes
@@ -131,6 +144,49 @@ export function registerRoutes(app: Application, container: DIContainer): void {
 
   const paymentRoutes = createPaymentRoutes();
   app.use('/api/payment', apiAuthMiddleware, paymentRoutes);
+
+  // ============================================================================
+  // Convergence Routes (Visual Convergence feature - auth required)
+  // ============================================================================
+
+  if (!promptOutputOnly) {
+    const imageGenerationService = container.resolve<ImageGenerationService | null>('imageGenerationService');
+
+    // Only register convergence routes if image generation is available
+    if (imageGenerationService) {
+      try {
+        // Initialize convergence service dependencies
+        const storageService = getGCSStorageService();
+        const depthEstimationService = createDepthEstimationService({
+          storageService,
+        });
+        const videoPreviewService = createVideoPreviewService({
+          storageService,
+        });
+
+        // Create the ConvergenceService with all dependencies
+        const convergenceService = new ConvergenceService({
+          imageGenerationService,
+          depthEstimationService,
+          sessionStore: getSessionStore(),
+          promptBuilder: getPromptBuilderService(),
+          creditsService: getCreditsService(),
+          storageService,
+          videoPreviewService,
+        });
+
+        // Create and register convergence routes
+        const convergenceRoutes = createConvergenceRoutes({
+          convergenceService,
+        });
+
+        app.use('/api/convergence', apiAuthMiddleware, convergenceRoutes);
+      } catch (error) {
+        // Log error but don't fail app startup - convergence is optional
+        console.warn('Failed to initialize convergence routes:', (error as Error).message);
+      }
+    }
+  }
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)

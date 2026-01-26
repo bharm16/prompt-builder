@@ -1,13 +1,14 @@
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
+import type { ResolvedPrompt } from '@shared/types/asset';
 import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/constants';
 import { parseImageStoryboardGenerateRequest } from '../imageStoryboardRequest';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageStoryboardGenerateServices = Pick<
   PreviewRoutesServices,
-  'storyboardPreviewService' | 'userCreditService'
+  'storyboardPreviewService' | 'userCreditService' | 'assetService'
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
@@ -34,9 +35,26 @@ const extractHost = (value: string | undefined): string | null => {
   }
 };
 
+const selectCharacterReferenceImage = (
+  resolved: ResolvedPrompt | null
+): string | undefined => {
+  if (!resolved) {
+    return undefined;
+  }
+  const candidates = resolved.referenceImages
+    .filter((image) => image.assetType === 'character')
+    .map((image) => image.imageUrl.trim())
+    .filter((imageUrl) => imageUrl.length > 0);
+  if (candidates.length !== 1) {
+    return undefined;
+  }
+  return candidates[0];
+};
+
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
   userCreditService,
+  assetService,
 }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
@@ -84,6 +102,43 @@ export const createImageStoryboardGenerateHandler = ({
       });
     }
 
+    let resolvedPrompt = prompt;
+    let resolvedAssetCount = 0;
+    let resolvedCharacterCount = 0;
+    let referenceImageUrl: string | undefined;
+
+    if (assetService) {
+      try {
+        const resolved = await assetService.resolvePrompt(userId, prompt);
+        resolvedPrompt = resolved.expandedText;
+        resolvedAssetCount = resolved.assets.length;
+        resolvedCharacterCount = resolved.characters.length;
+        if (!seedImageUrl) {
+          referenceImageUrl = selectCharacterReferenceImage(resolved);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error(
+          'Storyboard prompt resolution failed',
+          error instanceof Error ? error : new Error(errorMessage),
+          {
+            userId,
+            path: req.path,
+          }
+        );
+        return res.status(500).json({
+          success: false,
+          error: 'Storyboard prompt resolution failed',
+          message: errorMessage,
+        });
+      }
+    } else {
+      logger.warn('Asset service unavailable for storyboard prompt resolution', {
+        userId,
+        path: req.path,
+      });
+    }
+
     const storyboardFrames = seedImageUrl
       ? Math.max(0, STORYBOARD_FRAME_COUNT - 1)
       : STORYBOARD_FRAME_COUNT;
@@ -92,12 +147,16 @@ export const createImageStoryboardGenerateHandler = ({
     logger.info('Storyboard preview generation requested', {
       userId,
       promptLength: prompt.length,
+      resolvedPromptLength: resolvedPrompt.length,
       aspectRatio,
       speedMode,
       seedProvided: seed !== undefined,
       hasSeedImage: Boolean(seedImageUrl),
+      usedReferenceImage: Boolean(referenceImageUrl),
       previewCost,
       storyboardFrames,
+      resolvedAssetCount,
+      resolvedCharacterCount,
     });
 
     const hasCredits = await userCreditService.reserveCredits(userId, previewCost);
@@ -116,9 +175,10 @@ export const createImageStoryboardGenerateHandler = ({
 
     try {
       const result = await storyboardPreviewService.generateStoryboard({
-        prompt,
+        prompt: resolvedPrompt,
         ...(aspectRatio ? { aspectRatio } : {}),
         ...(seedImageUrl ? { seedImageUrl } : {}),
+        ...(referenceImageUrl ? { referenceImageUrl } : {}),
         ...(speedMode ? { speedMode } : {}),
         ...(seed !== undefined ? { seed } : {}),
         ...(userId ? { userId } : {}),

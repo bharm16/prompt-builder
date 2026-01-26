@@ -12,6 +12,8 @@ import type { ToolSidebarProps } from './types';
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
  *
  * Layout: 60px rail + 400px panel (always visible side-by-side)
+ * 
+ * Requirement 16.1-16.4: Tool panel integration with Create and Studio tools
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const {
@@ -59,7 +61,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     onCreateAsset,
   } = props;
 
-  const { activePanel, setActivePanel } = useToolSidebarState('tool');
+  const { activePanel, setActivePanel } = useToolSidebarState('studio');
 
   const characterAssets = assetsByType.character ?? assets.filter((asset) => asset.type === 'character');
 
@@ -91,7 +93,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           />
         )}
 
-        {activePanel === 'tool' && (
+        {activePanel === 'studio' && (
           <GenerationControlsPanel
             prompt={prompt}
             {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
@@ -116,6 +118,13 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
             onBack={() => setActivePanel('sessions')}
           />
+        )}
+
+        {/* Create panel content is rendered in the main workspace via ConvergenceFlow */}
+        {activePanel === 'create' && (
+          <div className="p-4 text-[#A1AFC5] text-sm">
+            <p>Visual Convergence flow is displayed in the main workspace.</p>
+          </div>
         )}
 
         {activePanel === 'characters' && (

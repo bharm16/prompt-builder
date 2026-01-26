@@ -17,6 +17,7 @@ export interface StoryboardPreviewRequest {
   prompt: string;
   aspectRatio?: string;
   seedImageUrl?: string;
+  referenceImageUrl?: string;
   speedMode?: ImagePreviewSpeedMode;
   seed?: number;
   userId?: string;
@@ -51,13 +52,17 @@ export class StoryboardPreviewService {
     }
 
     const userId = request.userId ?? 'anonymous';
+    const seedImageUrl = normalizeSeedImageUrl(request.seedImageUrl);
+    const referenceImageUrl = normalizeSeedImageUrl(request.referenceImageUrl);
+    const effectiveReferenceImageUrl = seedImageUrl ? undefined : referenceImageUrl;
     this.log.info('Storyboard preview generation started', {
       userId,
       promptLength: trimmedPrompt.length,
       aspectRatio: request.aspectRatio,
       speedMode: request.speedMode,
       seedProvided: request.seed !== undefined,
-      hasSeedImage: Boolean(request.seedImageUrl),
+      hasSeedImage: Boolean(seedImageUrl),
+      hasReferenceImage: Boolean(referenceImageUrl),
     });
     const deltas = await this.storyboardFramePlanner.planDeltas(
       trimmedPrompt,
@@ -73,17 +78,24 @@ export class StoryboardPreviewService {
       deltaCount: deltas.length,
     });
 
-    const seedImageUrl = normalizeSeedImageUrl(request.seedImageUrl);
     const { baseImageUrl, baseProviderUrl, baseStoragePath } = await this.resolveBaseImage({
       prompt: trimmedPrompt,
       ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
       ...(seedImageUrl ? { seedImageUrl } : {}),
+      ...(effectiveReferenceImageUrl ? { referenceImageUrl: effectiveReferenceImageUrl } : {}),
+      ...(request.speedMode ? { speedMode: request.speedMode } : {}),
       userId,
     });
+    const baseProvider = seedImageUrl
+      ? 'seed-image'
+      : effectiveReferenceImageUrl
+        ? EDIT_PROVIDER
+        : BASE_PROVIDER;
     this.log.info('Storyboard base image resolved', {
       userId,
-      baseProvider: BASE_PROVIDER,
+      baseProvider,
       usedSeedImage: Boolean(seedImageUrl),
+      usedReferenceImage: Boolean(effectiveReferenceImageUrl),
     });
 
     const { imageUrls, storagePaths } = await this.generateEditFrames({
@@ -101,7 +113,7 @@ export class StoryboardPreviewService {
     this.log.info('Storyboard frames generated', {
       userId,
       imageCount: imageUrls.length,
-      baseProvider: BASE_PROVIDER,
+      baseProvider,
       editProvider: EDIT_PROVIDER,
     });
 
@@ -117,20 +129,28 @@ export class StoryboardPreviewService {
     prompt: string;
     aspectRatio?: string;
     seedImageUrl?: string;
+    referenceImageUrl?: string;
+    speedMode?: ImagePreviewSpeedMode;
     userId: string;
   }): Promise<{ baseImageUrl: string; baseProviderUrl: string; baseStoragePath?: string }> {
-    if (options.seedImageUrl) {
+    const normalizedSeedImageUrl = normalizeSeedImageUrl(options.seedImageUrl);
+    if (normalizedSeedImageUrl) {
       return {
-        baseImageUrl: options.seedImageUrl,
-        baseProviderUrl: options.seedImageUrl,
+        baseImageUrl: normalizedSeedImageUrl,
+        baseProviderUrl: normalizedSeedImageUrl,
       };
     }
+
+    const referenceImageUrl = normalizeSeedImageUrl(options.referenceImageUrl);
+    const provider = referenceImageUrl ? EDIT_PROVIDER : BASE_PROVIDER;
 
     let baseResult;
     try {
       baseResult = await this.imageGenerationService.generatePreview(options.prompt, {
         ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
-        provider: BASE_PROVIDER,
+        provider,
+        ...(referenceImageUrl ? { inputImageUrl: referenceImageUrl } : {}),
+        ...(options.speedMode ? { speedMode: options.speedMode } : {}),
         userId: options.userId,
         disablePromptTransformation: true,
       });
@@ -141,8 +161,9 @@ export class StoryboardPreviewService {
         error instanceof Error ? error : new Error(errorMessage),
         {
           userId: options.userId,
-          provider: BASE_PROVIDER,
+          provider,
           aspectRatio: options.aspectRatio,
+          usedReferenceImage: Boolean(referenceImageUrl),
         }
       );
       throw error;

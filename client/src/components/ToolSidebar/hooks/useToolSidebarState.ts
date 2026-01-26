@@ -9,7 +9,7 @@ interface UseToolSidebarStateReturn {
 }
 
 export function useToolSidebarState(
-  defaultPanel: ToolPanelType = 'tool'
+  defaultPanel: ToolPanelType = 'studio'
 ): UseToolSidebarStateReturn {
   const [activePanel, setActivePanel] = useState<ToolPanelType>(defaultPanel);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);

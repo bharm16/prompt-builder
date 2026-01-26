@@ -115,6 +115,47 @@ describe('StoryboardPreviewService', () => {
       expect(firstEditCall?.inputImageUrl).toBe('https://images.example.com/base.webp');
     });
 
+    it('uses a reference image to generate the base frame when provided', async () => {
+      const { imageGenerationService, storyboardFramePlanner, planDeltas, generatePreview } =
+        createServices();
+      planDeltas.mockResolvedValueOnce(['delta 1', 'delta 2', 'delta 3']);
+      generatePreview
+        .mockResolvedValueOnce({
+          imageUrl: 'https://images.example.com/base.webp',
+          providerUrl: 'https://images.example.com/base-provider.webp',
+          metadata: {
+            aspectRatio: '16:9',
+            model: 'kontext-fast',
+            duration: 1200,
+            generatedAt: new Date().toISOString(),
+          },
+        })
+        .mockResolvedValue({
+          imageUrl: 'https://images.example.com/edit.webp',
+          providerUrl: 'https://images.example.com/edit-provider.webp',
+          metadata: {
+            aspectRatio: '16:9',
+            model: 'kontext-fast',
+            duration: 1200,
+            generatedAt: new Date().toISOString(),
+          },
+        });
+
+      const service = new StoryboardPreviewService({
+        imageGenerationService,
+        storyboardFramePlanner,
+      });
+
+      await service.generateStoryboard({
+        prompt: 'valid prompt',
+        referenceImageUrl: 'https://images.example.com/reference.webp',
+      });
+
+      const baseCall = generatePreview.mock.calls[0]?.[1];
+      expect(baseCall?.provider).toBe(EDIT_PROVIDER);
+      expect(baseCall?.inputImageUrl).toBe('https://images.example.com/reference.webp');
+    });
+
     it('omits edit seeds when none are provided', async () => {
       const { imageGenerationService, storyboardFramePlanner, planDeltas, generatePreview } =
         createServices();
