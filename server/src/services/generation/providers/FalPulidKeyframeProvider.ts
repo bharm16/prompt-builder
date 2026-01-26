@@ -13,6 +13,7 @@
  */
 
 import { logger } from '@infrastructure/Logger';
+import { resolveFalApiKey } from '@utils/falApiKey';
 
 export interface FalPulidKeyframeOptions {
   prompt: string;
@@ -79,7 +80,7 @@ export class FalPulidKeyframeProvider {
   private readonly log = logger.child({ service: 'FalPulidKeyframeProvider' });
 
   constructor(options: { apiKey?: string } = {}) {
-    this.apiKey = options.apiKey || process.env.FAL_KEY || process.env.FAL_API_KEY || null;
+    this.apiKey = resolveFalApiKey(options.apiKey);
   }
 
   public isAvailable(): boolean {
@@ -91,7 +92,7 @@ export class FalPulidKeyframeProvider {
    */
   public async generateKeyframe(options: FalPulidKeyframeOptions): Promise<FalPulidKeyframeResult> {
     if (!this.apiKey) {
-      throw new Error('Fal.ai provider is not configured. FAL_KEY is required.');
+      throw new Error('Fal.ai provider is not configured. Set FAL_KEY or FAL_API_KEY.');
     }
 
     if (!options.faceImageUrl) {

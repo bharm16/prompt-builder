@@ -100,7 +100,7 @@ export class KeyframeGenerationService {
     }
 
     if (!this.pulidProvider.isAvailable()) {
-      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY to enable face-consistent keyframes.');
+      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY or FAL_API_KEY to enable face-consistent keyframes.');
     }
 
     return this.generateWithPulid({
@@ -177,7 +177,7 @@ export class KeyframeGenerationService {
     count?: number;
   }): Promise<KeyframeResult[]> {
     if (!this.pulidProvider.isAvailable()) {
-      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY to enable face-consistent keyframes.');
+      throw new Error('PuLID keyframe generation is not configured. Set FAL_KEY or FAL_API_KEY to enable face-consistent keyframes.');
     }
     if (!character?.primaryImageUrl) {
       throw new Error('Character must have a primary reference image');

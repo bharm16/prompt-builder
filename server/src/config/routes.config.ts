@@ -27,6 +27,7 @@ import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
 import { createConvergenceRoutes } from '@routes/convergence/convergence.routes';
+import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
 
 // Import convergence services
@@ -72,6 +73,9 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       videoContentAccessService: container.resolve('videoContentAccessService'),
     });
     app.use('/api/preview', publicPreviewRoutes);
+
+    const convergenceMediaRoutes = createConvergenceMediaRoutes();
+    app.use('/api/convergence/media', convergenceMediaRoutes);
   }
 
   // ============================================================================

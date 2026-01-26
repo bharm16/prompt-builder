@@ -1,30 +1,38 @@
 /**
  * DepthEstimationService for Visual Convergence
  *
- * Integrates with Replicate API to run Depth Anything v2 model for depth map generation.
+ * Integrates with fal.ai Depth Anything v2 (primary) with Replicate fallback for depth map generation.
  * Used to create depth maps from images for client-side camera motion rendering.
  *
  * Requirements:
  * - 5.1: Generate depth map from last generated image using Depth Anything v2
- * - 5.2: Use Replicate API to run the depth estimation model
+ * - 5.2: Use fal.ai API to run the depth estimation model
  * - 5.5: If depth estimation fails, offer text-only camera motion selection as fallback
  *
  * @module convergence/depth
  */
 
+import { fal } from '@fal-ai/client';
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
+import { isFalKeyPlaceholder, resolveFalApiKey } from '@utils/falApiKey';
 import { withRetry } from '../helpers';
 import type { StorageService } from '../storage';
+import type { DepthEstimationProvider, FalDepthResponse } from './types';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
 /**
- * Alternative model identifier (shorter version that Replicate resolves)
+ * fal.ai model identifier for Depth Anything v2
  */
-const DEPTH_MODEL_SHORT = 'cjwbw/depth-anything-v2' as const;
+const FAL_DEPTH_MODEL = 'fal-ai/image-preprocessors/depth-anything/v2' as const;
+
+/**
+ * Replicate fallback model identifier (Depth Anything v1)
+ */
+const REPLICATE_DEPTH_MODEL_FALLBACK = 'cjwbw/depth-anything' as const;
 
 /**
  * Configuration for depth estimation
@@ -44,7 +52,7 @@ const DEPTH_ESTIMATION_CONFIG = {
 
 /**
  * Interface for depth estimation operations.
- * Abstracts the Replicate API integration for easier testing.
+ * Abstracts provider integration for easier testing.
  */
 export interface DepthEstimationService {
   /**
@@ -58,7 +66,7 @@ export interface DepthEstimationService {
 
   /**
    * Check if the depth estimation service is available
-   * (i.e., API token is configured)
+   * (i.e., a provider is configured)
    *
    * @returns true if the service can be used
    */
@@ -73,8 +81,10 @@ export interface DepthEstimationService {
  * Options for creating a DepthEstimationService
  */
 export interface DepthEstimationServiceOptions {
-  /** Replicate API token (defaults to REPLICATE_API_TOKEN env var) */
-  apiToken?: string | undefined;
+  /** fal.ai API key (defaults to FAL_KEY/FAL_API_KEY env vars) */
+  falApiKey?: string | undefined;
+  /** Replicate API token for fallback (defaults to REPLICATE_API_TOKEN env var) */
+  replicateApiToken?: string | undefined;
   /** Storage service for persisting depth maps to GCS */
   storageService: StorageService;
   /** User ID for storage path organization */
@@ -82,25 +92,43 @@ export interface DepthEstimationServiceOptions {
 }
 
 /**
- * Replicate-based implementation of DepthEstimationService.
+ * fal.ai-based implementation of DepthEstimationService with Replicate fallback.
  *
  * Uses Depth Anything v2 model to generate depth maps from images.
  * Depth maps are uploaded to GCS and served via signed URLs.
  */
 export class ReplicateDepthEstimationService implements DepthEstimationService {
   private readonly log = logger.child({ service: 'DepthEstimationService' });
+  private readonly falAvailable: boolean;
   private readonly replicate: Replicate | null;
   private readonly storageService: StorageService;
   private readonly userId: string;
 
   constructor(options: DepthEstimationServiceOptions) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const falApiKey = resolveFalApiKey(options.falApiKey);
+    const replicateApiToken = options.replicateApiToken || process.env.REPLICATE_API_TOKEN;
 
-    if (apiToken) {
-      this.replicate = new Replicate({ auth: apiToken });
+    if (falApiKey) {
+      fal.config({ credentials: falApiKey });
+      this.falAvailable = true;
+    } else {
+      this.falAvailable = false;
+      const envFalKey = options.falApiKey ? null : process.env.FAL_KEY;
+      if (isFalKeyPlaceholder(envFalKey)) {
+        this.log.warn('FAL_KEY appears to reference another env var; fal.ai depth estimation unavailable');
+      } else {
+        this.log.warn('FAL_KEY/FAL_API_KEY not provided, fal.ai depth estimation unavailable');
+      }
+    }
+
+    if (replicateApiToken) {
+      this.replicate = new Replicate({ auth: replicateApiToken });
     } else {
       this.replicate = null;
-      this.log.warn('REPLICATE_API_TOKEN not provided, depth estimation will be unavailable');
+    }
+
+    if (!this.falAvailable && !this.replicate) {
+      this.log.warn('No depth estimation providers available');
     }
 
     this.storageService = options.storageService;
@@ -111,13 +139,13 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
    * Check if the depth estimation service is available
    */
   isAvailable(): boolean {
-    return this.replicate !== null;
+    return this.falAvailable || this.replicate !== null;
   }
 
   /**
    * Generate a depth map from an image URL
    *
-   * Uses Depth Anything v2 via Replicate API with retry logic.
+   * Uses fal.ai Depth Anything v2 with Replicate fallback and retry logic.
    * The resulting depth map is uploaded to GCS and returned as a signed URL.
    *
    * @param imageUrl - URL of the source image
@@ -125,22 +153,51 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
    * @throws Error if depth estimation fails after retries
    */
   async estimateDepth(imageUrl: string): Promise<string> {
-    if (!this.replicate) {
-      throw new Error('Depth estimation service is not available: missing API token');
+    if (!this.isAvailable()) {
+      throw new Error('Depth estimation service is not available: no providers configured');
     }
 
     const startTime = Date.now();
+    const primaryProvider: DepthEstimationProvider = this.falAvailable ? 'fal.ai' : 'replicate';
     this.log.info('Starting depth estimation', {
       imageUrlHost: this.getUrlHost(imageUrl),
+      primaryProvider,
     });
 
     try {
-      // Use withRetry for resilience (Requirement 5.5 fallback handled by caller)
-      const depthMapTempUrl = await withRetry(
-        () => this.runDepthEstimation(imageUrl),
-        DEPTH_ESTIMATION_CONFIG.maxRetries,
-        DEPTH_ESTIMATION_CONFIG.baseDelayMs
-      );
+      let depthMapTempUrl: string;
+
+      if (this.falAvailable) {
+        try {
+          depthMapTempUrl = await withRetry(
+            () => this.runFalDepthEstimation(imageUrl),
+            DEPTH_ESTIMATION_CONFIG.maxRetries,
+            DEPTH_ESTIMATION_CONFIG.baseDelayMs
+          );
+        } catch (falError) {
+          this.log.warn('fal.ai depth estimation failed, trying Replicate fallback', {
+            error: (falError as Error).message,
+          });
+
+          if (this.replicate) {
+            depthMapTempUrl = await withRetry(
+              () => this.runReplicateDepthEstimation(imageUrl),
+              DEPTH_ESTIMATION_CONFIG.maxRetries,
+              DEPTH_ESTIMATION_CONFIG.baseDelayMs
+            );
+          } else {
+            throw falError;
+          }
+        }
+      } else if (this.replicate) {
+        depthMapTempUrl = await withRetry(
+          () => this.runReplicateDepthEstimation(imageUrl),
+          DEPTH_ESTIMATION_CONFIG.maxRetries,
+          DEPTH_ESTIMATION_CONFIG.baseDelayMs
+        );
+      } else {
+        throw new Error('No depth estimation providers available');
+      }
 
       // Upload depth map to GCS and generate a signed URL
       const destination = `convergence/${this.userId}/depth/${Date.now()}-depth.png`;
@@ -168,18 +225,50 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
   // ============================================================================
 
   /**
+   * Run the depth estimation model on fal.ai
+   *
+   * @param imageUrl - URL of the source image
+   * @returns Temporary URL of the generated depth map
+   */
+  private async runFalDepthEstimation(imageUrl: string): Promise<string> {
+    this.log.debug('Calling fal.ai depth estimation', {
+      model: FAL_DEPTH_MODEL,
+      imageUrlHost: this.getUrlHost(imageUrl),
+    });
+
+    const result = await fal.subscribe(FAL_DEPTH_MODEL, {
+      input: {
+        image_url: imageUrl,
+      },
+      logs: false,
+    });
+
+    const depthMapUrl = (result as { data?: FalDepthResponse }).data?.image?.url;
+
+    if (!depthMapUrl) {
+      throw new Error('Invalid output format from fal.ai: Could not extract depth map URL');
+    }
+
+    this.log.debug('fal.ai depth estimation response', {
+      outputUrl: depthMapUrl,
+    });
+
+    return depthMapUrl;
+  }
+
+  /**
    * Run the depth estimation model on Replicate
    *
    * @param imageUrl - URL of the source image
    * @returns Temporary URL of the generated depth map
    */
-  private async runDepthEstimation(imageUrl: string): Promise<string> {
+  private async runReplicateDepthEstimation(imageUrl: string): Promise<string> {
     if (!this.replicate) {
       throw new Error('Replicate client not initialized');
     }
 
-    this.log.debug('Calling Replicate depth estimation', {
-      model: DEPTH_MODEL_SHORT,
+    this.log.debug('Calling Replicate depth estimation (fallback)', {
+      model: REPLICATE_DEPTH_MODEL_FALLBACK,
       imageUrlHost: this.getUrlHost(imageUrl),
     });
 
@@ -188,7 +277,7 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
     };
 
     const output = await this.replicate.run(
-      DEPTH_MODEL_SHORT as `${string}/${string}`,
+      REPLICATE_DEPTH_MODEL_FALLBACK as `${string}/${string}`,
       { input }
     );
 
@@ -281,18 +370,21 @@ export function createDepthEstimationService(
  *
  * @param storageService - Storage service for GCS uploads
  * @param userId - User ID for storage path organization
- * @param apiToken - Optional Replicate API token
+ * @param replicateApiToken - Optional Replicate API token
+ * @param falApiKey - Optional fal.ai API key
  * @returns DepthEstimationService instance
  */
 export function createDepthEstimationServiceForUser(
   storageService: StorageService,
   userId: string,
-  apiToken?: string
+  replicateApiToken?: string,
+  falApiKey?: string
 ): DepthEstimationService {
   return new ReplicateDepthEstimationService({
     storageService,
     userId,
-    apiToken,
+    replicateApiToken,
+    falApiKey,
   });
 }
 

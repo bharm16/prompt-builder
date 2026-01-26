@@ -10,6 +10,7 @@ import type {
   CapabilityValue,
 } from '../shared/capabilities';
 import { MANUAL_CAPABILITIES_REGISTRY } from '../server/src/services/capabilities/manualRegistry';
+import { resolveFalApiKey } from '../server/src/utils/falApiKey';
 
 type CapabilitiesRegistry = Record<string, Record<string, CapabilitiesSchema>>;
 type FieldOverrides = Record<string, Partial<CapabilityField>>;
@@ -1212,7 +1213,7 @@ const updateFal = async (
   registry: CapabilitiesRegistry,
   generatedAt: string
 ): Promise<void> => {
-  const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY;
+  const falKey = resolveFalApiKey();
   const endpoints = [
     {
       provider: 'kling',

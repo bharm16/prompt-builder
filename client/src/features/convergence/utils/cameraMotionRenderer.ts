@@ -14,6 +14,7 @@
  */
 
 import * as THREE from 'three';
+import { API_CONFIG } from '@/config/api.config';
 import type { CameraPath, Position3D } from '../types';
 
 // ============================================================================
@@ -235,6 +236,36 @@ function loadTexture(url: string): Promise<THREE.Texture> {
   });
 }
 
+const CONVERGENCE_MEDIA_PROXY_PATH = '/convergence/media/proxy';
+
+const shouldProxyUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === 'storage.googleapis.com' ||
+      parsed.hostname.endsWith('.storage.googleapis.com')
+    );
+  } catch {
+    return false;
+  }
+};
+
+const buildProxyUrl = (url: string): string => {
+  if (!shouldProxyUrl(url)) {
+    return url;
+  }
+
+  const base = API_CONFIG.baseURL.endsWith('/')
+    ? API_CONFIG.baseURL.slice(0, -1)
+    : API_CONFIG.baseURL;
+
+  if (url.includes(CONVERGENCE_MEDIA_PROXY_PATH)) {
+    return url;
+  }
+
+  return `${base}${CONVERGENCE_MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+};
+
 /**
  * Loads both image and depth map textures
  *
@@ -247,8 +278,8 @@ async function loadTextures(
   depthMapUrl: string
 ): Promise<{ imageTexture: THREE.Texture; depthTexture: THREE.Texture }> {
   const [imageTexture, depthTexture] = await Promise.all([
-    loadTexture(imageUrl),
-    loadTexture(depthMapUrl),
+    loadTexture(buildProxyUrl(imageUrl)),
+    loadTexture(buildProxyUrl(depthMapUrl)),
   ]);
 
   return { imageTexture, depthTexture };
@@ -526,4 +557,3 @@ function disposeResources(resources: ThreeResources): void {
 export function createCleanupFunction(resources: ThreeResources): () => void {
   return () => disposeResources(resources);
 }
-

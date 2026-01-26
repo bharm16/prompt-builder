@@ -68,6 +68,7 @@ import { CategoryAlignmentService } from '@services/enhancement/services/Categor
 
 // Import config
 import { createRedisClient } from './redis.ts';
+import { resolveFalApiKey } from '@utils/falApiKey';
 
 
 export interface ServiceConfig {
@@ -642,9 +643,9 @@ export async function configureServices(): Promise<DIContainer> {
   container.register(
     'keyframeGenerationService',
     () => {
-      const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY;
+      const falKey = resolveFalApiKey();
       if (!falKey) {
-        logger.warn('KeyframeGenerationService: FAL_KEY not set, service will be unavailable');
+        logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
         return null;
       }
       const replicateToken = process.env.REPLICATE_API_TOKEN;
@@ -660,9 +661,9 @@ export async function configureServices(): Promise<DIContainer> {
   container.register(
     'keyframeService',
     () => {
-      const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY;
+      const falKey = resolveFalApiKey();
       if (!falKey) {
-        logger.warn('KeyframeGenerationService: FAL_KEY not set, service will be unavailable');
+        logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
         return null;
       }
       const replicateToken = process.env.REPLICATE_API_TOKEN;

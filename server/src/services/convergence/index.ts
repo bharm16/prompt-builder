@@ -126,7 +126,12 @@ export {
 } from './storage';
 
 // Depth Estimation Service
-export type { DepthEstimationService, DepthEstimationServiceOptions } from './depth';
+export type {
+  DepthEstimationService,
+  DepthEstimationServiceOptions,
+  DepthEstimationProvider,
+  FalDepthResponse,
+} from './depth';
 export {
   ReplicateDepthEstimationService,
   createDepthEstimationService,
