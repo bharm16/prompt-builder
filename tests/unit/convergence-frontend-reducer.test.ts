@@ -97,6 +97,7 @@ function createTestSession(overrides: Partial<ConvergenceSession> = {}): Converg
     id: 'test-session-id',
     userId: 'test-user-id',
     intent: 'A beautiful sunset over the ocean',
+    aspectRatio: '16:9',
     direction: 'cinematic',
     lockedDimensions: [createTestLockedDimension()],
     currentStep: 'framing',
@@ -106,6 +107,10 @@ function createTestSession(overrides: Partial<ConvergenceSession> = {}): Converg
       mood: [createTestImage({ dimension: 'mood' })],
     },
     regenerationCounts: { direction: 1 },
+    startingPointMode: 'converge',
+    finalFrameUrl: null,
+    finalFrameRegenerations: 0,
+    uploadedImageUrl: null,
     depthMapUrl: null,
     cameraMotion: null,
     subjectMotion: null,
@@ -202,14 +207,14 @@ describe('convergenceReducer', () => {
         });
 
         expect(result.sessionId).toBe('session-123');
-        expect(result.step).toBe('direction');
+        expect(result.step).toBe('starting_point');
         expect(result.currentImages).toEqual(images);
         expect(result.currentOptions).toEqual(options);
         expect(result.isLoading).toBe(false);
         expect(result.loadingOperation).toBeNull();
         expect(result.abortController).toBeNull();
         expect(result.focusedOptionIndex).toBe(0);
-        expect(result.imageHistory.get('direction')).toEqual(images);
+        expect(result.imageHistory.size).toBe(0);
       });
     });
 

@@ -46,6 +46,10 @@ interface ConvergenceSessionDocument {
   generatedImages: GeneratedImage[];
   imageHistory: Record<string, GeneratedImage[]>;
   regenerationCounts: Record<string, number>;
+  startingPointMode: string | null;
+  finalFrameUrl: string | null;
+  finalFrameRegenerations: number;
+  uploadedImageUrl: string | null;
   depthMapUrl: string | null;
   cameraMotion: string | null;
   subjectMotion: string | null;
@@ -89,6 +93,10 @@ function documentToSession(doc: DocumentData): ConvergenceSession {
       ])
     ),
     regenerationCounts: doc.regenerationCounts || {},
+    startingPointMode: doc.startingPointMode ?? null,
+    finalFrameUrl: doc.finalFrameUrl ?? null,
+    finalFrameRegenerations: doc.finalFrameRegenerations ?? 0,
+    uploadedImageUrl: doc.uploadedImageUrl ?? null,
     depthMapUrl: doc.depthMapUrl,
     cameraMotion: doc.cameraMotion,
     subjectMotion: doc.subjectMotion,
@@ -122,6 +130,10 @@ function sessionToDocument(
     })),
     imageHistory: session.imageHistory,
     regenerationCounts: session.regenerationCounts,
+    startingPointMode: session.startingPointMode,
+    finalFrameUrl: session.finalFrameUrl,
+    finalFrameRegenerations: session.finalFrameRegenerations,
+    uploadedImageUrl: session.uploadedImageUrl,
     depthMapUrl: session.depthMapUrl,
     cameraMotion: session.cameraMotion,
     subjectMotion: session.subjectMotion,

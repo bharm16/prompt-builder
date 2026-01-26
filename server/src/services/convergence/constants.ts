@@ -37,6 +37,12 @@ export const CONVERGENCE_COSTS = {
   DIRECTION_IMAGES: 4,
   /** Cost for generating 4 dimension images (4 images × 1 credit each) */
   DIMENSION_IMAGES: 4,
+  /** Cost for generating HQ final frame (Flux Pro) */
+  FINAL_FRAME_HQ: 2,
+  /** Cost for regenerating the HQ final frame */
+  FINAL_FRAME_REGENERATE: 2,
+  /** Cost for quick generate mode (single HQ image) */
+  QUICK_GENERATE: 2,
   /** Cost for depth estimation using Depth Anything v2 */
   DEPTH_ESTIMATION: 1,
   /** Cost for Wan 2.2 video preview */
@@ -44,8 +50,19 @@ export const CONVERGENCE_COSTS = {
   /** Cost for regenerating dimension images (same as dimension images) */
   REGENERATION: 4,
   /** Estimated total cost for completing the full flow */
-  ESTIMATED_TOTAL: 4 + 4 + 4 + 4 + 1 + 5, // 22 credits
+  ESTIMATED_TOTAL: 4 + 4 + 4 + 4 + 2 + 1 + 5, // 24 credits
 } as const;
+
+/**
+ * Max number of allowed regenerations for the final frame
+ */
+export const MAX_FINAL_FRAME_REGENERATIONS = 3;
+
+/**
+ * Image generation providers for previews and HQ frames
+ */
+export const PREVIEW_PROVIDER = 'replicate-flux-schnell';
+export const FINAL_FRAME_PROVIDER = 'replicate-flux-pro';
 
 /**
  * Credit costs for final video generation by model

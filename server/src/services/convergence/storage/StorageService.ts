@@ -40,6 +40,23 @@ export interface StorageService {
   uploadBatch(tempUrls: string[], destinationPrefix: string): Promise<string[]>;
 
   /**
+   * Upload a remote image URL to GCS with a generated filename
+   * @param sourceUrl Remote URL to fetch
+   * @param destinationPrefix GCS path prefix (e.g., "convergence/userId123/final-frame")
+   * @returns Signed GCS URL
+   */
+  uploadFromUrl(sourceUrl: string, destinationPrefix: string): Promise<string>;
+
+  /**
+   * Upload a buffer to GCS with a provided destination path
+   * @param buffer File contents
+   * @param destination GCS object path
+   * @param contentType MIME type for the file
+   * @returns Signed GCS URL
+   */
+  uploadBuffer(buffer: Buffer, destination: string, contentType: string): Promise<string>;
+
+  /**
    * Delete images (for cleanup on session abandonment)
    * @param gcsUrls Array of signed GCS URLs to delete
    */
@@ -209,6 +226,67 @@ export class GCSStorageService implements StorageService {
       this.log.error('Batch upload failed', error as Error, {
         count: tempUrls.length,
         destinationPrefix,
+        duration,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a remote image URL to GCS with a generated filename.
+   */
+  async uploadFromUrl(sourceUrl: string, destinationPrefix: string): Promise<string> {
+    const sanitizedPrefix = destinationPrefix.replace(/\/+$/, '');
+    const destination = `${sanitizedPrefix}/${uuidv4()}.png`;
+    return this.upload(sourceUrl, destination);
+  }
+
+  /**
+   * Upload a buffer directly to GCS.
+   */
+  async uploadBuffer(buffer: Buffer, destination: string, contentType: string): Promise<string> {
+    const startTime = Date.now();
+    const normalizedContentType = this.normalizeContentType(
+      contentType || CONVERGENCE_STORAGE_CONFIG.defaultContentType
+    );
+
+    this.log.debug('Starting buffer upload', {
+      destination,
+      sizeBytes: buffer.length,
+      contentType: normalizedContentType,
+    });
+
+    try {
+      const file = this.bucket.file(destination);
+      const saveOptions: Parameters<typeof file.save>[1] = {
+        contentType: normalizedContentType,
+        resumable: false,
+        metadata: {
+          cacheControl: 'public, max-age=31536000',
+          metadata: {
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      };
+
+      await file.save(buffer, saveOptions);
+
+      const signedUrl = await this.getSignedUrl(file);
+      const duration = Date.now() - startTime;
+
+      this.log.info('Buffer upload completed', {
+        destination,
+        sizeBytes: buffer.length,
+        contentType: normalizedContentType,
+        duration,
+      });
+
+      return signedUrl;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.log.error('Buffer upload failed', error as Error, {
+        destination,
+        sizeBytes: buffer.length,
         duration,
       });
       throw error;

@@ -12,6 +12,7 @@
  * - Faster inference on fal.ai infrastructure
  */
 
+import { z, type ZodSchema } from 'zod';
 import { logger } from '@infrastructure/Logger';
 import { resolveFalApiKey } from '@utils/falApiKey';
 
@@ -35,24 +36,45 @@ export interface FalPulidKeyframeResult {
   seed?: number | undefined;
 }
 
-interface FalQueueUpdate {
-  status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-  logs?: Array<{ message: string }>;
-}
+const FAL_QUEUE_STATUS_SCHEMA = z.enum(['IN_QUEUE', 'IN_PROGRESS', 'COMPLETED', 'FAILED']);
 
-interface FalImageOutput {
-  url: string;
-  width?: number;
-  height?: number;
-  content_type?: string;
-}
+const FAL_QUEUE_LOG_SCHEMA = z.object({
+  message: z.string().optional(),
+}).passthrough();
 
-interface FalPulidResponse {
-  images?: FalImageOutput[];
-  image?: FalImageOutput;
-  seed?: number;
-  has_nsfw_concepts?: boolean[];
-}
+const FAL_QUEUE_ERROR_SCHEMA = z.object({
+  message: z.string().optional(),
+}).passthrough();
+
+const FAL_QUEUE_UPDATE_SCHEMA = z.object({
+  status: FAL_QUEUE_STATUS_SCHEMA,
+  logs: z.array(FAL_QUEUE_LOG_SCHEMA).optional(),
+  error: z.union([z.string(), FAL_QUEUE_ERROR_SCHEMA]).optional(),
+});
+
+const FAL_IMAGE_OUTPUT_SCHEMA = z.object({
+  url: z.string(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  content_type: z.string().optional(),
+});
+
+const FAL_PULID_RESPONSE_SCHEMA = z.object({
+  images: z.array(FAL_IMAGE_OUTPUT_SCHEMA).optional(),
+  image: FAL_IMAGE_OUTPUT_SCHEMA.optional(),
+  seed: z.number().optional(),
+  has_nsfw_concepts: z.array(z.boolean()).optional(),
+});
+
+const FAL_SUBMIT_RESPONSE_SCHEMA = z.object({
+  request_id: z.string(),
+  status_url: z.string(),
+  response_url: z.string(),
+});
+
+type FalQueueUpdate = z.infer<typeof FAL_QUEUE_UPDATE_SCHEMA>;
+type FalImageOutput = z.infer<typeof FAL_IMAGE_OUTPUT_SCHEMA>;
+type FalPulidResponse = z.infer<typeof FAL_PULID_RESPONSE_SCHEMA>;
 
 // Aspect ratio to dimensions mapping for Flux
 const ASPECT_RATIO_DIMENSIONS = {
@@ -130,7 +152,7 @@ export class FalPulidKeyframeProvider {
     });
 
     try {
-      const result = await this.callFalApi<FalPulidResponse>(FAL_PULID_MODEL, input);
+      const result = await this.callFalApi(FAL_PULID_MODEL, input, FAL_PULID_RESPONSE_SCHEMA);
       const durationMs = Math.round(performance.now() - startTime);
 
       const imageUrl = this.extractImageUrl(result);
@@ -199,7 +221,11 @@ export class FalPulidKeyframeProvider {
   /**
    * Call the fal.ai API with queue support
    */
-  private async callFalApi<T>(model: string, input: Record<string, unknown>): Promise<T> {
+  private async callFalApi<T>(
+    model: string,
+    input: Record<string, unknown>,
+    resultSchema: ZodSchema<T>
+  ): Promise<T> {
     const operation = 'callFalApi';
     const baseUrl = 'https://queue.fal.run';
     const submitUrl = `${baseUrl}/${model}`;
@@ -219,7 +245,8 @@ export class FalPulidKeyframeProvider {
       throw new Error(`Fal API submission failed (${submitResponse.status}): ${errorText}`);
     }
 
-    const submitResult = await submitResponse.json() as { request_id: string; status_url: string; response_url: string };
+    const submitJson: unknown = await submitResponse.json();
+    const submitResult = FAL_SUBMIT_RESPONSE_SCHEMA.parse(submitJson);
     const { request_id, status_url, response_url } = submitResult;
 
     this.log.debug('Fal request submitted', { operation, model, requestId: request_id });
@@ -238,7 +265,8 @@ export class FalPulidKeyframeProvider {
         throw new Error(`Fal status check failed: ${statusResponse.status}`);
       }
 
-      const status = await statusResponse.json() as FalQueueUpdate & { error?: string };
+      const statusJson: unknown = await statusResponse.json();
+      const status: FalQueueUpdate = FAL_QUEUE_UPDATE_SCHEMA.parse(statusJson);
 
       if (status.status === 'COMPLETED') {
         // Fetch the result
@@ -250,11 +278,16 @@ export class FalPulidKeyframeProvider {
           throw new Error(`Fal result fetch failed: ${resultResponse.status}`);
         }
 
-        return await resultResponse.json() as T;
+        const resultJson: unknown = await resultResponse.json();
+        return resultSchema.parse(resultJson);
       }
 
       if (status.status === 'FAILED') {
-        throw new Error(`Fal generation failed: ${status.error || 'Unknown error'}`);
+        const errorMessage =
+          typeof status.error === 'string'
+            ? status.error
+            : status.error?.message ?? 'Unknown error';
+        throw new Error(`Fal generation failed: ${errorMessage}`);
       }
 
       // Log progress
@@ -285,7 +318,7 @@ export class FalPulidKeyframeProvider {
   private extractImageUrl(result: FalPulidResponse): string | null {
     // Check for images array (common format)
     if (result.images && Array.isArray(result.images) && result.images.length > 0) {
-      const firstImage = result.images[0];
+      const firstImage: FalImageOutput | undefined = result.images[0];
       return firstImage?.url ?? null;
     }
 

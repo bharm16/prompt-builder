@@ -21,6 +21,7 @@ import { logger } from '@infrastructure/Logger';
 import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import type {
   ConvergenceSession,
+  ConvergenceStep,
   GeneratedImage,
   StartSessionRequest,
   StartSessionResponse,
@@ -33,6 +34,11 @@ import type {
   SelectCameraMotionRequest,
   GenerateSubjectMotionRequest,
   GenerateSubjectMotionResponse,
+  GenerateFinalFrameRequest,
+  GenerateFinalFrameResponse,
+  RegenerateFinalFrameRequest,
+  SetStartingPointRequest,
+  SetStartingPointResponse,
   FinalizeSessionResponse,
   AbandonSessionResponse,
   DimensionType,
@@ -46,8 +52,11 @@ import {
   CONVERGENCE_COSTS,
   DEFAULT_ASPECT_RATIO,
   DIRECTION_OPTIONS,
+  FINAL_FRAME_PROVIDER,
   GENERATION_COSTS,
+  MAX_FINAL_FRAME_REGENERATIONS,
   MAX_REGENERATIONS_PER_DIMENSION,
+  PREVIEW_PROVIDER,
 } from './constants';
 import { withRetry, getNextDimension, dimensionToStep } from './helpers';
 import type { SessionStore } from './session/SessionStore';
@@ -63,7 +72,6 @@ import { getDimensionConfig, getDimensionOption } from './prompt-builder/Dimensi
 // Configuration
 // ============================================================================
 
-const PREVIEW_PROVIDER = 'replicate-flux-schnell';
 const REQUIRED_DIMENSIONS: DimensionType[] = ['mood', 'framing', 'lighting'];
 
 // ============================================================================
@@ -132,8 +140,7 @@ export class ConvergenceService {
    * Requirements:
    * - 1.10-1.11: Check for existing active session (throw ACTIVE_SESSION_EXISTS)
    * - 1.1: Create session in Firestore
-   * - 15.6: Reserve credits and generate direction images
-   * - 1.7: Upload to GCS and update session
+   * - 15.6: Reserve credits when generation occurs (not at session start)
    *
    * @param request - Start session request with intent, optional aspectRatio, and optional forceNew
    * @param userId - Firebase Auth UID from auth middleware
@@ -195,10 +202,14 @@ export class ConvergenceService {
       aspectRatio,
       direction: null,
       lockedDimensions: [],
-      currentStep: 'direction',
+      currentStep: 'starting_point',
       generatedImages: [],
       imageHistory: {},
       regenerationCounts: {},
+      startingPointMode: null,
+      finalFrameUrl: null,
+      finalFrameRegenerations: 0,
+      uploadedImageUrl: null,
       depthMapUrl: null,
       cameraMotion: null,
       subjectMotion: null,
@@ -212,59 +223,175 @@ export class ConvergenceService {
 
     this.log.debug('Session created in Firestore', { sessionId });
 
-    // Generate direction images with credit reservation (Requirement 15.6)
-    const directionPrompts = this.promptBuilder.buildDirectionPrompts(request.intent);
-    const estimatedCost = CONVERGENCE_COSTS.DIRECTION_IMAGES;
+    this.log.info('Session started successfully', {
+      sessionId,
+      userId,
+      currentStep: 'starting_point',
+    });
 
-    try {
-      const images = await withCreditReservation(
-        this.credits,
-        userId,
-        estimatedCost,
-        async () => {
-          return this.generateAndPersistImages(
-            directionPrompts.map((d) => ({
-              prompt: d.prompt,
-              dimension: 'direction',
-              optionId: d.direction,
-            })),
-            userId,
-            aspectRatio
-          );
-        }
-      );
+    return {
+      sessionId,
+      images: [],
+      currentDimension: 'starting_point',
+      estimatedCost: 0,
+    };
+  }
 
-      // Update session with images (Requirement 1.7)
-      await this.sessions.update(sessionId, {
-        generatedImages: images,
-        imageHistory: { direction: images },
+  /**
+   * Set the starting point mode for a convergence session.
+   */
+  async setStartingPoint(
+    request: SetStartingPointRequest,
+    userId: string
+  ): Promise<SetStartingPointResponse> {
+    const { sessionId, mode, imageUrl } = request;
+
+    this.log.info('Setting starting point', {
+      sessionId,
+      userId,
+      mode,
+      hasImageUrl: Boolean(imageUrl),
+    });
+
+    const session = await this.getSessionWithOwnershipCheck(sessionId, userId);
+
+    if (session.currentStep !== 'starting_point' && session.currentStep !== 'intent') {
+      throw new ConvergenceError('INVALID_REQUEST', {
+        reason: 'Session not at starting_point step',
+        currentStep: session.currentStep,
       });
-
-      this.log.info('Session started successfully', {
-        sessionId,
-        userId,
-        imageCount: images.length,
-        creditsConsumed: estimatedCost,
-      });
-
-      return {
-        sessionId,
-        images,
-        currentDimension: 'direction',
-        options: DIRECTION_OPTIONS,
-        estimatedCost,
-      };
-    } catch (error) {
-      // If image generation fails, mark session as abandoned
-      this.log.error('Failed to generate direction images', error as Error, {
-        sessionId,
-        userId,
-      });
-
-      await this.sessions.update(sessionId, { status: 'abandoned' });
-
-      throw error;
     }
+
+    const baseUpdates = {
+      direction: null,
+      lockedDimensions: [],
+      generatedImages: [],
+      imageHistory: {},
+      regenerationCounts: {},
+      depthMapUrl: null,
+      cameraMotion: null,
+      subjectMotion: null,
+      finalPrompt: null,
+      finalFrameRegenerations: 0,
+      finalFrameUrl: null,
+      uploadedImageUrl: null,
+      startingPointMode: mode,
+    };
+
+    let finalFrameUrl: string | null = null;
+    let nextStep: ConvergenceStep;
+    let creditsConsumed = 0;
+    let images: GeneratedImage[] | undefined;
+    let options: Array<{ id: Direction; label: string }> | undefined;
+
+    switch (mode) {
+      case 'upload': {
+        if (!imageUrl) {
+          throw new ConvergenceError('INVALID_REQUEST', {
+            reason: 'imageUrl required for upload mode',
+          });
+        }
+
+        const storedUrl = await this.storage.uploadFromUrl(
+          imageUrl,
+          `convergence/${userId}/uploaded`
+        );
+
+        finalFrameUrl = storedUrl;
+        nextStep = 'final_frame';
+
+        await this.sessions.update(sessionId, {
+          ...baseUpdates,
+          uploadedImageUrl: storedUrl,
+          finalFrameUrl: storedUrl,
+          currentStep: 'final_frame',
+        });
+        break;
+      }
+
+      case 'quick': {
+        const prompt = this.promptBuilder.buildQuickGeneratePrompt(session.intent);
+
+        finalFrameUrl = await withCreditReservation(
+          this.credits,
+          userId,
+          CONVERGENCE_COSTS.QUICK_GENERATE,
+          async () => {
+            const result = await this.imageGen.generatePreview(prompt, {
+              aspectRatio: this.getSessionAspectRatio(session),
+              provider: FINAL_FRAME_PROVIDER,
+            });
+            return this.storage.uploadFromUrl(
+              result.imageUrl,
+              `convergence/${userId}/final-frame`
+            );
+          }
+        );
+
+        creditsConsumed = CONVERGENCE_COSTS.QUICK_GENERATE;
+        nextStep = 'final_frame';
+
+        await this.sessions.update(sessionId, {
+          ...baseUpdates,
+          finalFrameUrl,
+          currentStep: 'final_frame',
+        });
+        break;
+      }
+
+      case 'converge': {
+        const directionPrompts = this.promptBuilder.buildDirectionPrompts(session.intent);
+        const estimatedCost = CONVERGENCE_COSTS.DIRECTION_IMAGES;
+
+        images = await withCreditReservation(
+          this.credits,
+          userId,
+          estimatedCost,
+          async () => {
+            return this.generateAndPersistImages(
+              directionPrompts.map((d) => ({
+                prompt: d.prompt,
+                dimension: 'direction',
+                optionId: d.direction,
+              })),
+              userId,
+              this.getSessionAspectRatio(session)
+            );
+          }
+        );
+
+        creditsConsumed = estimatedCost;
+        nextStep = 'direction';
+        options = DIRECTION_OPTIONS;
+
+        await this.sessions.update(sessionId, {
+          ...baseUpdates,
+          currentStep: 'direction',
+          generatedImages: images,
+          imageHistory: { direction: images },
+        });
+        break;
+      }
+    }
+
+    const response: SetStartingPointResponse = {
+      sessionId,
+      mode,
+      nextStep,
+      creditsConsumed,
+    };
+
+    if (finalFrameUrl) {
+      response.finalFrameUrl = finalFrameUrl;
+    }
+    if (images) {
+      response.images = images;
+    }
+    if (options) {
+      response.options = options;
+    }
+
+    return response;
   }
 
   /**
@@ -568,9 +695,9 @@ export class ConvergenceService {
     // Get the next dimension in the flow
     const nextDimension = getNextDimension(dimension);
 
-    // 3.6: When lighting is locked, transition to camera_motion (no image generation)
+    // 3.6: When lighting is locked, transition to final frame (no image generation)
     if (dimension === 'lighting' || nextDimension === 'camera_motion') {
-      return this.transitionToCameraMotion(session, updatedLockedDimensions);
+      return this.transitionToFinalFrame(session, updatedLockedDimensions);
     }
 
     // 9.3.2: Generate next dimension images
@@ -649,42 +776,185 @@ export class ConvergenceService {
   }
 
   /**
-   * Transition to camera motion step (no image generation).
+   * Transition to final frame step (no image generation).
    *
-   * Requirement 3.6: When lighting is locked, transition to camera motion selection.
+   * Requirement 3.6: When lighting is locked, transition to final frame confirmation.
    *
    * @param session - Current convergence session
    * @param lockedDimensions - Updated locked dimensions including lighting
-   * @param newLockedDimension - The newly locked dimension (lighting)
-   * @returns SelectOptionResponse with camera_motion as currentDimension
+   * @returns SelectOptionResponse with final_frame as currentDimension
    */
-  private async transitionToCameraMotion(
+  private async transitionToFinalFrame(
     session: ConvergenceSession,
     lockedDimensions: LockedDimension[]
   ): Promise<SelectOptionResponse> {
-    this.log.debug('Transitioning to camera motion', {
+    this.log.debug('Transitioning to final frame', {
       sessionId: session.id,
     });
 
-    // Update session to camera_motion step
+    // Update session to final_frame step
     await this.sessions.update(session.id, {
       lockedDimensions,
-      currentStep: 'camera_motion',
+      currentStep: 'final_frame',
     });
 
-    this.log.info('Transitioned to camera motion', {
+    this.log.info('Transitioned to final frame', {
       sessionId: session.id,
       lockedDimensionCount: lockedDimensions.length,
     });
 
-    // Return response with empty images (camera motion uses depth-based rendering)
+    // Return response with empty images (final frame is generated separately)
     return {
       sessionId: session.id,
-      images: [], // No images generated for camera_motion step
-      currentDimension: 'camera_motion',
+      images: [], // No images generated for final_frame step
+      currentDimension: 'final_frame',
       lockedDimensions,
       creditsConsumed: 0, // No credits consumed for transition
     };
+  }
+
+  // ==========================================================================
+  // Final Frame Methods
+  // ==========================================================================
+
+  /**
+   * Generate high-quality final frame after dimension selection.
+   */
+  async generateFinalFrame(
+    request: GenerateFinalFrameRequest,
+    userId: string
+  ): Promise<GenerateFinalFrameResponse> {
+    const { sessionId } = request;
+
+    this.log.info('Generating final frame', {
+      sessionId,
+      userId,
+    });
+
+    const session = await this.getSessionWithOwnershipCheck(sessionId, userId);
+
+    if (!session.direction) {
+      throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: ['direction'] });
+    }
+
+    const lockedTypes = new Set(session.lockedDimensions.map((d) => d.type));
+    const missing = REQUIRED_DIMENSIONS.filter((dimension) => !lockedTypes.has(dimension));
+    if (missing.length > 0) {
+      throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: missing });
+    }
+
+    const { finalFrameUrl, prompt } = await this.generateFinalFrameImage(
+      session,
+      userId,
+      CONVERGENCE_COSTS.FINAL_FRAME_HQ
+    );
+
+    await this.sessions.update(sessionId, {
+      finalFrameUrl,
+      currentStep: 'final_frame',
+    });
+
+    const remainingRegenerations =
+      MAX_FINAL_FRAME_REGENERATIONS - (session.finalFrameRegenerations ?? 0);
+
+    return {
+      sessionId,
+      finalFrameUrl,
+      prompt,
+      remainingRegenerations,
+      creditsConsumed: CONVERGENCE_COSTS.FINAL_FRAME_HQ,
+    };
+  }
+
+  /**
+   * Regenerate the final frame with a different variation.
+   */
+  async regenerateFinalFrame(
+    request: RegenerateFinalFrameRequest,
+    userId: string
+  ): Promise<GenerateFinalFrameResponse> {
+    const { sessionId } = request;
+
+    this.log.info('Regenerating final frame', {
+      sessionId,
+      userId,
+    });
+
+    const session = await this.getSessionWithOwnershipCheck(sessionId, userId);
+    const currentCount = session.finalFrameRegenerations ?? 0;
+
+    if (currentCount >= MAX_FINAL_FRAME_REGENERATIONS) {
+      throw new ConvergenceError('REGENERATION_LIMIT_EXCEEDED', {
+        dimension: 'final_frame',
+        currentCount,
+        maxAllowed: MAX_FINAL_FRAME_REGENERATIONS,
+      });
+    }
+
+    if (!session.direction) {
+      throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: ['direction'] });
+    }
+
+    const lockedTypes = new Set(session.lockedDimensions.map((d) => d.type));
+    const missing = REQUIRED_DIMENSIONS.filter((dimension) => !lockedTypes.has(dimension));
+    if (missing.length > 0) {
+      throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: missing });
+    }
+
+    const { finalFrameUrl, prompt } = await this.generateFinalFrameImage(
+      session,
+      userId,
+      CONVERGENCE_COSTS.FINAL_FRAME_REGENERATE
+    );
+
+    const nextCount = currentCount + 1;
+
+    await this.sessions.update(sessionId, {
+      finalFrameUrl,
+      finalFrameRegenerations: nextCount,
+      currentStep: 'final_frame',
+    });
+
+    return {
+      sessionId,
+      finalFrameUrl,
+      prompt,
+      remainingRegenerations: MAX_FINAL_FRAME_REGENERATIONS - nextCount,
+      creditsConsumed: CONVERGENCE_COSTS.FINAL_FRAME_REGENERATE,
+    };
+  }
+
+  /**
+   * Generate the HQ final frame image and return the URL + prompt.
+   */
+  private async generateFinalFrameImage(
+    session: ConvergenceSession,
+    userId: string,
+    cost: number
+  ): Promise<{ finalFrameUrl: string; prompt: string }> {
+    const prompt = this.promptBuilder.buildFinalFramePrompt({
+      intent: session.intent,
+      direction: session.direction!,
+      lockedDimensions: session.lockedDimensions,
+    });
+
+    const finalFrameUrl = await withCreditReservation(
+      this.credits,
+      userId,
+      cost,
+      async () => {
+        const result = await this.imageGen.generatePreview(prompt, {
+          aspectRatio: this.getSessionAspectRatio(session),
+          provider: FINAL_FRAME_PROVIDER,
+        });
+        return this.storage.uploadFromUrl(
+          result.imageUrl,
+          `convergence/${userId}/final-frame`
+        );
+      }
+    );
+
+    return { finalFrameUrl, prompt };
   }
 
   // ==========================================================================
@@ -967,20 +1237,24 @@ export class ConvergenceService {
       };
     }
 
-    // 11.1.1: Get selected lighting image for depth estimation
-    const lightingImage = this.getSelectedImageForDimension(session, 'lighting');
-    if (!lightingImage) {
-      this.log.warn('No lighting image available for camera motion', { sessionId });
+    const finalFrameUrl = session.finalFrameUrl;
+    const lightingImage = finalFrameUrl
+      ? null
+      : this.getSelectedImageForDimension(session, 'lighting');
+    const sourceImageUrl = finalFrameUrl ?? lightingImage?.url ?? null;
+
+    if (!sourceImageUrl) {
+      this.log.warn('No final frame available for camera motion', { sessionId });
       throw new ConvergenceError('INCOMPLETE_SESSION', {
-        missingDimensions: ['lighting'],
+        reason: 'finalFrameUrl required for camera motion',
       });
     }
 
-    this.log.debug('Using lighting image for depth estimation', {
+    this.log.debug('Using image for depth estimation', {
       sessionId,
-      imageId: lightingImage.id,
-      imageUrl: lightingImage.url,
-      optionId: lightingImage.optionId,
+      source: finalFrameUrl ? 'final_frame' : 'lighting',
+      imageUrl: sourceImageUrl,
+      optionId: lightingImage?.optionId ?? null,
     });
 
     let depthMapUrl: string | null = null;
@@ -994,7 +1268,7 @@ export class ConvergenceService {
         userId,
         CONVERGENCE_COSTS.DEPTH_ESTIMATION,
         async () => {
-          return this.depth.estimateDepth(lightingImage.url);
+          return this.depth.estimateDepth(sourceImageUrl);
         }
       );
 
@@ -1003,6 +1277,7 @@ export class ConvergenceService {
       // Update session with depth map URL
       await this.sessions.update(sessionId, {
         depthMapUrl,
+        currentStep: 'camera_motion',
       });
 
       this.log.info('Depth estimation completed successfully', {
@@ -1020,6 +1295,9 @@ export class ConvergenceService {
       fallbackMode = true;
       depthMapUrl = null;
       // No credits consumed on failure (withCreditReservation handles refund)
+      await this.sessions.update(sessionId, {
+        currentStep: 'camera_motion',
+      });
     }
 
     // 11.1.4: Return cameraPaths constant
@@ -1120,6 +1398,13 @@ export class ConvergenceService {
       throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: ['direction'] });
     }
 
+    const startImageUrl = session.finalFrameUrl;
+    if (!startImageUrl) {
+      throw new ConvergenceError('INCOMPLETE_SESSION', {
+        reason: 'finalFrameUrl required for subject motion preview',
+      });
+    }
+
     // Check if video preview service is available
     if (!this.videoPreview) {
       throw new ConvergenceError('VIDEO_GENERATION_FAILED', {
@@ -1127,8 +1412,8 @@ export class ConvergenceService {
       });
     }
 
-    // 11.3.1: Build full prompt with all locked dimensions
-    const fullPrompt = this.promptBuilder.buildPrompt({
+    // 11.3.1: Build prompt optimized for i2v motion preview
+    const fullPrompt = this.promptBuilder.buildSubjectMotionPrompt({
       intent: session.intent,
       direction: session.direction,
       lockedDimensions: session.lockedDimensions,
@@ -1150,6 +1435,7 @@ export class ConvergenceService {
         async () => {
           return this.videoPreview!.generatePreview(fullPrompt, {
             aspectRatio: this.getSessionAspectRatio(session),
+            startImage: startImageUrl,
           });
         }
       );
@@ -1185,6 +1471,8 @@ export class ConvergenceService {
       videoUrl,
       prompt: fullPrompt,
       creditsConsumed: CONVERGENCE_COSTS.WAN_PREVIEW,
+      inputMode: 'i2v',
+      startImageUrl,
     };
   }
 
@@ -1271,9 +1559,9 @@ export class ConvergenceService {
       currentStep: 'complete',
     });
 
-    // Get the preview image URL (selected lighting option if available)
+    // Get the preview image URL (final frame preferred, fallback to lighting selection)
     const previewImage = this.getSelectedImageForDimension(session, 'lighting');
-    const previewImageUrl = previewImage?.url ?? '';
+    const previewImageUrl = session.finalFrameUrl ?? previewImage?.url ?? '';
 
     // 11.4.3: Calculate total credits consumed
     const totalCreditsConsumed = this.calculateTotalCredits(session);
@@ -1485,14 +1773,28 @@ export class ConvergenceService {
    * @returns Total credits consumed
    */
   private calculateTotalCredits(session: ConvergenceSession): number {
-    let total = CONVERGENCE_COSTS.DIRECTION_IMAGES; // Initial direction images
+    const startingPointMode = session.startingPointMode ?? 'converge';
+    let total = 0;
 
-    // Add dimension image costs (mood, framing, lighting)
+    // Add starting point costs
+    if (startingPointMode === 'quick') {
+      total += session.finalFrameUrl ? CONVERGENCE_COSTS.QUICK_GENERATE : 0;
+    } else if (startingPointMode === 'converge') {
+      total += session.direction ? CONVERGENCE_COSTS.DIRECTION_IMAGES : 0;
+    }
+
+    // Add dimension image costs (mood, framing, lighting) for converge mode
     const lockedDimensionTypes = new Set(session.lockedDimensions.map((d) => d.type));
 
-    for (const step of REQUIRED_DIMENSIONS) {
-      if (lockedDimensionTypes.has(step)) {
-        total += CONVERGENCE_COSTS.DIMENSION_IMAGES;
+    if (startingPointMode === 'converge') {
+      for (const step of REQUIRED_DIMENSIONS) {
+        if (lockedDimensionTypes.has(step)) {
+          total += CONVERGENCE_COSTS.DIMENSION_IMAGES;
+        }
+      }
+
+      if (session.finalFrameUrl) {
+        total += CONVERGENCE_COSTS.FINAL_FRAME_HQ;
       }
     }
 
@@ -1510,6 +1812,10 @@ export class ConvergenceService {
     const regenCounts = session.regenerationCounts || {};
     for (const count of Object.values(regenCounts)) {
       total += (count as number) * CONVERGENCE_COSTS.REGENERATION;
+    }
+
+    if (session.finalFrameRegenerations) {
+      total += session.finalFrameRegenerations * CONVERGENCE_COSTS.FINAL_FRAME_REGENERATE;
     }
 
     return total;

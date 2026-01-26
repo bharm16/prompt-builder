@@ -26,6 +26,7 @@ import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
 import { convergenceApi } from '@/features/convergence/api';
 import { useConvergenceSession, useNetworkStatus } from '@/features/convergence/hooks';
+import { MAX_FINAL_FRAME_REGENERATIONS } from '@/features/convergence/types';
 import type {
   ConvergenceStep,
   DimensionType,
@@ -35,9 +36,11 @@ import type {
 
 // Components
 import { IntentInput } from '../IntentInput';
+import { StartingPointSelector } from '../StartingPointSelector';
 import { DirectionFork } from '../DirectionFork';
 import { DimensionSelector } from '../DimensionSelector';
 import { CameraMotionPickerWithErrorBoundary } from '../CameraMotionPicker';
+import { FinalFrameConfirmation } from '../FinalFrameConfirmation';
 import { SubjectMotionInput } from '../SubjectMotionInput';
 import { ConvergencePreview, type ConvergencePreviewProps } from '../ConvergencePreview';
 import { ProgressIndicator } from '../ProgressIndicator';
@@ -151,6 +154,18 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
 
     actions.generateCameraMotion();
   }, [state.step, state.cameraPaths.length, state.isLoading, state.error, actions]);
+
+  useEffect(() => {
+    if (state.step !== 'final_frame') {
+      return;
+    }
+
+    if (state.finalFrameUrl || state.isLoading || state.error) {
+      return;
+    }
+
+    actions.generateFinalFrame();
+  }, [state.step, state.finalFrameUrl, state.isLoading, state.error, actions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -290,10 +305,16 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
           actions.startSession(state.intent, aspectRatio);
         }
         break;
+      case 'starting_point':
+        // User can reselect a starting point from the UI
+        break;
       case 'mood':
       case 'framing':
       case 'lighting':
         actions.regenerate();
+        break;
+      case 'final_frame':
+        actions.generateFinalFrame();
         break;
       case 'camera_motion':
         actions.generateCameraMotion();
@@ -349,6 +370,9 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
    * Get the last generated image URL for camera motion picker
    */
   const getLastImageUrl = (): string => {
+    if (state.finalFrameUrl) {
+      return state.finalFrameUrl;
+    }
     if (state.currentImages.length > 0) {
       return state.currentImages[state.currentImages.length - 1]?.url ?? '';
     }
@@ -372,6 +396,16 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
             onChange={actions.setIntent}
             onSubmit={handleIntentSubmit}
             isLoading={state.loadingOperation === 'startSession'}
+            disabled={state.isLoading}
+          />
+        );
+
+      case 'starting_point':
+        return (
+          <StartingPointSelector
+            intent={state.intent}
+            onSelect={actions.setStartingPoint}
+            isLoading={state.loadingOperation === 'setStartingPoint'}
             disabled={state.isLoading}
           />
         );
@@ -442,6 +476,22 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
           />
         );
 
+      case 'final_frame':
+        return (
+          <FinalFrameConfirmation
+            imageUrl={state.finalFrameUrl ?? ''}
+            regenerationCount={state.finalFrameRegenerations}
+            maxRegenerations={MAX_FINAL_FRAME_REGENERATIONS}
+            isLoading={state.isLoading}
+            isRegenerating={state.loadingOperation === 'regenerateFinalFrame'}
+            onConfirm={actions.confirmFinalFrame}
+            onRegenerate={actions.regenerateFinalFrame}
+            onUploadNew={() => actions.jumpToStep('starting_point')}
+            onBack={actions.goBack}
+            disabled={state.isLoading || !state.finalFrameUrl}
+          />
+        );
+
       case 'camera_motion':
         return (
           <CameraMotionPickerWithErrorBoundary
@@ -463,6 +513,8 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
           <SubjectMotionInput
             subjectMotion={state.subjectMotion}
             previewVideoUrl={state.subjectMotionVideoUrl}
+            inputMode={state.subjectMotionInputMode ?? (state.finalFrameUrl ? 'i2v' : null)}
+            startImageUrl={state.subjectMotionStartImageUrl ?? state.finalFrameUrl}
             isLoading={state.loadingOperation === 'videoPreview'}
             error={state.error}
             onMotionChange={actions.setSubjectMotion}
@@ -576,6 +628,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
       {state.step !== 'intent' && (
         <ProgressIndicator
           currentStep={state.step}
+          startingPointMode={state.startingPointMode}
           onStepClick={handleStepClick}
           disabled={state.isLoading}
         />

@@ -6,12 +6,31 @@
  */
 
 import express, { type Request, type Response, type Router } from 'express';
+import multer from 'multer';
 import { Readable } from 'node:stream';
 import { logger } from '@infrastructure/Logger';
+import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { asyncHandler } from '@middleware/asyncHandler';
+import { getGCSStorageService } from '@services/convergence/storage';
 
 const STORAGE_HOST = 'storage.googleapis.com';
 const STORAGE_HOST_SUFFIX = '.storage.googleapis.com';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only image files allowed'));
+  },
+});
+
+interface AuthenticatedRequest extends Request {
+  user?: { uid: string };
+}
 
 const stripLeadingSlash = (value: string): string => value.replace(/^\/+/, '');
 
@@ -42,8 +61,59 @@ const extractObjectPath = (url: URL, bucketName: string): string | null => {
   return null;
 };
 
+const sanitizeFilename = (value: string): string =>
+  value.replace(/[^a-zA-Z0-9._-]/g, '_');
+
 export function createConvergenceMediaRoutes(): Router {
   const router = express.Router();
+
+  router.post(
+    '/upload-image',
+    apiAuthMiddleware,
+    upload.single('image'),
+    asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+      const userId = req.user?.uid;
+      const file = req.file;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
+
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_REQUEST',
+          message: 'No image provided',
+        });
+      }
+
+      const safeName = sanitizeFilename(file.originalname || 'upload.png');
+      const destination = `convergence/${userId}/uploads/${Date.now()}-${safeName}`;
+      const storageService = getGCSStorageService();
+
+      const url = await storageService.uploadBuffer(
+        file.buffer,
+        destination,
+        file.mimetype || 'image/png'
+      );
+
+      logger.info('Convergence image uploaded', {
+        userId,
+        destination,
+        sizeBytes: file.size,
+        contentType: file.mimetype,
+      });
+
+      return res.status(200).json({
+        success: true,
+        url,
+      });
+    })
+  );
 
   router.get(
     '/proxy',

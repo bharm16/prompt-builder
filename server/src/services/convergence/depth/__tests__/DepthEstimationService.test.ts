@@ -15,12 +15,22 @@ vi.mock('replicate', () => ({
 }));
 
 describe('DepthEstimationService', () => {
-  let mockStorageService: { upload: ReturnType<typeof vi.fn> };
+  let mockStorageService: {
+    upload: ReturnType<typeof vi.fn>;
+    uploadBatch: ReturnType<typeof vi.fn>;
+    uploadFromUrl: ReturnType<typeof vi.fn>;
+    uploadBuffer: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockStorageService = {
       upload: vi.fn().mockResolvedValue('https://storage.example.com/depth.png'),
+      uploadBatch: vi.fn().mockResolvedValue([]),
+      uploadFromUrl: vi.fn().mockResolvedValue('https://storage.example.com/depth.png'),
+      uploadBuffer: vi.fn().mockResolvedValue('https://storage.example.com/depth.png'),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
   });
 

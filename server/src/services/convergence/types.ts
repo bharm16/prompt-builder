@@ -22,14 +22,22 @@ export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] 
 export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
+ * Starting point modes for the convergence flow
+ */
+export const STARTING_POINT_MODES = ['upload', 'quick', 'converge'] as const;
+export type StartingPointMode = (typeof STARTING_POINT_MODES)[number];
+
+/**
  * Steps in the convergence flow
  */
 export const CONVERGENCE_STEPS = [
   'intent',
+  'starting_point',
   'direction',
   'mood',
   'framing',
   'lighting',
+  'final_frame',
   'camera_motion',
   'subject_motion',
   'preview',
@@ -181,6 +189,10 @@ export interface ConvergenceSession {
   generatedImages: GeneratedImage[]; // All generated images (signed GCS URLs)
   imageHistory: Record<string, GeneratedImage[]>; // Images per dimension for back nav
   regenerationCounts: Record<string, number>; // Regen count per dimension
+  startingPointMode: StartingPointMode | null; // Selected starting point mode
+  finalFrameUrl: string | null; // HQ final frame for i2v
+  finalFrameRegenerations: number; // Regeneration count for final frame
+  uploadedImageUrl: string | null; // Uploaded image URL for upload mode
   depthMapUrl: string | null; // Signed GCS URL to depth map
   cameraMotion: string | null; // Selected camera motion ID
   subjectMotion: string | null; // User's subject motion text
@@ -208,8 +220,8 @@ export interface StartSessionRequest {
 export interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'direction';
-  options: Array<{ id: Direction; label: string }>;
+  currentDimension: 'starting_point' | 'direction';
+  options?: Array<{ id: Direction; label: string }>;
   estimatedCost: number;
 }
 
@@ -228,7 +240,7 @@ export interface SelectOptionRequest {
 export interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+  currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
@@ -295,6 +307,8 @@ export interface GenerateSubjectMotionResponse {
   videoUrl: string;
   prompt: string;
   creditsConsumed: number;
+  inputMode: 'i2v' | 't2v';
+  startImageUrl: string | null;
 }
 
 /**
@@ -326,6 +340,53 @@ export interface AbandonSessionResponse {
   sessionId: string;
   status: 'abandoned';
   imagesDeleted: boolean;
+}
+
+/**
+ * Request to set the starting point for the convergence flow
+ */
+export interface SetStartingPointRequest {
+  sessionId: string;
+  mode: StartingPointMode;
+  imageUrl?: string;
+}
+
+/**
+ * Response from setting the starting point
+ */
+export interface SetStartingPointResponse {
+  sessionId: string;
+  mode: StartingPointMode;
+  finalFrameUrl?: string;
+  nextStep: ConvergenceStep;
+  creditsConsumed: number;
+  images?: GeneratedImage[];
+  options?: Array<{ id: Direction; label: string }>;
+}
+
+/**
+ * Request to generate the final frame (HQ image)
+ */
+export interface GenerateFinalFrameRequest {
+  sessionId: string;
+}
+
+/**
+ * Response from generating the final frame
+ */
+export interface GenerateFinalFrameResponse {
+  sessionId: string;
+  finalFrameUrl: string;
+  prompt: string;
+  remainingRegenerations: number;
+  creditsConsumed: number;
+}
+
+/**
+ * Request to regenerate the final frame
+ */
+export interface RegenerateFinalFrameRequest {
+  sessionId: string;
 }
 
 // ============================================================================

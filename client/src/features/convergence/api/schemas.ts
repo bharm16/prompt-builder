@@ -6,6 +6,7 @@ import {
   DIMENSION_TYPES,
   DIRECTIONS,
   SESSION_STATUSES,
+  STARTING_POINT_MODES,
   type AbandonSessionResponse,
   type CameraPath,
   type CameraMotionCategory,
@@ -16,12 +17,16 @@ import {
   type ConvergenceStep,
   type DimensionType,
   type Direction,
+  type GenerateFinalFrameResponse,
   type FinalizeSessionResponse,
   type GenerateCameraMotionResponse,
   type GenerateSubjectMotionResponse,
   type GeneratedImage,
   type LockedDimension,
   type RegenerateResponse,
+  type SetStartingPointResponse,
+  type StartingPointMode,
+  type UploadImageResponse,
   type Rotation3D,
   type SelectOptionResponse,
   type SessionStatus,
@@ -88,6 +93,8 @@ const ConvergenceStepSchema: z.ZodType<ConvergenceStep> = z.enum(CONVERGENCE_STE
 
 const SessionStatusSchema: z.ZodType<SessionStatus> = z.enum(SESSION_STATUSES);
 
+const StartingPointModeSchema: z.ZodType<StartingPointMode> = z.enum(STARTING_POINT_MODES);
+
 const CameraMotionCategorySchema: z.ZodType<CameraMotionCategory> = z.enum(
   CAMERA_MOTION_CATEGORIES
 );
@@ -145,6 +152,10 @@ export const ConvergenceSessionSchema: z.ZodType<ConvergenceSession> = z.object(
   generatedImages: z.array(GeneratedImageSchema),
   imageHistory: z.record(z.string(), z.array(GeneratedImageSchema)),
   regenerationCounts: z.record(z.string(), z.number()),
+  startingPointMode: StartingPointModeSchema.nullable(),
+  finalFrameUrl: z.string().nullable(),
+  finalFrameRegenerations: z.number(),
+  uploadedImageUrl: z.string().nullable(),
   depthMapUrl: z.string().nullable(),
   cameraMotion: z.string().nullable(),
   subjectMotion: z.string().nullable(),
@@ -163,13 +174,13 @@ export const StartSessionResponseSchema: z.ZodType<StartSessionResponse> = z
   .object({
     sessionId: z.string(),
     images: z.array(GeneratedImageSchema),
-    currentDimension: z.literal('direction'),
-    options: z.array(DirectionOptionSchema),
+    currentDimension: z.union([z.literal('starting_point'), z.literal('direction')]),
+    options: z.array(DirectionOptionSchema).optional(),
     estimatedCost: z.number(),
   })
   .passthrough();
 
-const SELECT_OPTION_DIMENSIONS = [...DIMENSION_TYPES, 'subject_motion'] as const;
+const SELECT_OPTION_DIMENSIONS = [...DIMENSION_TYPES, 'subject_motion', 'final_frame'] as const;
 const SelectOptionDimensionSchema: z.ZodType<SelectOptionResponse['currentDimension']> = z.enum(
   SELECT_OPTION_DIMENSIONS
 );
@@ -218,6 +229,30 @@ export const GenerateSubjectMotionResponseSchema: z.ZodType<GenerateSubjectMotio
     videoUrl: z.string(),
     prompt: z.string(),
     creditsConsumed: z.number(),
+    inputMode: z.enum(['i2v', 't2v']),
+    startImageUrl: z.string().nullable(),
+  })
+  .passthrough();
+
+export const SetStartingPointResponseSchema: z.ZodType<SetStartingPointResponse> = z
+  .object({
+    sessionId: z.string(),
+    mode: StartingPointModeSchema,
+    finalFrameUrl: z.string().optional(),
+    nextStep: ConvergenceStepSchema,
+    creditsConsumed: z.number(),
+    images: z.array(GeneratedImageSchema).optional(),
+    options: z.array(DirectionOptionSchema).optional(),
+  })
+  .passthrough();
+
+export const GenerateFinalFrameResponseSchema: z.ZodType<GenerateFinalFrameResponse> = z
+  .object({
+    sessionId: z.string(),
+    finalFrameUrl: z.string(),
+    prompt: z.string(),
+    remainingRegenerations: z.number(),
+    creditsConsumed: z.number(),
   })
   .passthrough();
 
@@ -237,6 +272,12 @@ export const FinalizeSessionResponseSchema: z.ZodType<FinalizeSessionResponse> =
 export const ActiveSessionResponseSchema = z
   .object({
     session: ConvergenceSessionSchema.nullable(),
+  })
+  .passthrough();
+
+export const UploadImageResponseSchema: z.ZodType<UploadImageResponse> = z
+  .object({
+    url: z.string().min(1),
   })
   .passthrough();
 

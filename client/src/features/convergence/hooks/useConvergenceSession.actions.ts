@@ -12,6 +12,7 @@ import type {
   LockedDimension,
   SelectionOption,
   FinalizeSessionResponse,
+  StartingPointMode,
 } from '../types';
 import type {
   ConvergenceAction,
@@ -56,12 +57,15 @@ export function useConvergenceSessionActions(
 
     try {
       const result = await convergenceApi.startSession(intent, aspectRatio, controller.signal);
+      const options = result.options
+        ? result.options.map((o) => ({ id: o.id, label: o.label }))
+        : [];
       dispatch({
         type: 'START_SESSION_SUCCESS',
         payload: {
           sessionId: result.sessionId,
           images: result.images,
-          options: result.options.map((o) => ({ id: o.id, label: o.label })),
+          options,
         },
       });
     } catch (error) {
@@ -74,6 +78,62 @@ export function useConvergenceSessionActions(
       dispatch({ type: 'START_SESSION_FAILURE', payload: normalizedError.message });
     }
   }, []);
+
+  /**
+   * Set the starting point mode (upload, quick, converge)
+   */
+  const setStartingPoint = useCallback(
+    async (mode: StartingPointMode, imageUrl?: string): Promise<void> => {
+      if (!state.sessionId) {
+        dispatch({ type: 'GENERIC_ERROR', payload: 'No active session' });
+        return;
+      }
+
+      if (mode === 'upload' && !imageUrl) {
+        dispatch({ type: 'GENERIC_ERROR', payload: 'Please upload an image' });
+        return;
+      }
+
+      const controller = new AbortController();
+      dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
+      dispatch({ type: 'SET_STARTING_POINT_REQUEST', payload: mode });
+
+      try {
+        const result = await convergenceApi.setStartingPoint(
+          {
+            sessionId: state.sessionId,
+            mode,
+            imageUrl,
+          },
+          controller.signal
+        );
+
+        const mappedOptions = result.options
+          ? result.options.map((o) => ({ id: o.id, label: o.label }))
+          : undefined;
+
+        dispatch({
+          type: 'SET_STARTING_POINT_SUCCESS',
+          payload: {
+            mode: result.mode,
+            nextStep: result.nextStep,
+            finalFrameUrl: result.finalFrameUrl,
+            images: result.images,
+            options: mappedOptions,
+          },
+        });
+      } catch (error) {
+        if (isAbortError(error)) {
+          dispatch({ type: 'CANCEL_GENERATION' });
+          return;
+        }
+        const normalizedError = toError(error);
+        handleApiError(normalizedError, dispatch, 'setStartingPoint');
+        dispatch({ type: 'SET_STARTING_POINT_FAILURE', payload: normalizedError.message });
+      }
+    },
+    [state.sessionId]
+  );
 
   /**
    * Select an option for a dimension (Task 17.4.2)
@@ -142,7 +202,7 @@ export function useConvergenceSessionActions(
         const payload: {
           images: GeneratedImage[];
           lockedDimensions: LockedDimension[];
-          currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+          currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
           options?: SelectionOption[];
           direction?: Direction;
         } = {
@@ -237,10 +297,10 @@ export function useConvergenceSessionActions(
       state.abortController?.abort();
 
       // Calculate which dimensions should remain locked
-      const stepOrder = getStepOrder(step);
+      const stepOrder = getStepOrder(step, state.startingPointMode);
       const newLockedDimensions = state.lockedDimensions.filter((d) => {
         const dimStep = dimensionToStep(d.type);
-        return getStepOrder(dimStep) < stepOrder;
+        return getStepOrder(dimStep, state.startingPointMode) < stepOrder;
       });
 
       dispatch({
@@ -248,7 +308,7 @@ export function useConvergenceSessionActions(
         payload: { step, lockedDimensions: newLockedDimensions },
       });
     },
-    [state.abortController, state.lockedDimensions]
+    [state.abortController, state.lockedDimensions, state.startingPointMode]
   );
 
   /**
@@ -345,6 +405,8 @@ export function useConvergenceSessionActions(
         payload: {
           videoUrl: result.videoUrl,
           prompt: result.prompt,
+          inputMode: result.inputMode,
+          startImageUrl: result.startImageUrl,
         },
       });
     } catch (error) {
@@ -357,6 +419,87 @@ export function useConvergenceSessionActions(
       dispatch({ type: 'GENERATE_SUBJECT_MOTION_FAILURE', payload: normalizedError.message });
     }
   }, [state.sessionId, state.subjectMotion]);
+
+  /**
+   * Generate the HQ final frame
+   */
+  const generateFinalFrame = useCallback(async (): Promise<void> => {
+    if (!state.sessionId) {
+      dispatch({ type: 'GENERIC_ERROR', payload: 'No active session' });
+      return;
+    }
+
+    const controller = new AbortController();
+    dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
+    dispatch({ type: 'GENERATE_FINAL_FRAME_REQUEST' });
+
+    try {
+      const result = await convergenceApi.generateFinalFrame(
+        { sessionId: state.sessionId },
+        controller.signal
+      );
+
+      dispatch({
+        type: 'GENERATE_FINAL_FRAME_SUCCESS',
+        payload: {
+          finalFrameUrl: result.finalFrameUrl,
+          remainingRegenerations: result.remainingRegenerations,
+        },
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        dispatch({ type: 'CANCEL_GENERATION' });
+        return;
+      }
+      const normalizedError = toError(error);
+      handleApiError(normalizedError, dispatch, 'generateFinalFrame');
+      dispatch({ type: 'GENERATE_FINAL_FRAME_FAILURE', payload: normalizedError.message });
+    }
+  }, [state.sessionId]);
+
+  /**
+   * Regenerate the HQ final frame
+   */
+  const regenerateFinalFrame = useCallback(async (): Promise<void> => {
+    if (!state.sessionId) {
+      dispatch({ type: 'GENERIC_ERROR', payload: 'No active session' });
+      return;
+    }
+
+    const controller = new AbortController();
+    dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
+    dispatch({ type: 'REGENERATE_FINAL_FRAME_REQUEST' });
+
+    try {
+      const result = await convergenceApi.regenerateFinalFrame(
+        { sessionId: state.sessionId },
+        controller.signal
+      );
+
+      dispatch({
+        type: 'REGENERATE_FINAL_FRAME_SUCCESS',
+        payload: {
+          finalFrameUrl: result.finalFrameUrl,
+          remainingRegenerations: result.remainingRegenerations,
+        },
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        dispatch({ type: 'CANCEL_GENERATION' });
+        return;
+      }
+      const normalizedError = toError(error);
+      handleApiError(normalizedError, dispatch, 'regenerateFinalFrame');
+      dispatch({ type: 'REGENERATE_FINAL_FRAME_FAILURE', payload: normalizedError.message });
+    }
+  }, [state.sessionId]);
+
+  /**
+   * Confirm the final frame and proceed to camera motion
+   */
+  const confirmFinalFrame = useCallback((): void => {
+    dispatch({ type: 'CONFIRM_FINAL_FRAME' });
+  }, []);
 
   /**
    * Skip subject motion and proceed to preview
@@ -514,6 +657,7 @@ export function useConvergenceSessionActions(
     () => ({
       setIntent,
       startSession,
+      setStartingPoint,
       selectOption,
       regenerate,
       goBack,
@@ -522,6 +666,9 @@ export function useConvergenceSessionActions(
       generateCameraMotion,
       setSubjectMotion,
       generateSubjectMotionPreview,
+      generateFinalFrame,
+      regenerateFinalFrame,
+      confirmFinalFrame,
       skipSubjectMotion,
       finalize,
       reset,
@@ -538,6 +685,7 @@ export function useConvergenceSessionActions(
     [
       setIntent,
       startSession,
+      setStartingPoint,
       selectOption,
       regenerate,
       goBack,
@@ -546,6 +694,9 @@ export function useConvergenceSessionActions(
       generateCameraMotion,
       setSubjectMotion,
       generateSubjectMotionPreview,
+      generateFinalFrame,
+      regenerateFinalFrame,
+      confirmFinalFrame,
       skipSubjectMotion,
       finalize,
       reset,

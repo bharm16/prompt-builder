@@ -26,26 +26,35 @@ import type {
   FinalizeSessionResponse,
   GenerateCameraMotionRequest,
   GenerateCameraMotionResponse,
+  GenerateFinalFrameRequest,
+  GenerateFinalFrameResponse,
   GenerateSubjectMotionRequest,
   GenerateSubjectMotionResponse,
+  RegenerateFinalFrameRequest,
   RegenerateRequest,
   RegenerateResponse,
+  SetStartingPointRequest,
+  SetStartingPointResponse,
   SelectCameraMotionRequest,
   SelectOptionRequest,
   SelectOptionResponse,
   StartSessionRequest,
   StartSessionResponse,
+  UploadImageResponse,
 } from '../types';
 import {
   AbandonSessionResponseSchema,
   ActiveSessionResponseSchema,
   FinalizeSessionResponseSchema,
   GenerateCameraMotionResponseSchema,
+  GenerateFinalFrameResponseSchema,
   GenerateSubjectMotionResponseSchema,
   RegenerateResponseSchema,
+  SetStartingPointResponseSchema,
   SelectCameraMotionResponseSchema,
   SelectOptionResponseSchema,
   StartSessionResponseSchema,
+  UploadImageResponseSchema,
   parseConvergenceApiError,
 } from './schemas';
 
@@ -81,6 +90,7 @@ export class ConvergenceError extends Error {
 // ============================================================================
 
 const CONVERGENCE_API_BASE = `${API_CONFIG.baseURL}/convergence`;
+const CONVERGENCE_MEDIA_BASE = `${API_CONFIG.baseURL}/convergence/media`;
 const STATUS_CODE_TO_ERROR: Record<number, ConvergenceErrorCode> = {
   400: 'INVALID_REQUEST',
   401: 'UNAUTHORIZED',
@@ -192,6 +202,83 @@ export async function startSession(
     StartSessionResponseSchema,
     signal
   );
+}
+
+/**
+ * Set the starting point mode for a convergence session.
+ */
+export async function setStartingPoint(
+  request: SetStartingPointRequest,
+  signal?: AbortSignal
+): Promise<SetStartingPointResponse> {
+  return fetchWithAuth<SetStartingPointResponse>(
+    '/starting-point',
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+    SetStartingPointResponseSchema,
+    signal
+  );
+}
+
+/**
+ * Generate the HQ final frame after convergence selections.
+ */
+export async function generateFinalFrame(
+  request: GenerateFinalFrameRequest,
+  signal?: AbortSignal
+): Promise<GenerateFinalFrameResponse> {
+  return fetchWithAuth<GenerateFinalFrameResponse>(
+    '/final-frame/generate',
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+    GenerateFinalFrameResponseSchema,
+    signal
+  );
+}
+
+/**
+ * Regenerate the HQ final frame.
+ */
+export async function regenerateFinalFrame(
+  request: RegenerateFinalFrameRequest,
+  signal?: AbortSignal
+): Promise<GenerateFinalFrameResponse> {
+  return fetchWithAuth<GenerateFinalFrameResponse>(
+    '/final-frame/regenerate',
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+    GenerateFinalFrameResponseSchema,
+    signal
+  );
+}
+
+/**
+ * Upload an image for the convergence flow.
+ */
+export async function uploadImage(file: File, signal?: AbortSignal): Promise<UploadImageResponse> {
+  const headers = await buildFirebaseAuthHeaders();
+  const body = new FormData();
+  body.append('image', file);
+
+  const response = await fetch(`${CONVERGENCE_MEDIA_BASE}/upload-image`, {
+    method: 'POST',
+    headers,
+    body,
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response);
+  }
+
+  const data: unknown = await response.json();
+  return UploadImageResponseSchema.parse(data);
 }
 
 /**
@@ -457,8 +544,11 @@ export async function abandonSession(
  */
 export const convergenceApi = {
   startSession,
+  setStartingPoint,
   selectOption,
   regenerate,
+  generateFinalFrame,
+  regenerateFinalFrame,
   generateCameraMotion,
   selectCameraMotion,
   generateSubjectMotion,
@@ -466,6 +556,7 @@ export const convergenceApi = {
   getActiveSession,
   getSession,
   abandonSession,
+  uploadImage,
 };
 
 export default convergenceApi;

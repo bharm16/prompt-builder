@@ -21,6 +21,7 @@ const STEP_COSTS: Partial<Record<ConvergenceStep, number>> = {
   mood: 4,
   framing: 4,
   lighting: 4,
+  final_frame: 2,
   camera_motion: 1, // Depth estimation
   subject_motion: 5, // Wan 2.2 preview
 };

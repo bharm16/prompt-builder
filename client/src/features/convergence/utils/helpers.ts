@@ -5,7 +5,7 @@
  * Mirrors the backend helpers in server/src/services/convergence/helpers.ts
  */
 
-import type { ConvergenceStep, DimensionType } from '../types';
+import type { ConvergenceStep, DimensionType, StartingPointMode } from '../types';
 
 // ============================================================================
 // Order Constants
@@ -16,10 +16,22 @@ import type { ConvergenceStep, DimensionType } from '../types';
  */
 export const STEP_ORDER: ConvergenceStep[] = [
   'intent',
+  'starting_point',
   'direction',
   'mood',
   'framing',
   'lighting',
+  'final_frame',
+  'camera_motion',
+  'subject_motion',
+  'preview',
+  'complete',
+];
+
+const SHORT_STEP_ORDER: ConvergenceStep[] = [
+  'intent',
+  'starting_point',
+  'final_frame',
   'camera_motion',
   'subject_motion',
   'preview',
@@ -62,8 +74,11 @@ const PREVIOUS_DIMENSION: Record<DimensionType | 'direction', DimensionType | 'd
  * @param step - The step to get the order for
  * @returns The index of the step in STEP_ORDER, or -1 if not found
  */
-export function getStepOrder(step: ConvergenceStep): number {
-  return STEP_ORDER.indexOf(step);
+export function getStepOrder(
+  step: ConvergenceStep,
+  mode: StartingPointMode | null = null
+): number {
+  return getStepSequence(mode).indexOf(step);
 }
 
 /**
@@ -71,9 +86,13 @@ export function getStepOrder(step: ConvergenceStep): number {
  * @param current - The current step
  * @returns The next step, or 'complete' if at the end
  */
-export function getNextStep(current: ConvergenceStep): ConvergenceStep {
-  const idx = getStepOrder(current);
-  return STEP_ORDER[idx + 1] || 'complete';
+export function getNextStep(
+  current: ConvergenceStep,
+  mode: StartingPointMode | null = null
+): ConvergenceStep {
+  const sequence = getStepSequence(mode);
+  const idx = sequence.indexOf(current);
+  return sequence[idx + 1] || 'complete';
 }
 
 /**
@@ -81,10 +100,14 @@ export function getNextStep(current: ConvergenceStep): ConvergenceStep {
  * @param current - The current step
  * @returns The previous step, or the first step if at the beginning
  */
-export function getPreviousStep(current: ConvergenceStep): ConvergenceStep {
-  const idx = getStepOrder(current);
+export function getPreviousStep(
+  current: ConvergenceStep,
+  mode: StartingPointMode | null = null
+): ConvergenceStep {
+  const sequence = getStepSequence(mode);
+  const idx = sequence.indexOf(current);
   const prevIdx = Math.max(0, idx - 1);
-  return STEP_ORDER[prevIdx] ?? 'intent';
+  return sequence[prevIdx] ?? 'intent';
 }
 
 // ============================================================================
@@ -165,14 +188,15 @@ export function isDimensionStep(step: ConvergenceStep): boolean {
  * @returns Array of dimensions that should be locked
  */
 export function getRequiredLockedDimensions(
-  step: ConvergenceStep
+  step: ConvergenceStep,
+  mode: StartingPointMode | null = null
 ): Array<DimensionType | 'direction'> {
-  const stepIdx = getStepOrder(step);
+  const stepIdx = getStepOrder(step, mode);
   const result: Array<DimensionType | 'direction'> = [];
 
   for (const dim of DIMENSION_ORDER) {
     const dimStep = dimensionToStep(dim);
-    if (getStepOrder(dimStep) < stepIdx) {
+    if (getStepOrder(dimStep, mode) < stepIdx) {
       result.push(dim);
     }
   }
@@ -188,10 +212,12 @@ export function getRequiredLockedDimensions(
 export function getStepLabel(step: ConvergenceStep): string {
   const labels: Record<ConvergenceStep, string> = {
     intent: 'Intent',
+    starting_point: 'Starting Point',
     direction: 'Direction',
     mood: 'Mood',
     framing: 'Framing',
     lighting: 'Lighting',
+    final_frame: 'Final Frame',
     camera_motion: 'Camera',
     subject_motion: 'Motion',
     preview: 'Preview',
@@ -206,8 +232,12 @@ export function getStepLabel(step: ConvergenceStep): string {
  * @param reference - The reference step
  * @returns True if step comes before reference
  */
-export function isStepBefore(step: ConvergenceStep, reference: ConvergenceStep): boolean {
-  return getStepOrder(step) < getStepOrder(reference);
+export function isStepBefore(
+  step: ConvergenceStep,
+  reference: ConvergenceStep,
+  mode: StartingPointMode | null = null
+): boolean {
+  return getStepOrder(step, mode) < getStepOrder(reference, mode);
 }
 
 /**
@@ -216,14 +246,28 @@ export function isStepBefore(step: ConvergenceStep, reference: ConvergenceStep):
  * @param reference - The reference step
  * @returns True if step comes after reference
  */
-export function isStepAfter(step: ConvergenceStep, reference: ConvergenceStep): boolean {
-  return getStepOrder(step) > getStepOrder(reference);
+export function isStepAfter(
+  step: ConvergenceStep,
+  reference: ConvergenceStep,
+  mode: StartingPointMode | null = null
+): boolean {
+  return getStepOrder(step, mode) > getStepOrder(reference, mode);
 }
 
 /**
  * Gets all steps that are visible in the progress indicator
  * (excludes 'intent' and 'complete' which are not shown as steps)
  */
-export function getProgressSteps(): ConvergenceStep[] {
-  return ['direction', 'mood', 'framing', 'lighting', 'camera_motion', 'subject_motion', 'preview'];
+export function getProgressSteps(mode: StartingPointMode | null = null): ConvergenceStep[] {
+  return getStepSequence(mode).filter(
+    (step) => step !== 'intent' && step !== 'complete'
+  );
+}
+
+function getStepSequence(mode: StartingPointMode | null): ConvergenceStep[] {
+  if (mode === 'upload' || mode === 'quick') {
+    return SHORT_STEP_ORDER;
+  }
+
+  return STEP_ORDER;
 }

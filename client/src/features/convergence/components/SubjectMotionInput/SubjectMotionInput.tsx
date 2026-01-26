@@ -20,7 +20,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/utils/cn';
-import { Play, SkipForward, Loader2, Coins, Sparkles } from 'lucide-react';
+import { Play, SkipForward, Loader2, Coins, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { BackButton, StepCreditBadge } from '../shared';
 
 // ============================================================================
@@ -56,6 +56,10 @@ export interface SubjectMotionInputProps {
   subjectMotion: string;
   /** Generated preview video URL (if available) */
   previewVideoUrl?: string | null;
+  /** Mode used for preview generation (i2v or t2v) */
+  inputMode?: 'i2v' | 't2v' | null;
+  /** Starting frame URL used for i2v previews */
+  startImageUrl?: string | null;
   /** Whether the component is in loading state (generating preview) */
   isLoading?: boolean;
   /** Whether the component is disabled */
@@ -97,6 +101,8 @@ export interface SubjectMotionInputProps {
 export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
   subjectMotion,
   previewVideoUrl,
+  inputMode = null,
+  startImageUrl = null,
   isLoading = false,
   disabled = false,
   error,
@@ -108,6 +114,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
 }) => {
   // Local state for textarea focus
   const [isFocused, setIsFocused] = useState(false);
+  const resolvedInputMode = inputMode ?? (startImageUrl ? 'i2v' : null);
 
   /**
    * Handle text input change
@@ -202,6 +209,40 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
           showLabel={true}
         />
       </div>
+
+      {resolvedInputMode && (
+        <div className="mb-6 rounded-lg border border-border bg-surface-2 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-1 border border-border">
+                <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {resolvedInputMode === 'i2v' ? 'Using your starting frame' : 'Text-only preview'}
+                </p>
+                <p className="text-xs text-muted">
+                  {resolvedInputMode === 'i2v'
+                    ? 'The preview keeps your visual style locked to the frame.'
+                    : 'The preview is generated from the prompt alone.'}
+                </p>
+              </div>
+            </div>
+            {resolvedInputMode === 'i2v' && startImageUrl && (
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-16 rounded-md overflow-hidden border border-border bg-surface-1">
+                  <img
+                    src={startImageUrl}
+                    alt="Starting frame"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-xs text-muted">Starting frame</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Text Input Section (Task 24.1) */}
       <div className="mb-6">

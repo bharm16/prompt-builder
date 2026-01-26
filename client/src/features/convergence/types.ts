@@ -22,14 +22,24 @@ export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] 
 export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
+ * Starting point modes for the convergence flow
+ */
+export const STARTING_POINT_MODES = ['upload', 'quick', 'converge'] as const;
+export type StartingPointMode = (typeof STARTING_POINT_MODES)[number];
+
+export const MAX_FINAL_FRAME_REGENERATIONS = 3;
+
+/**
  * Steps in the convergence flow
  */
 export const CONVERGENCE_STEPS = [
   'intent',
+  'starting_point',
   'direction',
   'mood',
   'framing',
   'lighting',
+  'final_frame',
   'camera_motion',
   'subject_motion',
   'preview',
@@ -180,6 +190,10 @@ export interface ConvergenceSession {
   generatedImages: GeneratedImage[];
   imageHistory: Record<string, GeneratedImage[]>;
   regenerationCounts: Record<string, number>;
+  startingPointMode: StartingPointMode | null;
+  finalFrameUrl: string | null;
+  finalFrameRegenerations: number;
+  uploadedImageUrl: string | null;
   depthMapUrl: string | null;
   cameraMotion: string | null;
   subjectMotion: string | null;
@@ -207,8 +221,8 @@ export interface StartSessionRequest {
 export interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'direction';
-  options: Array<{ id: Direction; label: string }>;
+  currentDimension: 'starting_point' | 'direction';
+  options?: Array<{ id: Direction; label: string }>;
   estimatedCost: number;
 }
 
@@ -227,7 +241,7 @@ export interface SelectOptionRequest {
 export interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+  currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
@@ -294,6 +308,8 @@ export interface GenerateSubjectMotionResponse {
   videoUrl: string;
   prompt: string;
   creditsConsumed: number;
+  inputMode: 'i2v' | 't2v';
+  startImageUrl: string | null;
 }
 
 /**
@@ -327,6 +343,60 @@ export interface AbandonSessionResponse {
   imagesDeleted: boolean;
 }
 
+/**
+ * Response from uploading a convergence image
+ */
+export interface UploadImageResponse {
+  url: string;
+}
+
+/**
+ * Request to set the starting point for the convergence flow
+ */
+export interface SetStartingPointRequest {
+  sessionId: string;
+  mode: StartingPointMode;
+  imageUrl?: string;
+}
+
+/**
+ * Response from setting the starting point
+ */
+export interface SetStartingPointResponse {
+  sessionId: string;
+  mode: StartingPointMode;
+  finalFrameUrl?: string;
+  nextStep: ConvergenceStep;
+  creditsConsumed: number;
+  images?: GeneratedImage[];
+  options?: Array<{ id: Direction; label: string }>;
+}
+
+/**
+ * Request to generate the final frame (HQ image)
+ */
+export interface GenerateFinalFrameRequest {
+  sessionId: string;
+}
+
+/**
+ * Response from generating the final frame
+ */
+export interface GenerateFinalFrameResponse {
+  sessionId: string;
+  finalFrameUrl: string;
+  prompt: string;
+  remainingRegenerations: number;
+  creditsConsumed: number;
+}
+
+/**
+ * Request to regenerate the final frame
+ */
+export interface RegenerateFinalFrameRequest {
+  sessionId: string;
+}
+
 // ============================================================================
 // Frontend-Specific Types
 // ============================================================================
@@ -336,10 +406,14 @@ export interface AbandonSessionResponse {
  */
 export type LoadingOperation =
   | 'startSession'
+  | 'setStartingPoint'
   | 'selectOption'
+  | 'uploadImage'
   | 'regenerate'
   | 'depthEstimation'
   | 'videoPreview'
+  | 'generateFinalFrame'
+  | 'regenerateFinalFrame'
   | 'finalize'
   | null;
 
@@ -405,3 +479,38 @@ export interface SelectionOption {
   id: string;
   label: string;
 }
+
+/**
+ * UI configuration for starting point selection
+ */
+export interface StartingPointOption {
+  id: StartingPointMode;
+  label: string;
+  description: string;
+  icon: string;
+  creditCost: number;
+}
+
+export const STARTING_POINT_OPTIONS: StartingPointOption[] = [
+  {
+    id: 'upload',
+    label: 'Upload Image',
+    description: 'Use your own reference image as the starting frame',
+    icon: 'Upload',
+    creditCost: 0,
+  },
+  {
+    id: 'quick',
+    label: 'Quick Generate',
+    description: 'AI generates a starting frame from your description',
+    icon: 'Sparkles',
+    creditCost: 2,
+  },
+  {
+    id: 'converge',
+    label: 'Visual Exploration',
+    description: 'Explore style options through guided selection',
+    icon: 'Layers',
+    creditCost: 16,
+  },
+];

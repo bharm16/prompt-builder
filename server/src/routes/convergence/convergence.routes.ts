@@ -18,11 +18,14 @@ import type { ConvergenceService } from '@services/convergence/ConvergenceServic
 import { isConvergenceError } from '@services/convergence/errors';
 import type {
   StartSessionRequest,
+  SetStartingPointRequest,
   SelectOptionRequest,
   RegenerateRequest,
   GenerateCameraMotionRequest,
   SelectCameraMotionRequest,
   GenerateSubjectMotionRequest,
+  GenerateFinalFrameRequest,
+  RegenerateFinalFrameRequest,
   AbandonSessionRequest,
 } from '@services/convergence/types';
 
@@ -168,6 +171,65 @@ function createStartHandler(convergenceService: ConvergenceService) {
 }
 
 /**
+ * POST /starting-point - Set starting point mode
+ */
+function createStartingPointHandler(convergenceService: ConvergenceService) {
+  return async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = getUserId(req);
+
+    const { sessionId, mode, imageUrl } = req.body as SetStartingPointRequest;
+
+    if (!sessionId || !mode) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'sessionId and mode are required',
+        requestId,
+      });
+    }
+
+    if (mode === 'upload' && !imageUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'imageUrl is required for upload mode',
+        requestId,
+      });
+    }
+
+    logger.info('Setting starting point', {
+      requestId,
+      userId,
+      sessionId,
+      mode,
+    });
+
+    try {
+      const result = await convergenceService.setStartingPoint(
+        { sessionId, mode, imageUrl },
+        userId
+      );
+
+      logger.info('Starting point set', {
+        requestId,
+        userId,
+        sessionId,
+        nextStep: result.nextStep,
+        creditsConsumed: result.creditsConsumed,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      return handleConvergenceError(error, res, requestId);
+    }
+  };
+}
+
+/**
  * POST /select - Select an option for a dimension
  *
  * Requirements:
@@ -259,6 +321,97 @@ function createRegenerateHandler(convergenceService: ConvergenceService) {
         userId,
         sessionId,
         imageCount: result.images.length,
+        remainingRegenerations: result.remainingRegenerations,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      return handleConvergenceError(error, res, requestId);
+    }
+  };
+}
+
+/**
+ * POST /final-frame/generate - Generate HQ final frame
+ */
+function createGenerateFinalFrameHandler(convergenceService: ConvergenceService) {
+  return async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = getUserId(req);
+
+    const { sessionId } = req.body as GenerateFinalFrameRequest;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'sessionId is required',
+        requestId,
+      });
+    }
+
+    logger.info('Generating final frame', {
+      requestId,
+      userId,
+      sessionId,
+    });
+
+    try {
+      const result = await convergenceService.generateFinalFrame({ sessionId }, userId);
+
+      logger.info('Final frame generated', {
+        requestId,
+        userId,
+        sessionId,
+        creditsConsumed: result.creditsConsumed,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      return handleConvergenceError(error, res, requestId);
+    }
+  };
+}
+
+/**
+ * POST /final-frame/regenerate - Regenerate HQ final frame
+ */
+function createRegenerateFinalFrameHandler(convergenceService: ConvergenceService) {
+  return async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = getUserId(req);
+
+    const { sessionId } = req.body as RegenerateFinalFrameRequest;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'sessionId is required',
+        requestId,
+      });
+    }
+
+    logger.info('Regenerating final frame', {
+      requestId,
+      userId,
+      sessionId,
+    });
+
+    try {
+      const result = await convergenceService.regenerateFinalFrame({ sessionId }, userId);
+
+      logger.info('Final frame regenerated', {
+        requestId,
+        userId,
+        sessionId,
+        creditsConsumed: result.creditsConsumed,
         remainingRegenerations: result.remainingRegenerations,
       });
 
@@ -623,6 +776,15 @@ export function createConvergenceRoutes(services: ConvergenceRoutesServices): Ro
 
   // Session lifecycle
   router.post('/start', asyncHandler(createStartHandler(convergenceService)));
+  router.post('/starting-point', asyncHandler(createStartingPointHandler(convergenceService)));
+  router.post(
+    '/final-frame/generate',
+    asyncHandler(createGenerateFinalFrameHandler(convergenceService))
+  );
+  router.post(
+    '/final-frame/regenerate',
+    asyncHandler(createRegenerateFinalFrameHandler(convergenceService))
+  );
   router.post('/finalize', asyncHandler(createFinalizeHandler(convergenceService)));
   router.get('/session/active', asyncHandler(createGetActiveSessionHandler(convergenceService)));
   router.get('/session/:sessionId', asyncHandler(createGetSessionHandler(convergenceService)));

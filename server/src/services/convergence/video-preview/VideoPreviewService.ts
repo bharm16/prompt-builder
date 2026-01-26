@@ -26,6 +26,7 @@ import type { StorageService } from '../storage';
  * This is the fast version optimized for preview generation
  */
 const WAN_2_2_MODEL = 'wan-video/wan-2.2-t2v-fast' as const;
+const WAN_2_2_I2V_MODEL = 'wan-video/wan-2.2-i2v-fast' as const;
 
 /**
  * Default negative prompt for Wan 2.2 to improve quality
@@ -74,6 +75,8 @@ export interface VideoPreviewOptions {
   duration?: number;
   /** Aspect ratio (e.g., '16:9', '9:16', '1:1') */
   aspectRatio?: string;
+  /** Optional starting image for i2v previews */
+  startImage?: string;
 }
 
 /**
@@ -168,17 +171,19 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
     const startTime = Date.now();
     const duration = options?.duration ?? VIDEO_PREVIEW_CONFIG.defaultDuration;
     const aspectRatio = options?.aspectRatio ?? VIDEO_PREVIEW_CONFIG.defaultAspectRatio;
+    const startImage = options?.startImage;
 
     this.log.info('Starting video preview generation', {
       promptLength: prompt.length,
       duration,
       aspectRatio,
+      inputMode: startImage ? 'i2v' : 't2v',
     });
 
     try {
       // Use withRetry for resilience (Requirement 7.6 fallback handled by caller)
       const videoTempUrl = await withRetry(
-        () => this.runVideoGeneration(prompt, duration, aspectRatio),
+        () => this.runVideoGeneration(prompt, duration, aspectRatio, startImage),
         VIDEO_PREVIEW_CONFIG.maxRetries,
         VIDEO_PREVIEW_CONFIG.baseDelayMs
       );
@@ -221,7 +226,8 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
   private async runVideoGeneration(
     prompt: string,
     duration: number,
-    aspectRatio: string
+    aspectRatio: string,
+    startImage?: string
   ): Promise<string> {
     if (!this.replicate) {
       throw new Error('Replicate client not initialized');
@@ -233,7 +239,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
     // Resolve size from aspect ratio
     const size = ASPECT_RATIO_SIZE_MAP[aspectRatio] ?? ASPECT_RATIO_SIZE_MAP['16:9'];
 
-    const input = {
+    const input: Record<string, unknown> = {
       prompt,
       negative_prompt: DEFAULT_NEGATIVE_PROMPT,
       size,
@@ -244,15 +250,21 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
       sample_shift: 12,
     };
 
+    if (startImage) {
+      input.image = startImage;
+    }
+
+    const modelId = startImage ? WAN_2_2_I2V_MODEL : WAN_2_2_MODEL;
+
     this.log.debug('Calling Replicate video generation', {
-      model: WAN_2_2_MODEL,
+      model: modelId,
       input: {
         ...input,
         prompt: prompt.slice(0, 100) + (prompt.length > 100 ? '...' : ''),
       },
     });
 
-    const output = await this.replicate.run(WAN_2_2_MODEL as `${string}/${string}`, { input });
+    const output = await this.replicate.run(modelId as `${string}/${string}`, { input });
 
     this.log.debug('Replicate video generation response', {
       outputType: typeof output,

@@ -10,6 +10,7 @@ import type {
   InsufficientCreditsModalState,
   SelectionOption,
   FinalizeSessionResponse,
+  StartingPointMode,
 } from '../types';
 
 // ============================================================================
@@ -29,6 +30,12 @@ export interface ConvergenceState {
   intent: string;
   direction: Direction | null;
   lockedDimensions: LockedDimension[];
+  startingPointMode: StartingPointMode | null;
+
+  // Final frame state
+  finalFrameUrl: string | null;
+  uploadedImageUrl: string | null;
+  finalFrameRegenerations: number;
 
   // Current dimension state
   currentImages: GeneratedImage[];
@@ -44,6 +51,8 @@ export interface ConvergenceState {
   // Subject motion state
   subjectMotion: string;
   subjectMotionVideoUrl: string | null;
+  subjectMotionInputMode: 'i2v' | 't2v' | null;
+  subjectMotionStartImageUrl: string | null;
 
   // Final state
   finalPrompt: string | null;
@@ -96,6 +105,19 @@ export type ConvergenceAction =
       };
     }
   | { type: 'START_SESSION_FAILURE'; payload: string }
+  // Starting point actions
+  | { type: 'SET_STARTING_POINT_REQUEST'; payload: StartingPointMode }
+  | {
+      type: 'SET_STARTING_POINT_SUCCESS';
+      payload: {
+        mode: StartingPointMode;
+        nextStep: ConvergenceStep;
+        finalFrameUrl?: string;
+        images?: GeneratedImage[];
+        options?: SelectionOption[];
+      };
+    }
+  | { type: 'SET_STARTING_POINT_FAILURE'; payload: string }
   // Select option actions (Task 17.3.2)
   | { type: 'SELECT_OPTION_REQUEST' }
   | {
@@ -103,7 +125,7 @@ export type ConvergenceAction =
       payload: {
         images: GeneratedImage[];
         lockedDimensions: LockedDimension[];
-        currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+        currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
         options?: SelectionOption[];
         direction?: Direction;
       };
@@ -149,10 +171,32 @@ export type ConvergenceAction =
       payload: {
         videoUrl: string;
         prompt: string;
+        inputMode: 'i2v' | 't2v';
+        startImageUrl: string | null;
       };
     }
   | { type: 'GENERATE_SUBJECT_MOTION_FAILURE'; payload: string }
   | { type: 'SKIP_SUBJECT_MOTION' }
+  // Final frame actions
+  | { type: 'GENERATE_FINAL_FRAME_REQUEST' }
+  | {
+      type: 'GENERATE_FINAL_FRAME_SUCCESS';
+      payload: {
+        finalFrameUrl: string;
+        remainingRegenerations: number;
+      };
+    }
+  | { type: 'GENERATE_FINAL_FRAME_FAILURE'; payload: string }
+  | { type: 'REGENERATE_FINAL_FRAME_REQUEST' }
+  | {
+      type: 'REGENERATE_FINAL_FRAME_SUCCESS';
+      payload: {
+        finalFrameUrl: string;
+        remainingRegenerations: number;
+      };
+    }
+  | { type: 'REGENERATE_FINAL_FRAME_FAILURE'; payload: string }
+  | { type: 'CONFIRM_FINAL_FRAME' }
   // Finalize actions
   | { type: 'FINALIZE_REQUEST' }
   | {
@@ -213,6 +257,8 @@ export interface ConvergenceActions {
   setIntent: (intent: string) => void;
   /** Start a new convergence session */
   startSession: (intent: string, aspectRatio?: string) => Promise<void>;
+  /** Set the starting point mode */
+  setStartingPoint: (mode: StartingPointMode, imageUrl?: string) => Promise<void>;
   /** Select an option for a dimension */
   selectOption: (dimension: DimensionType | 'direction', optionId: string) => Promise<void>;
   /** Regenerate options for the current dimension */
@@ -229,6 +275,12 @@ export interface ConvergenceActions {
   setSubjectMotion: (motion: string) => void;
   /** Generate subject motion preview video */
   generateSubjectMotionPreview: () => Promise<void>;
+  /** Generate the HQ final frame */
+  generateFinalFrame: () => Promise<void>;
+  /** Regenerate the HQ final frame */
+  regenerateFinalFrame: () => Promise<void>;
+  /** Confirm the final frame and proceed */
+  confirmFinalFrame: () => void;
   /** Skip subject motion and proceed to preview */
   skipSubjectMotion: () => void;
   /** Finalize the session */

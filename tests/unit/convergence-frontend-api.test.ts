@@ -306,9 +306,9 @@ describe('convergenceApi Error Handling', () => {
         createMockResponse({
           sessionId: 'test-session',
           images: [],
-          currentDimension: 'direction',
+          currentDimension: 'starting_point',
           options: [],
-          estimatedCost: 4,
+          estimatedCost: 0,
         })
       );
       global.fetch = mockFetch;
@@ -381,14 +381,14 @@ describe('convergenceApi Error Handling', () => {
     describe('startSession', () => {
       it('should send correct request body', async () => {
         const mockFetch = vi.fn().mockResolvedValue(
-          createMockResponse({
-            sessionId: 'test-session',
-            images: [],
-            currentDimension: 'direction',
-            options: [],
-            estimatedCost: 4,
-          })
-        );
+        createMockResponse({
+          sessionId: 'test-session',
+          images: [],
+          currentDimension: 'starting_point',
+          options: [],
+          estimatedCost: 0,
+        })
+      );
         global.fetch = mockFetch;
 
         const { startSession } = await import('@features/convergence/api/convergenceApi');
@@ -406,14 +406,14 @@ describe('convergenceApi Error Handling', () => {
 
       it('should include aspectRatio when provided', async () => {
         const mockFetch = vi.fn().mockResolvedValue(
-          createMockResponse({
-            sessionId: 'test-session',
-            images: [],
-            currentDimension: 'direction',
-            options: [],
-            estimatedCost: 4,
-          })
-        );
+        createMockResponse({
+          sessionId: 'test-session',
+          images: [],
+          currentDimension: 'starting_point',
+          options: [],
+          estimatedCost: 0,
+        })
+      );
         global.fetch = mockFetch;
 
         const { startSession } = await import('@features/convergence/api/convergenceApi');

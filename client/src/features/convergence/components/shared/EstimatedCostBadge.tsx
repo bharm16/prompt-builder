@@ -19,7 +19,7 @@ export interface EstimatedCostBadgeProps {
   variant?: 'default' | 'subtle' | 'prominent';
 }
 
-const ESTIMATED_TOTAL_COST = 22;
+const ESTIMATED_TOTAL_COST = 24;
 
 type BadgeSize = NonNullable<EstimatedCostBadgeProps['size']>;
 
@@ -80,7 +80,7 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
             >
               <p className="font-medium text-[#a1a1aa] mb-1">Estimated Total Cost</p>
               <p className="text-[#71717a] leading-relaxed">
-                Includes direction, mood, framing, lighting, camera motion, and subject motion preview.
+                Includes direction, mood, framing, lighting, final frame, camera motion, and subject motion preview.
               </p>
               <div
                 className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-[#18181b]"

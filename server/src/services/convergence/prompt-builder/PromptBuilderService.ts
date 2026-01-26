@@ -30,6 +30,25 @@ export interface PromptBuildOptions {
 }
 
 /**
+ * Options for building a final frame prompt.
+ */
+export interface FinalFramePromptOptions {
+  intent: string;
+  direction: Direction;
+  lockedDimensions: LockedDimension[];
+}
+
+/**
+ * Options for building a subject motion prompt.
+ */
+export interface SubjectMotionPromptOptions {
+  intent: string;
+  direction: Direction;
+  lockedDimensions: LockedDimension[];
+  subjectMotion: string;
+}
+
+/**
  * Preview dimension information for building preview prompts.
  */
 export interface PreviewDimension {
@@ -163,6 +182,61 @@ export class PromptBuilderService {
     }
 
     // Join all parts with commas
+    return parts.join(', ');
+  }
+
+  /**
+   * Build prompt for quick generate mode (single HQ image from intent).
+   */
+  buildQuickGeneratePrompt(intent: string): string {
+    return `${intent}, high quality, professional photography, detailed, sharp focus, cinematic lighting`;
+  }
+
+  /**
+   * Build prompt for final frame generation with all locked dimensions.
+   */
+  buildFinalFramePrompt(options: FinalFramePromptOptions): string {
+    const basePrompt = this.buildPrompt({
+      intent: options.intent,
+      direction: options.direction,
+      lockedDimensions: options.lockedDimensions,
+    });
+
+    return `${basePrompt}, high quality, professional, detailed, sharp focus`;
+  }
+
+  /**
+   * Build prompt for subject motion i2v generation.
+   */
+  buildSubjectMotionPrompt(options: SubjectMotionPromptOptions): string {
+    const { intent, direction, lockedDimensions, subjectMotion } = options;
+
+    const parts: string[] = [];
+    parts.push(intent);
+
+    if (subjectMotion.trim()) {
+      parts.push(subjectMotion.trim());
+    }
+
+    const directionFragments = getDirectionFragments(direction);
+    const selectedDirectionFragments = selectFirstFragments(
+      directionFragments,
+      PromptBuilderService.PREVIEW_LOCKED_FRAGMENT_COUNT
+    );
+    parts.push(...selectedDirectionFragments);
+
+    const styleFragments = lockedDimensions.filter(
+      (dimension) => dimension.type === 'mood' || dimension.type === 'lighting'
+    );
+
+    for (const dimension of styleFragments) {
+      const selectedFragments = selectFirstFragments(
+        dimension.promptFragments,
+        PromptBuilderService.PREVIEW_LOCKED_FRAGMENT_COUNT
+      );
+      parts.push(...selectedFragments);
+    }
+
     return parts.join(', ');
   }
 

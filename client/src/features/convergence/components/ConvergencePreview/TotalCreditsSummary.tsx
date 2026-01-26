@@ -32,7 +32,7 @@ export interface TotalCreditsSummaryProps {
  *
  * @example
  * ```tsx
- * <TotalCreditsSummary totalCreditsConsumed={22} />
+ * <TotalCreditsSummary totalCreditsConsumed={24} />
  * ```
  */
 export const TotalCreditsSummary: React.FC<TotalCreditsSummaryProps> = ({

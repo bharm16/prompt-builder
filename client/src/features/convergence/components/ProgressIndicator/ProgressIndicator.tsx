@@ -21,7 +21,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { getProgressSteps, getStepLabel, getStepOrder } from '@/features/convergence/utils';
-import type { ConvergenceStep } from '@/features/convergence/types';
+import type { ConvergenceStep, StartingPointMode } from '@/features/convergence/types';
 
 // ============================================================================
 // Types
@@ -30,6 +30,8 @@ import type { ConvergenceStep } from '@/features/convergence/types';
 export interface ProgressIndicatorProps {
   /** Current step in the convergence flow */
   currentStep: ConvergenceStep;
+  /** Starting point mode to determine visible steps */
+  startingPointMode?: StartingPointMode | null;
   /** Callback when a completed step is clicked for navigation */
   onStepClick?: (step: ConvergenceStep) => void;
   /** Whether navigation is disabled (e.g., during loading) */
@@ -50,9 +52,13 @@ type StepState = 'completed' | 'current' | 'future';
 /**
  * Determines the visual state of a step based on the current step
  */
-function getStepState(step: ConvergenceStep, currentStep: ConvergenceStep): StepState {
-  const stepIndex = getStepOrder(step);
-  const currentIndex = getStepOrder(currentStep);
+function getStepState(
+  step: ConvergenceStep,
+  currentStep: ConvergenceStep,
+  mode: StartingPointMode | null
+): StepState {
+  const stepIndex = getStepOrder(step, mode);
+  const currentIndex = getStepOrder(currentStep, mode);
 
   if (stepIndex < currentIndex) {
     return 'completed';
@@ -74,6 +80,7 @@ interface StepButtonProps {
   isLast: boolean;
   onClick?: () => void;
   disabled?: boolean;
+  mode: StartingPointMode | null;
 }
 
 /**
@@ -86,6 +93,7 @@ const StepButton: React.FC<StepButtonProps> = ({
   isLast,
   onClick,
   disabled = false,
+  mode,
 }) => {
   const label = getStepLabel(step);
   const isClickable = state === 'completed' && !disabled;
@@ -135,7 +143,7 @@ const StepButton: React.FC<StepButtonProps> = ({
             <Check className="w-4 h-4" aria-hidden="true" />
           ) : (
             <span className="text-xs font-medium" aria-hidden="true">
-              {getStepOrder(step)}
+              {getStepOrder(step, mode)}
             </span>
           )}
         </div>
@@ -189,12 +197,13 @@ const StepButton: React.FC<StepButtonProps> = ({
  */
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   currentStep,
+  startingPointMode = null,
   onStepClick,
   disabled = false,
   className,
 }) => {
   // Get the steps to display (excludes 'intent' and 'complete')
-  const steps = getProgressSteps();
+  const steps = getProgressSteps(startingPointMode);
 
   /**
    * Handle step click - only for completed steps
@@ -218,7 +227,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     >
       <div className="flex items-center overflow-x-auto scrollbar-hide">
         {steps.map((step, index) => {
-          const state = getStepState(step, currentStep);
+          const state = getStepState(step, currentStep, startingPointMode);
           const isFirst = index === 0;
           const isLast = index === steps.length - 1;
 
@@ -231,6 +240,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
               isLast={isLast}
               onClick={() => handleStepClick(step)}
               disabled={disabled}
+              mode={startingPointMode}
             />
           );
         })}

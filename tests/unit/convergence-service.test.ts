@@ -139,11 +139,17 @@ function createMockImageGenerationService() {
  */
 function createMockStorageService() {
   return {
-    upload: vi.fn(async (tempUrl: string) => 
+    upload: vi.fn(async (tempUrl: string) =>
       `https://storage.googleapis.com/bucket/${Math.random().toString(36)}.png`
     ),
     uploadBatch: vi.fn(async (tempUrls: string[]) =>
       tempUrls.map(() => `https://storage.googleapis.com/bucket/${Math.random().toString(36)}.png`)
+    ),
+    uploadFromUrl: vi.fn(async (sourceUrl: string) =>
+      `https://storage.googleapis.com/bucket/${Math.random().toString(36)}.png`
+    ),
+    uploadBuffer: vi.fn(async () =>
+      `https://storage.googleapis.com/bucket/${Math.random().toString(36)}.png`
     ),
     delete: vi.fn(async () => {}),
   };
@@ -168,6 +174,9 @@ function createMockPromptBuilderService() {
   return {
     buildPrompt: vi.fn((options) => `${options.intent}, cinematic composition`),
     buildDimensionPreviewPrompt: vi.fn((intent) => `${intent}, preview prompt`),
+    buildQuickGeneratePrompt: vi.fn((intent) => `${intent}, quick generate`),
+    buildFinalFramePrompt: vi.fn((options) => `${options.intent}, final frame`),
+    buildSubjectMotionPrompt: vi.fn((options) => `${options.intent}, ${options.subjectMotion}`),
     buildDirectionPrompts: vi.fn((intent) => [
       { direction: 'cinematic', prompt: `${intent}, cinematic` },
       { direction: 'social', prompt: `${intent}, social` },
@@ -190,7 +199,7 @@ function createMockPromptBuilderService() {
  */
 function createMockVideoPreviewService() {
   return {
-    generatePreview: vi.fn(async () => 
+    generatePreview: vi.fn(async () =>
       `https://storage.googleapis.com/bucket/video-${Math.random().toString(36)}.mp4`
     ),
     isAvailable: vi.fn(() => true),
@@ -223,12 +232,17 @@ function createTestSession(overrides: Partial<ConvergenceSession> = {}): Converg
     id: 'test-session-id',
     userId: 'test-user-id',
     intent: 'A beautiful sunset over the ocean',
+    aspectRatio: '16:9',
     direction: null,
     lockedDimensions: [],
     currentStep: 'direction',
     generatedImages: [],
     imageHistory: {},
     regenerationCounts: {},
+    startingPointMode: 'converge',
+    finalFrameUrl: null,
+    finalFrameRegenerations: 0,
+    uploadedImageUrl: null,
     depthMapUrl: null,
     cameraMotion: null,
     subjectMotion: null,
@@ -300,34 +314,34 @@ describe('ConvergenceService', () => {
       }
     });
 
-    it('should generate 4 direction images', async () => {
+    it('should start at starting_point without generating images', async () => {
       const result = await service.startSession(
         { intent: 'A beautiful sunset' },
         'user-123'
       );
 
-      expect(result.images).toHaveLength(4);
-      expect(result.currentDimension).toBe('direction');
+      expect(result.images).toHaveLength(0);
+      expect(result.currentDimension).toBe('starting_point');
+      expect(result.options).toBeUndefined();
     });
 
-    it('should return direction options', async () => {
+    it('should return zero estimated cost before starting point is selected', async () => {
       const result = await service.startSession(
         { intent: 'A beautiful sunset' },
         'user-123'
       );
 
-      expect(result.options).toHaveLength(4);
-      expect(result.options.map((o) => o.id)).toEqual(['cinematic', 'social', 'artistic', 'documentary']);
+      expect(result.estimatedCost).toBe(0);
     });
 
     /**
-     * Requirement 15.6: Reserve credits at request time
+     * Requirement 15.6: Reserve credits when generation occurs
      */
-    it('should reserve credits for image generation', async () => {
+    it('should not reserve credits before a starting point is chosen', async () => {
       await service.startSession({ intent: 'A beautiful sunset' }, 'user-123');
 
-      expect(mockDeps.creditsService.reserve).toHaveBeenCalled();
-      expect(mockDeps.creditsService.commit).toHaveBeenCalled();
+      expect(mockDeps.creditsService.reserve).not.toHaveBeenCalled();
+      expect(mockDeps.creditsService.commit).not.toHaveBeenCalled();
     });
 
     it('should throw INSUFFICIENT_CREDITS if user lacks credits', async () => {

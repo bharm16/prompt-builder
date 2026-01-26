@@ -71,6 +71,7 @@ function createTestSession(overrides: Partial<ConvergenceSession> = {}): Converg
     id: 'test-session-id',
     userId: 'test-user-id',
     intent: 'A beautiful sunset over the ocean',
+    aspectRatio: '16:9',
     direction: 'cinematic',
     lockedDimensions: [createTestLockedDimension()],
     currentStep: 'framing',
@@ -82,6 +83,10 @@ function createTestSession(overrides: Partial<ConvergenceSession> = {}): Converg
     },
     // Backend returns Record, not Map
     regenerationCounts: { direction: 1, mood: 2 },
+    startingPointMode: 'converge',
+    finalFrameUrl: null,
+    finalFrameRegenerations: 0,
+    uploadedImageUrl: null,
     depthMapUrl: null,
     cameraMotion: null,
     subjectMotion: null,

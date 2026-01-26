@@ -15,10 +15,12 @@ import type { ConvergenceStep, DimensionType } from './types';
  */
 export const STEP_ORDER: ConvergenceStep[] = [
   'intent',
+  'starting_point',
   'direction',
   'mood',
   'framing',
   'lighting',
+  'final_frame',
   'camera_motion',
   'subject_motion',
   'preview',

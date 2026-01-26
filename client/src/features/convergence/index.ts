@@ -18,6 +18,7 @@ export type {
   Direction,
   DimensionType,
   ConvergenceStep,
+  StartingPointMode,
   // Camera motion types
   Position3D,
   CameraPath,
@@ -43,6 +44,12 @@ export type {
   GenerateSubjectMotionRequest,
   GenerateSubjectMotionResponse,
   FinalizeSessionResponse,
+  SetStartingPointRequest,
+  SetStartingPointResponse,
+  GenerateFinalFrameRequest,
+  GenerateFinalFrameResponse,
+  RegenerateFinalFrameRequest,
+  UploadImageResponse,
   // Frontend-specific types
   LoadingOperation,
   ConvergenceErrorCode,
@@ -51,6 +58,7 @@ export type {
   ConvergenceHandoff,
   DirectionOption,
   SelectionOption,
+  StartingPointOption,
 } from './types';
 
 // ============================================================================
@@ -95,6 +103,9 @@ export {
   selectCameraMotion,
   generateSubjectMotion,
   finalizeSession,
+  setStartingPoint,
+  generateFinalFrame,
+  regenerateFinalFrame,
   getActiveSession,
   getSession,
 } from './api';

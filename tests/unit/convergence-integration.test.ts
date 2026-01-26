@@ -188,6 +188,12 @@ function createMockStorageService() {
     uploadBatch: vi.fn(async (tempUrls: string[]) =>
       tempUrls.map(() => `https://storage.googleapis.com/bucket/permanent-${++uploadCounter}.png`)
     ),
+    uploadFromUrl: vi.fn(async (sourceUrl: string) =>
+      `https://storage.googleapis.com/bucket/permanent-${++uploadCounter}.png`
+    ),
+    uploadBuffer: vi.fn(async () =>
+      `https://storage.googleapis.com/bucket/permanent-${++uploadCounter}.png`
+    ),
     delete: vi.fn(async () => {}),
     _reset: () => { uploadCounter = 0; },
   };
@@ -225,6 +231,9 @@ function createMockPromptBuilderService() {
       if (options.subjectMotion) parts.push(options.subjectMotion);
       return parts.join(', ');
     }),
+    buildQuickGeneratePrompt: vi.fn((intent) => `${intent}, quick generate`),
+    buildFinalFramePrompt: vi.fn((options) => `${options.intent}, final frame`),
+    buildSubjectMotionPrompt: vi.fn((options) => `${options.intent}, ${options.subjectMotion}`),
     buildDimensionPreviewPrompt: vi.fn((intent, direction, lockedDimensions, previewDimension) => {
       const parts = [intent, `${direction} style`];
       lockedDimensions?.forEach((d: LockedDimension) => parts.push(d.label.toLowerCase()));
@@ -363,13 +372,23 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
 
       expect(startResult.sessionId).toBeDefined();
-      expect(startResult.images).toHaveLength(4);
-      expect(startResult.currentDimension).toBe('direction');
-      expect(startResult.options).toEqual(DIRECTION_OPTIONS);
+      expect(startResult.images).toHaveLength(0);
+      expect(startResult.currentDimension).toBe('starting_point');
+      expect(startResult.options).toBeUndefined();
 
       const sessionId = startResult.sessionId;
 
-      // Step 2: Select direction (cinematic)
+      // Step 2: Choose converge starting point to generate direction options
+      const startingPointResult = await service.setStartingPoint(
+        { sessionId, mode: 'converge' },
+        testUserId
+      );
+
+      expect(startingPointResult.nextStep).toBe('direction');
+      expect(startingPointResult.images).toHaveLength(4);
+      expect(startingPointResult.options).toEqual(DIRECTION_OPTIONS);
+
+      // Step 3: Select direction (cinematic)
       const directionResult = await service.selectOption(
         { sessionId, dimension: 'direction', optionId: 'cinematic' },
         testUserId
@@ -380,7 +399,7 @@ describe('Convergence Integration Tests', () => {
       expect(directionResult.images).toHaveLength(4);
       expect(directionResult.lockedDimensions).toHaveLength(0);
 
-      // Step 3: Select mood (dramatic)
+      // Step 4: Select mood (dramatic)
       const moodResult = await service.selectOption(
         { sessionId, dimension: 'mood', optionId: 'dramatic' },
         testUserId
@@ -391,7 +410,7 @@ describe('Convergence Integration Tests', () => {
       expect(moodResult.lockedDimensions).toHaveLength(1);
       expect(moodResult.lockedDimensions[0]?.type).toBe('mood');
 
-      // Step 4: Select framing (wide)
+      // Step 5: Select framing (wide)
       const framingResult = await service.selectOption(
         { sessionId, dimension: 'framing', optionId: 'wide' },
         testUserId
@@ -401,28 +420,33 @@ describe('Convergence Integration Tests', () => {
       expect(framingResult.images).toHaveLength(4);
       expect(framingResult.lockedDimensions).toHaveLength(2);
 
-      // Step 5: Select lighting (golden_hour) - transitions to camera_motion
+      // Step 6: Select lighting (golden_hour) - transitions to final_frame
       const lightingResult = await service.selectOption(
         { sessionId, dimension: 'lighting', optionId: 'golden_hour' },
         testUserId
       );
 
-      expect(lightingResult.currentDimension).toBe('camera_motion');
-      expect(lightingResult.images).toHaveLength(0); // No images for camera motion
+      expect(lightingResult.currentDimension).toBe('final_frame');
+      expect(lightingResult.images).toHaveLength(0); // No images for final frame
       expect(lightingResult.lockedDimensions).toHaveLength(3);
       expect(lightingResult.creditsConsumed).toBe(0); // Transition doesn't consume credits
 
-      // Step 6: Generate camera motion (depth estimation)
+      // Step 7: Generate final frame
+      const finalFrameResult = await service.generateFinalFrame({ sessionId }, testUserId);
+
+      expect(finalFrameResult.finalFrameUrl).toBeDefined();
+
+      // Step 8: Generate camera motion (depth estimation)
       const cameraMotionResult = await service.generateCameraMotion({ sessionId }, testUserId);
 
       expect(cameraMotionResult.depthMapUrl).toBeDefined();
       expect(cameraMotionResult.cameraPaths).toEqual(CAMERA_PATHS);
       expect(cameraMotionResult.fallbackMode).toBe(false);
 
-      // Step 7: Select camera motion (push_in)
+      // Step 9: Select camera motion (push_in)
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
-      // Step 8: Generate subject motion preview (optional)
+      // Step 10: Generate subject motion preview (optional)
       const subjectMotionResult = await service.generateSubjectMotion(
         { sessionId, subjectMotion: 'waves gently rolling' },
         testUserId
@@ -430,8 +454,10 @@ describe('Convergence Integration Tests', () => {
 
       expect(subjectMotionResult.videoUrl).toBeDefined();
       expect(subjectMotionResult.prompt).toContain(testIntent);
+      expect(subjectMotionResult.inputMode).toBe('i2v');
+      expect(subjectMotionResult.startImageUrl).toBe(finalFrameResult.finalFrameUrl);
 
-      // Step 9: Finalize session
+      // Step 11: Finalize session
       const finalizeResult = await service.finalizeSession(sessionId, testUserId);
 
       expect(finalizeResult.sessionId).toBe(sessionId);
@@ -458,6 +484,8 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       // Select direction
       await service.selectOption(
         { sessionId, dimension: 'direction', optionId: 'cinematic' },
@@ -481,6 +509,8 @@ describe('Convergence Integration Tests', () => {
         { sessionId, dimension: 'lighting', optionId: 'golden_hour' },
         testUserId
       );
+
+      await service.generateFinalFrame({ sessionId }, testUserId);
 
       // Generate camera motion
       await service.generateCameraMotion({ sessionId }, testUserId);
@@ -506,6 +536,8 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       // Only select direction, skip other dimensions
       await service.selectOption(
         { sessionId, dimension: 'direction', optionId: 'cinematic' },
@@ -528,11 +560,13 @@ describe('Convergence Integration Tests', () => {
     /**
      * Tests dimension order is preserved throughout the flow.
      *
-     * Requirement 3.5: Process dimensions in order: mood → framing → lighting → camera_motion
+     * Requirement 3.5: Process dimensions in order: mood → framing → lighting → final_frame
      */
     it('should preserve dimension order throughout flow', async () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
+
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
 
       // Select direction
       const dirResult = await service.selectOption(
@@ -555,12 +589,12 @@ describe('Convergence Integration Tests', () => {
       );
       expect(framingResult.currentDimension).toBe('lighting');
 
-      // Select lighting - should transition to camera_motion
+      // Select lighting - should transition to final_frame
       const lightingResult = await service.selectOption(
         { sessionId, dimension: 'lighting', optionId: 'golden_hour' },
         testUserId
       );
-      expect(lightingResult.currentDimension).toBe('camera_motion');
+      expect(lightingResult.currentDimension).toBe('final_frame');
 
       // Verify locked dimensions are in correct order
       const session = await service.getSession(sessionId);
@@ -583,6 +617,8 @@ describe('Convergence Integration Tests', () => {
       // Start a session
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
+
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
 
       // Make some progress
       await service.selectOption(
@@ -616,6 +652,8 @@ describe('Convergence Integration Tests', () => {
       // Start a session
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
+
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
 
       // Progress through multiple steps
       await service.selectOption(
@@ -668,6 +706,7 @@ describe('Convergence Integration Tests', () => {
       const firstSessionId = firstResult.sessionId;
 
       // Complete the flow
+      await service.setStartingPoint({ sessionId: firstSessionId, mode: 'converge' }, testUserId);
       await service.selectOption(
         { sessionId: firstSessionId, dimension: 'direction', optionId: 'cinematic' },
         testUserId
@@ -684,6 +723,7 @@ describe('Convergence Integration Tests', () => {
         { sessionId: firstSessionId, dimension: 'lighting', optionId: 'golden_hour' },
         testUserId
       );
+      await service.generateFinalFrame({ sessionId: firstSessionId }, testUserId);
       await service.generateCameraMotion({ sessionId: firstSessionId }, testUserId);
       await service.selectCameraMotion({ sessionId: firstSessionId, cameraMotionId: 'push_in' }, testUserId);
       await service.finalizeSession(firstSessionId, testUserId);
@@ -746,8 +786,9 @@ describe('Convergence Integration Tests', () => {
       mockDeps = createMockDeps({ initialBalance });
       service = new ConvergenceService(mockDeps);
 
-      // Start session (costs DIRECTION_IMAGES credits)
-      await service.startSession({ intent: testIntent }, testUserId);
+      // Start session and choose converge (costs DIRECTION_IMAGES credits)
+      const startResult = await service.startSession({ intent: testIntent }, testUserId);
+      await service.setStartingPoint({ sessionId: startResult.sessionId, mode: 'converge' }, testUserId);
 
       // Verify credits were reserved and committed
       expect(mockDeps.creditsService.reserve).toHaveBeenCalledWith(
@@ -772,9 +813,11 @@ describe('Convergence Integration Tests', () => {
       const mockGeneratePreview = mockDeps.imageGenerationService.generatePreview as ReturnType<typeof vi.fn>;
       mockGeneratePreview.mockRejectedValue(new Error('Image generation failed'));
 
-      // Try to start session
+      const startResult = await service.startSession({ intent: testIntent }, testUserId);
+
+      // Try to generate direction images
       await expect(
-        service.startSession({ intent: testIntent }, testUserId)
+        service.setStartingPoint({ sessionId: startResult.sessionId, mode: 'converge' }, testUserId)
       ).rejects.toThrow('Image generation failed');
 
       // Verify credits were refunded
@@ -791,12 +834,14 @@ describe('Convergence Integration Tests', () => {
       mockDeps = createMockDeps({ initialBalance: lowBalance });
       service = new ConvergenceService(mockDeps);
 
+      const startResult = await service.startSession({ intent: testIntent }, testUserId);
+
       await expect(
-        service.startSession({ intent: testIntent }, testUserId)
+        service.setStartingPoint({ sessionId: startResult.sessionId, mode: 'converge' }, testUserId)
       ).rejects.toThrow(ConvergenceError);
 
       try {
-        await service.startSession({ intent: testIntent }, testUserId);
+        await service.setStartingPoint({ sessionId: startResult.sessionId, mode: 'converge' }, testUserId);
       } catch (error) {
         expect((error as ConvergenceError).code).toBe('INSUFFICIENT_CREDITS');
         expect((error as ConvergenceError).details?.required).toBe(CONVERGENCE_COSTS.DIRECTION_IMAGES);
@@ -816,7 +861,9 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
-      // Clear mock calls from startSession
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
+      // Clear mock calls from starting point generation
       vi.clearAllMocks();
 
       // Select direction (generates mood images)
@@ -847,6 +894,8 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       // Clear mock calls
       vi.clearAllMocks();
 
@@ -875,10 +924,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
 
       // Clear mock calls
       vi.clearAllMocks();
@@ -907,10 +959,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
 
       // Generate camera motion (depth estimation will fail)
       const cameraResult = await service.generateCameraMotion({ sessionId }, testUserId);
@@ -934,10 +989,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
@@ -969,10 +1027,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
       await service.generateSubjectMotion({ sessionId, subjectMotion: 'waves rolling' }, testUserId);
@@ -984,12 +1045,14 @@ describe('Convergence Integration Tests', () => {
       // - Mood images: 4
       // - Framing images: 4
       // - Lighting images: 4
+      // - Final frame: 2
       // - Depth estimation: 1
       // - Wan preview: 5
-      // Total: 22
+      // Total: 24
       const expectedTotal =
         CONVERGENCE_COSTS.DIRECTION_IMAGES +
         CONVERGENCE_COSTS.DIMENSION_IMAGES * 3 + // mood, framing, lighting
+        CONVERGENCE_COSTS.FINAL_FRAME_HQ +
         CONVERGENCE_COSTS.DEPTH_ESTIMATION +
         CONVERGENCE_COSTS.WAN_PREVIEW;
 
@@ -1014,10 +1077,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
       await service.generateSubjectMotion({ sessionId, subjectMotion: 'waves rolling' }, testUserId);
@@ -1050,10 +1116,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
@@ -1076,10 +1145,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
       await service.generateSubjectMotion({ sessionId, subjectMotion: 'waves rolling' }, testUserId);
@@ -1108,10 +1180,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
@@ -1136,10 +1211,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
@@ -1163,10 +1241,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
       await service.generateCameraMotion({ sessionId }, testUserId);
       await service.selectCameraMotion({ sessionId, cameraMotionId: 'push_in' }, testUserId);
 
@@ -1189,6 +1270,8 @@ describe('Convergence Integration Tests', () => {
     it('should enforce regeneration limit per dimension', async () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
+
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
 
       // Regenerate direction 3 times (max allowed)
       await service.regenerate({ sessionId, dimension: 'direction' }, testUserId);
@@ -1255,8 +1338,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
-      // All images should have GCS URLs
-      for (const image of startResult.images) {
+      const startingPointResult = await service.setStartingPoint(
+        { sessionId, mode: 'converge' },
+        testUserId
+      );
+
+      // All direction images should have GCS URLs
+      for (const image of startingPointResult.images ?? []) {
         expect(image.url).toMatch(/^https:\/\/storage\.googleapis\.com\//);
       }
 
@@ -1281,10 +1369,13 @@ describe('Convergence Integration Tests', () => {
       const startResult = await service.startSession({ intent: testIntent }, testUserId);
       const sessionId = startResult.sessionId;
 
+      await service.setStartingPoint({ sessionId, mode: 'converge' }, testUserId);
+
       await service.selectOption({ sessionId, dimension: 'direction', optionId: 'cinematic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'mood', optionId: 'dramatic' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'framing', optionId: 'wide' }, testUserId);
       await service.selectOption({ sessionId, dimension: 'lighting', optionId: 'golden_hour' }, testUserId);
+      await service.generateFinalFrame({ sessionId }, testUserId);
 
       // Valid camera motion IDs should work
       for (const path of CAMERA_PATHS) {
@@ -1306,23 +1397,23 @@ describe('Convergence Integration Tests', () => {
     });
 
     /**
-     * Tests that session is marked as abandoned on start failure.
+     * Tests that session remains active when starting point selection fails.
      */
-    it('should mark session as abandoned when start fails', async () => {
+    it('should keep session active when starting point fails', async () => {
+      const startResult = await service.startSession({ intent: testIntent }, testUserId);
+
       // Make image generation fail
       (mockDeps.imageGenerationService as ReturnType<typeof createMockImageGenerationService>).generatePreview
         .mockRejectedValue(new Error('Generation failed'));
 
       await expect(
-        service.startSession({ intent: testIntent }, testUserId)
+        service.setStartingPoint({ sessionId: startResult.sessionId, mode: 'converge' }, testUserId)
       ).rejects.toThrow('Generation failed');
 
-      // Session should be created but marked as abandoned
-      const sessions = (mockDeps.sessionStore as ReturnType<typeof createMockSessionStore>)._sessions;
-      expect(sessions.size).toBe(1);
-
-      const session = sessions.values().next().value;
-      expect(session.status).toBe('abandoned');
+      // Session should remain active and in starting_point
+      const session = await service.getSession(startResult.sessionId);
+      expect(session?.status).toBe('active');
+      expect(session?.currentStep).toBe('starting_point');
     });
   });
 });

@@ -16,8 +16,18 @@ export { ConvergenceFlow, type ConvergenceFlowProps } from './ConvergenceFlow';
 
 // Flow step components
 export { IntentInput, type IntentInputProps } from './IntentInput';
+export {
+  StartingPointSelector,
+  ImageUploader,
+  type StartingPointSelectorProps,
+  type ImageUploaderProps,
+} from './StartingPointSelector';
 export { DirectionFork, type DirectionForkProps } from './DirectionFork';
 export { DimensionSelector, type DimensionSelectorProps } from './DimensionSelector';
+export {
+  FinalFrameConfirmation,
+  type FinalFrameConfirmationProps,
+} from './FinalFrameConfirmation';
 export {
   CameraMotionPicker,
   CameraMotionPickerWithErrorBoundary,

@@ -12,6 +12,7 @@ export type {
   Direction,
   DimensionType,
   ConvergenceStep,
+  StartingPointMode,
   Position3D,
   CameraPath,
   DimensionOption,
@@ -32,6 +33,11 @@ export type {
   GenerateSubjectMotionRequest,
   GenerateSubjectMotionResponse,
   FinalizeSessionResponse,
+  SetStartingPointRequest,
+  SetStartingPointResponse,
+  GenerateFinalFrameRequest,
+  GenerateFinalFrameResponse,
+  RegenerateFinalFrameRequest,
   CreditReservation,
   CreditReservationStatus,
 } from './types';
@@ -40,6 +46,7 @@ export {
   CREDIT_RESERVATION_STATUSES,
   DIMENSION_TYPES,
   DIRECTIONS,
+  STARTING_POINT_MODES,
   SESSION_STATUSES,
 } from './types';
 
@@ -74,6 +81,9 @@ export {
   CAMERA_PATHS,
   CAMERA_MOTION_DESCRIPTIONS,
   MAX_REGENERATIONS_PER_DIMENSION,
+  MAX_FINAL_FRAME_REGENERATIONS,
+  PREVIEW_PROVIDER,
+  FINAL_FRAME_PROVIDER,
   SESSION_TTL_HOURS,
   SESSION_TTL_MS,
 } from './constants';

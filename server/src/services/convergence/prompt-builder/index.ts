@@ -28,6 +28,8 @@ export {
 
 export type {
   PromptBuildOptions,
+  FinalFramePromptOptions,
+  SubjectMotionPromptOptions,
   PreviewDimension,
   DirectionPromptResult,
 } from './PromptBuilderService';
