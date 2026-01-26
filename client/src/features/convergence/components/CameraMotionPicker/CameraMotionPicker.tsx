@@ -2,10 +2,10 @@
  * CameraMotionPicker Component
  *
  * Component for selecting camera motion in the Visual Convergence flow.
- * Displays 6 camera motion options with Three.js previews on hover.
+ * Displays camera motion options with Three.js previews on hover.
  *
  * Features:
- * - Grid layout: 2 columns on mobile, 3 columns on desktop (Task 23.1)
+ * - Grid layout: 2 columns on mobile, 3-4 columns on desktop (Task 23.1)
  * - Normal mode: Three.js preview with lazy render on hover (Task 23.2.1)
  * - Fallback mode: text description when depth estimation fails (Task 23.2.2)
  * - Loading spinner during frame rendering (Task 23.3)
@@ -21,15 +21,29 @@
  * @requirement 12.5-12.6 - Keyboard navigation support
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Video } from 'lucide-react';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
-import type { CameraPath } from '@/features/convergence/types';
+import type { CameraMotionCategory, CameraPath } from '@/features/convergence/types';
 import { CameraMotionOption } from './CameraMotionOption';
 import { CameraMotionErrorBoundary } from './CameraMotionErrorBoundary';
 import { BackButton, StepCreditBadge } from '../shared';
 const log = logger.child('CameraMotionPicker');
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const CATEGORY_LABELS: Record<CameraMotionCategory | 'all', string> = {
+  all: 'All',
+  static: 'Static',
+  pan_tilt: 'Pan & Tilt',
+  dolly: 'Dolly',
+  crane: 'Crane',
+  orbital: 'Orbital',
+  compound: 'Compound',
+};
 
 // ============================================================================
 // Types
@@ -97,6 +111,8 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
   className,
   disabled = false,
 }) => {
+  const [selectedCategory, setSelectedCategory] = useState<CameraMotionCategory | 'all'>('all');
+
   /**
    * Handle camera motion selection
    */
@@ -108,6 +124,14 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
     },
     [onSelect, disabled, isLoading]
   );
+
+  const filteredPaths = useMemo(() => {
+    if (selectedCategory === 'all') return cameraPaths;
+    return cameraPaths.filter((path) => path.category === selectedCategory);
+  }, [cameraPaths, selectedCategory]);
+
+  const focusedCameraPathId =
+    focusedOptionIndex >= 0 ? cameraPaths[focusedOptionIndex]?.id : undefined;
 
   const isDisabled = disabled || isLoading;
 
@@ -158,25 +182,46 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
         </div>
       )}
 
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSelectedCategory(key as CameraMotionCategory | 'all')}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+              selectedCategory === key
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-surface-2 text-muted hover:text-foreground'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Camera Motion Grid (Task 23.1) */}
-      {/* Responsive grid: 2 columns on mobile, 3 columns on desktop */}
+      {/* Responsive grid: 2 columns on mobile, 3-4 columns on desktop */}
       <div
-        className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6"
+        className={cn(
+          'grid gap-4 mb-6',
+          filteredPaths.length <= 6 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'
+        )}
         role="listbox"
         aria-label="Camera motion options"
       >
-        {cameraPaths.map((cameraPath, index) => (
+        {filteredPaths.map((cameraPath) => (
           <CameraMotionOption
             key={cameraPath.id}
             cameraPath={cameraPath}
             imageUrl={imageUrl}
             depthMapUrl={depthMapUrl}
             isSelected={selectedCameraMotion === cameraPath.id}
-            isFocused={focusedOptionIndex === index}
+            isFocused={cameraPath.id === focusedCameraPathId}
             fallbackMode={fallbackMode}
             disabled={isDisabled}
             onSelect={handleSelect}
-            tabIndex={focusedOptionIndex === index ? 0 : -1}
+            tabIndex={cameraPath.id === focusedCameraPathId ? 0 : -1}
           />
         ))}
       </div>

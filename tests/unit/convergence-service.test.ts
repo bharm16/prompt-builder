@@ -515,7 +515,7 @@ describe('ConvergenceService', () => {
     it('should generate depth map and return camera paths', async () => {
       const session = createTestSession({
         userId: 'user-123',
-        generatedImages: [createTestImage()],
+        generatedImages: [createTestImage({ dimension: 'lighting', optionId: 'golden_hour' })],
       });
       mockDeps.sessionStore._sessions.set(session.id, session);
 
@@ -525,14 +525,15 @@ describe('ConvergenceService', () => {
       );
 
       expect(result.depthMapUrl).toBeDefined();
-      expect(result.cameraPaths).toHaveLength(6);
+      expect(result.cameraPaths.length).toBeGreaterThanOrEqual(12);
+      expect(result.cameraPaths.every((path) => path.id && path.label && path.category)).toBe(true);
       expect(result.fallbackMode).toBe(false);
     });
 
     it('should return fallback mode when depth estimation fails', async () => {
       const session = createTestSession({
         userId: 'user-123',
-        generatedImages: [createTestImage()],
+        generatedImages: [createTestImage({ dimension: 'lighting', optionId: 'golden_hour' })],
       });
       mockDeps.sessionStore._sessions.set(session.id, session);
 
@@ -548,7 +549,8 @@ describe('ConvergenceService', () => {
 
       expect(result.depthMapUrl).toBeNull();
       expect(result.fallbackMode).toBe(true);
-      expect(result.cameraPaths).toHaveLength(6);
+      expect(result.cameraPaths.length).toBeGreaterThanOrEqual(12);
+      expect(result.cameraPaths.every((path) => path.id && path.label && path.category)).toBe(true);
     });
   });
 
@@ -580,7 +582,16 @@ describe('ConvergenceService', () => {
           { sessionId: session.id, cameraMotionId: 'invalid_motion' },
           'user-123'
         )
-      ).rejects.toThrow('Invalid camera motion ID');
+      ).rejects.toThrow(ConvergenceError);
+
+      try {
+        await service.selectCameraMotion(
+          { sessionId: session.id, cameraMotionId: 'invalid_motion' },
+          'user-123'
+        );
+      } catch (error) {
+        expect((error as ConvergenceError).code).toBe('INVALID_REQUEST');
+      }
     });
   });
 

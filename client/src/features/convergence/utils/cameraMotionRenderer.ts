@@ -15,7 +15,13 @@
 
 import * as THREE from 'three';
 import { API_CONFIG } from '@/config/api.config';
-import type { CameraPath, Position3D } from '../types';
+import type {
+  CameraMotionCategory,
+  CameraPath,
+  CameraTransform,
+  Position3D,
+  Rotation3D,
+} from '../types';
 
 // ============================================================================
 // Types
@@ -59,6 +65,19 @@ interface ThreeResources {
   mesh: THREE.Mesh;
   imageTexture: THREE.Texture;
   depthTexture: THREE.Texture;
+}
+
+/**
+ * Legacy camera path format (position only, no rotation)
+ * Used for backward compatibility
+ */
+interface LegacyCameraPath {
+  id: string;
+  label: string;
+  category?: CameraMotionCategory;
+  start: Position3D;
+  end: Position3D;
+  duration: number;
 }
 
 // ============================================================================
@@ -320,6 +339,96 @@ function interpolatePosition(start: Position3D, end: Position3D, t: number): Pos
   };
 }
 
+/**
+ * Default rotation (no rotation) for legacy path compatibility
+ */
+const DEFAULT_ROTATION: Rotation3D = { pitch: 0, yaw: 0, roll: 0 };
+const DEFAULT_CATEGORY: CameraMotionCategory = 'static';
+
+/**
+ * Checks if a camera path uses the legacy format (position only)
+ */
+function isLegacyCameraPath(path: CameraPath | LegacyCameraPath): path is LegacyCameraPath {
+  return !('position' in path.start);
+}
+
+/**
+ * Normalizes a camera path to the new format with rotation support
+ * Handles backward compatibility with legacy paths that only have position
+ */
+function normalizeCameraPath(path: CameraPath | LegacyCameraPath): CameraPath {
+  if (isLegacyCameraPath(path)) {
+    return {
+      ...path,
+      category: path.category ?? DEFAULT_CATEGORY,
+      start: { position: path.start, rotation: DEFAULT_ROTATION },
+      end: { position: path.end, rotation: DEFAULT_ROTATION },
+    };
+  }
+  return path;
+}
+
+/**
+ * Creates a quaternion from Euler rotation (pitch, yaw, roll in radians)
+ * Uses 'YXZ' order which is standard for camera rotations:
+ * - First yaw (look left/right)
+ * - Then pitch (look up/down)
+ * - Finally roll (tilt head)
+ *
+ * @param rotation - Rotation in Euler angles (radians)
+ * @returns THREE.Quaternion representing the rotation
+ */
+function rotationToQuaternion(rotation: Rotation3D): THREE.Quaternion {
+  // YXZ order is standard for FPS-style camera controls
+  const euler = new THREE.Euler(rotation.pitch, rotation.yaw, rotation.roll, 'YXZ');
+  return new THREE.Quaternion().setFromEuler(euler);
+}
+
+/**
+ * Interpolates between two rotations using quaternion SLERP
+ * 
+ * SLERP (Spherical Linear Interpolation) is used instead of linear
+ * interpolation of Euler angles to avoid gimbal lock and ensure
+ * smooth rotation along the shortest arc.
+ *
+ * @param start - Starting rotation in Euler angles
+ * @param end - Ending rotation in Euler angles
+ * @param t - Progress value from 0 to 1 (will be eased)
+ * @returns THREE.Quaternion representing the interpolated rotation
+ */
+function interpolateRotation(start: Rotation3D, end: Rotation3D, t: number): THREE.Quaternion {
+  const easedT = easeInOutCubic(t);
+  
+  const startQ = rotationToQuaternion(start);
+  const endQ = rotationToQuaternion(end);
+  
+  // Use slerpQuaternions for smooth rotation interpolation
+  // This is the modern API - the static THREE.Quaternion.slerp() is deprecated
+  const result = new THREE.Quaternion();
+  result.slerpQuaternions(startQ, endQ, easedT);
+  
+  return result;
+}
+
+/**
+ * Interpolates complete camera transform (position + rotation)
+ *
+ * @param start - Starting transform
+ * @param end - Ending transform
+ * @param t - Progress value from 0 to 1
+ * @returns Interpolated position and quaternion rotation
+ */
+function interpolateTransform(
+  start: CameraTransform,
+  end: CameraTransform,
+  t: number
+): { position: Position3D; quaternion: THREE.Quaternion } {
+  return {
+    position: interpolatePosition(start.position, end.position, t),
+    quaternion: interpolateRotation(start.rotation, end.rotation, t),
+  };
+}
+
 // ============================================================================
 // Frame Rendering (Task 22.4)
 // ============================================================================
@@ -329,22 +438,23 @@ function interpolatePosition(start: Position3D, end: Position3D, t: number): Pos
  *
  * Creates a sequence of frames showing the camera moving along the specified path.
  * Uses depth-based parallax to create a 3D effect.
+ * Supports both position translation and rotation (pan, tilt, roll) via quaternion SLERP.
  *
  * Requirements:
  * - 6.1: Creates depth-displaced mesh from image and depth map
- * - 6.2: Animates camera position using ease-in-out interpolation
+ * - 6.2: Animates camera position and rotation using ease-in-out interpolation
  * - 6.3: Renders at specified resolution and fps (default 320x180 @ 15fps)
  *
  * @param imageUrl - URL of the source image
  * @param depthMapUrl - URL of the depth map
- * @param cameraPath - Camera path definition with start/end positions
+ * @param cameraPath - Camera path definition with start/end transforms (position + rotation)
  * @param options - Render options (width, height, fps, displacementScale)
  * @returns Promise resolving to array of frame data URLs
  */
 export async function renderCameraMotionFrames(
   imageUrl: string,
   depthMapUrl: string,
-  cameraPath: CameraPath,
+  cameraPath: CameraPath | LegacyCameraPath,
   options?: RenderOptions
 ): Promise<string[]> {
   const width = options?.width ?? DEFAULT_WIDTH;
@@ -352,8 +462,11 @@ export async function renderCameraMotionFrames(
   const fps = options?.fps ?? DEFAULT_FPS;
   const displacementScale = options?.displacementScale ?? DEFAULT_DISPLACEMENT_SCALE;
 
+  // Normalize path to new format (handles legacy paths without rotation)
+  const normalizedPath = normalizeCameraPath(cameraPath);
+
   // Calculate total frames based on duration and fps
-  const totalFrames = Math.ceil(cameraPath.duration * fps);
+  const totalFrames = Math.ceil(normalizedPath.duration * fps);
 
   // Load textures
   const { imageTexture, depthTexture } = await loadTextures(imageUrl, depthMapUrl);
@@ -390,13 +503,23 @@ export async function renderCameraMotionFrames(
       // Calculate progress (0 to 1)
       const progress = i / (totalFrames - 1);
 
-      // Interpolate camera position along path
-      const position = interpolatePosition(cameraPath.start, cameraPath.end, progress);
+      // Interpolate camera transform (position + rotation) along path
+      const transform = interpolateTransform(
+        normalizedPath.start,
+        normalizedPath.end,
+        progress
+      );
 
       // Update camera position
       // Base position is (0, 0, 1.5), add path offset
-      camera.position.set(position.x, position.y, 1.5 + position.z);
-      camera.lookAt(0, 0, 0);
+      camera.position.set(
+        transform.position.x,
+        transform.position.y,
+        1.5 + transform.position.z
+      );
+
+      // Apply rotation via quaternion (avoids gimbal lock)
+      camera.quaternion.copy(transform.quaternion);
 
       // Render frame
       renderer.render(scene, camera);

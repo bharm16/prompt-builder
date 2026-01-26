@@ -225,7 +225,7 @@ export const LIGHTING_DIMENSION: DimensionConfig = {
 // ============================================================================
 
 /**
- * Camera motion dimension configuration with 6 options, 3 fragments each.
+ * Camera motion dimension configuration with 18 options, 3 fragments each.
  * Note: Camera motion fragments are excluded from image generation prompts
  * per Requirement 4.4, but are used for video generation.
  */
@@ -235,32 +235,92 @@ export const CAMERA_MOTION_DIMENSION: DimensionConfig = {
     {
       id: 'static',
       label: 'Static',
-      promptFragments: ['locked off camera', 'stable tripod shot', 'no camera movement'],
+      promptFragments: ['locked off camera', 'static tripod shot', 'no camera movement'],
     },
     {
       id: 'pan_left',
       label: 'Pan Left',
-      promptFragments: ['camera pans left', 'horizontal pan movement', 'smooth lateral tracking'],
+      promptFragments: ['camera pans left', 'smooth pan to the left', 'horizontal pan movement'],
     },
     {
       id: 'pan_right',
       label: 'Pan Right',
-      promptFragments: ['camera pans right', 'horizontal pan movement', 'smooth lateral tracking'],
+      promptFragments: ['camera pans right', 'smooth pan to the right', 'horizontal pan movement'],
+    },
+    {
+      id: 'tilt_up',
+      label: 'Tilt Up',
+      promptFragments: ['camera tilts up', 'upward tilt movement', 'vertical tilt revealing height'],
+    },
+    {
+      id: 'tilt_down',
+      label: 'Tilt Down',
+      promptFragments: ['camera tilts down', 'downward tilt movement', 'vertical tilt toward ground'],
+    },
+    {
+      id: 'dutch_left',
+      label: 'Dutch Left',
+      promptFragments: ['dutch angle tilting left', 'camera rolls left', 'canted frame'],
+    },
+    {
+      id: 'dutch_right',
+      label: 'Dutch Right',
+      promptFragments: ['dutch angle tilting right', 'camera rolls right', 'canted frame'],
     },
     {
       id: 'push_in',
       label: 'Push In',
-      promptFragments: ['camera pushes in slowly', 'dolly forward movement', 'increasing intimacy'],
+      promptFragments: ['camera pushes in', 'dolly forward', 'moving closer to subject'],
     },
     {
       id: 'pull_back',
       label: 'Pull Back',
-      promptFragments: ['camera pulls back', 'dolly backward movement', 'revealing wider context'],
+      promptFragments: ['camera pulls back', 'dolly backward', 'revealing wider context'],
+    },
+    {
+      id: 'track_left',
+      label: 'Track Left',
+      promptFragments: ['camera tracks left', 'lateral tracking shot', 'sliding left'],
+    },
+    {
+      id: 'track_right',
+      label: 'Track Right',
+      promptFragments: ['camera tracks right', 'lateral tracking shot', 'sliding right'],
+    },
+    {
+      id: 'pedestal_up',
+      label: 'Pedestal Up',
+      promptFragments: ['camera pedestals up', 'vertical rise', 'elevating perspective'],
+    },
+    {
+      id: 'pedestal_down',
+      label: 'Pedestal Down',
+      promptFragments: ['camera pedestals down', 'vertical descent', 'lowering perspective'],
     },
     {
       id: 'crane_up',
       label: 'Crane Up',
-      promptFragments: ['camera cranes upward', 'vertical ascending movement', 'elevated perspective reveal'],
+      promptFragments: ['crane shot rising', 'ascending crane movement', 'sweeping upward'],
+    },
+    {
+      id: 'crane_down',
+      label: 'Crane Down',
+      promptFragments: ['crane shot descending', 'descending crane movement', 'sweeping downward'],
+    },
+    {
+      id: 'arc_left',
+      label: 'Arc Left',
+      promptFragments: ['camera arcs left', 'orbiting left around subject', 'circular tracking left'],
+    },
+    {
+      id: 'arc_right',
+      label: 'Arc Right',
+      promptFragments: ['camera arcs right', 'orbiting right around subject', 'circular tracking right'],
+    },
+    {
+      id: 'reveal',
+      label: 'Reveal',
+      promptFragments: ['reveal shot', 'push in with pan', 'dramatic reveal movement'],
     },
   ],
 };

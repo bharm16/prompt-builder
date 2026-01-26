@@ -519,8 +519,8 @@ export function convergenceReducer(
 
       if (optionsCount === 0) return state;
 
-      // Calculate grid columns based on step (4 for images, 6 for camera motion)
-      const columns = state.step === 'camera_motion' ? 3 : 4;
+      // Calculate grid columns based on option count
+      const columns = optionsCount <= 9 ? 3 : 4;
       const currentIndex = state.focusedOptionIndex;
 
       let newIndex = currentIndex;

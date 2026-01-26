@@ -2,11 +2,14 @@ import { z } from 'zod';
 import {
   CONVERGENCE_ERROR_CODES,
   CONVERGENCE_STEPS,
+  CAMERA_MOTION_CATEGORIES,
   DIMENSION_TYPES,
   DIRECTIONS,
   SESSION_STATUSES,
   type AbandonSessionResponse,
   type CameraPath,
+  type CameraMotionCategory,
+  type CameraTransform,
   type ConvergenceApiError,
   type ConvergenceErrorCode,
   type ConvergenceSession,
@@ -19,6 +22,7 @@ import {
   type GeneratedImage,
   type LockedDimension,
   type RegenerateResponse,
+  type Rotation3D,
   type SelectOptionResponse,
   type SessionStatus,
   type StartSessionResponse,
@@ -84,17 +88,33 @@ const ConvergenceStepSchema: z.ZodType<ConvergenceStep> = z.enum(CONVERGENCE_STE
 
 const SessionStatusSchema: z.ZodType<SessionStatus> = z.enum(SESSION_STATUSES);
 
+const CameraMotionCategorySchema: z.ZodType<CameraMotionCategory> = z.enum(
+  CAMERA_MOTION_CATEGORIES
+);
+
 const Position3DSchema: z.ZodType<Position3D> = z.object({
   x: z.number(),
   y: z.number(),
   z: z.number(),
 });
 
+const Rotation3DSchema: z.ZodType<Rotation3D> = z.object({
+  pitch: z.number(),
+  yaw: z.number(),
+  roll: z.number(),
+});
+
+const CameraTransformSchema: z.ZodType<CameraTransform> = z.object({
+  position: Position3DSchema,
+  rotation: Rotation3DSchema,
+});
+
 const CameraPathSchema: z.ZodType<CameraPath> = z.object({
   id: z.string(),
   label: z.string(),
-  start: Position3DSchema,
-  end: Position3DSchema,
+  category: CameraMotionCategorySchema,
+  start: CameraTransformSchema,
+  end: CameraTransformSchema,
   duration: z.number(),
 });
 

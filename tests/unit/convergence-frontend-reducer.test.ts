@@ -70,8 +70,9 @@ function createTestCameraPath(overrides: Partial<CameraPath> = {}): CameraPath {
   return {
     id: 'push_in',
     label: 'Push In',
-    start: { x: 0, y: 0, z: -0.1 },
-    end: { x: 0, y: 0, z: 0.25 },
+    category: 'dolly',
+    start: { position: { x: 0, y: 0, z: -0.1 }, rotation: { pitch: 0, yaw: 0, roll: 0 } },
+    end: { position: { x: 0, y: 0, z: 0.25 }, rotation: { pitch: 0, yaw: 0, roll: 0 } },
     duration: 3,
     ...overrides,
   };
@@ -705,7 +706,7 @@ describe('convergenceReducer', () => {
         expect(result.currentImages).toEqual(cachedImages);
       });
 
-      it('should clear selected camera motion when going back to camera_motion', () => {
+      it('should preserve selected camera motion when going back to camera_motion', () => {
         const state: ConvergenceState = {
           ...initialState,
           step: 'subject_motion',
@@ -715,7 +716,7 @@ describe('convergenceReducer', () => {
         const result = convergenceReducer(state, { type: 'GO_BACK' });
 
         expect(result.step).toBe('camera_motion');
-        expect(result.selectedCameraMotion).toBeNull();
+        expect(result.selectedCameraMotion).toBe('push_in');
       });
     });
 
@@ -1060,8 +1061,8 @@ describe('convergenceReducer', () => {
           payload: 'ArrowUp',
         });
 
-        // 4 columns for direction step, so 5 - 4 = 1
-        expect(result.focusedOptionIndex).toBe(1);
+        // 3 columns for <=9 options, so 5 - 3 = 2
+        expect(result.focusedOptionIndex).toBe(2);
       });
 
       it('should not move up if already in first row', () => {
@@ -1093,8 +1094,8 @@ describe('convergenceReducer', () => {
           payload: 'ArrowDown',
         });
 
-        // 4 columns for direction step, so 1 + 4 = 5
-        expect(result.focusedOptionIndex).toBe(5);
+        // 3 columns for <=9 options, so 1 + 3 = 4
+        expect(result.focusedOptionIndex).toBe(4);
       });
 
       it('should not move down if already in last row', () => {
@@ -1126,7 +1127,7 @@ describe('convergenceReducer', () => {
           payload: 'ArrowUp',
         });
 
-        // 3 columns for camera_motion, so 4 - 3 = 1
+        // 3 columns for <=9 options, so 4 - 3 = 1
         expect(result.focusedOptionIndex).toBe(1);
       });
 
