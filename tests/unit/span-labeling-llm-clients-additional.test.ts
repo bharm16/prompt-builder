@@ -1,0 +1,328 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
+
+vi.mock('@infrastructure/Logger', () => ({
+  logger: {
+    child: () => mockLogger,
+    debug: mockLogger.debug,
+    info: mockLogger.info,
+    warn: mockLogger.warn,
+    error: mockLogger.error,
+  },
+}));
+
+import { GeminiLlmClient } from '@server/llm/span-labeling/services/GeminiLlmClient';
+import { GroqLlmClient } from '@server/llm/span-labeling/services/GroqLlmClient';
+import { OpenAILlmClient } from '@server/llm/span-labeling/services/OpenAILlmClient';
+import { createLlmClient, getCurrentSpanProvider } from '@server/llm/span-labeling/services/LlmClientFactory';
+import type { LabelSpansResult } from '@server/llm/span-labeling/types';
+
+class TestGroqClient extends GroqLlmClient {
+  setMetadata(meta: { averageConfidence?: number }) {
+    this._lastResponseMetadata = meta;
+  }
+
+  post(result: LabelSpansResult) {
+    return this._postProcessResult(result);
+  }
+}
+
+class TestOpenAIClient extends OpenAILlmClient {
+  post(result: LabelSpansResult) {
+    return this._postProcessResult(result);
+  }
+}
+
+describe('GroqLlmClient (additional)', () => {
+  describe('error handling', () => {
+    it('skips adjustment when logprobs metadata is missing', () => {
+      const client = new TestGroqClient();
+      client.setMetadata({});
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.9 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.spans[0]?.confidence).toBe(0.9);
+      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+    });
+
+    it('keeps result unchanged when no spans exist', () => {
+      const client = new TestGroqClient();
+      client.setMetadata({ averageConfidence: 0.2 });
+
+      const result = client.post({ spans: [], meta: { version: 'v1', notes: '' } });
+
+      expect(result.spans).toEqual([]);
+      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('caps confidence using logprobs average when lower', () => {
+      const client = new TestGroqClient();
+      client.setMetadata({ averageConfidence: 0.4 });
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.8 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.spans[0]?.confidence).toBe(0.4);
+      expect(result.spans[0]?._originalConfidence).toBe(0.8);
+    });
+
+    it('does not increase confidence above self-reported value', () => {
+      const client = new TestGroqClient();
+      client.setMetadata({ averageConfidence: 0.9 });
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.3 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.spans[0]?.confidence).toBe(0.3);
+    });
+  });
+
+  describe('core behavior', () => {
+    it('adds provider metadata for debugging', () => {
+      const client = new TestGroqClient();
+      client.setMetadata({ averageConfidence: 0.5 });
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.6 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.meta._clientType).toBe('GroqLlmClient');
+      expect(result.meta._providerOptimizations.provider).toBe('groq');
+    });
+  });
+});
+
+describe('OpenAILlmClient (additional)', () => {
+  describe('error handling', () => {
+    it('returns meta even when spans are empty', () => {
+      const client = new TestOpenAIClient();
+
+      const result = client.post({ spans: [], meta: { version: 'v1', notes: '' } });
+
+      expect(result.meta._clientType).toBe('OpenAILlmClient');
+    });
+
+    it('preserves existing meta fields while appending provider info', () => {
+      const client = new TestOpenAIClient();
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.8 }],
+        meta: { version: 'v1', notes: 'keep' },
+      });
+
+      expect(result.meta.notes).toBe('keep');
+      expect(result.meta._providerOptimizations.provider).toBe('openai');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('sets strictSchema metadata flag', () => {
+      const client = new TestOpenAIClient();
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.8 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.meta._providerOptimizations.strictSchema).toBe(true);
+    });
+
+    it('does not alter existing span data', () => {
+      const client = new TestOpenAIClient();
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.8 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.spans[0]?.text).toBe('sky');
+      expect(result.spans[0]?.confidence).toBe(0.8);
+    });
+  });
+
+  describe('core behavior', () => {
+    it('labels the optimization provider as openai', () => {
+      const client = new TestOpenAIClient();
+
+      const result = client.post({
+        spans: [{ text: 'sky', role: 'style', confidence: 0.8 }],
+        meta: { version: 'v1', notes: '' },
+      });
+
+      expect(result.meta._providerOptimizations.provider).toBe('openai');
+      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+    });
+  });
+});
+
+describe('GeminiLlmClient (additional)', () => {
+  describe('error handling', () => {
+    it('recovers spans from partially structured text', () => {
+      const client = new GeminiLlmClient();
+      const response = 'Here are spans: [ {"text":"Hero","role":"subject"} ]';
+
+      const parsed = (client as unknown as { _parseResponseText: (text: string) => { ok: boolean; value?: unknown } })
+        ._parseResponseText(response);
+
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) {
+        const value = parsed.value as { spans?: Array<{ text: string }> };
+        expect(value.spans?.[0]?.text).toBe('Hero');
+      }
+    });
+
+    it('normalizes category field into role', () => {
+      const client = new GeminiLlmClient();
+      const normalized = (client as unknown as { _normalizeParsedResponse: (value: Record<string, unknown>) => Record<string, unknown> })
+        ._normalizeParsedResponse({ spans: [{ text: 'Hero', category: 'subject' }] });
+
+      const span = (normalized.spans as Array<Record<string, unknown>>)[0];
+      expect(span.role).toBe('subject');
+      expect('category' in span).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('streams NDJSON payloads while stripping array wrappers', async () => {
+      const client = new GeminiLlmClient();
+      const chunks = [
+        '[\n',
+        '{"text":"Hero","role":"subject"},\n',
+        '{"text":"Sky","category":"style"}\n',
+        ']\n',
+      ];
+
+      const aiService = {
+        stream: vi.fn().mockImplementation(async (_op: string, { onChunk }: { onChunk: (chunk: string) => void }) => {
+          chunks.forEach(onChunk);
+        }),
+      } as { stream: (op: string, options: { onChunk: (chunk: string) => void }) => Promise<void> };
+
+      const results: Array<Record<string, unknown>> = [];
+      for await (const span of client.streamSpans({
+        text: 'Hero Sky',
+        policy: {},
+        options: {},
+        enableRepair: false,
+        aiService,
+        cache: {} as never,
+      })) {
+        results.push(span);
+      }
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.role).toBe('subject');
+      expect(results[1]?.category).toBe('style');
+    });
+
+    it('adds category when role is present in streaming mode', async () => {
+      const client = new GeminiLlmClient();
+      const aiService = {
+        stream: vi.fn().mockImplementation(async (_op: string, { onChunk }: { onChunk: (chunk: string) => void }) => {
+          onChunk('{"text":"Hero","role":"subject"}\n');
+        }),
+      } as { stream: (op: string, options: { onChunk: (chunk: string) => void }) => Promise<void> };
+
+      const results: Array<Record<string, unknown>> = [];
+      for await (const span of client.streamSpans({
+        text: 'Hero',
+        policy: {},
+        options: {},
+        enableRepair: false,
+        aiService,
+        cache: {} as never,
+      })) {
+        results.push(span);
+      }
+
+      expect(results[0]?.category).toBe('subject');
+    });
+  });
+
+  describe('core behavior', () => {
+    it('parses valid JSON responses without recovery', () => {
+      const client = new GeminiLlmClient();
+      const response = JSON.stringify({ spans: [{ text: 'Hero', role: 'subject' }] });
+
+      const parsed = (client as unknown as { _parseResponseText: (text: string) => { ok: boolean; value?: unknown } })
+        ._parseResponseText(response);
+
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) {
+        const value = parsed.value as { spans?: Array<{ role?: string }> };
+        expect(value.spans?.[0]?.role).toBe('subject');
+      }
+    });
+  });
+});
+
+describe('LlmClientFactory (additional)', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  describe('error handling', () => {
+    it('falls back to RobustLlmClient when provider is unknown', () => {
+      const client = createLlmClient({ provider: 'unknown' });
+
+      expect(client.constructor.name).toBe('RobustLlmClient');
+    });
+
+    it('returns current provider using operation env overrides', () => {
+      process.env.SPAN_LABELING_PROVIDER = 'openai';
+
+      const provider = getCurrentSpanProvider();
+
+      expect(provider).toBe('openai');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('selects provider based on SPAN_MODEL when set', () => {
+      process.env.SPAN_MODEL = 'gemini-2.0-pro';
+
+      const client = createLlmClient();
+
+      expect(client.constructor.name).toBe('GeminiLlmClient');
+    });
+
+    it('respects explicit provider override', () => {
+      const client = createLlmClient({ provider: 'openai' });
+
+      expect(client.constructor.name).toBe('OpenAILlmClient');
+    });
+  });
+
+  describe('core behavior', () => {
+    it('defaults to Groq client when no hints are provided', () => {
+      delete process.env.SPAN_PROVIDER;
+      delete process.env.SPAN_MODEL;
+
+      const client = createLlmClient();
+
+      expect(client.constructor.name).toBe('GroqLlmClient');
+    });
+  });
+});

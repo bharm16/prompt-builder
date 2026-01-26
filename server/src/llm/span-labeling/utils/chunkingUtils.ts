@@ -126,6 +126,11 @@ export class TextChunker {
     let match: RegExpExecArray | null;
 
     while ((match = lineRegex.exec(text)) !== null) {
+      if (match[0].length === 0) {
+        lineRegex.lastIndex += 1;
+        if (lineRegex.lastIndex > text.length) break;
+        continue;
+      }
       const lineText = match[0];
       const lineStart = match.index;
       const lineEnd = match.index + lineText.length;

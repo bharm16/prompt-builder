@@ -9,6 +9,12 @@ export default defineConfig({
     // Path aliases matching tsconfig.json for both client and server
     // Note: Order matters - more specific patterns should come before general ones
     alias: [
+      // Mock lucide-react icons for test environment stability
+      { find: /^lucide-react$/, replacement: path.resolve(__dirname, '../../tests/mocks/lucide-react.ts') },
+
+      // Client utils shim for shared @utils/cn usage in client components
+      { find: /^@utils\/cn$/, replacement: path.resolve(__dirname, '../../client/src/utils/cn') },
+
       // Shared aliases (used by both client and server) - from both tsconfig.json files
       { find: /^@shared\/(.*)/, replacement: path.resolve(__dirname, '../../shared/$1') },
       { find: /^#shared\/(.*)/, replacement: path.resolve(__dirname, '../../shared/$1') },
