@@ -121,7 +121,7 @@ type InlineSuggestion = {
   item: SuggestionItem | string;
 };
 
-const resolveVersionTimestamp = (
+export const resolveVersionTimestamp = (
   value: string | number | undefined
 ): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -136,7 +136,7 @@ const resolveVersionTimestamp = (
   return null;
 };
 
-const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
+export const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
   !!value &&
   typeof value === 'object' &&
   Array.isArray((value as HighlightSnapshot).spans);

@@ -1,3 +1,4 @@
+import React from 'react';
 import { expect, afterEach, vi } from 'vitest';
 // Ensure all tests run with test environment semantics
 process.env.NODE_ENV = 'test';
@@ -102,4 +103,17 @@ vi.mock('./src/components/Toast.jsx', () => ({
   })),
   ToastProvider: ({ children }) => children,
   default: () => null,
+}));
+
+// Mock PromptStudio UI primitives used in components
+vi.mock('@promptstudio/system/components/ui/button', () => ({
+  Button: ({ children, ...props }) => React.createElement('button', props, children),
+}));
+
+vi.mock('@promptstudio/system/components/ui/input', () => ({
+  Input: (props) => React.createElement('input', props),
+}));
+
+vi.mock('@promptstudio/system/components/ui/textarea', () => ({
+  Textarea: (props) => React.createElement('textarea', props),
 }));

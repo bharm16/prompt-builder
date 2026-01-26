@@ -42,7 +42,7 @@ import {
 
 const log = logger.child('PromptOptimizerContainer');
 
-function resolveActiveStatusLabel(params: {
+export function resolveActiveStatusLabel(params: {
   inputPrompt: string;
   displayedPrompt: string;
   isProcessing: boolean;

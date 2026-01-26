@@ -55,7 +55,7 @@ import {
 
 const log = logger.child('PromptOptimizerWorkspace');
 
-function resolveActiveStatusLabel(params: {
+export function resolveActiveStatusLabel(params: {
   inputPrompt: string;
   displayedPrompt: string;
   isProcessing: boolean;
