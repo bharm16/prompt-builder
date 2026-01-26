@@ -137,8 +137,8 @@ export interface SessionStoreOptions {
  * Repository for Firestore persistence of convergence sessions
  *
  * Firestore Indexes Required:
- * - convergence_sessions: status ASC, userId ASC, updatedAt DESC, __name__ DESC
- * - convergence_sessions: userId ASC, updatedAt DESC, __name__ DESC
+ * - convergence_sessions: status ASC, userId ASC, updatedAt DESC
+ * - convergence_sessions: userId ASC, updatedAt DESC
  * - convergence_sessions: updatedAt ASC, status ASC
  */
 export class SessionStore {
@@ -240,13 +240,13 @@ export class SessionStore {
    * Get the active session for a user (at most one)
    * Requirement 1.10: Only ONE active session per user at a time
    *
-   * Uses index: userId ASC, status ASC, updatedAt DESC
+   * Uses index: status ASC, userId ASC, updatedAt DESC
    */
   async getActiveByUserId(userId: string): Promise<ConvergenceSession | null> {
     try {
       const snapshot = await this.collection
-        .where('userId', '==', userId)
         .where('status', '==', 'active')
+        .where('userId', '==', userId)
         .orderBy('updatedAt', 'desc')
         .limit(1)
         .get();
@@ -284,7 +284,7 @@ export class SessionStore {
    * Get session history for a user
    * Returns sessions ordered by most recently updated first
    *
-   * Uses index: userId ASC, status ASC, updatedAt DESC
+   * Uses index: userId ASC, updatedAt DESC
    */
   async getByUserId(userId: string, limit: number = 10): Promise<ConvergenceSession[]> {
     try {

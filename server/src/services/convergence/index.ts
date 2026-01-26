@@ -35,6 +35,13 @@ export type {
   CreditReservation,
   CreditReservationStatus,
 } from './types';
+export {
+  CONVERGENCE_STEPS,
+  CREDIT_RESERVATION_STATUSES,
+  DIMENSION_TYPES,
+  DIRECTIONS,
+  SESSION_STATUSES,
+} from './types';
 
 // Errors
 export { ConvergenceError, isConvergenceError } from './errors';
@@ -73,6 +80,9 @@ export {
 // Session Store
 export { SessionStore, getSessionStore } from './session/SessionStore';
 export type { SessionStoreOptions } from './session/SessionStore';
+
+// Session Cleanup Sweeper
+export { SessionCleanupSweeper, createSessionCleanupSweeper } from './session/SessionCleanupSweeper';
 
 // Prompt Builder
 export {

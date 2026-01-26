@@ -21,7 +21,7 @@
  * @requirement 18.1 - Display progress indicator
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
 import { convergenceApi } from '@/features/convergence/api';
@@ -98,6 +98,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   // ========================================================================
 
   const { state, actions } = useConvergenceSession();
+  const hasCheckedActiveSessionRef = useRef(false);
 
   // ========================================================================
   // Network Status Detection (Task 37.3)
@@ -110,6 +111,11 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   // ========================================================================
 
   useEffect(() => {
+    if (hasCheckedActiveSessionRef.current) {
+      return;
+    }
+    hasCheckedActiveSessionRef.current = true;
+
     const checkExistingSession = async () => {
       try {
         const session = await convergenceApi.getActiveSession();
@@ -133,7 +139,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
     if (state.step === 'intent' && !state.sessionId) {
       checkExistingSession();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [actions, state.sessionId, state.step]);
 
   // ========================================================================
   // Keyboard Navigation Handler (Task 29.3)
@@ -301,7 +307,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   /**
    * Handle finalize response for preview
    */
-  const [finalizeResponse, setFinalizeResponse] = React.useState<FinalizeSessionResponse | null>(null);
+  const [finalizeResponse, setFinalizeResponse] = useState<FinalizeSessionResponse | null>(null);
 
   /**
    * Finalize session when reaching preview step
@@ -451,7 +457,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
           />
         );
 
-      case 'preview':
+      case 'preview': {
         if (!finalizeResponse) {
           // Show loading state while finalizing
           return (
@@ -463,14 +469,14 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
             </div>
           );
         }
-        
+
         // Build props conditionally to satisfy exactOptionalPropertyTypes
         const previewProps: ConvergencePreviewProps = {
           finalizeResponse,
           selectedModel,
           aspectRatio,
         };
-        
+
         if (state.direction !== null) {
           previewProps.direction = state.direction;
         }
@@ -492,13 +498,9 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
         if (onGenerationError) {
           previewProps.onGenerationError = onGenerationError;
         }
-        
-        return (
-          <ConvergencePreview
-            {...previewProps}
-            onBack={actions.goBack}
-          />
-        );
+
+        return <ConvergencePreview {...previewProps} onBack={actions.goBack} />;
+      }
 
       case 'complete':
         return (
@@ -526,7 +528,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col min-h-full w-full convergence-flow',
+        'flex flex-col min-h-full w-full convergence-flow bg-black',
         className
       )}
     >

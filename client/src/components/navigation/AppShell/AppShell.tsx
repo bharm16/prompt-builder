@@ -8,15 +8,23 @@
  */
 
 import { useEffect, useState, type ReactElement } from 'react';
-import { getAuthRepository } from '@repositories/index';
-import { useNavigationConfig } from './hooks/useNavigationConfig';
-import { TopNavbar } from './variants/TopNavbar';
+
 import { ToolSidebar } from '@components/ToolSidebar';
-import type { AppShellProps } from './types';
 import type { User } from '@hooks/types';
+import { getAuthRepository } from '@repositories/index';
 import type { Asset, AssetType } from '@shared/types/asset';
 
+import type { AppShellProps } from './types';
+import { useNavigationConfig } from './hooks/useNavigationConfig';
+import { TopNavbar } from './variants/TopNavbar';
+
 const noop = (..._args: unknown[]): void => {};
+const EMPTY_ASSETS_BY_TYPE: Record<AssetType, Asset[]> = {
+  character: [],
+  style: [],
+  location: [],
+  object: [],
+};
 
 export function AppShell({
   children,
@@ -64,13 +72,7 @@ export function AppShell({
 }: AppShellProps): ReactElement {
   const { variant, navItems } = useNavigationConfig();
   const [user, setUser] = useState<User | null>(null);
-  const emptyAssetsByType: Record<AssetType, Asset[]> = {
-    character: [],
-    style: [],
-    location: [],
-    object: [],
-  };
-  const resolvedAssetsByType = assetsByType ?? emptyAssetsByType;
+  const resolvedAssetsByType = assetsByType ?? EMPTY_ASSETS_BY_TYPE;
 
   useEffect(() => {
     const unsubscribe = getAuthRepository().onAuthStateChanged(setUser);
@@ -136,7 +138,7 @@ export function AppShell({
         onEditAsset={onEditAsset}
         onCreateAsset={onCreateAsset}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
         {children}
       </div>
     </div>

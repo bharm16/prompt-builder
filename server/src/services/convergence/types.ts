@@ -12,26 +12,30 @@
 /**
  * High-level creative direction that influences all subsequent options
  */
-export type Direction = 'cinematic' | 'social' | 'artistic' | 'documentary';
+export const DIRECTIONS = ['cinematic', 'social', 'artistic', 'documentary'] as const;
+export type Direction = (typeof DIRECTIONS)[number];
 
 /**
  * Visual attribute categories that users select from
  */
-export type DimensionType = 'mood' | 'framing' | 'lighting' | 'camera_motion';
+export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] as const;
+export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
  * Steps in the convergence flow
  */
-export type ConvergenceStep =
-  | 'intent'
-  | 'direction'
-  | 'mood'
-  | 'framing'
-  | 'lighting'
-  | 'camera_motion'
-  | 'subject_motion'
-  | 'preview'
-  | 'complete';
+export const CONVERGENCE_STEPS = [
+  'intent',
+  'direction',
+  'mood',
+  'framing',
+  'lighting',
+  'camera_motion',
+  'subject_motion',
+  'preview',
+  'complete',
+] as const;
+export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
 
 // ============================================================================
 // Camera Motion Types
@@ -97,7 +101,7 @@ export interface LockedDimension {
  */
 export interface GeneratedImage {
   id: string;
-  url: string; // GCS URL (permanent)
+  url: string; // Signed GCS URL
   dimension: DimensionType | 'direction';
   optionId: string;
   prompt: string;
@@ -111,7 +115,8 @@ export interface GeneratedImage {
 /**
  * Session status
  */
-export type SessionStatus = 'active' | 'completed' | 'abandoned';
+export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 /**
  * Firestore schema for convergence sessions
@@ -124,10 +129,10 @@ export interface ConvergenceSession {
   direction: Direction | null; // Selected direction
   lockedDimensions: LockedDimension[]; // Array of locked selections
   currentStep: ConvergenceStep; // Current step in flow
-  generatedImages: GeneratedImage[]; // All generated images (GCS URLs)
+  generatedImages: GeneratedImage[]; // All generated images (signed GCS URLs)
   imageHistory: Record<string, GeneratedImage[]>; // Images per dimension for back nav
   regenerationCounts: Record<string, number>; // Regen count per dimension
-  depthMapUrl: string | null; // GCS URL to depth map
+  depthMapUrl: string | null; // Signed GCS URL to depth map
   cameraMotion: string | null; // Selected camera motion ID
   subjectMotion: string | null; // User's subject motion text
   finalPrompt: string | null; // Complete generated prompt
@@ -257,6 +262,23 @@ export interface FinalizeSessionResponse {
   generationCosts: Record<string, number>; // model -> cost
 }
 
+/**
+ * Request to abandon a convergence session
+ */
+export interface AbandonSessionRequest {
+  sessionId: string;
+  deleteImages?: boolean;
+}
+
+/**
+ * Response from abandoning a session
+ */
+export interface AbandonSessionResponse {
+  sessionId: string;
+  status: 'abandoned';
+  imagesDeleted: boolean;
+}
+
 // ============================================================================
 // Credit Types
 // ============================================================================
@@ -264,7 +286,8 @@ export interface FinalizeSessionResponse {
 /**
  * Status of a credit reservation
  */
-export type CreditReservationStatus = 'pending' | 'committed' | 'refunded';
+export const CREDIT_RESERVATION_STATUSES = ['pending', 'committed', 'refunded'] as const;
+export type CreditReservationStatus = (typeof CREDIT_RESERVATION_STATUSES)[number];
 
 /**
  * Credit reservation for atomic credit operations

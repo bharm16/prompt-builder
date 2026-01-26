@@ -22,12 +22,6 @@ import type { StorageService } from '../storage';
 // ============================================================================
 
 /**
- * Depth Anything v2 model identifier on Replicate
- * This model generates high-quality depth maps from single images
- */
-const DEPTH_ANYTHING_V2_MODEL = 'cjwbw/depth-anything-v2:8a4ed9c5b3c5d0a5e0c5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5' as const;
-
-/**
  * Alternative model identifier (shorter version that Replicate resolves)
  */
 const DEPTH_MODEL_SHORT = 'cjwbw/depth-anything-v2' as const;
@@ -91,7 +85,7 @@ export interface DepthEstimationServiceOptions {
  * Replicate-based implementation of DepthEstimationService.
  *
  * Uses Depth Anything v2 model to generate depth maps from images.
- * Depth maps are uploaded to GCS for permanent storage.
+ * Depth maps are uploaded to GCS and served via signed URLs.
  */
 export class ReplicateDepthEstimationService implements DepthEstimationService {
   private readonly log = logger.child({ service: 'DepthEstimationService' });
@@ -124,10 +118,10 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
    * Generate a depth map from an image URL
    *
    * Uses Depth Anything v2 via Replicate API with retry logic.
-   * The resulting depth map is uploaded to GCS for permanent storage.
+   * The resulting depth map is uploaded to GCS and returned as a signed URL.
    *
    * @param imageUrl - URL of the source image
-   * @returns GCS URL of the generated depth map
+   * @returns Signed GCS URL of the generated depth map
    * @throws Error if depth estimation fails after retries
    */
   async estimateDepth(imageUrl: string): Promise<string> {
@@ -148,17 +142,17 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
         DEPTH_ESTIMATION_CONFIG.baseDelayMs
       );
 
-      // Upload depth map to GCS for permanent storage
+      // Upload depth map to GCS and generate a signed URL
       const destination = `convergence/${this.userId}/depth/${Date.now()}-depth.png`;
-      const permanentUrl = await this.storageService.upload(depthMapTempUrl, destination);
+      const signedUrl = await this.storageService.upload(depthMapTempUrl, destination);
 
       const duration = Date.now() - startTime;
       this.log.info('Depth estimation completed', {
         duration,
-        permanentUrl,
+        signedUrl,
       });
 
-      return permanentUrl;
+      return signedUrl;
     } catch (error) {
       const duration = Date.now() - startTime;
       this.log.error('Depth estimation failed', error as Error, {

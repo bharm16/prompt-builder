@@ -7,7 +7,7 @@
  * Requirements:
  * - 1.1: Session created with unique identifier and persisted to Firestore
  * - 1.6: Resume incomplete sessions from previous visits
- * - 1.7: Store generated images in permanent storage (GCS)
+ * - 1.7: Store generated images in GCS and return signed URLs
  * - 1.8: Require authentication before starting a session
  * - 1.10-1.11: Only ONE active session per user at a time
  * - 2.1-2.5: Direction fork with parallel image generation
@@ -34,12 +34,19 @@ import type {
   GenerateSubjectMotionRequest,
   GenerateSubjectMotionResponse,
   FinalizeSessionResponse,
+  AbandonSessionResponse,
   DimensionType,
   Direction,
   LockedDimension,
 } from './types';
 import { ConvergenceError } from './errors';
-import { DIRECTION_OPTIONS, CONVERGENCE_COSTS, MAX_REGENERATIONS_PER_DIMENSION, CAMERA_PATHS, GENERATION_COSTS } from './constants';
+import {
+  CAMERA_PATHS,
+  CONVERGENCE_COSTS,
+  DIRECTION_OPTIONS,
+  GENERATION_COSTS,
+  MAX_REGENERATIONS_PER_DIMENSION,
+} from './constants';
 import { withRetry, getNextDimension, dimensionToStep } from './helpers';
 import type { SessionStore } from './session/SessionStore';
 import type { PromptBuilderService } from './prompt-builder/PromptBuilderService';
@@ -49,6 +56,14 @@ import type { DepthEstimationService } from './depth/DepthEstimationService';
 import type { VideoPreviewService } from './video-preview/VideoPreviewService';
 import { withCreditReservation } from './credits/creditHelpers';
 import { getDimensionConfig, getDimensionOption } from './prompt-builder/DimensionFragments';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const DEFAULT_ASPECT_RATIO = '16:9';
+const PREVIEW_PROVIDER = 'replicate-flux-schnell';
+const REQUIRED_DIMENSIONS: DimensionType[] = ['mood', 'framing', 'lighting'];
 
 // ============================================================================
 // Types
@@ -72,7 +87,7 @@ export interface ConvergenceServiceDeps {
  */
 interface PromptInfo {
   prompt: string;
-  dimension: string;
+  dimension: DimensionType | 'direction';
   optionId: string;
 }
 
@@ -119,30 +134,52 @@ export class ConvergenceService {
    * - 15.6: Reserve credits and generate direction images
    * - 1.7: Upload to GCS and update session
    *
-   * @param request - Start session request with intent and optional aspectRatio
+   * @param request - Start session request with intent, optional aspectRatio, and optional forceNew
    * @param userId - Firebase Auth UID from auth middleware
    * @returns StartSessionResponse with sessionId, images, and options
-   * @throws ConvergenceError('ACTIVE_SESSION_EXISTS') if user has active session
+   * @throws ConvergenceError('ACTIVE_SESSION_EXISTS') if user has active session and forceNew is false
    * @throws ConvergenceError('INSUFFICIENT_CREDITS') if user lacks credits
    */
   async startSession(
-    request: StartSessionRequest,
+    request: StartSessionRequest & { forceNew?: boolean },
     userId: string
   ): Promise<StartSessionResponse> {
     this.log.info('Starting new convergence session', {
       userId,
       intentLength: request.intent.length,
       aspectRatio: request.aspectRatio,
+      forceNew: request.forceNew ?? false,
     });
 
     // Check for existing active session (Requirement 1.10-1.11)
     const existing = await this.sessions.getActiveByUserId(userId);
     if (existing) {
-      this.log.warn('User already has active session', {
-        userId,
-        existingSessionId: existing.id,
-      });
-      throw new ConvergenceError('ACTIVE_SESSION_EXISTS', { sessionId: existing.id });
+      // If forceNew is true, abandon the existing session first
+      if (request.forceNew) {
+        this.log.info('Force-abandoning existing session to start fresh', {
+          userId,
+          existingSessionId: existing.id,
+        });
+
+        await this.sessions.abandonSession(existing.id, {
+          deleteImages: true,
+          storageService: {
+            deleteFiles: async (_userId: string, paths: string[]) => {
+              await this.storage.delete(paths);
+            },
+          },
+        });
+      } else {
+        this.log.warn('User already has active session', {
+          userId,
+          existingSessionId: existing.id,
+        });
+        // Include full session so client can show ResumeSessionModal
+        throw new ConvergenceError('ACTIVE_SESSION_EXISTS', {
+          sessionId: existing.id,
+          existingSession: existing,
+        });
+      }
     }
 
     const sessionId = uuidv4();
@@ -248,6 +285,74 @@ export class ConvergenceService {
    */
   async getActiveSession(userId: string): Promise<ConvergenceSession | null> {
     return this.sessions.getActiveByUserId(userId);
+  }
+
+  /**
+   * Abandon a session explicitly.
+   *
+   * Allows users to abandon their active session so they can start fresh.
+   * Optionally deletes associated images from GCS to free up storage.
+   *
+   * @param sessionId - The session to abandon
+   * @param userId - Firebase Auth UID from auth middleware
+   * @param options - Optional: deleteImages flag to clean up GCS storage
+   * @returns AbandonSessionResponse confirming abandonment
+   * @throws ConvergenceError('SESSION_NOT_FOUND') if session doesn't exist
+   * @throws ConvergenceError('UNAUTHORIZED') if session belongs to different user
+   */
+  async abandonSession(
+    sessionId: string,
+    userId: string,
+    options?: { deleteImages?: boolean }
+  ): Promise<AbandonSessionResponse> {
+    this.log.info('Abandoning session', {
+      sessionId,
+      userId,
+      deleteImages: options?.deleteImages ?? false,
+    });
+
+    // Validate ownership
+    const session = await this.getSessionWithOwnershipCheck(sessionId, userId);
+
+    // Already abandoned - return success
+    if (session.status === 'abandoned') {
+      this.log.debug('Session already abandoned', { sessionId });
+      return {
+        sessionId,
+        status: 'abandoned',
+        imagesDeleted: false,
+      };
+    }
+
+    // Abandon via SessionStore
+    const deleteImages = options?.deleteImages ?? false;
+    const abandonOptions: Parameters<typeof this.sessions.abandonSession>[1] = deleteImages
+      ? {
+          deleteImages: true,
+          storageService: {
+            deleteFiles: async (_userId: string, paths: string[]) => {
+              await this.storage.delete(paths);
+            },
+          },
+        }
+      : { deleteImages: false };
+    const result = await this.sessions.abandonSession(sessionId, abandonOptions);
+
+    if (!result) {
+      throw new ConvergenceError('SESSION_NOT_FOUND');
+    }
+
+    this.log.info('Session abandoned successfully', {
+      sessionId,
+      userId,
+      imagesDeleted: deleteImages,
+    });
+
+    return {
+      sessionId,
+      status: 'abandoned',
+      imagesDeleted: deleteImages,
+    };
   }
 
   // ==========================================================================
@@ -1043,7 +1148,6 @@ export class ConvergenceService {
     const session = await this.getSessionWithOwnershipCheck(sessionId, userId);
 
     // 11.4.1: Validate all required dimensions are locked
-    const requiredDimensions: DimensionType[] = ['mood', 'framing', 'lighting'];
     const lockedTypes = new Set(session.lockedDimensions.map((d) => d.type));
 
     const missing: string[] = [];
@@ -1054,7 +1158,7 @@ export class ConvergenceService {
     }
 
     // Check required dimensions
-    for (const dim of requiredDimensions) {
+    for (const dim of REQUIRED_DIMENSIONS) {
       if (!lockedTypes.has(dim)) {
         missing.push(dim);
       }
@@ -1156,19 +1260,19 @@ export class ConvergenceService {
   /**
    * Generate images and persist them to GCS.
    *
-   * Requirement 1.7: Store generated images in permanent storage (GCS)
+   * Requirement 1.7: Store generated images in GCS and return signed URLs
    * Requirement 2.3: Generate all images in parallel
    * Requirement 2.5: Retry up to 2 times before returning error
    *
    * @param prompts - Array of prompt info with prompt, dimension, and optionId
    * @param userId - Firebase Auth UID for storage path
    * @param aspectRatio - Optional aspect ratio (default: '16:9')
-   * @returns Array of GeneratedImage with permanent GCS URLs
+   * @returns Array of GeneratedImage with signed GCS URLs
    */
   private async generateAndPersistImages(
     prompts: PromptInfo[],
     userId: string,
-    aspectRatio: string = '16:9'
+    aspectRatio: string = DEFAULT_ASPECT_RATIO
   ): Promise<GeneratedImage[]> {
     const startTime = Date.now();
 
@@ -1185,7 +1289,7 @@ export class ConvergenceService {
           this.imageGen.generatePreview(p.prompt, {
             aspectRatio,
             // Use flux-schnell for cost-efficient previews (Requirement 2.2)
-            provider: 'replicate-flux-schnell',
+            provider: PREVIEW_PROVIDER,
           })
         )
       )
@@ -1194,8 +1298,8 @@ export class ConvergenceService {
     // Extract temporary URLs from generation results
     const tempUrls = generationResults.map((r) => r.imageUrl);
 
-    // Upload to GCS for permanent storage (Requirement 1.7)
-    const permanentUrls = await this.storage.uploadBatch(
+    // Upload to GCS and generate signed URLs (Requirement 1.7)
+    const signedUrls = await this.storage.uploadBatch(
       tempUrls,
       `convergence/${userId}`
     );
@@ -1208,15 +1312,22 @@ export class ConvergenceService {
       userId,
     });
 
-    // Build GeneratedImage array with permanent URLs
-    return permanentUrls.map((url, i) => ({
-      id: uuidv4(),
-      url,
-      dimension: prompts[i]!.dimension as DimensionType | 'direction',
-      optionId: prompts[i]!.optionId,
-      prompt: prompts[i]!.prompt,
-      generatedAt: new Date(),
-    }));
+    // Build GeneratedImage array with signed URLs
+    return signedUrls.map((url, i) => {
+      const promptInfo = prompts[i];
+      if (!promptInfo) {
+        throw new Error('Missing prompt info for generated image');
+      }
+
+      return {
+        id: uuidv4(),
+        url,
+        dimension: promptInfo.dimension,
+        optionId: promptInfo.optionId,
+        prompt: promptInfo.prompt,
+        generatedAt: new Date(),
+      };
+    });
   }
 
   /**
@@ -1236,11 +1347,10 @@ export class ConvergenceService {
     let total = CONVERGENCE_COSTS.DIRECTION_IMAGES; // Initial direction images
 
     // Add dimension image costs (mood, framing, lighting)
-    const dimensionSteps = ['mood', 'framing', 'lighting'];
     const lockedDimensionTypes = new Set(session.lockedDimensions.map((d) => d.type));
 
-    for (const step of dimensionSteps) {
-      if (lockedDimensionTypes.has(step as DimensionType)) {
+    for (const step of REQUIRED_DIMENSIONS) {
+      if (lockedDimensionTypes.has(step)) {
         total += CONVERGENCE_COSTS.DIMENSION_IMAGES;
       }
     }

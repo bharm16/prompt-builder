@@ -86,7 +86,7 @@ export interface VideoPreviewService {
    *
    * @param prompt - The full prompt for video generation (includes all locked dimensions and subject motion)
    * @param options - Generation options (duration, aspectRatio)
-   * @returns URL to generated video (GCS permanent URL)
+   * @returns URL to generated video (signed GCS URL)
    * @throws Error if video generation fails after retries
    */
   generatePreview(prompt: string, options?: VideoPreviewOptions): Promise<string>;
@@ -120,7 +120,7 @@ export interface VideoPreviewServiceOptions {
  * Replicate-based implementation of VideoPreviewService.
  *
  * Uses Wan 2.2 model to generate preview videos from prompts.
- * Videos are uploaded to GCS for permanent storage.
+ * Videos are uploaded to GCS and served via signed URLs.
  */
 export class ReplicateVideoPreviewService implements VideoPreviewService {
   private readonly log = logger.child({ service: 'VideoPreviewService' });
@@ -153,11 +153,11 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
    * Generate a Wan 2.2 preview video
    *
    * Uses Wan 2.2 via Replicate API with retry logic.
-   * The resulting video is uploaded to GCS for permanent storage.
+   * The resulting video is uploaded to GCS and returned as a signed URL.
    *
    * @param prompt - The full prompt for video generation
    * @param options - Generation options
-   * @returns GCS URL of the generated video
+   * @returns Signed GCS URL of the generated video
    * @throws Error if video generation fails after retries
    */
   async generatePreview(prompt: string, options?: VideoPreviewOptions): Promise<string> {
@@ -183,17 +183,17 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
         VIDEO_PREVIEW_CONFIG.baseDelayMs
       );
 
-      // Upload video to GCS for permanent storage
+      // Upload video to GCS and generate a signed URL
       const destination = `convergence/${this.userId}/preview/${Date.now()}-preview.mp4`;
-      const permanentUrl = await this.uploadVideoToGCS(videoTempUrl, destination);
+      const signedUrl = await this.uploadVideoToGCS(videoTempUrl, destination);
 
       const totalDuration = Date.now() - startTime;
       this.log.info('Video preview generation completed', {
         totalDuration,
-        permanentUrl,
+        signedUrl,
       });
 
-      return permanentUrl;
+      return signedUrl;
     } catch (error) {
       const totalDuration = Date.now() - startTime;
       this.log.error('Video preview generation failed', error as Error, {
@@ -274,7 +274,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
    *
    * @param tempUrl - Temporary Replicate URL
    * @param destination - GCS destination path
-   * @returns Permanent GCS URL
+   * @returns Signed GCS URL
    */
   private async uploadVideoToGCS(tempUrl: string, destination: string): Promise<string> {
     this.log.debug('Uploading video to GCS', {
@@ -284,9 +284,9 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
 
     // Use the storage service's upload method
     // Note: StorageService.upload handles fetching from temp URL and uploading to GCS
-    const permanentUrl = await this.storageService.upload(tempUrl, destination);
+    const signedUrl = await this.storageService.upload(tempUrl, destination);
 
-    return permanentUrl;
+    return signedUrl;
   }
 
   /**

@@ -1,38 +1,40 @@
 /**
  * EstimatedCostBadge Component
  *
- * Displays the estimated total credit cost for completing the convergence flow.
- * Shows approximately 22 credits for a full flow without regenerations.
+ * Displays the estimated total credit cost - styled to be very subtle.
  *
  * @requirement 15.1 - Display estimated total credit cost for completion
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Coins, Info } from 'lucide-react';
 
-/**
- * Estimated total credits for full convergence flow (without regenerations)
- * Direction (4) + Mood (4) + Framing (4) + Lighting (4) + Depth (1) + Wan Preview (5) = 22
- */
-const ESTIMATED_TOTAL_COST = 22;
+import { cn } from '@/utils/cn';
 
 export interface EstimatedCostBadgeProps {
-  /** Override the default estimated cost */
   estimatedCost?: number;
-  /** Size variant */
   size?: 'sm' | 'md' | 'lg';
-  /** Additional CSS classes */
   className?: string;
-  /** Whether to show the info tooltip */
   showTooltip?: boolean;
-  /** Variant style */
   variant?: 'default' | 'subtle' | 'prominent';
 }
 
-/**
- * EstimatedCostBadge - Shows estimated total cost for convergence flow
- */
+const ESTIMATED_TOTAL_COST = 22;
+
+type BadgeSize = NonNullable<EstimatedCostBadgeProps['size']>;
+
+const SIZE_CLASSES: Record<BadgeSize, string> = {
+  sm: 'text-[12px] gap-1.5',
+  md: 'text-[13px] gap-1.5',
+  lg: 'text-[14px] gap-2',
+};
+
+const ICON_SIZES: Record<BadgeSize, string> = {
+  sm: 'h-3.5 w-3.5',
+  md: 'h-4 w-4',
+  lg: 'h-5 w-5',
+};
+
 export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
   estimatedCost = ESTIMATED_TOTAL_COST,
   size = 'md',
@@ -40,30 +42,66 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
   showTooltip = true,
   variant = 'default',
 }) => {
-  const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs gap-1',
-    md: 'px-3 py-1 text-sm gap-1.5',
-    lg: 'px-4 py-1.5 text-base gap-2',
-  };
+  // Subtle variant - just floating text, no container
+  if (variant === 'subtle') {
+    return (
+      <div
+        className={cn(
+          'inline-flex items-center',
+          SIZE_CLASSES[size],
+          'text-[#3f3f46]',
+          className
+        )}
+        role="status"
+        aria-label={`Estimated cost: approximately ${estimatedCost} credits`}
+      >
+        <Coins className={cn(ICON_SIZES[size], 'text-[#3f3f46]')} aria-hidden="true" />
+        <span className="text-[#52525b]">~{estimatedCost}</span>
+        <span className="text-[#3f3f46]">credits</span>
+        {showTooltip && (
+          <div className="group relative ml-0.5">
+            <Info
+              className={cn(
+                ICON_SIZES[size],
+                'cursor-help text-[#3f3f46] hover:text-[#52525b] transition-colors'
+              )}
+              aria-hidden="true"
+            />
+            <div
+              className={cn(
+                'absolute bottom-full left-1/2 -translate-x-1/2 mb-2',
+                'invisible group-hover:visible opacity-0 group-hover:opacity-100',
+                'transition-all duration-200',
+                'w-48 p-2.5 rounded-lg',
+                'bg-[#18181b] border border-white/[0.06] text-[12px]',
+                'z-50'
+              )}
+              role="tooltip"
+            >
+              <p className="font-medium text-[#a1a1aa] mb-1">Estimated Total Cost</p>
+              <p className="text-[#71717a] leading-relaxed">
+                Includes direction, mood, framing, lighting, camera motion, and subject motion preview.
+              </p>
+              <div
+                className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-[#18181b]"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-  const iconSizes = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4',
-    lg: 'h-5 w-5',
-  };
-
-  const variantClasses = {
-    default: 'bg-surface-2 text-foreground border border-border',
-    subtle: 'bg-transparent text-muted',
-    prominent: 'bg-primary/10 text-primary border border-primary/20',
-  };
-
+  // Default/prominent variants
   return (
     <div
       className={cn(
         'inline-flex items-center rounded-full font-medium',
-        sizeClasses[size],
-        variantClasses[variant],
+        SIZE_CLASSES[size],
+        variant === 'default' 
+          ? 'px-3 py-1 bg-white/[0.03] text-[#a1a1aa] border border-white/[0.06]'
+          : 'px-3 py-1 bg-[#7c3aed]/10 text-[#a78bfa] border border-[#7c3aed]/20',
         className
       )}
       role="status"
@@ -71,49 +109,13 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
     >
       <Coins
         className={cn(
-          iconSizes[size],
-          variant === 'prominent' ? 'text-primary' : 'text-amber-500'
+          ICON_SIZES[size],
+          variant === 'prominent' ? 'text-[#a78bfa]' : 'text-[#71717a]'
         )}
         aria-hidden="true"
       />
       <span>~{estimatedCost}</span>
-      <span className={cn(variant === 'subtle' ? 'text-muted' : 'opacity-70')}>
-        credits
-      </span>
-      {showTooltip && (
-        <div className="group relative">
-          <Info
-            className={cn(
-              iconSizes[size],
-              'cursor-help opacity-50 hover:opacity-100 transition-opacity'
-            )}
-            aria-hidden="true"
-          />
-          {/* Tooltip */}
-          <div
-            className={cn(
-              'absolute bottom-full left-1/2 -translate-x-1/2 mb-2',
-              'invisible group-hover:visible opacity-0 group-hover:opacity-100',
-              'transition-all duration-200',
-              'w-48 p-2 rounded-lg shadow-lg',
-              'bg-neutral-900 text-white text-xs',
-              'z-50'
-            )}
-            role="tooltip"
-          >
-            <p className="font-medium mb-1">Estimated Total Cost</p>
-            <p className="text-neutral-300">
-              Includes direction, mood, framing, lighting, camera motion, and
-              subject motion preview. Regenerations cost extra.
-            </p>
-            {/* Tooltip arrow */}
-            <div
-              className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-neutral-900"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
-      )}
+      <span className="opacity-60">credits</span>
     </div>
   );
 };

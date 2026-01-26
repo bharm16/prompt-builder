@@ -1,39 +1,33 @@
 import { z } from 'zod';
-import type {
-  CameraPath,
-  ConvergenceApiError,
-  ConvergenceErrorCode,
-  ConvergenceSession,
-  ConvergenceStep,
-  DimensionType,
-  Direction,
-  FinalizeSessionResponse,
-  GenerateCameraMotionResponse,
-  GenerateSubjectMotionResponse,
-  GeneratedImage,
-  LockedDimension,
-  RegenerateResponse,
-  SelectOptionResponse,
-  SessionStatus,
-  StartSessionResponse,
-  Position3D,
+import {
+  CONVERGENCE_ERROR_CODES,
+  CONVERGENCE_STEPS,
+  DIMENSION_TYPES,
+  DIRECTIONS,
+  SESSION_STATUSES,
+  type AbandonSessionResponse,
+  type CameraPath,
+  type ConvergenceApiError,
+  type ConvergenceErrorCode,
+  type ConvergenceSession,
+  type ConvergenceStep,
+  type DimensionType,
+  type Direction,
+  type FinalizeSessionResponse,
+  type GenerateCameraMotionResponse,
+  type GenerateSubjectMotionResponse,
+  type GeneratedImage,
+  type LockedDimension,
+  type RegenerateResponse,
+  type SelectOptionResponse,
+  type SessionStatus,
+  type StartSessionResponse,
+  type Position3D,
 } from '../types';
 
-const ERROR_CODES = [
-  'SESSION_NOT_FOUND',
-  'SESSION_EXPIRED',
-  'ACTIVE_SESSION_EXISTS',
-  'INSUFFICIENT_CREDITS',
-  'REGENERATION_LIMIT_EXCEEDED',
-  'DEPTH_ESTIMATION_FAILED',
-  'IMAGE_GENERATION_FAILED',
-  'VIDEO_GENERATION_FAILED',
-  'INCOMPLETE_SESSION',
-  'UNAUTHORIZED',
-  'INVALID_REQUEST',
-] as const;
-
-export const ConvergenceErrorCodeSchema: z.ZodType<ConvergenceErrorCode> = z.enum(ERROR_CODES);
+export const ConvergenceErrorCodeSchema: z.ZodType<ConvergenceErrorCode> = z.enum(
+  CONVERGENCE_ERROR_CODES
+);
 
 export const ConvergenceApiErrorSchema: z.ZodType<ConvergenceApiError> = z
   .object({
@@ -80,37 +74,13 @@ export function parseConvergenceApiError(data: unknown): ConvergenceApiError | n
   return null;
 }
 
-const DirectionSchema: z.ZodType<Direction> = z.enum([
-  'cinematic',
-  'social',
-  'artistic',
-  'documentary',
-]);
+const DirectionSchema: z.ZodType<Direction> = z.enum(DIRECTIONS);
 
-const DimensionTypeSchema: z.ZodType<DimensionType> = z.enum([
-  'mood',
-  'framing',
-  'lighting',
-  'camera_motion',
-]);
+const DimensionTypeSchema: z.ZodType<DimensionType> = z.enum(DIMENSION_TYPES);
 
-const ConvergenceStepSchema: z.ZodType<ConvergenceStep> = z.enum([
-  'intent',
-  'direction',
-  'mood',
-  'framing',
-  'lighting',
-  'camera_motion',
-  'subject_motion',
-  'preview',
-  'complete',
-]);
+const ConvergenceStepSchema: z.ZodType<ConvergenceStep> = z.enum(CONVERGENCE_STEPS);
 
-const SessionStatusSchema: z.ZodType<SessionStatus> = z.enum([
-  'active',
-  'completed',
-  'abandoned',
-]);
+const SessionStatusSchema: z.ZodType<SessionStatus> = z.enum(SESSION_STATUSES);
 
 const Position3DSchema: z.ZodType<Position3D> = z.object({
   x: z.number(),
@@ -176,13 +146,10 @@ export const StartSessionResponseSchema: z.ZodType<StartSessionResponse> = z
   })
   .passthrough();
 
-const SelectOptionDimensionSchema: z.ZodType<SelectOptionResponse['currentDimension']> = z.enum([
-  'mood',
-  'framing',
-  'lighting',
-  'camera_motion',
-  'subject_motion',
-]);
+const SELECT_OPTION_DIMENSIONS = [...DIMENSION_TYPES, 'subject_motion'] as const;
+const SelectOptionDimensionSchema: z.ZodType<SelectOptionResponse['currentDimension']> = z.enum(
+  SELECT_OPTION_DIMENSIONS
+);
 
 export const SelectOptionResponseSchema: z.ZodType<SelectOptionResponse> = z
   .object({
@@ -247,5 +214,13 @@ export const FinalizeSessionResponseSchema: z.ZodType<FinalizeSessionResponse> =
 export const ActiveSessionResponseSchema = z
   .object({
     session: ConvergenceSessionSchema.nullable(),
+  })
+  .passthrough();
+
+export const AbandonSessionResponseSchema: z.ZodType<AbandonSessionResponse> = z
+  .object({
+    sessionId: z.string(),
+    status: z.literal('abandoned'),
+    imagesDeleted: z.boolean(),
   })
   .passthrough();

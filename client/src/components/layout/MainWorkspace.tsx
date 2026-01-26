@@ -16,12 +16,70 @@
  * @requirement 17.2 - Switch to Studio mode with converged prompt pre-filled
  */
 
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppShell } from '@/contexts/AppShellContext';
 import { AppShell } from '@/components/navigation/AppShell';
 import { ConvergenceFlow } from '@/features/convergence/components/ConvergenceFlow';
 import PromptOptimizerWorkspace from '@/features/prompt-optimizer/PromptOptimizerContainer';
 import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import { getAuthRepository } from '@/repositories';
+import { usePromptHistory } from '@hooks/usePromptHistory';
+import type { PromptHistoryEntry, User } from '@hooks/usePromptHistory';
+
+function CreateWorkspaceShell(): React.ReactElement {
+  const [user, setUser] = useState<User | null>(null);
+  const promptHistory = usePromptHistory(user);
+  const navigate = useNavigate();
+  const { setActiveTool } = useAppShell();
+
+  useEffect(() => {
+    const unsubscribe = getAuthRepository().onAuthStateChanged(setUser);
+    return () => unsubscribe();
+  }, []);
+
+  const handleLoadFromHistory = useCallback(
+    (entry: PromptHistoryEntry): void => {
+      setActiveTool('studio', { skipWarning: true });
+      if (entry.uuid) {
+        navigate(`/prompt/${entry.uuid}`);
+        return;
+      }
+      navigate('/');
+    },
+    [navigate, setActiveTool]
+  );
+
+  const handleCreateNew = useCallback((): void => {
+    setActiveTool('studio', { skipWarning: true });
+    navigate('/');
+  }, [navigate, setActiveTool]);
+
+  const handleRename = useCallback(
+    (entry: PromptHistoryEntry, title: string): void => {
+      if (!entry.uuid) return;
+      promptHistory.updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
+    },
+    [promptHistory]
+  );
+
+  return (
+    <AppShell
+      history={promptHistory.history}
+      filteredHistory={promptHistory.filteredHistory}
+      isLoadingHistory={promptHistory.isLoadingHistory}
+      searchQuery={promptHistory.searchQuery}
+      onSearchChange={promptHistory.setSearchQuery}
+      onLoadFromHistory={handleLoadFromHistory}
+      onCreateNew={handleCreateNew}
+      onDelete={promptHistory.deleteFromHistory}
+      onRename={handleRename}
+    >
+      {/* Render ConvergenceFlow when Create tool is active */}
+      <ConvergenceFlow />
+    </AppShell>
+  );
+}
 
 /**
  * MainWorkspace - Conditional renderer for Create/Studio tools
@@ -41,10 +99,7 @@ export function MainWorkspace(): React.ReactElement {
   return (
     <GenerationControlsProvider>
       {activeTool === 'create' ? (
-        <AppShell>
-          {/* Render ConvergenceFlow when Create tool is active */}
-          <ConvergenceFlow />
-        </AppShell>
+        <CreateWorkspaceShell />
       ) : (
         // Render Studio (PromptOptimizerWorkspace) when Studio tool is active
         // Pass convergenceHandoff for prompt pre-fill when coming from Create

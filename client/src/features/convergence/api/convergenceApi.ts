@@ -17,6 +17,8 @@ import type { ZodType } from 'zod';
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 import type {
+  AbandonSessionRequest,
+  AbandonSessionResponse,
   ConvergenceApiError,
   ConvergenceErrorCode,
   ConvergenceSession,
@@ -35,6 +37,7 @@ import type {
   StartSessionResponse,
 } from '../types';
 import {
+  AbandonSessionResponseSchema,
   ActiveSessionResponseSchema,
   ConvergenceSessionSchema,
   FinalizeSessionResponseSchema,
@@ -79,6 +82,17 @@ export class ConvergenceError extends Error {
 // ============================================================================
 
 const CONVERGENCE_API_BASE = `${API_CONFIG.baseURL}/convergence`;
+const STATUS_CODE_TO_ERROR: Record<number, ConvergenceErrorCode> = {
+  400: 'INVALID_REQUEST',
+  401: 'UNAUTHORIZED',
+  402: 'INSUFFICIENT_CREDITS',
+  403: 'UNAUTHORIZED',
+  404: 'SESSION_NOT_FOUND',
+  409: 'ACTIVE_SESSION_EXISTS',
+  410: 'SESSION_EXPIRED',
+  429: 'REGENERATION_LIMIT_EXCEEDED',
+};
+const DEFAULT_ERROR_CODE: ConvergenceErrorCode = 'SESSION_NOT_FOUND';
 
 // ============================================================================
 // Helper Functions
@@ -113,18 +127,7 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
 
   // Fallback error based on HTTP status
-  const statusCodeMap: Record<number, ConvergenceErrorCode> = {
-    400: 'INVALID_REQUEST',
-    401: 'UNAUTHORIZED',
-    402: 'INSUFFICIENT_CREDITS',
-    403: 'UNAUTHORIZED',
-    404: 'SESSION_NOT_FOUND',
-    409: 'ACTIVE_SESSION_EXISTS',
-    410: 'SESSION_EXPIRED',
-    429: 'REGENERATION_LIMIT_EXCEEDED',
-  };
-
-  const code = statusCodeMap[response.status] || 'SESSION_NOT_FOUND';
+  const code = STATUS_CODE_TO_ERROR[response.status] || DEFAULT_ERROR_CODE;
   throw new ConvergenceError(code, `Request failed with status ${response.status}: ${response.statusText}`);
 }
 
@@ -134,8 +137,8 @@ async function handleErrorResponse(response: Response): Promise<never> {
 async function fetchWithAuth<T>(
   endpoint: string,
   options: RequestInit = {},
-  signal?: AbortSignal,
-  schema?: ZodType<T>
+  schema: ZodType<T>,
+  signal?: AbortSignal
 ): Promise<T> {
   const headers = await buildHeaders();
 
@@ -153,7 +156,7 @@ async function fetchWithAuth<T>(
   }
 
   const data: unknown = await response.json();
-  return schema ? schema.parse(data) : (data as T);
+  return schema.parse(data);
 }
 
 // ============================================================================
@@ -187,8 +190,8 @@ export async function startSession(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal,
-    StartSessionResponseSchema
+    StartSessionResponseSchema,
+    signal
   );
 }
 
@@ -222,8 +225,8 @@ export async function selectOption(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal,
-    SelectOptionResponseSchema
+    SelectOptionResponseSchema,
+    signal
   );
 }
 
@@ -254,8 +257,8 @@ export async function regenerate(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal,
-    RegenerateResponseSchema
+    RegenerateResponseSchema,
+    signal
   );
 }
 
@@ -282,8 +285,8 @@ export async function generateCameraMotion(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal,
-    GenerateCameraMotionResponseSchema
+    GenerateCameraMotionResponseSchema,
+    signal
   );
 }
 
@@ -310,7 +313,6 @@ export async function selectCameraMotion(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    undefined,
     SelectCameraMotionResponseSchema
   );
 }
@@ -342,8 +344,8 @@ export async function generateSubjectMotion(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal,
-    GenerateSubjectMotionResponseSchema
+    GenerateSubjectMotionResponseSchema,
+    signal
   );
 }
 
@@ -363,7 +365,6 @@ export async function finalizeSession(
       method: 'POST',
       body: JSON.stringify({ sessionId }),
     },
-    undefined,
     FinalizeSessionResponseSchema
   );
 }
@@ -380,7 +381,6 @@ export async function getActiveSession(): Promise<ConvergenceSession | null> {
     const response = await fetchWithAuth(
       '/session/active',
       { method: 'GET' },
-      undefined,
       ActiveSessionResponseSchema
     );
     return response.session;
@@ -404,8 +404,37 @@ export async function getSession(sessionId: string): Promise<ConvergenceSession>
   return fetchWithAuth<ConvergenceSession>(
     `/session/${sessionId}`,
     { method: 'GET' },
-    undefined,
     ConvergenceSessionSchema
+  );
+}
+
+/**
+ * Abandon an existing session.
+ *
+ * Allows users to explicitly abandon their active session so they can start fresh.
+ * Optionally cleans up associated images from storage.
+ *
+ * @param sessionId - The session ID to abandon
+ * @param deleteImages - Whether to delete associated images from storage (default: false)
+ * @returns AbandonSessionResponse confirming abandonment
+ * @throws ConvergenceError if session not found or unauthorized
+ */
+export async function abandonSession(
+  sessionId: string,
+  deleteImages: boolean = false
+): Promise<AbandonSessionResponse> {
+  const body: AbandonSessionRequest = {
+    sessionId,
+    deleteImages,
+  };
+
+  return fetchWithAuth<AbandonSessionResponse>(
+    '/session/abandon',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+    AbandonSessionResponseSchema
   );
 }
 
@@ -431,6 +460,7 @@ export const convergenceApi = {
   finalizeSession,
   getActiveSession,
   getSession,
+  abandonSession,
 };
 
 export default convergenceApi;

@@ -12,26 +12,30 @@
 /**
  * High-level creative direction that influences all subsequent options
  */
-export type Direction = 'cinematic' | 'social' | 'artistic' | 'documentary';
+export const DIRECTIONS = ['cinematic', 'social', 'artistic', 'documentary'] as const;
+export type Direction = (typeof DIRECTIONS)[number];
 
 /**
  * Visual attribute categories that users select from
  */
-export type DimensionType = 'mood' | 'framing' | 'lighting' | 'camera_motion';
+export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] as const;
+export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
  * Steps in the convergence flow
  */
-export type ConvergenceStep =
-  | 'intent'
-  | 'direction'
-  | 'mood'
-  | 'framing'
-  | 'lighting'
-  | 'camera_motion'
-  | 'subject_motion'
-  | 'preview'
-  | 'complete';
+export const CONVERGENCE_STEPS = [
+  'intent',
+  'direction',
+  'mood',
+  'framing',
+  'lighting',
+  'camera_motion',
+  'subject_motion',
+  'preview',
+  'complete',
+] as const;
+export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
 
 // ============================================================================
 // Camera Motion Types
@@ -97,7 +101,7 @@ export interface LockedDimension {
  */
 export interface GeneratedImage {
   id: string;
-  url: string; // GCS URL (permanent)
+  url: string; // Signed GCS URL
   dimension: DimensionType | 'direction';
   optionId: string;
   prompt: string;
@@ -111,7 +115,8 @@ export interface GeneratedImage {
 /**
  * Session status
  */
-export type SessionStatus = 'active' | 'completed' | 'abandoned';
+export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 /**
  * Convergence session data from the backend
@@ -256,6 +261,23 @@ export interface FinalizeSessionResponse {
   generationCosts: Record<string, number>;
 }
 
+/**
+ * Request to abandon a convergence session
+ */
+export interface AbandonSessionRequest {
+  sessionId: string;
+  deleteImages?: boolean;
+}
+
+/**
+ * Response from abandoning a session
+ */
+export interface AbandonSessionResponse {
+  sessionId: string;
+  status: 'abandoned';
+  imagesDeleted: boolean;
+}
+
 // ============================================================================
 // Frontend-Specific Types
 // ============================================================================
@@ -275,18 +297,20 @@ export type LoadingOperation =
 /**
  * Convergence error codes from the backend
  */
-export type ConvergenceErrorCode =
-  | 'SESSION_NOT_FOUND'
-  | 'SESSION_EXPIRED'
-  | 'ACTIVE_SESSION_EXISTS'
-  | 'INSUFFICIENT_CREDITS'
-  | 'REGENERATION_LIMIT_EXCEEDED'
-  | 'DEPTH_ESTIMATION_FAILED'
-  | 'IMAGE_GENERATION_FAILED'
-  | 'VIDEO_GENERATION_FAILED'
-  | 'INCOMPLETE_SESSION'
-  | 'UNAUTHORIZED'
-  | 'INVALID_REQUEST';
+export const CONVERGENCE_ERROR_CODES = [
+  'SESSION_NOT_FOUND',
+  'SESSION_EXPIRED',
+  'ACTIVE_SESSION_EXISTS',
+  'INSUFFICIENT_CREDITS',
+  'REGENERATION_LIMIT_EXCEEDED',
+  'DEPTH_ESTIMATION_FAILED',
+  'IMAGE_GENERATION_FAILED',
+  'VIDEO_GENERATION_FAILED',
+  'INCOMPLETE_SESSION',
+  'UNAUTHORIZED',
+  'INVALID_REQUEST',
+] as const;
+export type ConvergenceErrorCode = (typeof CONVERGENCE_ERROR_CODES)[number];
 
 /**
  * API error response structure

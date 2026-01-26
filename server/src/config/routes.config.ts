@@ -9,9 +9,7 @@
  * - Configuring 404 handling
  */
 
-import * as Sentry from '@sentry/node';
-import type { Application } from 'express';
-import type { Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 
@@ -40,6 +38,7 @@ import {
   getGCSStorageService,
   createDepthEstimationService,
   createVideoPreviewService,
+  createSessionCleanupSweeper,
 } from '@services/convergence';
 import type { ImageGenerationService } from '@services/image-generation';
 
@@ -182,6 +181,13 @@ export function registerRoutes(app: Application, container: DIContainer): void {
         });
 
         app.use('/api/convergence', apiAuthMiddleware, convergenceRoutes);
+
+        // Start session cleanup sweeper (runs hourly by default)
+        const sessionCleanupSweeper = createSessionCleanupSweeper(getSessionStore());
+        if (sessionCleanupSweeper) {
+          sessionCleanupSweeper.start();
+          logger.info('Session cleanup sweeper started');
+        }
       } catch (error) {
         // Log error but don't fail app startup - convergence is optional
         const errorInstance = error instanceof Error ? error : new Error(String(error));

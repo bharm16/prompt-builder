@@ -9,12 +9,13 @@
  * - 10.1-10.5: Centralized API layer for convergence operations
  */
 
-import type { Router, Request, Response } from 'express';
 import express from 'express';
-import { asyncHandler } from '@middleware/asyncHandler';
+import type { Request, Response, Router } from 'express';
+
 import { logger } from '@infrastructure/Logger';
+import { asyncHandler } from '@middleware/asyncHandler';
 import type { ConvergenceService } from '@services/convergence/ConvergenceService';
-import { ConvergenceError, isConvergenceError } from '@services/convergence/errors';
+import { isConvergenceError } from '@services/convergence/errors';
 import type {
   StartSessionRequest,
   SelectOptionRequest,
@@ -22,6 +23,7 @@ import type {
   GenerateCameraMotionRequest,
   SelectCameraMotionRequest,
   GenerateSubjectMotionRequest,
+  AbandonSessionRequest,
 } from '@services/convergence/types';
 
 // ============================================================================
@@ -119,7 +121,7 @@ function createStartHandler(convergenceService: ConvergenceService) {
     const requestId = (req as Request & { id?: string }).id;
     const userId = getUserId(req);
 
-    const { intent, aspectRatio } = req.body as StartSessionRequest;
+    const { intent, aspectRatio, forceNew } = req.body as StartSessionRequest & { forceNew?: boolean };
 
     if (!intent || typeof intent !== 'string') {
       return res.status(400).json({
@@ -135,12 +137,16 @@ function createStartHandler(convergenceService: ConvergenceService) {
       userId,
       intentLength: intent.length,
       aspectRatio,
+      forceNew: forceNew ?? false,
     });
 
     try {
-      const request: StartSessionRequest = { intent };
+      const request: StartSessionRequest & { forceNew?: boolean } = { intent };
       if (aspectRatio) {
         request.aspectRatio = aspectRatio;
+      }
+      if (forceNew) {
+        request.forceNew = forceNew;
       }
       const result = await convergenceService.startSession(request, userId);
 
@@ -508,6 +514,57 @@ function createGetActiveSessionHandler(convergenceService: ConvergenceService) {
   };
 }
 
+/**
+ * POST /session/abandon - Abandon an existing session
+ *
+ * Allows users to explicitly abandon their active session so they can start fresh.
+ * Optionally cleans up associated images from GCS storage.
+ */
+function createAbandonSessionHandler(convergenceService: ConvergenceService) {
+  return async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = getUserId(req);
+
+    const { sessionId, deleteImages } = req.body as AbandonSessionRequest;
+
+    if (!sessionId || typeof sessionId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_REQUEST',
+        message: 'sessionId is required and must be a string',
+        requestId,
+      });
+    }
+
+    logger.info('Abandoning session', {
+      requestId,
+      userId,
+      sessionId,
+      deleteImages: deleteImages ?? false,
+    });
+
+    try {
+      const result = await convergenceService.abandonSession(sessionId, userId, {
+        deleteImages: deleteImages ?? false,
+      });
+
+      logger.info('Session abandoned', {
+        requestId,
+        userId,
+        sessionId,
+        imagesDeleted: result.imagesDeleted,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      return handleConvergenceError(error, res, requestId);
+    }
+  };
+}
+
 // ============================================================================
 // Route Factory
 // ============================================================================
@@ -529,6 +586,7 @@ export function createConvergenceRoutes(services: ConvergenceRoutesServices): Ro
   router.post('/start', asyncHandler(createStartHandler(convergenceService)));
   router.post('/finalize', asyncHandler(createFinalizeHandler(convergenceService)));
   router.get('/session/active', asyncHandler(createGetActiveSessionHandler(convergenceService)));
+  router.post('/session/abandon', asyncHandler(createAbandonSessionHandler(convergenceService)));
 
   // Dimension selection
   router.post('/select', asyncHandler(createSelectHandler(convergenceService)));

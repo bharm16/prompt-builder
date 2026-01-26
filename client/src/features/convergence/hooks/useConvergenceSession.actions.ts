@@ -1,13 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { Dispatch } from 'react';
 
-import { convergenceApi } from '../api/convergenceApi';
-import {
-  getNextDimension,
-  getStepOrder,
-  dimensionToStep,
-  stepToDimension,
-} from '../utils/helpers';
+import { logger } from '@/services/LoggingService';
 
 import type {
   ConvergenceStep,
@@ -23,13 +17,21 @@ import type {
   ConvergenceActions,
   ConvergenceState,
 } from './useConvergenceSession.types';
-
+import { convergenceApi } from '../api/convergenceApi';
+import {
+  getNextDimension,
+  getStepOrder,
+  dimensionToStep,
+  stepToDimension,
+} from '../utils/helpers';
 import { handleApiError } from './useConvergenceSession.errorHandler';
 import { getOptionsForDimension } from './useConvergenceSession.options';
 
 // ============================================================================
 // Action Creators (Task 17.4)
 // ============================================================================
+
+const log = logger.child('useConvergenceSessionActions');
 
 export function useConvergenceSessionActions(
   state: ConvergenceState,
@@ -380,12 +382,27 @@ export function useConvergenceSessionActions(
 
   /**
    * Abandon the pending session and start fresh (Task 17.4.5)
+   * Calls the API to abandon the session and clean up resources
    */
   const abandonAndStartFresh = useCallback(async (): Promise<void> => {
-    // TODO: Call API to abandon the session and clean up resources
-    // For now, just clear the local state
+    const pendingSession = state.pendingResumeSession;
+
+    if (pendingSession) {
+      try {
+        // Call API to abandon the session and delete associated images
+        await convergenceApi.abandonSession(pendingSession.id, true);
+      } catch (error) {
+        // Log error but still clear state - user wants to start fresh
+        const normalizedError = toError(error);
+        log.error('Failed to abandon session via API', normalizedError, {
+          sessionId: pendingSession.id,
+        });
+      }
+    }
+
+    // Clear local state regardless of API success
     dispatch({ type: 'ABANDON_SESSION' });
-  }, []);
+  }, [state.pendingResumeSession]);
 
   /**
    * Move focus for keyboard navigation
