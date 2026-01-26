@@ -22,12 +22,14 @@
  */
 
 import React, { useCallback } from 'react';
-import { cn } from '@/utils/cn';
 import { Video } from 'lucide-react';
+import { logger } from '@/services/LoggingService';
+import { cn } from '@/utils/cn';
+import type { CameraPath } from '@/features/convergence/types';
 import { CameraMotionOption } from './CameraMotionOption';
 import { CameraMotionErrorBoundary } from './CameraMotionErrorBoundary';
 import { BackButton, StepCreditBadge } from '../shared';
-import type { CameraPath, GeneratedImage } from '../../types';
+const log = logger.child('CameraMotionPicker');
 
 // ============================================================================
 // Types
@@ -237,7 +239,9 @@ export const CameraMotionPickerWithErrorBoundary: React.FC<CameraMotionPickerWit
   const [forceFallback, setForceFallback] = React.useState(false);
 
   const handleError = useCallback((error: Error) => {
-    console.error('Three.js error in CameraMotionPicker:', error);
+    log.error('Three.js error in CameraMotionPicker', error, {
+      fallbackEnabled: true,
+    });
     setForceFallback(true);
     if (onThreeJsError) {
       onThreeJsError(error);

@@ -17,11 +17,12 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { cn } from '@/utils/cn';
 import { Check, Loader2 } from 'lucide-react';
+import { logger } from '@/services/LoggingService';
+import { cn } from '@/utils/cn';
+import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
+import type { CameraPath } from '@/features/convergence/types';
 import { FrameAnimator } from '../shared/FrameAnimator';
-import { renderCameraMotionFrames } from '../../utils/cameraMotionRenderer';
-import type { CameraPath } from '../../types';
 
 // ============================================================================
 // Constants
@@ -77,6 +78,8 @@ export interface CameraMotionOptionProps {
  * In normal mode, renders Three.js preview on hover.
  * In fallback mode, shows text description.
  */
+const log = logger.child('CameraMotionOption');
+
 export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   cameraPath,
   imageUrl,
@@ -136,7 +139,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         setHasRendered(true);
       }
     } catch (error) {
-      console.error('Failed to render camera motion frames:', error);
+      log.warn('Failed to render camera motion frames', {
+        cameraMotionId: cameraPath.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       if (isMountedRef.current) {
         setRenderError(true);
       }

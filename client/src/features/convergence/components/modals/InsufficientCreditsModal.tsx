@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@promptstudio/system/components/ui/dialog';
-import type { InsufficientCreditsModalState } from '../../types';
+import type { InsufficientCreditsModalState } from '@/features/convergence/types';
 
 /**
  * Props for the InsufficientCreditsModal component

@@ -30,6 +30,22 @@ export const STEP_ORDER: ConvergenceStep[] = [
  */
 export const DIMENSION_ORDER = ['direction', 'mood', 'framing', 'lighting', 'camera_motion'] as const;
 
+const NEXT_DIMENSION: Record<DimensionType | 'direction', DimensionType | null> = {
+  direction: 'mood',
+  mood: 'framing',
+  framing: 'lighting',
+  lighting: 'camera_motion',
+  camera_motion: null,
+};
+
+const PREVIOUS_DIMENSION: Record<DimensionType | 'direction', DimensionType | 'direction' | null> = {
+  direction: null,
+  mood: 'direction',
+  framing: 'mood',
+  lighting: 'framing',
+  camera_motion: 'lighting',
+};
+
 // ============================================================================
 // Step Navigation Functions
 // ============================================================================
@@ -83,13 +99,7 @@ export function getDimensionOrder(dimension: DimensionType | 'direction'): numbe
  * @returns The next dimension, or null if at the end (camera_motion)
  */
 export function getNextDimension(current: DimensionType | 'direction'): DimensionType | null {
-  const flow: Record<string, DimensionType> = {
-    direction: 'mood',
-    mood: 'framing',
-    framing: 'lighting',
-    lighting: 'camera_motion',
-  };
-  return flow[current] || null;
+  return NEXT_DIMENSION[current];
 }
 
 /**
@@ -100,13 +110,7 @@ export function getNextDimension(current: DimensionType | 'direction'): Dimensio
 export function getPreviousDimension(
   current: DimensionType | 'direction'
 ): DimensionType | 'direction' | null {
-  const flow: Record<string, DimensionType | 'direction'> = {
-    mood: 'direction',
-    framing: 'mood',
-    lighting: 'framing',
-    camera_motion: 'lighting',
-  };
-  return flow[current] || null;
+  return PREVIOUS_DIMENSION[current];
 }
 
 // ============================================================================
@@ -132,7 +136,7 @@ export function stepToDimension(step: ConvergenceStep): DimensionType | 'directi
  * @returns The corresponding step
  */
 export function dimensionToStep(dimension: DimensionType | 'direction'): ConvergenceStep {
-  return dimension as ConvergenceStep;
+  return dimension;
 }
 
 // ============================================================================

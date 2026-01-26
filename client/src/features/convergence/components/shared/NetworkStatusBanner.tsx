@@ -9,9 +9,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { cn } from '@/utils/cn';
 import { WifiOff, Wifi, RefreshCw, X } from 'lucide-react';
-import type { NetworkStatus } from '../../hooks/useNetworkStatus';
+import { cn } from '@/utils/cn';
+import type { NetworkStatus } from '@/features/convergence/hooks/useNetworkStatus';
 
 // ============================================================================
 // Types

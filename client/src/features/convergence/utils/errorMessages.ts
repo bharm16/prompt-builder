@@ -88,6 +88,12 @@ export const ERROR_MESSAGES: Record<ConvergenceErrorCode, ErrorMessageConfig> = 
     isRetryable: false,
     suggestedAction: 'Please sign in to continue.',
   },
+  INVALID_REQUEST: {
+    title: 'Invalid Request',
+    message: 'Some required information is missing or invalid.',
+    isRetryable: false,
+    suggestedAction: 'Please review your inputs and try again.',
+  },
 };
 
 /**

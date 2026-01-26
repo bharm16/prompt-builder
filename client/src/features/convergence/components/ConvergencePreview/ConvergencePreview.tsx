@@ -20,8 +20,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { cn } from '@/utils/cn';
 import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@/utils/cn';
+import type { Direction, FinalizeSessionResponse } from '@/features/convergence/types';
 import { PromptDisplay } from './PromptDisplay';
 import { DimensionSummary } from './DimensionSummary';
 import { TotalCreditsSummary } from './TotalCreditsSummary';
@@ -29,7 +30,6 @@ import { GenerateNowButton } from './GenerateNowButton';
 import { EditInStudioButton } from './EditInStudioButton';
 import { ModelCostTable } from './ModelCostTable';
 import { BackButton } from '../shared';
-import type { LockedDimension, Direction, FinalizeSessionResponse } from '../../types';
 
 // ============================================================================
 // Types

@@ -8,6 +8,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { logger } from '@/services/LoggingService';
 
 // ============================================================================
 // Types
@@ -21,6 +22,8 @@ export interface CameraMotionErrorBoundaryProps {
   /** Fallback content to render on error */
   fallback?: ReactNode;
 }
+
+const log = logger.child('CameraMotionErrorBoundary');
 
 interface CameraMotionErrorBoundaryState {
   hasError: boolean;
@@ -58,7 +61,9 @@ export class CameraMotionErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error for debugging
-    console.error('CameraMotionErrorBoundary caught an error:', error, errorInfo);
+    log.error('CameraMotionErrorBoundary caught an error', error, {
+      componentStack: errorInfo.componentStack,
+    });
 
     // Notify parent component to enable fallback mode
     if (this.props.onError) {

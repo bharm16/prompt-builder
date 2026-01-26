@@ -8,8 +8,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { cn } from '@/utils/cn';
 import { FileText, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { logger } from '@/services/LoggingService';
+import { cn } from '@/utils/cn';
 
 // ============================================================================
 // Types
@@ -25,6 +26,8 @@ export interface PromptDisplayProps {
   /** Additional CSS classes */
   className?: string;
 }
+
+const log = logger.child('PromptDisplay');
 
 // ============================================================================
 // Component
@@ -59,7 +62,9 @@ export const PromptDisplay: React.FC<PromptDisplayProps> = ({
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy prompt:', err);
+      log.warn('Failed to copy prompt', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }, [prompt]);
 

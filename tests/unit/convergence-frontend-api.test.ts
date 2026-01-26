@@ -144,6 +144,7 @@ describe('ConvergenceError', () => {
       'VIDEO_GENERATION_FAILED',
       'INCOMPLETE_SESSION',
       'UNAUTHORIZED',
+      'INVALID_REQUEST',
     ];
 
     it.each(errorCodes)('should handle %s error code', (code) => {
@@ -517,7 +518,12 @@ describe('convergenceApi Error Handling', () => {
 
     describe('selectCameraMotion', () => {
       it('should send correct request body', async () => {
-        const mockFetch = vi.fn().mockResolvedValue(createMockResponse({}));
+        const mockFetch = vi.fn().mockResolvedValue(
+          createMockResponse({
+            sessionId: 'session-123',
+            cameraMotionId: 'push_in',
+          })
+        );
         global.fetch = mockFetch;
 
         const { selectCameraMotion } = await import('@features/convergence/api/convergenceApi');

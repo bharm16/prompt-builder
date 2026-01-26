@@ -13,26 +13,39 @@
  * - 10.5: Support request cancellation via AbortController
  */
 
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import type { ZodType } from 'zod';
 import { API_CONFIG } from '@/config/api.config';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 import type {
-  StartSessionRequest,
-  StartSessionResponse,
-  SelectOptionRequest,
-  SelectOptionResponse,
-  RegenerateRequest,
-  RegenerateResponse,
-  GenerateCameraMotionRequest,
-  GenerateCameraMotionResponse,
-  SelectCameraMotionRequest,
-  GenerateSubjectMotionRequest,
-  GenerateSubjectMotionResponse,
-  FinalizeSessionResponse,
-  ConvergenceSession,
   ConvergenceApiError,
   ConvergenceErrorCode,
+  ConvergenceSession,
   DimensionType,
+  FinalizeSessionResponse,
+  GenerateCameraMotionRequest,
+  GenerateCameraMotionResponse,
+  GenerateSubjectMotionRequest,
+  GenerateSubjectMotionResponse,
+  RegenerateRequest,
+  RegenerateResponse,
+  SelectCameraMotionRequest,
+  SelectOptionRequest,
+  SelectOptionResponse,
+  StartSessionRequest,
+  StartSessionResponse,
 } from '../types';
+import {
+  ActiveSessionResponseSchema,
+  ConvergenceSessionSchema,
+  FinalizeSessionResponseSchema,
+  GenerateCameraMotionResponseSchema,
+  GenerateSubjectMotionResponseSchema,
+  RegenerateResponseSchema,
+  SelectCameraMotionResponseSchema,
+  SelectOptionResponseSchema,
+  StartSessionResponseSchema,
+  parseConvergenceApiError,
+} from './schemas';
 
 // ============================================================================
 // Error Classes
@@ -89,17 +102,8 @@ async function handleErrorResponse(response: Response): Promise<never> {
   let errorData: ConvergenceApiError | null = null;
 
   try {
-    const data = await response.json();
-    // Check if response matches ConvergenceApiError structure
-    if (data && typeof data.code === 'string' && typeof data.message === 'string') {
-      errorData = data as ConvergenceApiError;
-    } else if (data && typeof data.error === 'string') {
-      // Handle generic error format
-      errorData = {
-        code: 'SESSION_NOT_FOUND' as ConvergenceErrorCode, // Default code
-        message: data.error,
-      };
-    }
+    const data: unknown = await response.json();
+    errorData = parseConvergenceApiError(data);
   } catch {
     // JSON parsing failed, use status text
   }
@@ -110,11 +114,14 @@ async function handleErrorResponse(response: Response): Promise<never> {
 
   // Fallback error based on HTTP status
   const statusCodeMap: Record<number, ConvergenceErrorCode> = {
+    400: 'INVALID_REQUEST',
     401: 'UNAUTHORIZED',
+    402: 'INSUFFICIENT_CREDITS',
     403: 'UNAUTHORIZED',
     404: 'SESSION_NOT_FOUND',
     409: 'ACTIVE_SESSION_EXISTS',
-    402: 'INSUFFICIENT_CREDITS',
+    410: 'SESSION_EXPIRED',
+    429: 'REGENERATION_LIMIT_EXCEEDED',
   };
 
   const code = statusCodeMap[response.status] || 'SESSION_NOT_FOUND';
@@ -127,7 +134,8 @@ async function handleErrorResponse(response: Response): Promise<never> {
 async function fetchWithAuth<T>(
   endpoint: string,
   options: RequestInit = {},
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  schema?: ZodType<T>
 ): Promise<T> {
   const headers = await buildHeaders();
 
@@ -144,7 +152,8 @@ async function fetchWithAuth<T>(
     await handleErrorResponse(response);
   }
 
-  return response.json() as Promise<T>;
+  const data: unknown = await response.json();
+  return schema ? schema.parse(data) : (data as T);
 }
 
 // ============================================================================
@@ -178,7 +187,8 @@ export async function startSession(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal
+    signal,
+    StartSessionResponseSchema
   );
 }
 
@@ -212,7 +222,8 @@ export async function selectOption(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal
+    signal,
+    SelectOptionResponseSchema
   );
 }
 
@@ -243,7 +254,8 @@ export async function regenerate(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal
+    signal,
+    RegenerateResponseSchema
   );
 }
 
@@ -270,7 +282,8 @@ export async function generateCameraMotion(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal
+    signal,
+    GenerateCameraMotionResponseSchema
   );
 }
 
@@ -291,12 +304,14 @@ export async function selectCameraMotion(
     cameraMotionId,
   };
 
-  await fetchWithAuth<void>(
+  await fetchWithAuth(
     '/camera-motion/select',
     {
       method: 'POST',
       body: JSON.stringify(body),
-    }
+    },
+    undefined,
+    SelectCameraMotionResponseSchema
   );
 }
 
@@ -327,7 +342,8 @@ export async function generateSubjectMotion(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    signal
+    signal,
+    GenerateSubjectMotionResponseSchema
   );
 }
 
@@ -346,7 +362,9 @@ export async function finalizeSession(
     {
       method: 'POST',
       body: JSON.stringify({ sessionId }),
-    }
+    },
+    undefined,
+    FinalizeSessionResponseSchema
   );
 }
 
@@ -359,9 +377,11 @@ export async function finalizeSession(
  */
 export async function getActiveSession(): Promise<ConvergenceSession | null> {
   try {
-    const response = await fetchWithAuth<{ session: ConvergenceSession | null }>(
+    const response = await fetchWithAuth(
       '/session/active',
-      { method: 'GET' }
+      { method: 'GET' },
+      undefined,
+      ActiveSessionResponseSchema
     );
     return response.session;
   } catch (error) {
@@ -383,7 +403,9 @@ export async function getActiveSession(): Promise<ConvergenceSession | null> {
 export async function getSession(sessionId: string): Promise<ConvergenceSession> {
   return fetchWithAuth<ConvergenceSession>(
     `/session/${sessionId}`,
-    { method: 'GET' }
+    { method: 'GET' },
+    undefined,
+    ConvergenceSessionSchema
   );
 }
 

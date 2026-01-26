@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createFrameAnimator, type FrameAnimatorControls } from '../../utils/cameraMotionRenderer';
+import { createFrameAnimator, type FrameAnimatorControls } from '@/features/convergence/utils/cameraMotionRenderer';
 
 // ============================================================================
 // Types

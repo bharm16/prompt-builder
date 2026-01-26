@@ -10,10 +10,10 @@
  */
 
 import React, { useCallback } from 'react';
-import { cn } from '@/utils/cn';
 import { Pencil } from 'lucide-react';
+import { cn } from '@/utils/cn';
 import { useAppShell } from '@/contexts/AppShellContext';
-import type { LockedDimension, ConvergenceHandoff } from '../../types';
+import type { LockedDimension, ConvergenceHandoff } from '@/features/convergence/types';
 
 // ============================================================================
 // Types

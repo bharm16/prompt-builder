@@ -8,15 +8,15 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Coins } from 'lucide-react';
-import type { ConvergenceStep } from '../../types';
+import { cn } from '@/utils/cn';
+import type { ConvergenceStep } from '@/features/convergence/types';
 
 /**
  * Credit costs for convergence operations
  * Matches CONVERGENCE_COSTS from the backend
  */
-const STEP_COSTS: Record<string, number> = {
+const STEP_COSTS: Partial<Record<ConvergenceStep, number>> = {
   direction: 4, // 4 images × 1 credit each
   mood: 4,
   framing: 4,

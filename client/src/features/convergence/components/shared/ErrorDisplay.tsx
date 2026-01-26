@@ -10,10 +10,10 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { AlertCircle, RefreshCw, X, WifiOff } from 'lucide-react';
-import type { ConvergenceErrorCode } from '../../types';
-import { getErrorMessage, isRetryableError, type ErrorMessageConfig } from '../../utils/errorMessages';
+import { cn } from '@/utils/cn';
+import type { ConvergenceErrorCode } from '@/features/convergence/types';
+import { getErrorMessage, isRetryableError, type ErrorMessageConfig } from '@/features/convergence/utils/errorMessages';
 
 // ============================================================================
 // Types

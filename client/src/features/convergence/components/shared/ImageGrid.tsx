@@ -11,17 +11,17 @@
 
 import React from 'react';
 import { cn } from '@/utils/cn';
+import type { GeneratedImage } from '@/features/convergence/types';
 import { ImageSkeleton } from './ImageSkeleton';
 import { ImageOption, type ImageOptionProps } from './ImageOption';
-import type { GeneratedImage } from '../../types';
 
-export interface ImageGridProps {
+export interface ImageGridProps<OptionId extends string = string> {
   /** Array of generated images to display */
   images: GeneratedImage[];
   /** Array of options with labels */
-  options: Array<{ id: string; label: string }>;
+  options: Array<{ id: OptionId; label: string }>;
   /** Currently selected option ID */
-  selectedId?: string | null;
+  selectedId?: OptionId | null;
   /** Currently focused option index (for keyboard navigation) */
   focusedIndex?: number;
   /** Whether the grid is in loading state */
@@ -29,7 +29,7 @@ export interface ImageGridProps {
   /** Number of skeleton items to show when loading */
   skeletonCount?: number;
   /** Callback when an option is selected */
-  onSelect?: (id: string) => void;
+  onSelect?: (id: OptionId) => void;
   /** Additional CSS classes */
   className?: string;
   /** Aspect ratio for images */
@@ -41,7 +41,7 @@ export interface ImageGridProps {
 /**
  * ImageGrid - Responsive grid for image options with loading states
  */
-export const ImageGrid: React.FC<ImageGridProps> = ({
+export function ImageGrid<OptionId extends string = string>({
   images,
   options,
   selectedId,
@@ -52,7 +52,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
   className,
   aspectRatio = 'square',
   disabled = false,
-}) => {
+}: ImageGridProps<OptionId>): React.ReactElement {
   // Create a map of option ID to image for quick lookup
   const imageMap = React.useMemo(() => {
     const map = new Map<string, GeneratedImage>();
@@ -86,7 +86,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
         options.map((option, index) => {
           const image = imageMap.get(option.id);
           return (
-            <ImageOption
+            <ImageOption<OptionId>
               key={option.id}
               id={option.id}
               imageUrl={image?.url || ''}
@@ -103,7 +103,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
       )}
     </div>
   );
-};
+}
 
 ImageGrid.displayName = 'ImageGrid';
 

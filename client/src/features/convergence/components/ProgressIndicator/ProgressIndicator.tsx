@@ -18,10 +18,10 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Check } from 'lucide-react';
-import { getProgressSteps, getStepLabel, getStepOrder } from '../../utils/helpers';
-import type { ConvergenceStep } from '../../types';
+import { cn } from '@/utils/cn';
+import { getProgressSteps, getStepLabel, getStepOrder } from '@/features/convergence/utils';
+import type { ConvergenceStep } from '@/features/convergence/types';
 
 // ============================================================================
 // Types

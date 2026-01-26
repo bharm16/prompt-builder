@@ -1,13 +1,5 @@
-import type { LucideIcon } from 'lucide-react';
 import { LayoutGrid, SlidersHorizontal, Users, Palette, Sparkles } from 'lucide-react';
-import type { ToolPanelType } from '../types';
-
-export interface ToolNavItem {
-  id: ToolPanelType;
-  icon: LucideIcon;
-  label: string;
-  variant: 'header' | 'default';
-}
+import type { ToolNavItem } from '../types';
 
 export const toolNavItems: ToolNavItem[] = [
   {

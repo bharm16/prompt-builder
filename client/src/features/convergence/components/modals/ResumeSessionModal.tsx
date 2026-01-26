@@ -20,7 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@promptstudio/system/components/ui/dialog';
-import type { ConvergenceSession } from '../../types';
+import { getStepLabel } from '@/features/convergence/utils';
+import type { ConvergenceSession } from '@/features/convergence/types';
 
 /**
  * Props for the ResumeSessionModal component
@@ -62,24 +63,6 @@ function formatLastUpdated(date: Date | string): string {
       year: dateObj.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
   }
-}
-
-/**
- * Get a human-readable step label
- */
-function getStepLabel(step: string): string {
-  const labels: Record<string, string> = {
-    intent: 'Intent',
-    direction: 'Direction',
-    mood: 'Mood',
-    framing: 'Framing',
-    lighting: 'Lighting',
-    camera_motion: 'Camera Motion',
-    subject_motion: 'Subject Motion',
-    preview: 'Preview',
-    complete: 'Complete',
-  };
-  return labels[step] || step;
 }
 
 /**

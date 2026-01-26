@@ -22,11 +22,16 @@
  */
 
 import React, { useEffect, useCallback } from 'react';
+import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
-
-// Hooks
-import { useConvergenceSession, useNetworkStatus } from '../../hooks';
-import { convergenceApi } from '../../api';
+import { convergenceApi } from '@/features/convergence/api';
+import { useConvergenceSession, useNetworkStatus } from '@/features/convergence/hooks';
+import type {
+  ConvergenceStep,
+  DimensionType,
+  Direction,
+  FinalizeSessionResponse,
+} from '@/features/convergence/types';
 
 // Components
 import { IntentInput } from '../IntentInput';
@@ -41,8 +46,7 @@ import { InsufficientCreditsModal } from '../modals';
 import { SessionExpiredModal } from '../modals';
 import { ErrorDisplay, NetworkStatusBanner } from '../shared';
 
-// Types
-import type { ConvergenceStep, FinalizeSessionResponse, ConvergenceErrorCode } from '../../types';
+const log = logger.child('ConvergenceFlow');
 
 // ============================================================================
 // Types
@@ -62,6 +66,8 @@ export interface ConvergenceFlowProps {
   /** Additional CSS classes */
   className?: string;
 }
+
+type DimensionSelection = Exclude<DimensionType, 'camera_motion'>;
 
 // ============================================================================
 // Component
@@ -117,7 +123,9 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
         }
       } catch (error) {
         // No active session or error, continue to IntentInput
-        console.debug('No active session to resume:', error);
+        log.debug('No active session to resume', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     };
 
@@ -213,7 +221,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
    * Handle direction selection
    */
   const handleDirectionSelect = useCallback(
-    (direction: string) => {
+    (direction: Direction) => {
       actions.selectOption('direction', direction);
     },
     [actions]
@@ -223,7 +231,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
    * Handle dimension selection (mood, framing, lighting)
    */
   const handleDimensionSelect = useCallback(
-    (dimensionType: 'mood' | 'framing' | 'lighting', optionId: string) => {
+    (dimensionType: DimensionSelection, optionId: string) => {
       actions.selectOption(dimensionType, optionId);
     },
     [actions]

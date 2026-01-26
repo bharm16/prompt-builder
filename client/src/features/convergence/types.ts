@@ -285,7 +285,8 @@ export type ConvergenceErrorCode =
   | 'IMAGE_GENERATION_FAILED'
   | 'VIDEO_GENERATION_FAILED'
   | 'INCOMPLETE_SESSION'
-  | 'UNAUTHORIZED';
+  | 'UNAUTHORIZED'
+  | 'INVALID_REQUEST';
 
 /**
  * API error response structure

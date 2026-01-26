@@ -20,8 +20,8 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Palette, Frame, Sun } from 'lucide-react';
+import { cn } from '@/utils/cn';
 import {
   ImageGrid,
   StepCreditBadge,
@@ -29,9 +29,10 @@ import {
   BackButton,
 } from '../shared';
 import type {
+  DimensionType,
   GeneratedImage,
   SelectionOption,
-} from '../../types';
+} from '@/features/convergence/types';
 
 // ============================================================================
 // Constants
@@ -46,7 +47,9 @@ interface DimensionDisplayConfig {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const DIMENSION_CONFIG: Record<'mood' | 'framing' | 'lighting', DimensionDisplayConfig> = {
+type SelectableDimension = Exclude<DimensionType, 'camera_motion'>;
+
+const DIMENSION_CONFIG: Record<SelectableDimension, DimensionDisplayConfig> = {
   mood: {
     title: 'Choose Your Mood',
     description: 'Select the emotional tone for your video',
@@ -68,7 +71,7 @@ const DIMENSION_CONFIG: Record<'mood' | 'framing' | 'lighting', DimensionDisplay
  * Default options for each dimension type
  * These match the backend DimensionFragments configuration
  */
-const DEFAULT_OPTIONS: Record<'mood' | 'framing' | 'lighting', SelectionOption[]> = {
+const DEFAULT_OPTIONS: Record<SelectableDimension, SelectionOption[]> = {
   mood: [
     { id: 'dramatic', label: 'Dramatic' },
     { id: 'peaceful', label: 'Peaceful' },
@@ -95,7 +98,7 @@ const DEFAULT_OPTIONS: Record<'mood' | 'framing' | 'lighting', SelectionOption[]
 
 export interface DimensionSelectorProps {
   /** The dimension type being selected (mood, framing, or lighting) */
-  dimensionType: 'mood' | 'framing' | 'lighting';
+  dimensionType: SelectableDimension;
   /** Generated images for each dimension option */
   images: GeneratedImage[];
   /** Options to display (defaults to dimension-specific options) */

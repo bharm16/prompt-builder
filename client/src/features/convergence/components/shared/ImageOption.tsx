@@ -13,9 +13,9 @@ import React, { useCallback, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { Check } from 'lucide-react';
 
-export interface ImageOptionProps {
+export interface ImageOptionProps<OptionId extends string = string> {
   /** Unique identifier for the option */
-  id: string;
+  id: OptionId;
   /** Image URL to display */
   imageUrl: string;
   /** Label for the option */
@@ -27,7 +27,7 @@ export interface ImageOptionProps {
   /** Whether the option is disabled */
   disabled?: boolean;
   /** Callback when the option is selected */
-  onSelect?: ((id: string) => void) | undefined;
+  onSelect?: ((id: OptionId) => void) | undefined;
   /** Additional CSS classes */
   className?: string;
   /** Aspect ratio of the image */
@@ -39,7 +39,7 @@ export interface ImageOptionProps {
 /**
  * ImageOption - Clickable image with hover/focus/selected states
  */
-export const ImageOption: React.FC<ImageOptionProps> = ({
+export function ImageOption<OptionId extends string = string>({
   id,
   imageUrl,
   label,
@@ -50,7 +50,7 @@ export const ImageOption: React.FC<ImageOptionProps> = ({
   className,
   aspectRatio = 'square',
   tabIndex = 0,
-}) => {
+}: ImageOptionProps<OptionId>): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -192,7 +192,7 @@ export const ImageOption: React.FC<ImageOptionProps> = ({
       )}
     </button>
   );
-};
+}
 
 ImageOption.displayName = 'ImageOption';
 

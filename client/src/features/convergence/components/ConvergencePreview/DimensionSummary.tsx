@@ -8,9 +8,9 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Layers, Film, Palette, Frame, Sun, Video, Move } from 'lucide-react';
-import type { LockedDimension, Direction } from '../../types';
+import { cn } from '@/utils/cn';
+import type { LockedDimension, Direction } from '@/features/convergence/types';
 
 // ============================================================================
 // Types

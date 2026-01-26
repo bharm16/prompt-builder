@@ -20,8 +20,8 @@
  */
 
 import React from 'react';
-import { cn } from '@/utils/cn';
 import { Compass } from 'lucide-react';
+import { cn } from '@/utils/cn';
 import {
   ImageGrid,
   StepCreditBadge,
@@ -31,7 +31,7 @@ import type {
   Direction,
   GeneratedImage,
   DirectionOption,
-} from '../../types';
+} from '@/features/convergence/types';
 
 // ============================================================================
 // Constants
@@ -113,9 +113,9 @@ export const DirectionFork: React.FC<DirectionForkProps> = ({
    * Casts the string ID to Direction type
    */
   const handleSelect = React.useCallback(
-    (id: string) => {
+    (id: Direction) => {
       if (onSelect && !disabled && !isLoading) {
-        onSelect(id as Direction);
+        onSelect(id);
       }
     },
     [onSelect, disabled, isLoading]

@@ -15,7 +15,8 @@ export type ConvergenceErrorCode =
   | 'IMAGE_GENERATION_FAILED'
   | 'VIDEO_GENERATION_FAILED'
   | 'INCOMPLETE_SESSION'
-  | 'UNAUTHORIZED';
+  | 'UNAUTHORIZED'
+  | 'INVALID_REQUEST';
 
 /**
  * Custom error class for convergence operations
@@ -62,6 +63,8 @@ export class ConvergenceError extends Error {
         return 'Please complete all required selections before finalizing.';
       case 'UNAUTHORIZED':
         return 'You are not authorized to access this session.';
+      case 'INVALID_REQUEST':
+        return 'Invalid request. Please check your inputs.';
       default:
         return 'An unexpected error occurred. Please try again.';
     }
@@ -90,6 +93,8 @@ export class ConvergenceError extends Error {
         return 400; // Bad Request
       case 'UNAUTHORIZED':
         return 403; // Forbidden
+      case 'INVALID_REQUEST':
+        return 400; // Bad Request
       default:
         return 500;
     }

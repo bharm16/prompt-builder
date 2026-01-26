@@ -10,10 +10,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { cn } from '@/utils/cn';
 import { Play, Loader2, Coins, AlertCircle } from 'lucide-react';
+import { cn } from '@/utils/cn';
 import { generateVideoPreview } from '@/features/preview/api/previewApi';
-import type { LockedDimension } from '../../types';
+import type { LockedDimension } from '@/features/convergence/types';
 
 // ============================================================================
 // Types

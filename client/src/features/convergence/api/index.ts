@@ -17,5 +17,3 @@ export {
   getActiveSession,
   getSession,
 } from './convergenceApi';
-
-export type { } from './convergenceApi';

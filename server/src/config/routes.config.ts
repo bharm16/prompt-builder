@@ -13,6 +13,7 @@ import * as Sentry from '@sentry/node';
 import type { Application } from 'express';
 import type { Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
+import { logger } from '@infrastructure/Logger';
 
 // Import middleware
 import { apiAuthMiddleware } from '@middleware/apiAuth';
@@ -183,7 +184,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
         app.use('/api/convergence', apiAuthMiddleware, convergenceRoutes);
       } catch (error) {
         // Log error but don't fail app startup - convergence is optional
-        console.warn('Failed to initialize convergence routes:', (error as Error).message);
+        const errorInstance = error instanceof Error ? error : new Error(String(error));
+        logger.warn('Failed to initialize convergence routes', {
+          error: errorInstance.message,
+          errorName: errorInstance.name,
+          stack: errorInstance.stack,
+        });
       }
     }
   }

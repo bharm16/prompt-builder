@@ -41,10 +41,7 @@ export function MainWorkspace(): React.ReactElement {
     <GenerationControlsProvider>
       {activeTool === 'create' ? (
         // Render ConvergenceFlow when Create tool is active
-        <ConvergenceFlow
-          aspectRatio="16:9"
-          selectedModel="wan-2.2"
-        />
+        <ConvergenceFlow />
       ) : (
         // Render Studio (PromptOptimizerWorkspace) when Studio tool is active
         // Pass convergenceHandoff for prompt pre-fill when coming from Create
