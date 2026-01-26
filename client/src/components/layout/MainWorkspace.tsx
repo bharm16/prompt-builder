@@ -18,6 +18,7 @@
 
 import React from 'react';
 import { useAppShell } from '@/contexts/AppShellContext';
+import { AppShell } from '@/components/navigation/AppShell';
 import { ConvergenceFlow } from '@/features/convergence/components/ConvergenceFlow';
 import PromptOptimizerWorkspace from '@/features/prompt-optimizer/PromptOptimizerContainer';
 import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
@@ -40,8 +41,10 @@ export function MainWorkspace(): React.ReactElement {
   return (
     <GenerationControlsProvider>
       {activeTool === 'create' ? (
-        // Render ConvergenceFlow when Create tool is active
-        <ConvergenceFlow />
+        <AppShell>
+          {/* Render ConvergenceFlow when Create tool is active */}
+          <ConvergenceFlow />
+        </AppShell>
       ) : (
         // Render Studio (PromptOptimizerWorkspace) when Studio tool is active
         // Pass convergenceHandoff for prompt pre-fill when coming from Create

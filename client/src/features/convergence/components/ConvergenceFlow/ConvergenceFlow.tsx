@@ -526,7 +526,7 @@ export const ConvergenceFlow: React.FC<ConvergenceFlowProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col min-h-full w-full',
+        'flex flex-col min-h-full w-full convergence-flow',
         className
       )}
     >

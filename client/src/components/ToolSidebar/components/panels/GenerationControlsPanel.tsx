@@ -257,7 +257,7 @@ export function GenerationControlsPanel({
         </button>
         <button
           type="button"
-          className="h-10 px-3 bg-[#2C3037] text-[#A1AFC5] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-8 px-[10px] py-[4px] bg-[#2C22FA] text-white rounded-[4px] font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => {
             if (tier === 'draft') {
               onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
@@ -290,10 +290,10 @@ export function GenerationControlsPanel({
             type="button"
             onClick={() => setActiveTab('video')}
             className={cn(
-              'h-7 px-2 pl-1 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+              'h-8 px-[14px] py-[6px] rounded-2xl text-sm font-medium tracking-[0.14px] flex items-center gap-1.5',
               activeTab === 'video'
-                ? 'bg-[#2F3237] text-white'
-                : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+                ? 'bg-white text-[#1A1A1A] font-bold'
+                : 'text-[#A1AFC5] hover:bg-[#1B1E23]'
             )}
           >
             <Video className="w-4 h-4" />
@@ -303,10 +303,10 @@ export function GenerationControlsPanel({
             type="button"
             onClick={() => setActiveTab('image')}
             className={cn(
-              'h-7 px-2 pl-1 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+              'h-8 px-[14px] py-[6px] rounded-2xl text-sm font-medium tracking-[0.14px] flex items-center gap-1.5',
               activeTab === 'image'
-                ? 'bg-[#2F3237] text-white'
-                : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+                ? 'bg-white text-[#1A1A1A] font-bold'
+                : 'text-[#A1AFC5] hover:bg-[#1B1E23]'
             )}
           >
             <Image className="w-4 h-4" />
@@ -337,10 +337,10 @@ export function GenerationControlsPanel({
               type="button"
               onClick={() => onTierChange('draft')}
               className={cn(
-                'h-7 px-2 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+                'h-8 px-[14px] py-[6px] rounded-2xl text-sm font-medium tracking-[0.14px] flex items-center gap-1.5',
                 tier === 'draft'
-                  ? 'bg-[#2F3237] text-white'
-                  : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+                  ? 'bg-white text-[#1A1A1A] font-bold'
+                  : 'text-[#A1AFC5] hover:bg-[#1B1E23]'
               )}
             >
               Draft
@@ -349,10 +349,10 @@ export function GenerationControlsPanel({
               type="button"
               onClick={() => onTierChange('render')}
               className={cn(
-                'h-7 px-2 rounded-md text-sm font-medium tracking-[0.14px] flex items-center gap-1',
+                'h-8 px-[14px] py-[6px] rounded-2xl text-sm font-medium tracking-[0.14px] flex items-center gap-1.5',
                 tier === 'render'
-                  ? 'bg-[#2F3237] text-white'
-                  : 'text-[#A0AEC0] hover:bg-[#1B1E23]'
+                  ? 'bg-white text-[#1A1A1A] font-bold'
+                  : 'text-[#A1AFC5] hover:bg-[#1B1E23]'
               )}
             >
               Render
@@ -425,7 +425,7 @@ export function GenerationControlsPanel({
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-3">
-            <div className="relative">
+            <div className="relative border border-[#29292D] rounded-lg">
               <div
                 ref={promptEditorRef}
                 className={cn(
@@ -463,8 +463,8 @@ export function GenerationControlsPanel({
                   type="button"
                   onClick={() => setImageSubTab('references')}
                   className={cn(
-                    'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
-                    'text-sm font-medium leading-5 cursor-pointer',
+                    'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
+                    'text-sm font-semibold leading-5 cursor-pointer',
                     imageSubTab === 'references'
                       ? 'bg-[#2C3037] border border-[#2C3037] text-white'
                       : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
@@ -480,8 +480,8 @@ export function GenerationControlsPanel({
                   type="button"
                   onClick={() => setImageSubTab('styles')}
                   className={cn(
-                    'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
-                    'text-sm font-medium leading-5 cursor-pointer',
+                    'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
+                    'text-sm font-semibold leading-5 cursor-pointer',
                     imageSubTab === 'styles'
                       ? 'bg-[#2C3037] border border-[#2C3037] text-white'
                       : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
@@ -574,7 +574,7 @@ export function GenerationControlsPanel({
         <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden px-4 pt-3">
           {/* Text Editor Panel (Runway-style) */}
           <div className="flex flex-col overflow-hidden">
-            <div className="flex flex-col flex-1 min-h-0 relative border border-[#2C3037] rounded-lg overflow-auto">
+            <div className="flex flex-col flex-1 min-h-0 relative border border-[#29292D] rounded-lg overflow-auto">
               {/* Image Slot Row */}
               <div className="flex gap-1.5 pt-3 px-3" data-layout-mode="single-row">
                 {keyframeSlots.map((tile, index) => {
@@ -765,8 +765,8 @@ export function GenerationControlsPanel({
                 type="button"
                 onClick={() => setImageSubTab('references')}
                 className={cn(
-                  'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
-                  'text-sm font-medium leading-5 cursor-pointer',
+                  'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
+                  'text-sm font-semibold leading-5 cursor-pointer',
                   imageSubTab === 'references'
                     ? 'bg-[#2C3037] border border-[#2C3037] text-white'
                     : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
@@ -783,8 +783,8 @@ export function GenerationControlsPanel({
                 type="button"
                 onClick={() => setImageSubTab('styles')}
                 className={cn(
-                  'flex items-center justify-center gap-1 py-1 px-2.5 rounded-full',
-                  'text-sm font-medium leading-5 cursor-pointer',
+                  'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
+                  'text-sm font-semibold leading-5 cursor-pointer',
                   imageSubTab === 'styles'
                     ? 'bg-[#2C3037] border border-[#2C3037] text-white'
                     : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'

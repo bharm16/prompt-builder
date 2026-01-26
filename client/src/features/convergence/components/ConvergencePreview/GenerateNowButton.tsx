@@ -179,12 +179,12 @@ export const GenerateNowButton: React.FC<GenerateNowButtonProps> = ({
         onClick={handleGenerate}
         disabled={isDisabled}
         className={cn(
-          'inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px]',
-          'rounded-lg font-semibold text-base',
-          'bg-primary text-primary-foreground',
+          'inline-flex items-center justify-center gap-2 px-[10px] py-[4px] min-h-[44px]',
+          'rounded-[4px] font-semibold text-base',
+          'bg-[#2C22FA] text-white',
           'transition-all duration-200',
-          !isDisabled && 'hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25',
-          'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2',
+          !isDisabled && 'hover:opacity-90 hover:shadow-lg hover:shadow-[#2C22FA]/25',
+          'focus:outline-none focus:ring-2 focus:ring-[#2C22FA]/50 focus:ring-offset-2',
           isDisabled && 'opacity-50 cursor-not-allowed'
         )}
         aria-label={`Generate video for ${modelCost} credits`}

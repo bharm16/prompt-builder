@@ -20,6 +20,17 @@ import { SESSION_TTL_MS } from '../constants';
 
 const COLLECTION_NAME = 'convergence_sessions';
 
+function isMissingIndexError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const err = error as { code?: number; details?: string; message?: string };
+  const message = err.details ?? err.message ?? '';
+
+  return err.code === 9 && message.includes('requires an index');
+}
+
 /**
  * Firestore document representation of a ConvergenceSession
  * Uses Firestore Timestamps for date fields
@@ -126,7 +137,8 @@ export interface SessionStoreOptions {
  * Repository for Firestore persistence of convergence sessions
  *
  * Firestore Indexes Required:
- * - convergence_sessions: userId ASC, status ASC, updatedAt DESC
+ * - convergence_sessions: status ASC, userId ASC, updatedAt DESC, __name__ DESC
+ * - convergence_sessions: userId ASC, updatedAt DESC, __name__ DESC
  * - convergence_sessions: updatedAt ASC, status ASC
  */
 export class SessionStore {
@@ -231,23 +243,41 @@ export class SessionStore {
    * Uses index: userId ASC, status ASC, updatedAt DESC
    */
   async getActiveByUserId(userId: string): Promise<ConvergenceSession | null> {
-    const snapshot = await this.collection
-      .where('userId', '==', userId)
-      .where('status', '==', 'active')
-      .orderBy('updatedAt', 'desc')
-      .limit(1)
-      .get();
+    try {
+      const snapshot = await this.collection
+        .where('userId', '==', userId)
+        .where('status', '==', 'active')
+        .orderBy('updatedAt', 'desc')
+        .limit(1)
+        .get();
 
-    if (snapshot.empty) {
-      return null;
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      if (!doc) {
+        return null;
+      }
+
+      return documentToSession(doc.data());
+    } catch (error) {
+      if (!isMissingIndexError(error)) {
+        throw error;
+      }
+
+      this.log.warn('Missing Firestore index for active session lookup; using fallback query', {
+        userId,
+      });
+
+      const fallbackSnapshot = await this.collection.where('userId', '==', userId).get();
+      const sessions = fallbackSnapshot.docs.map((doc) => documentToSession(doc.data()));
+      const activeSessions = sessions
+        .filter((session) => session.status === 'active')
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+      return activeSessions[0] ?? null;
     }
-
-    const doc = snapshot.docs[0];
-    if (!doc) {
-      return null;
-    }
-
-    return documentToSession(doc.data());
   }
 
   /**
@@ -257,13 +287,30 @@ export class SessionStore {
    * Uses index: userId ASC, status ASC, updatedAt DESC
    */
   async getByUserId(userId: string, limit: number = 10): Promise<ConvergenceSession[]> {
-    const snapshot = await this.collection
-      .where('userId', '==', userId)
-      .orderBy('updatedAt', 'desc')
-      .limit(limit)
-      .get();
+    try {
+      const snapshot = await this.collection
+        .where('userId', '==', userId)
+        .orderBy('updatedAt', 'desc')
+        .limit(limit)
+        .get();
 
-    return snapshot.docs.map((doc) => documentToSession(doc.data()));
+      return snapshot.docs.map((doc) => documentToSession(doc.data()));
+    } catch (error) {
+      if (!isMissingIndexError(error)) {
+        throw error;
+      }
+
+      this.log.warn('Missing Firestore index for session history lookup; using fallback query', {
+        userId,
+      });
+
+      const fallbackSnapshot = await this.collection.where('userId', '==', userId).get();
+      const sessions = fallbackSnapshot.docs
+        .map((doc) => documentToSession(doc.data()))
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+      return sessions.slice(0, limit);
+    }
   }
 
   /**

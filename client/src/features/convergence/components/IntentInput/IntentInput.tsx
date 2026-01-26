@@ -165,7 +165,7 @@ export const IntentInput: React.FC<IntentInputProps> = ({
             disabled={isLoading || disabled}
             className={cn(
               'min-h-[120px] w-full resize-none rounded-lg',
-              'border border-border bg-surface-1',
+              'border border-[#29292D] bg-surface-1',
               'px-4 py-3 text-foreground text-base',
               'placeholder:text-muted',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:border-accent',

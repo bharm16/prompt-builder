@@ -50,7 +50,7 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.9.4",
     "replicate": "^1.4.0",
-    "sharp": "^0.33.0",
+    "sharp": "^0.34.5",
     "stripe": "^17.7.0",
     "three": "^0.182.0",
     "tsx": "^4.20.6",
@@ -64,7 +64,8 @@
     },
     "@huggingface/transformers": {
       "onnxruntime-node": "1.19.2"
-    }
+    },
+    "baseline-browser-mapping": "2.9.18"
   },
   "devDependencies": {
     "@opentelemetry/instrumentation": "^0.208.0",
