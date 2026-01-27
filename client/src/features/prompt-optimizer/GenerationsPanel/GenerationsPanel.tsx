@@ -13,8 +13,10 @@ import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
 import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
 import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
+import { logger } from '@/services/LoggingService';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
+const log = logger.child('GenerationsPanel');
 
 const EmptyState = ({
   onRunDraft,
@@ -80,12 +82,67 @@ export function GenerationsPanel({
 
   useGenerationMediaRefresh(generations, dispatch);
 
-  const { setControls, keyframes } = useGenerationControlsContext();
+  const { setControls, keyframes, cameraMotion, subjectMotion } = useGenerationControlsContext();
 
   const mergedGenerationParams = useMemo(() => {
-    if (!keyframes.length) return generationParams;
-    return { ...(generationParams ?? {}), keyframes };
-  }, [generationParams, keyframes]);
+    const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;
+
+    if (keyframes.length > 0) {
+      baseParams.keyframes = keyframes;
+    }
+
+    if (cameraMotion?.id) {
+      baseParams.camera_motion_id = cameraMotion.id;
+    }
+
+    const subjectMotionValue = subjectMotion.trim();
+    if (subjectMotionValue) {
+      baseParams.subject_motion = subjectMotionValue;
+    }
+
+    if (Object.keys(baseParams).length === 0) {
+      return generationParams;
+    }
+
+    return baseParams;
+  }, [generationParams, keyframes, cameraMotion?.id, subjectMotion]);
+
+  const motionMergeMeta = useMemo(() => {
+    const mergedKeys =
+      mergedGenerationParams && typeof mergedGenerationParams === 'object'
+        ? Object.keys(mergedGenerationParams as Record<string, unknown>)
+        : [];
+    const cameraMotionId =
+      mergedGenerationParams &&
+      typeof mergedGenerationParams === 'object' &&
+      typeof (mergedGenerationParams as Record<string, unknown>).camera_motion_id === 'string'
+        ? String((mergedGenerationParams as Record<string, unknown>).camera_motion_id)
+        : null;
+    const subjectMotionLength = subjectMotion.trim().length;
+
+    return {
+      keyframesCount: keyframes.length,
+      hasCameraMotion: Boolean(cameraMotionId),
+      cameraMotionId,
+      hasSubjectMotion: subjectMotionLength > 0,
+      subjectMotionLength,
+      mergedKeysCount: mergedKeys.length,
+      mergedKeys,
+    } as const;
+  }, [mergedGenerationParams, keyframes.length, subjectMotion]);
+
+  useEffect(() => {
+    if (!motionMergeMeta.keyframesCount && !motionMergeMeta.hasCameraMotion && !motionMergeMeta.hasSubjectMotion) {
+      return;
+    }
+
+    log.info('Merged generation params include motion/keyframe context', {
+      ...motionMergeMeta,
+      hasCameraMotionFieldInMergedParams: motionMergeMeta.mergedKeys.includes('camera_motion_id'),
+      hasSubjectMotionFieldInMergedParams: motionMergeMeta.mergedKeys.includes('subject_motion'),
+      hasKeyframesFieldInMergedParams: motionMergeMeta.mergedKeys.includes('keyframes'),
+    });
+  }, [motionMergeMeta]);
 
   const generationActionsOptions = useMemo(
     () => ({

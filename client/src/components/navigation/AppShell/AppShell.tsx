@@ -63,6 +63,11 @@ export function AppShell({
   onTierChange = noop,
   onStoryboard = noop,
   activeDraftModel = null,
+  showMotionControls = false,
+  cameraMotion = null,
+  onCameraMotionChange = noop,
+  subjectMotion = '',
+  onSubjectMotionChange = noop,
   assets = [],
   assetsByType,
   isLoadingAssets = false,
@@ -131,6 +136,11 @@ export function AppShell({
         onTierChange={onTierChange}
         onStoryboard={onStoryboard}
         {...(activeDraftModel !== null ? { activeDraftModel } : {})}
+        showMotionControls={showMotionControls}
+        cameraMotion={cameraMotion}
+        onCameraMotionChange={onCameraMotionChange}
+        subjectMotion={subjectMotion}
+        onSubjectMotionChange={onSubjectMotionChange}
         assets={assets}
         assetsByType={resolvedAssetsByType}
         isLoadingAssets={isLoadingAssets}

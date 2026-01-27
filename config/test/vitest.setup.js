@@ -32,7 +32,7 @@ Object.defineProperty(window, 'matchMedia', {
 const localStorageMock = (() => {
   let store = {};
   return {
-    getItem: vi.fn((key) => store[key] || null),
+    getItem: vi.fn((key) => store[key] ?? null),
     setItem: vi.fn((key, value) => {
       store[key] = String(value);
     }),

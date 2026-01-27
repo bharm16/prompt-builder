@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
+import type { CameraPath } from '@/features/convergence/types';
 
 export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
 
@@ -63,6 +64,11 @@ export interface ToolSidebarProps {
   onTierChange: (tier: VideoTier) => void;
   onStoryboard: () => void;
   activeDraftModel?: string | null;
+  showMotionControls?: boolean;
+  cameraMotion?: CameraPath | null;
+  onCameraMotionChange?: (cameraPath: CameraPath | null) => void;
+  subjectMotion?: string;
+  onSubjectMotionChange?: (motion: string) => void;
 
   // Characters panel
   assets: Asset[];

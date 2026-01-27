@@ -1,10 +1,13 @@
 import type { ReactElement } from 'react';
 import { Home } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
 import { useAppShell } from '@/contexts/AppShellContext';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('ToolRail');
 
 export function ToolRail({
   activePanel,
@@ -12,6 +15,7 @@ export function ToolRail({
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeTool, setActiveTool } = useAppShell();
   const headerItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
@@ -29,12 +33,47 @@ export function ToolRail({
    */
   const handlePanelChange = (panelId: typeof activePanel): void => {
     if (panelId === 'create') {
-      setActiveTool('create');
+      log.info('Create tool selected from rail', {
+        fromPath: location.pathname,
+        activeTool,
+      });
+      const result = setActiveTool('create');
+      if (result === 'blocked') {
+        log.warn('Create tool switch blocked by generation-in-progress guard', {
+          fromPath: location.pathname,
+          activeTool,
+        });
+        return;
+      }
+      log.info('Navigating to create route from rail', {
+        toPath: '/create',
+      });
+      navigate('/create');
       onPanelChange(panelId);
     } else if (panelId === 'studio') {
-      setActiveTool('studio');
+      log.info('Studio tool selected from rail', {
+        fromPath: location.pathname,
+        activeTool,
+      });
+      const result = setActiveTool('studio');
+      if (result === 'blocked') {
+        log.warn('Studio tool switch blocked by generation-in-progress guard', {
+          fromPath: location.pathname,
+          activeTool,
+        });
+        return;
+      }
+      log.info('Navigating to studio route from rail', {
+        toPath: '/',
+      });
+      navigate('/');
       onPanelChange(panelId);
     } else {
+      log.debug('Non-tool panel selected from rail', {
+        panelId,
+        fromPath: location.pathname,
+        activeTool,
+      });
       onPanelChange(panelId);
     }
   };

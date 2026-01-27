@@ -29,7 +29,7 @@ export const AUTH_ROUTES = [
 export const WORKSPACE_ROUTE_PREFIXES = ['/prompt/'] as const;
 
 /** Exact routes that trigger sidebar variant */
-export const WORKSPACE_ROUTES_EXACT = ['/', '/assets', '/consistent'] as const;
+export const WORKSPACE_ROUTES_EXACT = ['/', '/create', '/assets', '/consistent'] as const;
 
 // -----------------------------------------------------------------------------
 // Navigation Items

@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import App from '@/App';
+
+const { mockSetActiveTool } = vi.hoisted(() => ({
+  mockSetActiveTool: vi.fn(),
+}));
 
 vi.mock('@components/navigation/AppShell', () => ({
   AppShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -23,6 +27,9 @@ vi.mock('@/components/Toast', () => ({
 
 vi.mock('@/contexts/AppShellContext', () => ({
   AppShellProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  useAppShell: () => ({
+    setActiveTool: mockSetActiveTool,
+  }),
 }));
 
 vi.mock('@/components/layout/MainWorkspace', () => ({
@@ -48,6 +55,10 @@ vi.mock('@/pages/HistoryPage', () => ({ HistoryPage: () => <div>HistoryPage</div
 vi.mock('@/pages/AssetsPage', () => ({ AssetsPage: () => <div>AssetsPage</div> }));
 
 describe('App routes', () => {
+  beforeEach(() => {
+    mockSetActiveTool.mockClear();
+  });
+
   describe('error handling', () => {
     it('redirects /login to the sign-in page', async () => {
       window.history.pushState({}, '', '/login');

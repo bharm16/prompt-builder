@@ -88,34 +88,6 @@ export {
   SESSION_TTL_MS,
 } from './constants';
 
-// Session Store
-export { SessionStore, getSessionStore } from './session/SessionStore';
-export type { SessionStoreOptions } from './session/SessionStore';
-
-// Session Cleanup Sweeper
-export { SessionCleanupSweeper, createSessionCleanupSweeper } from './session/SessionCleanupSweeper';
-
-// Prompt Builder
-export {
-  DIRECTION_FRAGMENTS,
-  MOOD_DIMENSION,
-  FRAMING_DIMENSION,
-  LIGHTING_DIMENSION,
-  CAMERA_MOTION_DIMENSION,
-  ALL_DIMENSIONS,
-  getDimensionConfig,
-  getDimensionOption,
-  getDirectionFragments,
-  PromptBuilderService,
-  getPromptBuilderService,
-} from './prompt-builder';
-
-export type {
-  PromptBuildOptions,
-  PreviewDimension,
-  DirectionPromptResult,
-} from './prompt-builder';
-
 // Credits Service
 export type { CreditsService } from './credits';
 export {
@@ -155,10 +127,3 @@ export {
   createVideoPreviewService,
   createVideoPreviewServiceForUser,
 } from './video-preview';
-
-// Convergence Service (Main Orchestrator)
-export type { ConvergenceServiceDeps } from './ConvergenceService';
-export {
-  ConvergenceService,
-  createConvergenceService,
-} from './ConvergenceService';

@@ -12,7 +12,7 @@ interface ActiveRange {
 }
 
 interface UseTriggerAutocompleteArgs {
-  inputRef: RefObject<HTMLTextAreaElement>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   prompt: string;
   assets: Asset[];
   onSelect: (asset: Asset, range: ActiveRange) => void;

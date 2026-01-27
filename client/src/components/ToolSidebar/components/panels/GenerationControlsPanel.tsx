@@ -22,11 +22,26 @@ import {
 import { cn } from '@utils/cn';
 import { resolveFieldState } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
+import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
+import type { CameraPath } from '@/features/convergence/types';
+import { logger } from '@/services/LoggingService';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
 import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
 
 const DEFAULT_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:5'];
 const DEFAULT_DURATIONS = [5, 10, 15];
+const log = logger.child('GenerationControlsPanel');
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+};
 
 interface GenerationControlsPanelProps {
   prompt: string;
@@ -51,6 +66,11 @@ interface GenerationControlsPanelProps {
   onTierChange: (tier: VideoTier) => void;
   onStoryboard: () => void;
   activeDraftModel?: string | null;
+  showMotionControls?: boolean;
+  cameraMotion?: CameraPath | null;
+  onCameraMotionChange?: (cameraPath: CameraPath | null) => void;
+  subjectMotion?: string;
+  onSubjectMotionChange?: (motion: string) => void;
 }
 
 export function GenerationControlsPanel({
@@ -76,6 +96,11 @@ export function GenerationControlsPanel({
   onTierChange,
   onStoryboard,
   activeDraftModel: _activeDraftModel,
+  showMotionControls = false,
+  cameraMotion = null,
+  onCameraMotionChange,
+  subjectMotion = '',
+  onSubjectMotionChange,
 }: GenerationControlsPanelProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
   const promptEditorRef = useRef<HTMLDivElement>(null);
@@ -83,12 +108,16 @@ export function GenerationControlsPanel({
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'video' | 'image'>('video');
   const [imageSubTab, setImageSubTab] = useState<'references' | 'styles'>('references');
+  const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
+  const subjectMotionLogBucketRef = useRef(0);
   const keyframeSlots = useMemo(
     () => Array.from({ length: 3 }, (_, index) => keyframes[index] ?? null),
     [keyframes]
   );
   const isKeyframeLimitReached = keyframes.length >= 3;
   const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
+  const hasPrimaryKeyframe = Boolean(keyframes[0]);
+  const primaryKeyframeUrlHost = safeUrlHost(keyframes[0]?.url);
 
   const renderModelId = useMemo(() => {
     if (selectedModel && VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)) {
@@ -150,6 +179,25 @@ export function GenerationControlsPanel({
   }, [durationInfo?.allowedValues]);
 
   useEffect(() => {
+    if (!showMotionControls) return;
+    if (activeTab === 'video') return;
+    log.debug('Forcing video tab because motion controls are enabled', {
+      previousTab: activeTab,
+      primaryKeyframeUrlHost,
+    });
+    setActiveTab('video');
+  }, [showMotionControls, activeTab, primaryKeyframeUrlHost]);
+
+  useEffect(() => {
+    if (keyframes[0]) return;
+    if (!showCameraMotionModal) return;
+    log.info('Closing camera motion modal because primary keyframe is missing', {
+      keyframesCount: keyframes.length,
+    });
+    setShowCameraMotionModal(false);
+  }, [keyframes, showCameraMotionModal]);
+
+  useEffect(() => {
     const editor = promptEditorRef.current;
     if (!editor) return;
     const isFocused = typeof document !== 'undefined' && document.activeElement === editor;
@@ -173,6 +221,54 @@ export function GenerationControlsPanel({
       }
     },
     [isUploadDisabled, onImageUpload]
+  );
+
+  const handleCameraMotionButtonClick = useCallback(() => {
+    if (!hasPrimaryKeyframe) {
+      log.warn('Camera motion modal requested without a primary keyframe', {
+        showMotionControls,
+        keyframesCount: keyframes.length,
+      });
+      return;
+    }
+
+    log.info('Opening camera motion modal from generation controls panel', {
+      keyframesCount: keyframes.length,
+      primaryKeyframeUrlHost,
+      currentCameraMotionId: cameraMotion?.id ?? null,
+    });
+    setShowCameraMotionModal(true);
+  }, [
+    hasPrimaryKeyframe,
+    showMotionControls,
+    keyframes.length,
+    primaryKeyframeUrlHost,
+    cameraMotion?.id,
+  ]);
+
+  const handleSubjectMotionChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const nextValue = event.target.value;
+      const previousLength = subjectMotion.trim().length;
+      const nextLength = nextValue.trim().length;
+      const nextBucket = Math.floor(nextLength / 20);
+      const bucketChanged = nextBucket !== subjectMotionLogBucketRef.current;
+      const becameEmpty = previousLength > 0 && nextLength === 0;
+      const becameNonEmpty = previousLength === 0 && nextLength > 0;
+
+      if (bucketChanged || becameEmpty || becameNonEmpty) {
+        subjectMotionLogBucketRef.current = nextBucket;
+        log.debug('Subject motion input changed in generation controls panel', {
+          previousLength,
+          nextLength,
+          keyframesCount: keyframes.length,
+          primaryKeyframeUrlHost,
+        });
+      }
+
+      onSubjectMotionChange?.(nextValue);
+    },
+    [subjectMotion, keyframes.length, primaryKeyframeUrlHost, onSubjectMotionChange]
   );
 
   const handleDrop = useCallback(
@@ -423,6 +519,63 @@ export function GenerationControlsPanel({
               );
             })}
           </div>
+
+          {showMotionControls && (
+            <div className="px-3 pt-3 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
+                  Camera Motion
+                </label>
+                <button
+                  type="button"
+                  onClick={handleCameraMotionButtonClick}
+                  disabled={!hasPrimaryKeyframe}
+                  aria-disabled={!hasPrimaryKeyframe}
+                  className={cn(
+                    'w-full px-3 py-2 rounded-lg text-sm text-left transition-colors',
+                    'border',
+                    hasPrimaryKeyframe
+                      ? 'bg-[#1B1E23] hover:bg-[#1E1F25] cursor-pointer'
+                      : 'bg-[#16171B] text-[#5B6070] cursor-not-allowed opacity-80',
+                    hasPrimaryKeyframe && (cameraMotion ? 'border-[#2C22FA]/50' : 'border-[#29292D]'),
+                    !hasPrimaryKeyframe && 'border-[#29292D]'
+                  )}
+                >
+                  {cameraMotion ? (
+                    <span className="flex items-center gap-2">
+                      <span className="text-[#2C22FA]">✓</span>
+                      <span className="text-white">{cameraMotion.label}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[#7C839C]">Set camera motion...</span>
+                  )}
+                </button>
+                {!hasPrimaryKeyframe && (
+                  <p className="mt-1 text-xs text-[#7C839C]/80">
+                    Upload a keyframe to enable camera motion.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
+                  Subject Motion <span className="text-[#7C839C]/60">(optional)</span>
+                </label>
+                <textarea
+                  value={subjectMotion}
+                  onChange={handleSubjectMotionChange}
+                  placeholder="Describe how your subject moves..."
+                  rows={2}
+                  className={cn(
+                    'w-full px-3 py-2 rounded-lg text-sm resize-none',
+                    'bg-[#1B1E23] border border-[#29292D]',
+                    'placeholder:text-[#7C839C]/60 text-white',
+                    'focus:outline-none focus:ring-2 focus:ring-[#2C22FA]/50 focus:border-[#2C22FA]'
+                  )}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 min-h-0 overflow-y-auto px-3">
             <div className="relative border border-[#29292D] rounded-lg">
@@ -996,6 +1149,30 @@ export function GenerationControlsPanel({
 
           {generationFooter}
         </>
+      )}
+
+      {showMotionControls && keyframes[0] && (
+        <CameraMotionModal
+          isOpen={showCameraMotionModal}
+          onClose={() => {
+            log.info('Camera motion modal closed from generation controls panel', {
+              primaryKeyframeUrlHost,
+              currentCameraMotionId: cameraMotion?.id ?? null,
+            });
+            setShowCameraMotionModal(false);
+          }}
+          imageUrl={keyframes[0].url}
+          onSelect={(path) => {
+            log.info('Camera motion selected from modal in generation controls panel', {
+              cameraMotionId: path.id,
+              cameraMotionLabel: path.label,
+              primaryKeyframeUrlHost,
+            });
+            onCameraMotionChange?.(path);
+            setShowCameraMotionModal(false);
+          }}
+          initialSelection={cameraMotion}
+        />
       )}
     </div>
   );

@@ -113,6 +113,8 @@ describe('GenerationsPanel', () => {
     mockUseGenerationControlsContext.mockReturnValue({
       setControls: vi.fn(),
       keyframes: [],
+      cameraMotion: null,
+      subjectMotion: '',
     });
   });
 
@@ -173,7 +175,12 @@ describe('GenerationsPanel', () => {
       ]);
 
       const setControls = vi.fn();
-      mockUseGenerationControlsContext.mockReturnValue({ setControls, keyframes: [] });
+      mockUseGenerationControlsContext.mockReturnValue({
+        setControls,
+        keyframes: [],
+        cameraMotion: null,
+        subjectMotion: '',
+      });
 
       const { unmount } = render(
         <GenerationsPanel

@@ -81,9 +81,14 @@ interface PromptOptimizerContentProps {
   user: User | null;
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null | undefined;
+  mode: 'studio' | 'create';
 }
 
-function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerContentProps): React.ReactElement {
+function PromptOptimizerContent({
+  user,
+  convergenceHandoff,
+  mode,
+}: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
   const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
   const [assetEditorState, setAssetEditorState] = React.useState<{
@@ -165,8 +170,18 @@ function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerCon
     addKeyframe,
     removeKeyframe,
     clearKeyframes,
+    cameraMotion,
+    subjectMotion,
+    setCameraMotion,
+    setSubjectMotion,
   } = useGenerationControlsContext();
   const [videoTier, setVideoTier] = React.useState<VideoTier>('render');
+
+  useEffect(() => {
+    if (mode === 'create') return;
+    setCameraMotion(null);
+    setSubjectMotion('');
+  }, [mode, setCameraMotion, setSubjectMotion]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -186,6 +201,7 @@ function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerCon
    * (Requirement 17.2: Switch to Studio mode with converged prompt pre-filled)
    */
   useEffect(() => {
+    if (mode !== 'studio') return;
     if (!convergenceHandoff) return;
     
     // Create a unique key for this handoff to prevent re-applying
@@ -214,7 +230,7 @@ function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerCon
       cameraMotion: convergenceHandoff.cameraMotion,
       hasSubjectMotion: Boolean(convergenceHandoff.subjectMotion),
     });
-  }, [convergenceHandoff, promptOptimizer, setDisplayedPromptSilently, setShowResults, toast]);
+  }, [convergenceHandoff, mode, promptOptimizer, setDisplayedPromptSilently, setShowResults, toast]);
 
   // Stabilize promptContext to prevent infinite loops
   const stablePromptContext = useMemo(() => {
@@ -869,6 +885,11 @@ function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerCon
       onStoryboard={handleStoryboard}
       onImageUpload={handleImageUpload}
       activeDraftModel={generationControls?.activeDraftModel ?? null}
+      showMotionControls={mode === 'create'}
+      cameraMotion={cameraMotion}
+      onCameraMotionChange={setCameraMotion}
+      subjectMotion={subjectMotion}
+      onSubjectMotionChange={setSubjectMotion}
       assets={assetsSidebar.assets}
       assetsByType={assetsSidebar.byType}
       isLoadingAssets={assetsSidebar.isLoading}
@@ -983,9 +1004,13 @@ function PromptOptimizerContent({ user, convergenceHandoff }: PromptOptimizerCon
 interface PromptOptimizerWorkspaceProps {
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null;
+  mode?: 'studio' | 'create';
 }
 
-function PromptOptimizerWorkspace({ convergenceHandoff }: PromptOptimizerWorkspaceProps): React.ReactElement {
+function PromptOptimizerWorkspace({
+  convergenceHandoff,
+  mode = 'studio',
+}: PromptOptimizerWorkspaceProps): React.ReactElement {
   const [user, setUser] = React.useState<User | null>(null);
 
   // Listen for auth state changes
@@ -999,7 +1024,7 @@ function PromptOptimizerWorkspace({ convergenceHandoff }: PromptOptimizerWorkspa
 
   return (
     <PromptStateProvider user={user}>
-      <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
+      <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} mode={mode} />
     </PromptStateProvider>
   );
 }

@@ -21,7 +21,7 @@
  * @requirement 12.5-12.6 - Keyboard navigation support
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Video } from 'lucide-react';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
@@ -43,6 +43,17 @@ const CATEGORY_LABELS: Record<CameraMotionCategory | 'all', string> = {
   crane: 'Crane',
   orbital: 'Orbital',
   compound: 'Compound',
+};
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
 };
 
 // ============================================================================
@@ -112,17 +123,47 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
   disabled = false,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<CameraMotionCategory | 'all'>('all');
+  const pickerStateRef = useRef<string | null>(null);
+  const imageUrlHost = safeUrlHost(imageUrl);
+  const depthMapUrlHost = safeUrlHost(depthMapUrl);
+
+  const cameraPathById = useMemo(() => {
+    const map = new Map<string, CameraPath>();
+    cameraPaths.forEach((path) => map.set(path.id, path));
+    return map;
+  }, [cameraPaths]);
 
   /**
    * Handle camera motion selection
    */
   const handleSelect = useCallback(
     (cameraMotionId: string) => {
-      if (onSelect && !disabled && !isLoading) {
-        onSelect(cameraMotionId);
+      const selectedPath = cameraPathById.get(cameraMotionId);
+
+      if (disabled || isLoading) {
+        log.warn('Camera motion selection blocked in picker', {
+          cameraMotionId,
+          label: selectedPath?.label ?? null,
+          category: selectedPath?.category ?? null,
+          disabled,
+          isLoading,
+          fallbackMode,
+        });
+        return;
       }
+
+      log.info('Camera motion selected in picker', {
+        cameraMotionId,
+        label: selectedPath?.label ?? null,
+        category: selectedPath?.category ?? null,
+        fallbackMode,
+        imageUrlHost,
+        depthMapUrlHost,
+      });
+
+      onSelect?.(cameraMotionId);
     },
-    [onSelect, disabled, isLoading]
+    [cameraPathById, depthMapUrlHost, disabled, fallbackMode, imageUrlHost, isLoading, onSelect]
   );
 
   const filteredPaths = useMemo(() => {
@@ -134,6 +175,63 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
     focusedOptionIndex >= 0 ? cameraPaths[focusedOptionIndex]?.id : undefined;
 
   const isDisabled = disabled || isLoading;
+
+  useEffect(() => {
+    const stateKey = [
+      cameraPaths.length,
+      filteredPaths.length,
+      fallbackMode ? 'fallback' : 'depth',
+      depthMapUrlHost ?? 'no-depth-host',
+      selectedCameraMotion ?? 'none',
+      focusedOptionIndex,
+      selectedCategory,
+      isDisabled ? 'disabled' : 'enabled',
+    ].join('|');
+
+    if (pickerStateRef.current === stateKey) {
+      return;
+    }
+
+    pickerStateRef.current = stateKey;
+    log.info('Camera motion picker state updated', {
+      cameraPathsCount: cameraPaths.length,
+      filteredPathsCount: filteredPaths.length,
+      fallbackMode,
+      hasDepthMap: Boolean(depthMapUrl),
+      depthMapUrlHost,
+      selectedCameraMotion: selectedCameraMotion ?? null,
+      focusedOptionIndex,
+      selectedCategory,
+      disabled: isDisabled,
+      imageUrlHost,
+    });
+  }, [
+    cameraPaths.length,
+    depthMapUrl,
+    depthMapUrlHost,
+    fallbackMode,
+    filteredPaths.length,
+    focusedOptionIndex,
+    imageUrlHost,
+    isDisabled,
+    selectedCameraMotion,
+    selectedCategory,
+  ]);
+
+  const handleCategoryChange = useCallback(
+    (category: CameraMotionCategory | 'all') => {
+      if (category === selectedCategory) {
+        return;
+      }
+      log.info('Camera motion category changed', {
+        previousCategory: selectedCategory,
+        nextCategory: category,
+        cameraPathsCount: cameraPaths.length,
+      });
+      setSelectedCategory(category);
+    },
+    [cameraPaths.length, selectedCategory]
+  );
 
   return (
     <div
@@ -187,7 +285,7 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
           <button
             key={key}
             type="button"
-            onClick={() => setSelectedCategory(key as CameraMotionCategory | 'all')}
+            onClick={() => handleCategoryChange(key as CameraMotionCategory | 'all')}
             className={cn(
               'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
               selectedCategory === key

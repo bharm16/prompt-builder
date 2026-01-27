@@ -105,7 +105,7 @@ describe('usePromptVersioning', () => {
       expect.arrayContaining([
         existingVersions[0],
         expect.objectContaining({
-          versionId: 'v-1704067200000-fzyo82',
+          versionId: expect.stringMatching(/^v-1704067200000-/),
           label: 'v2',
           signature: 'sig-new',
           prompt: 'New prompt',

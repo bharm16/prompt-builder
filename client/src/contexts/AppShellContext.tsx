@@ -30,7 +30,7 @@ export interface AppShellContextValue {
    * @param tool - The tool to switch to
    * @param options - Optional configuration for the switch
    */
-  setActiveTool: (tool: ActiveTool, options?: SetActiveToolOptions) => void;
+  setActiveTool: (tool: ActiveTool, options?: SetActiveToolOptions) => SetActiveToolResult;
   /** Set the convergence handoff data for Studio pre-fill */
   setConvergenceHandoff: (handoff: ConvergenceHandoff | null) => void;
 }
@@ -42,6 +42,11 @@ export interface SetActiveToolOptions {
   /** Skip the generation-in-progress warning */
   skipWarning?: boolean;
 }
+
+/**
+ * Result of attempting to switch tools
+ */
+export type SetActiveToolResult = 'changed' | 'blocked' | 'unchanged';
 
 /**
  * Props for AppShellProvider
@@ -83,10 +88,10 @@ export function AppShellProvider({
    * Set active tool with generation-in-progress warning (Requirement 17.7)
    */
   const setActiveTool = useCallback(
-    (tool: ActiveTool, options?: SetActiveToolOptions): void => {
+    (tool: ActiveTool, options?: SetActiveToolOptions): SetActiveToolResult => {
       // Skip if already on the requested tool
       if (tool === activeTool) {
-        return;
+        return 'unchanged';
       }
 
       // Check for generation in progress and warn user (Requirement 17.7)
@@ -95,11 +100,12 @@ export function AppShellProvider({
           'Generation is in progress. Are you sure you want to switch tools? This may interrupt the current operation.'
         );
         if (!confirmed) {
-          return;
+          return 'blocked';
         }
       }
 
       setActiveToolState(tool);
+      return 'changed';
     },
     [activeTool, isGeneratingCheck]
   );

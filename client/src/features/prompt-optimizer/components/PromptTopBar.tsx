@@ -22,7 +22,7 @@ type PromptTopBarProps = {
     promptToOptimize?: string,
     options?: OptimizationOptions
   ) => Promise<void>;
-  inputRef?: React.RefObject<HTMLTextAreaElement>;
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   assets?: Asset[];
   onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
   onCreateFromTrigger?: (trigger: string) => void;

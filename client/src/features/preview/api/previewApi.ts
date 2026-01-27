@@ -7,6 +7,49 @@
 import { apiClient } from '@/services/ApiClient';
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('previewApi');
+const VIDEO_OPERATION = 'generateVideoPreview';
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeMotionString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
+  const params = generationParams ?? {};
+  const generationParamKeys = Object.keys(params);
+  const cameraMotionId = normalizeMotionString(params.camera_motion_id);
+  const subjectMotion = normalizeMotionString(params.subject_motion);
+  const keyframesCount = Array.isArray(params.keyframes) ? params.keyframes.length : 0;
+
+  return {
+    hasGenerationParams: generationParamKeys.length > 0,
+    generationParamKeys,
+    hasCameraMotion: Boolean(cameraMotionId),
+    cameraMotionId,
+    hasSubjectMotion: Boolean(subjectMotion),
+    subjectMotionLength: subjectMotion?.length ?? 0,
+    hasKeyframes: keyframesCount > 0,
+    keyframesCount,
+  } as const;
+};
 
 function requireNonEmptyString(value: unknown, name: string): asserts value is string {
   if (!value || typeof value !== 'string' || value.trim().length === 0) {
@@ -267,9 +310,14 @@ export async function generateVideoPreview(
   options?: GenerateVideoPreviewOptions
 ): Promise<GenerateVideoResponse> {
   requireNonEmptyString(prompt, 'Prompt');
+  const trimmedPrompt = prompt.trim();
+  const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const motionMeta = extractMotionMeta(options?.generationParams);
+  const startImageUrlHost = safeUrlHost(options?.startImage);
+  const inputReferenceUrlHost = safeUrlHost(options?.inputReference);
 
-  return apiClient.post('/preview/video/generate', {
-    prompt: prompt.trim(),
+  const payload = {
+    prompt: trimmedPrompt,
     ...(aspectRatio ? { aspectRatio } : {}),
     ...(model ? { model } : {}),
     ...(options?.startImage ? { startImage: options.startImage } : {}),
@@ -277,9 +325,72 @@ export async function generateVideoPreview(
     ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
     ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
     ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
-  }, {
-    timeout: API_CONFIG.timeout.video
-  }) as Promise<GenerateVideoResponse>;
+  };
+
+  log.info('Video preview request started', {
+    operation: VIDEO_OPERATION,
+    promptLength: trimmedPrompt.length,
+    aspectRatio: aspectRatio ?? null,
+    model: model ?? null,
+    hasStartImage: Boolean(options?.startImage),
+    startImageUrlHost,
+    hasInputReference: Boolean(options?.inputReference),
+    inputReferenceUrlHost,
+    hasCharacterAssetId: Boolean(options?.characterAssetId),
+    autoKeyframe: options?.autoKeyframe ?? null,
+    ...motionMeta,
+  });
+
+  try {
+    const response = (await apiClient.post(
+      '/preview/video/generate',
+      payload,
+      {
+        timeout: API_CONFIG.timeout.video,
+      }
+    )) as GenerateVideoResponse;
+
+    const durationMs = Math.round(
+      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
+    );
+
+    log.info('Video preview request succeeded', {
+      operation: VIDEO_OPERATION,
+      durationMs,
+      success: response.success,
+      hasVideoUrl: Boolean(response.videoUrl),
+      hasJobId: Boolean(response.jobId),
+      jobId: response.jobId ?? null,
+      creditsReserved: response.creditsReserved ?? null,
+      creditsDeducted: response.creditsDeducted ?? null,
+      ...motionMeta,
+    });
+
+    return response;
+  } catch (error) {
+    const durationMs = Math.round(
+      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
+    );
+    const info = sanitizeError(error);
+    const errObj = error instanceof Error ? error : new Error(info.message);
+
+    log.error('Video preview request failed', errObj, {
+      operation: VIDEO_OPERATION,
+      durationMs,
+      promptLength: trimmedPrompt.length,
+      aspectRatio: aspectRatio ?? null,
+      model: model ?? null,
+      hasStartImage: Boolean(options?.startImage),
+      startImageUrlHost,
+      hasInputReference: Boolean(options?.inputReference),
+      inputReferenceUrlHost,
+      hasCharacterAssetId: Boolean(options?.characterAssetId),
+      autoKeyframe: options?.autoKeyframe ?? null,
+      errorName: info.name,
+      ...motionMeta,
+    });
+    throw errObj;
+  }
 }
 
 export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStatusResponse> {

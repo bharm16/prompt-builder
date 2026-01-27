@@ -87,7 +87,8 @@ export interface PromptHistory {
     generationParams?: Record<string, unknown> | null,
     brainstormContext?: unknown,
     highlightCache?: unknown,
-    existingUuid?: string | null
+    existingUuid?: string | null,
+    title?: string | null
   ) => Promise<{ uuid: string; id: string } | null>;
   createDraft: (params: {
     mode: string;

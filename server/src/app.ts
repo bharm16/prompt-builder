@@ -15,6 +15,7 @@ import { configureMiddleware } from './config/middleware.config.ts';
 import { configureRoutes } from './config/routes.config.ts';
 import { createWebhookRoutes } from './routes/payment.routes.ts';
 import type { DIContainer } from '@infrastructure/DIContainer';
+import { initializeDepthWarmer } from '@services/convergence/depth';
 
 /**
  * Create and configure the Express application
@@ -24,6 +25,7 @@ import type { DIContainer } from '@infrastructure/DIContainer';
  */
 export function createApp(container: DIContainer): Application {
   const app = express();
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
 
   // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
   // Ensures rate limiting, logging, and security middleware see real IPs
@@ -38,6 +40,11 @@ export function createApp(container: DIContainer): Application {
     logger: container.resolve('logger'),
     metricsService: container.resolve('metricsService'),
   });
+
+  // Pre-warm fal.ai depth estimation to reduce cold starts in Create mode.
+  if (!promptOutputOnly) {
+    initializeDepthWarmer();
+  }
 
   // Register all routes and error handlers
   configureRoutes(app, container);

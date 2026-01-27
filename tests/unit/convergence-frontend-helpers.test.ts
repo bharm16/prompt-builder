@@ -44,10 +44,12 @@ describe('Convergence Helper Functions', () => {
       it('should have correct step order', () => {
         expect(STEP_ORDER).toEqual([
           'intent',
+          'starting_point',
           'direction',
           'mood',
           'framing',
           'lighting',
+          'final_frame',
           'camera_motion',
           'subject_motion',
           'preview',
@@ -55,8 +57,8 @@ describe('Convergence Helper Functions', () => {
         ]);
       });
 
-      it('should have 9 steps', () => {
-        expect(STEP_ORDER).toHaveLength(9);
+      it('should have 11 steps', () => {
+        expect(STEP_ORDER).toHaveLength(11);
       });
     });
 
@@ -82,14 +84,16 @@ describe('Convergence Helper Functions', () => {
     describe('getStepOrder', () => {
       it('should return correct index for each step', () => {
         expect(getStepOrder('intent')).toBe(0);
-        expect(getStepOrder('direction')).toBe(1);
-        expect(getStepOrder('mood')).toBe(2);
-        expect(getStepOrder('framing')).toBe(3);
-        expect(getStepOrder('lighting')).toBe(4);
-        expect(getStepOrder('camera_motion')).toBe(5);
-        expect(getStepOrder('subject_motion')).toBe(6);
-        expect(getStepOrder('preview')).toBe(7);
-        expect(getStepOrder('complete')).toBe(8);
+        expect(getStepOrder('starting_point')).toBe(1);
+        expect(getStepOrder('direction')).toBe(2);
+        expect(getStepOrder('mood')).toBe(3);
+        expect(getStepOrder('framing')).toBe(4);
+        expect(getStepOrder('lighting')).toBe(5);
+        expect(getStepOrder('final_frame')).toBe(6);
+        expect(getStepOrder('camera_motion')).toBe(7);
+        expect(getStepOrder('subject_motion')).toBe(8);
+        expect(getStepOrder('preview')).toBe(9);
+        expect(getStepOrder('complete')).toBe(10);
       });
 
       it('should return -1 for invalid step', () => {
@@ -100,11 +104,13 @@ describe('Convergence Helper Functions', () => {
 
     describe('getNextStep', () => {
       it('should return next step for each step', () => {
-        expect(getNextStep('intent')).toBe('direction');
+        expect(getNextStep('intent')).toBe('starting_point');
+        expect(getNextStep('starting_point')).toBe('direction');
         expect(getNextStep('direction')).toBe('mood');
         expect(getNextStep('mood')).toBe('framing');
         expect(getNextStep('framing')).toBe('lighting');
-        expect(getNextStep('lighting')).toBe('camera_motion');
+        expect(getNextStep('lighting')).toBe('final_frame');
+        expect(getNextStep('final_frame')).toBe('camera_motion');
         expect(getNextStep('camera_motion')).toBe('subject_motion');
         expect(getNextStep('subject_motion')).toBe('preview');
         expect(getNextStep('preview')).toBe('complete');
@@ -120,11 +126,13 @@ describe('Convergence Helper Functions', () => {
         expect(getPreviousStep('complete')).toBe('preview');
         expect(getPreviousStep('preview')).toBe('subject_motion');
         expect(getPreviousStep('subject_motion')).toBe('camera_motion');
-        expect(getPreviousStep('camera_motion')).toBe('lighting');
+        expect(getPreviousStep('camera_motion')).toBe('final_frame');
+        expect(getPreviousStep('final_frame')).toBe('lighting');
         expect(getPreviousStep('lighting')).toBe('framing');
         expect(getPreviousStep('framing')).toBe('mood');
         expect(getPreviousStep('mood')).toBe('direction');
-        expect(getPreviousStep('direction')).toBe('intent');
+        expect(getPreviousStep('direction')).toBe('starting_point');
+        expect(getPreviousStep('starting_point')).toBe('intent');
       });
 
       it('should return intent for first step', () => {
@@ -338,10 +346,12 @@ describe('Convergence Helper Functions', () => {
         const progressSteps = getProgressSteps();
 
         expect(progressSteps).toEqual([
+          'starting_point',
           'direction',
           'mood',
           'framing',
           'lighting',
+          'final_frame',
           'camera_motion',
           'subject_motion',
           'preview',
@@ -358,8 +368,8 @@ describe('Convergence Helper Functions', () => {
         expect(progressSteps).not.toContain('complete');
       });
 
-      it('should have 7 steps', () => {
-        expect(getProgressSteps()).toHaveLength(7);
+      it('should have 9 steps', () => {
+        expect(getProgressSteps()).toHaveLength(9);
       });
     });
   });
@@ -419,14 +429,13 @@ describe('Convergence Helper Functions', () => {
     });
 
     it('should maintain step order consistency with dimension order', () => {
-      // Each dimension should map to a step at the same relative position
+      // Each dimension should map to a step that preserves relative ordering.
+      let lastStepIndex = -1;
       for (const dimension of DIMENSION_ORDER) {
         const step = dimensionToStep(dimension);
         const stepIndex = getStepOrder(step);
-        const dimensionIndex = getDimensionOrder(dimension);
-
-        // Step index should be dimensionIndex + 1 (because 'intent' is step 0)
-        expect(stepIndex).toBe(dimensionIndex + 1);
+        expect(stepIndex).toBeGreaterThan(lastStepIndex);
+        lastStepIndex = stepIndex;
       }
     });
 

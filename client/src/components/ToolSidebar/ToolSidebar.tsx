@@ -53,6 +53,11 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     onTierChange,
     onStoryboard,
     activeDraftModel,
+    showMotionControls = false,
+    cameraMotion = null,
+    onCameraMotionChange,
+    subjectMotion = '',
+    onSubjectMotionChange,
     assets,
     assetsByType,
     isLoadingAssets,
@@ -93,7 +98,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           />
         )}
 
-        {activePanel === 'studio' && (
+        {(activePanel === 'studio' || activePanel === 'create') && (
           <GenerationControlsPanel
             prompt={prompt}
             {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
@@ -116,15 +121,13 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             onTierChange={onTierChange}
             onStoryboard={onStoryboard}
             {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
+            showMotionControls={showMotionControls}
+            cameraMotion={cameraMotion}
+            {...(typeof onCameraMotionChange === 'function' ? { onCameraMotionChange } : {})}
+            subjectMotion={subjectMotion}
+            {...(typeof onSubjectMotionChange === 'function' ? { onSubjectMotionChange } : {})}
             onBack={() => setActivePanel('sessions')}
           />
-        )}
-
-        {/* Create panel content is rendered in the main workspace via ConvergenceFlow */}
-        {activePanel === 'create' && (
-          <div className="p-4 text-[#A1AFC5] text-sm">
-            <p>Visual Convergence flow is displayed in the main workspace.</p>
-          </div>
         )}
 
         {activePanel === 'characters' && (

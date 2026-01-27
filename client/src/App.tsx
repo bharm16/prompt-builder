@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import SharedPrompt from './components/SharedPrompt';
 import { ToastProvider } from './components/Toast';
-import { AppShellProvider } from './contexts/AppShellContext';
+import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppShellContext';
 import { MainWorkspace } from './components/layout/MainWorkspace';
 import { HomePage } from './pages/HomePage';
 import { ProductsPage } from './pages/ProductsPage';
@@ -29,6 +29,22 @@ function MarketingShell(): React.ReactElement {
     <AppShell>
       <Outlet />
     </AppShell>
+  );
+}
+
+function WorkspaceRoute({ tool }: { tool: ActiveTool }): React.ReactElement {
+  const { setActiveTool } = useAppShell();
+  const setActiveToolRef = useRef(setActiveTool);
+  setActiveToolRef.current = setActiveTool;
+
+  useEffect(() => {
+    setActiveToolRef.current(tool, { skipWarning: true });
+  }, [tool]);
+
+  return (
+    <FeatureErrorBoundary featureName="Main Workspace">
+      <MainWorkspace />
+    </FeatureErrorBoundary>
   );
 }
 
@@ -70,11 +86,11 @@ function AppRoutes(): React.ReactElement {
       {/* App routes */}
       <Route
         path="/"
-        element={
-          <FeatureErrorBoundary featureName="Main Workspace">
-            <MainWorkspace />
-          </FeatureErrorBoundary>
-        }
+        element={<WorkspaceRoute tool="studio" />}
+      />
+      <Route
+        path="/create"
+        element={<WorkspaceRoute tool="create" />}
       />
       <Route
         path="/assets"
@@ -90,11 +106,7 @@ function AppRoutes(): React.ReactElement {
       />
       <Route
         path="/prompt/:uuid"
-        element={
-          <FeatureErrorBoundary featureName="Main Workspace">
-            <MainWorkspace />
-          </FeatureErrorBoundary>
-        }
+        element={<WorkspaceRoute tool="studio" />}
       />
     </Routes>
   );

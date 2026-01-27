@@ -15,6 +15,8 @@
 
 import * as THREE from 'three';
 import { API_CONFIG } from '@/config/api.config';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 import type {
   CameraMotionCategory,
   CameraPath,
@@ -88,6 +90,20 @@ const DEFAULT_WIDTH = 320;
 const DEFAULT_HEIGHT = 180;
 const DEFAULT_FPS = 15;
 const DEFAULT_DISPLACEMENT_SCALE = 0.3;
+const log = logger.child('cameraMotionRenderer');
+const OPERATION = 'renderCameraMotionFrames';
+const proxiedHostsLogged = new Set<string>();
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+};
 
 // ============================================================================
 // Shader Code
@@ -255,7 +271,7 @@ function loadTexture(url: string): Promise<THREE.Texture> {
   });
 }
 
-const CONVERGENCE_MEDIA_PROXY_PATH = '/convergence/media/proxy';
+const CONVERGENCE_MEDIA_PROXY_PATH = '/motion/media/proxy';
 
 const shouldProxyUrl = (url: string): boolean => {
   try {
@@ -282,7 +298,18 @@ const buildProxyUrl = (url: string): string => {
     return url;
   }
 
-  return `${base}${CONVERGENCE_MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+  const proxiedUrl = `${base}${CONVERGENCE_MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+  const host = safeUrlHost(url);
+  if (host && !proxiedHostsLogged.has(host)) {
+    proxiedHostsLogged.add(host);
+    log.info('Proxying camera motion media URL', {
+      operation: 'buildProxyUrl',
+      host,
+      proxyPath: CONVERGENCE_MEDIA_PROXY_PATH,
+    });
+  }
+
+  return proxiedUrl;
 };
 
 /**
@@ -296,12 +323,43 @@ async function loadTextures(
   imageUrl: string,
   depthMapUrl: string
 ): Promise<{ imageTexture: THREE.Texture; depthTexture: THREE.Texture }> {
-  const [imageTexture, depthTexture] = await Promise.all([
-    loadTexture(buildProxyUrl(imageUrl)),
-    loadTexture(buildProxyUrl(depthMapUrl)),
-  ]);
+  const startedAt = Date.now();
+  const imageUrlHost = safeUrlHost(imageUrl);
+  const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
-  return { imageTexture, depthTexture };
+  log.debug('Loading camera motion textures', {
+    operation: 'loadTextures',
+    imageUrlHost,
+    depthMapUrlHost,
+  });
+
+  try {
+    const [imageTexture, depthTexture] = await Promise.all([
+      loadTexture(buildProxyUrl(imageUrl)),
+      loadTexture(buildProxyUrl(depthMapUrl)),
+    ]);
+
+    log.debug('Loaded camera motion textures', {
+      operation: 'loadTextures',
+      durationMs: Date.now() - startedAt,
+      imageUrlHost,
+      depthMapUrlHost,
+    });
+
+    return { imageTexture, depthTexture };
+  } catch (error) {
+    const info = sanitizeError(error);
+    const errObj = error instanceof Error ? error : new Error(info.message);
+    log.error('Failed to load camera motion textures', errObj, {
+      operation: 'loadTextures',
+      durationMs: Date.now() - startedAt,
+      imageUrlHost,
+      depthMapUrlHost,
+      error: info.message,
+      errorName: info.name,
+    });
+    throw errObj;
+  }
 }
 
 
@@ -457,45 +515,69 @@ export async function renderCameraMotionFrames(
   cameraPath: CameraPath | LegacyCameraPath,
   options?: RenderOptions
 ): Promise<string[]> {
+  const startedAt = Date.now();
   const width = options?.width ?? DEFAULT_WIDTH;
   const height = options?.height ?? DEFAULT_HEIGHT;
   const fps = options?.fps ?? DEFAULT_FPS;
   const displacementScale = options?.displacementScale ?? DEFAULT_DISPLACEMENT_SCALE;
+  const imageUrlHost = safeUrlHost(imageUrl);
+  const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
   // Normalize path to new format (handles legacy paths without rotation)
   const normalizedPath = normalizeCameraPath(cameraPath);
 
   // Calculate total frames based on duration and fps
   const totalFrames = Math.ceil(normalizedPath.duration * fps);
+  const renderId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${normalizedPath.id}-${startedAt}`;
 
-  // Load textures
-  const { imageTexture, depthTexture } = await loadTextures(imageUrl, depthMapUrl);
+  log.debug('Starting camera motion frame render', {
+    operation: OPERATION,
+    renderId,
+    cameraMotionId: normalizedPath.id,
+    category: normalizedPath.category,
+    durationSec: normalizedPath.duration,
+    totalFrames,
+    width,
+    height,
+    fps,
+    displacementScale,
+    imageUrlHost,
+    depthMapUrlHost,
+  });
 
-  // Create scene
-  const { scene, camera, renderer } = createScene(width, height);
-
-  // Create depth-displaced mesh
-  const { mesh, geometry, material } = createDepthDisplacedMesh(
-    imageTexture,
-    depthTexture,
-    displacementScale
-  );
-
-  scene.add(mesh);
-
-  // Store resources for cleanup
-  const resources: ThreeResources = {
-    scene,
-    camera,
-    renderer,
-    geometry,
-    material,
-    mesh,
-    imageTexture,
-    depthTexture,
-  };
+  let resources: ThreeResources | null = null;
 
   try {
+    // Load textures
+    const { imageTexture, depthTexture } = await loadTextures(imageUrl, depthMapUrl);
+
+    // Create scene
+    const { scene, camera, renderer } = createScene(width, height);
+
+    // Create depth-displaced mesh
+    const { mesh, geometry, material } = createDepthDisplacedMesh(
+      imageTexture,
+      depthTexture,
+      displacementScale
+    );
+
+    scene.add(mesh);
+
+    // Store resources for cleanup
+    resources = {
+      scene,
+      camera,
+      renderer,
+      geometry,
+      material,
+      mesh,
+      imageTexture,
+      depthTexture,
+    };
+
     // Render frames
     const frames: string[] = [];
 
@@ -529,10 +611,39 @@ export async function renderCameraMotionFrames(
       frames.push(frameDataUrl);
     }
 
+    log.info('Completed camera motion frame render', {
+      operation: OPERATION,
+      renderId,
+      cameraMotionId: normalizedPath.id,
+      category: normalizedPath.category,
+      totalFrames,
+      durationMs: Date.now() - startedAt,
+      imageUrlHost,
+      depthMapUrlHost,
+    });
+
     return frames;
+  } catch (error) {
+    const info = sanitizeError(error);
+    const errObj = error instanceof Error ? error : new Error(info.message);
+    log.error('Camera motion frame render failed', errObj, {
+      operation: OPERATION,
+      renderId,
+      cameraMotionId: normalizedPath.id,
+      category: normalizedPath.category,
+      durationMs: Date.now() - startedAt,
+      totalFrames,
+      imageUrlHost,
+      depthMapUrlHost,
+      error: info.message,
+      errorName: info.name,
+    });
+    throw errObj;
   } finally {
     // Always cleanup resources
-    disposeResources(resources);
+    if (resources) {
+      disposeResources(resources);
+    }
   }
 }
 

@@ -6,17 +6,111 @@ import { getVideoCost } from '@config/modelCosts';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PreviewRoutesServices } from '@routes/types';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
+import {
+  CAMERA_MOTION_DESCRIPTIONS,
+  CAMERA_PATHS,
+} from '@services/convergence/constants';
 import { getAuthenticatedUserId } from '../auth';
 import { getCapabilityModelIds } from '../availability';
 import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
 
 const KEYFRAME_CREDIT_COST = 2;
+const CAMERA_MOTION_KEY = 'camera_motion_id';
+const SUBJECT_MOTION_KEY = 'subject_motion';
+const log = logger.child({ route: 'preview.videoGenerate' });
 
 type VideoGenerateServices = Pick<
   PreviewRoutesServices,
   'videoGenerationService' | 'videoJobStore' | 'userCreditService' | 'keyframeService' | 'assetService'
 >;
+
+interface MotionContext {
+  cameraMotionId: string | null;
+  cameraMotionText: string | null;
+  subjectMotion: string | null;
+}
+
+const normalizeMotionString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const toTitleCaseFromId = (value: string): string =>
+  value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const resolveCameraMotionText = (cameraMotionId: string): string => {
+  const description = CAMERA_MOTION_DESCRIPTIONS[cameraMotionId];
+  if (description) {
+    return description;
+  }
+  const path = CAMERA_PATHS.find((item) => item.id === cameraMotionId);
+  if (path?.label) {
+    return path.label;
+  }
+  return toTitleCaseFromId(cameraMotionId);
+};
+
+const resolveMotionContext = (
+  normalizedParams: Record<string, unknown> | null,
+  rawParams: unknown
+): MotionContext => {
+  const normalizedCameraMotion = normalizeMotionString(
+    normalizedParams?.[CAMERA_MOTION_KEY]
+  );
+  const normalizedSubjectMotion = normalizeMotionString(
+    normalizedParams?.[SUBJECT_MOTION_KEY]
+  );
+
+  const rawRecord =
+    rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : null;
+  const rawCameraMotion =
+    normalizedCameraMotion ?? normalizeMotionString(rawRecord?.[CAMERA_MOTION_KEY]);
+  const rawSubjectMotion =
+    normalizedSubjectMotion ?? normalizeMotionString(rawRecord?.[SUBJECT_MOTION_KEY]);
+
+  return {
+    cameraMotionId: rawCameraMotion,
+    cameraMotionText: rawCameraMotion ? resolveCameraMotionText(rawCameraMotion) : null,
+    subjectMotion: rawSubjectMotion,
+  };
+};
+
+const appendMotionGuidance = (basePrompt: string, motion: MotionContext): string => {
+  const guidanceLines: string[] = [];
+
+  if (motion.cameraMotionText) {
+    guidanceLines.push(`Camera motion: ${motion.cameraMotionText}`);
+  }
+  if (motion.subjectMotion) {
+    guidanceLines.push(`Subject motion: ${motion.subjectMotion}`);
+  }
+
+  if (guidanceLines.length === 0) {
+    return basePrompt;
+  }
+
+  const trimmedPrompt = basePrompt.trim();
+  return `${trimmedPrompt}\n\n${guidanceLines.join('\n')}`;
+};
+
+const extractMotionMeta = (params: unknown) => {
+  const record =
+    params && typeof params === 'object' ? (params as Record<string, unknown>) : null;
+  const cameraMotionId = normalizeMotionString(record?.[CAMERA_MOTION_KEY]);
+  const subjectMotion = normalizeMotionString(record?.[SUBJECT_MOTION_KEY]);
+  return {
+    hasCameraMotion: Boolean(cameraMotionId),
+    cameraMotionId,
+    hasSubjectMotion: Boolean(subjectMotion),
+    subjectMotionLength: subjectMotion?.length ?? 0,
+  } as const;
+};
 
 export const createVideoGenerateHandler = ({
   videoGenerationService,
@@ -56,8 +150,9 @@ export const createVideoGenerateHandler = ({
       stripVideoPreviewPrompt(prompt);
     const userId = await getAuthenticatedUserId(req);
     const requestId = (req as Request & { id?: string }).id;
+    const rawMotionMeta = extractMotionMeta(generationParams);
 
-    logger.info('Video preview request received', {
+    log.info('Video preview request received', {
       operation: 'generateVideoPreview',
       requestId,
       promptLength: cleanedPrompt.length,
@@ -68,6 +163,7 @@ export const createVideoGenerateHandler = ({
       hasInputReference: Boolean(inputReference),
       hasCharacterAssetId: Boolean(characterAssetId),
       autoKeyframe,
+      ...rawMotionMeta,
     });
 
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
@@ -79,7 +175,7 @@ export const createVideoGenerateHandler = ({
     }
 
     if (!userCreditService) {
-      logger.error('User credit service is not available - blocking paid feature access', undefined, {
+      log.error('User credit service is not available - blocking paid feature access', undefined, {
         path: req.path,
       });
       return res.status(503).json({
@@ -95,18 +191,18 @@ export const createVideoGenerateHandler = ({
 
     if (characterAssetId && autoKeyframe && !startImage) {
       if (!keyframeService) {
-        logger.warn('Keyframe service unavailable, falling back to direct generation', {
+        log.warn('Keyframe service unavailable, falling back to direct generation', {
           requestId,
           characterAssetId,
         });
       } else if (!assetService) {
-        logger.warn('Asset service unavailable, falling back to direct generation', {
+        log.warn('Asset service unavailable, falling back to direct generation', {
           requestId,
           characterAssetId,
         });
       } else {
         try {
-          logger.info('Generating PuLID keyframe for character', {
+          log.info('Generating PuLID keyframe for character', {
             requestId,
             characterAssetId,
             userId,
@@ -151,7 +247,7 @@ export const createVideoGenerateHandler = ({
           resolvedStartImage = keyframeResult.imageUrl;
           generatedKeyframeUrl = keyframeResult.imageUrl;
 
-          logger.info('PuLID keyframe generated successfully', {
+          log.info('PuLID keyframe generated successfully', {
             requestId,
             characterAssetId,
             keyframeUrl: generatedKeyframeUrl,
@@ -163,7 +259,7 @@ export const createVideoGenerateHandler = ({
           }
 
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.error(
+          log.error(
             'Keyframe generation failed',
             error instanceof Error ? error : new Error(errorMessage),
             {
@@ -258,6 +354,33 @@ export const createVideoGenerateHandler = ({
         ? Math.max(1, Math.min(300, Math.round(paramDurationS * paramFps)))
         : undefined;
 
+    const motionContext = resolveMotionContext(normalizedParams, generationParams);
+    const promptWithMotion = appendMotionGuidance(cleanedPrompt, motionContext);
+    const normalizedMotionMeta = extractMotionMeta(normalizedParams);
+    const promptLengthBeforeMotion = cleanedPrompt.trim().length;
+    const promptLengthAfterMotion = promptWithMotion.trim().length;
+    const motionGuidanceAppended = promptLengthAfterMotion > promptLengthBeforeMotion;
+
+    log.info('Resolved motion context for video generation', {
+      operation: 'resolveMotionContext',
+      requestId,
+      userId,
+      rawHasCameraMotion: rawMotionMeta.hasCameraMotion,
+      rawCameraMotionId: rawMotionMeta.cameraMotionId,
+      rawHasSubjectMotion: rawMotionMeta.hasSubjectMotion,
+      rawSubjectMotionLength: rawMotionMeta.subjectMotionLength,
+      normalizedHasCameraMotion: normalizedMotionMeta.hasCameraMotion,
+      normalizedCameraMotionId: normalizedMotionMeta.cameraMotionId,
+      normalizedHasSubjectMotion: normalizedMotionMeta.hasSubjectMotion,
+      normalizedSubjectMotionLength: normalizedMotionMeta.subjectMotionLength,
+      resolvedCameraMotionId: motionContext.cameraMotionId,
+      resolvedCameraMotionText: motionContext.cameraMotionText,
+      resolvedSubjectMotionLength: motionContext.subjectMotion?.length ?? 0,
+      motionGuidanceAppended,
+      promptLengthBeforeMotion,
+      promptLengthAfterMotion,
+    });
+
     const hasCredits = await userCreditService.reserveCredits(userId, videoCost);
     if (!hasCredits) {
       if (keyframeCost > 0) {
@@ -297,11 +420,14 @@ export const createVideoGenerateHandler = ({
       options.numFrames = numFrames;
     }
 
-    logger.debug('Queueing operation.', {
+    log.debug('Queueing operation.', {
       operation,
       requestId,
       userId,
-      promptLength: cleanedPrompt.length,
+      promptLength: promptWithMotion.length,
+      promptLengthBeforeMotion,
+      promptLengthAfterMotion,
+      motionGuidanceAppended,
       promptWasStripped,
       aspectRatio,
       model,
@@ -309,19 +435,23 @@ export const createVideoGenerateHandler = ({
       keyframeCost,
       totalCost: videoCost + keyframeCost,
       usedKeyframe: Boolean(generatedKeyframeUrl),
+      hasCameraMotion: Boolean(motionContext.cameraMotionId),
+      cameraMotionId: motionContext.cameraMotionId,
+      hasSubjectMotion: Boolean(motionContext.subjectMotion),
+      subjectMotionLength: motionContext.subjectMotion?.length ?? 0,
     });
 
     try {
       const job = await videoJobStore.createJob({
         userId,
         request: {
-          prompt: cleanedPrompt,
+          prompt: promptWithMotion,
           options,
         },
         creditsReserved: videoCost,
       });
 
-      logger.info('Operation queued.', {
+      log.info('Operation queued.', {
         operation,
         requestId,
         userId,
@@ -329,6 +459,13 @@ export const createVideoGenerateHandler = ({
         videoCost,
         keyframeCost,
         keyframeUrl: generatedKeyframeUrl,
+        hasCameraMotion: Boolean(motionContext.cameraMotionId),
+        cameraMotionId: motionContext.cameraMotionId,
+        hasSubjectMotion: Boolean(motionContext.subjectMotion),
+        subjectMotionLength: motionContext.subjectMotion?.length ?? 0,
+        promptLengthBeforeMotion,
+        promptLengthAfterMotion,
+        motionGuidanceAppended,
       });
 
       scheduleInlineVideoPreviewProcessing({
@@ -358,7 +495,7 @@ export const createVideoGenerateHandler = ({
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
 
-      logger.error('Operation failed.', errorInstance, {
+      log.error('Operation failed.', errorInstance, {
         operation,
         requestId,
         userId,

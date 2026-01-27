@@ -15,10 +15,13 @@ const wrapperWithProvider = (props?: { isGeneratingCheck?: () => boolean; initia
 describe('AppShellContext', () => {
   describe('error handling', () => {
     it('throws when useAppShell is used outside provider', () => {
-      const { result } = renderHook(() => useAppShell());
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toBe('useAppShell must be used within an AppShellProvider');
+      expect(() => renderHook(() => useAppShell())).toThrowError(
+        'useAppShell must be used within an AppShellProvider'
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('blocks tool switch when generation is in progress and user cancels', () => {

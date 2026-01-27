@@ -44,7 +44,175 @@ const DEPTH_ESTIMATION_CONFIG = {
   baseDelayMs: 1000,
   /** Timeout for depth estimation (5 minutes) */
   timeoutMs: 5 * 60 * 1000,
+  /** Cache TTL in milliseconds (1 hour) */
+  cacheTtlMs: 60 * 60 * 1000,
 } as const;
+
+// ============================================================================
+// In-Memory Cache
+// ============================================================================
+
+interface CacheEntry {
+  depthMapUrl: string;
+  expiresAt: number;
+}
+
+/**
+ * Simple in-memory cache for depth maps by image URL.
+ * Makes repeated calls for the same image instant.
+ */
+const depthMapCache = new Map<string, CacheEntry>();
+
+function getCachedDepthMap(imageUrl: string): string | null {
+  const entry = depthMapCache.get(imageUrl);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    depthMapCache.delete(imageUrl);
+    return null;
+  }
+  return entry.depthMapUrl;
+}
+
+function setCachedDepthMap(imageUrl: string, depthMapUrl: string): void {
+  depthMapCache.set(imageUrl, {
+    depthMapUrl,
+    expiresAt: Date.now() + DEPTH_ESTIMATION_CONFIG.cacheTtlMs,
+  });
+}
+
+// ============================================================================
+// Warm Start (fal.ai cold start mitigation)
+// ============================================================================
+
+const FAL_WARM_START_CONFIG = {
+  enabled: (() => {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      return false;
+    }
+    const flag = process.env.FAL_DEPTH_WARMUP_ENABLED;
+    if (flag === 'true') return true;
+    if (flag === 'false') return false;
+    // Default to enabled in development, disabled in production unless explicitly enabled.
+    return process.env.NODE_ENV !== 'production';
+  })(),
+  intervalMs: (() => {
+    const raw = Number.parseInt(process.env.FAL_DEPTH_WARMUP_INTERVAL_MS || '', 10);
+    if (Number.isFinite(raw) && raw >= 30_000) {
+      return raw;
+    }
+    // Keep warm every 2 minutes by default.
+    return 2 * 60 * 1000;
+  })(),
+  warmupImageUrl:
+    process.env.FAL_DEPTH_WARMUP_IMAGE_URL ||
+    'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+} as const;
+
+const warmLog = logger.child({ service: 'FalDepthWarmer' });
+let warmerInitialized = false;
+let warmIntervalId: ReturnType<typeof setInterval> | null = null;
+let warmupInFlight: Promise<void> | null = null;
+let lastWarmupAt = 0;
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+};
+
+const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
+  if (warmupInFlight) {
+    return warmupInFlight;
+  }
+
+  const startedAt = Date.now();
+  const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+
+  warmupInFlight = (async () => {
+    try {
+      warmLog.debug('Starting fal depth warmup', {
+        operation: 'falDepthWarmup',
+        reason,
+        intervalMs: FAL_WARM_START_CONFIG.intervalMs,
+        warmupImageUrlHost,
+        lastWarmupAt: lastWarmupAt || null,
+      });
+
+      await fal.subscribe(FAL_DEPTH_MODEL, {
+        input: {
+          image_url: FAL_WARM_START_CONFIG.warmupImageUrl,
+        },
+        logs: false,
+      });
+
+      lastWarmupAt = Date.now();
+      warmLog.info('Completed fal depth warmup', {
+        operation: 'falDepthWarmup',
+        reason,
+        durationMs: lastWarmupAt - startedAt,
+        warmupImageUrlHost,
+      });
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      warmLog.warn('Fal depth warmup failed', {
+        operation: 'falDepthWarmup',
+        reason,
+        durationMs: Date.now() - startedAt,
+        warmupImageUrlHost,
+        error: errObj.message,
+      });
+    } finally {
+      warmupInFlight = null;
+    }
+  })();
+
+  return warmupInFlight;
+};
+
+/**
+ * Initialize a periodic fal depth warmer to reduce cold starts.
+ *
+ * This function is safe to call multiple times; it will only initialize once.
+ */
+export function initializeDepthWarmer(): void {
+  if (warmerInitialized || !FAL_WARM_START_CONFIG.enabled) {
+    return;
+  }
+
+  const falApiKey = resolveFalApiKey();
+  if (!falApiKey) {
+    warmLog.warn('Fal depth warmer skipped: FAL_KEY/FAL_API_KEY not configured', {
+      operation: 'falDepthWarmup',
+      enabled: FAL_WARM_START_CONFIG.enabled,
+    });
+    return;
+  }
+
+  fal.config({ credentials: falApiKey });
+  warmerInitialized = true;
+
+  const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+  warmLog.info('Fal depth warmer enabled', {
+    operation: 'falDepthWarmup',
+    intervalMs: FAL_WARM_START_CONFIG.intervalMs,
+    warmupImageUrlHost,
+  });
+
+  void runFalWarmup('startup');
+
+  warmIntervalId = setInterval(() => {
+    void runFalWarmup('interval');
+  }, FAL_WARM_START_CONFIG.intervalMs);
+
+  if (warmIntervalId && typeof warmIntervalId.unref === 'function') {
+    warmIntervalId.unref();
+  }
+}
 
 // ============================================================================
 // Interface
@@ -133,6 +301,11 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
 
     this.storageService = options.storageService;
     this.userId = options.userId || 'anonymous';
+
+    // If the warmer was not started at app bootstrap, start it on first construction.
+    if (this.falAvailable) {
+      initializeDepthWarmer();
+    }
   }
 
   /**
@@ -155,6 +328,15 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
   async estimateDepth(imageUrl: string): Promise<string> {
     if (!this.isAvailable()) {
       throw new Error('Depth estimation service is not available: no providers configured');
+    }
+
+    const cachedDepthMap = getCachedDepthMap(imageUrl);
+    if (cachedDepthMap) {
+      this.log.debug('Depth estimation cache hit', {
+        imageUrlHost: this.getUrlHost(imageUrl),
+        cacheTtlMs: DEPTH_ESTIMATION_CONFIG.cacheTtlMs,
+      });
+      return cachedDepthMap;
     }
 
     const startTime = Date.now();
@@ -199,9 +381,12 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
         throw new Error('No depth estimation providers available');
       }
 
-      // Upload depth map to GCS and generate a signed URL
-      const destination = `convergence/${this.userId}/depth/${Date.now()}-depth.png`;
-      const signedUrl = await this.storageService.upload(depthMapTempUrl, destination);
+      // Return the temporary URL directly - fal.ai/Replicate URLs are valid for hours
+      // and the client media proxy handles CORS. This saves 1-3 seconds per request.
+      // If persistence is needed later, GCS upload can be done asynchronously.
+      const signedUrl = depthMapTempUrl;
+
+      setCachedDepthMap(imageUrl, signedUrl);
 
       const duration = Date.now() - startTime;
       this.log.info('Depth estimation completed', {

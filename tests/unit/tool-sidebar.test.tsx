@@ -127,14 +127,12 @@ describe('ToolSidebar', () => {
   });
 
   describe('error handling', () => {
-    it('renders create panel placeholder when activePanel is create', () => {
+    it('renders generation controls when activePanel is create', () => {
       sidebarState.activePanel = 'create';
 
       render(<ToolSidebar {...createProps()} />);
 
-      expect(
-        screen.getByText('Visual Convergence flow is displayed in the main workspace.')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('generation-panel')).toBeInTheDocument();
     });
 
     it('renders styles panel when activePanel is styles', () => {

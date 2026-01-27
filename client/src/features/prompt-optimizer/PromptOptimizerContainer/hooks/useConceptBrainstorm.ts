@@ -31,7 +31,8 @@ interface PromptHistory {
     generationParams?: Record<string, unknown> | null,
     context?: unknown,
     highlightCache?: unknown,
-    existingUuid?: string | null
+    existingUuid?: string | null,
+    title?: string | null
   ) => Promise<{ uuid: string; id?: string | null } | null>;
   [key: string]: unknown;
 }

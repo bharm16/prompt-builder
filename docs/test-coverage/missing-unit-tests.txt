@@ -1,41 +1,7 @@
 ## client
-client/src/features/billing/CreditPurchaseModal.tsx
-client/src/features/billing/creditPacks.ts
-client/src/features/billing/subscriptionTiers.ts
-client/src/features/convergence/components/CameraMotionPicker/CameraMotionErrorBoundary.tsx
-client/src/features/convergence/components/CameraMotionPicker/CameraMotionOption.tsx
-client/src/features/convergence/components/CameraMotionPicker/CameraMotionPicker.tsx
-client/src/features/convergence/components/ConvergenceFlow/ConvergenceFlow.tsx
-client/src/features/convergence/components/ConvergencePreview/ConvergencePreview.tsx
-client/src/features/convergence/components/ConvergencePreview/DimensionSummary.tsx
-client/src/features/convergence/components/ConvergencePreview/EditInStudioButton.tsx
-client/src/features/convergence/components/ConvergencePreview/GenerateNowButton.tsx
-client/src/features/convergence/components/ConvergencePreview/ModelCostTable.tsx
-client/src/features/convergence/components/ConvergencePreview/PromptDisplay.tsx
-client/src/features/convergence/components/ConvergencePreview/TotalCreditsSummary.tsx
-client/src/features/convergence/components/DimensionSelector/DimensionSelector.tsx
-client/src/features/convergence/components/DirectionFork/DirectionFork.tsx
-client/src/features/convergence/components/IntentInput/IntentInput.tsx
-client/src/features/convergence/components/ProgressIndicator/ProgressIndicator.tsx
-client/src/features/convergence/components/SubjectMotionInput/SubjectMotionInput.tsx
-client/src/features/convergence/components/modals/InsufficientCreditsModal.tsx
-client/src/features/convergence/components/modals/ResumeSessionModal.tsx
-client/src/features/convergence/components/shared/FrameAnimator.tsx
-
 client/src/features/prompt-optimizer/PromptCanvas.tsx
 client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer.tsx
 client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx
-
-client/src/features/prompt-optimizer/GenerationsPanel/api/compilePrompt.ts
-client/src/features/prompt-optimizer/GenerationsPanel/api/videoJobs.ts
-client/src/features/prompt-optimizer/GenerationsPanel/components/GenerationBadge.tsx
-client/src/features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/FaceMatchIndicator.tsx
-client/src/features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/KeyframeOptionCard.tsx
-client/src/features/prompt-optimizer/GenerationsPanel/components/VersionDivider.tsx
-client/src/features/prompt-optimizer/GenerationsPanel/components/VideoThumbnail.tsx
-client/src/features/prompt-optimizer/GenerationsPanel/utils/generationComparison.ts
-client/src/features/prompt-optimizer/GenerationsPanel/utils/generationProgress.ts
-client/src/features/prompt-optimizer/GenerationsPanel/utils/generationUtils.ts
 
 client/src/features/prompt-optimizer/api/enhancementSuggestionsApi.ts
 
@@ -160,38 +126,15 @@ packages/promptstudio-system/src/lib/utils.ts
 packages/promptstudio-system/tailwind.preset.js
 
 ## server
-server/src/contracts/IAPIClient.ts
-server/src/contracts/ICacheService.ts
-server/src/contracts/IEnhancementService.ts
-server/src/contracts/IPromptOptimizationService.ts
-server/src/interfaces/ICacheService.ts
-server/src/interfaces/ILogger.ts
-server/src/interfaces/IMetricsCollector.ts
 server/src/llm/span-labeling/SpanLabelingService.ts
-server/src/llm/span-labeling/nlp/CompromiseService.ts
 server/src/llm/span-labeling/nlp/LightingService.ts
 server/src/llm/span-labeling/nlp/glinerWorker.js
-server/src/llm/span-labeling/nlp/paths.ts
 server/src/llm/span-labeling/nlp/tier2/gliner.ts
-server/src/llm/span-labeling/nlp/vocab.ts
 server/src/llm/span-labeling/services/ILlmClient.ts
-server/src/llm/span-labeling/utils/policyUtils.ts
-server/src/llm/span-labeling/utils/promptBuilder.ts
-server/src/llm/span-labeling/utils/textUtils.ts
-server/src/llm/span-labeling/validation/SchemaValidator.ts
-server/src/llm/span-labeling/validation/SpanValidator.ts
-server/src/llm/span-labeling/validation/normalizeAndCorrectSpans.ts
 server/src/middleware/apiAuth.js
-server/src/middleware/asyncHandler.ts
-server/src/middleware/enforceVideoMode.ts
-server/src/middleware/errorHandler.ts
 server/src/middleware/metricsAuth.js
-server/src/middleware/normalizeOptimizationRequest.ts
-server/src/middleware/performanceMonitor.ts
 server/src/middleware/requestBatching.js
 server/src/middleware/requestCoalescing.js
-server/src/middleware/requestId.ts
-server/src/middleware/validateRequest.ts
 server/src/server.ts
 server/src/services/EnhancementService.ts
 server/src/services/VideoConceptService.ts
@@ -208,17 +151,8 @@ server/src/services/asset/services/AssetCrudService.ts
 server/src/services/asset/services/AssetEmbeddingService.ts
 server/src/services/asset/services/AssetPromptService.ts
 server/src/services/asset/services/AssetReferenceImageService.ts
-server/src/services/cache/CacheKeyGenerator.ts
-server/src/services/cache/CacheService.ts
-server/src/services/cache/CacheServiceWithStatistics.ts
-server/src/services/cache/CacheStatisticsTracker.ts
-server/src/services/cache/NodeCacheAdapter.ts
 server/src/services/cache/SemanticCacheService.ts
 server/src/services/cache/SpanLabelingCacheService.ts
-server/src/services/cache/spanLabeling/key.ts
-server/src/services/cache/spanLabeling/memoryLru.ts
-server/src/services/cache/spanLabeling/metrics.ts
-server/src/services/cache/spanLabeling/redisStore.ts
 server/src/services/capabilities/manualRegistry.ts
 server/src/services/capabilities/modelProviders.ts
 server/src/services/capabilities/templates.ts
@@ -260,9 +194,7 @@ server/src/services/enhancement/services/prompt-builders/BasePromptBuilder.ts
 server/src/services/enhancement/services/prompt-builders/GroqPromptBuilder.ts
 server/src/services/enhancement/services/prompt-builders/IPromptBuilder.ts
 server/src/services/enhancement/services/prompt-builders/OpenAIPromptBuilder.ts
-server/src/services/enhancement/utils/CacheKeyFactory.ts
 server/src/services/enhancement/utils/MetricsDecorator.ts
-server/src/services/enhancement/utils/text.ts
 server/src/services/generation/ConsistentVideoService.ts
 server/src/services/generation/KeyframeGenerationService.ts
 server/src/services/payment/BillingProfileStore.ts
@@ -373,25 +305,17 @@ server/src/services/video-prompt-analysis/strategies/VeoStrategy.ts
 server/src/services/video-prompt-analysis/strategies/WanStrategy.ts
 server/src/services/video-prompt-analysis/utils/textHelpers.ts
 server/src/utils/ConstitutionalAI.ts
-server/src/utils/JsonExtractor.ts
-server/src/utils/RetryPolicy.ts
 server/src/utils/SecurityPrompts.ts
 server/src/utils/StructuredOutputEnforcer.ts
-server/src/utils/TemperatureOptimizer.ts
 server/src/utils/auth.ts
 server/src/utils/falApiKey.ts
 server/src/utils/gcsCredentials.ts
-server/src/utils/hash.ts
 server/src/utils/logging/sanitize.ts
 server/src/utils/provider/PromptBuilder.ts
-server/src/utils/provider/ProviderDetector.ts
 server/src/utils/provider/SchemaFactory.ts
 server/src/utils/requestHelpers.ts
 server/src/utils/structured-output/StructuredOutputEnforcer.ts
 server/src/utils/structured-output/parse.ts
-server/src/utils/structured-output/promptEnhancers.ts
-server/src/utils/structured-output/unwrapper.ts
-server/src/utils/structured-output/validate.ts
 server/src/utils/validateEnv.ts
 server/src/utils/validation.ts
 
@@ -401,71 +325,7 @@ shared/constants.ts
 shared/taxonomy.ts
 shared/version.ts
 
-## no-unit-tests-needed
-server/src/routes/api.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/asset.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/capabilities.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/consistentGeneration.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/convergence/convergence.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/convergence/convergenceMedia.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/coherenceCheckRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/customSuggestionsRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/enhancementSuggestionsRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/nlpTestRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/sceneChangeRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement/utils.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/enhancement.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/health.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/labelSpans/coordinator.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/labelSpans/requestParser.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/labelSpans/streamingHandler.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/labelSpans/transform.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/labelSpansRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize/handlers/optimize.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize/handlers/optimizeCompile.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize/handlers/optimizeStream.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize/normalizeGenerationParams.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize/sse.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/optimize.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/payment/auth.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/payment/handlers.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/payment/webhook/handler.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/payment/webhook/handlers.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/payment.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/auth.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/availability.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/content.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/imageAssetView.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/imageContent.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/imageGenerate.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/imageStoryboardGenerate.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/imageUpload.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/publicVideoContent.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/videoAssetView.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/videoAvailability.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/videoContent.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/videoGenerate.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/handlers/videoJobs.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/imageStoryboardRequest.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/inlineProcessor.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/prompt.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview/videoRequest.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/preview.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/reference-images.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/roleClassifyRoute.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/storage.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions/handlers.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions/router.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions/rubrics.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions/serviceFactory.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions/validators.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/suggestions.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video/handlers/complete.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video/handlers/parse.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video/handlers/suggestions.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video/handlers/validate.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video/handlers/variations.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
-server/src/routes/video.routes.ts - Route handlers are covered by integration/e2e tests per docs/architecture/typescript/TEST_COVERAGE_REPORT.md.
+
 
 ## completed
 client/src/features/convergence/utils/cameraMotionRenderer.ts
@@ -829,3 +689,70 @@ server/src/llm/roleClassifierCache.ts
 server/src/llm/roleClassifierParser.ts
 server/src/llm/roleClassifierPrompt.ts
 server/src/llm/roleClassifierValidator.ts
+client/src/features/billing/CreditPurchaseModal.tsx
+client/src/features/billing/creditPacks.ts
+client/src/features/billing/subscriptionTiers.ts
+client/src/features/convergence/components/CameraMotionPicker/CameraMotionErrorBoundary.tsx
+client/src/features/convergence/components/CameraMotionPicker/CameraMotionOption.tsx
+client/src/features/convergence/components/CameraMotionPicker/CameraMotionPicker.tsx
+client/src/features/convergence/components/ConvergenceFlow/ConvergenceFlow.tsx
+client/src/features/convergence/components/ConvergencePreview/ConvergencePreview.tsx
+client/src/features/convergence/components/ConvergencePreview/DimensionSummary.tsx
+client/src/features/convergence/components/ConvergencePreview/EditInStudioButton.tsx
+client/src/features/convergence/components/ConvergencePreview/GenerateNowButton.tsx
+client/src/features/convergence/components/ConvergencePreview/ModelCostTable.tsx
+client/src/features/convergence/components/ConvergencePreview/PromptDisplay.tsx
+client/src/features/convergence/components/ConvergencePreview/TotalCreditsSummary.tsx
+client/src/features/convergence/components/DimensionSelector/DimensionSelector.tsx
+client/src/features/convergence/components/DirectionFork/DirectionFork.tsx
+client/src/features/convergence/components/IntentInput/IntentInput.tsx
+client/src/features/convergence/components/ProgressIndicator/ProgressIndicator.tsx
+client/src/features/convergence/components/SubjectMotionInput/SubjectMotionInput.tsx
+client/src/features/convergence/components/modals/InsufficientCreditsModal.tsx
+client/src/features/convergence/components/modals/ResumeSessionModal.tsx
+client/src/features/convergence/components/shared/FrameAnimator.tsx
+server/src/llm/span-labeling/utils/policyUtils.ts
+server/src/llm/span-labeling/utils/promptBuilder.ts
+server/src/llm/span-labeling/utils/textUtils.ts
+server/src/llm/span-labeling/validation/SchemaValidator.ts
+server/src/llm/span-labeling/validation/SpanValidator.ts
+server/src/llm/span-labeling/validation/normalizeAndCorrectSpans.ts
+client/src/features/prompt-optimizer/GenerationsPanel/api/compilePrompt.ts
+client/src/features/prompt-optimizer/GenerationsPanel/api/videoJobs.ts
+client/src/features/prompt-optimizer/GenerationsPanel/components/GenerationBadge.tsx
+client/src/features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/FaceMatchIndicator.tsx
+client/src/features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/KeyframeOptionCard.tsx
+client/src/features/prompt-optimizer/GenerationsPanel/components/VersionDivider.tsx
+client/src/features/prompt-optimizer/GenerationsPanel/components/VideoThumbnail.tsx
+client/src/features/prompt-optimizer/GenerationsPanel/utils/generationComparison.ts
+client/src/features/prompt-optimizer/GenerationsPanel/utils/generationProgress.ts
+client/src/features/prompt-optimizer/GenerationsPanel/utils/generationUtils.ts
+server/src/middleware/asyncHandler.ts
+server/src/middleware/enforceVideoMode.ts
+server/src/middleware/errorHandler.ts
+server/src/middleware/normalizeOptimizationRequest.ts
+server/src/middleware/performanceMonitor.ts
+server/src/middleware/requestId.ts
+server/src/middleware/validateRequest.ts
+server/src/utils/hash.ts
+server/src/utils/JsonExtractor.ts
+server/src/utils/RetryPolicy.ts
+server/src/services/cache/CacheKeyGenerator.ts
+server/src/services/cache/CacheService.ts
+server/src/services/cache/CacheServiceWithStatistics.ts
+server/src/services/cache/CacheStatisticsTracker.ts
+server/src/services/cache/NodeCacheAdapter.ts
+server/src/services/cache/spanLabeling/key.ts
+server/src/services/cache/spanLabeling/memoryLru.ts
+server/src/services/cache/spanLabeling/metrics.ts
+server/src/services/cache/spanLabeling/redisStore.ts
+server/src/llm/span-labeling/nlp/CompromiseService.ts
+server/src/llm/span-labeling/nlp/paths.ts
+server/src/llm/span-labeling/nlp/vocab.ts
+server/src/utils/TemperatureOptimizer.ts
+server/src/utils/provider/ProviderDetector.ts
+server/src/utils/structured-output/promptEnhancers.ts
+server/src/utils/structured-output/unwrapper.ts
+server/src/utils/structured-output/validate.ts
+server/src/services/enhancement/utils/CacheKeyFactory.ts
+server/src/services/enhancement/utils/text.ts

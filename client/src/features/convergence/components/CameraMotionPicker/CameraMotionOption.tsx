@@ -22,6 +22,7 @@ import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
 import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
 import type { CameraPath } from '@/features/convergence/types';
+import { sanitizeError } from '@/utils/logging';
 import { FrameAnimator } from '../shared/FrameAnimator';
 
 // ============================================================================
@@ -51,6 +52,17 @@ export const CAMERA_MOTION_DESCRIPTIONS: Record<string, string> = {
   arc_left: 'Camera orbits left around subject. Dynamic perspective shift.',
   arc_right: 'Camera orbits right around subject. Dynamic perspective shift.',
   reveal: 'Combined push and pan. Builds anticipation for dramatic reveal.',
+};
+
+const safeUrlHost = (url: unknown): string | null => {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
 };
 
 // ============================================================================
@@ -91,6 +103,7 @@ export interface CameraMotionOptionProps {
  * In fallback mode, shows text description.
  */
 const log = logger.child('CameraMotionOption');
+const OPERATION = 'renderPreviewFrames';
 
 export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   cameraPath,
@@ -113,6 +126,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
 
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
+  const renderAttemptRef = useRef(0);
+  const lastSkipReasonRef = useRef<string | null>(null);
+  const imageUrlHost = safeUrlHost(imageUrl);
+  const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -126,10 +143,55 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
    * Requirement 6.5: Render camera path previews lazily on hover
    */
   const renderFrames = useCallback(async () => {
-    // Skip if already rendered, rendering, in fallback mode, or no depth map
-    if (hasRendered || isRendering || fallbackMode || !depthMapUrl) {
+    let skipReason: string | null = null;
+    if (hasRendered) {
+      skipReason = 'already-rendered';
+    } else if (isRendering) {
+      skipReason = 'render-in-progress';
+    } else if (fallbackMode) {
+      skipReason = 'fallback-mode';
+    } else if (!depthMapUrl) {
+      skipReason = 'no-depth-map';
+    }
+
+    if (skipReason) {
+      if (lastSkipReasonRef.current !== skipReason) {
+        lastSkipReasonRef.current = skipReason;
+        log.debug('Skipping camera motion preview render', {
+          operation: OPERATION,
+          cameraMotionId: cameraPath.id,
+          label: cameraPath.label,
+          category: cameraPath.category,
+          skipReason,
+          hasRendered,
+          isRendering,
+          fallbackMode,
+          hasDepthMap: Boolean(depthMapUrl),
+        });
+      }
       return;
     }
+
+    lastSkipReasonRef.current = null;
+    const resolvedDepthMapUrl = depthMapUrl;
+    if (!resolvedDepthMapUrl) {
+      // Type guard for TypeScript; no-depth-map is already handled above.
+      return;
+    }
+    const startedAt = Date.now();
+    renderAttemptRef.current += 1;
+    const renderAttempt = renderAttemptRef.current;
+
+    log.info('Rendering camera motion preview frames', {
+      operation: OPERATION,
+      renderAttempt,
+      cameraMotionId: cameraPath.id,
+      label: cameraPath.label,
+      category: cameraPath.category,
+      imageUrlHost,
+      depthMapUrlHost,
+      durationSec: cameraPath.duration,
+    });
 
     setIsRendering(true);
     setRenderError(false);
@@ -137,7 +199,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     try {
       const renderedFrames = await renderCameraMotionFrames(
         imageUrl,
-        depthMapUrl,
+        resolvedDepthMapUrl,
         cameraPath,
         {
           width: 320,
@@ -150,10 +212,29 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         setFrames(renderedFrames);
         setHasRendered(true);
       }
-    } catch (error) {
-      log.warn('Failed to render camera motion frames', {
+      log.info('Camera motion preview frames rendered', {
+        operation: OPERATION,
+        renderAttempt,
         cameraMotionId: cameraPath.id,
-        error: error instanceof Error ? error.message : String(error),
+        category: cameraPath.category,
+        framesCount: renderedFrames.length,
+        durationMs: Date.now() - startedAt,
+        imageUrlHost,
+        depthMapUrlHost,
+      });
+    } catch (error) {
+      const info = sanitizeError(error);
+      const errObj = error instanceof Error ? error : new Error(info.message);
+      log.error('Camera motion preview render failed', errObj, {
+        operation: OPERATION,
+        renderAttempt,
+        cameraMotionId: cameraPath.id,
+        category: cameraPath.category,
+        durationMs: Date.now() - startedAt,
+        imageUrlHost,
+        depthMapUrlHost,
+        error: info.message,
+        errorName: info.name,
       });
       if (isMountedRef.current) {
         setRenderError(true);
@@ -163,7 +244,16 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         setIsRendering(false);
       }
     }
-  }, [hasRendered, isRendering, fallbackMode, depthMapUrl, imageUrl, cameraPath]);
+  }, [
+    cameraPath,
+    depthMapUrl,
+    depthMapUrlHost,
+    fallbackMode,
+    hasRendered,
+    imageUrl,
+    imageUrlHost,
+    isRendering,
+  ]);
 
   /**
    * Handle mouse enter - trigger lazy render
@@ -171,9 +261,15 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
     if (!fallbackMode && !hasRendered && !isRendering) {
+      log.debug('Triggering camera motion preview render on hover', {
+        cameraMotionId: cameraPath.id,
+        hasRendered,
+        isRendering,
+        fallbackMode,
+      });
       renderFrames();
     }
-  }, [fallbackMode, hasRendered, isRendering, renderFrames]);
+  }, [cameraPath.id, fallbackMode, hasRendered, isRendering, renderFrames]);
 
   /**
    * Handle mouse leave
@@ -187,30 +283,65 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
    */
   const handleFocus = useCallback(() => {
     if (!fallbackMode && !hasRendered && !isRendering) {
+      log.debug('Triggering camera motion preview render on focus', {
+        cameraMotionId: cameraPath.id,
+        hasRendered,
+        isRendering,
+        fallbackMode,
+      });
       renderFrames();
     }
-  }, [fallbackMode, hasRendered, isRendering, renderFrames]);
+  }, [cameraPath.id, fallbackMode, hasRendered, isRendering, renderFrames]);
 
   /**
    * Handle click selection
    */
   const handleClick = useCallback(() => {
-    if (!disabled && onSelect) {
-      onSelect(cameraPath.id);
+    if (disabled) {
+      log.warn('Camera motion option click blocked', {
+        cameraMotionId: cameraPath.id,
+        label: cameraPath.label,
+        category: cameraPath.category,
+        disabled,
+      });
+      return;
     }
-  }, [disabled, onSelect, cameraPath.id]);
+    log.info('Camera motion option clicked', {
+      cameraMotionId: cameraPath.id,
+      label: cameraPath.label,
+      category: cameraPath.category,
+    });
+    onSelect?.(cameraPath.id);
+  }, [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect]);
 
   /**
    * Handle keyboard selection
    */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if ((e.key === 'Enter' || e.key === ' ') && !disabled && onSelect) {
-        e.preventDefault();
-        onSelect(cameraPath.id);
+      if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
       }
+      if (disabled) {
+        log.warn('Camera motion option keyboard selection blocked', {
+          cameraMotionId: cameraPath.id,
+          label: cameraPath.label,
+          category: cameraPath.category,
+          disabled,
+          key: e.key,
+        });
+        return;
+      }
+      e.preventDefault();
+      log.info('Camera motion option selected via keyboard', {
+        cameraMotionId: cameraPath.id,
+        label: cameraPath.label,
+        category: cameraPath.category,
+        key: e.key,
+      });
+      onSelect?.(cameraPath.id);
     },
-    [disabled, onSelect, cameraPath.id]
+    [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect]
   );
 
   // Determine if we should show the animation
