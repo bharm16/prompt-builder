@@ -51,6 +51,8 @@ export interface UsePromptOptimizationParams {
   selectedMode: string;
   selectedModel?: string; // New: optional selected model
   generationParams: CapabilityValues;
+  startImageUrl?: string | null;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
   currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
@@ -85,6 +87,8 @@ export function usePromptOptimization({
   selectedMode,
   selectedModel, // Extract new param
   generationParams,
+  startImageUrl,
+  constraintMode,
   currentPromptUuid,
   setCurrentPromptUuid,
   setCurrentPromptDocId,
@@ -138,6 +142,12 @@ export function usePromptOptimization({
         setDisplayedPromptSilently('');
       }
 
+      const effectiveOptions: OptimizationOptions = {
+        ...(options ?? {}),
+        ...(options?.startImage ? {} : startImageUrl ? { startImage: startImageUrl } : {}),
+        ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
+      };
+
       const result = isCompileOnly
         ? await promptOptimizer.compile(
             compilePrompt || prompt,
@@ -150,7 +160,7 @@ export function usePromptOptimization({
             brainstormContextData,
             selectedMode === 'video' ? selectedModel : undefined,
             {
-              ...options,
+              ...effectiveOptions,
               ...(generationParams ? { generationParams } : {}),
             }
           );
@@ -231,6 +241,8 @@ export function usePromptOptimization({
       selectedMode,
       selectedModel, // Added dependency
       generationParams,
+      startImageUrl,
+      constraintMode,
       currentPromptUuid,
       setCurrentPromptUuid,
       setCurrentPromptDocId,

@@ -129,7 +129,11 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
             ? selectedModel
             : undefined);
 
-        if (useTwoStage) {
+        const hasStartImage =
+          typeof options?.startImage === 'string' && options.startImage.trim().length > 0;
+        const shouldUseTwoStage = useTwoStage && !hasStartImage;
+
+        if (shouldUseTwoStage) {
           return await runTwoStageOptimization({
             promptToOptimize,
             selectedMode,
@@ -160,6 +164,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           abortController,
           ...(typeof options?.skipCache === 'boolean' ? { skipCache: options.skipCache } : {}),
           ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
+          ...(options?.startImage ? { startImage: options.startImage } : {}),
+          ...(options?.constraintMode ? { constraintMode: options.constraintMode } : {}),
           lockedSpans: state.lockedSpans,
           actions,
           toast,

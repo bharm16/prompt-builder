@@ -24,6 +24,7 @@ import type { CoherenceRecommendation } from '../types/coherence';
 import type { User } from '../context/types';
 import type { ConvergenceHandoff } from '@/features/convergence/types';
 import type { OptimizationOptions } from '../types';
+import type { CapabilityValues } from '@shared/capabilities';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
@@ -52,6 +53,7 @@ import {
   useConceptBrainstorm,
   useEnhancementSuggestions,
 } from './hooks';
+import { useI2VContext } from '../hooks/useI2VContext';
 
 const log = logger.child('PromptOptimizerWorkspace');
 
@@ -175,6 +177,7 @@ function PromptOptimizerContent({
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsContext();
+  const i2vContext = useI2VContext();
   const [videoTier, setVideoTier] = React.useState<VideoTier>('render');
 
   useEffect(() => {
@@ -668,6 +671,14 @@ function PromptOptimizerContent({
     return promptOptimizer.inputPrompt;
   }, [promptOptimizer.displayedPrompt, promptOptimizer.inputPrompt, showResults]);
 
+  const optimizationGenerationParams = useMemo<CapabilityValues>(
+    () => ({
+      ...(generationParams ?? {}),
+      ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
+    }),
+    [generationParams, cameraMotion?.id]
+  );
+
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
     promptOptimizer,
@@ -675,7 +686,9 @@ function PromptOptimizerContent({
     promptContext,
     selectedMode,
     selectedModel,
-    generationParams,
+    generationParams: optimizationGenerationParams,
+    startImageUrl: i2vContext.startImageUrl,
+    constraintMode: i2vContext.constraintMode,
     currentPromptUuid,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
@@ -707,7 +720,7 @@ function PromptOptimizerContent({
     promptHistory,
     selectedMode,
     selectedModel,
-    generationParams,
+    generationParams: optimizationGenerationParams,
     setConceptElements,
     setPromptContext,
     setShowBrainstorm,
@@ -809,6 +822,7 @@ function PromptOptimizerContent({
     currentPromptDocId,
     promptHistory,
     onCoherenceCheck: runCoherenceCheck,
+    i2vContext,
   });
 
   // ============================================================================
@@ -981,6 +995,7 @@ function PromptOptimizerContent({
               onDismissAllCoherenceIssues={dismissAll}
               onApplyCoherenceFix={applyFix}
               onScrollToCoherenceSpan={scrollToSpanById}
+              i2vContext={i2vContext}
             />
           )}
         </div>

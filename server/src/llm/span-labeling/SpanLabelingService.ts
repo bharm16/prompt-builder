@@ -75,11 +75,13 @@ export async function labelSpans(
       wordCount,
       provider,
     });
-    return labelSpansChunked(params, aiService);
+    const result = await labelSpansChunked(params, aiService);
+    return applyI2VFilterIfNeeded(result, params.templateVersion);
   }
   
   // For smaller texts, use single-pass processing
-  return labelSpansSingle(params, aiService);
+  const result = await labelSpansSingle(params, aiService);
+  return applyI2VFilterIfNeeded(result, params.templateVersion);
 }
 
 /**
@@ -142,6 +144,48 @@ interface ChunkResult {
   chunkOffset: number;
   meta: { version: string; notes: string; [key: string]: unknown } | null;
   isAdversarial: boolean;
+}
+
+const I2V_ALLOWED_CATEGORIES = new Set([
+  'action.movement',
+  'action.gesture',
+  'action.state',
+  'camera.movement',
+  'camera.focus',
+  'subject.emotion',
+]);
+
+function applyI2VFilterIfNeeded(
+  result: LabelSpansResult,
+  templateVersion?: string
+): LabelSpansResult {
+  if (!templateVersion || !templateVersion.toLowerCase().startsWith('i2v')) {
+    return result;
+  }
+
+  const spans = Array.isArray(result.spans) ? result.spans : [];
+  const filtered = spans.filter((span) =>
+    span?.category ? I2V_ALLOWED_CATEGORIES.has(span.category) : false
+  );
+
+  if (filtered.length === spans.length) {
+    return result;
+  }
+
+  const meta = result.meta
+    ? {
+        ...result.meta,
+        notes: result.meta.notes
+          ? `${result.meta.notes}; i2v motion filter applied`
+          : 'i2v motion filter applied',
+      }
+    : { version: templateVersion, notes: 'i2v motion filter applied' };
+
+  return {
+    ...result,
+    spans: filtered,
+    meta,
+  };
 }
 
 /**

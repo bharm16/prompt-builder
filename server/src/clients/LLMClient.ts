@@ -1,7 +1,7 @@
 import CircuitBreaker from 'opossum';
 import { logger } from '@infrastructure/Logger';
 import { metricsService } from '@infrastructure/MetricsService';
-import type { IAIClient, AIResponse } from '@interfaces/IAIClient';
+import type { IAIClient, AIResponse, MessageContent } from '@interfaces/IAIClient';
 
 /**
  * Custom error classes for better error handling
@@ -68,7 +68,7 @@ interface CompletionOptions {
   jsonMode?: boolean;
   isArray?: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
-  messages?: Array<{ role: string; content: string }>;
+  messages?: Array<{ role: string; content: MessageContent }>;
 }
 
 interface StreamCompletionOptions extends CompletionOptions {

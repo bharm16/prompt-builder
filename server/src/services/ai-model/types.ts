@@ -1,4 +1,4 @@
-import type { CompletionOptions, IAIClient } from '@interfaces/IAIClient';
+import type { CompletionOptions, IAIClient, MessageContent } from '@interfaces/IAIClient';
 
 export interface ClientsMap {
   openai: IAIClient | null;
@@ -10,7 +10,7 @@ export interface ClientsMap {
 export interface ExecuteParams extends CompletionOptions {
   systemPrompt: string;
   userMessage?: string;
-  messages?: Array<{ role: string; content: string }>;
+  messages?: Array<{ role: string; content: MessageContent }>;
   temperature?: number;
   maxTokens?: number;
   timeout?: number;

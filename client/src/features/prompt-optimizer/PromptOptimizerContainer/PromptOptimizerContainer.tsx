@@ -27,7 +27,8 @@ import {
 import { PromptModals } from '../components/PromptModals';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
-import { GenerationControlsProvider } from '../context/GenerationControlsContext';
+import { GenerationControlsProvider, useGenerationControlsContext } from '../context/GenerationControlsContext';
+import type { CapabilityValues } from '@shared/capabilities';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
@@ -39,6 +40,7 @@ import {
   useConceptBrainstorm,
   useEnhancementSuggestions,
 } from './hooks';
+import { useI2VContext } from '../hooks/useI2VContext';
 
 const log = logger.child('PromptOptimizerContainer');
 
@@ -130,6 +132,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
+  const { cameraMotion } = useGenerationControlsContext();
+  const i2vContext = useI2VContext();
 
   // Stabilize promptContext to prevent infinite loops
   const stablePromptContext = useMemo(() => {
@@ -254,6 +258,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   });
   const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
 
+  const optimizationGenerationParams = useMemo<CapabilityValues>(
+    () => ({
+      ...(generationParams ?? {}),
+      ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
+    }),
+    [generationParams, cameraMotion?.id]
+  );
+
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
     promptOptimizer,
@@ -261,7 +273,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     promptContext,
     selectedMode,
     selectedModel,
-    generationParams,
+    generationParams: optimizationGenerationParams,
+    startImageUrl: i2vContext.startImageUrl,
+    constraintMode: i2vContext.constraintMode,
     currentPromptUuid,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
@@ -288,7 +302,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     promptHistory,
     selectedMode,
     selectedModel,
-    generationParams,
+    generationParams: optimizationGenerationParams,
     setConceptElements,
     setPromptContext,
     setShowBrainstorm,
@@ -390,6 +404,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     currentPromptDocId,
     promptHistory,
     onCoherenceCheck: runCoherenceCheck,
+    i2vContext,
   });
 
   // ============================================================================
@@ -524,6 +539,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
             onDismissAllCoherenceIssues={dismissAll}
             onApplyCoherenceFix={applyFix}
             onScrollToCoherenceSpan={scrollToSpanById}
+            i2vContext={i2vContext}
           />
         </main>
 

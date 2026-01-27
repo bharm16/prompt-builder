@@ -6,6 +6,7 @@
  */
 
 import type { CompletionOptions, OpenAiMessage } from './types.ts';
+import type { MessageContent } from '@interfaces/IAIClient';
 
 export class OpenAiMessageBuilder {
   buildMessages(systemPrompt: string, options: CompletionOptions): OpenAiMessage[] {
@@ -29,8 +30,9 @@ export class OpenAiMessageBuilder {
       const totalTokens = messages.reduce((sum, msg) => sum + this.estimateTokens(msg.content), 0);
       if (totalTokens > 30000) {
         const systemMsg = messages.find((m) => m.role === 'system');
-        const criticalInstructions = systemMsg?.content
-          ? this.extractCriticalInstructions(systemMsg.content)
+        const systemText = systemMsg ? this.stringifyContent(systemMsg.content) : '';
+        const criticalInstructions = systemText
+          ? this.extractCriticalInstructions(systemText)
           : 'Remember to follow the format constraints defined in the system message.';
         messages.push({
           role: 'user',
@@ -68,8 +70,42 @@ export class OpenAiMessageBuilder {
     return messages;
   }
 
-  private estimateTokens(text: string): number {
+  private estimateTokens(content: MessageContent): number {
+    const text = this.stringifyContent(content);
     return Math.ceil(text.length / 4);
+  }
+
+  private stringifyContent(content: MessageContent): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => {
+          if (typeof part === 'string') {
+            return part;
+          }
+          if (part && typeof part === 'object') {
+            if ('text' in part && typeof part.text === 'string') {
+              return part.text;
+            }
+            if ('type' in part && part.type === 'text' && typeof part.text === 'string') {
+              return part.text;
+            }
+          }
+          return '';
+        })
+        .join('');
+    }
+
+    if (content && typeof content === 'object') {
+      if ('text' in content && typeof content.text === 'string') {
+        return content.text;
+      }
+    }
+
+    return '';
   }
 
   private extractCriticalInstructions(systemPrompt: string): string {

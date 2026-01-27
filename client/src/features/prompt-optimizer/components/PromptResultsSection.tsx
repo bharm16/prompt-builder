@@ -29,6 +29,7 @@ export const PromptResultsSection = ({
   onDismissAllCoherenceIssues,
   onApplyCoherenceFix,
   onScrollToCoherenceSpan,
+  i2vContext,
 }: PromptResultsSectionProps): React.ReactElement => {
   const {
     showResults,
@@ -113,6 +114,7 @@ export const PromptResultsSection = ({
         onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
         onApplyCoherenceFix={onApplyCoherenceFix}
         onScrollToCoherenceSpan={onScrollToCoherenceSpan}
+        i2vContext={i2vContext}
       />
     </>
   );

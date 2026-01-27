@@ -28,6 +28,7 @@ import { AIModelService } from '@services/ai-model/index';
 // Import services
 import { cacheService } from '@services/cache/CacheService';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import { ImageObservationService } from '@services/image-observation';
 import { EnhancementService } from '@services/EnhancementService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
 import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
@@ -393,9 +394,19 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'promptOptimizationService',
-    (aiService: AIModelService, videoService: VideoPromptService) =>
-      new PromptOptimizationService(aiService, videoService),
-    ['aiService', 'videoService']
+    (
+      aiService: AIModelService,
+      videoService: VideoPromptService,
+      imageObservationService: ImageObservationService
+    ) =>
+      new PromptOptimizationService(aiService, videoService, imageObservationService),
+    ['aiService', 'videoService', 'imageObservationService']
+  );
+
+  container.register(
+    'imageObservationService',
+    (aiService: AIModelService) => new ImageObservationService(aiService),
+    ['aiService']
   );
 
   container.register(

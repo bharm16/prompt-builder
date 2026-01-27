@@ -60,8 +60,16 @@ type AnalyzeAndOptimize = (options: {
   brainstormContext?: unknown | null;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
+  startImage?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
-}) => Promise<{ optimizedPrompt: string; metadata?: Record<string, unknown> }>;
+}) => Promise<{
+  prompt: string;
+  optimizedPrompt?: string;
+  inputMode?: 't2v' | 'i2v';
+  metadata?: Record<string, unknown>;
+  i2v?: Record<string, unknown>;
+}>;
 
 function normalizeSpans(spans: unknown[]): SpansData['spans'] {
   if (!Array.isArray(spans)) {
@@ -344,6 +352,8 @@ export interface SingleStageOptimizationOptions {
   context: unknown | null;
   brainstormContext: unknown | null;
   generationParams?: CapabilityValues;
+  startImage?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
   abortController: AbortController;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
@@ -361,6 +371,8 @@ export async function runSingleStageOptimization({
   context,
   brainstormContext,
   generationParams,
+  startImage,
+  constraintMode,
   abortController,
   skipCache,
   lockedSpans,
@@ -384,9 +396,11 @@ export async function runSingleStageOptimization({
     ...(generationParams ? { generationParams } : {}),
     ...(skipCache ? { skipCache } : {}),
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
+    ...(startImage ? { startImage } : {}),
+    ...(constraintMode ? { constraintMode } : {}),
   });
 
-  const optimized = response.optimizedPrompt;
+  const optimized = response.prompt || response.optimizedPrompt || '';
   const score = calculateQualityScore(promptToOptimize, optimized);
 
   actions.setOptimizedPrompt(optimized);
@@ -407,6 +421,16 @@ export async function runSingleStageOptimization({
     toast.info(`Good prompt! Quality score: ${score}%`);
   } else {
     toast.warning(`Prompt could be improved. Score: ${score}%`);
+  }
+
+  if (response.i2v && Array.isArray(response.i2v.conflicts) && response.i2v.conflicts.length > 0) {
+    const conflictCount = response.i2v.conflicts.length;
+    const mode = response.i2v.appliedMode;
+    if (mode === 'flexible') {
+      toast.warning(`${conflictCount} visual conflict${conflictCount === 1 ? '' : 's'} detected. Results may vary.`);
+    } else if (mode === 'strict') {
+      toast.info(`${conflictCount} conflicting visual description${conflictCount === 1 ? '' : 's'} removed.`);
+    }
   }
 
   const duration = logger.endTimer('optimize');

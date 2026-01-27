@@ -2,7 +2,7 @@
  * Type definitions for OpenAI-compatible API integration
  */
 
-import type { AIResponse } from '@interfaces/IAIClient';
+import type { AIResponse, MessageContent } from '@interfaces/IAIClient';
 
 export interface CompletionOptions {
   userMessage?: string;
@@ -15,7 +15,7 @@ export interface CompletionOptions {
   isArray?: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
   schema?: Record<string, unknown>;
-  messages?: Array<{ role: string; content: string }>;
+  messages?: Array<{ role: string; content: MessageContent }>;
   onChunk?: (chunk: string) => void;
   developerMessage?: string;
   enableBookending?: boolean;
@@ -48,7 +48,7 @@ export interface AbortControllerResult {
 
 export interface OpenAiMessage {
   role: string;
-  content: string;
+  content: MessageContent;
 }
 
 export type OpenAiPayload = Record<string, unknown>;

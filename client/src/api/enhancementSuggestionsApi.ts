@@ -13,11 +13,17 @@ export interface EnhancementSuggestionsRequest {
   allLabeledSpans?: unknown[];
   nearbySpans?: unknown[];
   editHistory?: unknown[];
+  i2vContext?: {
+    observation: Record<string, unknown>;
+    lockMap: Record<string, string>;
+    constraintMode?: 'strict' | 'flexible' | 'transform';
+  } | null;
 }
 
 export interface EnhancementSuggestionsResponse<TSuggestion = string> {
   suggestions: TSuggestion[];
   isPlaceholder: boolean;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface EnhancementSuggestionsFetchOptions {
@@ -54,11 +60,13 @@ export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
   const data = (await response.json()) as {
     suggestions?: TSuggestion[];
     isPlaceholder?: boolean;
+    metadata?: Record<string, unknown> | null;
   };
 
   return {
     suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
     isPlaceholder: data?.isPlaceholder ?? false,
+    ...(data?.metadata ? { metadata: data.metadata } : {}),
   };
 }
 

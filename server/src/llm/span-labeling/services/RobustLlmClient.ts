@@ -110,7 +110,13 @@ export class RobustLlmClient implements ILlmClient {
     const userPayload = isGemini ? text : buildUserPayload(basePayload);
 
     // Build system prompt
-    const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName, Boolean(spanSchema));
+    const contextAwareSystemPrompt = buildSystemPrompt(
+      text,
+      true,
+      providerName,
+      Boolean(spanSchema),
+      options.templateVersion
+    );
 
     // Check for two-pass architecture (GPT-4o-mini with complex schemas)
     // Note: Must check for 'gpt-4o-mini' specifically, NOT just 'mini' substring

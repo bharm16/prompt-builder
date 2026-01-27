@@ -5,6 +5,7 @@
 import type { ExecuteParams } from '@services/ai-model/AIModelService';
 import type { AIResponse } from '@interfaces/IAIClient';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { I2VConstraintMode, I2VOptimizationResult } from './types/i2v';
 
 /**
  * Optimization mode type
@@ -88,6 +89,11 @@ export interface OptimizationRequest {
   onMetadata?: (metadata: Record<string, unknown>) => void;
   onChunk?: (delta: string) => void;
   signal?: AbortSignal;
+  // I2V-specific
+  startImage?: string;
+  constraintMode?: I2VConstraintMode;
+  /** server-only fast path for platform-generated images */
+  sourcePrompt?: string;
 }
 
 export interface TwoStageOptimizationRequest {
@@ -103,6 +109,13 @@ export interface TwoStageOptimizationRequest {
   onDraftChunk?: ((delta: string) => void) | null;
   onRefinedChunk?: ((delta: string) => void) | null;
   signal?: AbortSignal;
+}
+
+export interface OptimizationResponse {
+  prompt: string;
+  inputMode: 't2v' | 'i2v';
+  metadata?: Record<string, unknown>;
+  i2v?: I2VOptimizationResult;
 }
 
 /**

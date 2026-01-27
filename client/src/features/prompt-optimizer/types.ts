@@ -6,6 +6,7 @@ import type { CapabilityValues } from '@shared/capabilities';
 import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
 import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from './types/coherence';
+import type { I2VContext } from './types/i2v';
 
 /**
  * Prompt optimization mode configuration
@@ -38,6 +39,8 @@ export interface OptimizationOptions {
   compileOnly?: boolean;
   compilePrompt?: string;
   createVersion?: boolean;
+  startImage?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
 }
 
 export interface LockedSpan {
@@ -140,6 +143,7 @@ export interface PromptResultsSectionProps {
     recommendation: CoherenceRecommendation
   ) => void) | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 /**

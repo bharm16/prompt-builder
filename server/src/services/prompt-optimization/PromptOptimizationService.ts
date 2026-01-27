@@ -14,17 +14,21 @@ import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
 import { templateService } from './services/TemplateService';
+import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
+import { ImageObservationService } from '@services/image-observation';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
 import type { CapabilityValues } from '@shared/capabilities';
 import type {
   AIService,
   OptimizationMode,
   OptimizationRequest,
+  OptimizationResponse,
   TwoStageOptimizationRequest,
   TwoStageOptimizationResult,
   ShotPlan,
   InferredContext
 } from './types';
+import type { I2VConstraintMode } from './types/i2v';
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -56,10 +60,16 @@ export class PromptOptimizationService {
   private readonly optimizationCache: OptimizationCacheService;
   private readonly compilationService: VideoPromptCompilationService | null;
   private readonly videoPromptService: VideoPromptService | null;
+  private readonly imageObservation: ImageObservationService;
+  private readonly i2vStrategy: I2VMotionStrategy;
   private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly log: ILogger;
 
-  constructor(aiService: AIService, videoPromptService: VideoPromptService | null = null) {
+  constructor(
+    aiService: AIService,
+    videoPromptService: VideoPromptService | null = null,
+    imageObservationService?: ImageObservationService
+  ) {
     this.ai = aiService;
     this.videoPromptService = videoPromptService;
     this.log = logger.child({ service: 'PromptOptimizationService' });
@@ -75,6 +85,8 @@ export class PromptOptimizationService {
     this.compilationService = videoPromptService
       ? new VideoPromptCompilationService(videoPromptService, this.qualityAssessment)
       : null;
+    this.imageObservation = imageObservationService ?? new ImageObservationService(aiService);
+    this.i2vStrategy = new I2VMotionStrategy(aiService);
 
     // Template versions (moved to config)
     this.templateVersions = OptimizationConfig.templateVersions;
@@ -165,10 +177,11 @@ export class PromptOptimizationService {
         },
         ...(signal ? { signal } : {}),
       });
+      const fallbackPrompt = result.prompt;
       return {
-        draft: result,
-        refined: result,
-        metadata: { usedFallback: true, ...(fallbackMetadata || {}) },
+        draft: fallbackPrompt,
+        refined: fallbackPrompt,
+        metadata: { usedFallback: true, ...(fallbackMetadata || result.metadata || {}) },
       };
     }
 
@@ -327,7 +340,10 @@ export class PromptOptimizationService {
     onChunk,
     signal,
     targetModel, // Extract targetModel
-  }: OptimizationRequest): Promise<string> {
+    startImage,
+    constraintMode,
+    sourcePrompt,
+  }: OptimizationRequest): Promise<OptimizationResponse> {
     const startTime = performance.now();
     const operation = 'optimize';
     const ensureNotAborted = (): void => {
@@ -338,7 +354,18 @@ export class PromptOptimizationService {
       }
     };
     void _mode;
-    
+
+    if (startImage) {
+      return this.optimizeI2V({
+        prompt,
+        startImage,
+        constraintMode,
+        sourcePrompt,
+        generationParams,
+        skipCache,
+      });
+    }
+
     const finalMode: OptimizationMode = 'video';
 
     this.log.debug('Starting operation.', {
@@ -386,18 +413,20 @@ export class PromptOptimizationService {
     if (!skipCache) {
       const cached = await this.optimizationCache.getCachedResult(cacheKey);
       if (cached) {
-        if (onMetadata) {
-          const cachedMetadata = await this.optimizationCache.getCachedMetadata(cacheKey);
-          if (cachedMetadata) {
-            onMetadata(cachedMetadata);
-          }
+        const cachedMetadata = await this.optimizationCache.getCachedMetadata(cacheKey);
+        if (onMetadata && cachedMetadata) {
+          onMetadata(cachedMetadata);
         }
         this.log.debug('Returning cached optimization result', {
           operation,
           mode: finalMode,
           duration: Math.round(performance.now() - startTime),
         });
-        return cached;
+        return {
+          prompt: cached,
+          inputMode: 't2v',
+          ...(cachedMetadata ? { metadata: cachedMetadata } : {}),
+        };
       }
     } else {
       this.log.debug('Skipping optimization cache', {
@@ -534,7 +563,11 @@ export class PromptOptimizationService {
         useIterativeRefinement,
       });
 
-      return optimizedPrompt;
+      return {
+        prompt: optimizedPrompt,
+        inputMode: 't2v',
+        ...(optimizationMetadata ? { metadata: optimizationMetadata } : {}),
+      };
 
     } catch (error) {
       if ((error as Error)?.name === 'AbortError') {
@@ -553,6 +586,62 @@ export class PromptOptimizationService {
       });
       throw error;
     }
+  }
+
+  /**
+   * I2V optimization (motion-focused)
+   */
+  private async optimizeI2V(params: {
+    prompt: string;
+    startImage: string;
+    constraintMode?: I2VConstraintMode;
+    sourcePrompt?: string;
+    generationParams?: CapabilityValues | null;
+    skipCache?: boolean;
+  }): Promise<OptimizationResponse> {
+    const { prompt, startImage, constraintMode, sourcePrompt, generationParams, skipCache } = params;
+    const observationResult = await this.imageObservation.observe({
+      image: startImage,
+      skipCache: skipCache === true,
+      ...(sourcePrompt ? { sourcePrompt } : {}),
+    });
+
+    const observation = observationResult.observation;
+    if (!observation) {
+      throw new Error('Image observation failed');
+    }
+
+    const cameraMotionLocked = this.isCameraMotionLocked(generationParams);
+    const mode: I2VConstraintMode = constraintMode || 'strict';
+    const result = await this.i2vStrategy.optimize({
+      prompt,
+      observation,
+      mode,
+      cameraMotionLocked,
+    });
+
+    return {
+      prompt: result.prompt,
+      inputMode: 'i2v',
+      i2v: result,
+      metadata: {
+        observationCached: observationResult.cached,
+        observationUsedFastPath: observationResult.usedFastPath,
+      },
+    };
+  }
+
+  private isCameraMotionLocked(generationParams?: CapabilityValues | null): boolean {
+    if (!generationParams) {
+      return false;
+    }
+    const params = generationParams as Record<string, unknown>;
+    const cameraMotionId = typeof params.camera_motion_id === 'string'
+      ? params.camera_motion_id
+      : typeof params.cameraMotionId === 'string'
+        ? params.cameraMotionId
+        : '';
+    return cameraMotionId.trim().length > 0;
   }
 
   /**

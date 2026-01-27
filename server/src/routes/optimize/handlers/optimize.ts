@@ -22,6 +22,8 @@ export const createOptimizeHandler = (
       generationParams,
       skipCache,
       lockedSpans,
+      startImage,
+      constraintMode,
     } = req.body;
 
     const { normalizedGenerationParams, error } = normalizeGenerationParams({
@@ -47,11 +49,12 @@ export const createOptimizeHandler = (
       generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
       skipCache: !!skipCache,
       lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
+      hasStartImage: typeof startImage === 'string' && startImage.length > 0,
+      constraintMode,
     });
 
     try {
-      let metadata: Record<string, unknown> | null = null;
-      const optimizedPrompt = await promptOptimizationService.optimize({
+      const result = await promptOptimizationService.optimize({
         prompt,
         mode,
         targetModel,
@@ -60,9 +63,8 @@ export const createOptimizeHandler = (
         generationParams: normalizedGenerationParams,
         skipCache,
         lockedSpans,
-        onMetadata: (next: Record<string, unknown>) => {
-          metadata = { ...(metadata || {}), ...next };
-        },
+        startImage,
+        constraintMode,
       });
 
       logger.info('Optimize request completed', {
@@ -71,12 +73,15 @@ export const createOptimizeHandler = (
         userId,
         duration: Date.now() - startTime,
         inputLength: prompt?.length || 0,
-        outputLength: optimizedPrompt?.length || 0,
+        outputLength: result.prompt?.length || 0,
       });
 
       return res.json({
-        optimizedPrompt,
-        ...(metadata ? { metadata } : {}),
+        prompt: result.prompt,
+        optimizedPrompt: result.prompt,
+        inputMode: result.inputMode,
+        ...(result.i2v ? { i2v: result.i2v } : {}),
+        ...(result.metadata ? { metadata: result.metadata } : {}),
       });
     } catch (error: unknown) {
       const errorInstance = error instanceof Error ? error : new Error(String(error));

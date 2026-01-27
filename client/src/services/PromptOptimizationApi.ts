@@ -41,6 +41,8 @@ export class PromptOptimizationApi {
     generationParams,
     skipCache,
     lockedSpans,
+    startImage,
+    constraintMode,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
@@ -54,6 +56,8 @@ export class PromptOptimizationApi {
         ...(generationParams ? { generationParams } : {}),
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
+        ...(startImage ? { startImage } : {}),
+        ...(constraintMode ? { constraintMode } : {}),
       }, requestOptions)) as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
@@ -62,6 +66,7 @@ export class PromptOptimizationApi {
           error
         );
         return {
+          prompt: offline.refined,
           optimizedPrompt: offline.refined,
           metadata: offline.metadata,
         };
@@ -274,6 +279,22 @@ export class PromptOptimizationApi {
     const { onError, signal, ...streamingOptions } = options;
     const onRefined = options.onRefined;
 
+    // i2v uses non-streaming path for now
+    if (options.startImage) {
+      const result = await this.optimizeLegacy(options);
+      const optimized = result.prompt || result.optimizedPrompt || '';
+      if (typeof onRefined === 'function' && !signal?.aborted) {
+        onRefined(optimized, result.metadata);
+      }
+      return {
+        draft: optimized,
+        refined: optimized,
+        spans: [],
+        metadata: result.metadata || null,
+        usedFallback: true,
+      };
+    }
+
     if (signal?.aborted) {
       const aborted = new DOMException('Request aborted', 'AbortError');
       if (typeof onError === 'function') {
@@ -309,7 +330,7 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext, generationParams, skipCache, lockedSpans } = options;
+    const { prompt, mode, targetModel, context, brainstormContext, generationParams, skipCache, lockedSpans, startImage, constraintMode } = options;
 
     try {
       // Fallback to single-stage API
@@ -322,11 +343,13 @@ export class PromptOptimizationApi {
         ...(generationParams ? { generationParams } : {}),
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
+        ...(startImage ? { startImage } : {}),
+        ...(constraintMode ? { constraintMode } : {}),
         ...(signal ? { signal } : {}),
       });
 
       // Format as two-stage result
-      const optimized = result.optimizedPrompt;
+      const optimized = result.prompt || result.optimizedPrompt || '';
       if (typeof onRefined === 'function' && !signal?.aborted) {
         onRefined(optimized, { ...(result.metadata || {}), usedFallback: true });
       }

@@ -36,6 +36,11 @@ export const promptSchema = z.object({
     .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
     .optional()
     .nullable(),
+  startImage: z.string()
+    .max(10000, 'startImage must not exceed 10,000 characters')
+    .optional(),
+  constraintMode: z.enum(['strict', 'flexible', 'transform'])
+    .optional(),
   skipCache: z.boolean().optional().default(false),
   lockedSpans: z.array(z.object({
     id: z.string().max(512).optional(),

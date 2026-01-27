@@ -80,6 +80,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     consistentVideoService: container.resolve('consistentVideoService'),
     userCreditService: container.resolve('userCreditService'),
     referenceImageService: container.resolve('referenceImageService'),
+    imageObservationService: container.resolve('imageObservationService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);

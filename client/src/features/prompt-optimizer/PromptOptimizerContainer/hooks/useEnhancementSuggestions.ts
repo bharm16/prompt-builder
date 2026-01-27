@@ -23,6 +23,7 @@ import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { HighlightSnapshot, SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
 import type { CoherenceCheckRequest } from '@features/prompt-optimizer/types/coherence';
+import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 
 export interface UseEnhancementSuggestionsParams {
   promptOptimizer: PromptOptimizer;
@@ -43,6 +44,7 @@ export interface UseEnhancementSuggestionsParams {
     updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   };
   onCoherenceCheck?: ((payload: CoherenceCheckRequest) => Promise<void> | void) | undefined;
+  i2vContext?: I2VContext | null;
 }
 
 export interface UseEnhancementSuggestionsReturn {
@@ -68,6 +70,7 @@ export function useEnhancementSuggestions({
   currentPromptDocId,
   promptHistory,
   onCoherenceCheck,
+  i2vContext,
 }: UseEnhancementSuggestionsParams): UseEnhancementSuggestionsReturn {
   // Handle applying suggestions
   const { handleSuggestionClick } = useSuggestionApply({
@@ -92,6 +95,7 @@ export function useEnhancementSuggestions({
     stablePromptContext,
     toast,
     handleSuggestionClick, // Pass down from apply hook
+    i2vContext,
   });
 
   return {

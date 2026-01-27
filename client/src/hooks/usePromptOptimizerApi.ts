@@ -28,6 +28,8 @@ export function usePromptOptimizerApi(
       generationParams,
       skipCache,
       lockedSpans,
+      startImage,
+      constraintMode,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
       log.debug('analyzeAndOptimize called', {
@@ -52,13 +54,15 @@ export function usePromptOptimizerApi(
           ...(generationParams ? { generationParams } : {}),
           ...(skipCache ? { skipCache } : {}),
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
+          ...(startImage ? { startImage } : {}),
+          ...(constraintMode ? { constraintMode } : {}),
           ...(signal ? { signal } : {}),
         });
 
         const duration = logger.endTimer('analyzeAndOptimize');
         log.info('analyzeAndOptimize completed', {
           duration,
-          outputLength: data.optimizedPrompt?.length || 0,
+          outputLength: data.prompt?.length || data.optimizedPrompt?.length || 0,
         });
 
         return data;

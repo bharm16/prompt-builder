@@ -4,6 +4,7 @@ import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
 import type { OptimizationOptions } from '../types';
+import type { I2VContext } from '../types/i2v';
 import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from '../types/coherence';
 
@@ -48,6 +49,7 @@ interface PromptResultsLayoutProps {
     recommendation: CoherenceRecommendation
   ) => void) | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 export const PromptResultsLayout = ({
@@ -70,6 +72,7 @@ export const PromptResultsLayout = ({
   onDismissAllCoherenceIssues,
   onApplyCoherenceFix,
   onScrollToCoherenceSpan,
+  i2vContext,
 }: PromptResultsLayoutProps): React.ReactElement => {
   return (
     <main
@@ -96,6 +99,7 @@ export const PromptResultsLayout = ({
         onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
         onApplyCoherenceFix={onApplyCoherenceFix}
         onScrollToCoherenceSpan={onScrollToCoherenceSpan}
+        i2vContext={i2vContext}
       />
     </main>
   );

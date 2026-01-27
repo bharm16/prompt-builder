@@ -47,6 +47,28 @@ import {
  */
 export type Provider = 'openai' | 'groq' | 'gemini';
 
+const I2V_SYSTEM_PROMPT = `
+Label ONLY motion-related spans for image-to-video prompts.
+
+You must ignore visual descriptions because the image already defines them.
+
+Allowed categories (use these only):
+- action.movement (subject motion)
+- action.gesture (small gestures)
+- action.state (static pose/state)
+- camera.movement (pan, tilt, dolly, zoom, crane)
+- camera.focus (rack focus, shallow/deep focus)
+- subject.emotion (emotional change or expression)
+
+Do NOT label:
+- subject identity/appearance/wardrobe
+- lighting, environment, color, style
+- shot type or camera angle
+- technical specs unrelated to motion
+
+Return JSON only, matching the SpanLabelingResponse schema.
+`.trim();
+
 /**
  * Build system prompt optimized for specific provider
  * 
@@ -59,9 +81,14 @@ export function buildSystemPrompt(
   text: string = '',
   useRouter: boolean = false,
   provider: string = 'groq',
-  useJsonSchema: boolean = false
+  useJsonSchema: boolean = false,
+  templateVersion?: string
 ): string {
   const normalizedProvider = provider.toLowerCase();
+
+  if (templateVersion && templateVersion.toLowerCase().startsWith('i2v')) {
+    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${I2V_SYSTEM_PROMPT}`.trim();
+  }
   
   let basePrompt: string;
   
@@ -145,7 +172,8 @@ export function buildSpanLabelingMessages(
   text: string,
   includeFewShot: boolean = true,
   provider: string = 'groq',
-  useJsonSchema: boolean = false
+  useJsonSchema: boolean = false,
+  templateVersion?: string
 ): Array<{ role: string; content: string }> {
   const normalizedProvider = provider.toLowerCase();
   const messages: Array<{ role: string; content: string }> = [];
@@ -153,7 +181,7 @@ export function buildSpanLabelingMessages(
   // 1. System prompt (provider-specific)
   messages.push({
     role: 'system',
-    content: buildSystemPrompt(text, false, provider, useJsonSchema)
+    content: buildSystemPrompt(text, false, provider, useJsonSchema, templateVersion)
   });
   
   // 2. Few-shot examples

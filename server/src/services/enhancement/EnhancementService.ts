@@ -12,6 +12,7 @@ import { EnhancementMetricsService } from './services/EnhancementMetricsService'
 import { VideoContextDetectionService } from './services/VideoContextDetectionService';
 import { SuggestionGenerationService } from './services/SuggestionGenerationService';
 import { SuggestionProcessingService } from './services/SuggestionProcessingService';
+import { I2VConstrainedSuggestions } from './services/I2VConstrainedSuggestions';
 import { CacheKeyFactory } from './utils/CacheKeyFactory';
 import { PROMPT_MODES } from './constants';
 import { getParentCategory } from '@shared/taxonomy';
@@ -89,6 +90,7 @@ export class EnhancementService {
   private readonly pipeline: EnhancementPipelineServices;
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log: ILogger;
+  private readonly i2vConstraints: I2VConstrainedSuggestions;
 
   constructor(dependencies: EnhancementServiceDependencies) {
     const {
@@ -152,6 +154,7 @@ export class EnhancementService {
       ),
       suggestionProcessing,
     };
+    this.i2vConstraints = new I2VConstrainedSuggestions();
   }
 
   /**
@@ -170,6 +173,7 @@ export class EnhancementService {
     allLabeledSpans = [],
     nearbySpans = [],
     editHistory = [],
+    i2vContext = null,
   }: EnhancementRequestParams): Promise<EnhancementResult> {
     const metrics: EnhancementMetrics = {
       total: 0,
@@ -231,6 +235,39 @@ export class EnhancementService {
         spanContext.guidanceSpans,
         editHistory
       ) || undefined;
+
+      if (i2vContext && highlightedCategory) {
+        const prefilter = this.i2vConstraints.filterSuggestions(
+          [],
+          highlightedCategory,
+          i2vContext.lockMap,
+          i2vContext.observation
+        );
+
+        if (prefilter.blockedReason) {
+          const isPlaceholder = this.core.placeholderDetector.detectPlaceholder(
+            highlightedText,
+            contextBefore,
+            contextAfter,
+            fullPrompt
+          );
+          return {
+            suggestions: [],
+            isPlaceholder,
+            hasCategories: true,
+            phraseRole: null,
+            appliedConstraintMode: null,
+            fallbackApplied: false,
+            metadata: {
+              i2v: {
+                locked: true,
+                reason: prefilter.blockedReason,
+                motionAlternatives: prefilter.motionAlternatives ?? [],
+              },
+            },
+          };
+        }
+      }
 
       const cacheStart = Date.now();
       const cacheKey = CacheKeyFactory.generateKey(this.cacheConfig.namespace, {
@@ -359,6 +396,27 @@ export class EnhancementService {
         isPlaceholder,
         phraseRole,
       });
+
+      if (i2vContext && highlightedCategory) {
+        const filtered = this.i2vConstraints.filterSuggestions(
+          result.suggestions ?? [],
+          highlightedCategory,
+          i2vContext.lockMap,
+          i2vContext.observation
+        );
+
+        result.suggestions = filtered.suggestions;
+        if (filtered.blockedReason || filtered.motionAlternatives) {
+          result.metadata = {
+            ...(result.metadata || {}),
+            i2v: {
+              locked: !!filtered.blockedReason,
+              reason: filtered.blockedReason,
+              motionAlternatives: filtered.motionAlternatives ?? [],
+            },
+          };
+        }
+      }
 
       metrics.postProcessing = Date.now() - postStart;
 

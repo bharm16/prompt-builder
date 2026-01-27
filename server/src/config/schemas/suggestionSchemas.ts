@@ -93,6 +93,13 @@ export const suggestionSchema = z.object({
   allLabeledSpans: z.array(labeledSpanSchema).optional(),
   nearbySpans: z.array(nearbySpanSchema).optional(),
   editHistory: z.array(editHistoryItemSchema).max(50).optional(),
+  i2vContext: z.object({
+    observation: z.record(z.string(), z.unknown()),
+    lockMap: z.record(z.string(), z.string()),
+    constraintMode: z.enum(['strict', 'flexible', 'transform']).optional(),
+  })
+    .optional()
+    .nullable(),
 });
 
 export const customSuggestionSchema = z.object({

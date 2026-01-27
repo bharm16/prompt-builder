@@ -6,6 +6,8 @@
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { VideoPromptService } from '@services/video-prompt-analysis/index';
 import type { PromptMode } from '../constants.js';
+import type { ImageObservation } from '@services/image-observation/types';
+import type { I2VConstraintMode, LockMap } from '@services/prompt-optimization/types/i2v';
 
 /**
  * Suggestion object structure
@@ -326,6 +328,7 @@ export interface EnhancementResult {
   fallbackApplied: boolean;
   appliedVideoConstraints?: VideoConstraints;
   noSuggestionsReason?: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -455,6 +458,11 @@ export interface EnhancementRequestParams {
   allLabeledSpans?: LabeledSpan[];
   nearbySpans?: NearbySpan[];
   editHistory?: EditHistoryEntry[];
+  i2vContext?: {
+    observation: ImageObservation;
+    lockMap: LockMap;
+    constraintMode?: I2VConstraintMode;
+  } | null;
 }
 
 /**

@@ -45,6 +45,7 @@ export function registerEnhancementSuggestionsRoute(
         allLabeledSpans,
         nearbySpans,
         editHistory,
+        i2vContext,
       } = req.body;
 
       logger.info('Enhancement suggestions request received', {
@@ -76,6 +77,7 @@ export function registerEnhancementSuggestionsRoute(
           allLabeledSpans,
           nearbySpans,
           editHistory,
+          i2vContext,
         });
 
         const suggestionCount = countSuggestions(result.suggestions);

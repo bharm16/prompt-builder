@@ -32,6 +32,7 @@ import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { useSuggestionApi } from './useSuggestionApi';
 import { useSuggestionCache } from './useSuggestionCache';
+import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 
 interface FetchPayload {
   highlightedText?: string;
@@ -54,6 +55,7 @@ interface UseSuggestionFetchParams {
   stablePromptContext: PromptContext | null;
   toast: Toast;
   handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
+  i2vContext?: I2VContext | null;
 }
 
 const log = logger.child('useSuggestionFetch');
@@ -93,6 +95,7 @@ export function useSuggestionFetch({
   stablePromptContext,
   toast,
   handleSuggestionClick,
+  i2vContext,
 }: UseSuggestionFetchParams): {
   fetchEnhancementSuggestions: (payload?: FetchPayload) => Promise<void>;
 } {
@@ -100,6 +103,7 @@ export function useSuggestionFetch({
   const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } = useSuggestionApi({
     promptOptimizer,
     stablePromptContext,
+    i2vContext,
   });
 
   const updateSuggestions = useCallback(
@@ -188,6 +192,17 @@ export function useSuggestionFetch({
         });
       }
 
+      const lockKey = i2vContext?.lockMap
+        ? Object.entries(i2vContext.lockMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, value]) => `${key}:${value}`)
+            .join('|')
+        : '';
+      const i2vKey =
+        i2vContext?.isI2VMode && (i2vContext.observation?.imageHash || i2vContext.startImageUrl)
+          ? `${i2vContext.constraintMode}:${i2vContext.observation?.imageHash || i2vContext.startImageUrl}:${lockKey}`
+          : '';
+
       // Check cache BEFORE showing loading state - Requirement 6.3
       const cacheKey = buildCacheKey({
         normalizedHighlight,
@@ -195,6 +210,7 @@ export function useSuggestionFetch({
         suggestionContext,
         category: metadata?.category ?? null,
         spanFingerprint,
+        i2vKey,
       });
 
       // DEDUPLICATION: Use cache key to avoid duplicate in-flight requests
@@ -224,6 +240,7 @@ export function useSuggestionFetch({
           range: range ?? null,
           offsets: offsets ?? null,
           metadata: metadata ?? null,
+          responseMetadata: cached.metadata ?? null,
           allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
           setSuggestions: updateSuggestions,
           onSuggestionClick: handleSuggestionClick,
@@ -259,6 +276,7 @@ export function useSuggestionFetch({
               range: range ?? null,
               offsets: offsets ?? null,
               metadata: metadata ?? null,
+              responseMetadata: null,
               allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
               onRetry: retryFn,
               setSuggestions: updateSuggestions,
@@ -280,6 +298,7 @@ export function useSuggestionFetch({
             isError: false,
             errorMessage: null,
             isPlaceholder: cachedResult.isPlaceholder,
+            responseMetadata: cachedResult.metadata ?? null,
             onRetry: retryFn,
           };
         });
@@ -302,6 +321,7 @@ export function useSuggestionFetch({
             isError: true,
             errorMessage: errObj.message || 'Failed to load suggestions. Please try again.',
             suggestions: [],
+            responseMetadata: null,
             onRetry: retryFn, // Wire up retry callback
           };
           return updated;
@@ -321,6 +341,7 @@ export function useSuggestionFetch({
       handleSuggestionClick,
       isRequestInFlight,
       updateSuggestions,
+      i2vContext,
     ]
   );
 

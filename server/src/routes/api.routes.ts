@@ -19,12 +19,14 @@ import { createStorageRoutes } from './storage.routes';
 import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 import { createReferenceImagesRoutes } from './reference-images.routes';
+import { createImageObservationRoutes } from './image-observation.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
 import type { AssetService } from '@services/asset/AssetService';
 import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import type { ImageObservationService } from '@services/image-observation';
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
   videoConceptService?: VideoServices['videoConceptService'] | null;
@@ -32,6 +34,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
   referenceImageService?: ReferenceImageService | null;
+  imageObservationService?: ImageObservationService | null;
 }
 
 /**
@@ -53,6 +56,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     consistentVideoService,
     userCreditService,
     referenceImageService,
+    imageObservationService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -89,6 +93,10 @@ export function createAPIRoutes(services: ApiServices): Router {
 
   if (referenceImageService) {
     router.use('/reference-images', createReferenceImagesRoutes(referenceImageService));
+  }
+
+  if (imageObservationService) {
+    router.use('/', createImageObservationRoutes(imageObservationService));
   }
 
   if (consistentVideoService) {

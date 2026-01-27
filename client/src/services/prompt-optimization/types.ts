@@ -1,5 +1,6 @@
 import type { LockedSpan } from '@/features/prompt-optimizer/types';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { I2VOptimizationResult } from '@/features/prompt-optimizer/types/i2v';
 
 export interface OptimizeOptions {
   prompt: string;
@@ -10,11 +11,16 @@ export interface OptimizeOptions {
   generationParams?: CapabilityValues;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
+  startImage?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
 }
 
 export interface OptimizeResult {
-  optimizedPrompt: string;
+  prompt: string;
+  optimizedPrompt?: string;
+  inputMode?: 't2v' | 'i2v';
+  i2v?: I2VOptimizationResult;
   metadata?: Record<string, unknown>;
 }
 

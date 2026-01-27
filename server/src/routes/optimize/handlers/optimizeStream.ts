@@ -22,7 +22,15 @@ export const createOptimizeStreamHandler = (
       generationParams,
       skipCache,
       lockedSpans,
+      startImage,
     } = req.body;
+
+    if (typeof startImage === 'string' && startImage.trim().length > 0) {
+      res.status(400).json({
+        error: 'Streaming optimization does not support image-to-video. Use /api/optimize.',
+      });
+      return;
+    }
 
     const { normalizedGenerationParams, error } = normalizeGenerationParams({
       generationParams,

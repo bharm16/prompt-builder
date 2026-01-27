@@ -82,6 +82,7 @@ export const STORAGE_KEYS = {
  */
 export const TEMPLATE_VERSIONS = {
   SPAN_LABELING_V1: 'v2.1', // Updated to v2.1 to invalidate cache and fix single-span issue
+  SPAN_LABELING_I2V: 'i2v-v1',
 } as const;
 
 /**
@@ -93,4 +94,3 @@ export const DEFAULT_LABELING_POLICY = {
 } as const;
 
 export default PERFORMANCE_CONFIG;
-

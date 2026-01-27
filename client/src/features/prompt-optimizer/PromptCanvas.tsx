@@ -91,6 +91,8 @@ import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prom
 
 // Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
+import { ConstraintModeSelector } from './components/ConstraintModeSelector';
+import { LockedSpanIndicator } from './components/LockedSpanIndicator';
 import { PromptEditor } from './components/PromptEditor';
 import { VersionsPanel } from './components/VersionsPanel';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
@@ -178,6 +180,7 @@ export function PromptCanvas({
   onDismissAllCoherenceIssues,
   onApplyCoherenceFix,
   onScrollToCoherenceSpan,
+  i2vContext,
 }: PromptCanvasProps): React.ReactElement {
   // Debug logging
   const debug = useDebugLogger('PromptCanvas', {
@@ -784,7 +787,9 @@ export function PromptCanvas({
     maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
     minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
     policy: labelingPolicy,
-    templateVersion: TEMPLATE_VERSIONS.SPAN_LABELING_V1,
+    templateVersion: i2vContext?.isI2VMode
+      ? TEMPLATE_VERSIONS.SPAN_LABELING_I2V
+      : TEMPLATE_VERSIONS.SPAN_LABELING_V1,
     debounceMs: PERFORMANCE_CONFIG.DEBOUNCE_DELAY_MS,
     onResult: handleLabelingResult,
   });
@@ -1266,6 +1271,32 @@ export function PromptCanvas({
   }, [suggestionsData?.suggestions]);
 
   const suggestionCount = inlineSuggestions.length;
+  const i2vResponseMeta = useMemo(() => {
+    const meta = suggestionsData?.responseMetadata;
+    if (!meta || typeof meta !== 'object') {
+      return null;
+    }
+    const maybeI2v = (meta as { i2v?: unknown }).i2v;
+    if (!maybeI2v || typeof maybeI2v !== 'object') {
+      return null;
+    }
+    return maybeI2v as {
+      locked?: boolean;
+      reason?: string;
+      motionAlternatives?: SuggestionItem[];
+    };
+  }, [suggestionsData?.responseMetadata]);
+
+  const i2vLockReason =
+    typeof i2vResponseMeta?.reason === 'string' && i2vResponseMeta.reason.trim()
+      ? i2vResponseMeta.reason.trim()
+      : null;
+  const resolvedI2VReason =
+    i2vLockReason || (i2vResponseMeta?.locked ? 'This category is locked by the image.' : null);
+  const i2vMotionAlternatives = Array.isArray(i2vResponseMeta?.motionAlternatives)
+    ? i2vResponseMeta?.motionAlternatives
+    : [];
+  const hasI2VLockNotice = Boolean(resolvedI2VReason);
   const selectionMatches = useMemo(() => {
     if (!selectedSpanText || !suggestionsData?.selectedText) {
       return true;
@@ -1287,8 +1318,10 @@ export function PromptCanvas({
     selectedSpanId &&
       !isInlineLoading &&
       !isInlineError &&
-      suggestionCount === 0
+      suggestionCount === 0 &&
+      !hasI2VLockNotice
   );
+  const showI2VLockIndicator = Boolean(i2vContext?.isI2VMode && hasI2VLockNotice);
   const selectionLabel =
     selectedSpanText || suggestionsData?.selectedText || '';
   const customRequestSelection = selectionLabel.trim();
@@ -1396,6 +1429,14 @@ export function PromptCanvas({
     inlineSuggestions,
     handleSuggestionClickWithFeedback,
   ]);
+
+  const handleLockedAlternativeClick = useCallback(
+    (suggestion: SuggestionItem): void => {
+      handleSuggestionClickWithFeedback(suggestion);
+      closeInlinePopover();
+    },
+    [closeInlinePopover, handleSuggestionClickWithFeedback]
+  );
 
   useEffect(() => {
     if (!selectedSpanId) return;
@@ -1630,6 +1671,15 @@ export function PromptCanvas({
                           Optimized Editor
                         </span>
                         <div className="flex flex-wrap items-center gap-ps-2">
+                          {i2vContext?.isI2VMode && (
+                            <ConstraintModeSelector
+                              mode={i2vContext.constraintMode}
+                              onChange={i2vContext.setConstraintMode}
+                              disabled={isOutputLoading}
+                              isAnalyzing={i2vContext.isAnalyzing}
+                              className="mr-1"
+                            />
+                          )}
                           {!outlineOverlayActive && (
                             <CanvasButton
                               type="button"
@@ -1983,6 +2033,16 @@ export function PromptCanvas({
                                 role="alert"
                               >
                                 {inlineErrorMessage}
+                              </div>
+                            )}
+
+                            {showI2VLockIndicator && (
+                              <div className="px-3 pt-2">
+                                <LockedSpanIndicator
+                                  reason={resolvedI2VReason}
+                                  motionAlternatives={i2vMotionAlternatives}
+                                  onSelectAlternative={handleLockedAlternativeClick}
+                                />
                               </div>
                             )}
 

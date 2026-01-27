@@ -12,6 +12,7 @@ import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlig
 import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
+import type { I2VContext } from '../types/i2v';
 
 export interface SpansData {
   spans: Array<{
@@ -129,6 +130,7 @@ export interface SuggestionsData {
   setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
   onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
   onClose?: () => void;
+  responseMetadata?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
@@ -225,4 +227,5 @@ export interface PromptCanvasProps {
     recommendation: CoherenceRecommendation
   ) => void) | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
 }

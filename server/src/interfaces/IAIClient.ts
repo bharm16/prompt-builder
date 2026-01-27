@@ -17,7 +17,7 @@ export interface CompletionOptions {
   jsonMode?: boolean;
   isArray?: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
-  messages?: Array<{ role: string; content: string }>;
+  messages?: Array<{ role: string; content: MessageContent }>;
   developerMessage?: string;
   enableBookending?: boolean;
   enableSandwich?: boolean;
@@ -30,6 +30,18 @@ export interface CompletionOptions {
   maxRetries?: number;
   [key: string]: unknown;
 }
+
+export type MessageContentPart = {
+  type?: string;
+  text?: string;
+  image_url?: { url: string };
+  [key: string]: unknown;
+};
+
+export type MessageContent =
+  | string
+  | MessageContentPart[]
+  | { text?: string; [key: string]: unknown };
 
 /**
  * Logprob information for a single token
