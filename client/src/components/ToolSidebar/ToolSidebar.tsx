@@ -34,6 +34,13 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     activeModelLabel,
     prompt,
     onPromptChange,
+    onOptimize,
+    showResults,
+    isProcessing,
+    isRefining,
+    genericOptimizedPrompt,
+    promptInputRef,
+    onCreateFromTrigger,
     aspectRatio,
     duration,
     selectedModel,
@@ -102,6 +109,13 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           <GenerationControlsPanel
             prompt={prompt}
             {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
+            {...(typeof onOptimize === 'function' ? { onOptimize } : {})}
+            {...(typeof showResults === 'boolean' ? { showResults } : {})}
+            {...(typeof isProcessing === 'boolean' ? { isProcessing } : {})}
+            {...(typeof isRefining === 'boolean' ? { isRefining } : {})}
+            genericOptimizedPrompt={genericOptimizedPrompt ?? null}
+            {...(promptInputRef ? { promptInputRef } : {})}
+            {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
             aspectRatio={aspectRatio}
             duration={duration}
             selectedModel={selectedModel}
@@ -126,6 +140,8 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             {...(typeof onCameraMotionChange === 'function' ? { onCameraMotionChange } : {})}
             subjectMotion={subjectMotion}
             {...(typeof onSubjectMotionChange === 'function' ? { onSubjectMotionChange } : {})}
+            assets={assets}
+            onInsertTrigger={onInsertTrigger}
             onBack={() => setActivePanel('sessions')}
           />
         )}

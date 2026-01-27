@@ -23,12 +23,12 @@ import type { PromptHistoryEntry } from '@hooks/types';
 import type { CoherenceRecommendation } from '../types/coherence';
 import type { User } from '../context/types';
 import type { ConvergenceHandoff } from '@/features/convergence/types';
+import type { OptimizationOptions } from '../types';
 import {
   useCoherenceAnnotations,
   type CoherenceIssue,
 } from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
-import { PromptTopBar } from '../components/PromptTopBar';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { DetectedAssets } from '../components/DetectedAssets';
 import { QuickCharacterCreate } from '../components/QuickCharacterCreate';
@@ -687,6 +687,11 @@ function PromptOptimizerContent({
     skipLoadFromUrlRef,
     navigate,
   });
+  const handleSidebarOptimize = useCallback(
+    (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>
+      handleOptimize(promptToOptimize, undefined, options),
+    [handleOptimize]
+  );
 
   // Improvement flow
   const { handleImproveFirst, handleImprovementComplete } = useImprovementFlow({
@@ -866,6 +871,13 @@ function PromptOptimizerContent({
       activeModelLabel={activeModelLabel}
       prompt={promptForGeneration}
       onPromptChange={handleSidebarPromptChange}
+      onOptimize={handleSidebarOptimize}
+      showResults={showResults}
+      isProcessing={promptOptimizer.isProcessing}
+      isRefining={promptOptimizer.isRefining}
+      genericOptimizedPrompt={promptOptimizer.genericOptimizedPrompt ?? null}
+      promptInputRef={promptInputRef}
+      onCreateFromTrigger={handleCreateFromTrigger}
       aspectRatio={effectiveAspectRatio}
       duration={durationSeconds}
       selectedModel={selectedModel}
@@ -930,15 +942,6 @@ function PromptOptimizerContent({
         )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* Top Action Buttons */}
-          <PromptTopBar
-            onOptimize={(promptToOptimize, options) =>
-              handleOptimize(promptToOptimize, undefined, options)}
-            inputRef={promptInputRef}
-            assets={assetsSidebar.assets}
-            onInsertTrigger={insertTriggerAtCursor}
-            onCreateFromTrigger={handleCreateFromTrigger}
-          />
           <DetectedAssets
             prompt={promptForAssets}
             assets={assetsSidebar.assets}

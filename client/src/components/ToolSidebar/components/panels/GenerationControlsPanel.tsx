@@ -19,11 +19,16 @@ import {
   Video,
   Wand2,
 } from 'lucide-react';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { cn } from '@utils/cn';
 import { resolveFieldState } from '@shared/capabilities';
+import type { Asset } from '@shared/types/asset';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
 import type { CameraPath } from '@/features/convergence/types';
+import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
+import { TriggerAutocomplete, useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
+import { sanitizeText } from '@/features/span-highlighting';
 import { logger } from '@/services/LoggingService';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
 import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
@@ -46,6 +51,18 @@ const safeUrlHost = (url: unknown): string | null => {
 interface GenerationControlsPanelProps {
   prompt: string;
   onPromptChange?: (prompt: string) => void;
+  onOptimize?: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions
+  ) => Promise<void>;
+  showResults?: boolean;
+  isProcessing?: boolean;
+  isRefining?: boolean;
+  genericOptimizedPrompt?: string | null;
+  promptInputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  assets?: Asset[];
+  onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
+  onCreateFromTrigger?: (trigger: string) => void;
   aspectRatio: string;
   duration: number;
   selectedModel: string;
@@ -69,13 +86,24 @@ interface GenerationControlsPanelProps {
   showMotionControls?: boolean;
   cameraMotion?: CameraPath | null;
   onCameraMotionChange?: (cameraPath: CameraPath | null) => void;
+  /** @deprecated Subject motion is now part of the main prompt. */
   subjectMotion?: string;
+  /** @deprecated Subject motion is now part of the main prompt. */
   onSubjectMotionChange?: (motion: string) => void;
 }
 
 export function GenerationControlsPanel({
   prompt,
   onPromptChange,
+  onOptimize,
+  showResults = false,
+  isProcessing = false,
+  isRefining = false,
+  genericOptimizedPrompt = null,
+  promptInputRef,
+  assets = [],
+  onInsertTrigger,
+  onCreateFromTrigger,
   aspectRatio,
   duration,
   selectedModel,
@@ -99,17 +127,20 @@ export function GenerationControlsPanel({
   showMotionControls = false,
   cameraMotion = null,
   onCameraMotionChange,
-  subjectMotion = '',
-  onSubjectMotionChange,
+  subjectMotion: _subjectMotion = '',
+  onSubjectMotionChange: _onSubjectMotionChange,
 }: GenerationControlsPanelProps): ReactElement {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const promptEditorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const localPromptInputRef = useRef<HTMLTextAreaElement>(null);
+  const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'video' | 'image'>('video');
   const [imageSubTab, setImageSubTab] = useState<'references' | 'styles'>('references');
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
-  const subjectMotionLogBucketRef = useRef(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [originalInputPrompt, setOriginalInputPrompt] = useState('');
+  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(undefined);
   const keyframeSlots = useMemo(
     () => Array.from({ length: 3 }, (_, index) => keyframes[index] ?? null),
     [keyframes]
@@ -134,6 +165,8 @@ export function GenerationControlsPanel({
   }, [activeTab, renderModelId, tier]);
 
   const { schema } = useCapabilities(capabilitiesModelId);
+  const canOptimize = typeof onOptimize === 'function';
+  const isOptimizing = Boolean(isProcessing || isRefining);
 
   const currentParams = useMemo(
     () => ({
@@ -198,14 +231,32 @@ export function GenerationControlsPanel({
   }, [keyframes, showCameraMotionModal]);
 
   useEffect(() => {
-    const editor = promptEditorRef.current;
-    if (!editor) return;
-    const isFocused = typeof document !== 'undefined' && document.activeElement === editor;
-    if (isFocused) return;
-    if ((editor.textContent ?? '') !== prompt) {
-      editor.textContent = prompt;
+    if (!canOptimize) return;
+    if (!showResults && resolvedPromptInputRef.current) {
+      resolvedPromptInputRef.current.focus();
     }
-  }, [prompt]);
+  }, [canOptimize, showResults, resolvedPromptInputRef]);
+
+  const {
+    isOpen: autocompleteOpen,
+    suggestions: autocompleteSuggestions,
+    selectedIndex: autocompleteSelectedIndex,
+    position: autocompletePosition,
+    query: autocompleteQuery,
+    handleKeyDown: handleAutocompleteKeyDown,
+    selectSuggestion: selectAutocompleteSuggestion,
+    setSelectedIndex: setAutocompleteSelectedIndex,
+    close: closeAutocomplete,
+    updateFromCursor: updateAutocompletePosition,
+  } = useTriggerAutocomplete({
+    inputRef: resolvedPromptInputRef,
+    prompt,
+    assets,
+    isEnabled: Boolean(onPromptChange) && !isOptimizing && (!showResults || isEditing),
+    onSelect: (asset, range) => {
+      onInsertTrigger?.(asset.trigger, range);
+    },
+  });
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -246,31 +297,6 @@ export function GenerationControlsPanel({
     cameraMotion?.id,
   ]);
 
-  const handleSubjectMotionChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const nextValue = event.target.value;
-      const previousLength = subjectMotion.trim().length;
-      const nextLength = nextValue.trim().length;
-      const nextBucket = Math.floor(nextLength / 20);
-      const bucketChanged = nextBucket !== subjectMotionLogBucketRef.current;
-      const becameEmpty = previousLength > 0 && nextLength === 0;
-      const becameNonEmpty = previousLength === 0 && nextLength > 0;
-
-      if (bucketChanged || becameEmpty || becameNonEmpty) {
-        subjectMotionLogBucketRef.current = nextBucket;
-        log.debug('Subject motion input changed in generation controls panel', {
-          previousLength,
-          nextLength,
-          keyframesCount: keyframes.length,
-          primaryKeyframeUrlHost,
-        });
-      }
-
-      onSubjectMotionChange?.(nextValue);
-    },
-    [subjectMotion, keyframes.length, primaryKeyframeUrlHost, onSubjectMotionChange]
-  );
-
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLElement>) => {
       event.preventDefault();
@@ -286,11 +312,116 @@ export function GenerationControlsPanel({
     [handleFile, isUploadDisabled]
   );
 
-  const handlePromptInput = useCallback(() => {
-    if (!onPromptChange) return;
-    const next = promptEditorRef.current?.textContent ?? '';
-    onPromptChange(next);
-  }, [onPromptChange]);
+  const handleInputPromptChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      if (!onPromptChange) return;
+      const updatedPrompt = sanitizeText(event.target.value);
+      onPromptChange(updatedPrompt);
+    },
+    [onPromptChange]
+  );
+
+  const handleEditClick = useCallback((): void => {
+    if (!canOptimize || isOptimizing) {
+      return;
+    }
+    setOriginalInputPrompt(prompt);
+    setOriginalSelectedModel(selectedModel);
+    setIsEditing(true);
+    setTimeout(() => {
+      resolvedPromptInputRef.current?.focus();
+    }, 0);
+  }, [canOptimize, isOptimizing, prompt, resolvedPromptInputRef, selectedModel]);
+
+  const handleCancelEdit = useCallback((): void => {
+    if (!canOptimize) return;
+    onPromptChange?.(originalInputPrompt);
+    if (originalSelectedModel !== undefined) {
+      onModelChange(originalSelectedModel);
+    }
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [canOptimize, onModelChange, onPromptChange, originalInputPrompt, originalSelectedModel]);
+
+  const handleUpdate = useCallback((): void => {
+    if (!canOptimize || isOptimizing || !onOptimize) {
+      return;
+    }
+    const promptChanged = prompt !== originalInputPrompt;
+    const modelChanged =
+      typeof originalSelectedModel === 'string' &&
+      originalSelectedModel !== selectedModel;
+    const genericPrompt =
+      typeof genericOptimizedPrompt === 'string' &&
+      genericOptimizedPrompt.trim()
+        ? genericOptimizedPrompt
+        : null;
+
+    if (modelChanged && !promptChanged && genericPrompt) {
+      void onOptimize(prompt, {
+        compileOnly: true,
+        compilePrompt: genericPrompt,
+        createVersion: true,
+      });
+    } else {
+      void onOptimize(prompt);
+    }
+
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [
+    canOptimize,
+    genericOptimizedPrompt,
+    isOptimizing,
+    onOptimize,
+    originalInputPrompt,
+    originalSelectedModel,
+    prompt,
+    selectedModel,
+  ]);
+
+  const handleReoptimize = useCallback((): void => {
+    if (!canOptimize || isOptimizing || !onOptimize) {
+      return;
+    }
+    void onOptimize(prompt);
+  }, [canOptimize, isOptimizing, onOptimize, prompt]);
+
+  const handlePromptKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      if (handleAutocompleteKeyDown(event)) {
+        return;
+      }
+      if (!canOptimize || isOptimizing || !onOptimize) {
+        return;
+      }
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        if (!showResults) {
+          if (prompt.trim()) {
+            void onOptimize(prompt);
+          }
+        } else if (isEditing) {
+          handleUpdate();
+        } else {
+          handleReoptimize();
+        }
+      }
+    },
+    [
+      canOptimize,
+      handleAutocompleteKeyDown,
+      handleReoptimize,
+      handleUpdate,
+      isEditing,
+      isOptimizing,
+      onOptimize,
+      prompt,
+      showResults,
+    ]
+  );
 
   const handleCopy = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -301,13 +432,71 @@ export function GenerationControlsPanel({
     }
   }, [prompt]);
 
+  const hasPrompt = Boolean(prompt.trim());
   const isImageGenerateDisabled = activeTab === 'image' && keyframes.length === 0;
-  const isVideoGenerateDisabled = activeTab === 'video' && !prompt.trim();
-  const isStoryboardDisabled = !prompt.trim() && keyframes.length === 0;
+  const isVideoGenerateDisabled = activeTab === 'video' && !hasPrompt;
+  const isStoryboardDisabled = !hasPrompt && keyframes.length === 0;
+  const isInputLocked = (canOptimize && showResults && !isEditing) || isOptimizing;
+  const isOptimizeDisabled = !hasPrompt || isOptimizing;
   const isGenerateDisabled =
     (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
     isVideoGenerateDisabled;
+
+  const renderOptimizationActions = (): ReactElement | null => {
+    if (!canOptimize) return null;
+    if (!showResults) {
+      return (
+        <button
+          type="button"
+          className="h-8 px-3 rounded-lg bg-white text-[#1A1A1A] text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => {
+            if (!onOptimize) return;
+            if (!isOptimizeDisabled) {
+              void onOptimize(prompt);
+            }
+          }}
+          disabled={isOptimizeDisabled}
+        >
+          Optimize
+        </button>
+      );
+    }
+
+    if (!isEditing) {
+      return (
+        <button
+          type="button"
+          className="h-8 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleEditClick}
+          disabled={isOptimizing}
+        >
+          Edit
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="h-8 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleCancelEdit}
+          disabled={isOptimizing}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="h-8 px-3 rounded-lg bg-white text-[#1A1A1A] text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleUpdate}
+          disabled={isOptimizeDisabled}
+        >
+          Update
+        </button>
+      </div>
+    );
+  };
 
   const generationFooter = (
     <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
@@ -340,6 +529,7 @@ export function GenerationControlsPanel({
       </div>
 
       <div className="flex items-center gap-2">
+        {renderOptimizationActions()}
         <button
           type="button"
           className="h-10 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -412,7 +602,7 @@ export function GenerationControlsPanel({
       </header>
 
       <input
-        ref={inputRef}
+        ref={fileInputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
@@ -475,7 +665,7 @@ export function GenerationControlsPanel({
                     )}
                     onClick={() => {
                       if (!canUpload) return;
-                      inputRef.current?.click();
+                      fileInputRef.current?.click();
                     }}
                     onDragOver={(event) => {
                       event.preventDefault();
@@ -556,58 +746,55 @@ export function GenerationControlsPanel({
                   </p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
-                  Subject Motion <span className="text-[#7C839C]/60">(optional)</span>
-                </label>
-                <textarea
-                  value={subjectMotion}
-                  onChange={handleSubjectMotionChange}
-                  placeholder="Describe how your subject moves..."
-                  rows={2}
-                  className={cn(
-                    'w-full px-3 py-2 rounded-lg text-sm resize-none',
-                    'bg-[#1B1E23] border border-[#29292D]',
-                    'placeholder:text-[#7C839C]/60 text-white',
-                    'focus:outline-none focus:ring-2 focus:ring-[#2C22FA]/50 focus:border-[#2C22FA]'
-                  )}
-                />
-              </div>
             </div>
           )}
 
           <div className="flex-1 min-h-0 overflow-y-auto px-3">
             <div className="relative border border-[#29292D] rounded-lg">
-              <div
-                ref={promptEditorRef}
-                className={cn(
-                  'min-h-[180px] p-3',
-                  'text-white text-sm leading-6 whitespace-pre-wrap',
-                  'outline-none',
-                  !onPromptChange && 'opacity-80'
-                )}
-                role="textbox"
-                contentEditable={Boolean(onPromptChange)}
-                suppressContentEditableWarning
-                aria-label="Text Prompt Input"
-                onInput={handlePromptInput}
-                onPaste={(event) => {
-                  if (!onPromptChange) return;
-                  event.preventDefault();
-                  const text = event.clipboardData.getData('text/plain');
-                  document.execCommand('insertText', false, text);
-                }}
-              />
-
-              {Boolean(onPromptChange) && !prompt.trim() && (
-                <span
-                  className="pointer-events-none absolute top-3 left-3 text-sm font-medium leading-6 text-[#7C839C]"
-                  aria-hidden="true"
-                >
-                  Describe your shot...
-                </span>
-              )}
+              <div className="relative">
+                <Textarea
+                  ref={resolvedPromptInputRef}
+                  value={prompt}
+                  onChange={handleInputPromptChange}
+                  onKeyDown={handlePromptKeyDown}
+                  onKeyUp={updateAutocompletePosition}
+                  onClick={updateAutocompletePosition}
+                  onBlur={closeAutocomplete}
+                  placeholder="Describe your shot — what's happening, how subjects move, key details..."
+                  readOnly={!onPromptChange || isInputLocked}
+                  rows={6}
+                  className={cn(
+                    'min-h-[180px] p-3',
+                    'text-white text-sm leading-6 whitespace-pre-wrap',
+                    'outline-none',
+                    'resize-none',
+                    'bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+                    (!onPromptChange || isInputLocked) && 'opacity-80'
+                  )}
+                  aria-label="Text Prompt Input"
+                  aria-readonly={!onPromptChange || isInputLocked}
+                  aria-busy={isOptimizing}
+                />
+                <TriggerAutocomplete
+                  isOpen={autocompleteOpen}
+                  suggestions={autocompleteSuggestions}
+                  selectedIndex={autocompleteSelectedIndex}
+                  position={autocompletePosition}
+                  query={autocompleteQuery}
+                  onSelect={(asset) => {
+                    const index = autocompleteSuggestions.findIndex((item) => item.id === asset.id);
+                    if (index >= 0) {
+                      selectAutocompleteSuggestion(index);
+                    }
+                  }}
+                  onCreateNew={(trigger) => {
+                    onCreateFromTrigger?.(trigger);
+                    closeAutocomplete();
+                  }}
+                  onClose={closeAutocomplete}
+                  onHoverIndex={setAutocompleteSelectedIndex}
+                />
+              </div>
             </div>
 
             <div className="mt-3 flex items-center justify-between">
@@ -707,7 +894,7 @@ export function GenerationControlsPanel({
                         type="button"
                         onClick={() => {
                           if (!isUploadDisabled) {
-                            inputRef.current?.click();
+                            fileInputRef.current?.click();
                           }
                         }}
                         disabled={isUploadDisabled}
@@ -749,7 +936,7 @@ export function GenerationControlsPanel({
                         )}
                         onClick={() => {
                           if (!canUpload) return;
-                          inputRef.current?.click();
+                          fileInputRef.current?.click();
                         }}
                         aria-label="Add an image reference"
                         aria-disabled={!canUpload}
@@ -795,7 +982,7 @@ export function GenerationControlsPanel({
                             aria-label="Add an image reference"
                             onClick={() => {
                               if (!canUpload) return;
-                              inputRef.current?.click();
+                              fileInputRef.current?.click();
                             }}
                             disabled={!canUpload}
                           >
@@ -810,26 +997,49 @@ export function GenerationControlsPanel({
 
               {/* Text Editor */}
               <div className="relative flex flex-col min-h-[128px] rounded-lg overflow-hidden">
-                <div
-                  ref={promptEditorRef}
+                <Textarea
+                  ref={resolvedPromptInputRef}
+                  value={prompt}
+                  onChange={handleInputPromptChange}
+                  onKeyDown={handlePromptKeyDown}
+                  onKeyUp={updateAutocompletePosition}
+                  onClick={updateAutocompletePosition}
+                  onBlur={closeAutocomplete}
+                  placeholder=""
+                  readOnly={!onPromptChange || isInputLocked}
+                  rows={6}
                   className={cn(
                     'flex-1 p-3 bg-transparent text-white text-base leading-6',
                     'overflow-y-auto whitespace-pre-wrap break-words',
                     'outline-none',
-                    !onPromptChange && 'opacity-80'
+                    'resize-none',
+                    'border-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+                    (!onPromptChange || isInputLocked) && 'opacity-80'
                   )}
-                  contentEditable={Boolean(onPromptChange)}
-                  suppressContentEditableWarning
-                  role="textbox"
                   aria-label="Text Prompt Input"
+                  aria-readonly={!onPromptChange || isInputLocked}
+                  aria-busy={isOptimizing}
                   spellCheck
-                  onInput={handlePromptInput}
-                  onPaste={(event) => {
-                    if (!onPromptChange) return;
-                    event.preventDefault();
-                    const text = event.clipboardData.getData('text/plain');
-                    document.execCommand('insertText', false, text);
+                />
+
+                <TriggerAutocomplete
+                  isOpen={autocompleteOpen}
+                  suggestions={autocompleteSuggestions}
+                  selectedIndex={autocompleteSelectedIndex}
+                  position={autocompletePosition}
+                  query={autocompleteQuery}
+                  onSelect={(asset) => {
+                    const index = autocompleteSuggestions.findIndex((item) => item.id === asset.id);
+                    if (index >= 0) {
+                      selectAutocompleteSuggestion(index);
+                    }
                   }}
+                  onCreateNew={(trigger) => {
+                    onCreateFromTrigger?.(trigger);
+                    closeAutocomplete();
+                  }}
+                  onClose={closeAutocomplete}
+                  onHoverIndex={setAutocompleteSelectedIndex}
                 />
 
                 {/* Placeholder */}
@@ -1034,7 +1244,7 @@ export function GenerationControlsPanel({
                           type="button"
                           onClick={() => {
                             if (!isUploadDisabled) {
-                              inputRef.current?.click();
+                              fileInputRef.current?.click();
                             }
                           }}
                           disabled={isUploadDisabled}

@@ -44,6 +44,13 @@ export function AppShell({
   activeModelLabel,
   prompt = '',
   onPromptChange,
+  onOptimize,
+  showResults,
+  isProcessing,
+  isRefining,
+  genericOptimizedPrompt,
+  promptInputRef,
+  onCreateFromTrigger,
   aspectRatio = '16:9',
   duration = 5,
   selectedModel = '',
@@ -117,6 +124,13 @@ export function AppShell({
         {...(typeof activeModelLabel === 'string' ? { activeModelLabel } : {})}
         prompt={prompt}
         {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
+        {...(typeof onOptimize === 'function' ? { onOptimize } : {})}
+        {...(typeof showResults === 'boolean' ? { showResults } : {})}
+        {...(typeof isProcessing === 'boolean' ? { isProcessing } : {})}
+        {...(typeof isRefining === 'boolean' ? { isRefining } : {})}
+        genericOptimizedPrompt={genericOptimizedPrompt ?? null}
+        {...(promptInputRef ? { promptInputRef } : {})}
+        {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
         aspectRatio={aspectRatio}
         duration={duration}
         selectedModel={selectedModel}

@@ -97,3 +97,7 @@ server/src/llm/span-labeling/nlp/models/
 .env.backup.20251205_002746
 
 raw-prompts-2025_12_22_15_47_50.json
+
+scripts/fix-cursor.sh
+
+scripts/quick-fix-cursor.sh

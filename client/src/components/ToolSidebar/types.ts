@@ -1,8 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { CameraPath } from '@/features/convergence/types';
+import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 
 export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
 
@@ -45,6 +46,16 @@ export interface ToolSidebarProps {
   // Generation controls panel
   prompt: string;
   onPromptChange?: (prompt: string) => void;
+  onOptimize?: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions
+  ) => Promise<void>;
+  showResults?: boolean;
+  isProcessing?: boolean;
+  isRefining?: boolean;
+  genericOptimizedPrompt?: string | null;
+  promptInputRef?: RefObject<HTMLTextAreaElement | null>;
+  onCreateFromTrigger?: (trigger: string) => void;
   aspectRatio: string;
   duration: number;
   selectedModel: string;
@@ -67,14 +78,16 @@ export interface ToolSidebarProps {
   showMotionControls?: boolean;
   cameraMotion?: CameraPath | null;
   onCameraMotionChange?: (cameraPath: CameraPath | null) => void;
+  /** @deprecated Subject motion is now part of the main prompt. */
   subjectMotion?: string;
+  /** @deprecated Subject motion is now part of the main prompt. */
   onSubjectMotionChange?: (motion: string) => void;
 
   // Characters panel
   assets: Asset[];
   assetsByType: Record<AssetType, Asset[]>;
   isLoadingAssets: boolean;
-  onInsertTrigger: (trigger: string) => void;
+  onInsertTrigger: (trigger: string, range?: { start: number; end: number }) => void;
   onEditAsset: (assetId: string) => void;
   onCreateAsset: (type: AssetType) => void;
 }
