@@ -30,6 +30,12 @@ import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 import { TriggerAutocomplete, useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
 import { sanitizeText } from '@/features/span-highlighting';
 import { logger } from '@/services/LoggingService';
+import {
+  ModelRecommendation,
+  ModelSelector,
+  useModelRecommendation,
+} from '@/features/model-intelligence';
+import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
 import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
 
@@ -149,6 +155,32 @@ export function GenerationControlsPanel({
   const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const primaryKeyframeUrlHost = safeUrlHost(keyframes[0]?.url);
+  const recommendationMode = useMemo(() => (keyframes.length > 0 ? 'i2v' : 't2v'), [keyframes.length]);
+  const shouldLoadRecommendations = useMemo(
+    () => activeTab === 'video' && prompt.trim().length >= 10,
+    [activeTab, prompt]
+  );
+  const {
+    recommendation: modelRecommendation,
+    isLoading: isRecommendationLoading,
+    error: recommendationError,
+  } = useModelRecommendation(prompt, {
+    mode: recommendationMode,
+    durationSeconds: duration,
+    enabled: shouldLoadRecommendations,
+  });
+  const recommendedModelId = useMemo(() => {
+    const modelId = modelRecommendation?.recommended?.modelId;
+    return modelId ? normalizeModelIdForSelection(modelId) : undefined;
+  }, [modelRecommendation?.recommended?.modelId]);
+  const efficientModelId = useMemo(() => {
+    const modelId = modelRecommendation?.alsoConsider?.modelId;
+    return modelId ? normalizeModelIdForSelection(modelId) : undefined;
+  }, [modelRecommendation?.alsoConsider?.modelId]);
+  const renderModelOptions = useMemo(
+    () => VIDEO_RENDER_MODELS.map((model) => ({ id: model.id, label: model.label })),
+    []
+  );
 
   const renderModelId = useMemo(() => {
     if (selectedModel && VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)) {
@@ -506,18 +538,17 @@ export function GenerationControlsPanel({
             <span>{VIDEO_DRAFT_MODEL.label}</span>
           </div>
         ) : (
-          <select
-            className="h-10 px-3 rounded-lg bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold"
-            value={renderModelId}
-            onChange={(event) => onModelChange(event.target.value)}
-            aria-label="Render model"
-          >
-            {VIDEO_RENDER_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.label}
-              </option>
-            ))}
-          </select>
+          <ModelSelector
+            options={renderModelOptions}
+            selectedModel={renderModelId}
+            recommendedId={recommendedModelId}
+            efficientId={efficientModelId}
+            onChange={onModelChange}
+            label={null}
+            ariaLabel="Render model"
+            className="min-w-[180px]"
+            selectClassName="h-10 px-3 rounded-lg bg-[#1E1F25] border border-[#29292D] text-[#A1AFC5] text-sm font-semibold"
+          />
         )}
         <button
           type="button"
@@ -1356,6 +1387,20 @@ export function GenerationControlsPanel({
               </button>
             </div>
           </div>
+
+          {prompt.trim().length >= 10 && (
+            <div className="px-4 pb-2">
+              <ModelRecommendation
+                prompt={prompt}
+                mode={recommendationMode}
+                durationSeconds={duration}
+                onSelectModel={onModelChange}
+                recommendation={modelRecommendation}
+                isLoading={isRecommendationLoading}
+                error={recommendationError}
+              />
+            </div>
+          )}
 
           {generationFooter}
         </>

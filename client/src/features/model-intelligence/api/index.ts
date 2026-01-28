@@ -1,0 +1,1 @@
+export { fetchModelRecommendation } from './modelIntelligenceApi';

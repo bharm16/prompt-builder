@@ -1,6 +1,6 @@
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { ContinuitySession, ContinuityShot } from '../types';
+import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput } from '../types';
 
 async function fetchWithAuth<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const authHeaders = await buildFirebaseAuthHeaders();
@@ -22,7 +22,7 @@ async function fetchWithAuth<T>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 export const continuityApi = {
-  createSession: (input: Record<string, unknown>) =>
+  createSession: (input: CreateSessionInput) =>
     fetchWithAuth<ContinuitySession>('/sessions', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -32,7 +32,7 @@ export const continuityApi = {
 
   getSession: (sessionId: string) => fetchWithAuth<ContinuitySession>(`/sessions/${sessionId}`),
 
-  addShot: (sessionId: string, input: Record<string, unknown>) =>
+  addShot: (sessionId: string, input: CreateShotInput) =>
     fetchWithAuth<ContinuityShot>(`/sessions/${sessionId}/shots`, {
       method: 'POST',
       body: JSON.stringify(input),
@@ -43,7 +43,7 @@ export const continuityApi = {
       method: 'POST',
     }),
 
-  updateShotStyleReference: (sessionId: string, shotId: string, styleReferenceId: string) =>
+  updateShotStyleReference: (sessionId: string, shotId: string, styleReferenceId: string | null) =>
     fetchWithAuth<ContinuityShot>(`/sessions/${sessionId}/shots/${shotId}/style-reference`, {
       method: 'PUT',
       body: JSON.stringify({ styleReferenceId }),

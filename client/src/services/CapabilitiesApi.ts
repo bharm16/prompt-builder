@@ -14,10 +14,14 @@ interface VideoAvailabilityModel {
   id: string;
   available: boolean;
   supportsImageInput?: boolean;
+  supportsI2V?: boolean;
+  planTier?: string;
+  entitled?: boolean;
 }
 
 interface VideoAvailabilityResponse {
   availableModels: string[];
+  availableCapabilityModels?: string[];
   models?: VideoAvailabilityModel[];
 }
 

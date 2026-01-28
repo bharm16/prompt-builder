@@ -95,6 +95,10 @@ export class ContinuitySessionService {
         prompt: request.initialPrompt,
       });
       await this.generateShot(session.id, shot.id);
+      const refreshed = await this.sessionStore.get(session.id);
+      if (refreshed) {
+        return refreshed;
+      }
     }
 
     return session;
@@ -115,7 +119,10 @@ export class ContinuitySessionService {
     const sequenceIndex = session.shots.length;
     const previousShot = session.shots[sequenceIndex - 1];
 
-    const styleReferenceId = request.styleReferenceId || previousShot?.id || null;
+    const styleReferenceId =
+      request.styleReferenceId !== undefined
+        ? request.styleReferenceId
+        : previousShot?.id || null;
     const continuityMode = request.continuityMode || session.defaultSettings.defaultContinuityMode;
 
     let frameBridge = previousShot?.frameBridge;
@@ -166,10 +173,15 @@ export class ContinuitySessionService {
     const previousShot = session.shots.find((s) => s.sequenceIndex === shot.sequenceIndex - 1);
 
     const generationMode = shot.generationMode || session.defaultSettings.generationMode;
-    if (generationMode === 'continuity') {
+    const isContinuity = generationMode === 'continuity';
+    const effectiveContinuityMode = isContinuity
+      ? shot.continuityMode
+      : shot.continuityMode === 'frame-bridge'
+        ? 'frame-bridge'
+        : 'none';
+
+    if (isContinuity) {
       this.anchorService.assertProviderSupportsContinuity(provider, shot.modelId);
-    } else {
-      shot.continuityMode = 'none';
     }
 
     const maxRetries = session.defaultSettings.maxRetries ?? 1;
@@ -189,10 +201,19 @@ export class ContinuitySessionService {
           shot.inheritedSeed = inheritedSeed;
         }
 
-        const strategy = this.providerAdapter.getContinuityStrategy(provider, shot.continuityMode, shot.modelId);
+        const strategy = this.providerAdapter.getContinuityStrategy(
+          provider,
+          effectiveContinuityMode,
+          shot.modelId
+        );
 
-        if (generationMode === 'standard') {
-          continuityMechanismUsed = 'none';
+        if (!isContinuity) {
+          if (strategy.type === 'frame-bridge' && shot.frameBridge) {
+            startImageUrl = shot.frameBridge.frameUrl;
+            continuityMechanismUsed = 'frame-bridge';
+          } else if (inheritedSeed !== undefined) {
+            continuityMechanismUsed = 'seed-only';
+          }
         } else if (this.anchorService.shouldUseSceneProxy(session, shot) && session.sceneProxy) {
           const render = await this.sceneProxy.renderFromProxy(
             session.userId,
@@ -248,11 +269,13 @@ export class ContinuitySessionService {
           }
 
           shot.generatedKeyframeUrl = startImageUrl;
-        } else if (inheritedSeed) {
-          continuityMechanismUsed = 'seed-only';
         }
 
-        if (generationMode === 'continuity' && !startImageUrl && strategy.type !== 'native-style-ref') {
+        if (
+          isContinuity &&
+          !startImageUrl &&
+          strategy.type !== 'native-style-ref'
+        ) {
           throw new Error('Continuity mode requires a visual anchor (startImage or native style reference).');
         }
 
@@ -410,7 +433,7 @@ export class ContinuitySessionService {
     return finalResult || shot;
   }
 
-  async updateShotStyleReference(sessionId: string, shotId: string, styleReferenceId: string): Promise<ContinuityShot> {
+  async updateShotStyleReference(sessionId: string, shotId: string, styleReferenceId: string | null): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
     const shot = session.shots.find((s) => s.id === shotId);

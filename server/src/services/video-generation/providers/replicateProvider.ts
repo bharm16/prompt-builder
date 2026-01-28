@@ -78,6 +78,10 @@ export function buildReplicateInput(
 ): Record<string, unknown> {
   const input: Record<string, unknown> = { prompt };
 
+  if (Number.isFinite(options.seed)) {
+    input.seed = Math.round(options.seed as number);
+  }
+
   const isWanModel = modelId.includes('wan');
 
   if (!isWanModel) {

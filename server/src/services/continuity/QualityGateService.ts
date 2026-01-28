@@ -21,6 +21,7 @@ interface QualityGateOptions {
 export class QualityGateService {
   private readonly log = logger.child({ service: 'QualityGateService' });
   private readonly faceEmbedding: FaceEmbeddingService | null;
+  private static clipPipelinePromise: Promise<unknown> | null = null;
 
   constructor(
     faceEmbedding?: FaceEmbeddingService | null,
@@ -33,7 +34,11 @@ export class QualityGateService {
     const { referenceImageUrl, generatedVideoUrl } = options;
 
     const frameBuffer = await this.extractMidFrame(generatedVideoUrl);
-    const styleScore = await this.compareHistogram(referenceImageUrl, frameBuffer);
+    const referenceBuffer = await this.downloadImage(referenceImageUrl);
+    let styleScore = await this.compareClipSimilarity(referenceBuffer, frameBuffer);
+    if (styleScore === undefined) {
+      styleScore = await this.compareHistogram(referenceBuffer, frameBuffer);
+    }
 
     let identityScore: number | undefined;
     if (options.characterReferenceUrl && this.faceEmbedding && this.storage) {
@@ -109,13 +114,94 @@ export class QualityGateService {
     return Number.isFinite(duration) ? duration : 0;
   }
 
-  private async compareHistogram(referenceImageUrl: string, frameBuffer: Buffer): Promise<number> {
-    const referenceBuffer = await this.downloadImage(referenceImageUrl);
-
+  private async compareHistogram(referenceBuffer: Buffer, frameBuffer: Buffer): Promise<number> {
     const refHist = await this.computeHistogram(referenceBuffer);
     const frameHist = await this.computeHistogram(frameBuffer);
 
     return this.correlation(refHist, frameHist);
+  }
+
+  private async compareClipSimilarity(
+    referenceBuffer: Buffer,
+    frameBuffer: Buffer
+  ): Promise<number | undefined> {
+    const pipeline = await this.getClipPipeline();
+    if (!pipeline) return undefined;
+
+    try {
+      const [refTensor, frameTensor] = await Promise.all([
+        (pipeline as any)(referenceBuffer, { pool: true }),
+        (pipeline as any)(frameBuffer, { pool: true }),
+      ]);
+
+      const refEmbedding = this.normalizeEmbedding(this.extractEmbedding(refTensor));
+      const frameEmbedding = this.normalizeEmbedding(this.extractEmbedding(frameTensor));
+
+      if (refEmbedding.length === 0 || frameEmbedding.length === 0) {
+        return undefined;
+      }
+
+      const similarity = this.cosineSimilarity(refEmbedding, frameEmbedding);
+      return Math.max(0, Math.min(1, similarity));
+    } catch (error) {
+      this.log.warn('CLIP similarity check failed, falling back to histogram', {
+        error: (error as Error).message,
+      });
+      return undefined;
+    }
+  }
+
+  private async getClipPipeline(): Promise<unknown | null> {
+    if (process.env.DISABLE_CONTINUITY_CLIP === 'true') {
+      return null;
+    }
+
+    if (!QualityGateService.clipPipelinePromise) {
+      QualityGateService.clipPipelinePromise = (async () => {
+        const transformers = await import('@huggingface/transformers');
+        return transformers.pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+      })();
+    }
+
+    try {
+      return await QualityGateService.clipPipelinePromise;
+    } catch (error) {
+      this.log.warn('Failed to load CLIP pipeline, falling back to histogram', {
+        error: (error as Error).message,
+      });
+      QualityGateService.clipPipelinePromise = null;
+      return null;
+    }
+  }
+
+  private extractEmbedding(tensor: { data?: ArrayLike<number> }): Float32Array {
+    const raw = tensor?.data;
+    if (!raw || typeof raw.length !== 'number') return new Float32Array();
+    if (raw instanceof Float32Array) return raw;
+    return Float32Array.from(Array.from(raw));
+  }
+
+  private normalizeEmbedding(embedding: Float32Array): Float32Array {
+    let norm = 0;
+    for (let i = 0; i < embedding.length; i += 1) {
+      const value = embedding[i] ?? 0;
+      norm += value * value;
+    }
+    const denom = Math.sqrt(norm) || 1;
+    const normalized = new Float32Array(embedding.length);
+    for (let i = 0; i < embedding.length; i += 1) {
+      normalized[i] = (embedding[i] ?? 0) / denom;
+    }
+    return normalized;
+  }
+
+  private cosineSimilarity(a: Float32Array, b: Float32Array): number {
+    if (a.length !== b.length) return 0;
+    let sum = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      sum += (a[i] ?? 0) * (b[i] ?? 0);
+    }
+    return sum;
   }
 
   private async computeHistogram(buffer: Buffer): Promise<number[]> {

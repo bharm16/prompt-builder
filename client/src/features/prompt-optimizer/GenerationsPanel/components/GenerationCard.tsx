@@ -10,6 +10,8 @@ import {
 import { Button } from '@promptstudio/system/components/ui/button';
 
 import { cn } from '@/utils/cn';
+import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
+import { extractVideoContentAssetId } from '@/utils/storageUrl';
 
 import type { Generation } from '../types';
 import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
@@ -57,6 +59,8 @@ export const GenerationCard = memo(function GenerationCard({
   const { progressPercent, isGenerating, isCompleted, isFailed } =
     useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
+  const continuitySourceId =
+    generation.mediaAssetIds?.[0] ?? (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
   const showRetry = generation.status === 'failed' && Boolean(onRetry);
   const showDownload =
     generation.tier === 'render' &&
@@ -268,6 +272,13 @@ export const GenerationCard = memo(function GenerationCard({
               </Button>
             )}
           </div>
+        )}
+        {generation.mediaType === 'video' && generation.status === 'completed' && (
+          <ContinueSceneButton
+            sourceVideoId={continuitySourceId}
+            defaultName={`Scene Continuity - ${config?.label ?? 'Video'}`}
+            className={showRetry || showDownload ? '' : 'ml-auto'}
+          />
         )}
       </div>
     </div>

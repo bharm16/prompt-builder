@@ -220,7 +220,7 @@ export interface CreateShotRequest {
   prompt: string;
   continuityMode?: ContinuityMode;
   generationMode?: GenerationMode;
-  styleReferenceId?: string;
+  styleReferenceId?: string | null;
   styleStrength?: number;
   modelId?: VideoModelId;
   characterAssetId?: string;

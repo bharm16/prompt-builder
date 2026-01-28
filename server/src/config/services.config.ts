@@ -33,6 +33,7 @@ import { EnhancementService } from '@services/EnhancementService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
 import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
 import { VideoConceptService } from '@services/VideoConceptService';
+import { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
@@ -649,6 +650,22 @@ export async function configureServices(): Promise<DIContainer> {
       });
     },
     ['videoAssetStore']
+  );
+
+  container.register(
+    'modelIntelligenceService',
+    (
+      aiService: AIModelService,
+      videoGenerationService: VideoGenerationService | null,
+      creditService: typeof userCreditService
+    ) =>
+      new ModelIntelligenceService({
+        aiService,
+        videoGenerationService,
+        userCreditService: creditService,
+      }),
+    ['aiService', 'videoGenerationService', 'userCreditService'],
+    { singleton: true }
   );
 
   container.register(

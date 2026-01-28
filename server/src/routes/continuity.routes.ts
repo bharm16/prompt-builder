@@ -192,14 +192,18 @@ export function createContinuityRoutes(
         return;
       }
       const { styleReferenceId } = req.body || {};
-      if (!styleReferenceId) {
+      if (styleReferenceId === undefined) {
         res.status(400).json({ error: 'styleReferenceId is required' });
         return;
       }
+      const normalizedStyleReferenceId =
+        styleReferenceId === null || styleReferenceId === 'primary'
+          ? null
+          : styleReferenceId;
       const shot = await service.updateShotStyleReference(
         session.id,
         shotId,
-        styleReferenceId
+        normalizedStyleReferenceId
       );
       res.json({ success: true, data: shot });
     })

@@ -112,6 +112,14 @@ function AppRoutes(): React.ReactElement {
         }
       />
       <Route
+        path="/continuity"
+        element={
+          <FeatureErrorBoundary featureName="Continuity Sessions">
+            <ContinuityPage />
+          </FeatureErrorBoundary>
+        }
+      />
+      <Route
         path="/continuity/:sessionId"
         element={
           <FeatureErrorBoundary featureName="Continuity Session">

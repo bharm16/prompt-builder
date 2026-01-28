@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { ContinuitySession, ContinuityShot } from '../types';
+import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput } from '../types';
 import { continuityApi } from '../api/continuityApi';
 
 interface ContinuitySessionContextValue {
@@ -7,10 +7,11 @@ interface ContinuitySessionContextValue {
   loading: boolean;
   error?: string | null;
   loadSession: (sessionId: string) => Promise<void>;
-  createSession: (input: Record<string, unknown>) => Promise<ContinuitySession>;
-  addShot: (input: Record<string, unknown>) => Promise<ContinuityShot>;
+  createSession: (input: CreateSessionInput) => Promise<ContinuitySession>;
+  addShot: (input: CreateShotInput) => Promise<ContinuityShot>;
   generateShot: (shotId: string) => Promise<ContinuityShot>;
-  updateStyleReference: (shotId: string, styleReferenceId: string) => Promise<ContinuityShot>;
+  updateStyleReference: (shotId: string, styleReferenceId: string | null) => Promise<ContinuityShot>;
+  updatePrimaryStyleReference: (input: Record<string, unknown>) => Promise<ContinuitySession>;
   createSceneProxy: (input: Record<string, unknown>) => Promise<void>;
 }
 
@@ -42,7 +43,7 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
     }
   };
 
-  const createSession = async (input: Record<string, unknown>) => {
+  const createSession = async (input: CreateSessionInput) => {
     setLoading(true);
     setError(null);
     try {
@@ -54,29 +55,38 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
     }
   };
 
-  const addShot = async (input: Record<string, unknown>) => {
+  const addShot = async (input: CreateShotInput) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.addShot(session.id, input);
-    setSession({ ...session, shots: [...session.shots, shot] });
+    setSession((prev) => {
+      if (!prev) return prev;
+      return { ...prev, shots: [...prev.shots, shot] };
+    });
     return shot;
   };
 
   const generateShot = async (shotId: string) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.generateShot(session.id, shotId);
-    setSession({
-      ...session,
-      shots: session.shots.map((s) => (s.id === shot.id ? shot : s)),
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        shots: prev.shots.map((s) => (s.id === shot.id ? shot : s)),
+      };
     });
     return shot;
   };
 
-  const updateStyleReference = async (shotId: string, styleReferenceId: string) => {
+  const updateStyleReference = async (shotId: string, styleReferenceId: string | null) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.updateShotStyleReference(session.id, shotId, styleReferenceId);
-    setSession({
-      ...session,
-      shots: session.shots.map((s) => (s.id === shot.id ? shot : s)),
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        shots: prev.shots.map((s) => (s.id === shot.id ? shot : s)),
+      };
     });
     return shot;
   };
@@ -85,6 +95,13 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
     if (!session) throw new Error('No active session');
     const updated = await continuityApi.createSceneProxy(session.id, input);
     setSession(updated);
+  };
+
+  const updatePrimaryStyleReference = async (input: Record<string, unknown>) => {
+    if (!session) throw new Error('No active session');
+    const updated = await continuityApi.updatePrimaryStyleReference(session.id, input);
+    setSession(updated);
+    return updated;
   };
 
   const value = useMemo(
@@ -97,6 +114,7 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       addShot,
       generateShot,
       updateStyleReference,
+      updatePrimaryStyleReference,
       createSceneProxy,
     }),
     [session, loading, error]

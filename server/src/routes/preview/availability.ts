@@ -28,4 +28,5 @@ export const emptyAvailability = () => ({
   },
   models: [],
   availableModels: [],
+  availableCapabilityModels: [],
 });

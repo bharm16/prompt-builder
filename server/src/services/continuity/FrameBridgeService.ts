@@ -134,7 +134,8 @@ export class FrameBridgeService {
     };
 
     const stream = parsed.streams?.[0];
-    const duration = parsed.format?.duration ? Number(parsed.format.duration) : 0;
+    const rawDuration = parsed.format?.duration ? Number(parsed.format.duration) : 0;
+    const duration = Number.isFinite(rawDuration) ? rawDuration : 0;
     const width = stream?.width || 1920;
     const height = stream?.height || 1080;
     const fps = this.parseFps(stream?.r_frame_rate || '24/1');

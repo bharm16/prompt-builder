@@ -34,6 +34,7 @@ export interface VideoGenerationOptions {
   inputReference?: string;
   seconds?: '4' | '8' | '12';
   size?: string;
+  seed?: number;
   /** Asset ID of a character - triggers automatic PuLID keyframe generation */
   characterAssetId?: string;
   /** If true (default), automatically generate keyframe for character assets */
@@ -67,13 +68,19 @@ export interface VideoModelAvailability {
   reason?: 'unsupported_model' | 'missing_credentials';
   requiredKey?: string;
   resolvedModelId?: VideoModelId;
+  capabilityModelId?: string;
+  requestedId?: string;
   statusCode?: number;
   message?: string;
   supportsImageInput?: boolean;
+  supportsI2V?: boolean;
+  planTier?: string;
+  entitled?: boolean;
 }
 
 export interface VideoAvailabilityReport {
   providers: VideoProviderAvailability;
   models: VideoModelAvailability[];
   availableModels: string[];
+  availableCapabilityModels?: string[];
 }
