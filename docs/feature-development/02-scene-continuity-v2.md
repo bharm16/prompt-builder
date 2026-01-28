@@ -6,7 +6,7 @@
 **Priority:** 2 (Build Second)  
 **Dependencies:** Replicate API (IP-Adapter for style), fal.ai (PuLID for identity), existing video generation system
 
-**Continuity Guarantee (Mandatory):** Every shot must be conditioned on a visual anchor (frame bridge, keyframe, or 3D proxy). Providers that cannot accept image inputs or reference images are blocked for continuity sessions.
+**Continuity Mode (Mandatory Behavior):** When Continuity Mode is enabled, every shot must be conditioned on a visual anchor (frame bridge, keyframe, or 3D proxy). Providers that cannot accept image inputs or reference images are blocked for continuity sessions. When Continuity Mode is off, standard generation options (including t2v) remain available.
 
 ---
 
@@ -23,7 +23,7 @@
 The system attempts mechanisms in priority order, using the highest-fidelity option available for each provider/scenario.
 
 ### Mandatory Continuity (Provider Gating)
-Continuity is a product guarantee, not a best-effort hint. For any continuity session:
+Continuity is a product guarantee, not a best-effort hint. **Only enforced when Continuity Mode is enabled.** For any continuity session:
 - **Hard requirement:** Every shot must have a visual anchor (frame bridge, keyframe, or 3D proxy render).
 - **Provider gating:** If a provider cannot accept image inputs (start image or reference images), it is **ineligible** for continuity generation.
 - **Failure mode:** The system returns a clear error and prompts the user to switch to an eligible provider.
@@ -117,6 +117,7 @@ Is this shot a direct continuation (same framing)?
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 🎬 Scene: Tokyo Night Chase                              [+ Add Shot]   │
+│ Mode:  ● Continuity   ○ Standard (t2v allowed)                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  Shot Timeline                                                          │
@@ -138,7 +139,7 @@ Is this shot a direct continuation (same framing)?
 │  │                  │                                                   │
 │  └──────────────────┘                                                   │
 │                                                                         │
-│  Continuity Mode:                                                       │
+│  Continuity Mode (only when enabled):                                   │
 │  ◉ Frame Bridge (same angle) — Use last frame directly                 │
 │  ○ Style Match (new angle) — Generate style-matched keyframe           │
 │                                                                         │
@@ -156,6 +157,18 @@ Is this shot a direct continuation (same framing)?
 ```
 
 ---
+
+### Mode Behavior (UI/UX)
+
+**Continuity Mode (default):**
+- Requires a visual anchor for every shot.
+- Shows continuity controls (style reference, strength slider, frame bridge vs style match).
+- Blocks models that cannot accept image inputs or style references.
+
+**Standard Mode:**
+- No continuity requirements; t2v allowed.
+- Hides continuity controls by default.
+- Optional: “Use previous shot as reference” checkbox (best-effort i2v, not guaranteed).
 
 ## Technical Architecture
 
@@ -365,6 +378,7 @@ export interface ContinuityShot {
   
   // User input
   userPrompt: string;
+  generationMode?: 'continuity' | 'standard';
   
   // Continuity settings for this shot
   continuityMode: 'frame-bridge' | 'style-match' | 'native' | 'none';
@@ -432,6 +446,8 @@ export interface ContinuitySession {
 }
 
 export interface ContinuitySessionSettings {
+  // Product-level mode
+  generationMode: 'continuity' | 'standard';
   defaultContinuityMode: 'frame-bridge' | 'style-match';
   defaultStyleStrength: number;        // 0.0-1.0
   defaultModel: VideoModelId;
@@ -459,6 +475,7 @@ export interface CreateShotRequest {
   
   // Continuity options
   continuityMode?: 'frame-bridge' | 'style-match' | 'none';
+  generationMode?: 'continuity' | 'standard'; // Overrides session setting
   styleReferenceId?: string;           // Which shot to match (defaults to previous)
   styleStrength?: number;              // Override default
   
@@ -1327,6 +1344,7 @@ export class ContinuitySessionService {
       sequenceIndex,
       userPrompt: request.prompt,
       continuityMode,
+      generationMode: request.generationMode || session.defaultSettings.generationMode,
       styleStrength: request.styleStrength ?? session.defaultSettings.defaultStyleStrength,
       styleReferenceId,
       frameBridge,
@@ -1375,8 +1393,14 @@ export class ContinuitySessionService {
       );
       shot.inheritedSeed = inheritedSeed;
 
-      // STEP 0: Enforce continuity gating (provider must support image inputs)
-      this.anchorService.assertProviderSupportsContinuity(provider);
+      // STEP 0: Enforce continuity gating only when continuity mode is enabled
+      const generationMode = shot.generationMode || session.defaultSettings.generationMode;
+      if (generationMode === 'continuity') {
+        this.anchorService.assertProviderSupportsContinuity(provider);
+      } else {
+        // Standard mode: allow t2v, skip continuity enforcement entirely
+        shot.continuityMode = 'none';
+      }
 
       // STEP 1: Determine continuity mechanism based on mode + provider capabilities
       const strategy = this.providerAdapter.getContinuityStrategy(provider, shot.continuityMode);
@@ -1583,6 +1607,7 @@ export class ContinuitySessionService {
 
   private defaultSettings(): ContinuitySessionSettings {
     return {
+      generationMode: 'continuity',
       defaultContinuityMode: 'frame-bridge',
       defaultStyleStrength: STYLE_STRENGTH_PRESETS.balanced,
       defaultModel: 'veo-3',
@@ -1628,6 +1653,7 @@ router.use(authenticateUser);
  */
 router.post('/sessions', async (req, res) => {
   const { name, description, sourceVideoId, sourceImageUrl, settings } = req.body;
+  // settings.generationMode can be 'continuity' (default) or 'standard'
   
   if (!sourceVideoId && !sourceImageUrl) {
     return res.status(400).json({ 
@@ -1682,6 +1708,7 @@ router.post('/sessions/:sessionId/shots', async (req, res) => {
   const { 
     prompt, 
     continuityMode, 
+    generationMode,
     styleReferenceId,
     styleStrength, 
     modelId,
@@ -1694,6 +1721,7 @@ router.post('/sessions/:sessionId/shots', async (req, res) => {
       sessionId: req.params.sessionId,
       prompt,
       continuityMode,
+      generationMode,
       styleReferenceId,
       styleStrength,
       modelId,
@@ -1950,6 +1978,17 @@ Shot 3 ◄─────────────────────┘
 
 ---
 
+## Mode Switch & Edge-Case Policy
+
+- **Session default mode:** `generationMode` is set at session creation (default: `continuity`).
+- **Per‑shot overrides:** A shot can override the session mode via `generationMode`.
+- **Switching to Continuity:** Requires a valid anchor source (primary style reference or a previous shot with a usable frame). If missing, block with a clear error and prompt the user to set a reference.
+- **Switching to Standard:** Continuity controls are hidden; `continuityMode` is forced to `none`.
+- **Provider gating:** Only enforced when mode is `continuity`. Standard mode may use any provider, including t2v‑only models.
+- **Legacy shots:** If a session contains earlier shots without anchors, continuity mode can still proceed by using the session’s primary style reference as the anchor.
+
+---
+
 ## What's Removed vs Original Plan
 
 | Original | Status | Reason |
@@ -1979,20 +2018,26 @@ Shot 3 ◄─────────────────────┘
 
 ---
 
-## Open Questions
+## Open Questions (Resolved Decisions)
 
-1. **IP-Adapter model choice**: Which model best matches style without degrading identity? Need to benchmark.
+1. **IP‑Adapter model choice**: Benchmark 3–5 models on a fixed suite. Pick the model with the highest style similarity subject to identity similarity staying above threshold. IP‑Adapter is **style‑only**; identity always comes from PuLID.
 
-2. **Strength defaults**: Is 0.6 the right balance? May need user testing.
+2. **Strength defaults**: Default to **0.6**, but make it **adaptive** per shot via QualityGate:
+   - If style similarity is low → increase strength.
+   - If identity similarity drops → decrease strength or re‑run PuLID.
 
-3. **Cost**: IP-Adapter adds ~$0.02/keyframe. Acceptable for the value?
+3. **Cost**: Add explicit **continuity overhead**:
+   - `identity_keyframe_cost` (PuLID)
+   - `style_keyframe_cost` (IP‑Adapter)
+   Bundle in UI and refund on failure.
 
-4. **Fallback behavior**: When IP-Adapter/Replicate is unavailable:
-   - Queue and retry (recommended for temporary outages)
-   - Block with clear error message
-   - Let user proceed without style matching (explicit opt-in)
-   - **NOT**: Silent fallback to text-based injection (broken approach)
+4. **Fallback behavior**:
+   - If native style refs exist → use them first.
+   - If IP‑Adapter is down:
+     - With character continuity → proceed with PuLID anchor only, mark as **Style Degraded**.
+     - Without character continuity → block and prompt to retry or switch provider.
+   - Never silently fall back to text‑only.
 
-5. **Provider capability updates**: How do we keep `PROVIDER_CAPABILITIES` current as providers add features?
+5. **Provider capability updates**: Source capability gating from a single registry and keep it current via scheduled capability probes. `PROVIDER_CAPABILITIES` becomes a derived view, not a manual list.
 
-6. **3D proxy viability**: Which scenes warrant splat/NeRF vs direct i2v? (Phase 2)
+6. **3D proxy viability (Phase 2)**: Only enable 3D proxy when a **Scene Scan** shot exists and parallax is sufficient. Otherwise use direct anchors (frame bridge / keyframes).
