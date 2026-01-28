@@ -4,7 +4,9 @@
 
 **Effort:** 3-4 weeks  
 **Priority:** 2 (Build Second)  
-**Dependencies:** Replicate API (IP-Adapter), existing video generation system
+**Dependencies:** Replicate API (IP-Adapter for style), fal.ai (PuLID for identity), existing video generation system
+
+**Continuity Guarantee (Mandatory):** Every shot must be conditioned on a visual anchor (frame bridge, keyframe, or 3D proxy). Providers that cannot accept image inputs or reference images are blocked for continuity sessions.
 
 ---
 
@@ -12,12 +14,19 @@
 
 | Priority | Mechanism | When Used | Fidelity |
 |----------|-----------|-----------|----------|
-| 1 | **Provider-Native Style Reference** | Provider supports it (Runway, Kling) | Highest |
+| 1 | **Provider-Native Style Reference** | Provider supports it | Highest |
 | 2 | **Frame Bridge** | Direct continuation, same angle | High |
-| 3 | **IP-Adapter Keyframe** | Angle change, no native support | High |
-| 4 | **Seed Persistence** | All generations | Medium (stabilizes noise) |
+| 3 | **PuLID Identity Keyframe** | New angle with character continuity | High |
+| 4 | **IP-Adapter Style Keyframe** | New angle without character, no native support | High |
+| 5 | **Seed Persistence** | All generations | Medium (stabilizes noise) |
 
 The system attempts mechanisms in priority order, using the highest-fidelity option available for each provider/scenario.
+
+### Mandatory Continuity (Provider Gating)
+Continuity is a product guarantee, not a best-effort hint. For any continuity session:
+- **Hard requirement:** Every shot must have a visual anchor (frame bridge, keyframe, or 3D proxy render).
+- **Provider gating:** If a provider cannot accept image inputs (start image or reference images), it is **ineligible** for continuity generation.
+- **Failure mode:** The system returns a clear error and prompts the user to switch to an eligible provider.
 
 ---
 
@@ -48,8 +57,10 @@ The naive solution is to extract a text description of the style ("neon pink, cy
 
 Instead of translating style to text, pass the **visual signal** directly using:
 1. **Frame Bridge** — Use last frame of Shot 1 as start image for Shot 2
-2. **IP-Adapter** — When angles change, generate a style-matched keyframe
-3. **Seed Persistence** — Lock generation seeds where APIs support it
+2. **PuLID Keyframe** — When angles change and identity must be preserved
+3. **IP-Adapter** — When angles change and no native style reference exists
+4. **Seed Persistence** — Lock generation seeds where APIs support it
+5. **Post-Grade (Histogram/LUT)** — Match color palette to reduce drift after generation
 
 ---
 
@@ -64,17 +75,23 @@ Instead of translating style to text, pass the **visual signal** directly using:
               ┌─────────────┴─────────────┐
               ▼                           ▼
      ┌────────────────┐         ┌─────────────────┐
-     │  Frame Bridge  │         │   IP-Adapter    │
-     │ (Direct i2v)   │         │ (Style Keyframe)│
+     │  Frame Bridge  │         │ PuLID / IP-Adapter│
+     │ (Direct i2v)   │         │ (Keyframe)        │
      └────────────────┘         └─────────────────┘
            │                            │
            │    Same angle/continuous   │  Different angle/composition
            ▼                            ▼
      ┌────────────────┐         ┌─────────────────┐
-     │  startImage =  │         │ Generate styled │
-     │   last frame   │         │ keyframe, then  │
+     │  startImage =  │         │ Generate anchored│
+     │   last frame   │         │ keyframe, then   │
      │                │         │ use as start    │
      └────────────────┘         └─────────────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │  Post-Grade      │
+                    │ (Palette Match)  │
+                    └──────────────────┘
 ```
 
 ### Decision Logic
@@ -86,8 +103,11 @@ Is this shot a direct continuation (same framing)?
     │
     └─ NO (different angle/composition) → 
            │
-           └─ Generate style-matched keyframe via IP-Adapter
-              Then use keyframe as startImage
+           ├─ Character continuity required → Generate PuLID keyframe
+           │     (optionally style-transfer), then use as startImage
+           │
+           └─ No character continuity → Generate style keyframe via IP-Adapter
+                 then use as startImage
 ```
 
 ---
@@ -146,12 +166,17 @@ server/src/services/continuity/
 ├── index.ts                           # Public exports
 ├── types.ts                           # All type definitions
 ├── ContinuityService.ts               # Main orchestrator (< 300 lines)
+├── AnchorService.ts                   # Continuity decision engine (< 150 lines)
 ├── FrameBridgeService.ts              # Frame extraction for i2v (< 150 lines)
 ├── StyleReferenceService.ts           # IP-Adapter style matching (< 200 lines)
+├── CharacterKeyframeService.ts        # PuLID identity keyframe (< 200 lines)
 ├── ProviderStyleAdapter.ts            # Provider-native style reference routing (< 200 lines)
 ├── SeedPersistenceService.ts          # Seed extraction and injection (< 100 lines)
 ├── ContinuitySessionService.ts        # Session management (< 250 lines)
 ├── StyleAnalysisService.ts            # Optional: VLM analysis for UI/debugging (< 150 lines)
+├── GradingService.ts                  # Histogram/LUT palette match (< 150 lines)
+├── QualityGateService.ts              # Similarity scoring + auto-retry (< 150 lines)
+├── SceneProxyService.ts               # Phase 2: 3D proxy (NeRF/Splat)
 └── __tests__/
     ├── FrameBridgeService.test.ts
     ├── StyleReferenceService.test.ts
@@ -657,7 +682,7 @@ export class FrameBridgeService {
 
 ### 2. StyleReferenceService
 
-Uses IP-Adapter to generate style-matched keyframes.
+Uses IP-Adapter to generate style-matched keyframes (style only).
 
 ```typescript
 // server/src/services/continuity/StyleReferenceService.ts
@@ -777,45 +802,15 @@ export class StyleReferenceService {
   }
 
   /**
-   * Generate keyframe with character consistency (IP-Adapter + face reference)
+   * Generate keyframe with character consistency
    */
   async generateStyledKeyframeWithCharacter(
     options: StyleMatchOptions,
     characterReferenceUrl: string
   ): Promise<string> {
-    // For character + style, we use IP-Adapter FaceID Plus
-    // which handles both style and face in one pass
-    const IP_ADAPTER_FACE_MODEL = 'lucataco/ip-adapter-faceid-plusv2:test'; // TODO: verify model ID
-    
-    this.log.info('Generating keyframe with character consistency', {
-      strength: options.strength,
-    });
-
-    try {
-      const output = await this.replicate.run(IP_ADAPTER_FACE_MODEL, {
-        input: {
-          prompt: options.prompt,
-          ip_adapter_image: options.styleReferenceUrl,    // Style reference
-          face_image: characterReferenceUrl,              // Character face
-          ip_adapter_scale: options.strength,
-          face_scale: 0.7,                                // Face preservation strength
-          negative_prompt: options.negativePrompt || 'blurry, low quality, distorted',
-        }
-      }) as string[];
-
-      if (!output || !output[0]) {
-        throw new Error('IP-Adapter FaceID returned no output');
-      }
-
-      return this.storeKeyframe(output[0], options);
-
-    } catch (error) {
-      this.log.warn('FaceID model failed, falling back to standard IP-Adapter', {
-        error: (error as Error).message,
-      });
-      // Fallback to standard style matching
-      return this.generateStyledKeyframe(options);
-    }
+    // Deprecated: IP-Adapter FaceID is replaced by PuLID for identity.
+    // Keep this method only if needed for legacy fallback.
+    return this.generateStyledKeyframe(options);
   }
 
   private async storeKeyframe(
@@ -1206,11 +1201,15 @@ import {
   ContinuitySessionSettings,
   StyleReference,
 } from './types';
+import { AnchorService } from './AnchorService';
 import { FrameBridgeService } from './FrameBridgeService';
 import { StyleReferenceService, STYLE_STRENGTH_PRESETS } from './StyleReferenceService';
+import { CharacterKeyframeService } from './CharacterKeyframeService';
 import { ProviderStyleAdapter } from './ProviderStyleAdapter';
 import { SeedPersistenceService } from './SeedPersistenceService';
 import { StyleAnalysisService } from './StyleAnalysisService';
+import { GradingService } from './GradingService';
+import { QualityGateService } from './QualityGateService';
 import { VideoGenerationService } from '@/services/video-generation/VideoGenerationService';
 import { logger } from '@/infrastructure/Logger';
 
@@ -1218,11 +1217,15 @@ export class ContinuitySessionService {
   private readonly log = logger.child({ service: 'ContinuitySessionService' });
 
   constructor(
+    private anchorService: AnchorService,
     private frameBridge: FrameBridgeService,
     private styleReference: StyleReferenceService,
+    private characterKeyframes: CharacterKeyframeService,
     private providerAdapter: ProviderStyleAdapter,
     private seedService: SeedPersistenceService,
     private styleAnalysis: StyleAnalysisService,
+    private grading: GradingService,
+    private qualityGate: QualityGateService,
     private videoGenerator: VideoGenerationService,
     private sessionStore: SessionStore
   ) {}
@@ -1372,6 +1375,9 @@ export class ContinuitySessionService {
       );
       shot.inheritedSeed = inheritedSeed;
 
+      // STEP 0: Enforce continuity gating (provider must support image inputs)
+      this.anchorService.assertProviderSupportsContinuity(provider);
+
       // STEP 1: Determine continuity mechanism based on mode + provider capabilities
       const strategy = this.providerAdapter.getContinuityStrategy(provider, shot.continuityMode);
 
@@ -1388,31 +1394,18 @@ export class ContinuitySessionService {
         this.log.info('Using frame bridge for direct continuation');
 
       } else if (strategy.type === 'ip-adapter') {
-        // Different angle, no native support — generate keyframe via IP-Adapter
+        // Different angle, no native support — generate keyframe via IP-Adapter (style only)
         shot.status = 'generating-keyframe';
         await this.sessionStore.save(session);
 
         const styleRef = this.resolveStyleReference(session, shot);
         
-        if (shot.characterAssetId) {
-          const characterUrl = await this.getCharacterReferenceUrl(shot.characterAssetId);
-          startImageUrl = await this.styleReference.generateStyledKeyframeWithCharacter(
-            {
-              prompt: shot.userPrompt,
-              styleReferenceUrl: styleRef.frameUrl,
-              strength: shot.styleStrength,
-              aspectRatio: styleRef.aspectRatio as any,
-            },
-            characterUrl
-          );
-        } else {
-          startImageUrl = await this.styleReference.generateStyledKeyframe({
-            prompt: shot.userPrompt,
-            styleReferenceUrl: styleRef.frameUrl,
-            strength: shot.styleStrength,
-            aspectRatio: styleRef.aspectRatio as any,
-          });
-        }
+        startImageUrl = await this.styleReference.generateStyledKeyframe({
+          prompt: shot.userPrompt,
+          styleReferenceUrl: styleRef.frameUrl,
+          strength: shot.styleStrength,
+          aspectRatio: styleRef.aspectRatio as any,
+        });
         
         shot.generatedKeyframeUrl = startImageUrl;
         continuityMechanismUsed = 'ip-adapter';
@@ -1458,7 +1451,11 @@ export class ContinuitySessionService {
       const seedInfo = this.seedService.extractSeed(provider, shot.modelId, result);
       shot.seedInfo = seedInfo || undefined;
 
-      // STEP 5: Extract frame bridge for next shot
+      // STEP 5: Post-grade (palette match) + quality gate
+      await this.grading.matchPalette(result.assetId, this.resolveStyleReference(session, shot).frameUrl);
+      await this.qualityGate.assertContinuity(result.assetId, shot);
+
+      // STEP 6: Extract frame bridge for next shot
       if (session.defaultSettings.autoExtractFrameBridge) {
         const videoUrl = await this.videoGenerator.getVideoUrl(result.assetId);
         await this.frameBridge.extractBridgeFrame(
@@ -1895,18 +1892,23 @@ Shot 3 ◄─────────────────────┘
 
 | Priority | Task | Effort | Rationale |
 |----------|------|--------|-----------|
-| **1** | FrameBridgeService | 2 days | Foundation — extracts frames for all modes |
-| **2** | StyleReferenceService | 3 days | Core — IP-Adapter integration |
-| **3** | ProviderStyleAdapter | 2 days | Routes to native APIs when available |
-| **4** | SeedPersistenceService | 1 day | Low-effort, moderate value |
-| **5** | ContinuitySessionService | 3 days | Orchestrates workflow |
-| **6** | API endpoints | 1 day | Wire up services |
-| **7** | Client: Context + hooks | 2 days | State management |
-| **8** | Client: Session timeline | 2 days | Core UI |
-| **9** | Client: Style panel | 1 day | Display reference + strength slider |
-| **10** | StyleAnalysisService | 1 day | Optional — UI polish only |
-| **11** | Integration + testing | 3 days | End-to-end |
-| | **Total** | **~21 days** | |
+| **1** | Provider gating + AnchorService | 2 days | Enforce mandatory continuity and select anchors |
+| **2** | FrameBridgeService | 2 days | Foundation — extracts frames for all modes |
+| **3** | CharacterKeyframeService (PuLID) | 2 days | Identity-locked keyframes for new angles |
+| **4** | StyleReferenceService (IP-Adapter) | 3 days | Style-only keyframes when no native refs |
+| **5** | ProviderStyleAdapter | 2 days | Routes to native APIs when available |
+| **6** | SeedPersistenceService | 1 day | Low-effort, moderate value |
+| **7** | GradingService (Post-Grade) | 1 day | Palette matching to reduce drift |
+| **8** | QualityGateService | 2 days | Similarity scoring + auto-retry |
+| **9** | ContinuitySessionService | 3 days | Orchestrates workflow |
+| **10** | API endpoints | 1 day | Wire up services |
+| **11** | Client: Context + hooks | 2 days | State management |
+| **12** | Client: Session timeline | 2 days | Core UI |
+| **13** | Client: Style panel | 1 day | Display reference + strength slider |
+| **14** | StyleAnalysisService | 1 day | Optional — UI polish only |
+| **15** | Integration + testing | 3 days | End-to-end |
+| | **Total (Phase 1)** | **~25-28 days** | |
+| **Phase 2** | SceneProxyService (NeRF/Splat) | 2-3 weeks | Optional "endgame" continuity |
 
 ---
 
@@ -1923,11 +1925,15 @@ Shot 3 ◄─────────────────────┘
 
 | New | Purpose |
 |-----|---------|
-| StyleReferenceService | IP-Adapter integration for pixel-based style transfer |
+| StyleReferenceService | IP-Adapter integration for pixel-based style transfer (style only) |
 | `styleReferenceId` on shots | Non-linear inheritance (flashbacks, cutaways) |
 | Strength presets | User-friendly controls (loose/balanced/strict/exact) |
 | Representative frame extraction | Better style reference than arbitrary first/last frame |
-| Character + style combined | IP-Adapter FaceID for both consistency needs |
+| Character consistency | PuLID keyframe pipeline for identity |
+| Post-grade | Histogram/LUT palette match after generation |
+| Provider gating | Hard block for providers without image inputs |
+| Quality gate | CLIP/face similarity scoring with auto-retry |
+| Scene proxy (Phase 2) | 3D proxy (NeRF/Splat) for alternate angles |
 
 ---
 
@@ -1957,21 +1963,25 @@ Shot 3 ◄─────────────────────┘
 
 | New | Purpose |
 |-----|---------|
-| `StyleReferenceService` | IP-Adapter integration for pixel-based style transfer |
-| `ProviderStyleAdapter` | Routes to native style reference APIs (Runway, etc.) when available |
+| `StyleReferenceService` | IP-Adapter integration for pixel-based style transfer (style only) |
+| `ProviderStyleAdapter` | Routes to native style reference APIs when available |
 | `SeedPersistenceService` | Extracts and injects seeds for generation reproducibility |
 | `styleReferenceId` on shots | Non-linear inheritance (flashbacks, cutaways) |
 | `PROVIDER_CAPABILITIES` config | Documents which providers support which continuity mechanisms |
 | `continuityMechanismUsed` tracking | Records which mechanism was actually used per shot |
 | Strength presets | User-friendly controls (loose/balanced/strict/exact) |
 | Representative frame extraction | Better style reference than arbitrary first/last frame |
-| Character + style combined | IP-Adapter FaceID for both consistency needs |
+| Character consistency | PuLID keyframe pipeline for identity |
+| Post-grade | Histogram/LUT palette match after generation |
+| Provider gating | Hard block for providers without image inputs |
+| Quality gate | CLIP/face similarity scoring with auto-retry |
+| Scene proxy (Phase 2) | 3D proxy (NeRF/Splat) for alternate angles |
 
 ---
 
 ## Open Questions
 
-1. **IP-Adapter model choice**: `lucataco/ip-adapter-sdxl` vs alternatives? Need to benchmark quality.
+1. **IP-Adapter model choice**: Which model best matches style without degrading identity? Need to benchmark.
 
 2. **Strength defaults**: Is 0.6 the right balance? May need user testing.
 
@@ -1984,3 +1994,5 @@ Shot 3 ◄─────────────────────┘
    - **NOT**: Silent fallback to text-based injection (broken approach)
 
 5. **Provider capability updates**: How do we keep `PROVIDER_CAPABILITIES` current as providers add features?
+
+6. **3D proxy viability**: Which scenes warrant splat/NeRF vs direct i2v? (Phase 2)

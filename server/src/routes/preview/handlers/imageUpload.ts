@@ -74,10 +74,10 @@ export const createImageUploadHandler = () =>
       const result =
         file.path && typeof storage.uploadStream === 'function'
           ? await storage.uploadStream(
-              fs.createReadStream(file.path),
-              file.size,
               userId,
               'preview-image',
+              fs.createReadStream(file.path),
+              file.size,
               file.mimetype,
               uploadMetadata
             )

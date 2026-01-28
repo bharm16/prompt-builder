@@ -224,7 +224,7 @@ export class PromptOptimizationService {
       ensureNotAborted();
 
       let refinementMetadata: Record<string, unknown> | null = null;
-      const refined = await this.optimize({
+      const refinedResult = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
         ...(targetModel ? { targetModel } : {}),
@@ -244,6 +244,7 @@ export class PromptOptimizationService {
         ...(onRefinedChunk ? { onChunk: (delta) => onRefinedChunk(delta) } : {}),
         ...(signal ? { signal } : {}),
       });
+      const refinedPrompt = refinedResult.prompt;
 
       const refinementDuration = Math.round(performance.now() - refinementStartTime);
       const totalDuration = Math.round(performance.now() - startTime);
@@ -255,12 +256,12 @@ export class PromptOptimizationService {
         totalDuration,
         mode: finalMode,
         draftLength: draft.length,
-        refinedLength: refined.length,
+        refinedLength: refinedPrompt.length,
       });
 
       return {
         draft,
-        refined,
+        refined: refinedPrompt,
         draftSpans: null,
         refinedSpans: null, // Skip for performance
         metadata: {
@@ -306,9 +307,10 @@ export class PromptOptimizationService {
         },
         ...(signal ? { signal } : {}),
       });
+      const fallbackPrompt = result.prompt;
       return {
-        draft: result,
-        refined: result,
+        draft: fallbackPrompt,
+        refined: fallbackPrompt,
         metadata: {
           mode: finalMode,
           usedFallback: true,
