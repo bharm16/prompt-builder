@@ -50,6 +50,7 @@ export interface VideoGenerationResult {
   viewUrl?: string;
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
+  seed?: number;
 }
 
 export interface VideoProviderAvailability {

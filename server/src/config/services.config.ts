@@ -57,6 +57,22 @@ import AssetService from '@services/asset/AssetService';
 import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import ConsistentVideoService from '@services/generation/ConsistentVideoService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import { getStorageService } from '@services/storage/StorageService';
+import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
+import {
+  AnchorService,
+  CharacterKeyframeService,
+  ContinuitySessionService,
+  ContinuitySessionStore,
+  FrameBridgeService,
+  GradingService,
+  ProviderStyleAdapter,
+  QualityGateService,
+  SceneProxyService,
+  SeedPersistenceService,
+  StyleAnalysisService,
+  StyleReferenceService,
+} from '@services/continuity';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -123,6 +139,20 @@ export async function configureServices(): Promise<DIContainer> {
   container.registerValue('metricsService', metricsService);
   container.registerValue('cacheService', cacheService);
   container.registerValue('userCreditService', userCreditService);
+  container.register('storageService', () => getStorageService(), [], { singleton: true });
+  container.register(
+    'faceEmbeddingService',
+    () => {
+      const token = process.env.REPLICATE_API_TOKEN;
+      if (!token) {
+        logger.warn('FaceEmbeddingService disabled: REPLICATE_API_TOKEN not set');
+        return null;
+      }
+      return new FaceEmbeddingService(undefined, token);
+    },
+    [],
+    { singleton: true }
+  );
   container.register('videoAssetStore', () => createVideoAssetStore(), [], { singleton: true });
   container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
   container.register('videoContentAccessService', () => createVideoContentAccessService(), [], { singleton: true });
@@ -710,6 +740,148 @@ export async function configureServices(): Promise<DIContainer> {
       });
     },
     ['videoGenerationService', 'assetService', 'keyframeGenerationService']
+  );
+
+  container.register('continuitySessionStore', () => new ContinuitySessionStore(), [], { singleton: true });
+
+  container.register(
+    'frameBridgeService',
+    (storageService: ReturnType<typeof getStorageService>) => new FrameBridgeService(storageService),
+    ['storageService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'styleReferenceService',
+    (storageService: ReturnType<typeof getStorageService>) => new StyleReferenceService(storageService),
+    ['storageService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'characterKeyframeService',
+    (
+      keyframeGenerationService: KeyframeGenerationService | null,
+      assetService: AssetService | null,
+      storageService: ReturnType<typeof getStorageService>
+    ) => {
+      if (!keyframeGenerationService || !assetService) {
+        logger.warn('CharacterKeyframeService disabled', {
+          keyframeGenerationService: Boolean(keyframeGenerationService),
+          assetService: Boolean(assetService),
+        });
+        return null;
+      }
+      return new CharacterKeyframeService(keyframeGenerationService, assetService, storageService);
+    },
+    ['keyframeGenerationService', 'assetService', 'storageService'],
+    { singleton: true }
+  );
+
+  container.register('providerStyleAdapter', () => new ProviderStyleAdapter(), [], { singleton: true });
+  container.register('seedPersistenceService', () => new SeedPersistenceService(), [], { singleton: true });
+
+  container.register(
+    'styleAnalysisService',
+    (aiService: AIModelService) => new StyleAnalysisService(aiService),
+    ['aiService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'anchorService',
+    (providerStyleAdapter: ProviderStyleAdapter) => new AnchorService(providerStyleAdapter),
+    ['providerStyleAdapter'],
+    { singleton: true }
+  );
+
+  container.register(
+    'gradingService',
+    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) => new GradingService(videoAssetStore),
+    ['videoAssetStore'],
+    { singleton: true }
+  );
+
+  container.register(
+    'qualityGateService',
+    (
+      faceEmbeddingService: FaceEmbeddingService | null,
+      storageService: ReturnType<typeof getStorageService>
+    ) => new QualityGateService(faceEmbeddingService, storageService),
+    ['faceEmbeddingService', 'storageService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'sceneProxyService',
+    (
+      storageService: ReturnType<typeof getStorageService>,
+      frameBridgeService: FrameBridgeService
+    ) => new SceneProxyService(storageService, frameBridgeService),
+    ['storageService', 'frameBridgeService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'continuitySessionService',
+    (
+      anchorService: AnchorService,
+      frameBridgeService: FrameBridgeService,
+      styleReferenceService: StyleReferenceService,
+      characterKeyframeService: CharacterKeyframeService | null,
+      providerStyleAdapter: ProviderStyleAdapter,
+      seedPersistenceService: SeedPersistenceService,
+      styleAnalysisService: StyleAnalysisService,
+      gradingService: GradingService,
+      qualityGateService: QualityGateService,
+      sceneProxyService: SceneProxyService,
+      videoGenerationService: VideoGenerationService | null,
+      assetService: AssetService | null,
+      continuitySessionStore: ContinuitySessionStore
+    ) => {
+      if (!videoGenerationService || !assetService) {
+        logger.warn('ContinuitySessionService disabled', {
+          videoGenerationService: Boolean(videoGenerationService),
+          assetService: Boolean(assetService),
+        });
+        return null;
+      }
+
+      if (!characterKeyframeService) {
+        logger.warn('Character keyframe service unavailable; PuLID identity continuity will be disabled.');
+      }
+
+      return new ContinuitySessionService(
+        anchorService,
+        frameBridgeService,
+        styleReferenceService,
+        characterKeyframeService,
+        providerStyleAdapter,
+        seedPersistenceService,
+        styleAnalysisService,
+        gradingService,
+        qualityGateService,
+        sceneProxyService,
+        videoGenerationService,
+        assetService,
+        continuitySessionStore
+      );
+    },
+    [
+      'anchorService',
+      'frameBridgeService',
+      'styleReferenceService',
+      'characterKeyframeService',
+      'providerStyleAdapter',
+      'seedPersistenceService',
+      'styleAnalysisService',
+      'gradingService',
+      'qualityGateService',
+      'sceneProxyService',
+      'videoGenerationService',
+      'assetService',
+      'continuitySessionStore',
+    ]
   );
 
   container.register(

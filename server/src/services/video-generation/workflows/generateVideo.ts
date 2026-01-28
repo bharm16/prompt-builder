@@ -118,9 +118,15 @@ export async function generateVideoWorkflow(
       throw new Error('Replicate API token is required for the selected video model.');
     }
 
-    const url = await generateReplicateVideo(clients.replicate, prompt, modelId, options, log);
+    const { url, seed } = await generateReplicateVideo(
+      clients.replicate,
+      prompt,
+      modelId,
+      options,
+      log
+    );
     const asset = await storeVideoFromUrl(assetStore, url, log);
-    return formatResult(asset, inputMode, startImageUrl);
+    return formatResult(asset, inputMode, startImageUrl, seed);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log.error('Video generation failed', error instanceof Error ? error : new Error(errorMessage));
@@ -131,7 +137,8 @@ export async function generateVideoWorkflow(
 function formatResult(
   asset: StoredVideoAsset,
   inputMode?: VideoGenerationResult['inputMode'],
-  startImageUrl?: string
+  startImageUrl?: string,
+  seed?: number
 ): VideoGenerationResult {
   return {
     assetId: asset.id,
@@ -139,5 +146,6 @@ function formatResult(
     contentType: asset.contentType,
     ...(inputMode ? { inputMode } : {}),
     ...(startImageUrl ? { startImageUrl } : {}),
+    ...(seed !== undefined ? { seed } : {}),
   };
 }

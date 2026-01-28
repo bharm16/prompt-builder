@@ -116,7 +116,7 @@ export async function generateReplicateVideo(
   modelId: VideoModelId,
   options: VideoGenerationOptions,
   log: LogSink
-): Promise<string> {
+): Promise<{ url: string; seed?: number }> {
   const resolvedModelId = resolveWanModelForI2V(modelId, Boolean(options.startImage));
   const input = buildReplicateInput(resolvedModelId as VideoModelId, prompt, options);
 
@@ -137,21 +137,32 @@ export async function generateReplicateVideo(
 
   if (typeof output === 'string') {
     if (output.startsWith('http')) {
-      return output;
+      return { url: output };
     }
     log.warn('Output is a string but not http', { output });
   }
 
   if (output && typeof output === 'object') {
     const outputRecord = output as Record<string, unknown>;
+    const seed =
+      typeof outputRecord.seed === 'number'
+        ? outputRecord.seed
+        : typeof (outputRecord.metrics as any)?.seed === 'number'
+          ? (outputRecord.metrics as any).seed
+          : undefined;
+
     if ('url' in outputRecord && typeof outputRecord.url === 'function') {
       const url = (outputRecord.url as () => unknown)();
       log.info('Extracted URL from FileOutput', { url: String(url) });
-      return String(url);
+      return { url: String(url), seed };
     }
 
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      return output[0];
+      return { url: output[0], seed };
+    }
+
+    if (typeof outputRecord.url === 'string') {
+      return { url: outputRecord.url, seed };
     }
   }
 

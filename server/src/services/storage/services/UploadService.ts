@@ -131,6 +131,62 @@ export class UploadService {
     }
   }
 
+  async uploadFromBuffer(
+    buffer: Buffer,
+    userId: string,
+    type: StorageType,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    sizeBytes: number;
+    contentType: string;
+    createdAt: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const normalizedContentType = normalizeContentType(contentType);
+    if (!isAllowedContentType(type, normalizedContentType)) {
+      throw new Error(`Invalid content type: ${normalizedContentType}`);
+    }
+
+    const maxSize = STORAGE_CONFIG.maxFileSize[resolveStorageTypeKey(type)];
+    if (buffer.length > maxSize) {
+      throw new Error(`File too large: ${buffer.length} bytes (max: ${maxSize})`);
+    }
+
+    const extension = resolveExtension(normalizedContentType);
+    const path = generateStoragePath(userId, type, extension);
+    const file = this.bucket.file(path);
+
+    const model = typeof metadata.model === 'string' ? metadata.model : 'unknown';
+    const promptId = typeof metadata.promptId === 'string' ? metadata.promptId : '';
+
+    await file.save(buffer, {
+      contentType: normalizedContentType,
+      resumable: buffer.length > RESUMABLE_THRESHOLD_BYTES,
+      metadata: {
+        metadata: {
+          ...metadata,
+          userId,
+          type,
+          model,
+          promptId,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    return {
+      storagePath: path,
+      sizeBytes: buffer.length,
+      contentType: normalizedContentType,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   async uploadBuffer(
     buffer: Buffer,
     userId: string,

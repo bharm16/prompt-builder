@@ -198,6 +198,56 @@ export class StorageService {
     return result;
   }
 
+  async saveFromBuffer(
+    userId: string,
+    buffer: Buffer,
+    type: StorageType,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    viewUrl: string;
+    expiresAt: string;
+    sizeBytes: number;
+    contentType: string;
+    createdAt: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const result = await this.withTiming(
+      'saveFromBuffer',
+      {
+        userId,
+        type,
+        contentType: normalizeContentType(contentType),
+        sizeBytes: buffer.length,
+      },
+      async () => {
+        const uploadResult = await this.uploadService.uploadFromBuffer(
+          buffer,
+          userId,
+          type,
+          contentType,
+          metadata
+        );
+
+        const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+          uploadResult.storagePath
+        );
+
+        return {
+          ...uploadResult,
+          viewUrl,
+          expiresAt,
+        };
+      }
+    );
+
+    return result;
+  }
+
   async uploadBuffer(
     userId: string,
     type: StorageType,

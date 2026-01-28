@@ -20,6 +20,7 @@ import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 import { createReferenceImagesRoutes } from './reference-images.routes';
 import { createImageObservationRoutes } from './image-observation.routes';
+import { createContinuityRoutes } from './continuity.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
@@ -27,6 +28,7 @@ import type { AssetService } from '@services/asset/AssetService';
 import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ImageObservationService } from '@services/image-observation';
+import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
   videoConceptService?: VideoServices['videoConceptService'] | null;
@@ -35,6 +37,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   userCreditService?: UserCreditService;
   referenceImageService?: ReferenceImageService | null;
   imageObservationService?: ImageObservationService | null;
+  continuitySessionService?: ContinuitySessionService | null;
 }
 
 /**
@@ -57,6 +60,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     userCreditService,
     referenceImageService,
     imageObservationService,
+    continuitySessionService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -104,6 +108,10 @@ export function createAPIRoutes(services: ApiServices): Router {
       '/generate/consistent',
       createConsistentGenerationRoutes(consistentVideoService, userCreditService)
     );
+  }
+
+  if (continuitySessionService) {
+    router.use('/continuity', createContinuityRoutes(continuitySessionService, userCreditService));
   }
 
   // Capabilities registry routes (schema-driven UI)

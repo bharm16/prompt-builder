@@ -81,6 +81,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     userCreditService: container.resolve('userCreditService'),
     referenceImageService: container.resolve('referenceImageService'),
     imageObservationService: container.resolve('imageObservationService'),
+    continuitySessionService: container.resolve('continuitySessionService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);

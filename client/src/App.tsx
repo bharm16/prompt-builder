@@ -24,6 +24,7 @@ const BillingPage = lazy(() => import('./pages/BillingPage').then((module) => ({
 const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').then((module) => ({ default: module.BillingInvoicesPage })));
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
 const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
+const ContinuityPage = lazy(() => import('./pages/ContinuityPage').then((module) => ({ default: module.ContinuityPage })));
 const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
 
 function RouteFallback(): React.ReactElement {
@@ -107,6 +108,14 @@ function AppRoutes(): React.ReactElement {
         element={
           <FeatureErrorBoundary featureName="Asset Library">
             <AssetsPage />
+          </FeatureErrorBoundary>
+        }
+      />
+      <Route
+        path="/continuity/:sessionId"
+        element={
+          <FeatureErrorBoundary featureName="Continuity Session">
+            <ContinuityPage />
           </FeatureErrorBoundary>
         }
       />
