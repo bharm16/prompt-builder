@@ -20,11 +20,13 @@
 export {
   // Prompt schemas
   promptSchema,
+  compileSchema,
   
   // Suggestion schemas
   suggestionSchema,
   customSuggestionSchema,
   sceneChangeSchema,
+  coherenceCheckSchema,
   
   // Video/creative workflow schemas
   creativeSuggestionSchema,
@@ -48,5 +50,4 @@ export {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
-} from '../config/schemas/index.ts';
-
+} from '@config/schemas/index';

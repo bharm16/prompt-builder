@@ -1,13 +1,16 @@
 import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
 import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
 import { resolveOverlaps } from '../processing/OverlapResolver.js';
+import { filterHeaders } from '../processing/HeaderFilter.js';
+import { filterNonVisualSpans } from '../processing/VisualOnlyFilter.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
-import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
+import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.js';
 import type {
   ProcessingOptions,
   ValidationPolicy,
   ValidationResult,
+  LLMSpan,
 } from '../types.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
 
@@ -83,13 +86,24 @@ export function validateSpans({
 
   // Phase 2: Sort by position
   sanitized.sort((a, b) => {
-    if (a.start === b.start) return a.end - b.end;
-    return a.start - b.start;
+    const aStart = a.start ?? 0;
+    const bStart = b.start ?? 0;
+    const aEnd = a.end ?? 0;
+    const bEnd = b.end ?? 0;
+    if (aStart === bStart) return aEnd - bEnd;
+    return aStart - bStart;
   });
 
   // Phase 2.5: Merge adjacent spans with compatible categories
   // Fixes LLM fragmentation like "Action" + "Shot" → "Action Shot"
-  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(sanitized, text);
+  // Cast to SpanLike[] since we've validated start/end exist
+  const spansForMerge = sanitized.map(s => ({
+    ...s,
+    start: s.start ?? 0,
+    end: s.end ?? 0,
+    confidence: s.confidence ?? 0,
+  }));
+  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(spansForMerge, text);
 
   // Phase 3: Deduplicate
   const { spans: deduplicated, notes: dedupeNotes } = deduplicateSpans(merged);
@@ -97,20 +111,38 @@ export function validateSpans({
   // Phase 4: Resolve overlaps
   const { spans: resolved, notes: overlapNotes } = resolveOverlaps(
     deduplicated,
-    policy.allowOverlap as boolean
+    policy.allowOverlap === true
+  );
+
+  // Phase 4.5: Filter out section headers and labels
+  const { spans: headersFiltered, notes: headerNotes } = filterHeaders(resolved);
+
+  // Phase 4.75: Filter out non-visual spans and alternative sections
+  const { spans: nonVisualFiltered, notes: nonVisualNotes } = filterNonVisualSpans(
+    headersFiltered,
+    text
   );
 
   // Phase 5: Filter by confidence
   const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
-    resolved,
-    options.minConfidence as number
+    nonVisualFiltered,
+    options.minConfidence ?? 0
   );
 
   // Phase 6: Truncate to max spans
-  const { spans: finalSpans, notes: truncationNotes } = truncateToMaxSpans(
+  const { spans: finalSpansRaw, notes: truncationNotes } = truncateToMaxSpans(
     confidenceFiltered,
-    options.maxSpans as number
+    options.maxSpans ?? 10
   );
+
+  // Convert back to LLMSpan[]
+  const finalSpans: LLMSpan[] = finalSpansRaw.map((s) => ({
+    text: s.text,
+    role: typeof s.role === 'string' ? s.role : 'subject',
+    start: s.start,
+    end: s.end,
+    ...(typeof s.confidence === 'number' ? { confidence: s.confidence } : {}),
+  }));
 
   // Combine all notes
   const combinedNotes = [
@@ -121,6 +153,8 @@ export function validateSpans({
     ...mergeNotes,
     ...dedupeNotes,
     ...overlapNotes,
+    ...headerNotes,
+    ...nonVisualNotes,
     ...confidenceNotes,
     ...truncationNotes,
   ].filter(Boolean);
@@ -136,6 +170,13 @@ export function validateSpans({
             ? meta.version.trim()
             : (options.templateVersion as string),
         notes: combinedNotes.join(' | '),
+        // Preserve NLP pipeline stats for evaluation/telemetry
+        ...(typeof meta?.closedVocab === 'number' && { closedVocab: meta.closedVocab }),
+        ...(typeof meta?.openVocab === 'number' && { openVocab: meta.openVocab }),
+        ...(typeof meta?.tier1Latency === 'number' && { tier1Latency: meta.tier1Latency }),
+        ...(typeof meta?.tier2Latency === 'number' && { tier2Latency: meta.tier2Latency }),
+        ...(typeof meta?.latency === 'number' && { latency: meta.latency }),
+        ...(typeof meta?.source === 'string' && { source: meta.source }),
       },
       isAdversarial: Boolean(isAdversarial),
       analysisTrace: analysisTrace || null,

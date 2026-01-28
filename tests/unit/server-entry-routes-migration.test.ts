@@ -2,15 +2,15 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../server/src/config/middleware.config.ts', () => ({
+vi.mock('@config/middleware.config', () => ({
   configureMiddleware: vi.fn(),
 }));
 
-vi.mock('../../server/src/config/routes.config.ts', () => ({
+vi.mock('@config/routes.config', () => ({
   configureRoutes: vi.fn(),
 }));
 
-vi.mock('../../server/src/services/quality-feedback/services/LLMJudgeService.js', () => ({
+vi.mock('@services/quality-feedback/services/LLMJudgeService', () => ({
   LLMJudgeService: class {
     async evaluateSuggestions() {
       return {
@@ -48,13 +48,14 @@ vi.mock('../../server/src/services/quality-feedback/services/LLMJudgeService.js'
   },
 }));
 
-import * as middlewareConfig from '../../server/src/config/middleware.config.ts';
-import * as routesConfig from '../../server/src/config/routes.config.ts';
-import { createApp } from '../../server/src/app.js';
-import { startServer } from '../../server/src/server.js';
-import { createHealthRoutes } from '../../server/src/routes/health.routes.js';
-import { createAPIRoutes } from '../../server/src/routes/api.routes.js';
-import { createSuggestionsRoute } from '../../server/src/routes/suggestions.js';
+import * as middlewareConfig from '@config/middleware.config';
+import * as routesConfig from '@config/routes.config';
+import { createApp } from '@server/app';
+import { startServer } from '@server/server';
+import { createHealthRoutes } from '@routes/health.routes';
+import { createAPIRoutes } from '@routes/api.routes';
+import { createSuggestionsRoute } from '@routes/suggestions';
+import type { AIModelService } from '@services/ai-model/AIModelService';
 
 describe('createApp', () => {
   it('sets trust proxy and wires middleware/routes', () => {
@@ -94,8 +95,8 @@ describe('startServer', () => {
     const server = await startServer(app, container as never);
 
     expect(server.listening).toBe(true);
-    expect(server.keepAliveTimeout).toBe(65000);
-    expect(server.headersTimeout).toBe(66000);
+    expect(server.keepAliveTimeout).toBe(125000);
+    expect(server.headersTimeout).toBe(126000);
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
@@ -131,7 +132,7 @@ describe('health.routes', () => {
     const ready = await request(app).get('/health/ready');
     expect(ready.status).toBe(200);
     expect(ready.body.status).toBe('ready');
-    expect(ready.body.checks.cache).toBe(true);
+    expect(ready.body.checks.cache.healthy).toBe(true);
     expect(ready.body.checks.openAI.healthy).toBe(true);
   });
 
@@ -173,7 +174,7 @@ describe('health.routes', () => {
 describe('api.routes', () => {
   it('validates and processes optimize requests', async () => {
     const promptOptimizationService = {
-      optimize: vi.fn(async () => 'optimized prompt'),
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
     };
 
     const app = express();
@@ -197,12 +198,99 @@ describe('api.routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.optimizedPrompt).toBe('optimized prompt');
-    expect(promptOptimizationService.optimize).toHaveBeenCalledWith({
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'Hello world',
       mode: 'video',
+      targetModel: undefined,
       context: undefined,
       brainstormContext: undefined,
-    });
+      skipCache: false,
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
+  });
+
+  it('passes skipCache through optimize requests', async () => {
+    const promptOptimizationService = {
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      createAPIRoutes({
+        promptOptimizationService,
+        enhancementService: {},
+        sceneDetectionService: {},
+        videoConceptService: {},
+        metricsService: null,
+      })
+    );
+
+    const response = await request(app)
+      .post('/optimize')
+      .send({ prompt: 'Hello world', skipCache: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.optimizedPrompt).toBe('optimized prompt');
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Hello world',
+      mode: 'video',
+      targetModel: undefined,
+      context: undefined,
+      brainstormContext: undefined,
+      skipCache: true,
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
+  });
+
+  it('passes locked spans through optimize requests', async () => {
+    const promptOptimizationService = {
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      createAPIRoutes({
+        promptOptimizationService,
+        enhancementService: {},
+        sceneDetectionService: {},
+        videoConceptService: {},
+        metricsService: null,
+      })
+    );
+
+    const response = await request(app)
+      .post('/optimize')
+      .send({
+        prompt: 'Hello world',
+        lockedSpans: [
+          {
+            id: 'span_1',
+            text: 'neon alley',
+            leftCtx: 'rain-soaked ',
+            rightCtx: ' at night',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.optimizedPrompt).toBe('optimized prompt');
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Hello world',
+      lockedSpans: [
+        {
+          id: 'span_1',
+          text: 'neon alley',
+          leftCtx: 'rain-soaked ',
+          rightCtx: ' at night',
+        },
+      ],
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
   });
 });
 
@@ -210,7 +298,8 @@ describe('suggestions.routes', () => {
   it('validates suggestion evaluation payloads', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const invalid = await request(app).post('/evaluate').send({
       suggestions: [],
@@ -224,7 +313,8 @@ describe('suggestions.routes', () => {
   it('returns evaluation results for valid requests', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const response = await request(app).post('/evaluate').send({
       suggestions: [{ text: 'Better phrasing' }],
@@ -239,7 +329,8 @@ describe('suggestions.routes', () => {
   it('supports single and compare evaluation endpoints', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const single = await request(app).post('/evaluate/single').send({
       suggestion: 'One option',
@@ -261,7 +352,8 @@ describe('suggestions.routes', () => {
 
   it('exposes rubric definitions', async () => {
     const app = express();
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const response = await request(app).get('/rubrics');
 

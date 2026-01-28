@@ -5,6 +5,9 @@
  */
 
 import { DEBUG_HIGHLIGHTS } from '../config/constants.ts';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('textMatching');
 
 /**
  * Normalize text for comparison (lowercase, trim, collapse whitespace)
@@ -63,7 +66,8 @@ export function validateHighlightText(
   
   // Significant mismatch - log and reject
   if (DEBUG_HIGHLIGHTS) {
-    console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
+    log.warn('SPAN_MISMATCH - Skipping highlight', {
+      operation: 'validateHighlightText',
       id: span.id,
       role: span.role,
       expected: expectedText,
@@ -77,4 +81,3 @@ export function validateHighlightText(
   
   return false;
 }
-

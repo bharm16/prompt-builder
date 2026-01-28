@@ -1,7 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { completeSceneOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for completing video scenes by filling empty elements.
@@ -37,7 +36,7 @@ export class SceneCompletionService {
 
     const filledCount = Object.keys(params.existingElements).length - emptyElements.length;
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       emptyElementCount: emptyElements.length,
       filledElementCount: filledCount,
@@ -45,7 +44,7 @@ export class SceneCompletionService {
     });
 
     if (emptyElements.length === 0) {
-      this.log.debug(`${operation}: No empty elements to complete`, {
+      this.log.debug('No empty elements to complete.', {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -78,12 +77,16 @@ Return ONLY a JSON object with the missing elements:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array' } = {
+        type: 'object' as const,
+      };
+      
       const suggestions = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_scene_completion',
-          schema: completeSceneOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.7,
         }
@@ -92,7 +95,7 @@ Return ONLY a JSON object with the missing elements:
       const duration = Math.round(performance.now() - startTime);
       const completedCount = Object.keys(suggestions).length;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         emptyElementCount: emptyElements.length,
@@ -102,7 +105,7 @@ Return ONLY a JSON object with the missing elements:
       return { suggestions: { ...params.existingElements, ...suggestions } };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         emptyElementCount: emptyElements.length,
@@ -111,4 +114,3 @@ Return ONLY a JSON object with the missing elements:
     }
   }
 }
-

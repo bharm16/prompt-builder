@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.js';
-import { cacheService } from './cache/CacheService.js';
+import { logger } from '@infrastructure/Logger';
+import { cacheService } from './cache/CacheService';
 
 // Import specialized services
 import {
@@ -14,9 +14,9 @@ import {
   PromptValidationService,
   ConflictDetectionService,
   VideoTemplateRepository,
-} from './video-concept/index.js';
-import type { AIService } from './prompt-optimization/types.js';
-import type { VideoTemplate } from './video-concept/types.js';
+} from './video-concept/index';
+import type { AIService } from './prompt-optimization/types';
+import type { VideoTemplate, StorageAdapter, TemplateStorageAdapter } from './video-concept/types';
 
 /**
  * Video concept service options
@@ -24,13 +24,13 @@ import type { VideoTemplate } from './video-concept/types.js';
 export interface VideoConceptServiceOptions {
   preferenceRepository?: PreferenceRepository;
   preferenceRepositoryOptions?: {
-    storage?: unknown;
-    maxChosenHistory?: number;
-    maxRejectedHistory?: number;
+    storage?: StorageAdapter | undefined;
+    maxChosenHistory?: number | undefined;
+    maxRejectedHistory?: number | undefined;
   };
   templateRepository?: VideoTemplateRepository;
   templateRepositoryOptions?: {
-    storage?: unknown;
+    storage?: TemplateStorageAdapter | undefined;
   };
 }
 

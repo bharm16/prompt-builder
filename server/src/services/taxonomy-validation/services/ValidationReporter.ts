@@ -7,7 +7,7 @@ import type {
   FormattedValidationIssue,
   SuggestedFix,
   Severity
-} from '../types.js';
+} from '../types';
 
 /**
  * ValidationReporter
@@ -107,11 +107,14 @@ export class ValidationReporter {
    */
   generateFix(issue: ValidationIssue): SuggestedFix {
     if (issue.type === 'MISSING_PARENT') {
-      return {
+      const fix: SuggestedFix = {
         action: 'ADD_PARENT',
-        parentCategory: issue.requiredParent,
         suggestion: `Add a '${issue.requiredParent}' category to provide context`
       };
+      if (issue.requiredParent) {
+        fix.parentCategory = issue.requiredParent;
+      }
+      return fix;
     }
 
     if (issue.type === 'DISTANT_RELATIONSHIP') {
@@ -188,4 +191,3 @@ export class ValidationReporter {
     return examples[parentId] || `a ${parentId}`;
   }
 }
-

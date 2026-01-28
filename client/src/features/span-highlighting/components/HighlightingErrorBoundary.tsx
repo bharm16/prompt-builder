@@ -7,8 +7,11 @@
  */
 
 import React, { type ReactNode } from 'react';
-import { ErrorBoundary } from '@components/ErrorBoundary/ErrorBoundary';
+import { ErrorBoundary, type FallbackProps } from '@components/ErrorBoundary/ErrorBoundary';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { spanLabelingCache } from '../services/index.ts';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 
 export interface HighlightingErrorBoundaryProps {
   children: ReactNode;
@@ -19,25 +22,26 @@ export interface HighlightingErrorBoundaryProps {
  * Clears cache on reset to recover from corrupt data
  */
 export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundaryProps): React.ReactElement {
+  const log = React.useMemo(() => logger.child('HighlightingErrorBoundary'), []);
+
   const handleReset = (): void => {
     // Clear highlighting cache on error reset to recover from corrupt data
     try {
       if (spanLabelingCache) {
         spanLabelingCache.clear();
-        console.log('[HighlightingErrorBoundary] Cache cleared after error');
+        log.info('Cache cleared after error reset', { operation: 'handleReset' });
       }
     } catch (error) {
-      console.error('[HighlightingErrorBoundary] Failed to clear cache:', error);
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Failed to clear cache after error reset', errObj, { operation: 'handleReset' });
     }
   };
   
   return (
     <ErrorBoundary
-      feature="span-highlighting"
       title="Highlighting temporarily unavailable"
       message="Text highlighting has encountered an issue. Your content is safe and you can continue editing."
-      onReset={handleReset}
-      fallback={({ error, resetError }: { error: Error; resetError: () => void }) => (
+      fallback={({ error, resetError }: FallbackProps) => (
         <div className="highlighting-error p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex items-start gap-2">
             <svg 
@@ -73,12 +77,16 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
                 </details>
               )}
               
-              <button
-                onClick={resetError}
-                className="mt-2 text-sm text-yellow-700 underline hover:text-yellow-800 hover:no-underline"
+              <Button
+                onClick={() => {
+                  handleReset();
+                  resetError();
+                }}
+                variant="link"
+                className="mt-2 h-auto p-0 text-sm text-yellow-700 underline hover:text-yellow-800 hover:no-underline"
               >
                 Re-enable highlighting
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -90,4 +98,3 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
 }
 
 export default HighlightingErrorBoundary;
-

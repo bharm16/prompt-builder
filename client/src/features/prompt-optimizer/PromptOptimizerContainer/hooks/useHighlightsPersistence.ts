@@ -1,21 +1,19 @@
 import { useCallback } from 'react';
-import { getPromptRepository } from '@/repositories';
+import { getPromptRepository } from '@repositories/index';
 import type { Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useHighlightsPersistence');
 
 interface Span {
   id?: string;
-  start?: number;
-  end?: number;
-  category?: string;
+  start: number;
+  end: number;
+  category: string;
+  confidence: number;
   [key: string]: unknown;
-}
-
-interface HighlightSnapshot {
-  spans: Span[];
-  meta: Record<string, unknown> | null;
-  signature: string;
-  cacheId: string | null;
-  updatedAt: string;
 }
 
 interface PersistenceResult {
@@ -23,7 +21,7 @@ interface PersistenceResult {
   meta?: Record<string, unknown> | null;
   signature: string;
   cacheId?: string | null;
-  source?: 'network' | 'cache-fallback' | 'local';
+  source?: string;
 }
 
 interface User {
@@ -124,16 +122,17 @@ export function useHighlightsPersistence({
         const promptRepository = getPromptRepository();
         await promptRepository.updateHighlights(currentPromptDocId, {
           highlightCache: snapshot,
-          versionEntry: {
-            versionId: `v-${Date.now()}`,
-            signature: result.signature,
-            spansCount: result.spans.length,
-            timestamp: new Date().toISOString(),
-          },
         });
         persistedSignatureRef.current = result.signature;
       } catch (error) {
-        console.error('Failed to persist highlight snapshot:', error);
+        const info = sanitizeError(error);
+        log.warn('Failed to persist highlight snapshot', {
+          operation: 'updateHighlights',
+          error: info.message,
+          errorName: info.name,
+          promptUuid: currentPromptUuid ?? null,
+          promptDocId: currentPromptDocId ?? null,
+        });
         // Silent failure for background highlight persistence - not critical to user workflow
         // Only show error if it's a permission issue
         const err = error as Error & { code?: string };
@@ -156,4 +155,3 @@ export function useHighlightsPersistence({
 
   return { handleHighlightsPersist };
 }
-

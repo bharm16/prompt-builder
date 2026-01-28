@@ -4,8 +4,10 @@
  * Handles common LLM response formats like markdown code fences
  * and provides safe parsing with error handling.
  */
+import { attemptJsonRepair } from '@clients/adapters/jsonRepair';
+import { cleanJSONResponse } from '@utils/JsonExtractor';
 
-interface UserPayloadParams {
+export interface UserPayloadParams {
   task: string;
   policy: Record<string, unknown>;
   text: string;
@@ -53,12 +55,128 @@ export function cleanJsonEnvelope(value: unknown): string {
  * @returns {Object} {ok: boolean, value?: any, error?: string}
  */
 export function parseJson(raw: string): ParseResult {
+  const cleaned = cleanJsonEnvelope(raw);
+
+  let result = tryParseJson(cleaned);
+  if (result.ok) return result;
+
+  const extracted = extractJsonCandidate(cleaned);
+  if (extracted !== cleaned) {
+    result = tryParseJson(extracted);
+    if (result.ok) return result;
+  }
+
+  const newlineEscaped = escapeNewlinesInStrings(extracted);
+  if (newlineEscaped !== extracted) {
+    result = tryParseJson(newlineEscaped);
+    if (result.ok) return result;
+  }
+
+  const { repaired } = attemptJsonRepair(newlineEscaped);
+  result = tryParseJson(repaired);
+  if (result.ok) return result;
+
+  return result;
+}
+
+function tryParseJson(raw: string): ParseResult {
   try {
-    return { ok: true, value: JSON.parse(cleanJsonEnvelope(raw)) };
+    return { ok: true, value: JSON.parse(raw) };
   } catch (error) {
     const err = error as { message?: string };
     return { ok: false, error: `Invalid JSON: ${err.message}` };
   }
+}
+
+function detectJsonContainer(text: string): 'array' | 'object' {
+  const arrayIndex = text.indexOf('[');
+  const objectIndex = text.indexOf('{');
+
+  if (arrayIndex === -1 && objectIndex === -1) {
+    return 'object';
+  }
+  if (arrayIndex === -1) {
+    return 'object';
+  }
+  if (objectIndex === -1) {
+    return 'array';
+  }
+
+  return arrayIndex < objectIndex ? 'array' : 'object';
+}
+
+function extractJsonCandidate(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+
+  const container = detectJsonContainer(trimmed);
+  try {
+    return cleanJSONResponse(trimmed, container === 'array');
+  } catch {
+    return trimmed;
+  }
+}
+
+function escapeNewlinesInStrings(value: string): string {
+  if (!value) return value;
+
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        result += char;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        result += char;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+        result += char;
+        continue;
+      }
+
+      if (char === '\n') {
+        result += '\\n';
+        continue;
+      }
+
+      if (char === '\r') {
+        result += '\\r';
+        continue;
+      }
+
+      if (char === '\t') {
+        result += '\\t';
+        continue;
+      }
+
+      result += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    }
+
+    result += char;
+  }
+
+  if (inString) {
+    result += '"';
+  }
+
+  return result;
 }
 
 /**
@@ -84,7 +202,13 @@ export function buildUserPayload({
   templateVersion,
   validation,
 }: UserPayloadParams): string {
-  const payload = {
+  const payload: {
+    task: string;
+    policy: Record<string, unknown>;
+    text: string;
+    templateVersion: string;
+    validation?: Record<string, unknown>;
+  } = {
     task,
     policy,
     // Wrap user input in XML tags for adversarial safety (PDF Design A, Section 1.6)

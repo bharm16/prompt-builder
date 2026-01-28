@@ -1,0 +1,50 @@
+Evaluation Report - 2025-12-29T03:22:30.507Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (1 prompts evaluated):
+  Average Score:      22.00/25
+  Average Span Count: 26.00
+  Success/Errors:     1/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ██████████████████████████████ 1
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=11829 | P50=11829 | P95=11829
+  Judge:      Avg=2932 | P50=2932 | P95=2932
+
+CATEGORY SCORES (avg coverage/precision):
+  shot           5.00 / 5.00
+  subject        3.00 / 4.00
+  action         4.00 / 4.00
+  environment    5.00 / 5.00
+  lighting       4.00 / 5.00
+  camera         5.00 / 5.00
+  style          5.00 / 5.00
+  technical      5.00 / 5.00
+  audio          5.00 / 5.00
+
+❌ COMMONLY MISSED ELEMENTS:
+  - woman with bright blue sports jersey, white high-top sneakers, and black braided hair (1x, subject)
+  - natural daylight from the sun, casting soft shadows (1x, lighting)
+
+⚠️  COMMON FALSE POSITIVES:
+  - precision and agility (1x, abstract_concept)
+
+🔄 TOP TAXONOMY ERRORS:
+  - focus → camera.focus (1x) e.g. "selective focus"
+
+🔍 WORST PERFORMERS (for debugging):
+  [22/25] "Test input..."
+    Notes: The extraction was mostly accurate, but missed some important elements like the combined subject des
+
+================================================================================

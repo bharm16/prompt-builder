@@ -14,9 +14,9 @@ export interface ErrorMetadata {
 export class AppError extends Error {
   code: string;
   statusCode: number;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> | undefined;
 
-  constructor(message: string, code: string, statusCode: number = 500, details?: Record<string, unknown>) {
+  constructor(message: string, code: string, statusCode: number = 500, details?: Record<string, unknown> | undefined) {
     super(message);
     this.name = 'AppError';
     this.code = code;

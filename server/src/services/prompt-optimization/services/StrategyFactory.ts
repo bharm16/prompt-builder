@@ -1,6 +1,6 @@
-import { VideoStrategy } from '../strategies/VideoStrategy.js';
-import { logger } from '@infrastructure/Logger.js';
-import type { AIService, TemplateService, OptimizationStrategy, OptimizationMode } from '../types.js';
+import { VideoStrategy } from '../strategies/VideoStrategy';
+import { logger } from '@infrastructure/Logger';
+import type { AIService, TemplateService, OptimizationStrategy, OptimizationMode } from '../types';
 
 /**
  * Factory for creating optimization strategy instances
@@ -38,9 +38,8 @@ export class StrategyFactory {
   getStrategy(mode?: OptimizationMode): OptimizationStrategy {
     // Always return video strategy (only mode supported)
     const strategy = this.strategies.video;
-
-    if (mode && mode !== 'video') {
-      logger.warn('Unknown optimization mode, using video', { mode });
+    if (!strategy) {
+      throw new Error('Video optimization strategy not configured');
     }
 
     logger.debug('Strategy selected', { mode: mode || 'video', strategyName: strategy.name });
@@ -63,4 +62,3 @@ export class StrategyFactory {
 }
 
 export default StrategyFactory;
-

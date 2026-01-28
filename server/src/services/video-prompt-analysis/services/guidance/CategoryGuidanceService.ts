@@ -1,8 +1,8 @@
 import { logger } from '@infrastructure/Logger';
-import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '../../config/categoryGuidance.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
-import { normalizeText } from '../../utils/textHelpers.js';
-import type { GuidanceSpan, EditHistoryEntry, ExistingElements, CategoryRelationships } from '../../types.js';
+import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '@services/video-prompt-analysis/config/categoryGuidance';
+import { TAXONOMY } from '#shared/taxonomy';
+import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
+import type { GuidanceSpan, EditHistoryEntry, ExistingElements, CategoryRelationships } from '@services/video-prompt-analysis/types';
 
 /**
  * Service responsible for providing context-aware category-specific guidance
@@ -286,11 +286,11 @@ export class CategoryGuidanceService {
       e.category && e.category.toLowerCase().includes('lighting')
     );
     
-    if (lightingEdits.length > 0) {
-      const latestEdit = lightingEdits[0]; // Most recent
-      if (latestEdit.replacement?.includes('moody') || latestEdit.replacement?.includes('dark')) {
+    const latestLightingEdit = lightingEdits[0];
+    if (latestLightingEdit) {
+      if (latestLightingEdit.replacement?.includes('moody') || latestLightingEdit.replacement?.includes('dark')) {
         guidance.push('MAINTAIN MOODY TONE: Use low key ratios (4:1 or higher), selective pools of light');
-      } else if (latestEdit.replacement?.includes('soft') || latestEdit.replacement?.includes('gentle')) {
+      } else if (latestLightingEdit.replacement?.includes('soft') || latestLightingEdit.replacement?.includes('gentle')) {
         guidance.push('MAINTAIN SOFT LIGHTING: Diffused sources, low contrast ratios (2:1 to 3:1)');
       }
     }
@@ -446,11 +446,9 @@ export class CategoryGuidanceService {
       e.category && e.category.toLowerCase().includes('mood')
     );
     
-    if (moodEdits.length > 0) {
-      const latestEdit = moodEdits[0];
-      if (latestEdit.original && latestEdit.replacement) {
-        guidance.push(`RESPECT mood evolution from "${latestEdit.original}" to "${latestEdit.replacement}"`);
-      }
+    const latestMoodEdit = moodEdits[0];
+    if (latestMoodEdit?.original && latestMoodEdit.replacement) {
+      guidance.push(`RESPECT mood evolution from "${latestMoodEdit.original}" to "${latestMoodEdit.replacement}"`);
     }
 
     if (relationships.opportunities.length > 0) {

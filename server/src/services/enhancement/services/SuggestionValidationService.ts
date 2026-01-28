@@ -1,5 +1,7 @@
 import { logger } from '@infrastructure/Logger';
 import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
+import { getParentCategory } from '@shared/taxonomy';
+import { getAllExampleTexts } from '../config/EnhancementExamples';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
 
 /**
@@ -12,6 +14,13 @@ import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService 
  */
 export class SuggestionValidationService {
   private readonly log = logger.child({ service: 'SuggestionValidationService' });
+  private readonly exampleTexts = getAllExampleTexts();
+  private readonly lockedCategoryPatterns: Record<string, RegExp> = {
+    camera: /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing)\b/i,
+    shot: /\b(wide shot|medium shot|close[-\s]?up|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|shot|angle)\b/i,
+    lighting: /\b(lighting|shadow|glow|illuminat|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
+    technical: /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
+  };
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -83,13 +92,18 @@ export class SuggestionValidationService {
 
       let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
       text = text.replace(/\s+/g, ' ').trim();
+      const lowerText = text.toLowerCase();
 
       if (!text) {
         return;
       }
 
-      if (normalizedHighlight && text.toLowerCase() === normalizedHighlight) {
+      if (normalizedHighlight && lowerText === normalizedHighlight) {
         return; // identical to highlight, no improvement
+      }
+
+      if (this.exampleTexts.has(lowerText)) {
+        return;
       }
 
       if (/\r|\n/.test(text)) {
@@ -100,9 +114,12 @@ export class SuggestionValidationService {
         return;
       }
 
-      const lowerText = text.toLowerCase();
-      if (disallowedPrefixes.some((prefix) => lowerText.startsWith(prefix))) {
-        return;
+      // Strip conversational prefixes instead of rejecting
+      const foundPrefix = disallowedPrefixes.find((prefix) => lowerText.startsWith(prefix));
+      if (foundPrefix) {
+        text = text.substring(foundPrefix.length).trim();
+        // Re-check validity after stripping
+        if (!text) return;
       }
 
       if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
@@ -112,12 +129,49 @@ export class SuggestionValidationService {
       const wordCount = this.videoService.countWords(text);
 
       if (context.isPlaceholder) {
-        if (wordCount === 0 || wordCount > 4) {
+        const constraints = context.videoConstraints || {
+          minWords: 1,
+          maxWords: 4,
+          maxSentences: 1,
+          disallowTerminalPunctuation: true,
+        };
+
+        const minWords = Number.isFinite(constraints.minWords)
+          ? constraints.minWords!
+          : 1;
+        const maxWords = Number.isFinite(constraints.maxWords)
+          ? constraints.maxWords!
+          : 4;
+        const maxSentences = Number.isFinite(constraints.maxSentences)
+          ? constraints.maxSentences!
+          : 1;
+
+        if (wordCount < minWords || wordCount > maxWords) {
           return;
         }
 
-        if (/[.!?]/.test(text)) {
+        const sentenceCount = (text.match(/[.!?]/g) || []).length;
+        if (maxSentences > 0 && sentenceCount > maxSentences) {
           return;
+        }
+
+        if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
+          return;
+        }
+
+        if (constraints.mode === 'micro') {
+          if (/[.!?]/.test(text)) {
+            return;
+          }
+
+          const commaCount = (text.match(/,/g) || []).length;
+          if (commaCount > 1 || /[:;]/.test(text)) {
+            return;
+          }
+
+          if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
+            return;
+          }
         }
       } else if (context.isVideoPrompt) {
         const constraints = context.videoConstraints || {
@@ -167,6 +221,29 @@ export class SuggestionValidationService {
         }
 
         if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
+          return;
+        }
+      }
+
+      if (context.lockedSpanCategories && context.lockedSpanCategories.length > 0) {
+        const targetParent =
+          getParentCategory(context.highlightedCategory) ||
+          context.highlightedCategory ||
+          '';
+        const lockedParents = Array.from(
+          new Set(
+            context.lockedSpanCategories
+              .map((category) => getParentCategory(category) || category)
+              .filter(Boolean)
+          )
+        ).filter((category) => category && category !== targetParent);
+
+        const hasConflict = lockedParents.some((category) => {
+          const pattern = this.lockedCategoryPatterns[category];
+          return pattern ? pattern.test(text) : false;
+        });
+
+        if (hasConflict) {
           return;
         }
       }

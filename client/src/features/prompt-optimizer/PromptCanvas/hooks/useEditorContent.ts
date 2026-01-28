@@ -5,8 +5,8 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useEffect, type RefObject } from 'react';
-import { getSelectionOffsets, restoreSelectionFromOffsets } from '../../utils/textSelection';
+import { useLayoutEffect, type RefObject } from 'react';
+import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
 
 export interface UseEditorContentOptions {
   editorRef: RefObject<HTMLElement>;
@@ -22,7 +22,7 @@ export function useEditorContent({
   displayedPrompt,
   formattedHTML,
 }: UseEditorContentOptions): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (editorRef.current && displayedPrompt) {
       const newHTML = formattedHTML || displayedPrompt;
 
@@ -71,8 +71,7 @@ export function useEditorContent({
       }
     } else if (editorRef.current && !displayedPrompt) {
       editorRef.current.innerHTML =
-        '<p style="color: rgb(163, 163, 163); font-size: 0.875rem; font-family: var(--font-geist-sans);">Your optimized prompt will appear here...</p>';
+        '<p style="color: var(--text-muted); font-size: var(--fs-14); line-height: var(--lh-relaxed); font-family: var(--font-sans);">Your optimized prompt will appear here…</p>';
     }
   }, [editorRef, displayedPrompt, formattedHTML]);
 }
-

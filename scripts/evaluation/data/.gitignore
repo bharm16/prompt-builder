@@ -1,0 +1,5 @@
+# Ignore generated evaluation data (can be regenerated)
+evaluation-prompts-*.json
+
+# Keep latest for reference if desired
+!evaluation-prompts-latest.json

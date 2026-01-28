@@ -36,6 +36,7 @@ export interface HighlightMetadata {
   rightCtx: string;
   idempotencyKey: string | null;
   span?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface ParseResult {
@@ -123,4 +124,3 @@ export function createHighlightRange(
 
   return { range, rangeClone, offsets };
 }
-

@@ -35,6 +35,11 @@ interface ModelConfigEntry {
 
 type OperationName = keyof typeof ModelConfig;
 
+const QWEN_FALLBACK = {
+  model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
+  timeout: parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
+};
+
 /**
  * Model Configuration Object
  * 
@@ -65,6 +70,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 4096,
     timeout: 60000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true, // GPT-4o: Use developer role for format constraints
   },
 
@@ -79,6 +85,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 500,
     timeout: 15000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same concept should draft similarly
     useDeveloperMessage: true,
   },
@@ -173,6 +180,21 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     responseFormat: 'json_object',
     fallbackTo: 'openai',
     // Note: Seed not used - we want variation in suggestions
+    useDeveloperMessage: true,
+  },
+
+  /**
+   * Custom suggestion requests (user-directed replacements)
+   */
+  custom_suggestions: {
+    client: process.env.ENHANCE_PROVIDER || 'qwen',
+    model: process.env.ENHANCE_MODEL || 'qwen/qwen3-32b',
+    temperature: 0.1,
+    maxTokens: 1024,
+    timeout: 8000,
+    responseFormat: 'json_object',
+    fallbackTo: 'openai',
+    useDeveloperMessage: true,
   },
 
   /**
@@ -198,6 +220,20 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     useSeed: true, // Consistent deduplication
   },
 
+  /**
+   * Prompt-wide coherence checks after span edits
+   */
+  prompt_coherence_check: {
+    client: 'openai',
+    model: 'gpt-4o-mini-2024-07-18',
+    temperature: 0.2,
+    maxTokens: 2048,
+    timeout: 25000,
+    responseFormat: 'json_object',
+    useSeed: true, // Consistent coherence findings
+    useDeveloperMessage: true,
+  },
+
   // ============================================================================
   // Video Concept Operations
   // ============================================================================
@@ -212,6 +248,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 2048,
     timeout: 45000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true,
   },
 
@@ -340,6 +377,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     timeout: 30000,
     responseFormat: 'json_object',
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same prompt should generate same questions
     useDeveloperMessage: true,
   },
@@ -391,6 +429,51 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
+   * Explicit Gemini configuration for span labeling
+   * Used by GeminiLlmClient to force Gemini usage regardless of SPAN_PROVIDER
+   */
+  span_labeling_gemini: {
+    client: 'gemini',
+    model: 'gemini-2.5-flash',
+    temperature: 0.1,
+    maxTokens: 16384,
+    timeout: 45000,
+    useSeed: true,
+  },
+
+  // ============================================================================
+  // Image Observation (I2V)
+  // ============================================================================
+
+  /**
+   * Image observation for i2v constraints
+   * Requires a vision-capable model.
+   */
+  image_observation: {
+    client: process.env.IMAGE_OBSERVATION_PROVIDER || 'openai',
+    model: process.env.IMAGE_OBSERVATION_MODEL || 'gpt-4o-mini-2024-07-18',
+    temperature: 0.1,
+    maxTokens: 800,
+    timeout: 30000,
+    responseFormat: 'json_object',
+    useSeed: false,
+  },
+
+  /**
+   * Parse i2v prompts into motion vs visual components
+   */
+  parse_i2v_prompt: {
+    client: process.env.I2V_PARSE_PROVIDER || 'openai',
+    model: process.env.I2V_PARSE_MODEL || 'gpt-4o-mini-2024-07-18',
+    temperature: 0.1,
+    maxTokens: 800,
+    timeout: 20000,
+    responseFormat: 'json_object',
+    useSeed: true,
+    useDeveloperMessage: true,
+  },
+
+  /**
    * Role classification for spans
    * Temperature 0.0 for deterministic classification
    */
@@ -401,6 +484,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 600,
     timeout: 20000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same spans should classify identically
     useDeveloperMessage: true,
   },
@@ -435,6 +519,44 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     fallbackTo: 'openai',
     useSeed: true, // Consistent evaluation
   },
+};
+
+/**
+ * Video Models Configuration (Dec 2025 Update)
+ * 
+ * Defines the hierarchy of video generation models used in the application.
+ */
+export const VIDEO_MODELS = {
+  /** ⚡ DRAFT TIER: Extremely cheap ($0.01), fast, decent motion. */
+  DRAFT: "wan-video/wan-2.2-t2v-fast", 
+
+  /** ⚡ DRAFT TIER i2v: image-to-video fast. */
+  DRAFT_I2V: "wan-video/wan-2.2-i2v-fast",
+  
+  /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
+  PRO: "wan-video/wan-2.2-t2v-fast", 
+
+  /** 🌌 FLAGSHIP: OpenAI Sora 2 (text/image → video, audio-capable). */
+  SORA_2: "sora-2",
+
+  /** 🌌 FLAGSHIP (PRO): OpenAI Sora 2 Pro (higher quality, slower). */
+  SORA_2_PRO: "sora-2-pro",
+
+  /** 🎥 TEXT → VIDEO: Kling v2.1 (official API). */
+  KLING_V2_1: "kling-v2-1-master",
+
+  /** 🌈 HDR / REASONING: Luma Ray-3 (Dream Machine). */
+  LUMA_RAY3: "luma-ray3",
+
+  /** 🔊 AUDIO: Google Veo 3.1 (official Gemini API, text → video with audio). */
+  VEO_3: "google/veo-3",
+  
+  /** 🎨 ARTISTIC / SPECIALIZED: High style adherence. */
+  ARTISTIC: "genmo/mochi-1-final",
+  
+  /** 🔒 PROPRIETARY FALLBACKS (API Wrappers / BYOK) */
+  TIER_1: "minimax/video-02", // Hailuo-02
+  TIER_2: "google/veo-3"      // Google Veo
 };
 
 /**

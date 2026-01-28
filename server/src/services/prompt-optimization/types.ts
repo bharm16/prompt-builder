@@ -2,11 +2,15 @@
  * Types for prompt optimization services
  * Shared type definitions used across prompt optimization modules
  */
+import type { ExecuteParams } from '@services/ai-model/AIModelService';
+import type { AIResponse } from '@interfaces/IAIClient';
+import type { CapabilityValues } from '@shared/capabilities';
+import type { I2VConstraintMode, I2VOptimizationResult } from './types/i2v';
 
 /**
  * Optimization mode type
  */
-export type OptimizationMode = 'video' | 'reasoning' | 'research' | 'socratic' | 'optimize';
+export type OptimizationMode = 'video';
 
 /**
  * Context inferred from prompt
@@ -31,6 +35,16 @@ export interface QualityAssessment {
   };
   strengths: string[];
   weaknesses: string[];
+}
+
+export interface LockedSpan {
+  id?: string;
+  text: string;
+  leftCtx?: string | null;
+  rightCtx?: string | null;
+  category?: string | null;
+  source?: string | null;
+  confidence?: number | null;
 }
 
 /**
@@ -61,26 +75,47 @@ export interface ShotPlan {
 export interface OptimizationRequest {
   prompt: string;
   mode?: OptimizationMode;
+  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
+  generationParams?: CapabilityValues | null;
+  skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   shotPlan?: ShotPlan | null;
   shotPlanAttempted?: boolean;
+  domainContent?: string | null;
   useConstitutionalAI?: boolean;
   useIterativeRefinement?: boolean;
-  domainContent?: unknown;
+  onMetadata?: (metadata: Record<string, unknown>) => void;
+  onChunk?: (delta: string) => void;
   signal?: AbortSignal;
+  // I2V-specific
+  startImage?: string;
+  constraintMode?: I2VConstraintMode;
+  /** server-only fast path for platform-generated images */
+  sourcePrompt?: string;
 }
 
-/**
- * Two-stage optimization request
- */
 export interface TwoStageOptimizationRequest {
   prompt: string;
   mode?: OptimizationMode;
+  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
-  onDraft?: ((draft: string, spans?: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
+  generationParams?: CapabilityValues | null;
+  skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
+  onDraft?: ((draft: string, spans: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
+  onDraftChunk?: ((delta: string) => void) | null;
+  onRefinedChunk?: ((delta: string) => void) | null;
   signal?: AbortSignal;
+}
+
+export interface OptimizationResponse {
+  prompt: string;
+  inputMode: 't2v' | 'i2v';
+  metadata?: Record<string, unknown>;
+  i2v?: I2VOptimizationResult;
 }
 
 /**
@@ -109,14 +144,11 @@ export interface OptimizationStrategy {
  * AI Service interface (minimal)
  */
 export interface AIService {
-  execute(operation: string, options: {
-    systemPrompt: string;
-    userMessage?: string;
-    maxTokens?: number;
-    temperature?: number;
-    timeout?: number;
-    signal?: AbortSignal;
-  }): Promise<{ text?: string; content?: Array<{ text: string }> }>;
+  execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
+  stream?(
+    operation: string,
+    options: ExecuteParams & { onChunk: (chunk: string) => void }
+  ): Promise<string>;
   supportsStreaming?(operation: string): boolean;
   getAvailableClients?(): string[];
 }
@@ -126,5 +158,6 @@ export interface AIService {
  */
 export interface TemplateService {
   getTemplate?(name: string, version?: string): Promise<string>;
-  [key: string]: unknown;
+  load?(templateName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
+  loadSection?(sectionName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
 }

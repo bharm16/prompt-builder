@@ -4,10 +4,39 @@ Copy-paste these templates when working with Claude Code for TypeScript developm
 
 ---
 
+## 🔴 Critical: SRP/SoC Over Line Counts
+
+**Line counts are heuristics, NOT splitting triggers.** Before splitting any file:
+
+1. **Identify distinct responsibilities** - Does the file have multiple reasons to change?
+2. **Check for mixed concerns** - Is orchestration mixed with implementation?
+3. **Evaluate cohesion** - Would splitting improve or harm cohesion?
+
+**If a file has ONE cohesive responsibility → Don't split, even if over threshold.**
+
+### ❌ Mechanical Splitting (Never Do This)
+```typescript
+// BAD: Split because 210 > 200, but they change together
+UserProfile.tsx (180 lines) + UserProfileHeader.tsx (30 lines)
+```
+
+### ✅ Principled Splitting
+```typescript
+// GOOD: Split because different responsibilities, reusable
+UserProfile.tsx (orchestration) + UserAvatar.tsx (reused elsewhere)
+```
+
+---
+
 ## 🔴 Before Every Request
 
 ```
 Follow TypeScript + [VideoConceptBuilder | PromptOptimizationService] pattern.
+
+SRP CHECK (answer before implementing):
+1. How many distinct responsibilities does this have?
+2. How many reasons to change?
+3. If only 1 responsibility → keep cohesive, don't split mechanically
 
 TYPE REQUIREMENTS:
 - NO `any` or type assertions without TODO comment
@@ -30,7 +59,7 @@ ARCHITECTURE: TypeScript + VideoConceptBuilder pattern
 Structure:
 ```text
 ComponentName/
-├── ComponentName.tsx        (orchestrator, max 500 lines)
+├── ComponentName.tsx        (orchestrator, typically ~300-500 lines)
 ├── index.ts                 (barrel exports)
 ├── types.ts                 (Props, State, Domain interfaces)
 ├── constants.ts             (as const literals, config)
@@ -39,8 +68,11 @@ ComponentName/
 ├── api/
 │   ├── index.ts             (typed fetch functions)
 │   └── schemas.ts           (Zod schemas + inferred types)
-└── components/              (UI pieces < 200 lines each)
+└── components/              (UI pieces - split by responsibility, not line count)
 ```
+
+NOTE: Only create subdirectories for files with DISTINCT responsibilities.
+A 250-line component with one cohesive flow is better than 3 artificially split files.
 
 TYPE REQUIREMENTS:
 - [ ] Props interface exported from types.ts
@@ -87,7 +119,7 @@ ARCHITECTURE: TypeScript + PromptOptimizationService pattern
 Structure:
 ```text
 services/feature-name/
-├── FeatureService.ts        (orchestrator, max 500 lines)
+├── FeatureService.ts        (orchestrator, typically ~300-500 lines)
 ├── index.ts                 (barrel exports)
 ├── types/
 │   ├── index.ts             (barrel exports)
@@ -95,12 +127,15 @@ services/feature-name/
 │   └── requests.ts          (request/response interfaces)
 ├── contracts/
 │   └── IFeatureService.ts   (public interface for DI)
-├── services/                (specialized sub-services < 300 lines)
+├── services/                (specialized sub-services - split by responsibility)
 ├── strategies/              (strategy pattern implementations)
 └── schemas/
     ├── requests.ts          (Zod input validation)
     └── responses.ts         (Zod output validation)
 ```
+
+NOTE: Only create specialized services for DISTINCT responsibilities.
+A 400-line service doing one thing well is better than 4 artificially split files.
 
 TYPE REQUIREMENTS:
 - [ ] IFeatureService interface in contracts/
@@ -435,6 +470,7 @@ echo "JavaScript: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 
 ## Red Flags (Stop and Fix)
 
+### Type Safety
 - ❌ Using `any` without TODO comment
 - ❌ Using `as Type` without runtime validation
 - ❌ Missing return type on exported function
@@ -442,6 +478,18 @@ echo "JavaScript: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 - ❌ Optional chaining (`?.`) more than 2 levels deep
 - ❌ Manual type that duplicates Zod schema
 - ❌ JSDoc `@param` or `@returns` with type info
+
+### Architecture (SRP/SoC)
+- ❌ Splitting files solely because they exceed a line threshold
+- ❌ Creating components only used in one place
+- ❌ Extracting code that always changes together
+- ❌ Adding indirection without improving cohesion
+
+### When to Split (✅ Do This)
+- ✅ File has multiple distinct responsibilities
+- ✅ Different parts have different reasons to change
+- ✅ Extracted piece is reusable elsewhere
+- ✅ Mixing orchestration with implementation details
 
 ---
 

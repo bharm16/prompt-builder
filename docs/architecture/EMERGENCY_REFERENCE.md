@@ -1,10 +1,21 @@
 # Claude Code Emergency Reference (Print This)
 
-## The 3 Rules
+## The Only Rule
 
-1. **Always specify pattern**: "Follow [VideoConceptBuilder | PromptOptimizationService] pattern"
-2. **Always request structure first**: "SHOW STRUCTURE FIRST"
-3. **Always validate after**: Run `cc-check` or `wc -l [files]`
+> **"How many reasons does this have to change?"**
+
+If 1 → don't touch it.
+If 2+ → split by responsibility.
+
+---
+
+## Quick Tests
+
+| Test | How | Fail = Problem |
+|------|-----|----------------|
+| **Responsibility** | Describe in one sentence without "and" | Mixed concerns |
+| **Testability** | Mock ≤2 things to test it | Too much coupling |
+| **Change isolation** | Change X, only X's file changes | Shotgun surgery |
 
 ---
 
@@ -13,8 +24,12 @@
 ### Frontend Feature
 ```
 Add [feature name]
-ARCHITECTURE: VideoConceptBuilder pattern
-- Orchestrator max 500 lines, UI components max 200 lines
+PATTERN: VideoConceptBuilder
+- Orchestrator: wiring only, no business logic
+- hooks/: state + handlers (testable alone)
+- api/: fetch + parsing
+- components/: display only
+
 REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST
 ```
@@ -22,78 +37,75 @@ SHOW STRUCTURE FIRST
 ### Backend Service
 ```
 Add [service name]
-ARCHITECTURE: PromptOptimizationService pattern
-- Orchestrator max 500 lines, specialized services max 300 lines
-REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
+PATTERN: PromptOptimizationService
+- MainService: coordination only, delegates everything
+- services/: one responsibility each
+- templates/: external .md files
+
+REFERENCE: server/src/services/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 ```
 
 ### Modify Existing
 ```
-Modify [file path] to [do what]
-CURRENT: [file path] ([run: wc -l file])
-CONSTRAINTS: No file over [500 orchestrators | 200 UI | 300 services]
-SHOW WHAT CHANGES BEFORE implementing
+Modify [file] to [do what]
+
+BEFORE CHANGING:
+- Does this add a new responsibility? → Extract first
+- Will this keep the file's description to one sentence? → If not, split
+
+SHOW WHAT CHANGES FIRST
 ```
 
 ---
 
-## Size Limits
+## Where Things Go
 
-| Type | Max Lines |
-|------|-----------|
-| Orchestrator Component/Service | 500 |
-| Regular UI Component | 200 |
-| Hook | 150 |
-| Specialized Service | 300 |
-| Utility | 100 |
-| Config | 200 |
-| API Layer | 150 |
-
-**Note:** Orchestrators compose pieces. UI components contain logic. Extract business logic from orchestrators.
+| Thing | Location |
+|-------|----------|
+| HTTP calls | api/ |
+| State logic | hooks/ |
+| Business rules | hooks/ (FE) or services/ (BE) |
+| Pure transforms | utils/ |
+| Display | components/ |
+| Constants | config/ |
 
 ---
 
-## Validation Commands
+## Red Flags
 
-```bash
-# Check sizes (set up alias first - see SETUP_GUIDE.md)
-cc-check
+❌ **Stop if you see:**
+- Splitting "because it's too long"
+- Component used in exactly one place
+- Extracting code that always changes with its caller
+- `if` statements in orchestrator
 
-# Or manual:
-find client/src server/src -name "*.js" -o -name "*.jsx" | xargs wc -l | sort -rn | head -20
+⚠️ **Investigate if you see:**
+- Mocking 3+ things to test one function
+- One change touching 5+ files
+- Can't describe file in ≤10 words
+
+---
+
+## When Things Break
+
+```
+Refactor [file]
+
+PROBLEM: [actual issue—not "too long"]
+PATTERN: [VideoConceptBuilder | PromptOptimizationService]
+SPLIT BY: responsibility
+
+SHOW PLAN FIRST
 ```
 
 ---
 
-## Reference Examples
+## References
 
 **Frontend:** `client/src/components/VideoConceptBuilder/`
-**Backend:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
+**Backend:** `server/src/services/PromptOptimizationService.js`
 
 ---
 
-## When It Breaks
-
-```
-Refactor [file] following [pattern] pattern
-CURRENT: [X lines]
-TARGET: Follow [reference file]
-SHOW REFACTORING PLAN FIRST
-```
-
----
-
-## Red Flags (Stop & Refactor)
-
-- ❌ File approaching limit
-- ❌ API calls inline (should be in api/)
-- ❌ Multiple useState (should be useReducer)
-- ❌ Mixed UI + business logic
-- ❌ Hardcoded config (should be in config/)
-
----
-
-**Full docs:** `docs/architecture/CLAUDE_CODE_TEMPLATES.md`
-**Quick ref:** `docs/architecture/CLAUDE_CODE_CHEATSHEET.md`
-**Setup:** `docs/architecture/SETUP_GUIDE.md`
+**Full docs:** `docs/architecture/CLAUDE_CODE_RULES.md`

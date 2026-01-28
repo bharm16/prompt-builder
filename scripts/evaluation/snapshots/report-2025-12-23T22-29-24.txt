@@ -1,0 +1,108 @@
+Evaluation Report - 2025-12-23T22:29:24.283Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (52 prompts evaluated):
+  Average Score:      18.94/25
+  Average Span Count: 32.75
+  Errors:             2
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ██████████████████████████████████ 44
+  acceptable (13-17)   █████ 6
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - minimal motion blur (26x)
+  - static tripod (17x)
+  - consistent framing (16x)
+  - subject continuity (15x)
+  - consistent framing and subject continuity (6x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - window (8x)
+  - High-Angle Variation (5x)
+  - main action (5x)
+  - static tripod (4x)
+  - Naturalistic (4x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 6048 | P50: 6114 | P95: 8912 | P99: 9650
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: jogging (action), performing a wheelie (action)
+  IMPORTANT: cheering crowd (subject), static tripod (camera), eye level (camera), Subtle game sounds (audio), ambient room noise (audio)
+  MINOR: trees (environment), minimal motion blur (style), consistent framing (style), subject continuity (style), minimal motion blur (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - style: 72
+  - subject: 34
+  - action: 28
+  - lighting: 27
+  - camera: 21
+  - environment: 17
+  - audio: 13
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.32 / 4.72
+  subject      3.74 / 4.28
+  action       3.08 / 4.42
+  environment  3.88 / 4.52
+  lighting     3.90 / 3.66
+  camera       4.20 / 4.42
+  style        3.32 / 3.24
+  technical    4.88 / 4.90
+  audio        3.94 / 4.30
+
+FALSE POSITIVE REASONS:
+  - section_header: 2
+      e.g.: Different Lighting, Different Lighting
+  - abstract_concept: 71
+      e.g.: contrasting atmosphere, Pastoral realism, High-Angle Variation, playing computer games with focused intensity in a, playing computer games with focused intensity in a
+  - non_visual: 47
+      e.g.: game controller, film stock, Terrence Malick, Terrence Malick-inspired, warm evening light
+  - duplicate: 14
+      e.g.: basketball, window, window, park, park
+  - other: 22
+      e.g.: handheld tracking, expressive eyes, soft fur, static tripod, natural sun, POV shot
+
+TOP TAXONOMY ERRORS:
+  - lighting.quality → style.aesthetic (12x) (e.g. "Naturalistic", "Naturalistic", "Kodachrome-inspired vibrant realism")
+  - shot.type → camera.focus (7x) (e.g. "shallow focus", "deep focus", "deep focus")
+  - shot.type → camera.movement (7x) (e.g. "handheld tracking", "handheld tracking", "slow-motion capture")
+  - style.colorGrade → lighting.quality (4x) (e.g. "natural daylight", "dappled sunlight", "bright natural daylight")
+  - subject.identity → subject.appearance (4x) (e.g. "colorful leaves", "fallen leaves", "leaves")
+
+📐 GRANULARITY ISSUES:
+  - too_coarse: 33x (e.g., "vibrant sports attire, strong athletic build")
+  - too_fine: 7x (e.g., "f/1.8-f/2.8")
+
+ERRORS BY SECTION:
+  main            missed 198, falsePositives 76
+  technicalSpecs  missed 14, falsePositives 43
+  alternatives    missed 0, falsePositives 37
+
+CONFIDENCE ERROR RATES:
+  high   1.6% (16/1000)
+    Failures: "Terrence Malick" (subject.identity), "Terrence Malick-inspired" (subject.identity), "Ingmar Bergman" (subject.identity)
+  medium 16.0% (58/362)
+    Failures: "game controller" (camera.lens), "film stock" (style.filmStock), "contrasting atmosphere" (audio.ambient)
+  low    24.0% (82/341)
+    Failures: "basketball" (subject.identity), "handheld tracking" (audio.ambient), "Different Lighting" (lighting.quality)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [14/25] "man playing computer games"
+    Notes: The extraction missed several important elements related to style and camera movement. There were multiple false positives, especially with abstract concepts and non-visual elements. Taxonomy errors were present, particularly with camera roles. Granularity issues were noted in action spans.
+  [17/25] "man jogging through a park"
+    Notes: The extraction missed several important visual elements, such as 'jogging' and 'winding paths'. Some non-visual and abstract concepts were incorrectly extracted, affecting precision. Taxonomy errors were present, particularly in lighting and style roles. Technical specs were well-extracted.
+  [17/25] "man riding a bike"
+    Notes: The extraction captured most technical specs accurately but missed some important visual elements like 'black helmet' and 'lush greenery and flowers'. There were some false positives related to abstract concepts and non-visual elements. Granularity was mostly correct, but some spans were too coarse. Taxonomy errors were minimal, with one notable misclassification of 'natural daylight'.
+
+================================================================================

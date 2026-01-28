@@ -1,10 +1,10 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { conflictsOutputSchema } from '@utils/validation.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { StructuredOutputSchema } from '@utils/structured-output/types';
 import {
   detectDescriptorCategory,
-} from '../../config/descriptorCategories.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+} from '@services/video-concept/config/descriptorCategories';
+import type { AIService } from '@services/prompt-optimization/types';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'] as const;
 
@@ -62,14 +62,14 @@ export class ConflictDetectionService {
     
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       filledElementCount: filledElements.length,
       totalElements: Object.keys(params.elements).length,
     });
 
     if (filledElements.length < 2) {
-      this.log.debug(`${operation}: Insufficient elements for conflict detection`, {
+      this.log.debug('Insufficient elements for conflict detection.', {
         operation,
         filledElementCount: filledElements.length,
         duration: Math.round(performance.now() - startTime),
@@ -119,12 +119,19 @@ Return ONLY a JSON array of conflicts (empty array if none):
 ]`;
 
     try {
+      const schema: StructuredOutputSchema = {
+        type: 'array',
+        items: {
+          required: ['elements', 'severity', 'message'],
+        },
+      };
+
       const conflicts = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_conflict_detection',
-          schema: conflictsOutputSchema,
+          schema,
           isArray: true,
           maxTokens: 512,
           temperature: 0.3,
@@ -138,7 +145,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
       const allConflicts = [...conflicts, ...descriptorConflicts];
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         llmConflictCount: conflicts.length,
@@ -149,7 +156,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
       return { conflicts: allConflicts };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         filledElementCount: filledElements.length,

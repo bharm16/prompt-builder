@@ -9,14 +9,14 @@ import {
   Zap,
   Coffee,
   Inbox,
-  type LucideIcon,
-} from 'lucide-react';
-import { Button } from './Button';
+} from '@promptstudio/system/components/ui';
+import { Button } from '@promptstudio/system/components/ui/button';
+import type { AppIcon } from '@/types';
 
 type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
 
 interface EmptyStateConfig {
-  icon: LucideIcon;
+  icon: AppIcon;
   title: string;
   description: string;
   tips: string[];
@@ -25,12 +25,12 @@ interface EmptyStateConfig {
 interface EmptyStateAction {
   label: string;
   onClick: () => void;
-  icon?: LucideIcon;
+  icon?: AppIcon;
 }
 
 interface EmptyStateProps {
   variant?: EmptyStateVariant;
-  icon?: LucideIcon | null;
+  icon?: AppIcon | null;
   title?: string | null;
   description?: string | null;
   tips?: string[] | null;
@@ -178,11 +178,13 @@ export default function EmptyState({
       {action && (
         <Button
           onClick={action.onClick}
-          variant="primary"
-          prefix={action.icon ? <action.icon className="h-4 w-4" /> : undefined}
+          variant="default"
           className="animate-fade-in"
           aria-label={action.label}
         >
+          {action.icon ? (
+            <action.icon className="h-4 w-4" aria-hidden="true" />
+          ) : null}
           {action.label}
         </Button>
       )}
@@ -277,4 +279,3 @@ interface LoadingEmptyStateProps {
 export function LoadingEmptyState({ message = 'Loading...' }: LoadingEmptyStateProps): React.ReactElement {
   return <EmptyState variant="loading" description={message} tips={[]} />;
 }
-

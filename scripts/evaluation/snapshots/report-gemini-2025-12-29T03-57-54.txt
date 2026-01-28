@@ -1,0 +1,50 @@
+Evaluation Report - 2025-12-29T03:57:54.271Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (1 prompts evaluated):
+  Average Score:      21.00/25
+  Average Span Count: 25.00
+  Success/Errors:     1/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ██████████████████████████████ 1
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=5917 | P50=5917 | P95=5917
+  Judge:      Avg=2988 | P50=2988 | P95=2988
+
+CATEGORY SCORES (avg coverage/precision):
+  shot           5.00 / 5.00
+  subject        5.00 / 5.00
+  action         5.00 / 5.00
+  environment    5.00 / 5.00
+  lighting       5.00 / 5.00
+  camera         3.00 / 3.00
+  style          5.00 / 5.00
+  technical      4.00 / 4.00
+  audio          5.00 / 5.00
+
+❌ COMMONLY MISSED ELEMENTS:
+  - f/4-f/5.6 (1x, camera)
+  - selective focus (1x, camera)
+
+⚠️  COMMON FALSE POSITIVES:
+  - handheld tracking (1x, duplicate)
+
+🔄 TOP TAXONOMY ERRORS:
+  - camera.focus → camera.aperture (1x) e.g. "f/2.8"
+
+🔍 WORST PERFORMERS (for debugging):
+  [21/25] "Test input..."
+    Notes: The extraction was mostly accurate, but there were some issues with camera-related elements, particu
+
+================================================================================

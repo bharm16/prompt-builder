@@ -3,7 +3,7 @@ import { ROLE_SET } from '../config/roles.js';
 import { TAXONOMY } from '#shared/taxonomy.ts';
 import { clamp01 } from '../utils/textUtils.js';
 
-interface SpanInput {
+export interface SpanInput {
   text: string;
   start: number;
   end: number;
@@ -11,7 +11,7 @@ interface SpanInput {
   confidence?: number;
 }
 
-interface NormalizedSpan {
+export interface NormalizedSpan {
   text: string;
   start: number;
   end: number;

@@ -3,11 +3,13 @@
  */
 
 export interface SuggestionItem {
-  text?: string;
-  category?: string;
-  suggestions?: SuggestionItem[];
-  compatibility?: number;
-  explanation?: string;
+  id?: string | undefined;
+  text?: string | undefined;
+  category?: string | undefined;
+  suggestions?: SuggestionItem[] | undefined;
+  compatibility?: number | undefined;
+  explanation?: string | undefined;
+  [key: string]: unknown;
 }
 
 export interface CategoryGroup {
@@ -26,4 +28,3 @@ export type SuggestionsAction =
   | { type: 'SET_SUGGESTIONS'; payload: SuggestionItem[] }
   | { type: 'SET_ACTIVE_CATEGORY'; payload: string | null }
   | { type: 'SET_LOADING'; payload: boolean };
-

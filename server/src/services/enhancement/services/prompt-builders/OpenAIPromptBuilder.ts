@@ -11,7 +11,7 @@
 import { BasePromptBuilder } from './BasePromptBuilder.js';
 import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
 import type { PromptBuildParams, CustomPromptParams } from '../types.js';
-import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
+import { PROMPT_PREVIEW_LIMIT } from '@services/enhancement/constants';
 
 /**
  * Security and format constraints for developer role
@@ -42,7 +42,7 @@ import { logger } from '@infrastructure/Logger';
  * Uses developer role for hard constraints
  */
 export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBuilder {
-  private readonly log = logger.child({ service: 'OpenAIPromptBuilder' });
+  protected override readonly log = logger.child({ service: 'OpenAIPromptBuilder' });
 
   getProvider(): 'openai' {
     return 'openai';
@@ -60,7 +60,15 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
     return this._buildSpanPrompt({ ...params, mode: 'placeholder' });
   }
 
-  buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): PromptBuildResult {
+  buildCustomPrompt({
+    highlightedText,
+    customRequest,
+    fullPrompt,
+    isVideoPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
+  }: CustomPromptParams): PromptBuildResult {
     const startTime = performance.now();
     const operation = 'buildCustomPrompt';
     
@@ -72,26 +80,57 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
     });
     
     const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
+    const trimmedContextBefore = contextBefore ? this._trim(contextBefore, 500, true) : '';
+    const trimmedContextAfter = contextAfter ? this._trim(contextAfter, 500) : '';
+    const metadataBlob =
+      metadata && Object.keys(metadata).length > 0
+        ? this._trim(JSON.stringify(metadata), 2000)
+        : '';
 
     // System prompt is minimal - developer role handles constraints
-    const systemPrompt = `Generate up to 12 replacement phrases for the highlighted text based on the custom request.
+    const contextBlocks: string[] = [
+      '<full_context>',
+      promptPreview,
+      '</full_context>',
+      '',
+    ];
 
-<full_context>
-${promptPreview}
-</full_context>
+    if (trimmedContextBefore) {
+      contextBlocks.push('<context_before>', trimmedContextBefore, '</context_before>', '');
+    }
 
-<highlighted_text>
-${highlightedText}
-</highlighted_text>
+    contextBlocks.push(
+      '<highlighted_text>',
+      highlightedText,
+      '</highlighted_text>',
+      ''
+    );
 
-<custom_request>
-${customRequest}
-</custom_request>
+    if (trimmedContextAfter) {
+      contextBlocks.push('<context_after>', trimmedContextAfter, '</context_after>', '');
+    }
 
-Requirements:
-- Replacements must fit the context of the full prompt
-- Keep the same subject/topic - just vary the description
-- Return ONLY the replacement phrase (2-50 words)`;
+    if (metadataBlob) {
+      contextBlocks.push('<span_metadata>', metadataBlob, '</span_metadata>', '');
+    }
+
+    contextBlocks.push(
+      '<custom_request>',
+      customRequest,
+      '</custom_request>'
+    );
+
+    const systemPrompt = [
+      'Generate up to 12 replacement phrases for the highlighted text based on the custom request.',
+      '',
+      ...contextBlocks,
+      '',
+      'Requirements:',
+      '- Replacements must fit the context of the full prompt',
+      '- Use local context and span metadata when provided',
+      '- Keep the same subject/topic - just vary the description',
+      '- Return ONLY the replacement phrase (2-50 words)',
+    ].join('\n');
 
     const duration = Math.round(performance.now() - startTime);
     const result = {
@@ -145,6 +184,7 @@ Requirements:
 
     const ctx = this._buildContext({
       highlightedText,
+      highlightedCategory,
       contextBefore,
       contextAfter,
       fullPrompt,
@@ -212,6 +252,7 @@ Requirements:
 - Use cinematography terms (angles, lenses, movements, lighting)
 - Each option should create a different visual effect
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 
@@ -234,13 +275,14 @@ ${ctx.inlineContext}
 </surrounding_context>
 
 Requirements:
-- Keep the SAME SUBJECT/TOPIC - just vary HOW it is described
-- Add visual details: textures, materials, lighting, colors
-- Each option should look different but stay contextually appropriate
+- Fill the SAME ROLE in the scene - but with VISUALLY DISTINCT alternatives
+- Suggestions should produce noticeably DIFFERENT video frames
+- Avoid synonyms - "silky chestnut" vs "fluffy brown" renders nearly identical
+- Think: what OTHER thing could fill this role?
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}
-
-If replacing "${ctx.highlightedText}", suggestions should still be about that topic with different visual details.`;
+`;
   }
 
   /**
@@ -266,6 +308,7 @@ Requirements:
 - One continuous action only (no sequences like "walks then runs")
 - Actions must be camera-visible physical behavior
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 }

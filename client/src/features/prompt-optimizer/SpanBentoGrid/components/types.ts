@@ -3,7 +3,6 @@
  */
 
 import type React from 'react';
-import type { Icon } from '@geist-ui/icons';
 
 export interface Span {
   id: string;
@@ -29,12 +28,14 @@ export interface BentoBoxProps {
   spans: Span[];
   config: CategoryConfig;
   onSpanClick: (span: Span) => void;
+  defaultExpanded?: boolean;
+  onSpanHoverChange?: (spanId: string | null) => void;
 }
 
 export interface SpanItemProps {
   span: Span;
   onClick?: (span: Span) => void;
+  onHoverChange?: (spanId: string | null) => void;
   backgroundColor?: string;
   borderColor?: string;
 }
-

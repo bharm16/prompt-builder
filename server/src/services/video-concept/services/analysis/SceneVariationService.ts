@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { variationsOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { StructuredOutputSchema } from '@utils/structured-output/types';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Scene variation result
@@ -66,12 +66,19 @@ Return ONLY a JSON array of 3 variations:
 ]`;
 
     try {
+      const schema: StructuredOutputSchema = {
+        type: 'array',
+        items: {
+          required: ['name', 'description', 'elements'],
+        },
+      };
+
       const variations = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_scene_variations',
-          schema: variationsOutputSchema,
+          schema,
           isArray: true,
           maxTokens: 2048,
           temperature: 0.8,
@@ -84,4 +91,3 @@ Return ONLY a JSON array of 3 variations:
     }
   }
 }
-

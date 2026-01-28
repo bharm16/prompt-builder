@@ -1,0 +1,97 @@
+Evaluation Report - 2025-12-25T06:48:10.505Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (5 prompts evaluated):
+  Average Score:      17.8/25
+  Average Span Count: 31.6
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████ 3
+  acceptable (13-17)   ████████████████ 2
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - chef's knife (1x)
+  - soft, warm light (1x)
+  - Naturalistic, reminiscent of a culinary documentary (1x)
+  - golden fur (1x)
+  - bright eyes (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - sizzling (1x)
+  - bubbling (1x)
+  - Naturalistic, culinary documentary style (1x)
+  - handheld tracking (1x)
+  - Lit by warm backlighting (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 3522 | P50: 3426 | P95: 3890 | P99: 3890
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: chef's knife (subject), soft, warm light (lighting), Naturalistic, reminiscent of a culinary documentary (style), golden fur (subject), bright eyes (subject)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - subject: 7
+  - lighting: 5
+  - audio: 3
+  - style: 2
+  - camera: 2
+  - environment: 1
+  - action: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.40 / 4.60
+  subject      3.00 / 4.20
+  action       2.80 / 3.00
+  environment  4.40 / 4.80
+  lighting     3.20 / 3.60
+  camera       3.80 / 3.60
+  style        3.40 / 3.20
+  technical    4.40 / 4.60
+  audio        3.20 / 4.40
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 2
+      e.g.: Naturalistic, culinary documentary style, different mood
+  - non_visual: 11
+      e.g.: sizzling, bubbling, Lit by warm backlighting, rustling, Warm sunlight
+  - duplicate: 1
+      e.g.: handheld tracking
+
+TOP TAXONOMY ERRORS:
+  - style.colorGrade → lighting.colorTemp (1x) (e.g. "amber hue")
+  - camera.angle → camera.lens (1x) (e.g. "Over-the-shoulder, 50mm")
+  - action.movement → lighting (1x) (e.g. "Lit by warm backlighting")
+  - lighting.quality → lighting.colorTemp (1x) (e.g. "bluish lighting")
+  - camera.movement → camera.lens (1x) (e.g. "tripod, 50mm")
+
+ERRORS BY SECTION:
+  main            missed 15, falsePositives 4
+  technicalSpecs  missed 4, falsePositives 8
+  alternatives    missed 2, falsePositives 2
+
+CONFIDENCE ERROR RATES:
+  high   0.0% (0/94)
+  medium 19.5% (8/41)
+    Failures: "sizzling" (action.movement), "bubbling" (action.movement), "Naturalistic, culinary documentary style" (lighting.quality)
+  low    26.1% (6/23)
+    Failures: "handheld tracking" (shot.type), "Warm sunlight" (style.colorGrade), "different mood" (style.aesthetic)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [17/25] "man cooking a meal in a kitchen"
+    Notes: The extraction missed some important elements like 'chef's knife' and 'soft, warm light'. There were false positives for non-visual elements like 'sizzling' and 'bubbling'. Taxonomy errors included misclassification of 'amber hue' and 'Over-the-shoulder, 50mm'. Granularity was generally good.
+  [17/25] "gorilla drinking from a paper cup at a water cooler"
+    Notes: The extraction missed several important visual elements, particularly related to the subject's appearance and lighting quality. Some non-visual elements were incorrectly extracted, affecting precision. Technical specs were mostly well-extracted, but there was a misclassification in camera roles.
+  [18/25] "dog running up a hill"
+    Notes: The extraction missed some important visual elements like 'golden fur' and 'bright eyes'. There were also some false positives, such as 'handheld tracking' being duplicated and 'Lit by warm backlighting' being misclassified. The technical specs were well covered, but there were some taxonomy errors and non-visual elements extracted.
+
+================================================================================

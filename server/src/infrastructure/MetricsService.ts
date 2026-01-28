@@ -364,7 +364,10 @@ export class MetricsService implements IMetricsCollector {
   /**
    * Get metrics as JSON
    */
-  async getMetricsJSON(): Promise<promClient.metric[]> {
+  /**
+   * Get metrics as JSON
+   */
+  async getMetricsJSON(): Promise<promClient.MetricObjectWithValues<promClient.MetricValue<string>>[]> {
     const metrics = await this.register.getMetricsAsJSON();
     return metrics;
   }

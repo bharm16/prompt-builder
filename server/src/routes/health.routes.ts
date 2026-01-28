@@ -1,10 +1,10 @@
 import express, { type Router } from 'express';
-import { asyncHandler } from '../middleware/asyncHandler.js';
-import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
-import { logger } from '@infrastructure/Logger.js';
+import { asyncHandler } from '@middleware/asyncHandler';
+import { metricsAuthMiddleware } from '@middleware/metricsAuth';
+import { logger } from '@infrastructure/Logger';
 
 interface HealthDependencies {
-  claudeClient: { getStats: () => { state: string } };
+  claudeClient?: { getStats: () => { state: string } } | null;
   groqClient?: { getStats: () => { state: string } } | null;
   geminiClient?: { getStats: () => { state: string } } | null;
   cacheService: {
@@ -49,7 +49,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       const operation = 'healthReady';
       const requestId = req.id;
       
-      logger.debug(`Starting ${operation}`, {
+      logger.debug('Starting operation.', {
         operation,
         requestId,
       });
@@ -57,17 +57,22 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       // Avoid external network calls on readiness to prevent abuse/DoS
       // Use internal indicators only (cache health and circuit breaker state)
       const cacheHealth = cacheService.isHealthy();
-      const claudeStats = claudeClient.getStats();
-      const groqStats = groqClient ? groqClient.getStats() : null;
-      const geminiStats = geminiClient ? geminiClient.getStats() : null;
+      const claudeStats = claudeClient?.getStats();
+      const groqStats = groqClient?.getStats();
+      const geminiStats = geminiClient?.getStats();
 
       const checks = {
-        cache: cacheHealth,
-        openAI: {
+        cache: { healthy: cacheHealth },
+        openAI: claudeStats ? {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,
+          enabled: true,
+        } : {
+          healthy: true,
+          enabled: false,
+          message: 'OpenAI API not configured',
         },
-        groq: groqClient ? {
+        groq: groqStats ? {
           healthy: groqStats.state === 'CLOSED',
           circuitBreakerState: groqStats.state,
           enabled: true,
@@ -76,7 +81,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
           enabled: false,
           message: 'Groq API not configured (two-stage optimization disabled)',
         },
-        gemini: geminiClient ? {
+        gemini: geminiStats ? {
           healthy: geminiStats.state === 'CLOSED',
           circuitBreakerState: geminiStats.state,
           enabled: true,
@@ -91,7 +96,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         (c) => c.healthy !== false
       );
 
-      logger.info(`${operation} completed`, {
+      logger.info('Operation completed.', {
         operation,
         requestId,
         duration: Math.round(performance.now() - startTime),
@@ -144,17 +149,17 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     const operation = 'stats';
     const requestId = req.id;
     
-    logger.debug(`Starting ${operation}`, {
+    logger.debug('Starting operation.', {
       operation,
       requestId,
     });
     
     const cacheStats = cacheService.getCacheStats();
-    const claudeStats = claudeClient.getStats();
+    const claudeStats = claudeClient?.getStats();
     const groqStats = groqClient ? groqClient.getStats() : null;
     const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
-    logger.info(`${operation} completed`, {
+    logger.info('Operation completed.', {
       operation,
       requestId,
       duration: Math.round(performance.now() - startTime),
@@ -165,13 +170,13 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       uptime: process.uptime(),
       cache: cacheStats,
       apis: {
-        openAI: claudeStats,
+        openAI: claudeStats || { message: 'OpenAI API not configured' },
         groq: groqStats || { message: 'Groq API not configured' },
         gemini: geminiStats || { message: 'Gemini API not configured' },
       },
       twoStageOptimization: {
         enabled: !!groqClient,
-        status: groqClient ? (groqStats.state === 'CLOSED' ? 'operational' : 'degraded') : 'disabled',
+        status: groqStats ? (groqStats.state === 'CLOSED' ? 'operational' : 'degraded') : 'disabled',
       },
       memory: process.memoryUsage(),
       nodeVersion: process.version,

@@ -81,7 +81,8 @@ export const STORAGE_KEYS = {
  * v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
  */
 export const TEMPLATE_VERSIONS = {
-  SPAN_LABELING_V1: 'v2', // Updated to v2 for new role taxonomy
+  SPAN_LABELING_V1: 'v2.1', // Updated to v2.1 to invalidate cache and fix single-span issue
+  SPAN_LABELING_I2V: 'i2v-v1',
 } as const;
 
 /**
@@ -93,4 +94,3 @@ export const DEFAULT_LABELING_POLICY = {
 } as const;
 
 export default PERFORMANCE_CONFIG;
-

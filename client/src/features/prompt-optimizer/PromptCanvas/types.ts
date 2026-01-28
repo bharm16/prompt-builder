@@ -3,11 +3,16 @@
  */
 
 import type { Mode } from '../context/types';
+import type { User } from '../context/types';
+import type { OptimizationOptions } from '../types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CanonicalText } from '../../../utils/canonicalText';
-import type { HighlightSpan } from '../span-highlighting/hooks/useHighlightRendering';
+import type { CanonicalText } from '@utils/canonicalText';
+import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 
-import type { SpanData } from '../span-highlighting/hooks/useHighlightSourceSelection';
+import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
+import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
+import type { I2VContext } from '../types/i2v';
 
 export interface SpansData {
   spans: Array<{
@@ -31,6 +36,8 @@ export interface HighlightSnapshot {
   meta?: Record<string, unknown> | null;
   signature?: string;
   cacheId?: string | null;
+  updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export interface ParseResult {
@@ -53,8 +60,9 @@ export interface SuggestionPayload {
   allLabeledSpans?: Array<{
     start: number;
     end: number;
-    category: string;
-    confidence: number;
+    category?: string;
+    confidence?: number;
+    [key: string]: unknown;
   }>;
 }
 
@@ -75,26 +83,90 @@ export interface SpanClickPayload {
   id?: string;
 }
 
+export interface SuggestionItem {
+  id?: string | undefined;
+  text?: string | undefined;
+  category?: string | undefined;
+  suggestions?: SuggestionItem[] | undefined;
+  compatibility?: number | undefined;
+  explanation?: string | undefined;
+  [key: string]: unknown;
+}
+
+export interface InlineSuggestion {
+  key: string;
+  text: string;
+  meta: string | null;
+  item: SuggestionItem | string;
+}
+
 export interface SuggestionsData {
-  show?: boolean;
-  suggestions?: unknown[];
-  isLoading?: boolean;
+  show: boolean;
+  selectedText: string;
+  originalText: string;
+  suggestions: SuggestionItem[];
+  isLoading: boolean;
+  isError?: boolean;
+  errorMessage?: string | null;
+  isPlaceholder: boolean;
+  fullPrompt: string;
+  range?: Range | null;
+  offsets?: { start?: number; end?: number } | null;
+  metadata?: {
+    category?: string;
+    spanId?: string;
+    start?: number;
+    end?: number;
+    span?: {
+      id?: string;
+      start?: number;
+      end?: number;
+      category?: string;
+      confidence?: number;
+      quote?: string;
+      [key: string]: unknown;
+    };
+    confidence?: number;
+    leftCtx?: string;
+    rightCtx?: string;
+    idempotencyKey?: string | null;
+    [key: string]: unknown;
+  } | null;
+  allLabeledSpans?: HighlightSpan[];
+  onRetry?: () => void;
+  setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
+  onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
+  onClose?: () => void;
+  responseMetadata?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
 export interface PromptCanvasState {
   showExportMenu: boolean;
   showLegend: boolean;
-  hasUserEdited: boolean;
-  parseResult: ParseResult;
+  rightPaneMode: 'refine' | 'preview';
+  showHighlights: boolean;
+  visualLastGeneratedAt: number | null;
+  videoLastGeneratedAt: number | null;
+  visualGenerateRequestId: number;
+  videoGenerateRequestId: number;
+  isEditing: boolean;
+  originalInputPrompt: string;
+  originalSelectedModel: string | undefined;
+  selectedSpanId: string | null;
+  lastAppliedSpanId: string | null;
+  hasInteracted: boolean;
+  hoveredSpanId: string | null;
+  lastSwapTime: number | null;
+  promptState: 'generated' | 'edited' | 'synced';
+  generatedTimestamp: number | null;
+  justReplaced: { from: string; to: string } | null;
 }
 
 export type PromptCanvasAction =
-  | { type: 'SET_SHOW_EXPORT_MENU'; value: boolean }
-  | { type: 'SET_SHOW_LEGEND'; value: boolean }
-  | { type: 'SET_HAS_USER_EDITED'; value: boolean }
-  | { type: 'SET_PARSE_RESULT'; value: ParseResult }
-  | { type: 'RESET_PARSE_RESULT'; displayedPrompt: string };
+  | { type: 'MERGE_STATE'; payload: Partial<PromptCanvasState> }
+  | { type: 'INCREMENT_VISUAL_REQUEST_ID' }
+  | { type: 'INCREMENT_VIDEO_REQUEST_ID' };
 
 export interface ValidSpan {
   start: number;
@@ -104,9 +176,15 @@ export interface ValidSpan {
 }
 
 export interface PromptCanvasProps {
+  user?: User | null | undefined;
+  showResults?: boolean | undefined;
   inputPrompt: string;
+  onInputPromptChange: (text: string) => void;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   displayedPrompt: string | null;
   optimizedPrompt: string;
+  previewPrompt?: string | null | undefined;
+  previewAspectRatio?: string | null | undefined;
   qualityScore: number | null;
   selectedMode: string;
   currentMode: Mode;
@@ -114,12 +192,12 @@ export interface PromptCanvasProps {
   promptContext: PromptContext | null;
   onDisplayedPromptChange: (text: string) => void;
   suggestionsData: SuggestionsData | null;
-  onFetchSuggestions?: (payload: SuggestionPayload) => void;
-  onSuggestionClick?: (suggestion: unknown) => void;
+  onFetchSuggestions?: ((payload: SuggestionPayload) => void) | undefined;
+  onSuggestionClick?: ((suggestion: SuggestionItem | string) => void) | undefined;
   onCreateNew: () => void;
-  initialHighlights?: HighlightSnapshot | null;
-  initialHighlightsVersion?: number;
-  onHighlightsPersist?: (result: {
+  initialHighlights?: HighlightSnapshot | null | undefined;
+  initialHighlightsVersion?: number | undefined;
+  onHighlightsPersist?: ((result: {
     spans: Array<{
       start: number;
       end: number;
@@ -127,14 +205,34 @@ export interface PromptCanvasProps {
       confidence: number;
     }>;
     meta: Record<string, unknown> | null;
-  }) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  isDraftReady?: boolean;
-  isRefining?: boolean;
-  draftSpans?: SpansData | null;
-  refinedSpans?: SpansData | null;
-}
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
+  }) => void) | undefined;
+  onUndo?: (() => void) | undefined;
+  onRedo?: (() => void) | undefined;
+  canUndo?: boolean | undefined;
+  canRedo?: boolean | undefined;
+  isDraftReady?: boolean | undefined;
+  isRefining?: boolean | undefined;
+  isProcessing?: boolean | undefined;
+  draftSpans?: SpansData | null | undefined;
+  refinedSpans?: SpansData | null | undefined;
+  coherenceAffectedSpanIds?: Set<string> | undefined;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
 
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[] | undefined;
+  isCoherenceChecking?: boolean | undefined;
+  isCoherencePanelExpanded?: boolean | undefined;
+  onToggleCoherencePanelExpanded?: (() => void) | undefined;
+  onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
+  onDismissAllCoherenceIssues?: (() => void) | undefined;
+  onApplyCoherenceFix?: ((
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void) | undefined;
+  onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
+}

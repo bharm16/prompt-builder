@@ -9,37 +9,41 @@
  * - Groq: Uses validation-based schema + embedded constraints
  */
 
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { POISONOUS_PATTERNS } from '../constants.js';
-import { getEnhancementSchema } from '../config/schemas.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
+import { POISONOUS_PATTERNS } from '../constants';
+import { getEnhancementSchema } from '../config/schemas';
 import type {
   AIService,
   Suggestion,
   EnhancementMetrics,
-} from './types.js';
-import type { ContrastiveDiversityEnforcer } from './ContrastiveDiversityEnforcer.js';
-import type { PromptBuildResult } from './prompt-builders/index.js';
+  OutputSchema,
+} from './types';
+import type { ContrastiveDiversityEnforcer } from './ContrastiveDiversityEnforcer';
+import type { PromptBuildResult } from './prompt-builders/index';
 
 export interface SuggestionGenerationParams {
   systemPrompt: string;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   highlightedText: string;
   temperature: number;
   metrics: EnhancementMetrics;
   /** Provider for optimization selection */
-  provider?: 'openai' | 'groq';
+  provider?: 'openai' | 'groq' | 'qwen';
   /** Developer message for OpenAI (hard constraints) */
   developerMessage?: string;
   /** Whether to use strict schema mode (OpenAI) */
   useStrictSchema?: boolean;
+  /** Qwen3 reasoning effort */
+  reasoningEffort?: 'none' | 'default';
 }
 
 export interface SuggestionGenerationParamsV2 {
-  promptResult: PromptBuildResult;
-  schema: Record<string, unknown>;
+  promptResult: PromptBuildResult | string;
+  schema: OutputSchema;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   highlightedText: string;
@@ -69,18 +73,42 @@ export class SuggestionGenerationService {
     params: SuggestionGenerationParamsV2
   ): Promise<SuggestionGenerationResult> {
     const { promptResult, schema, isVideoPrompt, isPlaceholder, highlightedText, temperature, metrics } = params;
+    const resolvedPromptResult: PromptBuildResult =
+      typeof promptResult === 'string'
+        ? (() => {
+            const { provider, capabilities } = detectAndGetCapabilities({
+              operation: 'enhance_suggestions',
+            });
+            const resolvedProvider =
+              provider === 'openai' || provider === 'qwen' ? provider : 'groq';
+            return {
+              systemPrompt: promptResult,
+              provider: resolvedProvider,
+              ...(resolvedProvider === 'openai' && capabilities.strictJsonSchema
+                ? { useStrictSchema: true }
+                : {}),
+            };
+          })()
+        : promptResult;
 
     return this.generateSuggestions({
-      systemPrompt: promptResult.systemPrompt,
+      systemPrompt: resolvedPromptResult.systemPrompt,
       schema,
       isVideoPrompt,
       isPlaceholder,
       highlightedText,
       temperature,
       metrics,
-      provider: promptResult.provider,
-      developerMessage: promptResult.developerMessage,
-      useStrictSchema: promptResult.useStrictSchema,
+      provider: resolvedPromptResult.provider,
+      ...(resolvedPromptResult.developerMessage
+        ? { developerMessage: resolvedPromptResult.developerMessage }
+        : {}),
+      ...(resolvedPromptResult.useStrictSchema
+        ? { useStrictSchema: resolvedPromptResult.useStrictSchema }
+        : {}),
+      ...(resolvedPromptResult.reasoningEffort
+        ? { reasoningEffort: resolvedPromptResult.reasoningEffort }
+        : {}),
     });
   }
 
@@ -91,81 +119,75 @@ export class SuggestionGenerationService {
     params: SuggestionGenerationParams
   ): Promise<SuggestionGenerationResult> {
     const groqStart = Date.now();
-    const { provider = 'groq', developerMessage, useStrictSchema } = params;
+    const { provider = 'groq', developerMessage, useStrictSchema, reasoningEffort } = params;
 
-    // PDF Enhancement: Try contrastive decoding for enhanced diversity
-    let suggestions: Suggestion[] | null =
-      await this.contrastiveDiversity.generateWithContrastiveDecoding({
+    const providerSchema = getEnhancementSchema(params.isPlaceholder, { provider });
+    const enforceOptions: Parameters<typeof StructuredOutputEnforcer.enforceJSON>[2] = {
+      schema: providerSchema as
+        | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
+        | null,
+      isArray: true,
+      maxTokens: 2048,
+      maxRetries: 2,
+      temperature: params.temperature,
+      operation: 'enhance_suggestions',
+      provider,
+      ...(provider === 'openai' && developerMessage ? { developerMessage } : {}),
+      ...(provider === 'openai' && useStrictSchema ? { useStrictSchema } : {}),
+      ...(provider === 'qwen' && !reasoningEffort ? { reasoningEffort: 'none' } : {}),
+      ...(reasoningEffort ? { reasoningEffort } : {}),
+    };
+
+    let suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+      this.ai,
+      params.systemPrompt,
+      enforceOptions
+    );
+
+    let usedContrastiveDecoding = false;
+    const diversityMetrics = Array.isArray(suggestions)
+      ? this.contrastiveDiversity.calculateDiversityMetrics(suggestions)
+      : null;
+    const tooFewSuggestions = Array.isArray(suggestions) && suggestions.length < 6;
+    const tooSimilar =
+      !!diversityMetrics &&
+      (diversityMetrics.avgSimilarity > 0.6 || diversityMetrics.maxSimilarity > 0.85);
+
+    const shouldAttemptContrastive =
+      provider !== 'openai' &&
+      this.contrastiveDiversity.shouldUseContrastiveDecoding({
         systemPrompt: params.systemPrompt,
-        schema: params.schema,
+        schema: providerSchema as OutputSchema,
         isVideoPrompt: params.isVideoPrompt,
         isPlaceholder: params.isPlaceholder,
         highlightedText: params.highlightedText,
-      });
+      }) &&
+      (tooFewSuggestions || tooSimilar);
 
-    let usedContrastiveDecoding = false;
+    if (shouldAttemptContrastive) {
+      const contrastiveSuggestions =
+        await this.contrastiveDiversity.generateWithContrastiveDecoding({
+          systemPrompt: params.systemPrompt,
+          schema: providerSchema as OutputSchema,
+          isVideoPrompt: params.isVideoPrompt,
+          isPlaceholder: params.isPlaceholder,
+          highlightedText: params.highlightedText,
+        });
 
-    // Fallback to standard generation if contrastive decoding not used/failed
-    if (!suggestions) {
-      // Create adapter for StructuredOutputEnforcer compatibility
-      const aiAdapter = {
-        execute: async (operation: string, options: Record<string, unknown>) => {
-          // Build execute options
-          const executeOptions: Record<string, unknown> = {
-            systemPrompt: options.systemPrompt as string,
-            ...options,
-          };
+      if (contrastiveSuggestions && contrastiveSuggestions.length > 0) {
+        suggestions = contrastiveSuggestions;
+        usedContrastiveDecoding = true;
+      }
+    }
 
-          // Add OpenAI-specific options
-          if (provider === 'openai') {
-            if (developerMessage) {
-              executeOptions.developerMessage = developerMessage;
-            }
-            // Use the strict schema
-            if (useStrictSchema && options.schema) {
-              executeOptions.schema = options.schema;
-            }
-          }
-
-          const response = await this.ai.execute(operation, executeOptions as Parameters<AIService['execute']>[1]);
-          // Convert AIResponse to AIServiceResponse format
-          return {
-            text: response.text,
-            content: [{ text: response.text }],
-          };
-        },
-      };
-
-      // Get provider-specific schema
-      const providerSchema = getEnhancementSchema(params.isPlaceholder, provider);
-
-      suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-        aiAdapter,
-        params.systemPrompt,
-        {
-          schema: providerSchema as
-            | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
-            | null,
-          isArray: true,
-          maxTokens: 2048,
-          maxRetries: 2,
-          temperature: params.temperature,
-          operation: 'enhance_suggestions',
-          provider,
-          useStrictSchema: useStrictSchema && provider === 'openai',
-        }
-      );
-    } else {
-      usedContrastiveDecoding = true;
-
-      // Calculate and log diversity metrics
-      const diversityMetrics =
+    if (usedContrastiveDecoding && Array.isArray(suggestions)) {
+      const contrastiveMetrics =
         this.contrastiveDiversity.calculateDiversityMetrics(suggestions);
       logger.info('Contrastive decoding diversity metrics', {
-        avgSimilarity: diversityMetrics.avgSimilarity,
-        minSimilarity: diversityMetrics.minSimilarity,
-        maxSimilarity: diversityMetrics.maxSimilarity,
-        pairCount: diversityMetrics.pairCount,
+        avgSimilarity: contrastiveMetrics.avgSimilarity,
+        minSimilarity: contrastiveMetrics.minSimilarity,
+        maxSimilarity: contrastiveMetrics.maxSimilarity,
+        pairCount: contrastiveMetrics.pairCount,
       });
     }
 
@@ -213,21 +235,15 @@ export class SuggestionGenerationService {
       const filteredSuggestions = suggestions.filter((s) => !isPoisonous(s.text));
       const filteredCount = suggestions.length - filteredSuggestions.length;
 
-      logger.warn('Filtered poisonous suggestions from LLM response', {
+      logger.warn('Poisonous suggestions detected (logging only - allowed by Qwen reasoning)', {
         highlightedText: params.highlightedText,
         filteredCount,
-        remainingCount: filteredSuggestions.length,
+        poisonousTexts: suggestions.filter(s => isPoisonous(s.text)).map(s => s.text),
         provider,
       });
 
-      if (filteredSuggestions.length === 0) {
-        logger.warn('All suggestions filtered due to poisonous patterns', {
-          highlightedText: params.highlightedText,
-          provider,
-        });
-      }
-
-      suggestions = filteredSuggestions;
+      // Relaxed: Allow them through if the model reasoned they were okay
+      // suggestions = filteredSuggestions;
     }
 
     return {

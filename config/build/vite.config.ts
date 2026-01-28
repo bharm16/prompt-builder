@@ -1,18 +1,46 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const shouldGenerateSourcemaps =
+  Boolean(process.env.SENTRY_AUTH_TOKEN) ||
+  process.env.GENERATE_SOURCEMAP === 'true';
 
 export default defineConfig({
   root: path.resolve(__dirname, '../../client'),
   envDir: path.resolve(__dirname, '../../'),
   build: {
     outDir: path.resolve(__dirname, '../../dist'),
-    sourcemap: true,
+    sourcemap: shouldGenerateSourcemaps,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-slider',
+            '@radix-ui/react-switch',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+          ],
+          'vendor-firebase': [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/analytics',
+          ],
+          'vendor-icons': ['@phosphor-icons/react'],
+        },
+      },
+    },
   },
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
@@ -24,6 +52,8 @@ export default defineConfig({
       '@features': path.resolve(__dirname, '../../client/src/features'),
       '@hooks': path.resolve(__dirname, '../../client/src/hooks'),
       '@api': path.resolve(__dirname, '../../client/src/api'),
+      '@services': path.resolve(__dirname, '../../client/src/services'),
+      '@repositories': path.resolve(__dirname, '../../client/src/repositories'),
       '@types': path.resolve(__dirname, '../../client/src/types'),
       '@utils': path.resolve(__dirname, '../../client/src/utils'),
       '@config': path.resolve(__dirname, '../../client/src/config'),
@@ -51,7 +81,6 @@ export default defineConfig({
           },
           release: {
             name: process.env.VITE_APP_VERSION || 'unknown',
-            cleanArtifacts: true,
             setCommits: {
               auto: true,
               ignoreMissing: true,
@@ -59,7 +88,14 @@ export default defineConfig({
           },
         })
       : undefined,
-  ].filter(Boolean) as ReturnType<typeof defineConfig>['plugins'],
+    process.env.ANALYZE_BUNDLE === 'true'
+      ? visualizer({
+          filename: path.resolve(__dirname, '../../dist/bundle-stats.html'),
+          gzipSize: true,
+          brotliSize: true,
+        })
+      : undefined,
+  ].filter(Boolean) as PluginOption[],
   server: {
     proxy: {
       '/api': {
@@ -85,4 +121,3 @@ export default defineConfig({
   },
   publicDir: path.resolve(__dirname, '../../client/public'),
 });
-

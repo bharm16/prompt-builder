@@ -50,6 +50,7 @@ Sentry.init({
       delete event.request.headers['authorization'];
       delete event.request.headers['cookie'];
       delete event.request.headers['x-api-key'];
+      delete event.request.headers['x-firebase-token'];
     }
 
     return event;
@@ -68,4 +69,3 @@ Sentry.init({
 */
 
 // console.log(`✓ Sentry initialized (env: ${ENVIRONMENT})`);
-

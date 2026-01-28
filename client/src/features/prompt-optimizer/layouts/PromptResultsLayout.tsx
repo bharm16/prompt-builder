@@ -1,69 +1,106 @@
 import React from 'react';
-import { PromptSidebar } from '../components/PromptSidebar';
 import { PromptResultsSection } from '../components/PromptResultsSection';
-import SuggestionsPanel from '@components/SuggestionsPanel';
 import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import './PromptResultsLayout.css';
+import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
+import type { OptimizationOptions } from '../types';
+import type { I2VContext } from '../types/i2v';
+import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from '../types/coherence';
 
 /**
  * PromptResultsLayout - Results/Canvas View Layout
  * 
- * Self-contained layout for the results/canvas view with:
- * - History Sidebar (left column)
- * - PromptCanvas in center (via PromptResultsSection)
- * - Suggestions Panel (right column)
- * 
- * Completely isolated from PromptInputLayout to prevent CSS/state conflicts
+ * Main content layout for the results/canvas view (PromptCanvas via PromptResultsSection).
+ *
+ * App shell (history sidebar + top bar) lives in PromptOptimizerWorkspace.
  */
-interface PromptResultsLayoutProps {
+export interface PromptResultsLayoutProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
-  onFetchSuggestions: (data: unknown) => void;
-  onSuggestionClick: (suggestion: unknown) => void;
-  onHighlightsPersist: (result: unknown) => void;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+  onFetchSuggestions: (payload?: SuggestionPayload) => void;
+  onSuggestionClick: (suggestion: SuggestionItem | string) => void;
+  onHighlightsPersist: (result: {
+    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
+    meta: Record<string, unknown> | null;
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
+  }) => void;
   onUndo: () => void;
   onRedo: () => void;
   stablePromptContext: PromptContext | null;
-  suggestionsData: unknown | null;
-  displayedPrompt?: string;
+  suggestionsData: SuggestionsData | null;
+  displayedPrompt?: string | undefined;
+  coherenceAffectedSpanIds?: Set<string> | undefined;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
+
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[] | undefined;
+  isCoherenceChecking?: boolean | undefined;
+  isCoherencePanelExpanded?: boolean | undefined;
+  onToggleCoherencePanelExpanded?: (() => void) | undefined;
+  onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
+  onDismissAllCoherenceIssues?: (() => void) | undefined;
+  onApplyCoherenceFix?: ((
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void) | undefined;
+  onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 export const PromptResultsLayout = ({
   user,
   onDisplayedPromptChange,
+  onReoptimize,
   onFetchSuggestions,
   onSuggestionClick,
   onHighlightsPersist,
   onUndo,
   onRedo,
   stablePromptContext,
-  suggestionsData,
-  displayedPrompt,
+  coherenceAffectedSpanIds,
+  coherenceSpanIssueMap,
+  coherenceIssues,
+  isCoherenceChecking,
+  isCoherencePanelExpanded,
+  onToggleCoherencePanelExpanded,
+  onDismissCoherenceIssue,
+  onDismissAllCoherenceIssues,
+  onApplyCoherenceFix,
+  onScrollToCoherenceSpan,
+  i2vContext,
 }: PromptResultsLayoutProps): React.ReactElement => {
-  // Check if suggestions should be visible based on data presence
-  const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
-
   return (
-    <div className="prompt-results-layout">
-      {/* History Sidebar */}
-      <PromptSidebar user={user} />
-
-      {/* Main Content - Canvas */}
-      <main className="prompt-results-layout__main" id="main-content">
-        <PromptResultsSection
-          onDisplayedPromptChange={onDisplayedPromptChange}
-          onFetchSuggestions={onFetchSuggestions}
-          onSuggestionClick={onSuggestionClick}
-          onHighlightsPersist={onHighlightsPersist}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          stablePromptContext={stablePromptContext}
-        />
-      </main>
-
-      {/* Floating suggestions panel - Hidden, moved to Image Gen column */}
-    </div>
+    <main
+      id="main-content"
+      className="relative flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden bg-app transition-colors duration-300"
+    >
+      <PromptResultsSection
+        user={user}
+        onDisplayedPromptChange={onDisplayedPromptChange}
+        onReoptimize={onReoptimize}
+        onFetchSuggestions={onFetchSuggestions}
+        onSuggestionClick={onSuggestionClick}
+        onHighlightsPersist={onHighlightsPersist}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        stablePromptContext={stablePromptContext}
+        coherenceAffectedSpanIds={coherenceAffectedSpanIds}
+        coherenceSpanIssueMap={coherenceSpanIssueMap}
+        coherenceIssues={coherenceIssues}
+        isCoherenceChecking={isCoherenceChecking}
+        isCoherencePanelExpanded={isCoherencePanelExpanded}
+        onToggleCoherencePanelExpanded={onToggleCoherencePanelExpanded}
+        onDismissCoherenceIssue={onDismissCoherenceIssue}
+        onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
+        onApplyCoherenceFix={onApplyCoherenceFix}
+        onScrollToCoherenceSpan={onScrollToCoherenceSpan}
+        i2vContext={i2vContext}
+      />
+    </main>
   );
 };
-

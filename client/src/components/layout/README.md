@@ -1,4 +1,4 @@
-# Geist Layout Components
+# PromptStudio Layout Components
 
 ## Quick Start
 
@@ -6,35 +6,35 @@
 import { Box, Flex, Grid, Container, Section } from '@/components/layout';
 ```
 
-## Geist Spacing Tokens
+## PromptStudio Spacing Tokens
 
-All layout components support Geist spacing tokens:
+All layout components support PromptStudio spacing tokens:
 
-- `geist-quarter` - 4pt (~5px) - Tight spacing
-- `geist-half` - 8pt (~11px) - Small spacing
-- `geist-base` - 16pt (~21px) - Standard spacing (primary)
+- `ps-quarter` - 4pt (~5px) - Tight spacing
+- `ps-half` - 8pt (~11px) - Small spacing
+- `ps-base` - 16pt (~21px) - Standard spacing (primary)
 
 ## Examples
 
-### Basic Box with Geist Spacing
+### Basic Box with PromptStudio Spacing
 ```tsx
-<Box p="geist-base" m="geist-half">
-  Content with Geist spacing
+<Box p="ps-base" m="ps-half">
+  Content with PromptStudio spacing
 </Box>
 
-<Box p="geist-quarter" gap="geist-base">
+<Box p="ps-quarter" gap="ps-base">
   Tight padding, standard gap
 </Box>
 ```
 
 ### Flex Layout
 ```tsx
-<Flex direction="row" align="center" justify="between" gap="geist-base">
+<Flex direction="row" align="center" justify="between" gap="ps-base">
   <Box>Left</Box>
   <Box>Right</Box>
 </Flex>
 
-<Flex direction="column" gap="geist-half">
+<Flex direction="column" gap="ps-half">
   <Box>Item 1</Box>
   <Box>Item 2</Box>
 </Flex>
@@ -42,14 +42,14 @@ All layout components support Geist spacing tokens:
 
 ### Grid Layout
 ```tsx
-<Grid columns="repeat(3, 1fr)" gap="geist-base">
+<Grid columns="repeat(3, 1fr)" gap="ps-base">
   <Box>Item 1</Box>
   <Box>Item 2</Box>
   <Box>Item 3</Box>
 </Grid>
 ```
 
-### Container (Geist Content Widths)
+### Container (PromptStudio Content Widths)
 ```tsx
 <Container size="lg">
   <h1>Page Content</h1>
@@ -60,14 +60,14 @@ All layout components support Geist spacing tokens:
 </Container>
 ```
 
-### Section Spacing (Geist Spacing Scale)
+### Section Spacing (PromptStudio Spacing Scale)
 ```tsx
 <Section size="sm">
   <h2>Section Title</h2>
-  <p>Section content with Geist spacing...</p>
+  <p>Section content with PromptStudio spacing...</p>
 </Section>
 
-<Section spacing="geist-base">
+<Section spacing="ps-base">
   <h2>Custom Spacing</h2>
 </Section>
 ```
@@ -76,16 +76,16 @@ All layout components support Geist spacing tokens:
 
 | Token | Value | Use Case |
 |-------|-------|----------|
-| `geist-quarter` | 4pt (~5px) | Tight spacing, micro adjustments |
-| `geist-half` | 8pt (~11px) | Small spacing, compact layouts |
-| `geist-base` | 16pt (~21px) | Standard spacing, primary gaps |
+| `ps-quarter` | 4pt (~5px) | Tight spacing, micro adjustments |
+| `ps-half` | 8pt (~11px) | Small spacing, compact layouts |
+| `ps-base` | 16pt (~21px) | Standard spacing, primary gaps |
 
 ## Integration
 
 These components work seamlessly with:
-- ✅ Geist spacing tokens (`geist-quarter`, `geist-half`, `geist-base`)
-- ✅ Geist typography classes
-- ✅ Geist color tokens
+- ✅ PromptStudio spacing tokens (`ps-quarter`, `ps-half`, `ps-base`)
+- ✅ PromptStudio typography classes
+- ✅ PromptStudio color tokens
 - ✅ Tailwind CSS utilities
 - ✅ Responsive props
 
@@ -104,11 +104,10 @@ These components work seamlessly with:
 
 | Size | Spacing | Use Case |
 |------|---------|----------|
-| `xs` | geist-half (8pt) | Tight spacing |
-| `sm` | geist-base (16pt) | Standard spacing |
+| `xs` | ps-half (8pt) | Tight spacing |
+| `sm` | ps-base (16pt) | Standard spacing |
 | `md` | 32pt | Medium spacing |
 | `lg` | 48pt | Large spacing |
 | `xl` | 64pt | Extra large spacing |
 
-See [Geist Design System](https://vercel.com/geist) for more information.
 

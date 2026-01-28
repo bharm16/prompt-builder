@@ -5,8 +5,8 @@
  * It now tracks the canonical CacheOptions type and keeps legacy hooks.
  */
 
-import type { CacheOptions } from '@interfaces/ICacheService.js';
-import type { CacheStats } from '../types/services.ts';
+import type { CacheOptions } from '@interfaces/ICacheService';
+import type { CacheStats } from '@server/types/services';
 
 export type { CacheOptions };
 

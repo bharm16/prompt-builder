@@ -14,9 +14,9 @@
  * Following VideoConceptBuilder pattern: VideoConceptBuilder.tsx
  */
 
-import React, { useState, useEffect } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import React, { useState, useEffect, memo } from 'react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 // Hooks
 import { useSuggestionsState } from './hooks/useSuggestionsState';
@@ -41,8 +41,11 @@ import {
   DEFAULT_ERROR_STATE,
   DEFAULT_PANEL_CONFIG,
 } from './config/panelConfig';
-import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './components/types';
+import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig, PanelIcon } from './components/types';
 import type { SuggestionItem } from './hooks/types';
+
+
+const EMPTY_SUGGESTIONS: SuggestionItem[] = [];
 
 interface SuggestionsPanelProps {
   suggestionsData?: {
@@ -50,10 +53,11 @@ interface SuggestionsPanelProps {
     suggestions?: SuggestionItem[];
     isLoading?: boolean;
     isError?: boolean;
-    errorMessage?: string;
-    onSuggestionClick?: (suggestion: SuggestionItem) => void;
+    errorMessage?: string | null;
+    onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
     onClose?: () => void;
     onRefresh?: () => void;
+    onRetry?: () => void;
     selectedText?: string;
     isPlaceholder?: boolean;
     setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
@@ -68,10 +72,10 @@ interface SuggestionsPanelProps {
     contextLabel?: string;
     contextValue?: string;
     contextSecondaryValue?: string;
-    contextIcon?: LucideIcon;
+    contextIcon?: PanelIcon;
     showContextBadge?: boolean;
     contextBadgeText?: string;
-    contextBadgeIcon?: LucideIcon;
+    contextBadgeIcon?: PanelIcon;
     keyboardHint?: string;
     emptyState?: EmptyStateConfig;
     errorState?: ErrorStateConfig;
@@ -81,10 +85,12 @@ interface SuggestionsPanelProps {
     showCopyAction?: boolean;
     initialCategory?: string | null;
     currentPrompt?: string;
+    variant?: 'default' | 'tokenEditor';
+    tokenEditorLayout?: 'full' | 'listOnly';
   };
 }
 
-export function SuggestionsPanel({
+const SuggestionsPanel = memo(function SuggestionsPanel({
   suggestionsData = {},
 }: SuggestionsPanelProps): React.ReactElement {
   // Debug logging
@@ -98,13 +104,14 @@ export function SuggestionsPanel({
   // ===========================
   const {
     show = false,
-    suggestions = [],
+    suggestions = EMPTY_SUGGESTIONS,
     isLoading = false,
     isError = false,
     errorMessage,
     onSuggestionClick = () => {},
     onClose,
     onRefresh,
+    onRetry,
     selectedText = '',
     isPlaceholder = false,
     setSuggestions,
@@ -147,6 +154,7 @@ export function SuggestionsPanel({
     showCopyAction = suggestionsData.showCopyAction !== false,
     initialCategory = suggestionsData.initialCategory,
     currentPrompt = suggestionsData.currentPrompt || fullPrompt || '',
+    variant = suggestionsData.variant || 'default',
   } = suggestionsData;
 
   // ===========================
@@ -183,6 +191,20 @@ export function SuggestionsPanel({
     }
   }, [show, suggestions.length, selectedText, debug]);
 
+  // Pulse animation when panel opens with selection
+  useEffect(() => {
+    if (show && selectedText) {
+      // Trigger pulse animation
+      const panelElement = document.querySelector('[role="complementary"]');
+      if (panelElement) {
+        panelElement.classList.add('ps-animate-panel-pulse');
+        setTimeout(() => {
+          panelElement.classList.remove('ps-animate-panel-pulse');
+        }, 300);
+      }
+    }
+  }, [show, selectedText]);
+
   // ===========================
   // COMPUTED VALUES
   // ===========================
@@ -191,9 +213,170 @@ export function SuggestionsPanel({
   // ===========================
   // RENDER
   // ===========================
+  // Check if we should show hover preview (from props)
+  const hoverPreview = (suggestionsData as Record<string, unknown>)?.hoverPreview as boolean | undefined;
+
+  const hoverPreviewClass = hoverPreview
+    ? 'opacity-70 scale-95 transition-all duration-200'
+    : undefined;
+
+  if (variant === 'tokenEditor') {
+    const showTokenEditorHeader = (suggestionsData as Record<string, unknown>)?.tokenEditorHeader !== false;
+    const tokenEditorLayout =
+      ((suggestionsData as Record<string, unknown>)?.tokenEditorLayout as
+        | 'full'
+        | 'listOnly'
+        | undefined) || 'full';
+
+    if (tokenEditorLayout === 'listOnly') {
+      return (
+        <aside
+          className={cn(panelClassName, hoverPreviewClass)}
+          role="complementary"
+          aria-label="Refine suggestions"
+        >
+          <div className="flex flex-col">
+            {hasActiveSuggestions && isLoading && (
+              <div className="text-label-12 text-muted" role="status" aria-live="polite">
+                Loading alternatives…
+              </div>
+            )}
+
+            {hasActiveSuggestions && !isLoading && isError && (
+              <div className="space-y-2">
+                <div className="text-label-12 text-muted">
+                  {typeof errorMessage === 'string' && errorMessage.trim()
+                    ? errorMessage
+                    : 'Failed to load alternatives.'}
+                </div>
+                {onRetry && (
+                  <Button
+                    type="button"
+                    onClick={onRetry}
+                    variant="ghost"
+                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
+                  >
+                    Retry
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {hasActiveSuggestions && !isLoading && !isError && currentSuggestions.length > 0 && (
+              <SuggestionsList
+                suggestions={currentSuggestions}
+                onSuggestionClick={onSuggestionClick}
+                isPlaceholder={isPlaceholder}
+                showCopyAction={false}
+                variant="tokenEditor"
+              />
+            )}
+
+            {hasActiveSuggestions && !isLoading && !isError && currentSuggestions.length === 0 && (
+              <div className="text-label-12 text-muted">No alternatives yet.</div>
+            )}
+
+            {hasActiveSuggestions && enableCustomRequest && (
+              <>
+                <div className="my-3 h-px bg-border" aria-hidden="true" />
+                <CustomRequestForm
+                  customRequest={customRequest}
+                  onCustomRequestChange={setCustomRequest}
+                  onSubmit={handleCustomRequest}
+                  isLoading={isCustomLoading}
+                  placeholder={customRequestPlaceholder}
+                  helperText={customRequestHelperText}
+                  ctaLabel={customRequestCtaLabel}
+                  variant="tokenEditor"
+                />
+              </>
+            )}
+          </div>
+        </aside>
+      );
+    }
+
+    return (
+      <aside
+        className={cn(panelClassName, hoverPreviewClass)}
+        role="complementary"
+        aria-label="Refine suggestions"
+      >
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {showTokenEditorHeader ? (
+            <div className="px-4 pt-3 pb-2">
+              <div className="text-label-12 font-medium uppercase tracking-wider text-muted">
+                Suggestions
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {!hasActiveSuggestions ? (
+              <div className="px-4 pb-4 text-label-12 text-muted">
+                Select a token to load alternatives.
+              </div>
+            ) : isLoading ? (
+              <div
+                className="px-4 pb-4 text-label-12 text-muted"
+                role="status"
+                aria-live="polite"
+              >
+                Loading alternatives…
+              </div>
+            ) : isError ? (
+              <div className="px-4 pb-4 space-y-2">
+                <div className="text-label-12 text-muted">
+                  {typeof errorMessage === 'string' && errorMessage.trim()
+                    ? errorMessage
+                    : 'Failed to load alternatives.'}
+                </div>
+                {onRetry && (
+                  <Button
+                    type="button"
+                    onClick={onRetry}
+                    variant="ghost"
+                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
+                  >
+                    Retry
+                  </Button>
+                )}
+              </div>
+            ) : currentSuggestions.length > 0 ? (
+              <SuggestionsList
+                suggestions={currentSuggestions}
+                onSuggestionClick={onSuggestionClick}
+                isPlaceholder={isPlaceholder}
+                showCopyAction={false}
+                variant="tokenEditor"
+              />
+            ) : (
+              <div className="px-4 pb-4 text-label-12 text-muted">
+                No alternatives yet.
+              </div>
+            )}
+          </div>
+
+          {hasActiveSuggestions && enableCustomRequest && (
+            <CustomRequestForm
+              customRequest={customRequest}
+              onCustomRequestChange={setCustomRequest}
+              onSubmit={handleCustomRequest}
+              isLoading={isCustomLoading}
+              placeholder={customRequestPlaceholder}
+              helperText={customRequestHelperText}
+              ctaLabel={customRequestCtaLabel}
+              variant="tokenEditor"
+            />
+          )}
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside
-      className={panelClassName}
+      className={cn(panelClassName, hoverPreviewClass)}
       role="complementary"
       {...(panelTitle ? { 'aria-labelledby': 'suggestions-title' } : {})}
     >
@@ -249,7 +432,11 @@ export function SuggestionsPanel({
             )}
 
             {!isLoading && isError && (
-              <ErrorState errorState={errorState} errorMessage={errorMessage} />
+              <ErrorState
+                errorState={errorState}
+                {...(typeof errorMessage === 'string' ? { errorMessage } : {})}
+                {...(onRetry ? { onRetry } : {})}
+              />
             )}
 
             {!isLoading && !isError && currentSuggestions.length > 0 && (
@@ -271,27 +458,11 @@ export function SuggestionsPanel({
       </div>
 
       {hasActiveSuggestions && footer}
-
-      <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shimmer {
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
     </aside>
   );
-}
-export default SuggestionsPanel;
+});
 
+SuggestionsPanel.displayName = 'SuggestionsPanel';
+
+export { SuggestionsPanel };
+export default SuggestionsPanel;

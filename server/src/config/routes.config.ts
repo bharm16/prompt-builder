@@ -9,28 +9,33 @@
  * - Configuring 404 handling
  */
 
-import * as Sentry from '@sentry/node';
-import type { Application } from 'express';
-import type { Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
+import { logger } from '@infrastructure/Logger';
 
 // Import middleware
-import { apiAuthMiddleware } from '../middleware/apiAuth.js';
-import { errorHandler } from '../middleware/errorHandler.js';
-import { createBatchMiddleware } from '../middleware/requestBatching.js';
+import { apiAuthMiddleware } from '@middleware/apiAuth';
+import { errorHandler } from '@middleware/errorHandler';
+import { createBatchMiddleware } from '@middleware/requestBatching';
 
 // Import routes
-import { createAPIRoutes } from '../routes/api.routes.js';
-import { createHealthRoutes } from '../routes/health.routes.js';
-import { createRoleClassifyRoute } from '../routes/roleClassifyRoute.js';
-import { createLabelSpansRoute } from '../routes/labelSpansRoute.js';
-import { createSuggestionsRoute } from '../routes/suggestions.js';
-import { createPreviewRoutes } from '../routes/preview.routes.js';
+import { createAPIRoutes } from '@routes/api.routes';
+import { createHealthRoutes } from '@routes/health.routes';
+import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
+import { createLabelSpansRoute } from '@routes/labelSpansRoute';
+import { createSuggestionsRoute } from '@routes/suggestions';
+import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
+import { createPaymentRoutes } from '@routes/payment.routes';
+import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
+import { createMotionRoutes } from '@routes/motion.routes';
+import { userCreditService } from '@services/credits/UserCreditService';
 
 /**
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+
   // ============================================================================
   // Health Routes (no auth required)
   // ============================================================================
@@ -46,6 +51,21 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   app.use('/', healthRoutes);
 
   // ============================================================================
+  // Public Preview Routes (no auth required for video content)
+  // ============================================================================
+
+  if (!promptOutputOnly) {
+    const publicPreviewRoutes = createPublicPreviewRoutes({
+      videoGenerationService: container.resolve('videoGenerationService'),
+      videoContentAccessService: container.resolve('videoContentAccessService'),
+    });
+    app.use('/api/preview', publicPreviewRoutes);
+
+    const motionMediaRoutes = createConvergenceMediaRoutes();
+    app.use('/api/motion/media', motionMediaRoutes);
+  }
+
+  // ============================================================================
   // API Routes (auth required)
   // ============================================================================
 
@@ -54,10 +74,25 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     promptOptimizationService: container.resolve('promptOptimizationService'),
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
-    videoConceptService: container.resolve('videoConceptService'),
+    promptCoherenceService: container.resolve('promptCoherenceService'),
+    videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
+    assetService: container.resolve('assetService'),
+    consistentVideoService: container.resolve('consistentVideoService'),
+    userCreditService: container.resolve('userCreditService'),
+    referenceImageService: container.resolve('referenceImageService'),
+    imageObservationService: container.resolve('imageObservationService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
+
+  // ============================================================================
+  // Motion Routes (auth required)
+  // ============================================================================
+
+  if (!promptOutputOnly) {
+    const motionRoutes = createMotionRoutes();
+    app.use('/api/motion', apiAuthMiddleware, motionRoutes);
+  }
 
   // ============================================================================
   // LLM Routes (specialized endpoints with auth)
@@ -87,13 +122,29 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
 
   // ============================================================================
-  // Preview Routes (image generation)
+  // Preview Routes (image and video generation)
   // ============================================================================
 
-  const previewRoutes = createPreviewRoutes({
-    imageGenerationService: container.resolve('imageGenerationService'),
-  });
-  app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+  if (!promptOutputOnly) {
+    const previewRoutes = createPreviewRoutes({
+      imageGenerationService: container.resolve('imageGenerationService'),
+      storyboardPreviewService: container.resolve('storyboardPreviewService'),
+      videoGenerationService: container.resolve('videoGenerationService'),
+      videoJobStore: container.resolve('videoJobStore'),
+      videoContentAccessService: container.resolve('videoContentAccessService'),
+      userCreditService,
+      keyframeService: container.resolve('keyframeService'),
+      assetService: container.resolve('assetService'),
+    });
+    app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+  }
+
+  // ============================================================================
+  // Payment Routes (auth required)
+  // ============================================================================
+
+  const paymentRoutes = createPaymentRoutes();
+  app.use('/api/payment', apiAuthMiddleware, paymentRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)
@@ -123,10 +174,17 @@ export function registerErrorHandlers(app: Application): void {
     res: Response & { sentry?: string },
     next: (err?: Error) => void
   ): void {
-    // The error id is attached to `res.sentry` to be returned
-    // and optionally displayed to the user for support.
-    res.statusCode = 500;
-    res.end((res.sentry || '') + '\n');
+    // Only short-circuit when Sentry has attached an error id.
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    if (res.sentry) {
+      res.statusCode = 500;
+      res.end(`${res.sentry}\n`);
+      return;
+    }
+    next(err);
   });
 
   // Custom error handler (must be last)
@@ -141,4 +199,3 @@ export function configureRoutes(app: Application, container: DIContainer): void 
   registerRoutes(app, container);
   registerErrorHandlers(app);
 }
-

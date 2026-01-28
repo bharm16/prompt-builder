@@ -7,12 +7,18 @@
 
 import { useReducer, useCallback } from 'react';
 import { logger } from '../services/LoggingService';
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
 
 const log = logger.child('usePromptOptimizerState');
 
 export interface SpansData {
-  spans: unknown[];
-  meta: unknown | null;
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
   source: string;
   timestamp: number;
 }
@@ -22,6 +28,9 @@ export interface PromptOptimizerState {
   isProcessing: boolean;
   optimizedPrompt: string;
   displayedPrompt: string;
+  genericOptimizedPrompt: string | null;
+  previewPrompt: string | null;
+  previewAspectRatio: string | null;
   qualityScore: number | null;
   skipAnimation: boolean;
   improvementContext: unknown | null;
@@ -30,12 +39,16 @@ export interface PromptOptimizerState {
   isRefining: boolean;
   draftSpans: SpansData | null;
   refinedSpans: SpansData | null;
+  lockedSpans: LockedSpan[];
 }
 
 export type PromptOptimizerAction =
   | { type: 'SET_INPUT_PROMPT'; payload: string }
   | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
   | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
+  | { type: 'SET_GENERIC_OPTIMIZED_PROMPT'; payload: string | null }
+  | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
+  | { type: 'SET_PREVIEW_ASPECT_RATIO'; payload: string | null }
   | { type: 'SET_QUALITY_SCORE'; payload: number | null }
   | { type: 'SET_SKIP_ANIMATION'; payload: boolean }
   | { type: 'SET_IMPROVEMENT_CONTEXT'; payload: unknown | null }
@@ -45,6 +58,10 @@ export type PromptOptimizerAction =
   | { type: 'SET_DRAFT_SPANS'; payload: SpansData | null }
   | { type: 'SET_REFINED_SPANS'; payload: SpansData | null }
   | { type: 'SET_IS_PROCESSING'; payload: boolean }
+  | { type: 'SET_LOCKED_SPANS'; payload: LockedSpan[] }
+  | { type: 'ADD_LOCKED_SPAN'; payload: LockedSpan }
+  | { type: 'REMOVE_LOCKED_SPAN'; payload: string }
+  | { type: 'CLEAR_LOCKED_SPANS' }
   | { type: 'START_OPTIMIZATION' }
   | { type: 'RESET' };
 
@@ -53,6 +70,9 @@ const initialState: PromptOptimizerState = {
   isProcessing: false,
   optimizedPrompt: '',
   displayedPrompt: '',
+  genericOptimizedPrompt: null,
+  previewPrompt: null,
+  previewAspectRatio: null,
   qualityScore: null,
   skipAnimation: false,
   improvementContext: null,
@@ -61,6 +81,7 @@ const initialState: PromptOptimizerState = {
   isRefining: false,
   draftSpans: null,
   refinedSpans: null,
+  lockedSpans: [],
 };
 
 function reducer(
@@ -87,6 +108,12 @@ function reducer(
       return { ...state, optimizedPrompt: action.payload };
     case 'SET_DISPLAYED_PROMPT':
       return { ...state, displayedPrompt: action.payload };
+    case 'SET_GENERIC_OPTIMIZED_PROMPT':
+      return { ...state, genericOptimizedPrompt: action.payload };
+    case 'SET_PREVIEW_PROMPT':
+      return { ...state, previewPrompt: action.payload };
+    case 'SET_PREVIEW_ASPECT_RATIO':
+      return { ...state, previewAspectRatio: action.payload };
     case 'SET_QUALITY_SCORE':
       return { ...state, qualityScore: action.payload };
     case 'SET_SKIP_ANIMATION':
@@ -105,6 +132,22 @@ function reducer(
       return { ...state, refinedSpans: action.payload };
     case 'SET_IS_PROCESSING':
       return { ...state, isProcessing: action.payload };
+    case 'SET_LOCKED_SPANS':
+      return { ...state, lockedSpans: action.payload };
+    case 'ADD_LOCKED_SPAN': {
+      const exists = state.lockedSpans.some((span) => span.id === action.payload.id);
+      if (exists) {
+        return state;
+      }
+      return { ...state, lockedSpans: [...state.lockedSpans, action.payload] };
+    }
+    case 'REMOVE_LOCKED_SPAN':
+      return {
+        ...state,
+        lockedSpans: state.lockedSpans.filter((span) => span.id !== action.payload),
+      };
+    case 'CLEAR_LOCKED_SPANS':
+      return { ...state, lockedSpans: [] };
     case 'START_OPTIMIZATION':
       log.debug('Starting optimization - resetting state', {
         action: 'START_OPTIMIZATION',
@@ -114,6 +157,9 @@ function reducer(
         isProcessing: true,
         optimizedPrompt: '',
         displayedPrompt: '',
+        genericOptimizedPrompt: null,
+        previewPrompt: null,
+        previewAspectRatio: null,
         qualityScore: null,
         skipAnimation: false,
         draftPrompt: '',
@@ -121,6 +167,7 @@ function reducer(
         isRefining: false,
         draftSpans: null,
         refinedSpans: null,
+        lockedSpans: state.lockedSpans,
       };
     case 'RESET':
       log.debug('Resetting state to initial', {
@@ -150,8 +197,20 @@ export function usePromptOptimizerState() {
     dispatch({ type: 'SET_DISPLAYED_PROMPT', payload: prompt });
   }, []);
 
+  const setGenericOptimizedPrompt = useCallback((prompt: string | null) => {
+    dispatch({ type: 'SET_GENERIC_OPTIMIZED_PROMPT', payload: prompt });
+  }, []);
+
   const setQualityScore = useCallback((score: number | null) => {
     dispatch({ type: 'SET_QUALITY_SCORE', payload: score });
+  }, []);
+
+  const setPreviewPrompt = useCallback((prompt: string | null) => {
+    dispatch({ type: 'SET_PREVIEW_PROMPT', payload: prompt });
+  }, []);
+
+  const setPreviewAspectRatio = useCallback((ratio: string | null) => {
+    dispatch({ type: 'SET_PREVIEW_ASPECT_RATIO', payload: ratio });
   }, []);
 
   const setSkipAnimation = useCallback((skip: boolean) => {
@@ -182,6 +241,22 @@ export function usePromptOptimizerState() {
     dispatch({ type: 'SET_REFINED_SPANS', payload: spans });
   }, []);
 
+  const setLockedSpans = useCallback((spans: LockedSpan[]) => {
+    dispatch({ type: 'SET_LOCKED_SPANS', payload: spans });
+  }, []);
+
+  const addLockedSpan = useCallback((span: LockedSpan) => {
+    dispatch({ type: 'ADD_LOCKED_SPAN', payload: span });
+  }, []);
+
+  const removeLockedSpan = useCallback((spanId: string) => {
+    dispatch({ type: 'REMOVE_LOCKED_SPAN', payload: spanId });
+  }, []);
+
+  const clearLockedSpans = useCallback(() => {
+    dispatch({ type: 'CLEAR_LOCKED_SPANS' });
+  }, []);
+
   const startOptimization = useCallback(() => {
     dispatch({ type: 'START_OPTIMIZATION' });
   }, []);
@@ -207,6 +282,9 @@ export function usePromptOptimizerState() {
     setInputPrompt,
     setOptimizedPrompt,
     setDisplayedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
     setQualityScore,
     setSkipAnimation,
     setImprovementContext,
@@ -215,10 +293,13 @@ export function usePromptOptimizerState() {
     setIsRefining,
     setDraftSpans,
     setRefinedSpans,
+    setLockedSpans,
+    addLockedSpan,
+    removeLockedSpan,
+    clearLockedSpans,
     startOptimization,
     resetPrompt,
     finishProcessing,
     setIsProcessing,
   };
 }
-

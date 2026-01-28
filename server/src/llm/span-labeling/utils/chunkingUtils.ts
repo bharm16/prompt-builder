@@ -11,6 +11,8 @@
  * - Handle overlapping spans at chunk boundaries
  */
 
+import type { SpanLike } from '../types.js';
+
 interface SentenceSlice {
   text: string;
   startOffset: number;
@@ -26,14 +28,6 @@ interface TextChunk {
   startOffset: number;
   endOffset: number;
   wordCount: number;
-}
-
-interface SpanLike {
-  start: number;
-  end: number;
-  role?: string;
-  category?: string;
-  [key: string]: unknown;
 }
 
 interface ChunkResult {
@@ -83,8 +77,12 @@ export class TextChunker {
         return;
       }
 
-      const startOffset = sentencesForChunk[0].startOffset;
-      const endOffset = sentencesForChunk[sentencesForChunk.length - 1].endOffset;
+      const firstSentence = sentencesForChunk[0];
+      const lastSentence = sentencesForChunk[sentencesForChunk.length - 1];
+      if (!firstSentence || !lastSentence) return;
+
+      const startOffset = firstSentence.startOffset;
+      const endOffset = lastSentence.endOffset;
 
       chunks.push({
         text: text.slice(startOffset, endOffset),
@@ -121,39 +119,66 @@ export class TextChunker {
    * @returns {Array<Object>} Sentences with positions
    */
   splitIntoSentences(text: string): SentenceSlice[] {
-    // Enhanced sentence splitter that handles common edge cases
-    // Matches sentences ending with . ! ? followed by space or end of string
-    // Handles common abbreviations like Dr. Mr. Ms. etc.
-    const sentenceRegex = /[^.!?]+[.!?]+(?=\s|$)/g;
+    // Sentence splitter that respects line-based sections (headings, bullets)
     const sentences: SentenceSlice[] = [];
+    const lineRegex = /.*(?:\n|$)/g;
+    const sentenceRegex = /[^.!?]+[.!?]+(?=\s|$)/g;
     let match: RegExpExecArray | null;
-    let lastIndex = 0;
-    
-    while ((match = sentenceRegex.exec(text)) !== null) {
-      const sentenceText = match[0].trim();
-      if (sentenceText.length > 0) {
+
+    while ((match = lineRegex.exec(text)) !== null) {
+      if (match[0].length === 0) {
+        lineRegex.lastIndex += 1;
+        if (lineRegex.lastIndex > text.length) break;
+        continue;
+      }
+      const lineText = match[0];
+      const lineStart = match.index;
+      const lineEnd = match.index + lineText.length;
+      const trimmed = lineText.trim();
+
+      if (!trimmed) {
+        continue;
+      }
+
+      const isBullet = /^[-*•]\s+/.test(trimmed);
+      const isHeading = /^#{1,6}\s+/.test(trimmed) || (/^\*\*.+\*\*$/.test(trimmed) && trimmed.length > 4);
+
+      if (isBullet || isHeading) {
+        const offsetWithinLine = lineText.indexOf(trimmed);
+        sentences.push({
+          text: trimmed,
+          startOffset: lineStart + offsetWithinLine,
+          endOffset: lineStart + offsetWithinLine + trimmed.length,
+        });
+        continue;
+      }
+
+      sentenceRegex.lastIndex = 0;
+      let hadSentence = false;
+      let sentenceMatch: RegExpExecArray | null;
+
+      while ((sentenceMatch = sentenceRegex.exec(lineText)) !== null) {
+        const sentenceText = sentenceMatch[0].trim();
+        if (!sentenceText) continue;
+        const offsetWithinLine = sentenceMatch[0].indexOf(sentenceText);
         sentences.push({
           text: sentenceText,
-          startOffset: match.index,
-          endOffset: match.index + match[0].length,
+          startOffset: lineStart + sentenceMatch.index + offsetWithinLine,
+          endOffset: lineStart + sentenceMatch.index + offsetWithinLine + sentenceText.length,
         });
-        lastIndex = match.index + match[0].length;
+        hadSentence = true;
       }
-    }
-    
-    // Handle final text without sentence terminator
-    if (lastIndex < text.length) {
-      const remainingText = text.slice(lastIndex).trim();
-      if (remainingText.length > 0) {
+
+      if (!hadSentence) {
+        const offsetWithinLine = lineText.indexOf(trimmed);
         sentences.push({
-          text: remainingText,
-          startOffset: lastIndex,
-          endOffset: text.length,
+          text: trimmed,
+          startOffset: lineStart + offsetWithinLine,
+          endOffset: lineStart + offsetWithinLine + trimmed.length,
         });
       }
     }
-    
-    // If no sentences were detected, treat entire text as one sentence
+
     if (sentences.length === 0 && text.trim().length > 0) {
       sentences.push({
         text: text.trim(),
@@ -161,7 +186,7 @@ export class TextChunker {
         endOffset: text.length,
       });
     }
-    
+
     return sentences;
   }
   
@@ -228,6 +253,7 @@ export class TextChunker {
 
     for (let i = sentences.length - 1; i >= 0; i -= 1) {
       const sentence = sentences[i];
+      if (!sentence) continue;
       overlapWordCount += sentence.wordCount;
       overlap.unshift(sentence);
 

@@ -26,7 +26,7 @@ export const creativeSuggestionSchema = z.object({
   currentValue: z.string().max(5000).optional(),
   context: z.union([
     z.string().max(5000),
-    z.record(z.unknown()),
+    z.record(z.string(), z.unknown()),
   ]).optional(),
   concept: z.string().max(10000).optional(),
 });
@@ -34,17 +34,17 @@ export const creativeSuggestionSchema = z.object({
 export const videoValidationSchema = z.object({
   elementType: z.enum(ELEMENT_TYPES).optional(),
   value: z.string().max(10000).optional(),
-  elements: z.record(z.unknown()),
+  elements: z.record(z.string(), z.unknown()),
 });
 
 export const completeSceneSchema = z.object({
-  existingElements: z.record(z.unknown()),
+  existingElements: z.record(z.string(), z.unknown()),
   concept: z.string().max(10000).optional(),
   smartDefaultsFor: z.enum([...ELEMENT_TYPES, 'technical']).optional(),
 });
 
 export const variationsSchema = z.object({
-  elements: z.record(z.unknown()),
+  elements: z.record(z.string(), z.unknown()),
   concept: z.string().max(10000).optional(),
 });
 
@@ -58,14 +58,14 @@ export const saveTemplateSchema = z.object({
   name: z.string()
     .min(1, 'Name is required')
     .max(100, 'Name must not exceed 100 characters'),
-  elements: z.record(z.unknown()),
+  elements: z.record(z.string(), z.unknown()),
   concept: z.string().max(10000).optional(),
   userId: z.string().optional(),
 });
 
 export const templateRecommendationsSchema = z.object({
   userId: z.string().optional(),
-  currentElements: z.record(z.unknown()).optional(),
+  currentElements: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const recordUserChoiceSchema = z.object({

@@ -14,6 +14,8 @@ const {
   maxWidth,
   defaultThreshold,
   defaultTimeoutMs,
+  multiLabel: defaultMultiLabel,
+  labelThresholds: defaultLabelThresholds,
 } = workerData || {};
 
 let gliner = null;
@@ -34,6 +36,20 @@ function calibrateGlinerConfidence(score, threshold) {
   const normalized = clamped <= t ? 0 : (clamped - t) / (1 - t);
   const calibrated = 0.5 + normalized * 0.5;
   return Math.round(calibrated * 100) / 100;
+}
+
+function getLabelThreshold(label, taxonomyId, fallbackThreshold, overrides) {
+  if (!overrides || typeof overrides !== 'object') return fallbackThreshold;
+  const normalizedLabel = typeof label === 'string' ? label.toLowerCase() : '';
+  const override =
+    (typeof overrides[normalizedLabel] === 'number' ? overrides[normalizedLabel] : undefined) ??
+    (typeof overrides[taxonomyId] === 'number' ? overrides[taxonomyId] : undefined);
+
+  if (typeof override === 'number' && Number.isFinite(override)) {
+    return Math.max(0, Math.min(0.99, override));
+  }
+
+  return fallbackThreshold;
 }
 
 function withTimeout(promise, timeoutMs) {
@@ -117,7 +133,7 @@ async function initializeGliner() {
   return glinerInitPromise;
 }
 
-async function runInference(text, thresholdOverride, timeoutOverride) {
+async function runInference(text, thresholdOverride, timeoutOverride, options = {}) {
   if (!text || typeof text !== 'string') return [];
 
   const ready = await initializeGliner();
@@ -127,6 +143,8 @@ async function runInference(text, thresholdOverride, timeoutOverride) {
 
   const threshold = typeof thresholdOverride === 'number' ? thresholdOverride : defaultThreshold || 0.3;
   const timeoutMs = typeof timeoutOverride === 'number' ? timeoutOverride : defaultTimeoutMs || 0;
+  const labelThresholds = options?.labelThresholds || defaultLabelThresholds || {};
+  const multiLabel = typeof options?.multiLabel === 'boolean' ? options.multiLabel : defaultMultiLabel;
 
   const results = await withTimeout(
     gliner.inference({
@@ -134,20 +152,29 @@ async function runInference(text, thresholdOverride, timeoutOverride) {
       entities: Array.isArray(labels) ? labels : [],
       flatNer: false,
       threshold,
-      multiLabel: false,
+      multiLabel: typeof multiLabel === 'boolean' ? multiLabel : false,
     }),
     timeoutMs
   );
 
   const entities = results?.[0] || [];
-  return entities.map((entity) => ({
-    text: entity.spanText,
-    role: mapLabelToTaxonomy(entity.label),
-    confidence: calibrateGlinerConfidence(entity.score, threshold),
-    start: entity.start,
-    end: entity.end,
-    source: 'gliner',
-  }));
+  return entities
+    .map((entity) => {
+      const taxonomyId = mapLabelToTaxonomy(entity.label);
+      const labelThreshold = getLabelThreshold(entity.label, taxonomyId, threshold, labelThresholds);
+      if (entity.score < labelThreshold) {
+        return null;
+      }
+      return {
+        text: entity.spanText,
+        role: taxonomyId,
+        confidence: calibrateGlinerConfidence(entity.score, labelThreshold),
+        start: entity.start,
+        end: entity.end,
+        source: 'gliner',
+      };
+    })
+    .filter(Boolean);
 }
 
 async function handleMessage(message) {
@@ -174,7 +201,7 @@ async function handleMessage(message) {
 
       const warmupText = payload?.text || 'Low-Angle Shot, 24fps, 16:9, golden hour';
       try {
-        await runInference(warmupText, payload?.threshold, payload?.timeoutMs);
+        await runInference(warmupText, payload?.threshold, payload?.timeoutMs, payload);
       } catch (error) {
         parentPort.postMessage({
           type: 'log',
@@ -189,7 +216,7 @@ async function handleMessage(message) {
     }
 
     if (type === 'inference') {
-      const spans = await runInference(payload?.text, payload?.threshold, payload?.timeoutMs);
+      const spans = await runInference(payload?.text, payload?.threshold, payload?.timeoutMs, payload);
       parentPort.postMessage({ id, ok: true, result: spans });
       return;
     }

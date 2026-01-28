@@ -15,7 +15,7 @@
  * - Use GroqLlamaAdapter for: llama-3.1-8b-instant, llama-* models
  */
 
-import { APIError, TimeoutError } from '../LLMClient.ts';
+import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
@@ -37,8 +37,8 @@ interface QwenCompletionOptions {
   retryOnValidationFailure?: boolean;
   maxRetries?: number;
   expectedOutputSize?: 'small' | 'medium' | 'large';
-  /** Qwen3-specific: Control thinking mode. 'none' disables reasoning for structured output */
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  /** Qwen3-32B reasoning_effort: 'none' disables reasoning, 'default' enables reasoning */
+  reasoningEffort?: 'none' | 'default';
 }
 
 interface QwenAdapterConfig {
@@ -51,6 +51,7 @@ interface QwenAdapterConfig {
 interface AbortControllerResult {
   controller: AbortController;
   timeoutId: NodeJS.Timeout;
+  abortedByTimeout: { value: boolean };
 }
 
 interface GroqResponseData {
@@ -79,7 +80,7 @@ export class GroqQwenAdapter {
   public capabilities: { 
     streaming: boolean; 
     jsonMode: boolean; 
-    jsonSchema: boolean;
+    structuredOutputs: boolean;
     reasoningEffort: boolean;
   };
 
@@ -101,7 +102,7 @@ export class GroqQwenAdapter {
     this.capabilities = { 
       streaming: true, 
       jsonMode: true,
-      jsonSchema: true,
+      structuredOutputs: false,
       reasoningEffort: true, // Qwen3-specific
     };
   }
@@ -117,7 +118,7 @@ export class GroqQwenAdapter {
     let lastError: Error | null = null;
     let attempt = 0;
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       model: options.model || this.defaultModel,
       maxTokens: options.maxTokens,
@@ -134,7 +135,7 @@ export class GroqQwenAdapter {
         if (options.jsonMode || options.schema || options.responseFormat) {
           const validation = validateLLMResponse(response.text, {
             expectJson: true,
-            expectArray: options.isArray,
+            ...(options.isArray !== undefined && { expectArray: options.isArray }),
           });
 
           if (!validation.isValid) {
@@ -154,7 +155,7 @@ export class GroqQwenAdapter {
           }
         }
 
-        this.log.info(`${operation} completed`, {
+        this.log.info('Operation completed.', {
           operation,
           duration: Math.round(performance.now() - startTime),
           attempt: attempt + 1,
@@ -170,7 +171,7 @@ export class GroqQwenAdapter {
           this.log.warn('Groq API error, retrying', {
             operation,
             attempt: attempt + 1,
-            status: error.status,
+            status: error.statusCode,
             error: error.message,
           });
           attempt++;
@@ -178,7 +179,7 @@ export class GroqQwenAdapter {
           continue;
         }
         
-        this.log.error(`${operation} failed`, error as Error, {
+        this.log.error('Operation failed.', error as Error, {
           operation,
           duration: Math.round(performance.now() - startTime),
           attempt: attempt + 1,
@@ -199,7 +200,7 @@ export class GroqQwenAdapter {
     options: QwenCompletionOptions
   ): Promise<AIResponse> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
 
     try {
       const messages = this._buildMessages(systemPrompt, options);
@@ -234,9 +235,7 @@ export class GroqQwenAdapter {
        * 
        * Controls the model's "thinking mode":
        * - 'none': Disable reasoning, get direct output (best for structured JSON)
-       * - 'low': Minimal reasoning
-       * - 'medium': Balanced reasoning
-       * - 'high': Full reasoning (default for complex tasks)
+       * - 'default': Enable reasoning (model default)
        * 
        * For structured output, default to 'none' to prevent reasoning traces in JSON.
        */
@@ -246,19 +245,44 @@ export class GroqQwenAdapter {
         payload.reasoning_effort = 'none';
       }
 
-      // Response format configuration
-      if (options.schema) {
-        payload.response_format = {
-          type: 'json_schema',
-          json_schema: {
-            name: (options.schema as { name?: string }).name || 'structured_response',
-            schema: (options.schema as { schema?: unknown }).schema || options.schema
+      // Response format configuration (Qwen supports json_object, not json_schema)
+      // IMPORTANT: Groq requires 'json' to appear in messages when using json_object mode
+      const wantsJsonSchema = !!options.schema || options.responseFormat?.type === 'json_schema';
+      const usingJsonObjectMode = wantsJsonSchema || options.jsonMode || options.responseFormat?.type === 'json_object';
+      
+      if (usingJsonObjectMode) {
+        // Groq API requires the word 'json' to appear in messages when using json_object mode
+        // Inject into first message if not already present
+        const messagesContainJson = messages.some(m => 
+          m.content.toLowerCase().includes('json')
+        );
+        
+        if (!messagesContainJson) {
+          this.log.debug('Injecting JSON instruction for Groq json_object mode', {
+            model: options.model || this.defaultModel,
+          });
+          // Prepend to system message to satisfy Groq's requirement
+          const systemIdx = messages.findIndex(m => m.role === 'system');
+          const systemMessage = systemIdx >= 0 ? messages[systemIdx] : undefined;
+          if (systemMessage) {
+            systemMessage.content = `Respond with valid JSON.\n\n${systemMessage.content}`;
+          } else if (messages[0]) {
+            // No system message, add instruction to first message
+            messages[0].content = `Respond with valid JSON.\n\n${messages[0].content}`;
+          } else {
+            messages.push({ role: 'system', content: 'Respond with valid JSON.' });
           }
-        };
+        }
+        
+        if (wantsJsonSchema) {
+          this.log.debug('Qwen response_format json_schema unsupported; using json_object', {
+            model: options.model || this.defaultModel,
+            hasSchema: !!options.schema,
+          });
+        }
+        payload.response_format = { type: 'json_object' };
       } else if (options.responseFormat) {
         payload.response_format = options.responseFormat;
-      } else if (options.jsonMode) {
-        payload.response_format = { type: 'json_object' };
       }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -290,7 +314,10 @@ export class GroqQwenAdapter {
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        if (abortedByTimeout.value) {
+          throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        }
+        throw new ClientAbortError('Groq API request aborted by client');
       }
 
       throw errorObj;
@@ -329,20 +356,22 @@ export class GroqQwenAdapter {
   private _normalizeResponse(data: GroqResponseData, options: QwenCompletionOptions): AIResponse {
     const text = data.choices?.[0]?.message?.content || '';
 
+    const metadata = {
+      usage: data.usage,
+      raw: data,
+      _original: data,
+      provider: 'groq-qwen',
+      optimizations: [
+        'qwen3-reasoning-effort',
+        'higher-temp-tolerance',
+      ],
+      ...(data.choices?.[0]?.finish_reason ? { finishReason: data.choices[0].finish_reason } : {}),
+      ...(data.system_fingerprint ? { systemFingerprint: data.system_fingerprint } : {}),
+    };
+
     return {
       text,
-      metadata: {
-        usage: data.usage,
-        raw: data,
-        _original: data,
-        provider: 'groq-qwen',
-        finishReason: data.choices?.[0]?.finish_reason,
-        systemFingerprint: data.system_fingerprint,
-        optimizations: [
-          'qwen3-reasoning-effort',
-          'higher-temp-tolerance',
-        ],
-      },
+      metadata,
     };
   }
 
@@ -398,7 +427,11 @@ export class GroqQwenAdapter {
 
   private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const abortedByTimeout = { value: false };
+    const timeoutId = setTimeout(() => {
+      abortedByTimeout.value = true;
+      controller.abort();
+    }, timeout);
 
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -408,6 +441,6 @@ export class GroqQwenAdapter {
       }
     }
 
-    return { controller, timeoutId };
+    return { controller, timeoutId, abortedByTimeout };
   }
 }

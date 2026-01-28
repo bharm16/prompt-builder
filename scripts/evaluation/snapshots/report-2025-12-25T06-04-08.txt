@@ -1,0 +1,98 @@
+Evaluation Report - 2025-12-25T06:04:08.905Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (5 prompts evaluated):
+  Average Score:      16.8/25
+  Average Span Count: 27.4
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████ 1
+  acceptable (13-17)   ████████████████████████████████ 4
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - intensely focused face (1x)
+  - vibrant game colors (1x)
+  - faint clicking of keyboard and mouse (1x)
+  - modern gaming commercial (1x)
+  - modern esports broadcasting (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - window (4x)
+  - f/11 (2x)
+  - dolly tracking (2x)
+  - vibrant game colors (1x)
+  - gaming (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 8405 | P50: 5696 | P95: 13186 | P99: 13186
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: intensely focused face (subject), vibrant game colors (style), faint clicking of keyboard and mouse (audio), modern gaming commercial (style), modern esports broadcasting (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 14
+  - style: 6
+  - environment: 6
+  - camera: 5
+  - subject: 4
+  - audio: 2
+  - action: 2
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.40 / 4.20
+  subject      3.00 / 3.20
+  action       2.20 / 3.20
+  environment  3.20 / 4.20
+  lighting     3.00 / 3.60
+  camera       3.40 / 3.60
+  style        2.60 / 3.40
+  technical    3.80 / 4.00
+  audio        3.00 / 4.00
+
+FALSE POSITIVE REASONS:
+  - non_visual: 8
+      e.g.: vibrant game colors, gaming, clicking, streaming from large windows, window
+  - duplicate: 7
+      e.g.: deep focus, dolly tracking, dolly tracking, Kodak Vision3, dog
+  - other: 6
+      e.g.: shallow focus, splattered apron, focused expression, Soft natural daylight, f/11, f/11
+
+TOP TAXONOMY ERRORS:
+  - action.movement → audio.soundEffect (2x) (e.g. "clicking", "tapping")
+  - shot.type → camera.focus (2x) (e.g. "deep focus", "deep focus")
+  - lighting.quality → style.aesthetic (2x) (e.g. "adventure aesthetic", "High-contrast digital")
+  - action.movement → subject.emotion (1x) (e.g. "intensely focused")
+  - action.movement → action (1x) (e.g. "playing")
+
+ERRORS BY SECTION:
+  main            missed 21, falsePositives 7
+  technicalSpecs  missed 3, falsePositives 14
+  alternatives    missed 15, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   4.8% (4/83)
+    Failures: "shallow focus" (shot.type), "deep focus" (shot.type), "dog" (subject.identity)
+  medium 33.3% (11/33)
+    Failures: "gaming" (action.movement), "clicking" (action.movement), "splattered apron, focused expression" (subject.wardrobe)
+  low    28.6% (6/21)
+    Failures: "vibrant game colors" (audio.ambient), "Soft natural daylight" (environment.context), "f/11" (technical.frameRate)
+  Recommended minConfidence: 0.80
+
+🔍 WORST PERFORMERS (for debugging):
+  [16/25] "man looking out of a window"
+    Notes: The extraction missed some important elements like 'Terrence Malick film' and 'soft shadows'. There were several false positives related to 'window' being incorrectly labeled as a subject. Some taxonomy errors were present, such as 'static tripod' being misclassified. Technical specs were partially extracted, but some errors were noted, such as 'f/11' being incorrectly labeled as frame rate.
+  [16/25] "man driving a car"
+    Notes: The extraction missed several important visual elements, especially in the environment and lighting categories. There were also issues with taxonomy, particularly with 'deep focus' being misclassified. Some duplicates and non-visual elements were incorrectly extracted, affecting precision.
+  [17/25] "man playing computer games"
+    Notes: The extraction missed several important elements, particularly in style and audio categories. Some non-visual elements were incorrectly extracted, and there were a few taxonomy errors, especially in distinguishing between action and audio.
+
+================================================================================

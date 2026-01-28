@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
-import type { ICacheService, CacheOptions } from '@interfaces/ICacheService.js';
-import type { CacheServiceWithStatisticsOptions, CacheStatisticsTracker } from './types.js';
+import type { ICacheService, CacheOptions } from '@interfaces/ICacheService';
+import type { CacheServiceWithStatisticsOptions, CacheStatisticsTracker } from './types';
 
 /**
  * Cache Service with Statistics (Decorator Pattern)
@@ -108,8 +108,9 @@ export class CacheServiceWithStatistics implements ICacheService {
   }
 
   async flush(): Promise<void> {
-    if (typeof (this.cacheService as { flush?: () => Promise<void> }).flush === 'function') {
-      return (this.cacheService as { flush: () => Promise<void> }).flush();
+    const cacheWithFlush = this.cacheService as unknown as { flush?: () => Promise<void> };
+    if (typeof cacheWithFlush.flush === 'function') {
+      return cacheWithFlush.flush();
     }
   }
 
@@ -132,10 +133,10 @@ export class CacheServiceWithStatistics implements ICacheService {
   }
 
   isHealthy(): boolean {
-    if (typeof (this.cacheService as { isHealthy?: () => boolean }).isHealthy === 'function') {
-      return (this.cacheService as { isHealthy: () => boolean }).isHealthy();
+    const cacheWithHealth = this.cacheService as unknown as { isHealthy?: () => boolean };
+    if (typeof cacheWithHealth.isHealthy === 'function') {
+      return cacheWithHealth.isHealthy();
     }
     return true;
   }
 }
-

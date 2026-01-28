@@ -13,5 +13,5 @@
  * This shim maintains backward compatibility with existing imports.
  */
 
-export { EnhancementService } from './enhancement/index.js';
+export { EnhancementService } from './enhancement/index';
 

@@ -5,21 +5,10 @@
  * Now aligned with unified taxonomy system:
  * - Uses taxonomy parent categories as box keys
  * - All attributes (e.g., subject.wardrobe) grouped under their parents
- * - Monochromatic design system with Geist icons
+ * - Monochromatic design system with Phosphor icons
  */
 
-import {
-  Divider as Ruler,
-  Target,
-  Film,
-  Layers as TreePine,
-  Zap as Lightbulb,
-  Video,
-  Grid as Palette,
-  Settings,
-  Volume2,
-} from '@geist-ui/icons';
-import type React from 'react';
+import { FilmSlate, Gear, Lightbulb, Palette, Ruler, SpeakerHigh, Target, Tree, VideoCamera } from '@promptstudio/system/components/ui';
 import { TAXONOMY } from '@shared/taxonomy';
 import { getCategoryColor } from '@utils/PromptContext/categoryStyles';
 
@@ -54,14 +43,14 @@ export const CATEGORY_CONFIG = {
   [TAXONOMY.ACTION.id]: {
     label: 'Action & Motion',
     ...getCategoryColors(TAXONOMY.ACTION.id),
-    icon: Film,
+    icon: FilmSlate,
     order: 3,
     description: 'What the subject is doing (movement, state, gesture)',
   },
   [TAXONOMY.ENVIRONMENT.id]: {
     label: 'Environment',
     ...getCategoryColors(TAXONOMY.ENVIRONMENT.id),
-    icon: TreePine,
+    icon: Tree,
     order: 4,
     description: 'Location, weather, and spatial context',
   },
@@ -75,7 +64,7 @@ export const CATEGORY_CONFIG = {
   [TAXONOMY.CAMERA.id]: {
     label: 'Camera',
     ...getCategoryColors(TAXONOMY.CAMERA.id),
-    icon: Video,
+    icon: VideoCamera,
     order: 6,
     description: 'Framing, movement, lens, and angles',
   },
@@ -89,14 +78,14 @@ export const CATEGORY_CONFIG = {
   [TAXONOMY.TECHNICAL.id]: {
     label: 'Technical Specs',
     ...getCategoryColors(TAXONOMY.TECHNICAL.id),
-    icon: Settings,
+    icon: Gear,
     order: 8,
     description: 'Frame rate, aspect ratio, and resolution',
   },
   [TAXONOMY.AUDIO.id]: {
     label: 'Audio',
     ...getCategoryColors(TAXONOMY.AUDIO.id),
-    icon: Volume2,
+    icon: SpeakerHigh,
     order: 9,
     description: 'Music, score, and sound effects',
   },

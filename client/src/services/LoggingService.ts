@@ -64,7 +64,7 @@ class LoggingService {
       ? config.logStackLevels
       : (import.meta.env?.VITE_LOG_STACK_LEVELS || 'warn,error')
           .split(',')
-          .map((level) => level.trim().toLowerCase())
+          .map((level: string) => level.trim().toLowerCase())
           .filter(Boolean) as LogLevel[];
     const resolvedStackLevels = stackLevels.length > 0 ? stackLevels : (['warn', 'error'] as LogLevel[]);
     const stackDepth = config?.logStackDepth ?? Number.parseInt(import.meta.env?.VITE_LOG_STACK_DEPTH || '6', 10);
@@ -177,9 +177,9 @@ class LoggingService {
       level,
       message,
       timestamp: new Date().toISOString(),
-      traceId: this.currentTraceId || undefined,
-      context,
-      meta: metaForEntry,
+      ...(this.currentTraceId ? { traceId: this.currentTraceId } : {}),
+      ...(context ? { context } : {}),
+      ...(metaForEntry ? { meta: metaForEntry } : {}),
     };
 
     // Console output with styling
@@ -264,9 +264,10 @@ class LoggingService {
     const appFrames = normalized.filter((frame) => this.isAppFrame(frame));
     const selected = appFrames.length > 0 ? appFrames : normalized;
 
+    const caller = selected[0];
     return {
-      caller: selected[0],
       frames: selected,
+      ...(typeof caller === 'string' ? { caller } : {}),
     };
   }
 

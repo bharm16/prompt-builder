@@ -1,102 +1,33 @@
-import { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import SpanLabelingConfig from '../config/SpanLabelingConfig.js';
-import { sanitizePolicy, sanitizeOptions, buildTaskDescription } from '../utils/policyUtils.js';
-import { parseJson, buildUserPayload } from '../utils/jsonUtils.js';
-import { formatValidationErrors } from '../utils/textUtils.js';
-import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
-import { validateSpans } from '../validation/SpanValidator.js';
-import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, getFewShotExamples } from '../utils/promptBuilder.js';
-import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
+import SpanLabelingConfig from '../config/SpanLabelingConfig';
+import { buildTaskDescription } from '../utils/policyUtils';
+import { parseJson, buildUserPayload } from '../utils/jsonUtils';
+import type { UserPayloadParams } from '../utils/jsonUtils';
+import { validateSchemaOrThrow } from '../validation/SchemaValidator';
+import { validateSpans } from '../validation/SpanValidator';
+import { buildSystemPrompt } from '../utils/promptBuilder';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
+import { getSpanLabelingSchema } from '@utils/provider/SchemaFactory';
 import { logger } from '@infrastructure/Logger';
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan } from '../types.js';
-import type { AIService as BaseAIService } from '../../../types.js';
-import type { LlmSpanParams, ILlmClient } from './ILlmClient.js';
+import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan, LLMMeta } from '../types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
+import type { LlmSpanParams, ILlmClient } from './ILlmClient';
+import { attemptRepair } from './robust-llm-client/repair';
+import { injectDefensiveMeta } from './robust-llm-client/defensiveMeta';
+import { callModel, type ModelResponse, type ProviderRequestOptions } from './robust-llm-client/modelInvocation';
+import { twoPassExtraction } from './robust-llm-client/twoPassExtraction';
+
+export type { ModelResponse, ProviderRequestOptions } from './robust-llm-client/modelInvocation';
 
 /**
- * Response from callModel with full metadata
+ * Parsed LLM response structure for span labeling
  */
-export interface ModelResponse {
-  text: string;
-  metadata?: {
-    averageConfidence?: number;
-    logprobs?: unknown[];
-    provider?: string;
-    optimizations?: string[];
-    [key: string]: unknown;
-  };
-}
-
-/**
- * Provider-specific request options
- * Subclasses configure these via hooks
- */
-export interface ProviderRequestOptions {
-  enableBookending: boolean;
-  useFewShot: boolean;
-  useSeedFromConfig: boolean;
-  enableLogprobs: boolean;
-  developerMessage?: string;
-  providerName?: string;
-}
-
-/**
- * Call LLM with system prompt and user payload using AIModelService
- * 
- * This is a shared utility - provider-specific options are passed in.
- */
-async function callModel({
-  systemPrompt,
-  userPayload,
-  aiService,
-  maxTokens,
-  providerOptions,
-}: {
-  systemPrompt: string;
-  userPayload: string;
-  aiService: BaseAIService;
-  maxTokens: number;
-  providerOptions: ProviderRequestOptions;
-}): Promise<ModelResponse> {
-  const requestOptions: Record<string, unknown> = {
-    systemPrompt,
-    userMessage: userPayload,
-    maxTokens,
-    jsonMode: true,
-    enableBookending: providerOptions.enableBookending,
-    useSeedFromConfig: providerOptions.useSeedFromConfig,
-    logprobs: providerOptions.enableLogprobs,
-  };
-
-  if (providerOptions.developerMessage) {
-    requestOptions.developerMessage = providerOptions.developerMessage;
-  }
-
-  // Few-shot examples as message array (Llama 3 best practice)
-  if (providerOptions.useFewShot) {
-    const fewShotExamples = getFewShotExamples(providerOptions.providerName || 'groq');
-    const payloadObj = JSON.parse(userPayload);
-    
-    requestOptions.messages = [
-      { role: 'system', content: systemPrompt },
-      ...fewShotExamples,
-      { role: 'user', content: payloadObj.text }
-    ];
-    requestOptions.enableSandwich = true;
-  }
-
-  const response = await aiService.execute('span_labeling', requestOptions);
-
-  let text = '';
-  if (response.text) {
-    text = response.text;
-  } else if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-    text = response.content[0]?.text || '';
-  }
-
-  return {
-    text,
-    metadata: response.metadata || {},
-  };
+interface ParsedLLMResponse {
+  spans?: LLMSpan[];
+  meta?: LLMMeta;
+  isAdversarial?: boolean;
+  is_adversarial?: boolean;
+  analysis_trace?: string | null;
+  [key: string]: unknown;
 }
 
 /**
@@ -124,141 +55,255 @@ export class RobustLlmClient implements ILlmClient {
   async getSpans(params: LlmSpanParams): Promise<LabelSpansResult> {
     const { text, policy, options, enableRepair, aiService, cache, nlpSpansAttempted } = params;
 
-    const estimatedMaxTokens = SpanLabelingConfig.estimateMaxTokens(
-      options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
-    );
+    // Get provider-specific options from subclass (merge providerName for few-shot lookup)
+    const providerName = this._getProviderName();
+    const isGemini = providerName === 'gemini';
+
+    // Use higher maxTokens for Gemini Flash to handle multi-paragraph responses
+    const estimatedMaxTokens = isGemini
+      ? 16384  // Match test script - allows full multi-paragraph extraction
+      : SpanLabelingConfig.estimateMaxTokens(
+          options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
+        );
 
     const task = buildTaskDescription(options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans, policy);
 
-    const basePayload = {
+    const basePayload: UserPayloadParams = {
       task,
       policy,
       text,
       templateVersion: options.templateVersion || SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion,
     };
-
-    // Get provider-specific options from subclass (merge providerName for few-shot lookup)
-    const providerName = this._getProviderName();
+    const validationPolicy: ValidationPolicy = isGemini
+      ? { ...(policy || {}), nonTechnicalWordLimit: 0 }
+      : policy;
+    const validationOptions: ProcessingOptions = isGemini
+      ? { ...options, minConfidence: Math.min(options.minConfidence ?? 0.5, 0.2) }
+      : options;
+    const modelConfig = this._getModelConfig(aiService, 'span_labeling');
+    const configuredModelName = modelConfig?.model;
+    const modelName = configuredModelName || process.env.SPAN_MODEL || '';
+    const clientName = process.env.SPAN_PROVIDER || providerName;
+    const { provider, capabilities } = detectAndGetCapabilities({
+      operation: 'span_labeling',
+      ...(modelName && { model: modelName }),
+      ...(clientName && { client: clientName }),
+    });
+    const supportsSchema = capabilities.strictJsonSchema || provider === 'groq' || provider === 'qwen';
+    const spanSchema = supportsSchema
+      ? getSpanLabelingSchema({ 
+          operation: 'span_labeling', 
+          ...(modelName && { model: modelName }), 
+          provider 
+        })
+      : undefined;
+    const baseProviderOptions = this._getProviderRequestOptions();
     const providerOptions: ProviderRequestOptions = {
-      ...this._getProviderRequestOptions(),
+      developerMessage: baseProviderOptions.developerMessage,
+      enableBookending: baseProviderOptions.enableBookending,
+      useFewShot: baseProviderOptions.useFewShot,
+      useSeedFromConfig: baseProviderOptions.useSeedFromConfig,
+      enableLogprobs: baseProviderOptions.enableLogprobs,
       providerName,
     };
 
+    const userPayload = isGemini ? text : buildUserPayload(basePayload);
+
     // Build system prompt
-    const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName);
+    const contextAwareSystemPrompt = buildSystemPrompt(
+      text,
+      true,
+      providerName,
+      Boolean(spanSchema),
+      options.templateVersion
+    );
 
     // Check for two-pass architecture (GPT-4o-mini with complex schemas)
-    const config = this._getModelConfig(aiService, 'span_labeling');
-    const isMini = config?.model?.includes('mini') || 
-                   config?.model?.includes('gpt-4o-mini') ||
-                   process.env.SPAN_MODEL?.includes('mini');
+    // Note: Must check for 'gpt-4o-mini' specifically, NOT just 'mini' substring
+    // because 'gemini' contains 'mini' but doesn't need two-pass architecture
+    const isMini = modelName.includes('gpt-4o-mini') ||
+                   (modelName.includes('mini') && !modelName.includes('gemini'));
     const hasComplexSchema = this._isComplexSchemaForSpans();
 
     let primaryResponse: ModelResponse;
 
     if (isMini && hasComplexSchema) {
       // Two-Pass Architecture for mini models
-      primaryResponse = await this._twoPassExtraction({
+      primaryResponse = await twoPassExtraction({
         systemPrompt: contextAwareSystemPrompt,
-        userPayload: buildUserPayload(basePayload),
+        userPayload,
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
+        providerName,
+        ...(configuredModelName ? { modelName: configuredModelName } : {}),
+        ...(process.env.SPAN_PROVIDER ? { clientName: process.env.SPAN_PROVIDER } : {}),
+        ...(spanSchema && { schema: spanSchema }),
       });
     } else {
       // Standard single-pass extraction
       primaryResponse = await callModel({
         systemPrompt: contextAwareSystemPrompt,
-        userPayload: buildUserPayload(basePayload),
+        userPayload,
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
+        ...(spanSchema && { schema: spanSchema }),
       });
     }
 
     // Store metadata for subclass access
     this._lastResponseMetadata = primaryResponse.metadata;
 
-    const parsedPrimary = parseJson(primaryResponse.text);
+    const parsedPrimary = this._parseResponseText(primaryResponse.text);
     if (!parsedPrimary.ok) {
       throw new Error(parsedPrimary.error);
     }
 
+    // Cast to expected response type
+    let parsedValue = parsedPrimary.value as ParsedLLMResponse;
+
+    // Allow provider-specific normalization before validation
+    parsedValue = this._normalizeParsedResponse(parsedValue) as ParsedLLMResponse;
+
     // Inject default meta if LLM omitted it
-    this._injectDefensiveMeta(parsedPrimary.value, options, nlpSpansAttempted);
+    injectDefensiveMeta(parsedValue, validationOptions, nlpSpansAttempted);
 
     // Validate schema
-    validateSchemaOrThrow(parsedPrimary.value);
+    validateSchemaOrThrow(parsedValue as Record<string, unknown>, spanSchema);
+
+    const rawSpans = Array.isArray(parsedValue.spans)
+      ? (parsedValue.spans as Array<Partial<LLMSpan>>)
+      : [];
+
+    if (providerName === 'gemini') {
+      const spanSamples = rawSpans.slice(0, 3).map((span) => {
+        const textValue = typeof span.text === 'string' ? span.text : '';
+        const roleValue = typeof span.role === 'string' ? span.role : '';
+        return {
+          text: textValue ? textValue.slice(0, 80) : null,
+          role: roleValue ? roleValue : null,
+          confidence: typeof span.confidence === 'number' ? span.confidence : null,
+        };
+      });
+      const missingTextCount = rawSpans.filter((span) => {
+        const textValue = typeof span.text === 'string' ? span.text.trim() : '';
+        return !textValue;
+      }).length;
+      const missingRoleCount = rawSpans.filter((span) => {
+        const roleValue = typeof span.role === 'string' ? span.role.trim() : '';
+        return !roleValue;
+      }).length;
+
+      logger.debug('Gemini span response parsed', {
+        operation: 'span_labeling',
+        provider: providerName,
+        rawSpanCount: rawSpans.length,
+        missingTextCount,
+        missingRoleCount,
+        spanSamples,
+      });
+    }
+
+    const logGeminiSummary = (stage: string, result: LabelSpansResult): void => {
+      if (providerName !== 'gemini') return;
+      const notesPreview =
+        typeof result.meta?.notes === 'string'
+          ? result.meta.notes.slice(0, 240)
+          : null;
+
+      logger.debug('Gemini span validation summary', {
+        operation: 'span_labeling',
+        provider: providerName,
+        stage,
+        rawSpanCount: rawSpans.length,
+        finalSpanCount: result.spans?.length ?? 0,
+        notesPreview,
+      });
+    };
 
     const isAdversarial =
-      parsedPrimary.value?.isAdversarial === true ||
-      parsedPrimary.value?.is_adversarial === true;
+      parsedValue?.isAdversarial === true ||
+      parsedValue?.is_adversarial === true;
+
+    // Ensure meta has required properties
+    const meta = parsedValue.meta ?? { version: 'v1', notes: '' };
 
     if (isAdversarial) {
       const validation = validateSpans({
         spans: [],
-        meta: parsedPrimary.value.meta,
+        meta,
         text,
-        policy,
-        options,
+        policy: validationPolicy,
+        options: validationOptions,
         attempt: 1,
         cache,
         isAdversarial: true,
-        analysisTrace: parsedPrimary.value.analysis_trace || null,
+        analysisTrace: parsedValue.analysis_trace || null,
       });
 
+      logGeminiSummary('adversarial', validation.result);
       return this._postProcessResult(validation.result);
     }
 
     // Validate spans (strict mode)
     let validation = validateSpans({
-      spans: parsedPrimary.value.spans || [],
-      meta: parsedPrimary.value.meta,
+      spans: parsedValue.spans || [],
+      meta,
       text,
-      policy,
-      options,
+      policy: validationPolicy,
+      options: validationOptions,
       attempt: 1,
       cache,
       isAdversarial,
-      analysisTrace: parsedPrimary.value.analysis_trace || null,
+      analysisTrace: parsedValue.analysis_trace || null,
     });
 
     if (validation.ok) {
+      logGeminiSummary('strict', validation.result);
       return this._postProcessResult(validation.result);
     }
 
     // Handle validation failure
     if (!enableRepair) {
       validation = validateSpans({
-        spans: parsedPrimary.value.spans || [],
-        meta: parsedPrimary.value.meta,
+        spans: parsedValue.spans || [],
+        meta,
         text,
-        policy,
-        options,
+        policy: validationPolicy,
+        options: validationOptions,
         attempt: 2,
         cache,
         isAdversarial,
-        analysisTrace: parsedPrimary.value.analysis_trace || null,
+        analysisTrace: parsedValue.analysis_trace || null,
       });
 
+      logGeminiSummary('lenient', validation.result);
       return this._postProcessResult(validation.result);
     }
 
     // Repair attempt
-    const repairResult = await this._attemptRepair({
+    const repairOutcome = await attemptRepair({
       basePayload,
       validationErrors: validation.errors,
-      originalResponse: parsedPrimary.value,
+      originalResponse: parsedValue as Record<string, unknown>,
       text,
-      policy,
-      options,
+      policy: validationPolicy,
+      options: validationOptions,
       aiService,
       cache,
       estimatedMaxTokens,
       providerOptions,
+      providerName,
+      parseResponseText: (value) => this._parseResponseText(value),
+      normalizeParsedResponse: (value) => this._normalizeParsedResponse(value),
+      injectDefensiveMeta,
+      ...(spanSchema && { schema: spanSchema }),
     });
+    this._lastResponseMetadata = repairOutcome.metadata;
 
-    return this._postProcessResult(repairResult);
+    logGeminiSummary('repair', repairOutcome.result);
+    return this._postProcessResult(repairOutcome.result);
   }
 
   // ============================================================
@@ -304,117 +349,27 @@ export class RobustLlmClient implements ILlmClient {
     return result;
   }
 
+  /**
+   * HOOK: Parse response text into JSON
+   *
+   * Override in subclasses to provide provider-specific parsing or repair.
+   */
+  protected _parseResponseText(text: string): ReturnType<typeof parseJson> {
+    return parseJson(text);
+  }
+
+  /**
+   * HOOK: Normalize parsed response before validation
+   *
+   * Override in subclasses to map provider-specific fields.
+   */
+  protected _normalizeParsedResponse<T extends Record<string, unknown>>(value: T): T {
+    return value;
+  }
+
   // ============================================================
   // SHARED IMPLEMENTATION (Not meant to be overridden)
   // ============================================================
-
-  /**
-   * Two-Pass Architecture for GPT-4o-mini with complex schemas
-   */
-  private async _twoPassExtraction({
-    systemPrompt,
-    userPayload,
-    aiService,
-    maxTokens,
-    providerOptions,
-  }: {
-    systemPrompt: string;
-    userPayload: string;
-    aiService: BaseAIService;
-    maxTokens: number;
-    providerOptions: ProviderRequestOptions;
-  }): Promise<ModelResponse> {
-    const payloadData = JSON.parse(userPayload);
-    const providerName = this._getProviderName();
-
-    const { provider, capabilities } = detectAndGetCapabilities({
-      operation: 'span_labeling',
-      model: this._getModelConfig(aiService, 'span_labeling')?.model,
-      client: process.env.SPAN_PROVIDER,
-    });
-
-    logger.info('Using two-pass extraction for complex schema', {
-      provider: providerName,
-      hasDeveloperRole: capabilities.developerRole,
-    });
-
-    // Pass 1: Free-text reasoning
-    const reasoningPrompt = `${systemPrompt}
-
-## Two-Pass Analysis Mode - Pass 1: REASONING
-
-Analyze the input text and identify ALL key entities, relationships, and span boundaries.
-Think step-by-step about what should be labeled.
-Output your analysis in free text / markdown format.
-Do NOT worry about JSON structure yet - just reason through the task.`;
-
-    const reasoningResponse = await callModel({
-      systemPrompt: reasoningPrompt,
-      userPayload: JSON.stringify({
-        task: 'Analyze the text and provide step-by-step reasoning about what spans should be labeled.',
-        policy: payloadData.policy,
-        text: payloadData.text,
-        templateVersion: payloadData.templateVersion,
-      }),
-      aiService,
-      maxTokens: Math.floor(maxTokens * 0.6),
-      providerOptions: {
-        ...providerOptions,
-        enableBookending: false, // No bookending for reasoning pass
-      },
-    });
-
-    logger.debug('Pass 1 (reasoning) completed', {
-      responseLength: reasoningResponse.text.length,
-      provider: providerName,
-    });
-
-    // Pass 2: Structure the reasoning
-    const structuringPrompt = capabilities.developerRole
-      ? systemPrompt
-      : `${systemPrompt}
-
-## Two-Pass Analysis Mode - Pass 2: STRUCTURING
-
-Convert the following Pass 1 analysis into the required JSON schema format.
-
-Pass 1 Analysis:
-${reasoningResponse.text}`;
-
-    const structuringDeveloperMessage = capabilities.developerRole
-      ? `You are in STRUCTURING MODE for span labeling.
-
-TASK: Convert the Pass 1 free-form analysis into the required JSON schema.
-
-Pass 1 Analysis:
-${reasoningResponse.text}
-
-Convert this analysis to the required JSON format.`
-      : undefined;
-
-    const structuredResponse = await callModel({
-      systemPrompt: structuringPrompt,
-      userPayload: JSON.stringify({
-        task: 'Convert the Pass 1 analysis into structured JSON spans following the schema.',
-        policy: payloadData.policy,
-        text: payloadData.text,
-        templateVersion: payloadData.templateVersion,
-      }),
-      aiService,
-      maxTokens: Math.floor(maxTokens * 0.4),
-      providerOptions: {
-        ...providerOptions,
-        developerMessage: structuringDeveloperMessage,
-      },
-    });
-
-    logger.info('Pass 2 (structuring) completed', {
-      provider: providerName,
-      usedDeveloperMessage: !!structuringDeveloperMessage,
-    });
-
-    return structuredResponse;
-  }
 
   /**
    * Check if schema is complex enough for two-pass
@@ -439,117 +394,4 @@ Convert this analysis to the required JSON format.`
     return null;
   }
 
-  /**
-   * Inject defensive metadata
-   */
-  private _injectDefensiveMeta(
-    value: Record<string, unknown>,
-    options: ProcessingOptions,
-    nlpSpansAttempted?: number
-  ): void {
-    if (!value) return;
-
-    if (typeof value.analysis_trace !== 'string') {
-      value.analysis_trace = `Analyzed input text and identified ${Array.isArray(value.spans) ? value.spans.length : 0} potential spans for labeling.`;
-    }
-
-    if (!value.meta || typeof value.meta !== 'object') {
-      value.meta = {
-        version: options.templateVersion || 'v1',
-        notes: `Labeled ${Array.isArray(value.spans) ? value.spans.length : 0} spans`,
-      };
-    } else {
-      const meta = value.meta as Record<string, unknown>;
-      if (!meta.version) {
-        meta.version = options.templateVersion || 'v1';
-      }
-      if (typeof meta.notes !== 'string') {
-        meta.notes = '';
-      }
-    }
-
-    if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS && nlpSpansAttempted !== undefined && nlpSpansAttempted > 0) {
-      const meta = value.meta as Record<string, unknown>;
-      meta.nlpAttempted = true;
-      meta.nlpSpansFound = nlpSpansAttempted;
-      meta.nlpBypassFailed = true;
-    }
-  }
-
-  /**
-   * Attempt repair on validation failure
-   */
-  private async _attemptRepair({
-    basePayload,
-    validationErrors,
-    originalResponse,
-    text,
-    policy,
-    options,
-    aiService,
-    cache,
-    estimatedMaxTokens,
-    providerOptions,
-  }: {
-    basePayload: Record<string, unknown>;
-    validationErrors: string[];
-    originalResponse: Record<string, unknown>;
-    text: string;
-    policy: ValidationPolicy;
-    options: ProcessingOptions;
-    aiService: BaseAIService;
-    cache: SubstringPositionCache;
-    estimatedMaxTokens: number;
-    providerOptions: ProviderRequestOptions;
-  }): Promise<LabelSpansResult> {
-    const repairPayload = {
-      ...basePayload,
-      validation: {
-        errors: validationErrors,
-        originalResponse,
-        instructions:
-          'Fix the indices and roles described above without changing span text. Do not invent new spans.',
-      },
-    };
-
-    const repairResponse = await callModel({
-      systemPrompt: `${BASE_SYSTEM_PROMPT}
-
-If validation feedback is provided, correct the issues without altering span text.`,
-      userPayload: buildUserPayload(repairPayload),
-      aiService,
-      maxTokens: estimatedMaxTokens,
-      providerOptions,
-    });
-
-    this._lastResponseMetadata = repairResponse.metadata;
-
-    const parsedRepair = parseJson(repairResponse.text);
-    if (!parsedRepair.ok) {
-      throw new Error(parsedRepair.error);
-    }
-
-    validateSchemaOrThrow(parsedRepair.value);
-
-    const validation = validateSpans({
-      spans: parsedRepair.value.spans || [],
-      meta: parsedRepair.value.meta,
-      text,
-      policy,
-      options,
-      attempt: 2,
-      cache,
-      isAdversarial:
-        parsedRepair.value?.isAdversarial === true ||
-        parsedRepair.value?.is_adversarial === true,
-      analysisTrace: parsedRepair.value.analysis_trace || null,
-    });
-
-    if (!validation.ok) {
-      const errorMessage = formatValidationErrors(validation.errors);
-      throw new Error(`Repair attempt failed validation:\n${errorMessage}`);
-    }
-
-    return validation.result;
-  }
 }

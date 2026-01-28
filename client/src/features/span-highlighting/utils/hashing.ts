@@ -35,7 +35,9 @@ export const hashString = (input = ''): string => {
   // Cache with LRU eviction
   if (hashCache.size >= HASH_CACHE_MAX_SIZE) {
     const firstKey = hashCache.keys().next().value;
-    hashCache.delete(firstKey);
+    if (firstKey !== undefined) {
+      hashCache.delete(firstKey);
+    }
   }
   hashCache.set(input, result);
 
@@ -57,4 +59,3 @@ export const __clearHashCache = (): void => {
 export const __getHashCacheSize = (): number => {
   return hashCache.size;
 };
-

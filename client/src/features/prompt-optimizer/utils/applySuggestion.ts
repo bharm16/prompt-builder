@@ -1,4 +1,8 @@
 import { relocateQuote } from '@utils/textQuoteRelocator';
+import { logger } from '@/services/LoggingService';
+import { summarize } from '@/utils/logging';
+
+const log = logger.child('applySuggestion');
 
 const ensureNumber = (value: unknown, fallback = -1): number =>
   Number.isFinite(value) ? Number(value) : fallback;
@@ -31,6 +35,8 @@ export interface ApplySuggestionResult {
   updatedPrompt: string | null;
   replacementTarget?: string;
   idempotencyKey?: string | null;
+  matchStart?: number;
+  matchEnd?: number;
 }
 
 export const applySuggestionToPrompt = ({
@@ -80,7 +86,12 @@ export const applySuggestionToPrompt = ({
   });
 
   if (!match) {
-    console.warn('[applySuggestion] Failed to locate anchor text:', quoteToFind);
+    log.warn('Failed to locate anchor text', {
+      operation: 'relocateQuote',
+      quote: summarize(quoteToFind),
+      quoteLength: quoteToFind.length,
+      preferIndex,
+    });
     return { updatedPrompt: null };
   }
 
@@ -102,8 +113,9 @@ export const applySuggestionToPrompt = ({
     updatedPrompt,
     replacementTarget: workingPrompt.slice(start, end),
     idempotencyKey: spanMeta.idempotencyKey || metadata.idempotencyKey || null,
+    matchStart: start,
+    matchEnd: end,
   };
 };
 
 export default applySuggestionToPrompt;
-

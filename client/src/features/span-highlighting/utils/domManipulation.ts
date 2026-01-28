@@ -4,8 +4,11 @@
  * Functions for creating and manipulating highlight wrapper elements.
  */
 
-import { getHighlightClassName, applyHighlightStyles } from '../config/highlightStyles.ts';
+import { getHighlightClassName, applyHighlightStyles, type HighlightColor } from '../config/highlightStyles.ts';
 import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.ts';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('domManipulation');
 
 export interface SpanForWrapper {
   category?: string;
@@ -40,7 +43,7 @@ export function createHighlightWrapper(
   span: SpanForWrapper,
   highlightStart: number,
   highlightEnd: number,
-  getCategoryColor?: (category?: string) => string | undefined
+  getCategoryColor?: (category?: string) => HighlightColor | undefined
 ): HTMLSpanElement {
   const el = root.ownerDocument.createElement('span');
   
@@ -108,7 +111,8 @@ export function logEmptyWrappers(
 ): void {
   if (!DEBUG_HIGHLIGHTS) return;
   
-  console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
+  log.warn('wrapRangeSegments returned 0 wrappers', {
+    operation: 'logEmptyWrappers',
     text: span.quote,
     role: span.role,
     start: highlightStart,
@@ -117,4 +121,3 @@ export function logEmptyWrappers(
     rootTextContentLength: root.textContent?.length,
   });
 }
-

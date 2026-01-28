@@ -1,6 +1,10 @@
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
 const PARSER_DEBUG_FLAG = 'PARSER_DEBUG';
 
 let cachedDebugState: boolean | null = null;
+const log = logger.child('parserDebug');
 
 const coerceBoolean = (value: unknown): boolean | null => {
   if (typeof value === 'boolean') return value;
@@ -42,7 +46,12 @@ const readEnvFlag = (): boolean => {
       const coerced = coerceBoolean(value);
       if (coerced !== null) return coerced;
     } catch (error) {
-      console.warn('[PARSER_DEBUG] Unable to read localStorage flag:', error);
+      const info = sanitizeError(error);
+      log.warn('Unable to read localStorage flag', {
+        operation: 'readEnvFlag',
+        error: info.message,
+        errorName: info.name,
+      });
     }
   }
 
@@ -75,13 +84,7 @@ const baseEvent = (event: string, payload: Record<string, unknown> = {}): BaseEv
 export const parserDebugLog = (event: string, payload: Record<string, unknown> = {}): void => {
   if (!isParserDebugEnabled()) return;
   const record = baseEvent(event, payload);
-  if (typeof console !== 'undefined' && typeof console.groupCollapsed === 'function') {
-    console.groupCollapsed(`%c[PARSER_DEBUG] ${event}`, 'color: #2563eb; font-weight: 600;');
-    
-    console.groupEnd();
-  } else if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-    // Fallback for environments without groupCollapsed
-  }
+  log.debug('Parser debug event', record);
 };
 
 interface SpanLifecyclePayload {
@@ -123,4 +126,3 @@ export const logPipelineMetric = ({ metric, value, context = {} }: PipelineMetri
   if (!isParserDebugEnabled()) return;
   parserDebugLog(`metric:${metric}`, { value, ...context });
 };
-

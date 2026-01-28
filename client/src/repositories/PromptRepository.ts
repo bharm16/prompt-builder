@@ -1,12 +1,7 @@
 /**
- * PromptRepository - Data Access Layer for Prompts
+ * PromptRepository - Firestore data access layer for prompts
  *
- * Abstracts all prompt-related data operations (Firestore, localStorage, etc.)
- * This allows us to:
- * - Swap data providers without changing business logic
- * - Mock easily for testing
- * - Centralize data access logic
- * - Follow the Repository pattern
+ * Centralizes Firestore prompt operations to keep data access isolated.
  */
 
 import {
@@ -19,7 +14,6 @@ import {
   getDocs,
   serverTimestamp,
   doc,
-  getDoc,
   updateDoc,
   arrayUnion,
   deleteDoc,
@@ -30,37 +24,14 @@ import {
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
-import type { PromptHistoryEntry } from '../hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
+import type { PromptData, SavedPromptResult, UpdateHighlightsOptions, UpdatePromptOptions } from './promptRepositoryTypes';
+import { PromptRepositoryError } from './promptRepositoryTypes';
 
 const log = logger.child('PromptRepository');
 
-export interface PromptData {
-  highlightCache?: unknown | null;
-  versions?: unknown[];
-  input: string;
-  output: string;
-  score?: number | null;
-  mode?: string;
-  brainstormContext?: unknown | null;
-  [key: string]: unknown;
-}
-
-export interface SavedPromptResult {
-  id: string;
-  uuid: string;
-}
-
-export interface UpdateHighlightsOptions {
-  highlightCache?: unknown | null;
-  versionEntry?: {
-    timestamp?: string;
-    [key: string]: unknown;
-  };
-}
-
 interface FirestoreError extends Error {
   code?: string;
-  message?: string;
 }
 
 function isFirestoreError(error: unknown): error is FirestoreError {
@@ -89,11 +60,16 @@ function convertHighlightCache(cache: { updatedAt?: Timestamp | string; [key: st
   if (!cache) {
     return null;
   }
-  const converted = { ...cache };
-  if (converted.updatedAt && typeof converted.updatedAt === 'object' && 'toDate' in converted.updatedAt) {
-    converted.updatedAt = (converted.updatedAt as Timestamp).toDate().toISOString();
+  const { updatedAt, ...rest } = cache;
+  const normalized: { updatedAt?: string; [key: string]: unknown } = { ...rest };
+
+  if (typeof updatedAt === 'string') {
+    normalized.updatedAt = updatedAt;
+  } else if (updatedAt && typeof updatedAt === 'object' && 'toDate' in updatedAt) {
+    normalized.updatedAt = (updatedAt as Timestamp).toDate().toISOString();
   }
-  return converted;
+
+  return normalized;
 }
 
 function convertVersions(versions: Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined): Array<{ timestamp?: string; [key: string]: unknown }> {
@@ -101,11 +77,16 @@ function convertVersions(versions: Array<{ timestamp?: Timestamp | string; [key:
     return [];
   }
   return versions.map((entry) => {
-    const item = { ...entry };
-    if (item.timestamp && typeof item.timestamp === 'object' && 'toDate' in item.timestamp) {
-      item.timestamp = (item.timestamp as Timestamp).toDate().toISOString();
+    const { timestamp, ...rest } = entry;
+    const normalized: { timestamp?: string; [key: string]: unknown } = { ...rest };
+
+    if (typeof timestamp === 'string') {
+      normalized.timestamp = timestamp;
+    } else if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
+      normalized.timestamp = (timestamp as Timestamp).toDate().toISOString();
     }
-    return item;
+
+    return normalized;
   });
 }
 
@@ -126,21 +107,50 @@ export class PromptRepository {
    */
   async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
     try {
-      const uuid = uuidv4();
-      const payload: PromptData = {
-        highlightCache: promptData.highlightCache ?? null,
-        versions: Array.isArray(promptData.versions) ? promptData.versions : [],
-        ...promptData,
+      const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
+      const resolvedUuid = providedUuid ? providedUuid : uuidv4();
+      const basePayload: Record<string, unknown> = {
+        userId,
+        uuid: resolvedUuid,
+        input: promptData.input,
+        output: promptData.output,
+        score: promptData.score ?? null,
+        ...(promptData.title !== undefined ? { title: promptData.title } : {}),
+        ...(promptData.mode !== undefined ? { mode: promptData.mode } : {}),
+        ...(promptData.targetModel !== undefined ? { targetModel: promptData.targetModel } : {}),
+        ...(promptData.generationParams !== undefined ? { generationParams: promptData.generationParams } : {}),
+        ...(promptData.brainstormContext !== undefined ? { brainstormContext: promptData.brainstormContext } : {}),
+        ...(promptData.highlightCache !== undefined ? { highlightCache: promptData.highlightCache } : {}),
+        timestamp: serverTimestamp(),
       };
 
+      if (providedUuid) {
+        const q = query(
+          collection(this.db, this.collectionName),
+          where('uuid', '==', resolvedUuid),
+          limit(5)
+        );
+        const snap = await getDocs(q);
+        const match =
+          snap.docs.find((doc) => (doc.data() as { userId?: string }).userId === userId) ??
+          null;
+
+        if (match) {
+          const updatePayload: Record<string, unknown> = { ...basePayload };
+          if (Array.isArray(promptData.versions)) {
+            updatePayload.versions = promptData.versions;
+          }
+          await updateDoc(doc(this.db, this.collectionName, match.id), updatePayload);
+          return { id: match.id, uuid: resolvedUuid };
+        }
+      }
+
       const docRef = await addDoc(collection(this.db, this.collectionName), {
-        userId,
-        uuid,
-        ...payload,
-        timestamp: serverTimestamp(),
+        ...basePayload,
+        versions: Array.isArray(promptData.versions) ? promptData.versions : [],
       });
 
-      return { id: docRef.id, uuid };
+      return { id: docRef.id, uuid: resolvedUuid };
     } catch (error) {
       log.error('Error saving prompt', error as Error);
       throw new PromptRepositoryError('Failed to save prompt', error);
@@ -190,10 +200,60 @@ export class PromptRepository {
       }
 
       const doc = querySnapshot.docs[0];
+      if (!doc) {
+        return null;
+      }
       return this._mapDocumentToPrompt(doc);
     } catch (error) {
       log.error('Error fetching prompt by UUID', error as Error);
       throw new PromptRepositoryError('Failed to fetch prompt by UUID', error);
+    }
+  }
+
+  /**
+   * Update prompt details (input, model, params)
+   */
+  async updatePrompt(docId: string, updates: UpdatePromptOptions): Promise<void> {
+    try {
+      if (!docId) return;
+
+      // Guard against uninitialized db
+      if (!this.db) {
+        log.warn('Firestore db not initialized, skipping prompt update');
+        return;
+      }
+
+      const updatePayload: Record<string, unknown> = {};
+
+      if (updates.input !== undefined) {
+        updatePayload.input = updates.input;
+      }
+      if (updates.title !== undefined) {
+        updatePayload.title = updates.title;
+      }
+      if (updates.mode !== undefined) {
+        updatePayload.mode = updates.mode;
+      }
+      if (updates.targetModel !== undefined) {
+        updatePayload.targetModel = updates.targetModel;
+      }
+      if (updates.generationParams !== undefined) {
+        updatePayload.generationParams = updates.generationParams;
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        return;
+      }
+
+      await updateDoc(doc(this.db, this.collectionName, docId), updatePayload);
+    } catch (error) {
+      if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
+        log.warn('Skipping prompt update due to insufficient Firestore permissions');
+        return;
+      }
+
+      log.error('Error updating prompt', error as Error);
+      throw new PromptRepositoryError('Failed to update prompt', error);
     }
   }
 
@@ -284,6 +344,33 @@ export class PromptRepository {
   }
 
   /**
+   * Replace versions array for a prompt
+   */
+  async updateVersions(docId: string, versions: PromptVersionEntry[]): Promise<void> {
+    try {
+      if (!docId) return;
+
+      // Guard against uninitialized db
+      if (!this.db) {
+        log.warn('Firestore db not initialized, skipping version update');
+        return;
+      }
+
+      await updateDoc(doc(this.db, this.collectionName, docId), {
+        versions: Array.isArray(versions) ? versions : [],
+      });
+    } catch (error) {
+      if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
+        log.warn('Skipping version update due to insufficient Firestore permissions');
+        return;
+      }
+
+      log.error('Error updating prompt versions', error as Error);
+      throw new PromptRepositoryError('Failed to update versions', error);
+    }
+  }
+
+  /**
    * Delete a prompt by its document ID
    */
   async deleteById(docId: string): Promise<void> {
@@ -314,216 +401,48 @@ export class PromptRepository {
     const highlightCache = convertHighlightCache(data.highlightCache as { updatedAt?: Timestamp | string; [key: string]: unknown } | null | undefined);
 
     // Convert version timestamps
-    const versions = convertVersions(data.versions as Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined);
+    const versions = convertVersions(
+      data.versions as Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined
+    ) as unknown as PromptVersionEntry[];
+    const input = typeof data.input === 'string' ? data.input : '';
+    const output = typeof data.output === 'string' ? data.output : '';
 
-    return {
+    const entry: PromptHistoryEntry = {
       id: doc.id,
-      ...data,
+      input,
+      output,
       timestamp,
       highlightCache,
       versions,
-    } as PromptHistoryEntry;
+    };
+
+    if (typeof data.uuid === 'string') {
+      entry.uuid = data.uuid;
+    }
+    if (typeof data.title === 'string' || data.title === null) {
+      entry.title = data.title ?? null;
+    }
+    if (typeof data.score === 'number' || data.score === null) {
+      entry.score = data.score;
+    }
+    if (typeof data.mode === 'string') {
+      entry.mode = data.mode;
+    }
+    if (typeof data.targetModel === 'string' || data.targetModel === null) {
+      entry.targetModel = data.targetModel;
+    }
+    if (data.generationParams === null) {
+      entry.generationParams = null;
+    } else if (data.generationParams && typeof data.generationParams === 'object') {
+      entry.generationParams = data.generationParams as Record<string, unknown>;
+    }
+    if (data.brainstormContext !== undefined) {
+      entry.brainstormContext = data.brainstormContext as unknown;
+    }
+    if (data.highlightCache !== undefined) {
+      entry.highlightCache = highlightCache;
+    }
+
+    return entry;
   }
 }
-
-/**
- * Custom error class for repository errors
- */
-export class PromptRepositoryError extends Error {
-  originalError: unknown;
-
-  constructor(message: string, originalError: unknown) {
-    super(message);
-    this.name = 'PromptRepositoryError';
-    this.originalError = originalError;
-  }
-}
-
-/**
- * Local storage implementation of prompt repository
- * Used for non-authenticated users
- */
-export class LocalStoragePromptRepository {
-  private storageKey: string;
-
-  constructor(storageKey: string = 'promptHistory') {
-    this.storageKey = storageKey;
-  }
-
-  /**
-   * Save a prompt to localStorage
-   */
-  async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
-    try {
-      const uuid = uuidv4();
-      const entry: PromptHistoryEntry = {
-        id: String(Date.now()),
-        uuid,
-        timestamp: new Date().toISOString(),
-        input: promptData.input,
-        output: promptData.output,
-        score: promptData.score ?? null,
-        mode: promptData.mode,
-        brainstormContext: promptData.brainstormContext ?? null,
-        highlightCache: promptData.highlightCache ?? null,
-        versions: promptData.versions ?? [],
-      };
-
-      const history = this._getHistory();
-      const updatedHistory = [entry, ...history].slice(0, 100);
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updatedHistory));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items
-          const trimmedHistory = [entry, ...history].slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmedHistory));
-        } else {
-          throw storageError;
-        }
-      }
-
-      return { uuid, id: entry.id };
-    } catch (error) {
-      log.error('Error saving to localStorage', error as Error);
-      throw new PromptRepositoryError('Failed to save to local storage', error);
-    }
-  }
-
-  /**
-   * Get all prompts from localStorage
-   */
-  async getUserPrompts(userId: string, limitCount: number = 10): Promise<PromptHistoryEntry[]> {
-    try {
-      const history = this._getHistory();
-      return history.slice(0, limitCount);
-    } catch (error) {
-      log.error('Error loading from localStorage', error as Error);
-      return [];
-    }
-  }
-
-  /**
-   * Get prompt by UUID from localStorage
-   */
-  async getByUuid(uuid: string): Promise<PromptHistoryEntry | null> {
-    try {
-      const history = this._getHistory();
-      return history.find(entry => entry.uuid === uuid) || null;
-    } catch (error) {
-      log.error('Error fetching from localStorage', error as Error);
-      return null;
-    }
-  }
-
-  /**
-   * Update highlights in localStorage
-   */
-  async updateHighlights(uuid: string, { highlightCache }: { highlightCache?: unknown | null }): Promise<void> {
-    try {
-      const history = this._getHistory();
-      const updated = history.map(entry =>
-        entry.uuid === uuid
-          ? { ...entry, highlightCache: highlightCache ?? null }
-          : entry
-      );
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items, keeping the updated one
-          const trimmed = updated.slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          log.warn('Storage limit reached, keeping only 50 most recent items');
-        } else {
-          throw storageError;
-        }
-      }
-    } catch (error) {
-      log.warn('Unable to persist highlights to localStorage', {
-        error: (error as Error).message,
-      });
-    }
-  }
-
-  /**
-   * Update output text in localStorage
-   */
-  async updateOutput(uuid: string, output: string): Promise<void> {
-    try {
-      if (!uuid || !output) return;
-
-      const history = this._getHistory();
-      const updated = history.map(entry =>
-        entry.uuid === uuid
-          ? { ...entry, output }
-          : entry
-      );
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items, keeping the updated one
-          const trimmed = updated.slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          log.warn('Storage limit reached, keeping only 50 most recent items');
-        } else {
-          throw storageError;
-        }
-      }
-    } catch (error) {
-      log.warn('Unable to persist output update to localStorage', {
-        error: (error as Error).message,
-      });
-    }
-  }
-
-  /**
-   * Clear all prompts
-   */
-  async clear(): Promise<void> {
-    localStorage.removeItem(this.storageKey);
-  }
-
-  /**
-   * Delete a prompt by its ID from localStorage
-   */
-  async deleteById(id: string | number): Promise<void> {
-    try {
-      const history = this._getHistory();
-      const filtered = history.filter(entry => entry.id !== String(id));
-      
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(filtered));
-      } catch (storageError) {
-        log.error('Error deleting from localStorage', storageError as Error);
-        throw storageError;
-      }
-    } catch (error) {
-      log.error('Error deleting prompt from localStorage', error as Error);
-      throw new PromptRepositoryError('Failed to delete from local storage', error);
-    }
-  }
-
-  /**
-   * Get history from localStorage
-   * @private
-   */
-  private _getHistory(): PromptHistoryEntry[] {
-    try {
-      const savedHistory = localStorage.getItem(this.storageKey);
-      if (!savedHistory) return [];
-
-      const parsed = JSON.parse(savedHistory) as unknown;
-      return Array.isArray(parsed) ? parsed as PromptHistoryEntry[] : [];
-    } catch (error) {
-      log.error('Error parsing localStorage history', error as Error);
-      localStorage.removeItem(this.storageKey);
-      return [];
-    }
-  }
-}
-

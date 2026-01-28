@@ -1,3 +1,7 @@
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('anchorRanges');
 const NODE_FILTER = typeof NodeFilter !== 'undefined' ? NodeFilter.SHOW_TEXT : null;
 
 interface TextNodeEntry {
@@ -50,8 +54,7 @@ const createWalker = (root: Node | null): TreeWalker | null => {
         if (!node.nodeValue.length) return NodeFilter.FILTER_SKIP;
         return NodeFilter.FILTER_ACCEPT;
       },
-    },
-    false
+    }
   );
 };
 
@@ -84,14 +87,14 @@ export const buildTextNodeIndex = (root: Node | null): TextNodeIndex => {
 const resolveNodeForOffset = (index: number, nodes: TextNodeEntry[]): NodeTarget | null => {
   if (!nodes.length) return null;
   if (index <= 0) {
-    const first = nodes[0];
+    const first = nodes[0]!;
     return { node: first.node, localOffset: 0 };
   }
 
   const clamped = Math.max(0, index);
 
   for (let i = 0; i < nodes.length; i += 1) {
-    const entry = nodes[i];
+    const entry = nodes[i]!;
     if (clamped > entry.end) continue;
 
     if (clamped === entry.end) {
@@ -110,7 +113,7 @@ const resolveNodeForOffset = (index: number, nodes: TextNodeEntry[]): NodeTarget
     }
   }
 
-  const last = nodes[nodes.length - 1];
+  const last = nodes[nodes.length - 1]!;
   return { node: last.node, localOffset: last.end - last.start };
 };
 
@@ -146,7 +149,12 @@ export const mapGlobalRangeToDom = (
     range.setStart(startTarget.node, startTarget.localOffset);
     range.setEnd(endTarget.node, endTarget.localOffset);
   } catch (error) {
-    console.warn('[anchorRanges] Unable to set range:', error);
+    const info = sanitizeError(error);
+    log.warn('Unable to set range', {
+      operation: 'mapGlobalRangeToDom',
+      error: info.message,
+      errorName: info.name,
+    });
     return null;
   }
 
@@ -173,7 +181,7 @@ export const surroundRange = ({
 }): HTMLElement | null => {
   if (!root || typeof createWrapper !== 'function') return null;
 
-  const mapping = mapGlobalRangeToDom(root, start, end, { nodeIndex });
+  const mapping = mapGlobalRangeToDom(root, start, end, nodeIndex ? { nodeIndex } : {});
   if (!mapping?.range) return null;
 
   const wrapper = createWrapper(mapping);
@@ -183,7 +191,12 @@ export const surroundRange = ({
     mapping.range.surroundContents(wrapper);
     return wrapper;
   } catch (error) {
-    console.warn('[anchorRanges] Failed to surround contents:', error);
+    const info = sanitizeError(error);
+    log.warn('Failed to surround contents', {
+      operation: 'surroundRange',
+      error: info.message,
+      errorName: info.name,
+    });
     return null;
   } finally {
     mapping.range.detach?.();
@@ -209,7 +222,7 @@ const findFirstOverlappingNodeIndex = (nodes: TextNodeEntry[], start: number): n
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    const entry = nodes[mid];
+    const entry = nodes[mid]!;
 
     if (start < entry.end) {
       candidate = mid;
@@ -254,7 +267,7 @@ export const wrapRangeSegments = ({
   }
 
   for (let i = startIndex; i < index.nodes.length; i += 1) {
-    const entry = index.nodes[i];
+    const entry = index.nodes[i]!;
     if (!isTextNode(entry.node)) {
       continue;
     }
@@ -305,7 +318,12 @@ export const wrapRangeSegments = ({
       range.surroundContents(wrapper);
       wrappers.push(wrapper);
     } catch (error) {
-      console.warn('[anchorRanges] Failed to wrap segment:', error);
+      const info = sanitizeError(error);
+      log.warn('Failed to wrap segment', {
+        operation: 'wrapRangeSegments',
+        error: info.message,
+        errorName: info.name,
+      });
     } finally {
       range.detach?.();
     }
@@ -313,4 +331,3 @@ export const wrapRangeSegments = ({
 
   return wrappers;
 };
-

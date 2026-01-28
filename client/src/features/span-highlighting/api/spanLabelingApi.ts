@@ -5,54 +5,20 @@
  * Each method returns a Promise that resolves with the API response data.
  */
 
-import { API_CONFIG } from '@config/api.config';
-
-/**
- * Default headers for span labeling API requests
- */
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-API-Key': API_CONFIG.apiKey,
-};
-
-interface LabelSpansPayload {
-  text: string;
-  maxSpans?: number;
-  minConfidence?: number;
-  policy?: Record<string, unknown>;
-  templateVersion?: string;
-}
-
-interface LabelSpansResponse {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
-  meta: Record<string, unknown> | null;
-}
-
-/**
- * Builds the request body for span labeling API call
- * @private
- */
-function buildBody(payload: LabelSpansPayload): string {
-  const body = {
-    text: payload.text,
-    maxSpans: payload.maxSpans,
-    minConfidence: payload.minConfidence,
-    policy: payload.policy,
-    templateVersion: payload.templateVersion,
-  };
-
-  return JSON.stringify(body);
-}
+import { logger } from '@/services/LoggingService';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import type { LabelSpansPayload, LabelSpansResponse } from './spanLabelingTypes';
+import { buildLabelSpansBody } from './spanLabelingRequest';
+import { buildRequestError } from './spanLabelingErrors';
+import { parseLabelSpansResponse } from './spanLabelingResponse';
+import { readSpanLabelStream } from './spanLabelingStream';
 
 /**
  * Span Labeling API
  */
 export class SpanLabelingApi {
+  private static log = logger.child('SpanLabelingApi');
+
   /**
    * Labels spans in the provided text
    *
@@ -65,36 +31,77 @@ export class SpanLabelingApi {
     payload: LabelSpansPayload,
     signal: AbortSignal | null = null
   ): Promise<LabelSpansResponse> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const res = await fetch('/llm/label-spans', {
       method: 'POST',
-      headers: DEFAULT_HEADERS,
-      body: buildBody(payload),
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: buildLabelSpansBody(payload),
       ...(signal && { signal }),
     });
 
     if (!res.ok) {
-      let message = `Request failed with status ${res.status}`;
-      try {
-        const errorBody = (await res.json()) as { message?: string };
-        if (errorBody?.message) {
-          message = errorBody.message;
-        }
-      } catch {
-        // Ignore JSON parse errors and fall back to default message
+      throw await buildRequestError(res);
+    }
+
+    const data: unknown = await res.json();
+    return parseLabelSpansResponse(data);
+  }
+
+  /**
+   * Labels spans using streaming (NDJSON)
+   *
+   * @param payload - The span labeling request payload
+   * @param onChunk - Callback for each received span
+   * @param signal - Optional abort signal for cancellation
+   */
+  static async labelSpansStream(
+    payload: LabelSpansPayload,
+    onChunk: (span: LabelSpansResponse['spans'][0]) => void,
+    signal: AbortSignal | null = null
+  ): Promise<LabelSpansResponse> {
+    this.log.debug('Stream started', {
+      textLength: payload.text.length,
+      maxSpans: payload.maxSpans,
+    });
+
+    const authHeaders = await buildFirebaseAuthHeaders();
+    const res = await fetch('/llm/label-spans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: buildLabelSpansBody(payload),
+      ...(signal && { signal }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        this.log.warn('Stream endpoint not found, falling back to blocking', { status: 404 });
+        const blocking = await this.labelSpans(payload, signal);
+        blocking.spans.forEach(onChunk);
+        return blocking;
       }
-      const error = new Error(message) as Error & { status?: number };
-      error.status = res.status;
+
+      const error = await buildRequestError(res);
+      this.log.error('Stream request failed', error, { status: res.status });
       throw error;
     }
 
-    const data = (await res.json()) as {
-      spans?: unknown[];
-      meta?: Record<string, unknown> | null;
-    };
-    return {
-      spans: Array.isArray(data?.spans) ? (data.spans as LabelSpansResponse['spans']) : [],
-      meta: data?.meta ?? null,
-    };
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('Response body not readable');
+
+    const { spans, linesProcessed, parseErrors } = await readSpanLabelStream(reader, onChunk, this.log);
+
+    this.log.info('Stream completed', {
+      spanCount: spans.length,
+      linesProcessed,
+      parseErrors,
+    });
+
+    return { spans, meta: { streaming: true } };
   }
 }
-

@@ -1,7 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { refinementsOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for refining video scene elements for better coherence.
@@ -32,20 +31,23 @@ export class RefinementService {
     
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       filledElementCount: filledElements.length,
       totalElements: Object.keys(params.elements).length,
     });
 
     if (filledElements.length < 2) {
-      this.log.debug(`${operation}: Insufficient elements for refinement`, {
+      this.log.debug('Insufficient elements for refinement.', {
         operation,
         filledElementCount: filledElements.length,
         duration: Math.round(performance.now() - startTime),
       });
       return { refinements: {} };
     }
+    
+    // Safe to access since we checked length >= 2
+    const firstElementKey = filledElements[0]![0];
 
     const prompt = `Suggest refinements for these video elements to improve coherence.
 
@@ -59,17 +61,21 @@ For each element, suggest 2-3 refined versions that:
 
 Return ONLY a JSON object:
 {
-  "${filledElements[0][0]}": ["refinement 1", "refinement 2"],
+  "${firstElementKey}": ["refinement 1", "refinement 2"],
   ...
 }`;
 
     try {
+      const schema: { type: 'object' | 'array' } = {
+        type: 'object' as const,
+      };
+      
       const refinements = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_refinements',
-          schema: refinementsOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.6,
         }
@@ -78,7 +84,7 @@ Return ONLY a JSON object:
       const duration = Math.round(performance.now() - startTime);
       const refinementCount = Object.values(refinements).reduce((sum, arr) => sum + arr.length, 0);
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         elementCount: Object.keys(refinements).length,
@@ -88,7 +94,7 @@ Return ONLY a JSON object:
       return { refinements };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         filledElementCount: filledElements.length,
@@ -97,4 +103,3 @@ Return ONLY a JSON object:
     }
   }
 }
-

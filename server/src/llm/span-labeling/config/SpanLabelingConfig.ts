@@ -31,7 +31,7 @@ export const PERFORMANCE = {
  */
 export const DEFAULT_POLICY = {
   // Maximum word count for non-technical spans
-  nonTechnicalWordLimit: 6,
+  nonTechnicalWordLimit: 15,
 
   // Whether to allow overlapping spans
   allowOverlap: false,
@@ -47,8 +47,8 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier - v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
-  templateVersion: 'v2',
+  // Template version identifier - v2.2: Relaxed word limit and fixed fuzzy matching window
+  templateVersion: 'v2.2',
 } as const;
 
 /**
@@ -111,7 +111,7 @@ export const CHUNKING = {
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
   // Combines NLP technical terms with GLiNER semantic extraction
-  ENABLED: true,  // ✅ Enabled - GLiNER is working and tested
+  ENABLED: false,  // ❌ Disabled - Using Gemini for span extraction
   
   // Minimum spans to consider NLP sufficient 
   MIN_SPANS_THRESHOLD: 3,
@@ -132,14 +132,70 @@ export const NLP_FAST_PATH = {
 } as const;
 
 /**
+ * Compromise NLP Configuration (Tier 1.5a)
+ * Verb phrase extraction for action detection
+ * Positioned between Aho-Corasick (Tier 1) and GLiNER (Tier 2)
+ */
+export const COMPROMISE = {
+  // Enable Compromise-based verb extraction
+  ENABLED: false,  // ❌ Disabled - Using Gemini for action extraction
+
+  // Minimum confidence for extracted actions
+  MIN_CONFIDENCE: 0.75,
+
+  // Extract full verb phrases (e.g., "running through the park")
+  EXTRACT_VERB_PHRASES: true,
+
+  // Extract standalone gerunds (e.g., "running", "jogging")
+  EXTRACT_GERUNDS: true,
+
+  // Include adverbs in verb phrases (e.g., "running energetically")
+  INCLUDE_ADVERBS: true,
+
+  // Include objects in verb phrases (e.g., "catching a ball")
+  INCLUDE_OBJECTS: true,
+
+  // Maximum words in a verb phrase
+  MAX_PHRASE_WORDS: 5,
+
+  // Pre-warm on server startup
+  PREWARM_ON_STARTUP: true,
+} as const;
+
+/**
+ * Lighting Extraction Configuration (Tier 1.5b)
+ * Pattern-based lighting phrase extraction using Compromise + semantic embeddings
+ * Runs in parallel with COMPROMISE for action extraction
+ *
+ * Architecture:
+ * - Extract: POS patterns (#Adjective* + lighting_noun)
+ * - Classify: Semantic embeddings (LightingSemantics.ts)
+ *
+ * Fixes the "soft shadows", "gentle shadows" extraction issue from baseline.
+ */
+export const LIGHTING = {
+  // Enable lighting extraction service
+  ENABLED: false,  // ❌ Disabled - Using Gemini for lighting extraction
+
+  // Minimum confidence for extracted lighting spans
+  MIN_CONFIDENCE: 0.70,
+
+  // Maximum words in a lighting phrase
+  MAX_PHRASE_WORDS: 5,
+
+  // Pre-warm semantic classifier on server startup
+  PREWARM_ON_STARTUP: true,
+} as const;
+
+/**
  * Neuro-Symbolic NLP Configuration
- * 3-Tier architecture: Aho-Corasick → GLiNER → LLM
+ * 4-Tier architecture: Aho-Corasick → Compromise → GLiNER → LLM
  */
 export const NEURO_SYMBOLIC = {
   // Master switch for neuro-symbolic pipeline
   // ENABLED: Now uses AHO_CORASICK for technical terms (100% accurate)
   // then falls back to LLM for open vocabulary (subjects, actions, etc.)
-  ENABLED: true,
+  ENABLED: false,  // ❌ Disabled - Using pure Gemini for span extraction
   
   // Tier 1: Aho-Corasick (Closed Vocabulary)
   AHO_CORASICK: {
@@ -166,6 +222,12 @@ export const NEURO_SYMBOLIC = {
     
     // Timeout for GLiNER inference (ms)
     TIMEOUT: 5000,
+
+    // Allow multiple labels per span (higher recall, more noise)
+    MULTI_LABEL: false,
+
+    // Optional per-label threshold overrides (by label or taxonomy ID)
+    LABEL_THRESHOLDS: {} as Record<string, number>,
     
     // Pre-warm model on server startup
     PREWARM_ON_STARTUP: true,
@@ -262,6 +324,8 @@ const SpanLabelingConfig = {
   VALIDATION_MODES,
   CHUNKING,
   NLP_FAST_PATH,
+  COMPROMISE,
+  LIGHTING,
   NEURO_SYMBOLIC,
   SYMBOLIC_NLP, // @deprecated - kept for backward compatibility
   estimateMaxTokens,

@@ -11,8 +11,8 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { wrapUserData } from '@utils/provider/PromptBuilder.js';
-import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate.js';
+import { wrapUserData } from '@utils/provider/PromptBuilder';
+import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate';
 
 /**
  * Context for building video templates
@@ -20,10 +20,21 @@ import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate.js';
 export interface VideoTemplateContext {
   /** User's creative concept */
   userConcept: string;
+  /** Original user prompt (verbatim), when refining a draft */
+  originalUserPrompt?: string | null;
   /** Optional interpreted shot plan from ShotInterpreterService */
   interpretedPlan?: Record<string, unknown> | null;
   /** Whether to include full instructions or just core guidance */
   includeInstructions?: boolean;
+  /** Spans that must be preserved in the optimized output */
+  lockedSpans?: Array<{
+    text: string;
+    leftCtx?: string | null;
+    rightCtx?: string | null;
+    category?: string | null;
+  }>;
+  /** Generation parameters selected by the user (aspect ratio, duration, etc.) */
+  generationParams?: Record<string, string | number | boolean>;
 }
 
 /**
@@ -66,7 +77,11 @@ export abstract class BaseVideoTemplateBuilder {
    *
    * @protected
    */
-  protected wrapUserConcept(userConcept: string, interpretedPlan?: Record<string, unknown> | null): string {
+  protected wrapUserConcept(
+    userConcept: string,
+    interpretedPlan?: Record<string, unknown> | null,
+    originalUserPrompt?: string | null
+  ): string {
     this.log.debug('Wrapping user concept in XML', {
       operation: 'wrapUserConcept',
       hasInterpretedPlan: !!interpretedPlan,
@@ -76,6 +91,10 @@ export abstract class BaseVideoTemplateBuilder {
     const fields: Record<string, string> = {
       user_concept: userConcept,
     };
+
+    if (originalUserPrompt) {
+      fields.original_user_prompt = originalUserPrompt;
+    }
 
     if (interpretedPlan) {
       fields.interpreted_plan = JSON.stringify(interpretedPlan, null, 2);

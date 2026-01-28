@@ -5,7 +5,8 @@
  */
 
 import React from 'react';
-import { ELEMENT_CARD_ORDER, ELEMENT_CONFIG } from '../config/constants';
+import { ELEMENT_CARD_ORDER } from '../config/constants';
+import { ELEMENT_CONFIG } from '../config/elementConfig';
 import { ElementCard } from './ElementCard';
 import type { ElementKey, Elements } from '../hooks/types';
 import type { ElementConfig, CategoryDetection } from './types';
@@ -16,7 +17,7 @@ interface ElementGridProps {
   compatibilityScores: Record<string, number>;
   descriptorCategories: Record<string, CategoryDetection>;
   onValueChange: (key: ElementKey, value: string) => void;
-  onFetchSuggestions: (elementType: string, currentValue?: string) => void;
+  onFetchSuggestions: (elementType: ElementKey) => Promise<void>;
 }
 
 export function ElementGrid({
@@ -53,4 +54,3 @@ export function ElementGrid({
     </div>
   );
 }
-

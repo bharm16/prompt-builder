@@ -1,5 +1,6 @@
 import React, { type ReactNode } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X } from '@promptstudio/system/components/ui';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { ErrorBoundary, type FallbackProps } from './ErrorBoundary';
 
 interface FeatureErrorFallbackProps {
@@ -35,12 +36,13 @@ export const FeatureErrorFallback = ({
           {/* Error details toggle */}
           {(import.meta as { env?: { MODE?: string } }).env?.MODE === 'development' && error && (
             <div className="mb-3">
-              <button
+              <Button
                 onClick={() => setShowDetails(!showDetails)}
-                className="text-sm text-red-600 hover:text-red-800 underline"
+                variant="link"
+                className="h-auto p-0 text-sm text-red-600 hover:text-red-800 underline"
               >
                 {showDetails ? 'Hide' : 'Show'} Error Details
-              </button>
+              </Button>
 
               {showDetails && (
                 <div className="mt-2 p-3 bg-white rounded border border-red-200">
@@ -57,29 +59,33 @@ export const FeatureErrorFallback = ({
 
           {/* Actions */}
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={resetError}
-              className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              variant="ghost"
+              className="px-3 py-1.5 text-sm bg-red-600 text-white rounded transition-colors hover:bg-red-700"
             >
               Retry
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 window.location.reload();
               }}
-              className="px-3 py-1.5 text-sm bg-white text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors"
+              variant="ghost"
+              className="px-3 py-1.5 text-sm bg-white text-red-600 border border-red-600 rounded transition-colors hover:bg-red-50"
             >
               Reload Page
-            </button>
+            </Button>
           </div>
         </div>
-        <button
+        <Button
           onClick={resetError}
-          className="text-red-400 hover:text-red-600 transition-colors"
+          variant="ghost"
+          size="icon"
+          className="text-red-400 transition-colors hover:text-red-600"
           aria-label="Dismiss error"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -117,4 +123,3 @@ export const FeatureErrorBoundary = ({
     </ErrorBoundary>
   );
 };
-

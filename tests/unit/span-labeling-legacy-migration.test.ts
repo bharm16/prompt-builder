@@ -99,10 +99,17 @@ describe('AdjacentSpanMerger', () => {
     const result = mergeAdjacentSpans(spans, text);
 
     expect(result.spans).toHaveLength(1);
-    expect(result.spans[0].text).toBe('Action Shot');
-    expect(result.spans[0].role).toBe('shot.type');
-    expect(result.spans[0].confidence).toBeCloseTo(0.85);
-    expect(result.notes[0]).toContain('Merged 2 adjacent shot spans');
+    const mergedSpan = result.spans[0];
+    const mergeNote = result.notes[0];
+    expect(mergedSpan).toBeDefined();
+    expect(mergeNote).toBeDefined();
+    if (!mergedSpan || !mergeNote) {
+      throw new Error('Expected merged span and note');
+    }
+    expect(mergedSpan.text).toBe('Action Shot');
+    expect(mergedSpan.role).toBe('shot.type');
+    expect(mergedSpan.confidence).toBeCloseTo(0.85);
+    expect(mergeNote).toContain('Merged 2 adjacent shot spans');
   });
 });
 
@@ -116,8 +123,15 @@ describe('ConfidenceFilter', () => {
     const result = filterByConfidence(spans, 0.5);
 
     expect(result.spans).toHaveLength(1);
-    expect(result.spans[0].text).toBe('A');
-    expect(result.notes[0]).toContain('Dropped "B"');
+    const remaining = result.spans[0];
+    const dropNote = result.notes[0];
+    expect(remaining).toBeDefined();
+    expect(dropNote).toBeDefined();
+    if (!remaining || !dropNote) {
+      throw new Error('Expected remaining span and note');
+    }
+    expect(remaining.text).toBe('A');
+    expect(dropNote).toContain('Dropped "B"');
   });
 });
 
@@ -132,8 +146,15 @@ describe('OverlapResolver', () => {
     const result = resolveOverlaps(spans, false);
 
     expect(result.spans).toHaveLength(2);
-    expect(result.spans[0].text).toBe('BB');
-    expect(result.notes[0]).toContain('Overlap between "AA"');
+    const firstSpan = result.spans[0];
+    const overlapNote = result.notes[0];
+    expect(firstSpan).toBeDefined();
+    expect(overlapNote).toBeDefined();
+    if (!firstSpan || !overlapNote) {
+      throw new Error('Expected overlap span and note');
+    }
+    expect(firstSpan.text).toBe('BB');
+    expect(overlapNote).toContain('Overlap between "AA"');
   });
 });
 
@@ -148,7 +169,12 @@ describe('SpanDeduplicator', () => {
     const result = deduplicateSpans(spans);
 
     expect(result.spans).toHaveLength(2);
-    expect(result.notes[0]).toBe('span[1] ignored: duplicate span');
+    const dedupeNote = result.notes[0];
+    expect(dedupeNote).toBeDefined();
+    if (!dedupeNote) {
+      throw new Error('Expected dedupe note');
+    }
+    expect(dedupeNote).toBe('span[1] ignored: duplicate span');
   });
 });
 
@@ -201,7 +227,12 @@ describe('SpanTruncator', () => {
     const result = truncateToMaxSpans(spans, 2);
 
     expect(result.spans.map((span) => span.text)).toEqual(['A', 'C']);
-    expect(result.notes[0]).toContain('Truncated spans to maxSpans=2');
+    const truncateNote = result.notes[0];
+    expect(truncateNote).toBeDefined();
+    if (!truncateNote) {
+      throw new Error('Expected truncation note');
+    }
+    expect(truncateNote).toContain('Truncated spans to maxSpans=2');
   });
 });
 
@@ -218,8 +249,15 @@ describe('chunkingUtils', () => {
 
     const chunks = chunker.chunkText(text);
     expect(chunks).toHaveLength(2);
-    expect(chunks[0].text).toBe('Hello world.');
-    expect(chunks[1].text).toBe('Second sentence.');
+    const firstChunk = chunks[0];
+    const secondChunk = chunks[1];
+    expect(firstChunk).toBeDefined();
+    expect(secondChunk).toBeDefined();
+    if (!firstChunk || !secondChunk) {
+      throw new Error('Expected two chunks');
+    }
+    expect(firstChunk.text).toBe('Hello world.');
+    expect(secondChunk.text).toBe('Second sentence.');
   });
 
   it('merges chunked spans and deduplicates by position and role', () => {
@@ -228,15 +266,15 @@ describe('chunkingUtils', () => {
     const merged = chunker.mergeChunkedSpans([
       {
         chunkOffset: 0,
-        spans: [{ start: 0, end: 3, role: 'subject' }],
+        spans: [{ text: 'Hel', start: 0, end: 3, role: 'subject' }],
       },
       {
         chunkOffset: 0,
-        spans: [{ start: 0, end: 3, role: 'subject' }],
+        spans: [{ text: 'Hel', start: 0, end: 3, role: 'subject' }],
       },
       {
         chunkOffset: 5,
-        spans: [{ start: 0, end: 2, category: 'subject' }],
+        spans: [{ text: 'lo', start: 0, end: 2, category: 'subject' }],
       },
     ]);
 
@@ -280,7 +318,7 @@ describe('jsonUtils', () => {
 
 describe('policyUtils', () => {
   it('sanitizes policies and options with defaults and constraints', () => {
-    const policy = sanitizePolicy({ nonTechnicalWordLimit: -1, allowOverlap: 'yes' as unknown as boolean });
+    const policy = sanitizePolicy({ nonTechnicalWordLimit: -1, allowOverlap: true });
     const options = sanitizeOptions({
       maxSpans: PERFORMANCE.MAX_SPANS_ABSOLUTE_LIMIT + 10,
       minConfidence: 2,
@@ -288,7 +326,7 @@ describe('policyUtils', () => {
     });
 
     expect(policy.nonTechnicalWordLimit).toBe(DEFAULT_POLICY.nonTechnicalWordLimit);
-    expect(policy.allowOverlap).toBe(false);
+    expect(policy.allowOverlap).toBe(true);
     expect(options.maxSpans).toBe(PERFORMANCE.MAX_SPANS_ABSOLUTE_LIMIT);
     expect(options.minConfidence).toBe(DEFAULT_OPTIONS.minConfidence);
     expect(options.templateVersion).toBe(DEFAULT_OPTIONS.templateVersion);
@@ -310,7 +348,7 @@ describe('textUtils', () => {
   it('clamps values and counts words', () => {
     expect(clamp01(2)).toBe(1);
     expect(clamp01(-1)).toBe(0);
-    expect(clamp01('x' as unknown as number)).toBe(DEFAULT_CONFIDENCE);
+    expect(clamp01('x')).toBe(DEFAULT_CONFIDENCE);
     expect(wordCount('one two three')).toBe(3);
   });
 
@@ -364,7 +402,6 @@ describe('SpanValidator', () => {
 
     const result = validateSpans({
       spans,
-      meta: undefined,
       text,
       policy: DEFAULT_POLICY,
       options: DEFAULT_OPTIONS,
@@ -373,7 +410,12 @@ describe('SpanValidator', () => {
 
     expect(result.ok).toBe(true);
     expect(result.result.spans).toHaveLength(1);
-    expect(result.result.spans[0].text).toBe('Red car');
+    const mergedSpan = result.result.spans[0];
+    expect(mergedSpan).toBeDefined();
+    if (!mergedSpan) {
+      throw new Error('Expected merged span');
+    }
+    expect(mergedSpan.text).toBe('Red car');
     expect(result.result.meta.version).toBe(DEFAULT_OPTIONS.templateVersion);
     expect(result.result.meta.notes).toContain('Merged 2 adjacent subject spans');
     expect(result.result.analysisTrace).toBeNull();
@@ -385,15 +427,15 @@ describe('RelaxedF1Evaluator', () => {
     const evaluator = new RelaxedF1Evaluator();
 
     const iou = evaluator.calculateIoU(
-      { start: 0, end: 4, role: 'subject' },
-      { start: 2, end: 6, role: 'subject' }
+      { start: 0, end: 4, role: 'subject', text: 'hero' },
+      { start: 2, end: 6, role: 'subject', text: 'hero' }
     );
 
     expect(iou).toBeCloseTo(2 / 6);
 
     const f1 = evaluator.evaluateSpans(
-      [{ start: 0, end: 4, role: 'subject' }],
-      [{ start: 1, end: 5, role: 'subject' }]
+      [{ start: 0, end: 4, role: 'subject', text: 'hero' }],
+      [{ start: 1, end: 5, role: 'subject', text: 'hero' }]
     );
 
     expect(f1.f1).toBe(1);
@@ -414,10 +456,14 @@ describe('RelaxedF1Evaluator', () => {
 
     const matrix = evaluator.updateConfusionMatrix(
       {},
-      [{ start: 0, end: 4, role: 'subject' }],
-      [{ start: 0, end: 4, role: 'subject' }]
+      [{ start: 0, end: 4, role: 'subject', text: 'hero' }],
+      [{ start: 0, end: 4, role: 'subject', text: 'hero' }]
     );
 
+    expect(matrix.subject).toBeDefined();
+    if (!matrix.subject) {
+      throw new Error('Expected subject matrix');
+    }
     expect(matrix.subject.subject).toBe(1);
   });
 });

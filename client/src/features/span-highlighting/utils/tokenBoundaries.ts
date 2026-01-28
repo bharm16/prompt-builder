@@ -15,8 +15,8 @@ export function isWordBoundary(text: string, index: number): boolean {
   if (index <= 0 || index >= text.length) {
     return true;
   }
-  const prev = text[index - 1];
-  const current = text[index];
+  const prev = text[index - 1] ?? '';
+  const current = text[index] ?? '';
   return !(/\w/.test(prev) && /\w/.test(current));
 }
 

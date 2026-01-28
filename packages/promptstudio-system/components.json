@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.preset.js",
+    "css": "src/index.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@promptstudio/system/components",
+    "utils": "@promptstudio/system/lib/utils",
+    "ui": "@promptstudio/system/components/ui",
+    "lib": "@promptstudio/system/lib",
+    "hooks": "@promptstudio/system/hooks"
+  }
+}

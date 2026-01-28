@@ -4,48 +4,43 @@ Copy-paste these templates when working with Claude Code to maintain architectur
 
 ---
 
+## The Principle
+
+**Split by responsibility, not by size.**
+
+Before creating or modifying any file, answer:
+1. "Can I describe this in one sentence without 'and'?"
+2. "Can I test this with ≤2 mocks?"
+3. "Does this have exactly one reason to change?"
+
+If all answers are yes, you're good. If not, refactor by responsibility.
+
+---
+
 ## Template 1: New Frontend Component
 
 ```
 Add [FEATURE NAME] component
 
-ARCHITECTURE (follow VideoConceptBuilder pattern):
-Structure:
-- ComponentName.jsx (orchestrator, max 500 lines)
-- hooks/useComponentState.js (useReducer for state)
-- api/componentApi.js (all fetch calls)
-- utils/componentUtils.js (pure functions)
-- config/componentConfig.js (configuration data)
-- components/ (UI pieces, each < 200 lines)
+ARCHITECTURE (VideoConceptBuilder pattern):
+- ComponentName.jsx → Orchestration only. Wires hooks, components, handlers. No business logic.
+- hooks/useComponentState.js → State + handlers. Testable without rendering.
+- api/componentApi.js → Fetch calls + response parsing. One place for endpoint changes.
+- utils/componentUtils.js → Pure transforms. No dependencies.
+- config/componentConfig.js → Constants, defaults. Change without touching logic.
+- components/ → Display pieces. Props in, JSX out.
 
-REFERENCE IMPLEMENTATION:
-client/src/components/VideoConceptBuilder/
+RESPONSIBILITY CHECK (answer these):
+1. Can each file be described in one sentence without "and"?
+2. Can each piece be tested with ≤2 mocks?
+3. Do files that change together live together?
 
-CONSTRAINTS:
-- Orchestrator components max 500 lines (main files that compose pieces)
-- Regular UI components max 200 lines
-- All API calls in api/ layer
-- Business logic in hooks/
-- Configuration in config/
-- Use useReducer, not multiple useState
-- No inline styles (Tailwind only)
+REFERENCE: client/src/components/VideoConceptBuilder/
 
 BEFORE IMPLEMENTING:
 1. Show proposed file structure
-2. List all new files with estimated line counts
-3. Explain state management approach
-4. Confirm no architectural violations
-
-AFTER IMPLEMENTING:
-Run validation: find client/src -name "*.jsx" -o -name "*.js" | xargs wc -l | sort -rn | head -10
-```
-
-**Example Usage:**
-```bash
-claude-code "Add ExportManager component for exporting prompts to multiple formats
-
-ARCHITECTURE (follow VideoConceptBuilder pattern):
-[paste template above]"
+2. State the single responsibility of each file
+3. Confirm no business logic in orchestrator
 ```
 
 ---
@@ -55,45 +50,24 @@ ARCHITECTURE (follow VideoConceptBuilder pattern):
 ```
 Modify [COMPONENT NAME] to [FEATURE DESCRIPTION]
 
-CURRENT ARCHITECTURE:
-- Location: [path to component]
-- Current structure: [hooks/api/utils/components]
-- Current line count: [use wc -l to check]
+CURRENT: [path to component]
+
+BEFORE CHANGING, ANSWER:
+1. Does this change add a NEW responsibility to an existing file?
+   - If yes → extract to appropriate layer first
+2. Will files that should change together still live together?
+3. Am I adding business logic to an orchestrator?
+   - If yes → put it in a hook instead
 
 CONSTRAINTS:
-- Maintain existing architecture pattern
-- If adding API calls → must go in existing api/ file
-- If adding business logic → extract to hooks/
-- If adding 50+ lines of UI → extract to new component in components/
-- MUST NOT exceed file size limits:
-  - Orchestrator components: 500 lines
-  - Regular UI components: 200 lines
-  - Hooks: 150 lines
-  - Utils: 100 lines
+- API calls → api/ layer
+- State logic → hooks/
+- Pure transforms → utils/
+- Display → components/
 
-REFERENCE:
-client/src/components/VideoConceptBuilder/[similar component]
+REFERENCE: client/src/components/VideoConceptBuilder/
 
-BEFORE IMPLEMENTING:
-1. Show current file size: wc -l [file path]
-2. Show what will be added/modified
-3. Confirm no file will exceed limits
-4. If limits exceeded, show refactoring plan first
-
-VALIDATION:
-After changes, confirm: wc -l [modified files]
-```
-
-**Example Usage:**
-```bash
-claude-code "Modify VideoConceptBuilder to add batch template application
-
-CURRENT ARCHITECTURE:
-- Location: client/src/components/VideoConceptBuilder/
-- Current structure: hooks/api/utils/components/
-- Current line count: VideoConceptBuilder.jsx = 519 lines
-
-[paste template]"
+SHOW WHAT CHANGES BEFORE implementing
 ```
 
 ---
@@ -103,51 +77,29 @@ CURRENT ARCHITECTURE:
 ```
 Add [SERVICE NAME] service
 
-ARCHITECTURE (follow PromptOptimizationService pattern):
-Structure:
-- MainService.js (orchestrator, max 500 lines)
-- services/service-name/
-  - SpecializedService1.js (max 300 lines)
-  - SpecializedService2.js (max 300 lines)
-  - Repository.js (data access, max 200 lines)
-- templates/ (external .md files for prompts)
+ARCHITECTURE (PromptOptimizationService pattern):
+- MainService.js → Coordination only. Delegates everything.
+- services/[name]/
+  - [Responsibility]Service.js → One reason to change per file
+  - Repository.js → Data access abstraction
+- templates/ → External .md files for prompts
 
-REFERENCE IMPLEMENTATION:
-server/src/services/prompt-optimization/PromptOptimizationService.js
-server/src/services/VideoConceptService.js
+RESPONSIBILITY CHECK:
+1. Can each service be described in one sentence without "and"?
+2. Can each service be tested with ≤2 mocks?
+3. Is the orchestrator free of implementation details?
 
 PATTERNS:
-- Orchestrator pattern: Main service delegates to specialized services
-- Repository pattern: Data access separated
-- Dependency injection: Constructor injection for all dependencies
-- Strategy pattern: Mode-specific behavior
-- Template service: Prompts in .md files, not hardcoded
+- Dependency injection (constructor)
+- Repository pattern for data access
+- Templates external, not hardcoded
 
-CONSTRAINTS:
-- Main orchestrator: max 500 lines
-- Specialized services: max 300 lines each
-- Single responsibility per service
-- No hardcoded prompts (use template files)
-- Must be testable (dependency injection)
+REFERENCE: server/src/services/PromptOptimizationService.js
 
 BEFORE IMPLEMENTING:
 1. Show proposed service hierarchy
-2. List all services with responsibilities
-3. Show template structure
-4. Explain dependency graph
-5. Confirm pattern matches existing services
-
-TESTING:
-- Must include unit tests for each service
-- Mock dependencies in tests
-```
-
-**Example Usage:**
-```bash
-claude-code "Add AnalyticsService for tracking prompt usage and quality metrics
-
-ARCHITECTURE (follow PromptOptimizationService pattern):
-[paste template]"
+2. State the single responsibility of each service
+3. Show dependency graph
 ```
 
 ---
@@ -157,108 +109,59 @@ ARCHITECTURE (follow PromptOptimizationService pattern):
 ```
 Modify [SERVICE NAME] to [FEATURE DESCRIPTION]
 
-CURRENT ARCHITECTURE:
-- Location: server/src/services/[ServiceName]/
-- Current structure: [list specialized services]
-- Pattern: [Orchestrator/Repository/Strategy/etc]
-- Current line count: [main file line count]
+CURRENT: server/src/services/[ServiceName]/
+
+BEFORE CHANGING, ANSWER:
+1. Which specialized service owns this responsibility?
+   - If none → create one
+   - If unclear → the responsibility isn't well-defined
+2. Will this keep the orchestrator thin (coordination only)?
+3. Does the new code have the same reason to change as existing code?
+   - If no → separate file
 
 CONSTRAINTS:
-- Maintain orchestrator pattern
-- New business logic → create new specialized service
-- New data access → extend repository
+- New business logic → new specialized service
+- New data access → extend/create repository
 - New prompts → add .md template file
-- MUST NOT exceed 500 lines in orchestrator
+- Orchestrator stays coordination-only
 
-BEFORE IMPLEMENTING:
-1. Identify which specialized service handles this
-2. If none exist, propose new specialized service
-3. Show where logic will live
-4. Confirm orchestrator stays thin
+REFERENCE: server/src/services/[similar service]/
 
-REFERENCE:
-server/src/services/[similar service]/
-
-VALIDATION:
-After changes: wc -l server/src/services/[ServiceName]/*.js
-```
-
-**Example Usage:**
-```bash
-claude-code "Modify PromptOptimizationService to add custom temperature strategies per domain
-
-CURRENT ARCHITECTURE:
-- Location: server/src/services/prompt-optimization/PromptOptimizationService.js
-- Current structure: ContextInference, ModeDetection, QualityAssessment, StrategyFactory
-- Pattern: Orchestrator with specialized services
-- Current line count: ~400 lines
-
-[paste template]"
+SHOW WHERE LOGIC WILL LIVE BEFORE implementing
 ```
 
 ---
 
-## Template 5: Full-Stack Feature (Frontend + Backend)
+## Template 5: Full-Stack Feature
 
 ```
-Add [FEATURE NAME] feature (full-stack)
+Add [FEATURE NAME] (full-stack)
 
-FRONTEND:
-- Location: client/src/[features|components]/[feature-name]/
-- Architecture: VideoConceptBuilder pattern
-- Components: [list expected components]
-- Max lines: 500 for orchestrators, 200 for UI components
+BACKEND FIRST:
+- Location: server/src/services/[name]/
+- Pattern: PromptOptimizationService
+- Each service: one responsibility, testable with ≤2 mocks
 
-BACKEND:
-- Location: server/src/services/[service-name]/
-- Architecture: PromptOptimizationService pattern
-- Services: [list expected services]
-- Max lines: 500 for orchestrators, 300 for specialized services
+THEN FRONTEND:
+- Location: client/src/features/[name]/ or client/src/components/[name]/
+- Pattern: VideoConceptBuilder
+- Orchestrator: wiring only. All logic in hooks/services.
 
-API CONTRACT:
-Define API endpoints first:
+API CONTRACT (define first):
 - Endpoint: [method] [path]
-- Request: [shape]
-- Response: [shape]
+- Request: { shape }
+- Response: { shape }
 
 IMPLEMENTATION ORDER:
-1. Backend first (service + tests)
-2. Frontend API layer
-3. Frontend hooks
-4. Frontend components
+1. Backend service + tests
+2. Frontend api/ layer (owns response parsing)
+3. Frontend hooks/ (owns state logic)
+4. Frontend components (display only)
 
 BEFORE IMPLEMENTING:
-1. Show complete file structure (both frontend + backend)
-2. Show API contract
-3. Confirm patterns match existing architecture
-4. List all files with estimated line counts
-
-REFERENCE:
-- Frontend: client/src/components/VideoConceptBuilder/
-- Backend: server/src/services/VideoConceptService.js
-```
-
-**Example Usage:**
-```bash
-claude-code "Add collaborative editing feature where users can share and co-edit prompts
-
-[paste full-stack template]
-
-FRONTEND:
-- Location: client/src/features/collaboration/
-- Components: CollaborationPanel, SharedPromptCard, InviteModal
-- Max lines: 200 per component
-
-BACKEND:
-- Location: server/src/services/CollaborationService/
-- Services: ShareService, PermissionService, RealtimeService
-- Max lines: 300 per service
-
-API CONTRACT:
-- POST /api/prompts/:id/share { email, permission }
-- GET /api/prompts/shared { }
-- PUT /api/prompts/:id/collaborators/:userId { permission }
-"
+1. Show complete structure (both ends)
+2. State responsibility of each file
+3. Show API contract
 ```
 
 ---
@@ -266,195 +169,81 @@ API CONTRACT:
 ## Template 6: Refactor Existing Code
 
 ```
-Refactor [FILE/COMPONENT NAME] to follow architecture standards
+Refactor [FILE/COMPONENT NAME]
 
-CURRENT STATE:
-- File: [path]
-- Current lines: [count]
-- Problems: [god object/tight coupling/mixed concerns/etc]
+CURRENT PROBLEM (be specific):
+- [What smells? God object? Mixed concerns? Hard to test?]
+- NOT: "it's too long"
 
-TARGET STATE:
-- Pattern: [VideoConceptBuilder OR PromptOptimizationService]
-- Proposed structure: [show directory structure]
-- Reduction: [current lines] → [estimated new lines]
+TARGET:
+- Pattern: [VideoConceptBuilder | PromptOptimizationService]
+- Each extracted piece: one sentence description, no "and"
 
-REFACTORING STEPS:
-1. Create directory structure
-2. Extract API calls to api/ layer
-3. Extract state management to hooks/useReducer
-4. Extract configuration to config/
-5. Extract business logic to utils/ or hooks/
-6. Break large components into smaller ones
-7. Wire everything together in main orchestrator
-8. Verify tests pass
-
-BEFORE IMPLEMENTING:
-1. Show current file structure
-2. Show proposed new structure
-3. Estimate lines per new file
-4. Identify risky changes
-5. Create backup file first
-
-REFERENCE:
-- Frontend refactor: client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md
-- Backend refactor: server/src/services/VideoConceptService.js (see header comment)
+REFACTORING BY RESPONSIBILITY:
+1. Identify distinct responsibilities in current file
+2. Create one file per responsibility
+3. Orchestrator coordinates, doesn't implement
+4. Each piece testable with ≤2 mocks
 
 VALIDATION AFTER:
-- All tests pass
-- No file over limits
-- Pattern matches reference implementation
-```
+- Can I describe each file in ≤10 words?
+- Do files that change together live together?
+- Can I test each piece with ≤2 mocks?
+- If I delete a file, does exactly one capability disappear?
 
-**Example Usage:**
-```bash
-claude-code "Refactor HistorySidebar.jsx - currently 450 lines with mixed concerns
+REFERENCE: client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md
 
-CURRENT STATE:
-- File: client/src/features/history/HistorySidebar.jsx
-- Current lines: 450
-- Problems: API calls inline, business logic in component, no state management pattern
-
-TARGET STATE:
-- Pattern: VideoConceptBuilder
-- Proposed structure:
-  HistorySidebar/
-  ├── HistorySidebar.jsx (~200 lines)
-  ├── hooks/useHistoryState.js
-  ├── api/historyApi.js
-  ├── components/HistoryItem.jsx
-  └── components/HistoryFilter.jsx
-
-[paste refactoring template]"
+SHOW REFACTORING PLAN FIRST
 ```
 
 ---
 
-## Quick Reference: Architecture Patterns
+## Quick Reference: Where Things Go
 
-### Frontend (React)
-**Pattern:** VideoConceptBuilder
-**Location:** `client/src/components/VideoConceptBuilder/`
-**Key files to reference:**
-- `VideoConceptBuilder.jsx` (orchestrator)
-- `hooks/useVideoConceptState.js` (useReducer)
-- `api/videoConceptApi.js` (API layer)
-- `config/elementConfig.js` (configuration)
-- `REFACTORING_SUMMARY.md` (explanation)
+| Concern | Frontend Location | Backend Location |
+|---------|-------------------|------------------|
+| Coordination | ComponentName.jsx | MainService.js |
+| State/Logic | hooks/ | services/[name]/ |
+| Data fetching | api/ | repositories/ |
+| Pure transforms | utils/ | utils/ |
+| Configuration | config/ | config/ or templates/ |
+| Display | components/ | N/A |
 
-### Backend (Services)
-**Pattern:** PromptOptimizationService
-**Location:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
-**Key concepts:**
-- Orchestrator delegates to specialized services
-- Each service < 300 lines, single responsibility
-- Repository pattern for data access
-- Templates in .md files
+**The test:** If you're importing across these boundaries to make a single change, the responsibility is in the wrong place.
 
 ---
 
-## File Size Limits Reference
+## Code Smells to Call Out
 
-| File Type | Max Lines | Reasoning |
-|-----------|-----------|-----------|
-| Orchestrator Component/Service | 500 | Main files that compose many pieces (see note below) |
-| Regular UI Component | 200 | If larger, extract subcomponents |
-| React Hook | 150 | Single concern per hook |
-| Specialized Service | 300 | Focused business logic services |
-| Utility | 100 | Pure functions, focused |
-| Config | 200 | Data only, no logic |
-| API Layer | 150 | Just fetch wrappers |
+When reviewing Claude's output, watch for:
 
-**Why Orchestrators Get 500 Lines:**
-Orchestrator components/services compose multiple smaller pieces. This composition requires more lines for imports, hook calls, event handlers, and JSX/function composition. Examples:
-- `VideoConceptBuilder.jsx` (519 lines) - well-architected orchestrator
-- `PromptOptimizerContainer.jsx` (400 lines) - delegates to hooks/components/services
-
-Both are well-architected despite size because they **delegate** to hooks/components/services rather than containing business logic. If your orchestrator has business logic, it should be extracted.
+| Smell | Symptom | Fix |
+|-------|---------|-----|
+| **Feature Envy** | Function uses another module's data more than its own | Move the function |
+| **Shotgun Surgery** | One change requires editing 5+ files | Consolidate responsibility |
+| **God Object** | Everything depends on one file | Split by responsibility |
+| **Orchestrator with Logic** | `if`/`switch` business logic in main file | Extract to hook/service |
+| **Artificial Split** | Two files that always change together | Merge them |
 
 ---
 
-## Emergency Override
+## Validation Questions
 
-If you MUST exceed limits temporarily (tech debt, prototype, etc):
+After any change:
 
-```
-[Your request]
+1. **Can I explain each file in ≤10 words?**
+2. **Do files that change together live together?**
+3. **Can I test each piece with ≤2 mocks?**
+4. **If I delete this file, does exactly one thing disappear?**
 
-ARCHITECTURAL OVERRIDE:
-File [path] will temporarily exceed [X] lines because [reason].
-Plan to refactor by [date/milestone].
-Tracking in issue #[number].
-
-This is a conscious decision, not an oversight.
-```
-
-But this should be rare. If you're using it often, your architecture needs adjustment.
+If any answer is "no," you have a cohesion problem.
 
 ---
 
-## Validation Commands
+## Reference Implementations
 
-Run these after Claude Code makes changes:
+**Frontend:** `client/src/components/VideoConceptBuilder/`
+- Read `REFACTORING_SUMMARY.md` for the *why*
 
-```bash
-# Check all file sizes
-find client/src server/src -type f \( -name "*.js" -o -name "*.jsx" \) -exec wc -l {} + | sort -rn | head -20
-
-# Check specific directory
-find client/src/components/VideoConceptBuilder -name "*.jsx" -exec wc -l {} +
-
-# Check regular components (should be < 200 lines)
-find client/src -name "*.jsx" -path "*/components/*" -exec wc -l {} + | awk '$1 > 200 {print "❌ Component over 200: " $0}'
-
-# Check orchestrator components (should be < 500 lines)
-find client/src -name "*.jsx" ! -path "*/components/*" -exec wc -l {} + | awk '$1 > 500 {print "❌ Orchestrator over 500: " $0}'
-
-# Check orchestrator services (should be < 500 lines)
-find server/src/services -maxdepth 1 -name "*.js" -exec wc -l {} + | awk '$1 > 500 {print "❌ Service orchestrator over 500: " $0}'
-
-# Check specialized services (should be < 300 lines)
-find server/src/services -mindepth 2 -name "*.js" -exec wc -l {} + | awk '$1 > 300 {print "❌ Specialized service over 300: " $0}'
-```
-
----
-
-## Tips for Using These Templates
-
-1. **Copy-paste the entire template** into your claude-code request
-2. **Fill in the bracketed [PLACEHOLDERS]** with your specific details
-3. **Reference existing code** - always point to a similar component/service
-4. **Be specific about constraints** - Claude Code needs explicit boundaries
-5. **Request structure before implementation** - always ask to see the plan first
-6. **Validate after** - run the validation commands to confirm limits
-
----
-
-## Saving Time: Create Aliases
-
-Add to your `~/.bashrc` or `~/.zshrc`:
-
-```bash
-# Alias for quick validation
-alias check-sizes="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' \) -exec wc -l {} + | sort -rn | head -20"
-
-# Check regular components (should be < 200 lines)
-alias check-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"❌ Component over 200: \" \$0}'"
-
-# Check orchestrator components (should be < 500 lines)
-alias check-fe-main="find client/src -name '*.jsx' ! -path '*/components/*' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Orchestrator over 500: \" \$0}'"
-
-# Check orchestrator services (should be < 500 lines)
-alias check-be-main="find server/src/services -maxdepth 1 -name '*.js' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Service orchestrator over 500: \" \$0}'"
-
-# Check specialized services (should be < 300 lines)
-alias check-be-spec="find server/src/services -mindepth 2 -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"❌ Specialized service over 300: \" \$0}'"
-```
-
-Then just run:
-```bash
-check-sizes      # After any Claude Code changes (top 20 files)
-check-fe         # Check regular UI components (< 200 lines)
-check-fe-main    # Check orchestrator components (< 500 lines)
-check-be-main    # Check orchestrator services (< 500 lines)
-check-be-spec    # Check specialized services (< 300 lines)
-```
+**Backend:** `server/src/services/PromptOptimizationService.js`
+- Thin orchestrator delegating to specialized services

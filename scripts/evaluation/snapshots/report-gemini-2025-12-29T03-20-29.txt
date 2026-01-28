@@ -1,0 +1,27 @@
+Evaluation Report - 2025-12-29T03:20:29.724Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (1 prompts evaluated):
+  Average Score:      0.00/25
+  Average Span Count: 0.00
+  Success/Errors:     1/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)          0
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=4870 | P50=4870 | P95=4870
+  Judge:      Avg=0 | P50=0 | P95=0
+
+CATEGORY SCORES (avg coverage/precision):
+
+================================================================================

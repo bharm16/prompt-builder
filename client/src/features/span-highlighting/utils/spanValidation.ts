@@ -16,6 +16,7 @@ interface SpanInput {
   confidence?: number;
   start?: number;
   end?: number;
+  [key: string]: unknown;
 }
 
 export interface NormalizedSpan {
@@ -61,13 +62,21 @@ export function normalizeSpan(span: unknown): NormalizedSpan | null {
   
   const text = (span.quote || span.text || '').trim();
   
-  return {
+  const normalized: NormalizedSpan = {
     text,
     role: span.role || span.category || 'unknown',
     category: span.category || span.role || 'unknown',
-    confidence: span.confidence,
-    start: span.start,
-    end: span.end,
   };
-}
 
+  if (typeof span.confidence === 'number') {
+    normalized.confidence = span.confidence;
+  }
+  if (typeof span.start === 'number') {
+    normalized.start = span.start;
+  }
+  if (typeof span.end === 'number') {
+    normalized.end = span.end;
+  }
+
+  return normalized;
+}

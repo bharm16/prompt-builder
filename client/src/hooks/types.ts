@@ -45,10 +45,11 @@ export interface CanAddCategoryResult {
 
 export interface PromptDebuggerState {
   inputPrompt: string;
-  displayedPrompt?: string | undefined;
-  optimizedPrompt?: string | undefined;
-  selectedMode?: string | undefined;
-  promptContext?: unknown | undefined;
+  displayedPrompt?: string;
+  optimizedPrompt?: string;
+  selectedMode?: string;
+  promptContext?: unknown;
+  highlights?: Highlight[];
 }
 
 export interface Highlight {
@@ -66,13 +67,49 @@ export interface PromptHistoryEntry {
   id?: string;
   uuid?: string;
   timestamp?: string;
+  title?: string | null;
   input: string;
   output: string;
   score?: number | null;
   mode?: string;
+  targetModel?: string | null;
+  generationParams?: Record<string, unknown> | null;
   brainstormContext?: unknown | null;
   highlightCache?: unknown | null;
-  versions?: unknown[];
+  versions?: PromptVersionEntry[];
+}
+
+export interface PromptVersionEdit {
+  timestamp: string;
+  delta?: number;
+  source?: 'manual' | 'suggestion' | 'unknown';
+}
+
+export interface PromptVersionPreview {
+  generatedAt: string;
+  imageUrl?: string | null;
+  aspectRatio?: string | null;
+}
+
+export interface PromptVersionVideo {
+  generatedAt: string;
+  videoUrl?: string | null;
+  model?: string | null;
+  generationParams?: Record<string, unknown> | null;
+}
+
+export interface PromptVersionEntry {
+  versionId: string;
+  label?: string | undefined;
+  signature: string;
+  prompt: string;
+  timestamp: string;
+  highlights?: unknown | null | undefined;
+  editCount?: number | undefined;
+  edits?: PromptVersionEdit[] | undefined;
+  preview?: PromptVersionPreview | null | undefined;
+  video?: PromptVersionVideo | null | undefined;
+  generations?: Generation[] | null | undefined;
 }
 
 export interface Toast {
@@ -81,4 +118,4 @@ export interface Toast {
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
 }
-
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';

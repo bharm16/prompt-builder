@@ -1,24 +1,17 @@
-/**
- * Icon Component
- * Wrapper component for Geist icons with consistent styling
- * 
- * Provides a unified API for using Geist icons throughout the application
- */
-
 import React from 'react';
-import * as GeistIcons from '@geist-ui/icons';
+import * as AppIcons from '@promptstudio/system/components/ui/icons';
 import { iconSizes } from '@/styles/tokens';
 import { logger } from '@/services/LoggingService';
 import type { CSSProperties } from 'react';
 
 export type IconSize = keyof typeof iconSizes;
-export type GeistIconName = keyof typeof GeistIcons;
+export type IconName = keyof typeof AppIcons;
 
 export interface IconProps {
   /**
-   * Geist icon name (e.g., 'User', 'Video', 'Settings')
+   * Icon name (e.g., 'User', 'Video', 'Settings')
    */
-  name: GeistIconName;
+  name: IconName;
   
   /**
    * Icon size
@@ -70,45 +63,40 @@ export function Icon({
   'aria-label': ariaLabel,
   'aria-hidden': ariaHidden,
 }: IconProps): React.ReactElement | null {
-  const GeistIcon = GeistIcons[name];
+  const AppIcon = AppIcons[name] as unknown as React.ComponentType<Record<string, unknown>> | undefined;
   
-  if (!GeistIcon) {
-    logger.warn('Geist icon not found', {
+  if (!AppIcon) {
+    logger.warn('Icon not found', {
       component: 'Icon',
       iconName: name,
     });
     return null;
   }
   
-  // Calculate size
-  const sizeValue = typeof size === 'number' 
-    ? `${size}px` 
-    : iconSizes[size] || iconSizes.md;
+  const sizeValue = typeof size === 'number' ? size : Number.parseInt(iconSizes[size] || iconSizes.md, 10);
   
   const iconStyle: CSSProperties = {
-    width: sizeValue,
-    height: sizeValue,
     color,
     ...style,
   };
   
   return (
-    <GeistIcon
+    <AppIcon
       className={className}
-      style={iconStyle}
+      size={sizeValue}
       aria-label={ariaLabel}
       aria-hidden={ariaHidden}
+      style={iconStyle}
     />
   );
 }
 
 /**
- * Create an icon component from a Geist icon name
+ * Create an icon component from an icon name
  * Useful for creating icon components that can be passed around
  */
-export function createIconComponent(name: GeistIconName) {
+export function createIconComponent(name: IconName): (props: Omit<IconProps, 'name'>) => React.ReactElement | null {
   return function IconComponent(props: Omit<IconProps, 'name'>) {
     return <Icon name={name} {...props} />;
   };
 }
-

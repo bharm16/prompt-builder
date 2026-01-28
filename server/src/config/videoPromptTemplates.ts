@@ -331,9 +331,63 @@ EXAMPLES (if user typed "product reveal"):
 - Abstract contexts (dream sequence, memory, vision, imagination)`}
 
 Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`,
+
+    cameraMovement: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the CAMERA MOVEMENT in a video.
+
+Context: ${contextDisplay}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this camera movement with specific details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add movement speed, direction, or focal behavior
+✓ Include specific cinematographic technique names
+✓ Stay true to the movement type the user has indicated
+
+EXAMPLES (if user typed "dolly"):
+✓ "dolly in slowly toward subject's face"
+✓ "dolly back revealing full scene"
+✓ "dolly alongside subject matching walking pace"
+✗ "pan left across room" (different movement - NOT completing the input)
+✗ "handheld following" (different movement - NOT completing the input)` : `Provide 8 dynamic camera movements. Consider:
+- Primary movements: dolly (in/out), tracking (parallel), pan (horizontal pivot), tilt (vertical pivot)
+- Complex movements: crane/jib (vertical arc), steadicam (smooth float), handheld (organic shake)
+- Transitions: whip pan (fast blur), rack focus (shifting focal plane), push in/pull out
+- Static options: locked tripod, subtle breathing motion`}
+
+CINEMATOGRAPHIC VOCABULARY (use these terms):
+• Dolly: in, out, alongside - camera physically moves toward/away/parallel
+• Tracking: parallel to subject movement, follows action
+• Pan: horizontal pivot on axis
+• Tilt: vertical pivot on axis
+• Crane/Jib: vertical movement with horizontal arc
+• Handheld: organic shake, documentary feel
+• Steadicam: smooth floating movement through space
+• Whip pan: fast horizontal blur for transitions
+• Rack focus: shifting focal plane between subjects
+• Static: locked tripod, no movement
+
+CONTEXT-AWARE RULES:
+- Fast action (running, chasing) → suggest tracking, handheld, whip pan
+- Slow/calm mood → suggest slow dolly, static, gentle crane
+- Tense/chaotic mood → suggest handheld shake, unstable framing
+- Intimate subject (face, hands) → suggest subtle dolly, rack focus
+- Epic scale (landscape, crowd) → suggest crane, wide tracking
+
+CRITICAL CONSTRAINTS:
+✓ ONE primary movement per suggestion (no "dolly while panning while tilting")
+✓ Include speed modifier when relevant (slow, fast, gradual, sudden)
+✓ 3-8 words per suggestion
+✓ Movement must be physically coherent
+✗ Avoid generic terms like "cinematic movement" or "dynamic camera"
+
+Each suggestion should be SHORT (3-8 words) and immediately executable.`,
   };
 
-  return prompts[elementType] || prompts.subject;
+  return prompts[elementType] ?? prompts.subject ?? '';
 }
 
 export const VIDEO_PROMPT_PRINCIPLES = `

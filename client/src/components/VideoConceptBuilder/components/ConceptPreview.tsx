@@ -4,7 +4,7 @@
  * Displays a live preview of the composed concept.
  */
 
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb } from '@promptstudio/system/components/ui';
 
 interface ConceptPreviewProps {
   text: string;

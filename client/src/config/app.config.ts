@@ -4,8 +4,8 @@
  * Centralized configuration for app-wide settings
  */
 
-import { MessageSquare, Lightbulb, Search, GraduationCap, Video } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { MessageSquare, Lightbulb, Search, GraduationCap, Video } from '@promptstudio/system/components/ui';
+import type { AppIcon } from '@/types';
 
 const ENV = import.meta.env.MODE || 'development';
 const IS_DEV = ENV === 'development';
@@ -14,7 +14,7 @@ const IS_PROD = ENV === 'production';
 export interface Mode {
   id: string;
   name: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   description: string;
 }
 
@@ -112,4 +112,3 @@ export function getModeById(modeId: string): Mode | undefined {
 export function getDefaultMode(): Mode {
   return APP_CONFIG.modes.find(m => m.id === APP_CONFIG.ui.defaultMode) || APP_CONFIG.modes[0]!;
 }
-

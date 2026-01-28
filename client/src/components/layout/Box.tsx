@@ -1,16 +1,13 @@
 /**
- * Box Component (Geist Design System)
- * 
+ * Box Component (PromptStudio System)
+ *
  * The most fundamental layout component. Box is used to:
- * - Provide spacing to child elements using Geist spacing tokens
+ * - Provide spacing to child elements using system spacing tokens
  * - Impose sizing constraints on content
  * - Control layout behaviour within flex and grid containers
  * - Hide content based on screen size using responsive display prop
- * 
- * Geist spacing tokens: quarter (4pt), half (8pt), base (16pt)
- * Supports both Geist tokens (geist-quarter, geist-half, geist-base) and standard spacing values
- * 
- * Based on: https://vercel.com/geist
+ *
+ * System spacing tokens: ps-0..ps-11 (mapped to CSS vars: --ps-space-0..--ps-space-11)
  */
 
 import React from 'react';
@@ -89,14 +86,24 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
  * Converts responsive prop to Tailwind classes
  */
 /**
- * Geist spacing token mapping
- * Converts Geist tokens to CSS values
+ * System spacing token mapping
+ * Converts system tokens to CSS values (CSS vars)
  */
-const geistSpacingMap: Record<string, string> = {
-  'geist-quarter': '4pt',   // ~5px
-  'geist-half': '8pt',       // ~11px
-  'geist-base': '16pt',      // ~21px
-  'geist-page': '16pt',      // ~21px (page margin)
+const psSpacingMap: Record<string, string> = {
+  'ps-0': 'var(--ps-space-0)',
+  'ps-1': 'var(--ps-space-1)',
+  'ps-2': 'var(--ps-space-2)',
+  'ps-3': 'var(--ps-space-3)',
+  'ps-4': 'var(--ps-space-4)',
+  'ps-5': 'var(--ps-space-5)',
+  'ps-6': 'var(--ps-space-6)',
+  'ps-7': 'var(--ps-space-7)',
+  'ps-8': 'var(--ps-space-8)',
+  'ps-9': 'var(--ps-space-9)',
+  'ps-10': 'var(--ps-space-10)',
+  'ps-11': 'var(--ps-space-11)',
+  'ps-page': 'var(--ps-space-page)',
+  'ps-card': 'var(--ps-space-card)',
 };
 
 function getResponsiveClasses(
@@ -106,11 +113,11 @@ function getResponsiveClasses(
   if (!prop) return '';
   
   if (typeof prop === 'string') {
-    // Handle Geist spacing tokens
-    if (prop.startsWith('geist-')) {
-      const geistValue = geistSpacingMap[prop];
-      if (geistValue) {
-        // Return empty string - we'll handle Geist tokens via inline styles
+    // Handle system spacing tokens
+    if (prop.startsWith('ps-')) {
+      const tokenValue = psSpacingMap[prop];
+      if (tokenValue) {
+        // Return empty string - we'll handle system tokens via inline styles
         return '';
       }
     }
@@ -126,13 +133,13 @@ function getResponsiveClasses(
   const classes: string[] = [];
   Object.entries(prop).forEach(([breakpoint, value]) => {
     if (breakpoint === 'initial' || breakpoint === 'base') {
-      if (typeof value === 'string' && value.startsWith('geist-')) {
-        // Skip Geist tokens in classes, handle via inline styles
+      if (typeof value === 'string' && value.startsWith('ps-')) {
+        // Skip system tokens in classes, handle via inline styles
         return;
       }
       classes.push(`${prefix}-${value}`);
     } else {
-      if (typeof value === 'string' && value.startsWith('geist-')) {
+      if (typeof value === 'string' && value.startsWith('ps-')) {
         return;
       }
       classes.push(`${breakpoint}:${prefix}-${value}`);
@@ -142,13 +149,13 @@ function getResponsiveClasses(
 }
 
 /**
- * Get Geist spacing value for inline styles
+ * Get system spacing value for inline styles
  */
-function getGeistSpacingValue(prop: string | { [key: string]: string } | undefined): string | undefined {
+function getSystemSpacingValue(prop: string | { [key: string]: string } | undefined): string | undefined {
   if (!prop) return undefined;
   
-  if (typeof prop === 'string' && prop.startsWith('geist-')) {
-    return geistSpacingMap[prop];
+  if (typeof prop === 'string' && prop.startsWith('ps-')) {
+    return psSpacingMap[prop];
   }
   
   return undefined;
@@ -235,39 +242,39 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
       .filter(Boolean)
       .join(' ');
 
-    // Handle Geist spacing tokens via inline styles
-    const geistPadding = getGeistSpacingValue(p);
-    const geistPaddingX = getGeistSpacingValue(px);
-    const geistPaddingY = getGeistSpacingValue(py);
-    const geistPaddingTop = getGeistSpacingValue(pt);
-    const geistPaddingRight = getGeistSpacingValue(pr);
-    const geistPaddingBottom = getGeistSpacingValue(pb);
-    const geistPaddingLeft = getGeistSpacingValue(pl);
-    const geistMargin = getGeistSpacingValue(m);
-    const geistMarginX = getGeistSpacingValue(mx);
-    const geistMarginY = getGeistSpacingValue(my);
-    const geistMarginTop = getGeistSpacingValue(mt);
-    const geistMarginRight = getGeistSpacingValue(mr);
-    const geistMarginBottom = getGeistSpacingValue(mb);
-    const geistMarginLeft = getGeistSpacingValue(ml);
+    // Handle system spacing tokens via inline styles
+    const systemPadding = getSystemSpacingValue(p);
+    const systemPaddingX = getSystemSpacingValue(px);
+    const systemPaddingY = getSystemSpacingValue(py);
+    const systemPaddingTop = getSystemSpacingValue(pt);
+    const systemPaddingRight = getSystemSpacingValue(pr);
+    const systemPaddingBottom = getSystemSpacingValue(pb);
+    const systemPaddingLeft = getSystemSpacingValue(pl);
+    const systemMargin = getSystemSpacingValue(m);
+    const systemMarginX = getSystemSpacingValue(mx);
+    const systemMarginY = getSystemSpacingValue(my);
+    const systemMarginTop = getSystemSpacingValue(mt);
+    const systemMarginRight = getSystemSpacingValue(mr);
+    const systemMarginBottom = getSystemSpacingValue(mb);
+    const systemMarginLeft = getSystemSpacingValue(ml);
 
     // Build inline styles for properties not covered by Tailwind
     const inlineStyles: React.CSSProperties = {
       ...style,
-      ...(geistPadding ? { padding: geistPadding } : {}),
-      ...(geistPaddingX ? { paddingLeft: geistPaddingX, paddingRight: geistPaddingX } : {}),
-      ...(geistPaddingY ? { paddingTop: geistPaddingY, paddingBottom: geistPaddingY } : {}),
-      ...(geistPaddingTop ? { paddingTop: geistPaddingTop } : {}),
-      ...(geistPaddingRight ? { paddingRight: geistPaddingRight } : {}),
-      ...(geistPaddingBottom ? { paddingBottom: geistPaddingBottom } : {}),
-      ...(geistPaddingLeft ? { paddingLeft: geistPaddingLeft } : {}),
-      ...(geistMargin ? { margin: geistMargin } : {}),
-      ...(geistMarginX ? { marginLeft: geistMarginX, marginRight: geistMarginX } : {}),
-      ...(geistMarginY ? { marginTop: geistMarginY, marginBottom: geistMarginY } : {}),
-      ...(geistMarginTop ? { marginTop: geistMarginTop } : {}),
-      ...(geistMarginRight ? { marginRight: geistMarginRight } : {}),
-      ...(geistMarginBottom ? { marginBottom: geistMarginBottom } : {}),
-      ...(geistMarginLeft ? { marginLeft: geistMarginLeft } : {}),
+      ...(systemPadding ? { padding: systemPadding } : {}),
+      ...(systemPaddingX ? { paddingLeft: systemPaddingX, paddingRight: systemPaddingX } : {}),
+      ...(systemPaddingY ? { paddingTop: systemPaddingY, paddingBottom: systemPaddingY } : {}),
+      ...(systemPaddingTop ? { paddingTop: systemPaddingTop } : {}),
+      ...(systemPaddingRight ? { paddingRight: systemPaddingRight } : {}),
+      ...(systemPaddingBottom ? { paddingBottom: systemPaddingBottom } : {}),
+      ...(systemPaddingLeft ? { paddingLeft: systemPaddingLeft } : {}),
+      ...(systemMargin ? { margin: systemMargin } : {}),
+      ...(systemMarginX ? { marginLeft: systemMarginX, marginRight: systemMarginX } : {}),
+      ...(systemMarginY ? { marginTop: systemMarginY, marginBottom: systemMarginY } : {}),
+      ...(systemMarginTop ? { marginTop: systemMarginTop } : {}),
+      ...(systemMarginRight ? { marginRight: systemMarginRight } : {}),
+      ...(systemMarginBottom ? { marginBottom: systemMarginBottom } : {}),
+      ...(systemMarginLeft ? { marginLeft: systemMarginLeft } : {}),
       ...(width && typeof width === 'string' ? { width } : {}),
       ...(minWidth && typeof minWidth === 'string' ? { minWidth } : {}),
       ...(maxWidth && typeof maxWidth === 'string' ? { maxWidth } : {}),
@@ -295,4 +302,3 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
 Box.displayName = 'Box';
 
 export default Box;
-

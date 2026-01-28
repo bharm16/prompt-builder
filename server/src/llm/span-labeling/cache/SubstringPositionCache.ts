@@ -156,9 +156,12 @@ export class SubstringPositionCache {
       const cleanedWindow = this._cleanForMatch(window);
       if (!cleanedWindow) continue;
 
-      const distance = this._levenshtein(cleanedTarget, cleanedWindow);
+      // Truncate window to comparable length to avoid penalizing trailing characters
+      // We allow a small margin (5 chars) for insertions/expansion in source text
+      const compareWindow = cleanedWindow.slice(0, cleanedTarget.length + 5);
+      const distance = this._levenshtein(cleanedTarget, compareWindow);
       const normalized =
-        distance / Math.max(cleanedTarget.length, cleanedWindow.length || 1);
+        distance / Math.max(cleanedTarget.length, compareWindow.length || 1);
 
       if (best === null || normalized < best.score) {
         best = { start, end: start + window.length, score: normalized };
@@ -208,6 +211,25 @@ export class SubstringPositionCache {
     // Cache the result
     this.cache.set(substring, occurrences);
     return occurrences;
+  }
+
+  /**
+   * Get all occurrences of a substring in text (public wrapper)
+   *
+   * @param {string} text - Source text
+   * @param {string} substring - Substring to find
+   * @returns {Array<MatchResult>} All matches found
+   */
+  findAllMatches(text: string, substring: string): MatchResult[] {
+    if (!substring) return [];
+    
+    const occurrences = this._getOccurrences(text, substring);
+    const len = substring.length;
+    
+    return occurrences.map(start => ({
+      start,
+      end: start + len
+    }));
   }
 
   /**
@@ -266,7 +288,10 @@ export class SubstringPositionCache {
 
     if (occurrences.length === 1) {
       this.telemetry.exactMatches++;
-      return { start: occurrences[0], end: occurrences[0] + substring.length };
+      const firstOcc = occurrences[0];
+      if (firstOcc !== undefined) {
+        return { start: firstOcc, end: firstOcc + substring.length };
+      }
     }
 
     const preferred =
@@ -277,24 +302,27 @@ export class SubstringPositionCache {
     // Binary search for closest occurrence
     let left = 0;
     let right = occurrences.length - 1;
-    let best = occurrences[0];
+    let best: number = occurrences[0] ?? 0;
     let bestDistance = Math.abs(best - preferred);
 
     // If preferred is before first occurrence, return first
-    if (preferred <= occurrences[0]) {
-      return { start: occurrences[0], end: occurrences[0] + substring.length };
+    const firstOccurrence = occurrences[0];
+    if (firstOccurrence !== undefined && preferred <= firstOccurrence) {
+      return { start: firstOccurrence, end: firstOccurrence + substring.length };
     }
 
     // If preferred is after last occurrence, return last
-    if (preferred >= occurrences[occurrences.length - 1]) {
-      const last = occurrences[occurrences.length - 1];
-      return { start: last, end: last + substring.length };
+    const lastOccurrence = occurrences[occurrences.length - 1];
+    if (lastOccurrence !== undefined && preferred >= lastOccurrence) {
+      return { start: lastOccurrence, end: lastOccurrence + substring.length };
     }
 
     // Binary search for closest match
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const candidate = occurrences[mid];
+      if (candidate === undefined) break;
+      
       const distance = Math.abs(candidate - preferred);
 
       if (distance < bestDistance) {

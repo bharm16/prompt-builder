@@ -6,9 +6,9 @@
  * with provider-specific optimizations.
  */
 
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';
-import type { AIService as BaseAIService } from '../../../types.js';
-import { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
+import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
+import { SubstringPositionCache } from '../cache/SubstringPositionCache';
 
 /**
  * Parameters for LLM span extraction
@@ -31,9 +31,14 @@ export interface ILlmClient {
    * Get spans using LLM with validation and optional repair
    */
   getSpans(params: LlmSpanParams): Promise<LabelSpansResult>;
+
+  /**
+   * Stream spans using LLM (optional support)
+   */
+  streamSpans?(params: LlmSpanParams): AsyncGenerator<Record<string, unknown>, void, unknown>;
 }
 
 /**
  * Provider type for factory selection
  */
-export type LlmClientProvider = 'groq' | 'openai' | 'anthropic' | 'unknown';
+export type LlmClientProvider = 'groq' | 'openai' | 'anthropic' | 'gemini' | 'unknown';

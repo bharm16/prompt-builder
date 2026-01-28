@@ -10,6 +10,8 @@ import type { Suggestion, AIService } from './types.js';
  * Single Responsibility: Suggestion diversity and deduplication
  */
 export class SuggestionDiversityEnforcer {
+  private readonly maxLlmReplacements = 2;
+
   constructor(private readonly ai: AIService) {}
 
   /**
@@ -22,16 +24,25 @@ export class SuggestionDiversityEnforcer {
 
     // Special handling for categorized suggestions
     if (suggestions[0]?.category) {
-      return this.ensureCategoricalDiversity(suggestions);
+      const uniqueCategories = new Set(
+        suggestions.map((suggestion) => suggestion.category || 'Other')
+      );
+      if (uniqueCategories.size > 1) {
+        return this.ensureCategoricalDiversity(suggestions);
+      }
     }
 
     // Calculate similarity matrix
     const similarities: Array<{ i: number; j: number; similarity: number }> = [];
     for (let i = 0; i < suggestions.length; i++) {
+      const first = suggestions[i];
+      if (!first) continue;
       for (let j = i + 1; j < suggestions.length; j++) {
+        const second = suggestions[j];
+        if (!second) continue;
         const sim = await this.calculateSimilarity(
-          suggestions[i].text,
-          suggestions[j].text
+          first.text,
+          second.text
         );
         similarities.push({ i, j, similarity: sim });
       }
@@ -54,7 +65,10 @@ export class SuggestionDiversityEnforcer {
 
     // Generate replacements for similar suggestions
     const diverseSuggestions = [...suggestions];
-    for (const idx of toReplace) {
+    const replacementIndices = Array.from(toReplace);
+    const limitedReplacements = replacementIndices.slice(0, this.maxLlmReplacements);
+
+    for (const idx of limitedReplacements) {
       diverseSuggestions[idx] = await this.generateDiverseAlternative(
         suggestions,
         idx
@@ -63,7 +77,8 @@ export class SuggestionDiversityEnforcer {
 
     logger.info('Enforced diversity', {
       original: suggestions.length,
-      replaced: toReplace.size,
+      replaced: limitedReplacements.length,
+      skipped: toReplace.size - limitedReplacements.length,
     });
 
     return diverseSuggestions;
@@ -82,6 +97,15 @@ export class SuggestionDiversityEnforcer {
       const cat = s.category || 'Other';
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     });
+
+    const uniqueCategories = Object.keys(categoryCounts);
+    if (uniqueCategories.length <= 1) {
+      logger.debug('Single-category suggestions, skipping categorical rebalancing', {
+        category: uniqueCategories[0] || 'Other',
+        suggestions: suggestions.length,
+      });
+      return suggestions;
+    }
 
     // Check if any category is over-represented (more than 40% of suggestions)
     const totalSuggestions = suggestions.length;
@@ -116,7 +140,6 @@ export class SuggestionDiversityEnforcer {
     });
 
     // Ensure we have enough diversity in categories
-    const uniqueCategories = Object.keys(categoryCounts);
     if (uniqueCategories.length < 3 && totalSuggestions >= 6) {
       logger.warn('Not enough category diversity', {
         categories: uniqueCategories.length,
@@ -159,6 +182,13 @@ export class SuggestionDiversityEnforcer {
    */
   async generateDiverseAlternative(suggestions: Suggestion[], indexToReplace: number): Promise<Suggestion> {
     const original = suggestions[indexToReplace];
+    if (!original) {
+      logger.warn('Suggestion index out of range during diversity replacement', {
+        indexToReplace,
+        suggestionCount: suggestions.length,
+      });
+      return { text: '', explanation: 'Unable to generate alternative' };
+    }
     const otherSuggestions = suggestions.filter((_, i) => i !== indexToReplace);
 
     const diversityPrompt = `Generate a diverse alternative that is meaningfully different from the existing suggestions.
@@ -187,15 +217,18 @@ Provide a JSON object with the new suggestion:
       const responseText = (response as { text?: string; content?: Array<{ text?: string }> }).text || 
         ((response as { content?: Array<{ text?: string }> }).content?.[0]?.text || '');
       const alternative = JSON.parse(responseText) as Suggestion;
+      if (original.category && !alternative.category) {
+        alternative.category = original.category;
+      }
       return alternative;
     } catch (error) {
-      logger.warn('Failed to generate diverse alternative', { error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('Failed to generate diverse alternative', { error: errorMessage });
       // Fallback: return original with slight modification
       return {
-        text: original.text + ' (alternative approach)',
+        text: `${original.text} (alternative approach)`,
         explanation: original.explanation || 'Alternative variation',
       };
     }
   }
 }
-

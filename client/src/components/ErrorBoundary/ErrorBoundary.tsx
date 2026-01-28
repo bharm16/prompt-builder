@@ -1,6 +1,7 @@
 import React, { type ReactNode, type ComponentType } from 'react';
 import * as Sentry from '@sentry/react';
-import { logger } from '../../services/LoggingService';
+import { logger } from '@/services/LoggingService';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -116,31 +117,34 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
-                <button
+                <Button
                   onClick={() => {
                     window.location.href = '/';
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                  variant="ghost"
+                  className="flex-1 bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors hover:bg-blue-700"
                 >
                   Go to Home
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     window.location.reload();
                   }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors"
+                  variant="ghost"
+                  className="flex-1 bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded transition-colors hover:bg-gray-300"
                 >
                   Reload Page
-                </button>
+                </Button>
               </div>
 
               {this.state.eventId && (
-                <button
+                <Button
                   onClick={this.handleReportFeedback}
-                  className="w-full bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded transition-colors"
+                  variant="ghost"
+                  className="w-full border-2 border-blue-600 bg-white text-blue-600 font-medium py-2 px-4 rounded transition-colors hover:bg-blue-50"
                 >
                   Report Feedback
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -171,4 +175,3 @@ export const withErrorBoundary = <P extends object>(
 };
 
 export default ErrorBoundary;
-

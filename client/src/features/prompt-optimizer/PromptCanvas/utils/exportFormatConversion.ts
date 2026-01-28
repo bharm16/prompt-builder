@@ -5,7 +5,7 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import type { ExportFormat } from '../../types';
+import type { ExportFormat } from '@features/prompt-optimizer/types';
 
 /**
  * Converts ExportFormatType to internal export format

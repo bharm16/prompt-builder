@@ -20,11 +20,12 @@ export function validateRequest(schema: ValidationSchema) {
           path: req.path,
         });
 
-        return res.status(400).json({
+        res.status(400).json({
           error: 'Validation failed',
           details: firstError?.message || 'Invalid request data',
           requestId: (req as Request & { id?: string }).id,
         });
+        return;
       }
 
       // Replace request body with validated/sanitized value
@@ -55,11 +56,12 @@ export function validateRequest(schema: ValidationSchema) {
           path: req.path,
         });
 
-        return res.status(400).json({
+        res.status(400).json({
           error: 'Validation failed',
           details: error.details[0]?.message || 'Invalid request data',
           requestId: (req as Request & { id?: string }).id,
         });
+        return;
       }
 
       // Replace request body with validated/sanitized value
@@ -69,17 +71,20 @@ export function validateRequest(schema: ValidationSchema) {
     }
 
     // Invalid schema
-    logger.error('Invalid validation schema provided', {
-      requestId: (req as Request & { id?: string }).id,
-      path: req.path,
-      schemaType: typeof schema,
-    });
+    logger.error(
+      'Invalid validation schema provided',
+      undefined,
+      {
+        requestId: (req as Request & { id?: string }).id,
+        path: req.path,
+        schemaType: typeof schema,
+      }
+    );
 
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Internal server error',
       message: 'Invalid validation schema',
       requestId: (req as Request & { id?: string }).id,
     });
   };
 }
-

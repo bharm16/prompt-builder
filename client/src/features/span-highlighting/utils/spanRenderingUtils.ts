@@ -14,8 +14,8 @@ export interface SpanWithOffsets {
   [key: string]: unknown;
 }
 
-export interface ProcessedSpan {
-  span: SpanWithOffsets;
+export interface ProcessedSpan<T extends SpanWithOffsets = SpanWithOffsets> {
+  span: T;
   highlightStart: number;
   highlightEnd: number;
 }
@@ -32,7 +32,7 @@ export function hasValidOffsets(span: SpanWithOffsets): boolean {
 /**
  * Snap a span to token boundaries
  */
-export function snapSpan(span: SpanWithOffsets, displayText: string): ProcessedSpan | null {
+export function snapSpan<T extends SpanWithOffsets>(span: T, displayText: string): ProcessedSpan<T> | null {
   const start = Number(span.displayStart ?? span.start);
   const end = Number(span.displayEnd ?? span.end);
   const snapped = snapSpanToTokenBoundaries(displayText, start, end);
@@ -49,14 +49,13 @@ export function snapSpan(span: SpanWithOffsets, displayText: string): ProcessedS
 /**
  * Process and sort spans for highlighting
  */
-export function processAndSortSpans(
-  spans: SpanWithOffsets[],
+export function processAndSortSpans<T extends SpanWithOffsets>(
+  spans: T[],
   displayText: string
-): ProcessedSpan[] {
+): ProcessedSpan<T>[] {
   return [...spans]
     .filter(hasValidOffsets)
     .map((span) => snapSpan(span, displayText))
-    .filter((item): item is ProcessedSpan => item !== null)
+    .filter((item): item is ProcessedSpan<T> => item !== null)
     .sort((a, b) => b.highlightStart - a.highlightStart); // Reverse order for DOM manipulation
 }
-

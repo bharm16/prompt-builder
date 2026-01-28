@@ -1,14 +1,15 @@
-import { SubstringPositionCache } from './cache/SubstringPositionCache.js';
-import SpanLabelingConfig from './config/SpanLabelingConfig.js';
-import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
-import { TextChunker, countWords } from './utils/chunkingUtils.js';
-import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
-import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
-import { resolveOverlaps } from './processing/OverlapResolver.js';
-import { detectInjectionPatterns } from '../../utils/SecurityPrompts.js';
-import { logger } from '@infrastructure/Logger.js';
-import type { LabelSpansParams, LabelSpansResult } from './types.js';
-import type { AIService as BaseAIService } from '../../types.js';
+import { SubstringPositionCache } from './cache/SubstringPositionCache';
+import SpanLabelingConfig from './config/SpanLabelingConfig';
+import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils';
+import { TextChunker, countWords } from './utils/chunkingUtils';
+import { NlpSpanStrategy } from './strategies/NlpSpanStrategy';
+import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory';
+import { resolveOverlaps } from './processing/OverlapResolver';
+import { validateSpans } from './validation/SpanValidator';
+import { detectInjectionPatterns } from '@utils/SecurityPrompts';
+import { logger } from '@infrastructure/Logger';
+import type { LabelSpansParams, LabelSpansResult, SpanLike } from './types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -74,11 +75,13 @@ export async function labelSpans(
       wordCount,
       provider,
     });
-    return labelSpansChunked(params, aiService);
+    const result = await labelSpansChunked(params, aiService);
+    return applyI2VFilterIfNeeded(result, params.templateVersion);
   }
   
   // For smaller texts, use single-pass processing
-  return labelSpansSingle(params, aiService);
+  const result = await labelSpansSingle(params, aiService);
+  return applyI2VFilterIfNeeded(result, params.templateVersion);
 }
 
 /**
@@ -100,11 +103,11 @@ async function labelSpansSingle(
   const cache = new SubstringPositionCache();
 
   try {
-    const policy = sanitizePolicy(params.policy);
+    const policy = sanitizePolicy(params.policy ?? null);
     const sanitizedOptions = sanitizeOptions({
-      maxSpans: params.maxSpans,
-      minConfidence: params.minConfidence,
-      templateVersion: params.templateVersion,
+      ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+      ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+      ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
     });
 
     // Try NLP fast-path first
@@ -137,10 +140,52 @@ async function labelSpansSingle(
 }
 
 interface ChunkResult {
-  spans: unknown[];
+  spans?: SpanLike[];
   chunkOffset: number;
   meta: { version: string; notes: string; [key: string]: unknown } | null;
   isAdversarial: boolean;
+}
+
+const I2V_ALLOWED_CATEGORIES = new Set([
+  'action.movement',
+  'action.gesture',
+  'action.state',
+  'camera.movement',
+  'camera.focus',
+  'subject.emotion',
+]);
+
+function applyI2VFilterIfNeeded(
+  result: LabelSpansResult,
+  templateVersion?: string
+): LabelSpansResult {
+  if (!templateVersion || !templateVersion.toLowerCase().startsWith('i2v')) {
+    return result;
+  }
+
+  const spans = Array.isArray(result.spans) ? result.spans : [];
+  const filtered = spans.filter((span) =>
+    span?.category ? I2V_ALLOWED_CATEGORIES.has(span.category) : false
+  );
+
+  if (filtered.length === spans.length) {
+    return result;
+  }
+
+  const meta = result.meta
+    ? {
+        ...result.meta,
+        notes: result.meta.notes
+          ? `${result.meta.notes}; i2v motion filter applied`
+          : 'i2v motion filter applied',
+      }
+    : { version: templateVersion, notes: 'i2v motion filter applied' };
+
+  return {
+    ...result,
+    spans: filtered,
+    meta,
+  };
 }
 
 /**
@@ -173,9 +218,17 @@ async function labelSpansChunked(
         ...params,
         text: chunk.text,
       }, aiService);
+
+      const spans: SpanLike[] = (result.spans || [])
+        .filter((span) => typeof span.start === 'number' && typeof span.end === 'number')
+        .map((span) => ({
+          ...span,
+          start: span.start as number,
+          end: span.end as number,
+        }));
       
       return {
-        spans: result.spans || [],
+        spans,
         chunkOffset: chunk.startOffset,
         meta: result.meta,
         isAdversarial: result.isAdversarial === true,
@@ -220,7 +273,12 @@ async function labelSpansChunked(
   
   // Merge spans from all chunks
   let mergedSpans = chunker.mergeChunkedSpans(chunkResults);
-  const policy = sanitizePolicy(params.policy);
+  const policy = sanitizePolicy(params.policy ?? null);
+  const sanitizedOptions = sanitizeOptions({
+    ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+    ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+    ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
+  });
   const overlapResolved = resolveOverlaps(
     mergedSpans.map(span => ({
       ...span,
@@ -245,17 +303,145 @@ async function labelSpansChunked(
     totalWords: wordCount,
     provider,
   };
+
+  const cache = new SubstringPositionCache();
+  const validation = validateSpans({
+    spans: mergedSpans,
+    meta: combinedMeta,
+    text: params.text,
+    policy,
+    options: sanitizedOptions,
+    attempt: 2,
+    cache,
+    isAdversarial,
+  });
   
   logger.info('Chunked processing complete', {
     operation: 'labelSpansChunked',
-    spanCount: mergedSpans.length,
+    spanCount: validation.result.spans.length,
     chunkCount: chunks.length,
     provider,
   });
   
   return {
-    spans: mergedSpans,
-    meta: combinedMeta,
-    isAdversarial,
+    spans: validation.result.spans,
+    meta: validation.result.meta,
+    ...(validation.result.isAdversarial !== undefined && { isAdversarial: validation.result.isAdversarial }),
+    ...(validation.result.analysisTrace !== undefined && { analysisTrace: validation.result.analysisTrace }),
   };
+}
+
+/**
+ * Stream spans using an LLM.
+ * Bypasses NLP fast-path for immediate feedback.
+ */
+export async function* labelSpansStream(
+  params: LabelSpansParams,
+  aiService: BaseAIService
+): AsyncGenerator<SpanLike, void, unknown> {
+  if (!params || typeof params.text !== 'string' || !params.text.trim()) {
+    throw new Error('text is required');
+  }
+
+  if (!aiService) {
+    throw new Error('aiService is required');
+  }
+
+  // Pre-check for adversarial input
+  const adversarialCheck = detectInjectionPatterns(params.text);
+  if (adversarialCheck.hasPatterns) {
+    logger.warn('Adversarial input detected in stream', { 
+      operation: 'labelSpansStream',
+      patterns: adversarialCheck.patterns 
+    });
+    return;
+  }
+
+  // Resolve model from AI Service config to ensure correct provider detection
+  let modelName: string | undefined;
+  try {
+     const config = aiService.getOperationConfig('span_labeling');
+     modelName = config?.model;
+  } catch (e) {
+     // Ignore config lookup errors
+  }
+
+  // Create client with explicit model for auto-detection
+  const llmClient = createLlmClient({ 
+      operation: 'span_labeling',
+      ...(modelName ? { model: modelName } : {}),
+  });
+
+  // Fallback if streaming not supported
+  if (!llmClient.streamSpans) {
+    logger.debug('Client does not support streaming, falling back to blocking', {
+       operation: 'labelSpansStream',
+       client: llmClient.constructor.name 
+    });
+    const result = await labelSpans(params, aiService);
+    for (const span of result.spans) {
+      if (typeof span.start === 'number' && typeof span.end === 'number') {
+        yield {
+          ...span,
+          start: span.start,
+          end: span.end,
+        };
+      }
+    }
+    return;
+  }
+
+  // Setup params
+  const policy = sanitizePolicy(params.policy ?? null);
+  const sanitizedOptions = sanitizeOptions({
+    ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+    ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+    ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
+  });
+  
+  const cache = new SubstringPositionCache();
+  const streamParams = {
+      text: params.text,
+      policy,
+      options: sanitizedOptions,
+      enableRepair: params.enableRepair === true,
+      aiService,
+      cache,
+      nlpSpansAttempted: 0, 
+  };
+
+  // Stream
+  for await (const rawSpan of llmClient.streamSpans(streamParams)) {
+      const textValue = String(rawSpan.text || '');
+      const roleValue = String(rawSpan.role || rawSpan.category || '');
+      const confidenceValue = typeof rawSpan.confidence === 'number' ? rawSpan.confidence : 0.5;
+      let start = typeof rawSpan.start === 'number' ? rawSpan.start : undefined;
+      let end = typeof rawSpan.end === 'number' ? rawSpan.end : undefined;
+      let resolvedText = textValue;
+
+      // Calculate indices if missing
+      if (typeof start !== 'number' || typeof end !== 'number') {
+        const match = cache.findBestMatch(params.text, textValue);
+        if (match) {
+          start = match.start;
+          end = match.end;
+          // Use exact text from source to ensure alignment
+          resolvedText = params.text.slice(match.start, match.end);
+        }
+      }
+
+      if (typeof start !== 'number' || typeof end !== 'number') {
+        continue;
+      }
+
+      const span: SpanLike = {
+          text: resolvedText,
+          role: roleValue,
+          confidence: confidenceValue,
+          start,
+          end,
+      };
+      
+      yield span;
+  }
 }

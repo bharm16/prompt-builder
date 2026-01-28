@@ -1,38 +1,16 @@
-import { API_CONFIG } from '../config/api.config';
-import { z } from 'zod';
+import { RoleClassifyResponseSchema } from '../schemas/roleClassify';
+import type { ClientSpan, LabeledSpan } from '../types/roleClassify';
+import { buildFirebaseAuthHeaders } from '../services/http/firebaseAuth';
 
-export interface ClientSpan {
-  text: string;
-  start: number;
-  end: number;
-}
-
-export interface LabeledSpan {
-  text: string;
-  start: number;
-  end: number;
-  role: string;
-  confidence: number;
-}
-
-const LabeledSpanSchema = z.object({
-  text: z.string(),
-  start: z.number(),
-  end: z.number(),
-  role: z.string(),
-  confidence: z.number(),
-});
-
-const RoleClassifyResponseSchema = z.object({
-  spans: z.array(LabeledSpanSchema).default([]),
-});
+export { ClientSpan, LabeledSpan };
 
 export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 'v1'): Promise<LabeledSpan[]> {
+  const authHeaders = await buildFirebaseAuthHeaders();
   const res = await fetch('/api/role-classify', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify({ spans, templateVersion }),
   });
@@ -45,4 +23,3 @@ export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 
   const validated = RoleClassifyResponseSchema.parse(data);
   return validated.spans;
 }
-

@@ -8,22 +8,22 @@
 
 import { z } from 'zod';
 
-export const compatibilityOutputSchema = z.object({
+export const compatibilityOutputSchema = z.looseObject({
   score: z.number(),
   feedback: z.string(),
-}).passthrough();
+});
 
-export const completeSceneOutputSchema = z.record(z.unknown());
+export const completeSceneOutputSchema = z.record(z.string(), z.unknown());
 
 export const variationsOutputSchema = z.array(
-  z.object({
+  z.looseObject({
     name: z.string(),
     description: z.string(),
-    elements: z.record(z.unknown()),
-  }).passthrough()
+    elements: z.record(z.string(), z.unknown()),
+  })
 );
 
-export const parseConceptOutputSchema = z.object({
+export const parseConceptOutputSchema = z.looseObject({
   subject: z.string(),
   action: z.string(),
   location: z.string(),
@@ -31,41 +31,89 @@ export const parseConceptOutputSchema = z.object({
   mood: z.string(),
   style: z.string(),
   event: z.string(),
-}).passthrough();
+});
 
-export const refinementsOutputSchema = z.record(z.unknown());
+export const refinementsOutputSchema = z.record(z.string(), z.unknown());
 
 export const conflictsOutputSchema = z.array(
-  z.object({
-    elements: z.record(z.unknown()),
+  z.looseObject({
+    elements: z.record(z.string(), z.unknown()),
     severity: z.string(),
     message: z.string(),
-  }).passthrough()
+  })
 );
 
-export const technicalParamsOutputSchema = z.object({
-  camera: z.record(z.unknown()),
-  lighting: z.record(z.unknown()),
-  color: z.record(z.unknown()),
-  format: z.record(z.unknown()),
-  audio: z.record(z.unknown()),
-  postProduction: z.record(z.unknown()),
-}).passthrough();
+export const technicalParamsOutputSchema = z.looseObject({
+  camera: z.record(z.string(), z.unknown()),
+  lighting: z.record(z.string(), z.unknown()),
+  color: z.record(z.string(), z.unknown()),
+  format: z.record(z.string(), z.unknown()),
+  audio: z.record(z.string(), z.unknown()),
+  postProduction: z.record(z.string(), z.unknown()),
+});
 
-export const validatePromptOutputSchema = z.object({
+export const validatePromptOutputSchema = z.looseObject({
   score: z.number(),
-  breakdown: z.record(z.unknown()),
+  breakdown: z.record(z.string(), z.unknown()),
   feedback: z.string(),
   strengths: z.array(z.string()),
   weaknesses: z.array(z.string()),
-}).passthrough();
+});
 
 export const smartDefaultsOutputSchema = z.array(z.unknown());
 
 export const alternativePhrasingsOutputSchema = z.array(
-  z.object({
+  z.looseObject({
     text: z.string(),
     tone: z.string(),
-  }).passthrough()
+  })
 );
 
+export const coherenceCheckOutputSchema = z.object({
+  conflicts: z.array(
+    z.object({
+      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      message: z.string(),
+      reasoning: z.string(),
+      involvedSpanIds: z.array(z.string()).optional(),
+      recommendations: z.array(
+        z.object({
+          title: z.string(),
+          rationale: z.string(),
+          edits: z.array(
+            z.object({
+              type: z.enum(['replaceSpanText', 'removeSpan']),
+              spanId: z.string().optional(),
+              replacementText: z.string().optional(),
+              anchorQuote: z.string().optional(),
+            })
+          ).min(1),
+          confidence: z.number().min(0).max(1).optional(),
+        })
+      ),
+    })
+  ),
+  harmonizations: z.array(
+    z.object({
+      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      message: z.string(),
+      reasoning: z.string(),
+      involvedSpanIds: z.array(z.string()).optional(),
+      recommendations: z.array(
+        z.object({
+          title: z.string(),
+          rationale: z.string(),
+          edits: z.array(
+            z.object({
+              type: z.enum(['replaceSpanText', 'removeSpan']),
+              spanId: z.string().optional(),
+              replacementText: z.string().optional(),
+              anchorQuote: z.string().optional(),
+            })
+          ).min(1),
+          confidence: z.number().min(0).max(1).optional(),
+        })
+      ),
+    })
+  ),
+});

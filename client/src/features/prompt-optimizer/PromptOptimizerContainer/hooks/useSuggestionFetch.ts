@@ -4,59 +4,35 @@
  * Handles fetching enhancement suggestions for highlighted text.
  * Extracted from useEnhancementSuggestions.js.
  *
+ * Features:
+ * - Request cancellation (abort in-flight requests on new selection)
+ * - Deduplication (prevent duplicate requests for same text)
+ * - Trailing-edge debouncing (wait for user to stop selecting)
+ * - TTL-based caching (instant results for repeated selections)
+ * - Proper error handling with retry capability
+ *
  * Architecture: Custom React hook
  * Pattern: Single responsibility - suggestion fetching
  * Reference: VideoConceptBuilder hooks pattern
- * Line count: ~150 lines (within <150 limit for hooks)
  */
 
 import { useCallback } from 'react';
 import type React from 'react';
-import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/enhancementSuggestionsApi';
-import { prepareSpanContext } from '@/features/span-highlighting/utils/spanProcessing';
-import { useEditHistory } from '../../hooks/useEditHistory';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
+import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import { buildSuggestionContext } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
+import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import {
+  prepareSpanContext,
+  buildSpanFingerprint,
+} from '@features/span-highlighting/utils/spanProcessing';
 import type { Toast } from '@hooks/types';
-
-interface PromptOptimizer {
-  displayedPrompt: string;
-  inputPrompt: string;
-  setDisplayedPrompt: (prompt: string) => void;
-  setOptimizedPrompt: (prompt: string) => void;
-  [key: string]: unknown;
-}
-
-interface Suggestion {
-  text: string;
-  [key: string]: unknown;
-}
-
-interface SuggestionsData {
-  show: boolean;
-  selectedText: string;
-  originalText: string;
-  suggestions: Suggestion[];
-  isLoading: boolean;
-  isError?: boolean;
-  errorMessage?: string;
-  isPlaceholder: boolean;
-  fullPrompt: string;
-  range?: Range | null;
-  offsets?: { start?: number; end?: number } | null;
-  metadata?: {
-    category?: string;
-    span?: {
-      category?: string;
-      confidence?: number;
-      startIndex?: number;
-      [key: string]: unknown;
-    };
-    confidence?: number;
-    [key: string]: unknown;
-  } | null;
-  setSuggestions?: (suggestions: Suggestion[], isPlaceholder?: boolean) => void;
-  onSuggestionClick?: (suggestion: Suggestion | string) => Promise<void>;
-  onClose?: () => void;
-}
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+import { useSuggestionApi } from './useSuggestionApi';
+import { useSuggestionCache } from './useSuggestionCache';
+import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 
 interface FetchPayload {
   highlightedText?: string;
@@ -76,29 +52,88 @@ interface UseSuggestionFetchParams {
   selectedMode: string;
   suggestionsData: SuggestionsData | null;
   setSuggestionsData: SetSuggestionsData;
-  stablePromptContext: unknown;
+  stablePromptContext: PromptContext | null;
   toast: Toast;
-  handleSuggestionClick: (suggestion: Suggestion | string) => Promise<void>;
+  handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
+  i2vContext?: I2VContext | null;
 }
+
+const log = logger.child('useSuggestionFetch');
+
+const mergeSuggestions = (
+  existing: SuggestionItem[],
+  incoming: SuggestionItem[]
+): SuggestionItem[] => {
+  const seen = new Set<string>();
+  const out: SuggestionItem[] = [];
+  const add = (suggestion: SuggestionItem): void => {
+    const key = (suggestion?.text || '').trim().toLowerCase();
+    if (!key) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(suggestion);
+  };
+  existing.forEach(add);
+  incoming.forEach(add);
+  return out;
+};
 
 /**
  * Hook for fetching enhancement suggestions
+ * 
+ * Features:
+ * - Request cancellation on new selection
+ * - Deduplication of in-flight requests
+ * - Trailing-edge debouncing (150ms)
+ * - TTL-based caching (5 minutes)
+ * - Proper error handling with retry
  */
 export function useSuggestionFetch({
   promptOptimizer,
   selectedMode,
-  suggestionsData,
   setSuggestionsData,
   stablePromptContext,
   toast,
   handleSuggestionClick,
+  i2vContext,
 }: UseSuggestionFetchParams): {
   fetchEnhancementSuggestions: (payload?: FetchPayload) => Promise<void>;
 } {
-  const { getEditSummary } = useEditHistory();
+  const { buildCacheKey, getCachedSuggestions, setCachedSuggestions } = useSuggestionCache();
+  const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } = useSuggestionApi({
+    promptOptimizer,
+    stablePromptContext,
+    i2vContext,
+  });
+
+  const updateSuggestions = useCallback(
+    (newSuggestions: SuggestionItem[]): void => {
+      setSuggestionsData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          suggestions: mergeSuggestions(prev.suggestions || [], newSuggestions),
+          isPlaceholder: false,
+          isError: false,
+          errorMessage: null,
+        };
+      });
+    },
+    [setSuggestionsData]
+  );
 
   /**
    * Fetch enhancement suggestions for highlighted text
+   * 
+   * Flow:
+   * 1. Validate input and check mode
+   * 2. Check deduplication (skip if same text in-flight)
+   * 3. Cancel any previous request
+   * 4. Check cache (return immediately if hit)
+   * 5. Schedule debounced request
+   * 6. Show loading state after debounce fires
+   * 7. Fetch from API with cancellation support
+   * 8. Cache results and update state
    */
   const fetchEnhancementSuggestions = useCallback(
     async (payload: FetchPayload = {}): Promise<void> => {
@@ -109,11 +144,11 @@ export function useSuggestionFetch({
         range,
         offsets,
         metadata: rawMetadata = null,
-        trigger = 'highlight',
         allLabeledSpans = [],
       } = payload;
 
       const trimmedHighlight = (highlightedText || '').trim();
+      const normalizedHighlight = trimmedHighlight.normalize('NFC');
       const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
       const normalizedPrompt = rawPrompt.normalize('NFC');
       const metadata: SuggestionsData['metadata'] = rawMetadata
@@ -128,113 +163,185 @@ export function useSuggestionFetch({
         return;
       }
 
-      // Avoid duplicate requests
-      if (
-        suggestionsData?.selectedText === trimmedHighlight &&
-        suggestionsData?.show
-      ) {
+      const preferIndexRaw =
+        metadata?.span?.start ?? metadata?.start ?? offsets?.start ?? null;
+      const preferIndex =
+        typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
+          ? preferIndexRaw
+          : null;
+
+      const suggestionContext = buildSuggestionContext(
+        normalizedPrompt,
+        normalizedHighlight,
+        preferIndex,
+        1000
+      );
+
+      const spanContext = prepareSpanContext(metadata, allLabeledSpans);
+      const spanFingerprint = buildSpanFingerprint(
+        spanContext.simplifiedSpans,
+        spanContext.nearbySpans
+      );
+
+      if (!suggestionContext.found) {
+        log.warn('Could not locate highlight in prompt; context may be inaccurate', {
+          operation: 'buildSuggestionContext',
+          highlightLength: normalizedHighlight.length,
+          promptLength: normalizedPrompt.length,
+          preferIndex,
+        });
+      }
+
+      const lockKey = i2vContext?.lockMap
+        ? Object.entries(i2vContext.lockMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, value]) => `${key}:${value}`)
+            .join('|')
+        : '';
+      const i2vKey =
+        i2vContext?.isI2VMode && (i2vContext.observation?.imageHash || i2vContext.startImageUrl)
+          ? `${i2vContext.constraintMode}:${i2vContext.observation?.imageHash || i2vContext.startImageUrl}:${lockKey}`
+          : '';
+
+      // Check cache BEFORE showing loading state - Requirement 6.3
+      const cacheKey = buildCacheKey({
+        normalizedHighlight,
+        normalizedPrompt,
+        suggestionContext,
+        category: metadata?.category ?? null,
+        spanFingerprint,
+        i2vKey,
+      });
+
+      // DEDUPLICATION: Use cache key to avoid duplicate in-flight requests
+      const dedupKey = cacheKey;
+
+      // Check if same request is already in-flight (prevents duplicate requests)
+      if (isRequestInFlight(dedupKey)) {
+        return; // Skip duplicate - Requirement 2.1
+      }
+
+      // Cancel any previous request (different text) - Requirement 1.1
+      cancelCurrentRequest();
+
+      const cached = getCachedSuggestions(cacheKey);
+      if (cached) {
+        // Cache hit - return immediately without API call
+        setSuggestionsData(() => ({
+          show: true,
+          selectedText: trimmedHighlight,
+          originalText: originalText || trimmedHighlight,
+          suggestions: cached.suggestions ?? [],
+          isLoading: false,
+          isError: false,
+          errorMessage: null,
+          isPlaceholder: cached.isPlaceholder,
+          fullPrompt: normalizedPrompt,
+          range: range ?? null,
+          offsets: offsets ?? null,
+          metadata: metadata ?? null,
+          responseMetadata: cached.metadata ?? null,
+          allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+          setSuggestions: updateSuggestions,
+          onSuggestionClick: handleSuggestionClick,
+          onClose: () => setSuggestionsData(null),
+        }));
         return;
       }
 
-      // Show loading state immediately
-      const initialData: SuggestionsData = {
-        show: true,
-        selectedText: trimmedHighlight,
-        originalText: originalText || trimmedHighlight,
-        suggestions: [],
-        isLoading: true,
-        isError: false,
-        errorMessage: undefined,
-        isPlaceholder: false,
-        fullPrompt: normalizedPrompt,
-        range: range ?? null,
-        offsets: offsets ?? null,
-        metadata: metadata ?? null,
-        setSuggestions: (newSuggestions, newIsPlaceholder) => {
-          setSuggestionsData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              suggestions: newSuggestions,
-              isPlaceholder:
-                newIsPlaceholder !== undefined
-                  ? newIsPlaceholder
-                  : prev.isPlaceholder,
-              isError: false,
-              errorMessage: undefined,
-            };
-          });
-        },
-        onSuggestionClick: handleSuggestionClick,
-        onClose: () => setSuggestionsData(null),
-      };
-      setSuggestionsData(initialData);
+      // Retry function for error state - Requirement 3.3
+      const retryFn = () => fetchEnhancementSuggestions(payload);
 
+      // Schedule debounced request - Requirement 4.1, 4.2
+      // NOTE: Loading state is shown AFTER debounce fires (inside scheduleRequest)
       try {
-        // Prepare span context (sanitized and validated)
-        const spanContext = prepareSpanContext(
-          metadata as Record<string, unknown>,
-          allLabeledSpans
-        ) as { simplifiedSpans: unknown[]; nearbySpans: unknown[] };
-        const { simplifiedSpans, nearbySpans } = spanContext;
-
-        // Get edit history for context
-        const editHistory = getEditSummary(10);
-
-        // Delegate to API layer (VideoConceptBuilder pattern)
-        const { suggestions, isPlaceholder } = await fetchSuggestionsAPI({
-          highlightedText: trimmedHighlight,
+        const result = await fetchSuggestions({
+          dedupKey,
+          normalizedHighlight,
           normalizedPrompt,
-          inputPrompt: promptOptimizer.inputPrompt,
-          brainstormContext: stablePromptContext ?? null,
-          metadata: metadata ?? null,
-          allLabeledSpans: simplifiedSpans,
-          nearbySpans: nearbySpans,
-          editHistory,
+          suggestionContext,
+          metadata,
+          allLabeledSpans,
+          onRequestStart: () => {
+            setSuggestionsData(() => ({
+              show: true,
+              selectedText: trimmedHighlight,
+              originalText: originalText || trimmedHighlight,
+              suggestions: [],
+              isLoading: true,
+              isError: false,
+              errorMessage: null,
+              isPlaceholder: false,
+              fullPrompt: normalizedPrompt,
+              range: range ?? null,
+              offsets: offsets ?? null,
+              metadata: metadata ?? null,
+              responseMetadata: null,
+              allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+              onRetry: retryFn,
+              setSuggestions: updateSuggestions,
+              onSuggestionClick: handleSuggestionClick,
+              onClose: () => setSuggestionsData(null),
+            }));
+          },
         });
 
-        // Update with results
+        // Cache the result - Requirement 6.1
+        const cachedResult = setCachedSuggestions(cacheKey, result);
+
         setSuggestionsData((prev) => {
           if (!prev) return prev;
-          const suggestionsAsObjects: Suggestion[] = suggestions.map((s) =>
-            typeof s === 'string' ? { text: s } : s
-          );
           return {
             ...prev,
-            suggestions: suggestionsAsObjects,
+            suggestions: cachedResult.suggestions ?? [],
             isLoading: false,
             isError: false,
-            errorMessage: undefined,
-            isPlaceholder,
+            errorMessage: null,
+            isPlaceholder: cachedResult.isPlaceholder,
+            responseMetadata: cachedResult.metadata ?? null,
+            onRetry: retryFn,
           };
         });
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
+        // Silently ignore cancellation - don't update state - Requirement 1.2, 1.3
+        if (error instanceof CancellationError) {
+          return;
+        }
+
+        const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+        log.error('Error fetching suggestions', errObj, { operation: 'fetchEnhancementSuggestions' });
         toast.error('Failed to load suggestions');
 
+        // Set error state with retry callback - Requirement 3.1, 3.3
         setSuggestionsData((prev) => {
           if (!prev) return null;
           const updated: SuggestionsData = {
             ...prev,
             isLoading: false,
             isError: true,
-            errorMessage: 'Failed to load suggestions. Please try again.',
+            errorMessage: errObj.message || 'Failed to load suggestions. Please try again.',
             suggestions: [],
+            responseMetadata: null,
+            onRetry: retryFn, // Wire up retry callback
           };
           return updated;
         });
       }
     },
     [
+      buildCacheKey,
+      cancelCurrentRequest,
+      fetchSuggestions,
+      getCachedSuggestions,
       promptOptimizer,
       selectedMode,
-      suggestionsData?.selectedText,
-      suggestionsData?.show,
       setSuggestionsData,
-      stablePromptContext,
+      setCachedSuggestions,
       toast,
       handleSuggestionClick,
-      getEditSummary,
+      isRequestInFlight,
+      updateSuggestions,
+      i2vContext,
     ]
   );
 

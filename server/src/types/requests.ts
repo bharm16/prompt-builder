@@ -65,6 +65,9 @@ export interface CustomSuggestionRequest {
   highlightedText: string;
   customRequest: string;
   fullPrompt: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface SceneChangeRequest {
@@ -140,4 +143,3 @@ export interface AlternativePhrasingsRequest {
   elementType: string;
   value: string;
 }
-

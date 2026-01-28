@@ -4,7 +4,7 @@
  * Displays detected conflicts between elements.
  */
 
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from '@promptstudio/system/components/ui';
 
 interface ConflictItem {
   message: string;

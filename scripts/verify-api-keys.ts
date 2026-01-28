@@ -27,11 +27,21 @@ const colors = {
   bold: '\x1b[1m',
 };
 
+type LogMeta = Record<string, unknown>;
+
+const logWithMeta = (prefix: string, msg: string, meta?: LogMeta) => {
+  if (meta) {
+    console.log(prefix, msg, meta);
+  } else {
+    console.log(prefix, msg);
+  }
+};
+
 const log = {
-  success: (msg) => console.log(`${colors.green}✓${colors.reset} ${msg}`),
-  error: (msg) => console.log(`${colors.red}✗${colors.reset} ${msg}`),
-  warning: (msg) => console.log(`${colors.yellow}⚠${colors.reset} ${msg}`),
-  info: (msg) => console.log(`${colors.cyan}ℹ${colors.reset} ${msg}`),
+  success: (msg: string, meta?: LogMeta) => logWithMeta(`${colors.green}✓${colors.reset}`, msg, meta),
+  error: (msg: string, meta?: LogMeta) => logWithMeta(`${colors.red}✗${colors.reset}`, msg, meta),
+  warning: (msg: string, meta?: LogMeta) => logWithMeta(`${colors.yellow}⚠${colors.reset}`, msg, meta),
+  info: (msg: string, meta?: LogMeta) => logWithMeta(`${colors.cyan}ℹ${colors.reset}`, msg, meta),
   header: (msg) => console.log(`\n${colors.bold}${msg}${colors.reset}`),
 };
 
@@ -48,7 +58,10 @@ async function testOpenAIKey() {
     return false;
   }
 
-  log.info(`API Key: ${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}`);
+  log.info('API key loaded', {
+    keyPrefix: apiKey.substring(0, 7),
+    keySuffix: apiKey.substring(apiKey.length - 4),
+  });
 
   try {
     const response = await fetch('https://api.openai.com/v1/models', {
@@ -60,29 +73,33 @@ async function testOpenAIKey() {
 
     if (response.ok) {
       const data = await response.json();
-      log.success(`OpenAI API key is valid! Found ${data.data.length} models available`);
+      log.success('OpenAI API key is valid', { modelCount: data.data.length });
 
       // Check if the configured model is available
       const configuredModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
       const modelAvailable = data.data.some(m => m.id === configuredModel);
 
       if (modelAvailable) {
-        log.success(`Configured model '${configuredModel}' is available`);
+        log.success('Configured model is available', { configuredModel });
       } else {
-        log.warning(`Configured model '${configuredModel}' not found. Available GPT models:`);
+        log.warning('Configured model not found', { configuredModel, modelFamily: 'gpt' });
         data.data
           .filter(m => m.id.startsWith('gpt'))
-          .forEach(m => log.info(`  - ${m.id}`));
+          .forEach(m => log.info('Available model', { modelId: m.id }));
       }
 
       return true;
     } else {
       const error = await response.text();
-      log.error(`OpenAI API key is invalid (${response.status}): ${error}`);
+      log.error('OpenAI API key is invalid', {
+        status: response.status,
+        error,
+      });
       return false;
     }
   } catch (error) {
-    log.error(`Failed to test OpenAI API key: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error('Failed to test OpenAI API key', { error: errorMessage });
     return false;
   }
 }
@@ -100,7 +117,10 @@ async function testGroqKey() {
     return false;
   }
 
-  log.info(`API Key: ${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}`);
+  log.info('API key loaded', {
+    keyPrefix: apiKey.substring(0, 7),
+    keySuffix: apiKey.substring(apiKey.length - 4),
+  });
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/models', {
@@ -112,19 +132,19 @@ async function testGroqKey() {
 
     if (response.ok) {
       const data = await response.json();
-      log.success(`Groq API key is valid! Found ${data.data.length} models available`);
+      log.success('Groq API key is valid', { modelCount: data.data.length });
 
       // Check if the configured model is available
       const configuredModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
       const modelAvailable = data.data.some(m => m.id === configuredModel);
 
       if (modelAvailable) {
-        log.success(`Configured model '${configuredModel}' is available`);
+        log.success('Configured model is available', { configuredModel });
       } else {
-        log.warning(`Configured model '${configuredModel}' not found. Available Llama models:`);
+        log.warning('Configured model not found', { configuredModel, modelFamily: 'llama' });
         data.data
           .filter(m => m.id.includes('llama'))
-          .forEach(m => log.info(`  - ${m.id}`));
+          .forEach(m => log.info('Available model', { modelId: m.id }));
       }
 
       return true;
@@ -141,7 +161,10 @@ async function testGroqKey() {
         // Use original text if not JSON
       }
 
-      log.error(`Groq API key is invalid (${response.status}): ${errorMessage}`);
+      log.error('Groq API key is invalid', {
+        status: response.status,
+        error: errorMessage,
+      });
 
       if (response.status === 401) {
         log.info('To get a new Groq API key:');
@@ -154,7 +177,8 @@ async function testGroqKey() {
       return false;
     }
   } catch (error) {
-    log.error(`Failed to test Groq API key: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error('Failed to test Groq API key', { error: errorMessage });
     return false;
   }
 }
@@ -189,12 +213,13 @@ async function testResponseTimes() {
       const responseTime = Date.now() - startTime;
 
       if (response.ok) {
-        log.success(`OpenAI API response time: ${responseTime}ms`);
+        log.success('OpenAI API response time', { responseTimeMs: responseTime });
       } else {
-        log.warning(`OpenAI API test failed: ${response.status}`);
+        log.warning('OpenAI API test failed', { status: response.status });
       }
     } catch (error) {
-      log.error(`OpenAI response time test failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error('OpenAI response time test failed', { error: errorMessage });
     }
   }
 
@@ -222,15 +247,16 @@ async function testResponseTimes() {
       const responseTime = Date.now() - startTime;
 
       if (response.ok) {
-        log.success(`Groq API response time: ${responseTime}ms`);
+        log.success('Groq API response time', { responseTimeMs: responseTime });
         if (responseTime < 500) {
           log.success('Groq is performing excellently for fast draft generation!');
         }
       } else {
-        log.warning(`Groq API test failed: ${response.status}`);
+        log.warning('Groq API test failed', { status: response.status });
       }
     } catch (error) {
-      log.error(`Groq response time test failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error('Groq response time test failed', { error: errorMessage });
     }
   }
 }

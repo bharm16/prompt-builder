@@ -1,0 +1,120 @@
+Evaluation Report - 2025-12-25T06:47:22.057Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      16.75/25
+  Average Span Count: 32.9
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████ 2
+  acceptable (13-17)   ████████████████████████ 6
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - intricate pencil linework (1x)
+  - soft ambient studio sounds, like pencil on paper (1x)
+  - art supplies nearby (1x)
+  - sunlit artist's studio (1x)
+  - soft, natural light (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - windshield (2x)
+  - Macarena (2x)
+  - grading (2x)
+  - slow dolly in (2x)
+  - canvas bag (2x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 4239 | P50: 3531 | P95: 7403 | P99: 7403
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: intricate pencil linework (style), soft ambient studio sounds, like pencil on paper (audio), art supplies nearby (subject), sunlit artist's studio (environment), soft, natural light (lighting)
+  MINOR: reminiscent of home garden commercials (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 8
+  - style: 6
+  - environment: 5
+  - audio: 4
+  - subject: 4
+  - action: 3
+  - camera: 1
+  - shot: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.63 / 4.38
+  subject      2.88 / 3.75
+  action       2.38 / 3.38
+  environment  2.88 / 4.25
+  lighting     3.13 / 3.63
+  camera       3.75 / 3.75
+  style        2.88 / 3.13
+  technical    4.13 / 4.25
+  audio        2.75 / 3.75
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 6
+      e.g.: different mood, introspective mood, inner emotion, evoking, serene atmosphere
+  - non_visual: 19
+      e.g.: dynamic character poses, streaming from large windows, golden hour effect, focused eyes, car
+  - duplicate: 1
+      e.g.: Warm sunlight
+
+TOP TAXONOMY ERRORS:
+  - camera.focus → camera.lens (3x) (e.g. "f/1.8-f/2.8", "f/1.8-f/2.8", "f/4")
+  - shot.type → camera.movement (1x) (e.g. "gentle arc move")
+  - subject.wardrobe → subject.appearance (1x) (e.g. "splattered apron, focused expression")
+  - subject.identity → subject (1x) (e.g. "art supplies")
+  - environment.context → lighting (1x) (e.g. "Soft natural daylight")
+
+📐 GRANULARITY ISSUES:
+  - too_coarse: 1x (e.g., "Documentary, natural color grading")
+  - too_fine: 1x (e.g., "warm sunlight")
+
+ERRORS BY SECTION:
+  main            missed 23, falsePositives 12
+  technicalSpecs  missed 5, falsePositives 4
+  alternatives    missed 4, falsePositives 10
+
+CONFIDENCE ERROR RATES:
+  high   0.6% (1/163)
+    Failures: "introspective mood" (camera.focus)
+  medium 28.3% (17/60)
+    Failures: "dynamic character poses" (action.state), "streaming from large windows" (action.movement), "golden hour effect" (audio.ambient)
+  low    24.2% (8/33)
+    Failures: "different mood" (style.aesthetic), "windshield" (subject.identity), "he" (subject.identity)
+  Recommended minConfidence: 0.80
+
+🔍 WORST PERFORMERS (for debugging):
+  [0/25] "vintage typewriter with worn keys, lifting a typed page into light, at dimly lit library filled with old books"
+    Notes: Judge failed: openai-judge API error: 429 - {
+    "error": {
+        "message": "Rate limit reached for gpt-4o in organization org-abLt4iAwHclyU2npaadCZXtm on tokens per min (TPM): Limit 30000, Used 30000, Requested 3064. Please try again in 6.128s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "type": "tokens",
+        "param": null,
+        "code": "rate_limit_exceeded"
+    }
+}
+
+  [0/25] "dog catching a frisbee"
+    Notes: Judge failed: openai-judge API error: 429 - {
+    "error": {
+        "message": "Rate limit reached for gpt-4o in organization org-abLt4iAwHclyU2npaadCZXtm on tokens per min (TPM): Limit 30000, Used 30000, Requested 3213. Please try again in 6.426s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "type": "tokens",
+        "param": null,
+        "code": "rate_limit_exceeded"
+    }
+}
+
+  [13/25] "tree being cut down by lumberjack"
+    Notes: The extraction missed several important visual elements, such as 'weathered hands' and 'powerful swing'. There were also several false positives, particularly with non-visual elements being extracted. Taxonomy errors were present, especially with camera settings. Granularity issues were noted in the style extraction.
+
+================================================================================

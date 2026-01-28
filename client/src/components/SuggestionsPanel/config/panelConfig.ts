@@ -5,8 +5,7 @@
  * Following VideoConceptBuilder pattern: config/constants.js
  */
 
-import { AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { AlertTriangle, Sparkles, CheckCircle } from '@promptstudio/system/components/ui';
 
 // ===========================
 // DEFAULT STATES
@@ -14,8 +13,12 @@ import type { LucideIcon } from 'lucide-react';
 
 export const DEFAULT_INACTIVE_STATE = {
   icon: Sparkles,
-  title: 'Ready to enhance',
-  description: 'Highlight any part of your prompt to see AI-powered suggestions for improvement.',
+  title: 'Click a highlighted token',
+  description: 'Click a highlighted token in the output to explore alternatives.',
+  example: {
+    from: 'baby',
+    to: ['toddler', 'infant', 'young child'],
+  },
 } as const;
 
 export const DEFAULT_EMPTY_STATE = {

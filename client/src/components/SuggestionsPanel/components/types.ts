@@ -2,28 +2,36 @@
  * Type definitions for SuggestionsPanel components
  */
 
-import type { LucideIcon } from 'lucide-react';
+import type React from 'react';
+
+export type PanelIcon = React.ComponentType<{ className?: string }>;
 
 export interface EmptyStateConfig {
-  icon: LucideIcon;
+  icon: PanelIcon;
   title: string;
   description: string;
 }
 
 export interface ErrorStateConfig {
-  icon: LucideIcon;
+  icon: PanelIcon;
   title: string;
   description: string;
 }
 
 export interface TipItem {
   text: string;
-  icon?: LucideIcon;
+  icon?: PanelIcon;
+}
+
+export interface InactiveExampleConfig {
+  from: string;
+  to: readonly string[];
 }
 
 export interface InactiveStateConfig {
-  icon: LucideIcon;
+  icon: PanelIcon;
   title: string;
   description: string;
   tips?: TipItem[];
+  example?: InactiveExampleConfig;
 }

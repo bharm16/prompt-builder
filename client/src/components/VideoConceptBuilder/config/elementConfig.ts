@@ -13,11 +13,12 @@ import {
   Zap,
   MapPin,
   Calendar,
-  Grid as Palette,
-  Star as Sparkles,
-  Zap as Lightbulb,
+  Palette,
+  Sparkles,
+  Lightbulb,
   Tag,
-} from '@geist-ui/icons';
+  Video,
+} from '@promptstudio/system/components/ui';
 import type React from 'react';
 import { TAXONOMY } from '@shared/taxonomy';
 
@@ -105,6 +106,21 @@ export const ELEMENT_CONFIG: Record<string, ElementConfig> = {
       'catching spinning basketball',
     ] as const,
     group: 'core',
+  },
+  cameraMovement: {
+    icon: Video,
+    label: 'Camera Movement',
+    taxonomyId: TAXONOMY.CAMERA.attributes.MOVEMENT,
+    placeholder: 'How the camera moves (e.g., "slow dolly in toward subject")',
+    color: 'blue',
+    examples: [
+      'slow dolly in toward subject',
+      'handheld tracking alongside',
+      'crane up revealing scene',
+      'static with rack focus shift',
+    ] as const,
+    group: 'camera',
+    optional: true,
   },
   location: {
     icon: MapPin,

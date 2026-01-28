@@ -40,7 +40,7 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
    * - useSeedFromConfig: Reproducibility for caching
    * - enableBookending: false - Groq adapter handles sandwich prompting
    */
-  protected _getProviderRequestOptions(): ProviderRequestOptions {
+  protected override _getProviderRequestOptions(): ProviderRequestOptions {
     return {
       enableBookending: false, // GroqLlamaAdapter handles sandwich prompting
       useFewShot: true, // Llama 3 PDF Section 3.3
@@ -52,7 +52,7 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
   /**
    * HOOK: Provider name for logging and prompt building
    */
-  protected _getProviderName(): string {
+  protected override _getProviderName(): string {
     return 'groq';
   }
 
@@ -68,7 +68,7 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
    * overconfident predictions. This caps confidence at what the model
    * actually believes based on token probabilities.
    */
-  protected _postProcessResult(result: LabelSpansResult): LabelSpansResult {
+  protected override _postProcessResult(result: LabelSpansResult): LabelSpansResult {
     const metadata = this._lastResponseMetadata;
     
     // Skip if no logprobs data available
@@ -119,7 +119,7 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
       averageLogprobsConfidence: averageConfidence,
       adjustedCount: adjustedSpans.filter(
         (s: LLMSpan & { _originalConfidence?: number }) => 
-          s._originalConfidence && s._originalConfidence > s.confidence
+          s._originalConfidence && (s.confidence ?? 0) < s._originalConfidence
       ).length,
     });
 

@@ -235,17 +235,16 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
 
   const paragraph = [sentence1, sentence2, sentence3, sentence4].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 
-  // Ensure a reasonable density; if extremely short, add one concrete technical sentence without abstract narration.
-  if (countWords(paragraph) < 85) {
-    return `${paragraph} Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.`;
-  }
-
+  // Short prompts are fine - modern video models (Sora 2, Runway Gen 4.5) prefer
+  // concrete visual descriptions over padding with meta-instructions.
+  // Removed: "maintain consistent framing and subject continuity" - this is an
+  // abstract meta-instruction, not a visual control point.
   return paragraph;
 }
 
 export function renderCompactVideoPrompt(
   slots: VideoPromptSlots,
-  options: { maxWords?: number; require?: Array<'camera' | 'lighting'> } = {}
+  options: { maxWords?: number; require?: Array<'camera' | 'lighting' | 'style'> } = {}
 ): string {
   const maxWords = options.maxWords ?? 50;
   const require = new Set(options.require ?? []);
@@ -303,6 +302,36 @@ export function renderCompactVideoPrompt(
   }
 
   return compactToWordLimit(text, maxWords);
+}
+
+export function renderPreviewPrompt(slots: VideoPromptSlots): string {
+  const shotFraming = clean(slots.shot_framing) ?? 'Wide Shot';
+  const anglePhrase = angleToPhrase(slots.camera_angle);
+  const subjectPhrase = formatSubject(slots.subject, (slots.subject_details || []).slice(0, 2));
+  const action = clean(slots.action);
+  const settingTime = formatSettingTime(clean(slots.setting), clean(slots.time));
+  const lighting = clean(slots.lighting);
+  const style = clean(slots.style);
+
+  const baseParts: string[] = [];
+  baseParts.push(shotFraming);
+  if (anglePhrase) baseParts.push(anglePhrase);
+  baseParts.push(`of ${subjectPhrase || 'the scene'}`);
+  if (action) {
+    baseParts.push(actionIsPresentParticiple(action) ? action : `as it ${action}`);
+  }
+  if (settingTime) baseParts.push(settingTime);
+  let text = ensurePeriod(baseParts.join(' ').replace(/\s+/g, ' ').trim());
+
+  const lightingSentence = lighting ? ensurePeriod(`Lit by ${shortenToFirstClause(lighting)}`) : null;
+  const styleSentence = style ? ensurePeriod(`Style reference: ${shortenToFirstClause(style)}`) : null;
+
+  if (lightingSentence) text = `${text} ${lightingSentence}`.trim();
+  if (styleSentence) text = `${text} ${styleSentence}`.trim();
+
+  text = `${text} Single keyframe with crisp detail.`.trim();
+
+  return compactToWordLimit(text, 60);
 }
 
 function pickAlternativeAngle(current: string): string {

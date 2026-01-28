@@ -122,7 +122,8 @@ export class PerformanceMonitor {
     const operations: Record<string, number> = {};
     
     Object.keys(perfContext.operations).forEach((name) => {
-      operations[name] = perfContext.operations[name].duration || 0;
+      const op = perfContext.operations[name];
+      operations[name] = op?.duration ?? 0;
     });
 
     return {
@@ -207,7 +208,7 @@ export class PerformanceMonitor {
 
     // Alert in production
     if (process.env.NODE_ENV === 'production' && this.metricsService) {
-      this.metricsService.recordAlert('request_latency_exceeded', {
+      this.metricsService.recordAlert?.('request_latency_exceeded', {
         route,
         total: metrics.total,
         threshold: 2000,

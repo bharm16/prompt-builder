@@ -3,9 +3,11 @@
  * Shared type definitions used across enhancement service modules
  */
 
-import type { AIModelService } from '../../ai-model/AIModelService.js';
-import type { VideoPromptService } from '../../video-prompt-analysis/index.js';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { VideoPromptService } from '@services/video-prompt-analysis/index';
 import type { PromptMode } from '../constants.js';
+import type { ImageObservation } from '@services/image-observation/types';
+import type { I2VConstraintMode, LockMap } from '@services/prompt-optimization/types/i2v';
 
 /**
  * Suggestion object structure
@@ -18,6 +20,33 @@ export interface Suggestion {
   [key: string]: unknown;
 }
 
+export interface LabeledSpan {
+  text: string;
+  role: string;
+  category?: string;
+  start?: number;
+  end?: number;
+  confidence?: number;
+}
+
+export interface NearbySpan {
+  text: string;
+  role: string;
+  category?: string;
+  confidence?: number;
+  distance: number;
+  position: 'before' | 'after';
+  start?: number;
+  end?: number;
+}
+
+export interface EditHistoryEntry {
+  original?: string;
+  replacement?: string;
+  category?: string | null;
+  timestamp?: number;
+}
+
 /**
  * Sanitization context for suggestions
  */
@@ -26,6 +55,8 @@ export interface SanitizationContext {
   isPlaceholder?: boolean;
   isVideoPrompt?: boolean;
   videoConstraints?: VideoConstraints;
+  highlightedCategory?: string | null;
+  lockedSpanCategories?: string[];
 }
 
 /**
@@ -35,7 +66,7 @@ export interface VideoConstraints {
   minWords?: number;
   maxWords?: number;
   maxSentences?: number;
-  mode?: 'micro' | 'standard' | 'narrative';
+  mode?: string;
   disallowTerminalPunctuation?: boolean;
   formRequirement?: string;
   focusGuidance?: string[];
@@ -134,7 +165,7 @@ export interface PromptBuildParams {
   fullPrompt?: string;
   originalUserPrompt?: string;
   brainstormContext?: BrainstormContext | null;
-  editHistory?: Array<{ original?: string; category?: string }>;
+  editHistory?: EditHistoryEntry[];
   modelTarget?: string | null;
   isVideoPrompt?: boolean;
   phraseRole?: string | null;
@@ -146,6 +177,9 @@ export interface PromptBuildParams {
   mode?: 'rewrite' | 'placeholder';
   isPlaceholder?: boolean;
   customRequest?: string;
+  spanAnchors?: string;
+  nearbySpanHints?: string;
+  focusGuidance?: string[];
 }
 
 /**
@@ -156,6 +190,9 @@ export interface CustomPromptParams {
   customRequest: string;
   fullPrompt: string;
   isVideoPrompt: boolean;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 /**
@@ -164,15 +201,20 @@ export interface CustomPromptParams {
  */
 export interface SharedPromptContext {
   highlightedText: string;          // The text being replaced
+  highlightedCategory: string | null; // Full category (e.g. subject.appearance)
   slotLabel: string;                // Category/slot (subject, action, camera, etc.)
   inlineContext: string;            // Short context around highlight
   prefix: string;                   // Text before highlight (trimmed)
   suffix: string;                   // Text after highlight (trimmed)
   promptPreview: string;            // Full prompt (trimmed)
   constraintLine: string;           // Simplified constraints
+  constraintNotes?: string;         // Additional constraint notes
   modelLine: string;                // Target model (optional)
   sectionLine: string;              // Prompt section (optional)
   guidance: string;                 // Creative guidance (optional)
+  focusGuidance?: string;           // Context-aware guidance (optional)
+  spanAnchors?: string;             // Anchors from labeled spans
+  nearbySpanHints?: string;         // Nearby spans to avoid conflicting with
   replacementInstruction: string;   // Deprecated - kept for compatibility
   highlightWordCount?: number | null;
   mode: 'rewrite' | 'placeholder';
@@ -183,7 +225,7 @@ export interface SharedPromptContext {
  */
 export interface ContrastiveDecodingContext {
   systemPrompt: string;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   highlightedText?: string;
@@ -200,6 +242,22 @@ export interface DiversityMetrics {
 }
 
 /**
+ * Schema type for structured output
+ * Compatible with StructuredOutputEnforcer's expected schema format
+ */
+export interface OutputSchema {
+  type: 'object' | 'array';
+  name?: string;
+  strict?: boolean;
+  required?: string[];
+  items?: {
+    required?: string[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+/**
  * Fallback regeneration parameters
  */
 export interface FallbackRegenerationParams {
@@ -207,6 +265,7 @@ export interface FallbackRegenerationParams {
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   videoConstraints?: VideoConstraints;
+  lockedSpanCategories?: string[];
   regenerationDetails: {
     highlightWordCount?: number;
     phraseRole?: string;
@@ -216,7 +275,7 @@ export interface FallbackRegenerationParams {
   };
   requestParams: PromptBuildParams;
   aiService: AIModelService;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   temperature: number;
 }
 
@@ -269,6 +328,7 @@ export interface EnhancementResult {
   fallbackApplied: boolean;
   appliedVideoConstraints?: VideoConstraints;
   noSuggestionsReason?: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -281,25 +341,35 @@ export interface VideoService {
     highlightedText: string,
     contextBefore: string,
     contextAfter: string,
-    highlightedCategory?: string | null
+    highlightedCategory?: string | null | undefined
   ): string | null;
-  getVideoReplacementConstraints(params: {
-    highlightWordCount: number;
-    phraseRole: string | null;
-    highlightedText: string;
-    highlightedCategory?: string | null;
-    highlightedCategoryConfidence?: number | null;
-  }): VideoConstraints | null;
+  getVideoReplacementConstraints(
+    details?: {
+      highlightWordCount?: number | undefined;
+      phraseRole?: string | null | undefined;
+      highlightedText?: string | undefined;
+      highlightedCategory?: string | null | undefined;
+      highlightedCategoryConfidence?: number | null | undefined;
+    },
+    options?: { forceMode?: string | undefined }
+  ): VideoConstraints;
   detectTargetModel(fullPrompt: string): string | null;
   detectPromptSection(
     highlightedText: string,
     fullPrompt: string,
     contextBefore: string
   ): string | null;
+  getCategoryFocusGuidance(
+    phraseRole: string | null | undefined,
+    categoryHint: string | null | undefined,
+    fullContext: string,
+    allSpans: Array<{ category?: string; text?: string }>,
+    editHistory: EditHistoryEntry[]
+  ): string[] | null;
   getVideoFallbackConstraints(
-    currentConstraints: VideoConstraints | undefined,
-    details: Record<string, unknown>,
-    attemptedModes: Set<string>
+    currentConstraints: VideoConstraints | null | undefined,
+    details?: Record<string, unknown>,
+    attemptedModes?: Set<string>
   ): VideoConstraints | null;
 }
 
@@ -321,7 +391,7 @@ export interface PlaceholderDetector {
  * Brainstorm builder interface
  */
 export interface BrainstormBuilder {
-  buildBrainstormSignature(brainstormContext: BrainstormContext | null): string;
+  buildBrainstormSignature(brainstormContext: BrainstormContext | null): BrainstormSignature | null;
 }
 
 /**
@@ -385,7 +455,14 @@ export interface EnhancementRequestParams {
   highlightedCategory?: string | null;
   highlightedCategoryConfidence?: number | null;
   highlightedPhrase?: string | null;
-  editHistory?: Array<{ original?: string; category?: string }>;
+  allLabeledSpans?: LabeledSpan[];
+  nearbySpans?: NearbySpan[];
+  editHistory?: EditHistoryEntry[];
+  i2vContext?: {
+    observation: ImageObservation;
+    lockMap: LockMap;
+    constraintMode?: I2VConstraintMode;
+  } | null;
 }
 
 /**
@@ -395,6 +472,9 @@ export interface CustomSuggestionRequestParams {
   highlightedText: string;
   customRequest: string;
   fullPrompt: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 /**
@@ -412,4 +492,3 @@ export interface EnhancementMetrics {
   promptMode: PromptMode;
   usedContrastiveDecoding?: boolean;
 }
-

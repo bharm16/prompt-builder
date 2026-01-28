@@ -1,5 +1,6 @@
-import { cacheService } from '../../cache/CacheService.js';
-import type { VideoConstraints } from '../services/types.js';
+import { cacheService } from '@services/cache/CacheService';
+import type { VideoConstraints, BrainstormSignature, EditHistoryEntry } from '../services/types.js';
+import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
 
 export interface EnhancementCacheParams {
   highlightedText: string;
@@ -8,14 +9,15 @@ export interface EnhancementCacheParams {
   fullPrompt: string;
   originalUserPrompt: string;
   isVideoPrompt: boolean;
-  brainstormSignature: string;
+  brainstormSignature: BrainstormSignature | null;
   highlightedCategory: string | null;
   highlightWordCount: number;
   phraseRole: string | null;
   videoConstraints: VideoConstraints | null;
-  editHistory: Array<{ original?: string; category?: string }>;
+  editHistory: EditHistoryEntry[];
   modelTarget: string | null;
   promptSection: string | null;
+  spanFingerprint?: string | null;
 }
 
 /**
@@ -47,7 +49,7 @@ export class CacheKeyFactory {
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
-      fullPrompt: (params.fullPrompt || '').substring(0, 500),
+      fullPrompt: (params.fullPrompt || '').substring(0, PROMPT_PREVIEW_LIMIT),
       originalUserPrompt: (params.originalUserPrompt || '').substring(0, 500),
       isVideoPrompt: params.isVideoPrompt,
       brainstormSignature: params.brainstormSignature,
@@ -58,12 +60,10 @@ export class CacheKeyFactory {
       editFingerprint: editFingerprint || null,
       modelTarget: params.modelTarget || null,
       promptSection: params.promptSection || null,
+      spanFingerprint: params.spanFingerprint || null,
     });
   }
 }
-
-
-
 
 
 

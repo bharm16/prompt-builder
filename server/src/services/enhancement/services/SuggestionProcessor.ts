@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { detectDescriptorCategory, getCategoryFallbacks } from '../../video-concept/config/descriptorCategories.js';
+import { detectDescriptorCategory, getCategoryFallbacks } from '@services/video-concept/config/descriptorCategories';
 import type { Suggestion, GroupedSuggestions, EnhancementResult, DescriptorFallbackResult } from './types.js';
 
 /**
@@ -32,7 +32,11 @@ export class SuggestionProcessor {
     }
 
     // Detect if this is a descriptor-type phrase
-    const descriptorDetection = detectDescriptorCategory(highlightedText);
+    const descriptorDetection = detectDescriptorCategory(highlightedText) as {
+      category: string | null;
+      taxonomyId?: string | null;
+      confidence: number;
+    };
     const isDescriptorPhrase = descriptorDetection.confidence > 0.4;
 
     logger.debug('Descriptor detection', {
@@ -174,4 +178,3 @@ export class SuggestionProcessor {
     });
   }
 }
-

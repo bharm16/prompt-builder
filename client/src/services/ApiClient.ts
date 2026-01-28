@@ -14,6 +14,7 @@ import { FetchHttpTransport } from './http/FetchHttpTransport';
 import { ApiError } from './http/ApiError';
 import { ApiErrorFactory } from './http/ApiErrorFactory';
 import { ApiResponseHandler } from './http/ApiResponseHandler';
+import { setupApiAuth } from './http/AuthInterceptors';
 
 interface BuiltRequest {
   url: string;
@@ -109,10 +110,11 @@ export { ApiError } from './http/ApiError';
 
 export const apiClient = new ApiClient();
 
+setupApiAuth(apiClient);
+
 // Enable logging in development
 if ((import.meta as { env?: { MODE?: string } }).env?.MODE === 'development') {
   import('./http/LoggingInterceptors').then(({ setupApiLogging }) => {
     setupApiLogging(apiClient);
   });
 }
-

@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 
 interface MetricsService {
   recordCounter: (name: string, labels: Record<string, string>) => void;
@@ -182,7 +182,7 @@ export class UserAnalyticsService {
       modelTargets: this.sessionMetrics.modelTargets,
     };
 
-    logger.info('Analytics summary', summary);
+    logger.info('Analytics summary', { summary });
     return summary;
   }
 
@@ -202,4 +202,3 @@ export class UserAnalyticsService {
     };
   }
 }
-

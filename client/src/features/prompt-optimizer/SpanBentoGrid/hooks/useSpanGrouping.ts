@@ -6,17 +6,10 @@ import {
   isAttribute,
   getAllParentCategories,
 } from '@shared/taxonomy';
+import type { Span } from '../components/types';
+import { logger } from '@/services/LoggingService';
 
-interface Span {
-  category?: string;
-  start?: number;
-  end?: number;
-  _originalCategory?: string;
-  _mappedTo?: string;
-  _isAttribute?: boolean;
-  _parentCategory?: string;
-  [key: string]: unknown;
-}
+const log = logger.child('useSpanGrouping');
 
 interface HierarchyInfo {
   parentCategories: string[];
@@ -87,9 +80,11 @@ function mapToDisplayCategory(categoryId: string | undefined): string {
   }
 
   // Unknown category - default to subject
-  console.warn(
-    `[useSpanGrouping] Unknown category "${categoryId}", mapping to subject`
-  );
+  log.warn('Unknown category mapped to subject', {
+    operation: 'mapToDisplayCategory',
+    categoryId: categoryId ?? null,
+    mappedTo: TAXONOMY.SUBJECT.id,
+  });
   return TAXONOMY.SUBJECT.id;
 }
 
@@ -176,9 +171,11 @@ export function useSpanGrouping(
           const subjectGroup = groups[TAXONOMY.SUBJECT.id];
           if (subjectGroup) {
             subjectGroup.push(span);
-            console.warn(
-              `[useSpanGrouping] Category "${displayCategory}" not in config, adding to subject`
-            );
+            log.warn('Display category not in config; adding to subject', {
+              operation: 'groupSpans',
+              displayCategory,
+              mappedTo: TAXONOMY.SUBJECT.id,
+            });
           }
         }
       });
@@ -249,4 +246,3 @@ export function useCategoryHierarchyInfo(
     };
   }, [categoryId, spans]);
 }
-

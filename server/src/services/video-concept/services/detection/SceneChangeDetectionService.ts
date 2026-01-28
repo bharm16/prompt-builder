@@ -1,9 +1,9 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '@services/cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+import { cacheService } from '@services/cache/CacheService';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Scene change detection result
@@ -49,7 +49,7 @@ export class SceneChangeDetectionService {
     const startTime = performance.now();
     const operation = 'detectSceneChange';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       changedField: params.changedField,
       hasOldValue: !!params.oldValue,
@@ -68,7 +68,7 @@ export class SceneChangeDetectionService {
 
     const cached = await cacheService.get<SceneChangeResult>(cacheKey, 'scene-detection');
     if (cached) {
-      this.log.debug(`${operation} cache hit`, {
+      this.log.debug('Cache hit.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         isSceneChange: cached.isSceneChange,
@@ -80,8 +80,8 @@ export class SceneChangeDetectionService {
     const systemPrompt = this.buildSystemPrompt(params);
 
     // Define schema for validation
-    const schema = {
-      type: 'object',
+    const schema: { type: 'object' | 'array'; required?: string[] } = {
+      type: 'object' as const,
       required: ['isSceneChange', 'confidence', 'reasoning', 'suggestedUpdates'],
     };
 
@@ -110,7 +110,7 @@ export class SceneChangeDetectionService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       isSceneChange: result.isSceneChange,
@@ -205,4 +205,3 @@ Return ONLY a JSON object (no markdown, no code blocks):
 - If isSceneChange is TRUE: provide specific suggested values for ALL affected fields`;
   }
 }
-

@@ -2,13 +2,21 @@ import { useCallback, useEffect, useRef } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
 import type { Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import type { CapabilityValues } from '@shared/capabilities';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useConceptBrainstorm');
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
   optimize: (
     prompt: string,
     context: unknown | null,
-    brainstormContext: unknown
+    brainstormContext: unknown,
+    targetModel?: string,
+    options?: { generationParams?: CapabilityValues }
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
@@ -19,7 +27,12 @@ interface PromptHistory {
     output: string,
     score: number | null,
     mode: string,
-    context: Record<string, unknown>
+    targetModel?: string | null,
+    generationParams?: Record<string, unknown> | null,
+    context?: unknown,
+    highlightCache?: unknown,
+    existingUuid?: string | null,
+    title?: string | null
   ) => Promise<{ uuid: string; id?: string | null } | null>;
   [key: string]: unknown;
 }
@@ -28,6 +41,8 @@ interface UseConceptBrainstormParams {
   promptOptimizer: PromptOptimizer;
   promptHistory: PromptHistory;
   selectedMode: string;
+  selectedModel?: string;
+  generationParams: CapabilityValues;
   setConceptElements: (elements: Record<string, unknown>) => void;
   setPromptContext: (context: PromptContext | null) => void;
   setShowBrainstorm: (show: boolean) => void;
@@ -36,7 +51,7 @@ interface UseConceptBrainstormParams {
   setDisplayedPromptSilently: (prompt: string) => void;
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
-    snapshot: unknown,
+    snapshot: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
@@ -54,6 +69,8 @@ export function useConceptBrainstorm({
   promptOptimizer,
   promptHistory,
   selectedMode,
+  selectedModel,
+  generationParams,
   setConceptElements,
   setPromptContext,
   setShowBrainstorm,
@@ -122,7 +139,9 @@ export function useConceptBrainstorm({
           const result = await promptOptimizer.optimize(
             finalConcept,
             null,
-            brainstormContextData
+            brainstormContextData,
+            selectedMode === 'video' ? selectedModel : undefined,
+            generationParams ? { generationParams } : undefined
           );
 
           if (result) {
@@ -131,6 +150,8 @@ export function useConceptBrainstorm({
               result.optimized,
               result.score,
               selectedMode,
+              selectedMode === 'video' ? selectedModel ?? null : null,
+              (generationParams as unknown as Record<string, unknown>) ?? null,
               serializedContext
             );
 
@@ -153,8 +174,13 @@ export function useConceptBrainstorm({
             }
           }
         } catch (error) {
+          const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+          log.error('Error generating video prompt from brainstorm', errObj, {
+            operation: 'handleConceptComplete',
+            selectedMode,
+            selectedModel,
+          });
           toast.error('Failed to generate video prompt. Please try again.');
-          console.error('Error in handleConceptComplete:', error);
         } finally {
           conceptOptimizeTimeoutRef.current = null;
         }
@@ -164,6 +190,8 @@ export function useConceptBrainstorm({
       promptOptimizer,
       promptHistory,
       selectedMode,
+      selectedModel,
+      generationParams,
       setConceptElements,
       setPromptContext,
       setShowBrainstorm,
@@ -193,4 +221,3 @@ export function useConceptBrainstorm({
     handleSkipBrainstorm,
   };
 }
-

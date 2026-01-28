@@ -23,9 +23,10 @@ type CircuitState = 'open' | 'closed' | 'half-open';
  */
 export class CircuitBreakerAdapter {
   private name: string;
-  private logger?: ILogger;
-  private metricsCollector?: IMetricsCollector;
-  private breaker: CircuitBreaker<() => Promise<unknown>, unknown>;
+  private logger: ILogger | undefined;
+  private metricsCollector: IMetricsCollector | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private breaker: CircuitBreaker<any, unknown>;
 
   constructor({
     name,
@@ -56,7 +57,7 @@ export class CircuitBreakerAdapter {
 
     // Setup event handlers
     this.breaker.on('open', () => {
-      this.logger?.error(`Circuit breaker OPEN - ${name}`, { name });
+      this.logger?.error(`Circuit breaker OPEN - ${name}`, undefined, { name });
       this.metricsCollector?.updateCircuitBreakerState?.(name, 'open');
     });
 
@@ -109,8 +110,8 @@ interface CircuitBreakerFactoryConfig {
  * Creates circuit breakers with consistent configuration
  */
 export class CircuitBreakerFactory {
-  private logger?: ILogger;
-  private metricsCollector?: IMetricsCollector;
+  private logger: ILogger | undefined;
+  private metricsCollector: IMetricsCollector | undefined;
   private defaultConfig: Partial<Omit<CircuitBreakerConfig, 'name' | 'logger' | 'metricsCollector'>>;
   private breakers: Map<string, CircuitBreakerAdapter>;
 
@@ -131,8 +132,8 @@ export class CircuitBreakerFactory {
 
     const breaker = new CircuitBreakerAdapter({
       name,
-      logger: this.logger,
-      metricsCollector: this.metricsCollector,
+      ...(this.logger && { logger: this.logger }),
+      ...(this.metricsCollector && { metricsCollector: this.metricsCollector }),
       ...this.defaultConfig,
       ...config,
     });
@@ -155,4 +156,3 @@ export class CircuitBreakerFactory {
     this.breakers.clear();
   }
 }
-

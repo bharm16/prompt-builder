@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import type { AIService, InferredContext } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import type { AIService, InferredContext } from '../types';
 
 /**
  * Service for inferring context from user prompts
@@ -25,7 +25,7 @@ export class ContextInferenceService {
     const operation = 'inferContext';
     const startTime = performance.now();
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       promptLength: prompt.length,
     });
@@ -41,7 +41,7 @@ export class ContextInferenceService {
       });
 
       const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
-      this.log.debug(`${operation}: Received LLM response`, {
+      this.log.debug('Received LLM response.', {
         operation,
         outputLength: rawOutput.length,
         outputPreview: rawOutput.substring(0, 200),
@@ -51,7 +51,7 @@ export class ContextInferenceService {
       const context = this.parseContextFromResponse(rawOutput);
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         backgroundLevel: context.backgroundLevel,
@@ -62,7 +62,7 @@ export class ContextInferenceService {
       return context;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         promptLength: prompt.length,
@@ -145,7 +145,7 @@ Output only the JSON, nothing else:`;
 
     // Remove markdown code fences if present
     const jsonMatch = rawOutput.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
+    if (jsonMatch && jsonMatch[1]) {
       jsonText = jsonMatch[1];
     }
 
@@ -195,4 +195,3 @@ Output only the JSON, nothing else:`;
     return 'intermediate';
   }
 }
-

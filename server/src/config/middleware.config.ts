@@ -21,8 +21,8 @@ import helmet from 'helmet';
 import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
 import compression from 'compression';
 
-import { requestIdMiddleware } from '../middleware/requestId.js';
-import { requestCoalescing } from '../middleware/requestCoalescing.js';
+import { requestIdMiddleware } from '@middleware/requestId';
+import { requestCoalescing } from '@middleware/requestCoalescing';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
@@ -157,6 +157,14 @@ const SECURITY_CONFIG = {
 const COMPRESSION_CONFIG: compression.CompressionOptions = {
   filter: (req: express.Request, res: express.Response): boolean => {
     if (req.headers['x-no-compression']) return false;
+    const accept = String(req.headers.accept ?? '');
+    const url = String(req.originalUrl ?? req.url ?? '');
+    const isStreamingEndpoint =
+      accept.includes('text/event-stream') ||
+      url.includes('/optimize-stream') ||
+      url.includes('/label-spans/stream');
+
+    if (isStreamingEndpoint) return false;
     return compression.filter(req, res);
   },
   level: 6,
@@ -372,17 +380,21 @@ export function applyCorsMiddleware(app: Application): void {
 
         // Validate CORS configuration in production
         if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
-          logger.error('ALLOWED_ORIGINS not configured for production', {
-            ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
-            FRONTEND_URL: process.env.FRONTEND_URL,
-          });
+          logger.error(
+            'ALLOWED_ORIGINS not configured for production',
+            undefined,
+            {
+              ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+              FRONTEND_URL: process.env.FRONTEND_URL,
+            }
+          );
           return callback(
             new Error('CORS configuration error: No allowed origins configured for production')
           );
         }
 
         // Check if origin is allowed
-        if (origin && allowedOrigins.includes(origin)) {
+        if (origin && (allowedOrigins as readonly string[]).includes(origin)) {
           callback(null, true);
         } else {
           logger.warn('CORS blocked request from unauthorized origin', {
@@ -394,7 +406,7 @@ export function applyCorsMiddleware(app: Application): void {
       },
       credentials: true,
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Firebase-Token'],
       exposedHeaders: ['X-Request-Id'],
       maxAge: 86400, // 24 hours
       preflightContinue: false,
@@ -466,4 +478,3 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
 
   logger.info('All middleware configured successfully');
 }
-

@@ -5,12 +5,15 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useEffect, useState } from 'react';
-import { createCanonicalText } from '../../../../utils/canonicalText';
-import { convertLabeledSpansToHighlights } from '@/features/span-highlighting';
-import type { CanonicalText } from '../../../../utils/canonicalText';
-import type { HighlightSpan } from '../../../span-highlighting/hooks/useHighlightRendering';
+import { useEffect, useMemo } from 'react';
+import { logger } from '@/services/LoggingService';
+import { createCanonicalText } from '@utils/canonicalText';
+import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
+import type { CanonicalText } from '@utils/canonicalText';
+import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 import type { ParseResult } from '../types';
+
+const EMPTY_SPANS: HighlightSpan[] = [];
 
 export interface UseParseResultOptions {
   labeledSpans: Array<{
@@ -20,6 +23,7 @@ export interface UseParseResultOptions {
     confidence: number;
   }>;
   labeledMeta: Record<string, unknown> | null;
+  labelingSignature?: string | null;
   labelingStatus: string;
   labelingError: Error | null;
   enableMLHighlighting: boolean;
@@ -29,62 +33,109 @@ export interface UseParseResultOptions {
 export function useParseResult({
   labeledSpans,
   labeledMeta,
+  labelingSignature,
   labelingStatus,
   labelingError,
   enableMLHighlighting,
   displayedPrompt,
 }: UseParseResultOptions): ParseResult {
-  const [parseResult, setParseResult] = useState<ParseResult>(() => {
-    const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
-    return {
-      canonical,
-      spans: [] as HighlightSpan[],
-      meta: null,
-      status: 'idle',
-      error: null,
-      displayText: displayedPrompt ?? '',
-    };
-  });
+  const log = useMemo(() => logger.child('ParseResult'), []);
+  const currentText = displayedPrompt ?? '';
+  const canonical = useMemo(
+    () => createCanonicalText(currentText) as CanonicalText,
+    [currentText]
+  );
+  const currentSignature = useMemo(
+    () => createHighlightSignature(currentText),
+    [currentText]
+  );
+  const signatureMatches =
+    !labelingSignature || labelingSignature === currentSignature;
 
-  useEffect(() => {
-    const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
-    const currentText = displayedPrompt ?? '';
-
+  const spans = useMemo((): HighlightSpan[] => {
     if (!enableMLHighlighting || !currentText.trim()) {
-      setParseResult({
-        canonical,
-        spans: [] as HighlightSpan[],
-        meta: labeledMeta,
-        status: labelingStatus as ParseResult['status'],
-        error: labelingError,
-        displayText: currentText,
-      });
-      return;
+      return EMPTY_SPANS;
     }
-
-    const highlights = convertLabeledSpansToHighlights({
+    if (!signatureMatches) {
+      return EMPTY_SPANS;
+    }
+    return convertLabeledSpansToHighlights({
       spans: labeledSpans,
       text: currentText,
       canonical,
-    });
+    }) as HighlightSpan[];
+  }, [enableMLHighlighting, currentText, signatureMatches, labeledSpans, canonical]);
 
-    setParseResult({
+  const meta =
+    enableMLHighlighting && currentText.trim() && !signatureMatches
+      ? null
+      : labeledMeta;
+
+  const parseResult = useMemo<ParseResult>(
+    () => ({
       canonical,
-      spans: highlights as HighlightSpan[],
-      meta: labeledMeta,
+      spans,
+      meta,
       status: labelingStatus as ParseResult['status'],
       error: labelingError,
       displayText: currentText,
+    }),
+    [canonical, spans, meta, labelingStatus, labelingError, currentText]
+  );
+
+  useEffect(() => {
+    if (!enableMLHighlighting || signatureMatches || labeledSpans.length === 0) {
+      return;
+    }
+
+    log.debug('Span signature mismatch; dropping labeled spans', {
+      labeledSpanCount: labeledSpans.length,
+      labelingStatus,
+      textLength: currentText.length,
+      labelingSignature: labelingSignature ? labelingSignature.slice(0, 12) : null,
+      currentSignature: currentSignature.slice(0, 12),
     });
   }, [
-    labeledSpans,
-    labeledMeta,
-    labelingStatus,
-    labelingError,
     enableMLHighlighting,
-    displayedPrompt,
+    signatureMatches,
+    labeledSpans,
+    labelingSignature,
+    labelingStatus,
+    currentText.length,
+    currentSignature,
+    log,
+  ]);
+
+  useEffect(() => {
+    if (!enableMLHighlighting || !signatureMatches) {
+      return;
+    }
+
+    const highlightCount = spans.length;
+    if (labeledSpans.length > 1 && highlightCount <= 1) {
+      log.debug('Span conversion produced minimal highlights', {
+        labeledSpanCount: labeledSpans.length,
+        highlightCount,
+        labelingStatus,
+        textLength: currentText.length,
+        signature: currentSignature.slice(0, 12),
+        spanSamples: labeledSpans.slice(0, 3).map((span) => ({
+          start: span.start,
+          end: span.end,
+          role: span.category ?? (span as { role?: string }).role ?? null,
+        })),
+      });
+    }
+  }, [
+    enableMLHighlighting,
+    signatureMatches,
+    labeledSpans,
+    spans,
+    labelingStatus,
+    currentText.length,
+    currentSignature,
+    log,
   ]);
 
   return parseResult;
 }
-

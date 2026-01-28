@@ -10,7 +10,7 @@ import {
   getCustomSuggestionSchema as getProviderCustomSuggestionSchema,
   type JSONSchema,
   type SchemaOptions,
-} from '@utils/provider/SchemaFactory.js';
+} from '@utils/provider/SchemaFactory';
 
 /**
  * Get schema for enhancement suggestions

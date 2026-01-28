@@ -20,7 +20,7 @@
  *   Pass useJsonSchema=true to save ~50-100 tokens per request
  */
 
-import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
+import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts';
 import { logger } from '@infrastructure/Logger';
 
 // OpenAI-specific imports
@@ -30,6 +30,7 @@ import {
   OPENAI_FEW_SHOT_EXAMPLES,
   VALID_TAXONOMY_IDS
 } from '../schemas/OpenAISchema.js';
+import { GEMINI_SIMPLE_SYSTEM_PROMPT } from '../schemas/GeminiSchema.js';
 
 // Groq/Llama 3-specific imports
 import {
@@ -46,6 +47,28 @@ import {
  */
 export type Provider = 'openai' | 'groq' | 'gemini';
 
+const I2V_SYSTEM_PROMPT = `
+Label ONLY motion-related spans for image-to-video prompts.
+
+You must ignore visual descriptions because the image already defines them.
+
+Allowed categories (use these only):
+- action.movement (subject motion)
+- action.gesture (small gestures)
+- action.state (static pose/state)
+- camera.movement (pan, tilt, dolly, zoom, crane)
+- camera.focus (rack focus, shallow/deep focus)
+- subject.emotion (emotional change or expression)
+
+Do NOT label:
+- subject identity/appearance/wardrobe
+- lighting, environment, color, style
+- shot type or camera angle
+- technical specs unrelated to motion
+
+Return JSON only, matching the SpanLabelingResponse schema.
+`.trim();
+
 /**
  * Build system prompt optimized for specific provider
  * 
@@ -58,9 +81,14 @@ export function buildSystemPrompt(
   text: string = '',
   useRouter: boolean = false,
   provider: string = 'groq',
-  useJsonSchema: boolean = false
+  useJsonSchema: boolean = false,
+  templateVersion?: string
 ): string {
   const normalizedProvider = provider.toLowerCase();
+
+  if (templateVersion && templateVersion.toLowerCase().startsWith('i2v')) {
+    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${I2V_SYSTEM_PROMPT}`.trim();
+  }
   
   let basePrompt: string;
   
@@ -68,6 +96,11 @@ export function buildSystemPrompt(
     // OpenAI: Minimal prompt, rules in schema descriptions
     basePrompt = OPENAI_MINIMAL_PROMPT;
     logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
+  } else if (normalizedProvider === 'gemini') {
+    // Gemini: Use the lightweight test prompt for fast span extraction
+    basePrompt = GEMINI_SIMPLE_SYSTEM_PROMPT;
+    logger.debug('Using Gemini simple prompt');
+    return basePrompt.trim();
   } else {
     // Groq/Llama 3: Full prompt, rules in system message
     // When json_schema is active, remove redundant format instructions
@@ -139,7 +172,8 @@ export function buildSpanLabelingMessages(
   text: string,
   includeFewShot: boolean = true,
   provider: string = 'groq',
-  useJsonSchema: boolean = false
+  useJsonSchema: boolean = false,
+  templateVersion?: string
 ): Array<{ role: string; content: string }> {
   const normalizedProvider = provider.toLowerCase();
   const messages: Array<{ role: string; content: string }> = [];
@@ -147,7 +181,7 @@ export function buildSpanLabelingMessages(
   // 1. System prompt (provider-specific)
   messages.push({
     role: 'system',
-    content: buildSystemPrompt(text, false, provider, useJsonSchema)
+    content: buildSystemPrompt(text, false, provider, useJsonSchema, templateVersion)
   });
   
   // 2. Few-shot examples

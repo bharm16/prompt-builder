@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logger } from '@/services/LoggingService';
 import { DEFAULT_POLICY, DEFAULT_OPTIONS } from '../config/index.ts';
 import { sanitizeText, hashString } from '../utils/index.ts';
 import { SpanLabelingApi } from '../api/index.ts';
@@ -75,38 +76,21 @@ function useDeepCompareMemoize<T>(value: T): T {
   return useMemo(() => ref.current, [signalRef.current]);
 }
 
+function normalizeMetaVersion(meta: SpanMeta | null, templateVersion: string): SpanMeta | null {
+  if (!meta || typeof meta !== 'object') {
+    return { version: templateVersion };
+  }
+
+  const normalized = { ...meta } as Record<string, unknown>;
+  if (typeof normalized.version !== 'string' || !normalized.version.trim()) {
+    normalized.version = templateVersion;
+  }
+
+  return normalized as SpanMeta;
+}
+
 /**
  * Hook to call the /llm/label-spans endpoint with debounce + cancellation.
- *
- * @example
- * ```tsx
- * // ✅ RECOMMENDED: Use useMemo for policy to ensure referential stability
- * // This is especially important if you plan to add user-configurable settings later
- * const policy = useMemo(() => ({
- *   allowOverlap: true,
- *   nonTechnicalWordLimit: 10
- * }), []); // Empty deps if static, or [userSetting] if dynamic
- *
- * useSpanLabeling({
- *   text: input,
- *   policy
- * });
- * ```
- *
- * @example
- * ```tsx
- * // ✅ Also works: Dynamic policy based on user settings
- * const policy = useMemo(() => ({
- *   allowOverlap: userSettings.allowOverlaps,
- *   nonTechnicalWordLimit: userSettings.wordLimit
- * }), [userSettings.allowOverlaps, userSettings.wordLimit]);
- * ```
- *
- * **Why useMemo?**
- * - Ensures referential stability (object identity doesn't change on every render)
- * - Future-proofs for user-configurable settings
- * - Follows React best practices for object dependencies
- * - Prevents unnecessary re-renders and cache invalidation
  */
 export function useSpanLabeling({
   text,
@@ -123,11 +107,14 @@ export function useSpanLabeling({
   useSmartDebounce = DEFAULT_OPTIONS.useSmartDebounce,
   onResult,
 }: UseSpanLabelingOptions = {}): UseSpanLabelingReturn {
+  const log = useMemo(() => logger.child('useSpanLabeling'), []);
+  
   const [state, setState] = useState<SpanLabelingState>({
     spans: [],
     meta: null,
     status: 'idle',
     error: null,
+    signature: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -186,9 +173,80 @@ export function useSpanLabeling({
       payload: SpanLabelingPayload,
       signal: AbortSignal | null
     ): Promise<{ spans: LabeledSpan[]; meta: SpanMeta | null }> => {
-      return SpanLabelingApi.labelSpans(payload, signal);
+      // Use streaming API
+      // We accumulate spans in a local array and update state incrementally
+      const accumSpans: LabeledSpan[] = [];
+      const signature = hashString(payload.text ?? '');
+      const flushIntervalMs = 100;
+      const flushSpanBatchSize = 20;
+      const logEvery = 25;
+      let isActive = true;
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      let lastFlushAt = Date.now();
+      let lastFlushedCount = 0;
+      let receivedCount = 0;
+
+      const flush = (): void => {
+        if (!isActive || signal?.aborted) return;
+        lastFlushAt = Date.now();
+        lastFlushedCount = accumSpans.length;
+        setState(prev => {
+          if (prev.status === 'error') return prev;
+          return {
+            ...prev,
+            status: 'success',
+            spans: accumSpans.slice(),
+            signature,
+            meta: prev.meta || { streaming: true }
+          };
+        });
+      };
+
+      const scheduleFlush = (): void => {
+        if (flushTimer || !isActive) return;
+        const delay = Math.max(0, flushIntervalMs - (Date.now() - lastFlushAt));
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          flush();
+        }, delay);
+      };
+
+      const requestFlush = (): void => {
+        if (accumSpans.length - lastFlushedCount >= flushSpanBatchSize) {
+          if (flushTimer) {
+            clearTimeout(flushTimer);
+            flushTimer = null;
+          }
+          flush();
+          return;
+        }
+        scheduleFlush();
+      };
+      
+      try {
+        return await SpanLabelingApi.labelSpansStream(
+            payload, 
+            (span) => {
+                receivedCount++;
+                if (receivedCount === 1 || receivedCount % logEvery === 0) {
+                  log.debug('Span stream progress', { spanCount: receivedCount });
+                }
+                accumSpans.push(span);
+                // Optimistic update: Show spans as they arrive
+                // Update in batches to reduce render churn
+                requestFlush();
+            },
+            signal
+        );
+      } finally {
+        isActive = false;
+        if (flushTimer) {
+          clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+      }
     },
-    []
+    [log]
   );
 
   const emitResult = useCallback(
@@ -217,6 +275,7 @@ export function useSpanLabeling({
         return;
       }
       lastEmitKeyRef.current = key;
+      log.info('Result emitted', { spanCount: spans.length, source });
       onResultRef.current({
         spans,
         meta: meta ?? null,
@@ -226,13 +285,15 @@ export function useSpanLabeling({
         source,
       });
     },
-    []
+    [log]
   );
 
   // Memoize callbacks to prevent recreating the schedule function on every render
   const onLoadingState = useCallback(
     (immediate: boolean) => {
-      setState((prev) => createLoadingState(immediate, prev.status, prev.spans, prev.meta));
+      setState((prev) =>
+        createLoadingState(immediate, prev.status, prev.spans, prev.meta, prev.signature)
+      );
     },
     []
   );
@@ -241,24 +302,28 @@ export function useSpanLabeling({
     (result: unknown, payload: SpanLabelingPayload) => {
       const apiResult = result as { spans: LabeledSpan[]; meta: SpanMeta | null };
       const signature = hashString(payload.text ?? '');
+      const normalizedMeta = normalizeMetaVersion(apiResult.meta, templateVersion);
       const normalizedResult = {
         spans: apiResult.spans,
-        meta: apiResult.meta,
+        meta: normalizedMeta,
         signature,
       };
+
+      log.info('Success', { spanCount: normalizedResult.spans.length });
 
       setState({
         spans: normalizedResult.spans,
         meta: normalizedResult.meta,
         status: 'success',
         error: null,
+        signature,
       });
 
       setCacheForPayload(payload, normalizedResult);
       emitResult(
         {
           spans: normalizedResult.spans,
-          meta: normalizedResult.meta,
+          meta: normalizedMeta,
           text: payload.text,
           cacheId: payload.cacheId ?? null,
           signature,
@@ -266,11 +331,12 @@ export function useSpanLabeling({
         'network'
       );
     },
-    [setCacheForPayload, emitResult]
+    [setCacheForPayload, emitResult, log, templateVersion]
   );
 
   const onError = useCallback(
     (error: Error, payload: SpanLabelingPayload) => {
+      log.error('Error', error);
       const fallbackResult = createFallbackResult(payload, error, cacheService);
 
       if (fallbackResult) {
@@ -282,7 +348,7 @@ export function useSpanLabeling({
 
       setState(createErrorState(error));
     },
-    [emitResult, cacheService]
+    [emitResult, cacheService, log]
   );
 
   // Stabilize callbacks object to prevent infinite re-renders
@@ -325,6 +391,10 @@ export function useSpanLabeling({
         const cacheResult = checkCacheForPayload(payload);
 
         if (cacheResult.cached) {
+          const normalizedMeta = normalizeMetaVersion(
+            cacheResult.cached.meta as SpanMeta | null,
+            templateVersion
+          );
           performance.mark('span-cache-hit');
           performance.measure(
             'span-labeling-cache-hit',
@@ -336,14 +406,15 @@ export function useSpanLabeling({
             spans: Array.isArray(cacheResult.cached.spans)
               ? cacheResult.cached.spans
               : [],
-            meta: cacheResult.cached.meta as SpanMeta | null,
+            meta: normalizedMeta,
             status: 'success',
             error: null,
+            signature: cacheResult.cached.signature,
           });
           emitResult(
             {
               spans: cacheResult.cached.spans as LabeledSpan[],
-              meta: cacheResult.cached.meta as SpanMeta | null,
+              meta: normalizedMeta,
               text: payload.text,
               cacheId: cacheResult.cached.cacheId ?? payload.cacheId ?? null,
               signature: cacheResult.cached.signature,
@@ -357,7 +428,7 @@ export function useSpanLabeling({
       // Schedule API request
       scheduleRequest(payload, immediate);
     },
-    [enabled, checkCacheForPayload, scheduleRequest, emitResult]
+    [enabled, checkCacheForPayload, scheduleRequest, emitResult, templateVersion]
   );
 
   useEffect(() => {
@@ -370,40 +441,63 @@ export function useSpanLabeling({
 
     const payload: SpanLabelingPayload = {
       text: normalized,
-      cacheId: cacheKey ?? undefined,
       maxSpans,
       minConfidence,
       policy: mergedPolicy,
       templateVersion,
+      ...(typeof cacheKey === 'string' ? { cacheId: cacheKey } : {}),
     };
 
     lastPayloadRef.current = payload;
 
     // Use stableInitialData to prevent infinite loops
+    // Check if this is a local update (from applying a suggestion) - if so, trust it
+    const isLocalUpdate = Boolean(
+      stableInitialData?.meta &&
+      (stableInitialData.meta as Record<string, unknown>).localUpdate === true
+    );
+
+    const initialVersion =
+      typeof stableInitialData?.meta?.version === 'string'
+        ? stableInitialData.meta.version
+        : null;
+    const versionMatches = !initialVersion || initialVersion === templateVersion;
     const initialMatch =
       stableInitialData &&
       Array.isArray(stableInitialData.spans) &&
       stableInitialData.spans.length > 0 &&
       stableInitialData.signature === hashString(normalized ?? '') &&
-      stableInitialData.meta?.version === templateVersion;
+      (isLocalUpdate || versionMatches);
+
+    // Debug: trace initialMatch evaluation
+    if (import.meta.env.DEV) {
+      log.debug('initialMatch check', {
+        hasStableData: Boolean(stableInitialData),
+        hasSpans: Array.isArray(stableInitialData?.spans) && stableInitialData.spans.length > 0,
+        isLocalUpdate,
+        initialMatch,
+      });
+    }
 
     if (initialMatch) {
+      const normalizedMeta = normalizeMetaVersion(stableInitialData.meta ?? null, templateVersion);
       cancelPending();
       setState({
         spans: stableInitialData.spans,
-        meta: stableInitialData.meta ?? null,
+        meta: normalizedMeta,
         status: 'success',
         error: null,
+        signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       setCacheForPayload(payload, {
         spans: stableInitialData.spans,
-        meta: stableInitialData.meta ?? null,
+        meta: normalizedMeta,
         signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       emitResult(
         {
           spans: stableInitialData.spans,
-          meta: stableInitialData.meta,
+          meta: normalizedMeta,
           text: normalized,
           cacheId: payload.cacheId ?? null,
           signature: stableInitialData.signature,
@@ -429,6 +523,7 @@ export function useSpanLabeling({
     initialDataVersion,
     emitResult,
     immediate,
+    log
   ]);
 
   const refresh = useCallback((): void => {
@@ -443,6 +538,7 @@ export function useSpanLabeling({
     meta: state.meta,
     status: state.status,
     error: state.error,
+    signature: state.signature,
     refresh,
   };
 }

@@ -32,6 +32,8 @@ dist-ssr
 # Firebase service account (sensitive credentials)
 firebase-service-account.json
 *-firebase-adminsdk-*.json
+gcs-service-account.json
+server/.secrets/
 
 # Test artifacts
 playwright-report/
@@ -39,6 +41,9 @@ test-results/
 coverage/
 .nyc_output/
 *.lcov
+
+# Evaluation snapshots (generated during test runs)
+scripts/evaluation/snapshots/snapshot-*.json
 
 # Build artifacts
 build/
@@ -90,3 +95,9 @@ server/src/services/nlp/models/
 server/src/llm/span-labeling/nlp/models/
 
 .env.backup.20251205_002746
+
+raw-prompts-2025_12_22_15_47_50.json
+
+scripts/fix-cursor.sh
+
+scripts/quick-fix-cursor.sh

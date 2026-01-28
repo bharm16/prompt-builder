@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { TrendingUp, Info, CheckCircle, AlertCircle } from '@promptstudio/system/components/ui';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 type ScoreColor = 'success' | 'info' | 'warning' | 'error';

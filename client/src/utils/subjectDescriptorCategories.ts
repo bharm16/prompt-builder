@@ -91,7 +91,7 @@ export function detectDescriptorCategoryClient(text: string | null | undefined):
 
   // Return highest confidence match
   matches.sort((a, b) => b.confidence - a.confidence);
-  const best = matches[0];
+  const best = matches[0]!;
   
   return {
     category: best.category,
@@ -137,4 +137,3 @@ export function getAllCategoriesInfo(): CategoryMetadata[] {
     colors: CATEGORY_COLORS[cat],
   }));
 }
-

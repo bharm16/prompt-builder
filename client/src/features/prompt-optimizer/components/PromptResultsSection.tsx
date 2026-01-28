@@ -1,6 +1,13 @@
 import React from 'react';
 import { PromptCanvas } from '../PromptCanvas';
-import { usePromptState } from '../context/PromptStateContext';
+import {
+  usePromptActions,
+  usePromptConfig,
+  usePromptHighlights,
+  usePromptServices,
+  usePromptSession,
+  usePromptUIStateContext,
+} from '../context/PromptStateContext';
 import type { PromptResultsSectionProps } from '../types';
 
 /**
@@ -10,51 +17,53 @@ import type { PromptResultsSectionProps } from '../types';
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
 export const PromptResultsSection = ({
+  user,
   onDisplayedPromptChange,
+  onReoptimize,
   onFetchSuggestions,
   onSuggestionClick,
   onHighlightsPersist,
   onUndo,
   onRedo,
-  stablePromptContext,
-}: PromptResultsSectionProps): React.ReactElement | null => {
-  const {
-    showResults,
-    currentPromptUuid,
-    promptOptimizer,
-    currentMode,
-    suggestionsData,
-    initialHighlights,
-    initialHighlightsVersion,
-    canUndo,
-    canRedo,
-    handleCreateNew,
-  } = usePromptState();
-
-  // Show processing spinner during initial load, but allow draft interaction
-  if (!showResults || (promptOptimizer.isProcessing && !promptOptimizer.isDraftReady)) {
-    return null;
-  }
+  stablePromptContext = null,
+  coherenceAffectedSpanIds,
+  coherenceSpanIssueMap,
+  coherenceIssues,
+  isCoherenceChecking,
+  isCoherencePanelExpanded,
+  onToggleCoherencePanelExpanded,
+  onDismissCoherenceIssue,
+  onDismissAllCoherenceIssues,
+  onApplyCoherenceFix,
+  onScrollToCoherenceSpan,
+  i2vContext,
+}: PromptResultsSectionProps): React.ReactElement => {
+  const { showResults } = usePromptUIStateContext();
+  const { currentPromptUuid, suggestionsData } = usePromptSession();
+  const { currentMode } = usePromptConfig();
+  const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
+  const { handleCreateNew } = usePromptActions();
+  const { promptOptimizer } = usePromptServices();
 
   return (
     <>
       {/* Refinement indicator banner - floats absolutely */}
       {promptOptimizer.isRefining && (
-        <div className="absolute top-0 left-0 right-0 z-10 px-4 pt-4">
-          <div className="mx-auto max-w-5xl">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3 shadow-lg">
+        <div className="absolute top-0 left-0 right-0 z-10 pt-4">
+          <div className="w-[90%] px-[15px]">
+            <div className="flex items-center gap-3 rounded-lg border border-info-100 bg-info-50 p-3 shadow-md">
             <div className="flex-shrink-0">
-              <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 animate-spin text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-blue-900">
-                Draft ready! Refining in background...
+              <p className="text-body-sm font-semibold text-foreground">
+                Draft ready. Refining in background...
               </p>
-              <p className="text-xs text-blue-700 mt-0.5">
-                You can edit the draft now. The refined version will appear when ready.
+              <p className="mt-0.5 text-label-sm text-muted">
+                Finalizing details for the selected model...
               </p>
               </div>
             </div>
@@ -63,9 +72,15 @@ export const PromptResultsSection = ({
       )}
 
       <PromptCanvas
+        showResults={showResults}
+        user={user}
         inputPrompt={promptOptimizer.inputPrompt}
+        onInputPromptChange={promptOptimizer.setInputPrompt}
+        onReoptimize={onReoptimize}
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}
+        previewPrompt={promptOptimizer.previewPrompt}
+        previewAspectRatio={promptOptimizer.previewAspectRatio}
         qualityScore={promptOptimizer.qualityScore}
         selectedMode={currentMode.id}
         currentMode={currentMode}
@@ -86,11 +101,22 @@ export const PromptResultsSection = ({
         // Two-stage indicators
         isDraftReady={promptOptimizer.isDraftReady}
         isRefining={promptOptimizer.isRefining}
+        isProcessing={promptOptimizer.isProcessing}
         // Span labeling for fast highlights (NEW!)
         draftSpans={promptOptimizer.draftSpans}
         refinedSpans={promptOptimizer.refinedSpans}
+        coherenceAffectedSpanIds={coherenceAffectedSpanIds}
+        coherenceSpanIssueMap={coherenceSpanIssueMap}
+        coherenceIssues={coherenceIssues}
+        isCoherenceChecking={isCoherenceChecking}
+        isCoherencePanelExpanded={isCoherencePanelExpanded}
+        onToggleCoherencePanelExpanded={onToggleCoherencePanelExpanded}
+        onDismissCoherenceIssue={onDismissCoherenceIssue}
+        onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
+        onApplyCoherenceFix={onApplyCoherenceFix}
+        onScrollToCoherenceSpan={onScrollToCoherenceSpan}
+        i2vContext={i2vContext}
       />
     </>
   );
 };
-

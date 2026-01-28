@@ -4,7 +4,7 @@
  * Displays completion progress and group progress statistics.
  */
 
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle } from '@promptstudio/system/components/ui';
 import { formatLabel } from '../utils/formatting';
 
 interface GroupProgress {

@@ -11,14 +11,18 @@ export const API_CONFIG = {
   // Base URLs
   baseURL: import.meta.env.VITE_API_URL || '/api',
 
-  // API Keys
-  apiKey: import.meta.env.VITE_API_KEY || 'dev-key-12345',
-
   // Timeouts (in milliseconds)
   timeout: {
     default: 30000,  // 30 seconds
     optimization: 60000,  // 60 seconds for prompt optimization
-    suggestions: 15000,  // 15 seconds for suggestions
+    video: 90000, // 90 seconds for video generation (allow buffer over user's 60s)
+    storyboard: 180000, // 180 seconds for storyboard preview chaining
+    suggestions: 3000,  // 3 seconds for suggestions (Requirement 3.5)
+  },
+
+  // Debounce configuration (in milliseconds)
+  debounce: {
+    suggestions: 150,  // 150ms debounce for suggestion requests (Requirement 4.3)
   },
 
   // Retry configuration
@@ -52,6 +56,7 @@ interface ServiceConfig {
   retry?: typeof API_CONFIG.retry;
   cache?: typeof API_CONFIG.cache.suggestions;
   rateLimit?: typeof API_CONFIG.rateLimit.suggestions;
+  debounce?: number;
 }
 
 /**
@@ -67,6 +72,7 @@ export function getAPIConfig(service: ServiceName): ServiceConfig {
       timeout: API_CONFIG.timeout.suggestions,
       cache: API_CONFIG.cache.suggestions,
       rateLimit: API_CONFIG.rateLimit.suggestions,
+      debounce: API_CONFIG.debounce.suggestions,
     },
     default: {
       timeout: API_CONFIG.timeout.default,
@@ -76,4 +82,3 @@ export function getAPIConfig(service: ServiceName): ServiceConfig {
 
   return configs[service] || configs.default;
 }
-

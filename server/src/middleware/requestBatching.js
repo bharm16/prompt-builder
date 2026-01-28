@@ -188,8 +188,23 @@ export class RequestBatchingService {
 
     metricsService.recordHistogram('batch_processing_duration_ms', duration);
 
-    // Return results in original order
-    return results.map(r => (r.success ? r.data : { error: r.error }));
+    // Return results in original order, transforming role → category for frontend
+    return results.map(r => {
+      if (!r.success) {
+        return { error: r.error };
+      }
+      // Transform: backend uses 'role', frontend expects 'category'
+      return {
+        ...r.data,
+        spans: (r.data.spans || []).map(span => ({
+          text: span.text,
+          start: span.start,
+          end: span.end,
+          category: span.role, // Map role → category for frontend
+          confidence: span.confidence,
+        })),
+      };
+    });
   }
 
   /**

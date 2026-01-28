@@ -1,15 +1,17 @@
 import { memo, useRef, useEffect } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  Check,
   Copy,
   Download,
-  Plus,
   FileText,
-  Check,
+  Icon,
   Info,
-  Share2,
-  RotateCcw,
-  RotateCw,
-} from 'lucide-react';
+  Plus,
+  Share,
+} from '@promptstudio/system/components/ui';
 import type { FloatingToolbarProps } from '../types';
 
 /**
@@ -37,7 +39,9 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      const target = event.target;
+      if (!target || !(target instanceof Node)) return;
+      if (exportMenuRef.current && !exportMenuRef.current.contains(target)) {
         onToggleExportMenu(false);
       }
     };
@@ -46,121 +50,142 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [showExportMenu, onToggleExportMenu]);
 
   return (
-    <div className="w-full flex items-center justify-between px-geist-4 py-geist-2 glass-card rounded-geist-lg">
-      <div className="flex items-center gap-geist-1">
-        <button
+    <div className="w-full flex items-center justify-between px-4 py-2 ps-glass-card rounded-lg">
+      <div className="flex items-center gap-1">
+        <Button
           onClick={onCopy}
-          className={`inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 rounded-geist transition-colors ${
+          variant="ghost"
+          className={`gap-2 px-3 py-1 text-button-12 rounded-md transition-colors ${
             copied
               ? 'text-green-700 bg-green-50'
-              : 'text-geist-accents-7 hover:bg-geist-accents-1'
+              : 'text-foreground hover:bg-surface-1'
           }`}
           aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
           title="Copy"
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+          ) : (
+            <Icon icon={Copy} size="sm" weight="bold" aria-hidden="true" />
+          )}
           {copied && <span className="text-label-12">Copied</span>}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={onShare}
-          className={`inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 rounded-geist transition-colors ${
+          variant="ghost"
+          className={`gap-2 px-3 py-1 text-button-12 rounded-md transition-colors ${
             shared
               ? 'text-green-700 bg-green-50'
-              : 'text-geist-accents-7 hover:bg-geist-accents-1'
+              : 'text-foreground hover:bg-surface-1'
           }`}
           aria-label={shared ? 'Link copied' : 'Share prompt'}
           title="Share"
         >
-          {shared ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+          {shared ? (
+            <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+          ) : (
+            <Icon icon={Share} size="sm" weight="bold" aria-hidden="true" />
+          )}
           {shared && <span className="text-label-12">Shared!</span>}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={() => onToggleLegend(!showLegend)}
-          className={`inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 rounded-geist transition-colors ${
+          variant="ghost"
+          className={`gap-2 px-3 py-1 text-button-12 rounded-md transition-colors ${
             showLegend
               ? 'text-blue-700 bg-blue-50'
-              : 'text-geist-accents-7 hover:bg-geist-accents-1'
+              : 'text-foreground hover:bg-surface-1'
           }`}
           aria-label="Toggle highlight legend"
           title="Highlight Legend"
         >
-          <Info className="h-3.5 w-3.5" />
-        </button>
+          <Icon icon={Info} size="sm" weight="bold" aria-hidden="true" />
+        </Button>
 
         <div className="relative" ref={exportMenuRef}>
-          <button
+          <Button
             onClick={() => onToggleExportMenu(!showExportMenu)}
-            className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+            variant="ghost"
+            className="gap-2 px-3 py-1 text-button-12 text-foreground rounded-md transition-colors hover:bg-surface-1"
             aria-expanded={showExportMenu}
             title="Export"
           >
-            <Download className="h-3.5 w-3.5" />
-          </button>
+            <Icon icon={Download} size="sm" weight="bold" aria-hidden="true" />
+          </Button>
           {showExportMenu && (
-            <div className="absolute top-full left-0 mt-geist-2 w-36 glass-card rounded-geist-lg py-geist-1 z-30">
-              <button
+            <div className="absolute top-full left-0 mt-2 w-36 ps-glass-card rounded-lg py-1 z-30">
+              <Button
                 onClick={() => onExport('text')}
-                className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+                variant="ghost"
+                className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 Text (.txt)
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onExport('markdown')}
-                className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+                variant="ghost"
+                className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 Markdown (.md)
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onExport('json')}
-                className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+                variant="ghost"
+                className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
                 JSON (.json)
-              </button>
+              </Button>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-geist-1">
-        <button
+      <div className="flex items-center gap-1">
+        <Button
           onClick={onUndo}
           disabled={!canUndo}
-          className={`inline-flex items-center justify-center p-geist-1 rounded-geist border border-geist-accents-2 transition ${
-            canUndo ? 'hover:bg-geist-accents-1 text-geist-accents-7' : 'text-geist-accents-3 cursor-not-allowed'
+          variant="ghost"
+          size="icon"
+          className={`border border-border p-1 rounded-md transition ${
+            canUndo ? 'hover:bg-surface-1 text-foreground' : 'text-faint cursor-not-allowed'
           }`}
           title="Undo"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </button>
-        <button
+          <Icon icon={ArrowCounterClockwise} size="sm" weight="bold" aria-hidden="true" />
+        </Button>
+        <Button
           onClick={onRedo}
           disabled={!canRedo}
-          className={`inline-flex items-center justify-center p-geist-1 rounded-geist border border-geist-accents-2 transition ${
-            canRedo ? 'hover:bg-geist-accents-1 text-geist-accents-7' : 'text-geist-accents-3 cursor-not-allowed'
+          variant="ghost"
+          size="icon"
+          className={`border border-border p-1 rounded-md transition ${
+            canRedo ? 'hover:bg-surface-1 text-foreground' : 'text-faint cursor-not-allowed'
           }`}
           title="Redo"
         >
-          <RotateCw className="h-3.5 w-3.5" />
-        </button>
-        <button
+          <Icon icon={ArrowClockwise} size="sm" weight="bold" aria-hidden="true" />
+        </Button>
+        <Button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors"
+          variant="ghost"
+          className="gap-2 px-3 py-1 text-button-12 text-foreground border border-border bg-transparent rounded-md transition-colors hover:bg-surface-1"
           title="New prompt"
         >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+          <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
+          <span className="text-label-12">New</span>
+        </Button>
       </div>
     </div>
   );
 });
 
 FloatingToolbar.displayName = 'FloatingToolbar';
-

@@ -1,5 +1,12 @@
 import { logger } from '@infrastructure/Logger';
 import type { NextFunction, Request, Response } from 'express';
+import { isConvergenceError } from '@services/convergence';
+
+const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
+const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
+const CARD_RE = /\b\d{16}\b/g;
+const PHONE_RE = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+const KEY_RE = /\b[A-Za-z0-9]{32,}\b/g;
 
 /**
  * Redact sensitive data from strings
@@ -9,15 +16,15 @@ function redactSensitiveData(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return obj
       // Redact email addresses
-      .replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL_REDACTED]')
+      .replace(EMAIL_RE, '[EMAIL_REDACTED]')
       // Redact SSN patterns (XXX-XX-XXXX)
-      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN_REDACTED]')
+      .replace(SSN_RE, '[SSN_REDACTED]')
       // Redact credit card numbers (16 digits)
-      .replace(/\b\d{16}\b/g, '[CARD_REDACTED]')
+      .replace(CARD_RE, '[CARD_REDACTED]')
       // Redact phone numbers (various formats)
-      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]')
+      .replace(PHONE_RE, '[PHONE_REDACTED]')
       // Redact API keys (common patterns)
-      .replace(/\b[A-Za-z0-9]{32,}\b/g, '[KEY_REDACTED]');
+      .replace(KEY_RE, '[KEY_REDACTED]');
   }
   
   if (typeof obj !== 'object' || obj === null) {
@@ -74,49 +81,69 @@ function redactSensitiveData(obj: unknown): unknown {
 type RequestWithId = Request & { id?: string; body?: Record<string, unknown> };
 
 export function errorHandler(
-  err: any,
+  err: unknown,
   req: RequestWithId,
   res: Response,
   _next: NextFunction
 ): void {
-  // Log the error
   const meta: Record<string, unknown> = {
     requestId: req.id,
     method: req.method,
     path: req.path,
   };
 
-  // Always redact request bodies (even in development) to prevent PII leakage in logs
   if (req.body && Object.keys(req.body).length > 0) {
     try {
       const redactedBody = redactSensitiveData(req.body);
       const bodyStr = JSON.stringify(redactedBody);
       meta.bodyPreview = bodyStr.substring(0, 300);
-      meta.bodyLength = JSON.stringify(req.body).length; // Original length
+      meta.bodyLength = JSON.stringify(req.body).length;
     } catch {
       // ignore serialization errors
     }
   }
 
-  logger.error('Request error', err, meta);
+  // Handle ConvergenceError with proper HTTP status mapping
+  if (isConvergenceError(err)) {
+    const statusCode = err.getHttpStatus();
+    const userMessage = err.getUserMessage();
 
-  // Determine status code
-  const statusCode = err.statusCode || err.status || 500;
+    logger.warn('Convergence error', {
+      ...meta,
+      errorCode: err.code,
+      statusCode,
+      details: err.details,
+    });
 
-  // Build error response
+    res.status(statusCode).json({
+      error: err.code,
+      message: userMessage,
+      details: err.details,
+      requestId: req.id,
+    });
+    return;
+  }
+
+  const errorObj = err instanceof Error ? err : new Error(String(err));
+  logger.error('Request error', errorObj, meta);
+
+  const httpErr = err as Record<string, unknown>;
+  const statusCode =
+    (typeof httpErr === 'object' && httpErr !== null
+      ? (httpErr.statusCode as number) ?? (httpErr.status as number)
+      : undefined) ?? 500;
+
   const errorResponse: Record<string, unknown> = {
-    error: err.message || 'Internal server error',
+    error: errorObj.message || 'Internal server error',
     requestId: req.id,
   };
 
-  // Add stack trace in development
   if (process.env.NODE_ENV === 'development') {
-    errorResponse.stack = err.stack;
+    errorResponse.stack = errorObj.stack;
   }
 
-  // Add additional error details if available
-  if (err.details) {
-    errorResponse.details = err.details;
+  if (typeof httpErr === 'object' && httpErr !== null && 'details' in httpErr) {
+    errorResponse.details = httpErr.details;
   }
 
   res.status(statusCode).json(errorResponse);

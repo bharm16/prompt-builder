@@ -9,14 +9,18 @@
       "@components/*": ["src/components/*"],
       "@features/*": ["src/features/*"],
       "@hooks/*": ["src/hooks/*"],
-      "@api/*": ["src/api/*"],
       "@types/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
       "@config/*": ["src/config/*"],
-      "@shared/*": ["../../shared/*"]
+      "@services/*": ["src/services/*"],
+      "@styles/*": ["src/styles/*"],
+      "@lib/*": ["src/lib/*"],
+      "@schemas/*": ["src/schemas/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@shared/*": ["../shared/*"],
+      "#shared/*": ["../shared/*"]
     }
   },
   "include": ["src/**/*", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-

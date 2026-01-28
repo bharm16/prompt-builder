@@ -1,35 +1,46 @@
 import { useCallback } from 'react';
+import { createHighlightSignature } from '@features/span-highlighting';
 import type { NavigateFunction } from 'react-router-dom';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { OptimizationOptions } from '../../types';
+import type { CapabilityValues } from '@shared/capabilities';
 
 interface PromptOptimizer {
   inputPrompt: string;
+  genericOptimizedPrompt?: string | null;
   improvementContext: unknown;
   optimize: (
     prompt: string,
     context: unknown | null,
-    brainstormContext: unknown | null
+    brainstormContext: unknown | null,
+    targetModel?: string,
+    options?: OptimizationOptions
+  ) => Promise<{ optimized: string; score: number | null } | null>;
+  compile: (
+    prompt: string,
+    targetModel?: string,
+    context?: unknown | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
 
 interface PromptHistory {
+  history: PromptHistoryEntry[];
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   saveToHistory: (
     input: string,
     output: string,
     score: number | null,
     mode: string,
-    brainstormContext: unknown | null
+    targetModel?: string | null,
+    generationParams?: Record<string, unknown> | null,
+    brainstormContext?: unknown | null,
+    highlightCache?: unknown,
+    existingUuid?: string | null,
+    title?: string | null
   ) => Promise<{ uuid: string; id?: string } | null>;
-  [key: string]: unknown;
-}
-
-interface PromptContext {
-  toJSON?: () => {
-    elements: unknown;
-    metadata: unknown;
-  };
-  elements?: unknown;
-  metadata?: unknown;
   [key: string]: unknown;
 }
 
@@ -38,12 +49,17 @@ export interface UsePromptOptimizationParams {
   promptHistory: PromptHistory;
   promptContext: PromptContext | null;
   selectedMode: string;
+  selectedModel?: string; // New: optional selected model
+  generationParams: CapabilityValues;
+  startImageUrl?: string | null;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
+  currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setDisplayedPromptSilently: (prompt: string) => void;
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
-    highlight: unknown | null,
+    highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
@@ -53,7 +69,11 @@ export interface UsePromptOptimizationParams {
 }
 
 export interface UsePromptOptimizationReturn {
-  handleOptimize: (promptToOptimize?: string, context?: unknown) => Promise<void>;
+  handleOptimize: (
+    promptToOptimize?: string,
+    context?: unknown,
+    options?: OptimizationOptions
+  ) => Promise<void>;
 }
 
 /**
@@ -65,6 +85,11 @@ export function usePromptOptimization({
   promptHistory,
   promptContext,
   selectedMode,
+  selectedModel, // Extract new param
+  generationParams,
+  startImageUrl,
+  constraintMode,
+  currentPromptUuid,
   setCurrentPromptUuid,
   setCurrentPromptDocId,
   setDisplayedPromptSilently,
@@ -79,7 +104,11 @@ export function usePromptOptimization({
    * Handle prompt optimization
    */
   const handleOptimize = useCallback(
-    async (promptToOptimize?: string, context?: unknown): Promise<void> => {
+    async (
+      promptToOptimize?: string,
+      context?: unknown,
+      options?: OptimizationOptions
+    ): Promise<void> => {
       const prompt = promptToOptimize || promptOptimizer.inputPrompt;
       const ctx = context || promptOptimizer.improvementContext;
 
@@ -100,9 +129,42 @@ export function usePromptOptimization({
           }
         : null;
 
-      // Optimize the prompt
-      const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
-      
+      const isCompileOnly = options?.compileOnly === true;
+      const compilePrompt =
+        options?.compilePrompt ||
+        (typeof promptOptimizer.genericOptimizedPrompt === 'string'
+          ? promptOptimizer.genericOptimizedPrompt
+          : null);
+
+      const optimizationInput = isCompileOnly ? compilePrompt || prompt : prompt;
+      if (typeof optimizationInput === 'string' && optimizationInput.trim()) {
+        setShowResults(true);
+        setDisplayedPromptSilently('');
+      }
+
+      const effectiveOptions: OptimizationOptions = {
+        ...(options ?? {}),
+        ...(options?.startImage ? {} : startImageUrl ? { startImage: startImageUrl } : {}),
+        ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
+      };
+
+      const result = isCompileOnly
+        ? await promptOptimizer.compile(
+            compilePrompt || prompt,
+            selectedMode === 'video' ? selectedModel : undefined,
+            ctx
+          )
+        : await promptOptimizer.optimize(
+            prompt,
+            ctx,
+            brainstormContextData,
+            selectedMode === 'video' ? selectedModel : undefined,
+            {
+              ...effectiveOptions,
+              ...(generationParams ? { generationParams } : {}),
+            }
+          );
+
       if (result) {
         // Save to history
         const saveResult = await promptHistory.saveToHistory(
@@ -110,7 +172,11 @@ export function usePromptOptimization({
           result.optimized,
           result.score,
           selectedMode,
-          serializedContext
+          selectedMode === 'video' ? selectedModel ?? null : null,
+          (generationParams as unknown as Record<string, unknown>) ?? null,
+          serializedContext,
+          null,
+          currentPromptUuid
         );
 
         if (saveResult?.uuid) {
@@ -131,6 +197,41 @@ export function usePromptOptimization({
             navigate(`/prompt/${saveResult.uuid}`, { replace: true });
           }
         }
+
+        if (saveResult?.uuid && options?.createVersion) {
+          const promptText = result.optimized.trim();
+          if (promptText) {
+            const uuidForVersions = saveResult.uuid;
+            const history = Array.isArray(promptHistory.history) ? promptHistory.history : [];
+            const existingEntry =
+              history.find((entry) => entry.uuid === uuidForVersions) ?? null;
+            const currentVersions = Array.isArray(existingEntry?.versions)
+              ? existingEntry.versions
+              : [];
+
+            const signature = createHighlightSignature(promptText);
+            const last = currentVersions[currentVersions.length - 1] ?? null;
+
+            if (!last || last.signature !== signature) {
+              const nextVersion: PromptVersionEntry = {
+                versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                label: `v${currentVersions.length + 1}`,
+                signature,
+                prompt: promptText,
+                timestamp: new Date().toISOString(),
+                highlights: null,
+                preview: null,
+                video: null,
+              };
+
+              promptHistory.updateEntryVersions(
+                uuidForVersions,
+                saveResult.id ?? null,
+                [...currentVersions, nextVersion]
+              );
+            }
+          }
+        }
       }
     },
     [
@@ -138,6 +239,11 @@ export function usePromptOptimization({
       promptHistory,
       promptContext,
       selectedMode,
+      selectedModel, // Added dependency
+      generationParams,
+      startImageUrl,
+      constraintMode,
+      currentPromptUuid,
       setCurrentPromptUuid,
       setCurrentPromptDocId,
       setDisplayedPromptSilently,
@@ -152,4 +258,3 @@ export function usePromptOptimization({
 
   return { handleOptimize };
 }
-

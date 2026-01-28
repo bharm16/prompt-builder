@@ -1,7 +1,7 @@
 import { logger } from '@infrastructure/Logger';
-import { CONSTRAINT_MODES, CONSTRAINT_THRESHOLDS } from '../../config/constraintModes.js';
-import { countWords, isSentence } from '../../utils/textHelpers.js';
-import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../../types.js';
+import { CONSTRAINT_MODES, CONSTRAINT_THRESHOLDS } from '@services/video-prompt-analysis/config/constraintModes';
+import { countWords, isSentence } from '@services/video-prompt-analysis/utils/textHelpers';
+import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '@services/video-prompt-analysis/types';
 
 /**
  * Service responsible for generating replacement constraints for video prompts
@@ -69,7 +69,10 @@ export class ConstraintGenerationService {
   /**
    * Get slot descriptor for the highlight
    */
-  private _getSlotDescriptor(phraseRole: string | undefined, highlightedCategory: string | undefined): string {
+  private _getSlotDescriptor(
+    phraseRole: string | null | undefined,
+    highlightedCategory: string | null | undefined
+  ): string {
     if (phraseRole) return phraseRole;
     if (highlightedCategory) return `${highlightedCategory} detail`;
     return 'visual detail';
@@ -101,9 +104,8 @@ export class ConstraintGenerationService {
     // Check category-specific constraints
     const isSubject = categorySource.includes('subject') || categorySource.includes('character');
     const isLighting = categorySource.includes('lighting');
-    const isCamera = categorySource.includes('camera') || 
-                     categorySource.includes('framing') || 
-                     categorySource.includes('shot');
+    const isShot = categorySource.includes('shot');
+    const isCamera = categorySource.includes('camera') || categorySource.includes('framing');
     const isLocation = categorySource.includes('location') || 
                        categorySource.includes('environment') || 
                        categorySource.includes('setting');
@@ -119,6 +121,10 @@ export class ConstraintGenerationService {
 
     if (isLighting) {
       return CONSTRAINT_MODES.lighting(highlightWordCount, slotDescriptor);
+    }
+
+    if (isShot) {
+      return CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
     }
 
     if (isCamera) {
@@ -141,4 +147,3 @@ export class ConstraintGenerationService {
     return CONSTRAINT_MODES.sentence(highlightWordCount, slotDescriptor);
   }
 }
-

@@ -1,25 +1,34 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '../cache/CacheService.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import { ConstitutionalAI } from '@utils/ConstitutionalAI.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { ConstitutionalAI } from '@utils/ConstitutionalAI';
+import OptimizationConfig from '@config/OptimizationConfig';
 
 // Import specialized services
-import { ContextInferenceService } from './services/ContextInferenceService.js';
-import { ModeDetectionService } from './services/ModeDetectionService.js';
-import { QualityAssessmentService } from './services/QualityAssessmentService.js';
-import { StrategyFactory } from './services/StrategyFactory.js';
-import { ShotInterpreterService } from './services/ShotInterpreterService.js';
-import { templateService } from './services/TemplateService.js';
+import { ContextInferenceService } from './services/ContextInferenceService';
+import { ModeDetectionService } from './services/ModeDetectionService';
+import { QualityAssessmentService } from './services/QualityAssessmentService';
+import { StrategyFactory } from './services/StrategyFactory';
+import { ShotInterpreterService } from './services/ShotInterpreterService';
+import { DraftGenerationService } from './services/DraftGenerationService';
+import { OptimizationCacheService } from './services/OptimizationCacheService';
+import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
+import { templateService } from './services/TemplateService';
+import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
+import { ImageObservationService } from '@services/image-observation';
+import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
+import type { CapabilityValues } from '@shared/capabilities';
 import type {
   AIService,
   OptimizationMode,
   OptimizationRequest,
+  OptimizationResponse,
   TwoStageOptimizationRequest,
   TwoStageOptimizationResult,
-  ShotPlan
-} from './types.js';
+  ShotPlan,
+  InferredContext
+} from './types';
+import type { I2VConstraintMode } from './types/i2v';
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -30,6 +39,8 @@ import type {
  * - QualityAssessmentService: Assesses prompt quality
  * - StrategyFactory: Creates mode-specific optimization strategies
  * - TemplateService: Manages prompt templates
+ * - DraftGenerationService: Generates fast drafts for 2-stage optimization
+ * - OptimizationCacheService: Manages caching
  *
  * Key improvements over the original 3,539-line God Object:
  * - Each service is small, focused, and testable (< 200 lines each)
@@ -45,12 +56,22 @@ export class PromptOptimizationService {
   private readonly qualityAssessment: QualityAssessmentService;
   private readonly strategyFactory: StrategyFactory;
   private readonly shotInterpreter: ShotInterpreterService;
-  private readonly cacheConfig: { ttl: number; namespace: string };
-  private readonly templateVersions: Record<string, string>;
+  private readonly draftService: DraftGenerationService;
+  private readonly optimizationCache: OptimizationCacheService;
+  private readonly compilationService: VideoPromptCompilationService | null;
+  private readonly videoPromptService: VideoPromptService | null;
+  private readonly imageObservation: ImageObservationService;
+  private readonly i2vStrategy: I2VMotionStrategy;
+  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly log: ILogger;
 
-  constructor(aiService: AIService) {
+  constructor(
+    aiService: AIService,
+    videoPromptService: VideoPromptService | null = null,
+    imageObservationService?: ImageObservationService
+  ) {
     this.ai = aiService;
+    this.videoPromptService = videoPromptService;
     this.log = logger.child({ service: 'PromptOptimizationService' });
 
     // Initialize specialized services
@@ -59,9 +80,13 @@ export class PromptOptimizationService {
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, templateService);
     this.shotInterpreter = new ShotInterpreterService(aiService);
-
-    // Cache configuration
-    this.cacheConfig = cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
+    this.draftService = new DraftGenerationService(aiService);
+    this.optimizationCache = new OptimizationCacheService();
+    this.compilationService = videoPromptService
+      ? new VideoPromptCompilationService(videoPromptService, this.qualityAssessment)
+      : null;
+    this.imageObservation = imageObservationService ?? new ImageObservationService(aiService);
+    this.i2vStrategy = new I2VMotionStrategy(aiService);
 
     // Template versions (moved to config)
     this.templateVersions = OptimizationConfig.templateVersions;
@@ -81,10 +106,16 @@ export class PromptOptimizationService {
    */
   async optimizeTwoStage({
     prompt,
-    mode,
+    mode: _mode,
+    targetModel,
     context = null,
     brainstormContext = null,
+    generationParams = null,
+    skipCache = false,
+    lockedSpans = [],
     onDraft = null,
+    onDraftChunk = null,
+    onRefinedChunk = null,
     signal,
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
     const startTime = performance.now();
@@ -96,23 +127,19 @@ export class PromptOptimizationService {
         throw abortError;
       }
     };
+    void _mode;
     
-    // Default to video mode (only mode supported)
-    let finalMode: OptimizationMode = mode || 'video';
-    if (finalMode !== 'video') {
-      this.log.warn('Non-video mode specified, defaulting to video', {
-        operation,
-        requestedMode: mode,
-      });
-      finalMode = 'video';
-    }
+    const finalMode: OptimizationMode = 'video';
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode: finalMode,
       promptLength: prompt.length,
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
+      hasGenerationParams: !!generationParams,
+      skipCache,
+      lockedSpanCount: lockedSpans.length,
     });
 
     ensureNotAborted();
@@ -131,36 +158,48 @@ export class PromptOptimizationService {
     ensureNotAborted();
 
     // Check if draft operation supports streaming (ChatGPT available)
-    if (!this.ai.supportsStreaming?.('optimize_draft')) {
+    if (!this.draftService.supportsStreaming()) {
       this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
         operation,
       });
-      const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext, signal });
-      return { draft: result, refined: result, metadata: { usedFallback: true } };
+      let fallbackMetadata: Record<string, unknown> | null = null;
+      const result = await this.optimize({
+        prompt,
+        mode: finalMode,
+        ...(targetModel ? { targetModel } : {}),
+        context,
+        brainstormContext,
+        generationParams,
+        skipCache,
+        lockedSpans,
+        onMetadata: (metadata) => {
+          fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
+        },
+        ...(signal ? { signal } : {}),
+      });
+      const fallbackPrompt = result.prompt;
+      return {
+        draft: fallbackPrompt,
+        refined: fallbackPrompt,
+        metadata: { usedFallback: true, ...(fallbackMetadata || result.metadata || {}) },
+      };
     }
 
     try {
       // STAGE 1: Generate fast draft with ChatGPT (1-3s)
-      const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan);
-      this.log.debug('Generating draft with ChatGPT', {
-        operation,
-        mode: finalMode,
-        hasShotPlan: !!shotPlan,
-      });
       const draftStartTime = performance.now();
-
+      
       ensureNotAborted();
 
-      const draftResponse = await this.ai.execute('optimize_draft', {
-        systemPrompt: draftSystemPrompt,
-        userMessage: prompt,
-        maxTokens: OptimizationConfig.tokens.draft[finalMode] || OptimizationConfig.tokens.draft.default,
-        temperature: OptimizationConfig.temperatures.draft,
-        timeout: OptimizationConfig.timeouts.draft,
+      const draft = await this.draftService.generateDraft(
+        prompt,
+        finalMode,
+        shotPlan,
+        generationParams,
         signal,
-      });
+        onDraftChunk ? (delta) => onDraftChunk(delta) : undefined
+      );
 
-      const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
       const draftDuration = Math.round(performance.now() - draftStartTime);
 
       this.log.info('Draft generated successfully', {
@@ -184,18 +223,28 @@ export class PromptOptimizationService {
 
       ensureNotAborted();
 
-      const refined = await this.optimize({
+      let refinementMetadata: Record<string, unknown> | null = null;
+      const refinedResult = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
-        context: {
-          ...(context || {}),
-          originalUserPrompt: prompt, // Pass original prompt for consistency check
+        ...(targetModel ? { targetModel } : {}),
+        context,
+        brainstormContext: {
+          ...(brainstormContext || {}),
+          originalUserPrompt: prompt,
         },
-        brainstormContext,
+        generationParams,
+        skipCache,
+        lockedSpans,
         shotPlan,
         shotPlanAttempted: true,
-        signal,
+        onMetadata: (metadata) => {
+          refinementMetadata = { ...(refinementMetadata || {}), ...metadata };
+        },
+        ...(onRefinedChunk ? { onChunk: (delta) => onRefinedChunk(delta) } : {}),
+        ...(signal ? { signal } : {}),
       });
+      const refinedPrompt = refinedResult.prompt;
 
       const refinementDuration = Math.round(performance.now() - refinementStartTime);
       const totalDuration = Math.round(performance.now() - startTime);
@@ -207,12 +256,12 @@ export class PromptOptimizationService {
         totalDuration,
         mode: finalMode,
         draftLength: draft.length,
-        refinedLength: refined.length,
+        refinedLength: refinedPrompt.length,
       });
 
       return {
         draft,
-        refined,
+        refined: refinedPrompt,
         draftSpans: null,
         refinedSpans: null, // Skip for performance
         metadata: {
@@ -222,6 +271,7 @@ export class PromptOptimizationService {
           mode: finalMode,
           usedTwoStage: true,
           shotPlan,
+          ...(refinementMetadata || {}),
         }
       };
 
@@ -240,22 +290,32 @@ export class PromptOptimizationService {
         mode: finalMode,
       });
 
+      let fallbackMetadata: Record<string, unknown> | null = null;
       const result = await this.optimize({
         prompt,
         mode: finalMode,
+        ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        generationParams,
+        skipCache,
+        lockedSpans,
         shotPlan,
         shotPlanAttempted: true,
-        signal,
+        onMetadata: (metadata) => {
+          fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
+        },
+        ...(signal ? { signal } : {}),
       });
+      const fallbackPrompt = result.prompt;
       return {
-        draft: result,
-        refined: result,
+        draft: fallbackPrompt,
+        refined: fallbackPrompt,
         metadata: {
           mode: finalMode,
           usedFallback: true,
           shotPlan,
+          ...(fallbackMetadata || {}),
         },
         usedFallback: true,
         error: (error as Error).message,
@@ -268,15 +328,24 @@ export class PromptOptimizationService {
    */
   async optimize({
     prompt,
-    mode,
+    mode: _mode,
     context = null,
     brainstormContext = null,
+    generationParams = null,
+    skipCache = false,
+    lockedSpans = [],
     shotPlan = null,
     shotPlanAttempted = false,
     useConstitutionalAI = false,
     useIterativeRefinement = false,
+    onMetadata,
+    onChunk,
     signal,
-  }: OptimizationRequest): Promise<string> {
+    targetModel, // Extract targetModel
+    startImage,
+    constraintMode,
+    sourcePrompt,
+  }: OptimizationRequest): Promise<OptimizationResponse> {
     const startTime = performance.now();
     const operation = 'optimize';
     const ensureNotAborted = (): void => {
@@ -286,35 +355,73 @@ export class PromptOptimizationService {
         throw abortError;
       }
     };
-    
-    // Default to video mode (only mode supported)
-    let finalMode: OptimizationMode = mode || 'video';
-    if (!finalMode) {
-      finalMode = 'video';
-      this.log.debug('Mode not specified, defaulting to video', {
-        operation,
+    void _mode;
+
+    if (startImage) {
+      return this.optimizeI2V({
+        prompt,
+        startImage,
+        constraintMode,
+        sourcePrompt,
+        generationParams,
+        skipCache,
       });
-    } else if (finalMode !== 'video') {
-      this.log.warn('Non-video mode specified, defaulting to video', {
-        operation,
-        requestedMode: mode,
-      });
-      finalMode = 'video';
     }
 
-    this.log.debug(`Starting ${operation}`, {
+    const finalMode: OptimizationMode = 'video';
+
+    this.log.debug('Starting operation.', {
       operation,
       mode: finalMode,
       promptLength: prompt.length,
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
+      hasGenerationParams: !!generationParams,
       hasShotPlan: !!shotPlan,
       shotPlanAttempted,
       useConstitutionalAI,
       useIterativeRefinement,
+      skipCache,
+      lockedSpanCount: lockedSpans.length,
     });
 
     ensureNotAborted();
+
+    // Check cache
+    const cacheKey = this.optimizationCache.buildCacheKey(
+      prompt,
+      finalMode,
+      context,
+      brainstormContext,
+      targetModel,
+      generationParams,
+      lockedSpans
+    );
+
+    if (!skipCache) {
+      const cached = await this.optimizationCache.getCachedResult(cacheKey);
+      if (cached) {
+        const cachedMetadata = await this.optimizationCache.getCachedMetadata(cacheKey);
+        if (onMetadata && cachedMetadata) {
+          onMetadata(cachedMetadata);
+        }
+        this.log.debug('Returning cached optimization result', {
+          operation,
+          mode: finalMode,
+          duration: Math.round(performance.now() - startTime),
+        });
+        return {
+          prompt: cached,
+          inputMode: 't2v',
+          ...(cachedMetadata ? { metadata: cachedMetadata } : {}),
+        };
+      }
+    } else {
+      this.log.debug('Skipping optimization cache', {
+        operation,
+        mode: finalMode,
+      });
+    }
 
     // Interpret shot plan if not already provided
     let interpretedShotPlan: ShotPlan | null = shotPlan;
@@ -330,20 +437,15 @@ export class PromptOptimizationService {
       }
     }
 
-    // Check cache
-    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext);
-    const cached = await cacheService.get<string>(cacheKey);
-    if (cached) {
-      this.log.debug('Returning cached optimization result', {
-        operation,
-        mode: finalMode,
-        duration: Math.round(performance.now() - startTime),
-      });
-      return cached;
-    }
-
     try {
       let optimizedPrompt: string;
+      let optimizationMetadata: Record<string, unknown> | null = null;
+      const handleMetadata = (metadata: Record<string, unknown>): void => {
+        optimizationMetadata = { ...(optimizationMetadata || {}), ...metadata };
+        if (onMetadata) {
+          onMetadata(metadata);
+        }
+      };
 
       // Use iterative refinement if requested
       if (useIterativeRefinement) {
@@ -352,8 +454,12 @@ export class PromptOptimizationService {
           finalMode,
           context,
           brainstormContext,
+          lockedSpans,
+          generationParams,
+          interpretedShotPlan,
           useConstitutionalAI,
-          signal
+          signal,
+          handleMetadata
         );
       } else {
         // Get appropriate strategy and optimize
@@ -369,9 +475,13 @@ export class PromptOptimizationService {
           prompt,
           context,
           brainstormContext,
-          domainContent,
+          generationParams,
+          domainContent: domainContent as string | null,
           shotPlan: interpretedShotPlan,
-          signal,
+          lockedSpans,
+          onMetadata: handleMetadata,
+          ...(onChunk ? { onChunk } : {}),
+          ...(signal ? { signal } : {}),
         });
 
         // Apply constitutional AI review if requested
@@ -380,13 +490,72 @@ export class PromptOptimizationService {
         }
       }
 
+      let qualityAssessment = await this.qualityAssessment.assessQuality(optimizedPrompt, finalMode);
+      const qualityThreshold = OptimizationConfig.quality.minAcceptableScore;
+
+      handleMetadata({
+        qualityAssessment,
+      });
+
+      if (!useIterativeRefinement && qualityAssessment.score < qualityThreshold) {
+        const initialScore = qualityAssessment.score;
+        this.log.warn('Quality gate failed, attempting bounded refinement', {
+          operation,
+          score: initialScore,
+          threshold: qualityThreshold,
+        });
+
+        optimizedPrompt = await this.optimizeIteratively(
+          prompt,
+          finalMode,
+          context,
+          brainstormContext,
+          lockedSpans,
+          generationParams,
+          interpretedShotPlan,
+          useConstitutionalAI,
+          signal,
+          handleMetadata
+        );
+
+        qualityAssessment = await this.qualityAssessment.assessQuality(optimizedPrompt, finalMode);
+        handleMetadata({
+          qualityAssessment,
+          qualityGate: {
+            triggered: true,
+            initialScore,
+            finalScore: qualityAssessment.score,
+          },
+        });
+      }
+
+      // Record generic prompt before model compilation
+      handleMetadata({ genericPrompt: optimizedPrompt });
+
+      // STAGE 3: Model-Specific Compilation (The "Compiler" Phase)
+      if (finalMode === 'video' && this.compilationService) {
+        const compilation = await this.compilationService.compileOptimizedPrompt({
+          operation,
+          originalPrompt: prompt,
+          optimizedPrompt,
+          targetModel,
+          mode: finalMode,
+          qualityAssessment,
+        });
+
+        optimizedPrompt = compilation.prompt;
+        if (compilation.metadata) {
+          handleMetadata(compilation.metadata);
+        }
+      }
+
       // Cache the result
-      await cacheService.set(cacheKey, optimizedPrompt, this.cacheConfig);
+      await this.optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);
 
       // Log metrics
       this.logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         mode: finalMode,
@@ -396,18 +565,22 @@ export class PromptOptimizationService {
         useIterativeRefinement,
       });
 
-      return optimizedPrompt;
+      return {
+        prompt: optimizedPrompt,
+        inputMode: 't2v',
+        ...(optimizationMetadata ? { metadata: optimizationMetadata } : {}),
+      };
 
     } catch (error) {
       if ((error as Error)?.name === 'AbortError') {
-        this.log.info(`${operation} aborted`, {
+        this.log.info('Operation aborted.', {
           operation,
           duration: Math.round(performance.now() - startTime),
           mode: finalMode,
         });
         throw error;
       }
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         mode: finalMode,
@@ -418,6 +591,86 @@ export class PromptOptimizationService {
   }
 
   /**
+   * I2V optimization (motion-focused)
+   */
+  private async optimizeI2V(params: {
+    prompt: string;
+    startImage: string;
+    constraintMode?: I2VConstraintMode;
+    sourcePrompt?: string;
+    generationParams?: CapabilityValues | null;
+    skipCache?: boolean;
+  }): Promise<OptimizationResponse> {
+    const { prompt, startImage, constraintMode, sourcePrompt, generationParams, skipCache } = params;
+    const observationResult = await this.imageObservation.observe({
+      image: startImage,
+      skipCache: skipCache === true,
+      ...(sourcePrompt ? { sourcePrompt } : {}),
+    });
+
+    const observation = observationResult.observation;
+    if (!observation) {
+      throw new Error('Image observation failed');
+    }
+
+    const cameraMotionLocked = this.isCameraMotionLocked(generationParams);
+    const mode: I2VConstraintMode = constraintMode || 'strict';
+    const result = await this.i2vStrategy.optimize({
+      prompt,
+      observation,
+      mode,
+      cameraMotionLocked,
+    });
+
+    return {
+      prompt: result.prompt,
+      inputMode: 'i2v',
+      i2v: result,
+      metadata: {
+        observationCached: observationResult.cached,
+        observationUsedFastPath: observationResult.usedFastPath,
+      },
+    };
+  }
+
+  private isCameraMotionLocked(generationParams?: CapabilityValues | null): boolean {
+    if (!generationParams) {
+      return false;
+    }
+    const params = generationParams as Record<string, unknown>;
+    const cameraMotionId = typeof params.camera_motion_id === 'string'
+      ? params.camera_motion_id
+      : typeof params.cameraMotionId === 'string'
+        ? params.cameraMotionId
+        : '';
+    return cameraMotionId.trim().length > 0;
+  }
+
+  /**
+   * Compile a pre-optimized prompt for a specific video model (Stage 3 only)
+   */
+  async compilePrompt({
+    prompt,
+    targetModel,
+    context,
+  }: {
+    prompt: string;
+    targetModel: string;
+    context?: unknown | null;
+  }): Promise<{
+    compiledPrompt: string;
+    metadata: Record<string, unknown> | null;
+    targetModel: string;
+  }> {
+    void context;
+    if (!this.compilationService) {
+      throw new Error('Video prompt service unavailable');
+    }
+
+    return this.compilationService.compilePrompt(prompt, targetModel);
+  }
+
+  /**
    * Iteratively refine a prompt until quality threshold is met
    */
   private async optimizeIteratively(
@@ -425,8 +678,12 @@ export class PromptOptimizationService {
     mode: OptimizationMode,
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
+    lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
+    generationParams: CapabilityValues | null,
+    shotPlan: ShotPlan | null,
     useConstitutionalAI: boolean,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onMetadata?: (metadata: Record<string, unknown>) => void
   ): Promise<string> {
     const startTime = performance.now();
     const operation = 'optimizeIteratively';
@@ -438,7 +695,7 @@ export class PromptOptimizationService {
       }
     };
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -451,6 +708,10 @@ export class PromptOptimizationService {
     let currentPrompt = prompt;
     let bestPrompt = prompt;
     let bestScore = 0;
+    let lastMetadata: Record<string, unknown> | null = null;
+    const collectMetadata = (metadata: Record<string, unknown>): void => {
+      lastMetadata = metadata;
+    };
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       ensureNotAborted();
@@ -463,14 +724,18 @@ export class PromptOptimizationService {
       // Optimize
       const strategy = this.strategyFactory.getStrategy(mode);
       const domainContent = strategy.generateDomainContent
-        ? await strategy.generateDomainContent(currentPrompt, context)
+        ? await strategy.generateDomainContent(currentPrompt, context, shotPlan)
         : null;
       const optimized = await strategy.optimize({
         prompt: currentPrompt,
         context,
         brainstormContext,
-        domainContent,
-        signal,
+        generationParams,
+        domainContent: domainContent as string | null,
+        shotPlan,
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
+        onMetadata: collectMetadata,
+        ...(signal ? { signal } : {}),
       });
 
       // Apply constitutional AI if requested
@@ -515,12 +780,16 @@ export class PromptOptimizationService {
       currentPrompt = finalOptimized;
     }
 
-    this.log.info(`${operation} complete`, {
+    this.log.info('Operation completed.', {
       operation,
       finalScore: bestScore,
       iterations: maxIterations,
       duration: Math.round(performance.now() - startTime),
     });
+
+    if (onMetadata && lastMetadata) {
+      onMetadata(lastMetadata);
+    }
 
     return bestPrompt;
   }
@@ -536,7 +805,7 @@ export class PromptOptimizationService {
     const startTime = performance.now();
     const operation = 'applyConstitutionalAI';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -551,111 +820,57 @@ export class PromptOptimizationService {
 
       const sampleRate = OptimizationConfig.constitutionalAI?.sampleRate ?? 1;
       if (sampleRate < 1 && Math.random() > Math.max(0, Math.min(1, sampleRate))) {
-        this.log.debug(`${operation} skipped (sampled out)`, {
+        this.log.debug('Operation skipped (sampled out).', {
           operation,
           sampleRate,
         });
         return prompt;
       }
 
-      const constitutionalAI = new ConstitutionalAI(this.ai);
-      const reviewResult = await constitutionalAI.review(prompt);
+      const claudeClient = {
+        complete: async (reviewPrompt: string, options?: { maxTokens?: number }) => {
+          const response = await this.ai.execute('optimize_quality_assessment', {
+            systemPrompt: reviewPrompt,
+            maxTokens: options?.maxTokens ?? 2048,
+            temperature: 0.2,
+            ...(signal ? { signal } : {}),
+          });
+          const content = response.content?.map((item) => ({ text: item.text ?? '' }));
+          return {
+            text: response.text,
+            ...(content ? { content } : {}),
+          };
+        },
+      };
+
+      const reviewResult = await ConstitutionalAI.applyConstitutionalReview(
+        claudeClient,
+        prompt,
+        prompt
+      );
 
       if (reviewResult.revised) {
         this.log.info('Constitutional AI suggested revisions', {
           operation,
-          violationCount: reviewResult.violations?.length || 0,
+          issueCount: reviewResult.critique?.issues?.length || 0,
           duration: Math.round(performance.now() - startTime),
         });
-        return reviewResult.revised;
+        return reviewResult.output;
       }
 
-      this.log.debug(`${operation} completed - no revisions needed`, {
+      this.log.debug('Operation completed; no revisions needed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
 
       return prompt;
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
       return prompt; // Return original on failure
     }
-  }
-
-  /**
-   * Get draft system prompt for ChatGPT generation
-   */
-  private getDraftSystemPrompt(mode: OptimizationMode, shotPlan: ShotPlan | null = null): string {
-    const planSummary = shotPlan
-      ? `Respect this interpreted shot plan (do not force missing fields):
-- shot_type: ${shotPlan.shot_type || 'unknown'}
-- core_intent: ${shotPlan.core_intent || 'n/a'}
-- subject: ${shotPlan.subject || 'null'}
-- action: ${shotPlan.action || 'null'}
-- visual_focus: ${shotPlan.visual_focus || 'null'}
-- setting: ${shotPlan.setting || 'null'}
-- camera_move: ${shotPlan.camera_move || 'null'}
-- camera_angle: ${shotPlan.camera_angle || 'null'}
-- lighting: ${shotPlan.lighting || 'null'}
-- style: ${shotPlan.style || 'null'}
-Keep ONE action and 75-125 words.`
-      : 'Honor ONE action, camera-visible details, 75-125 words. Do not invent subjects or actions if absent.';
-
-    const draftInstructions: Record<string, string> = {
-      video: `You are a video prompt draft generator. Create a concise video prompt (75-125 words).
-
-Focus on:
-- Clear subject and primary action when present (otherwise lean on camera move + visual focus)
-- Preserve explicit user-provided intent (including temporal changes like seasons shifting)
-- Essential visual details (lighting, camera angle)
-- Specific cinematographic style
-- Avoid negative phrasing; describe what to show
-
-${planSummary}
-
-Output ONLY the draft prompt, no explanations or meta-commentary.`,
-
-      reasoning: `You are a reasoning prompt draft generator. Create a concise structured prompt (100-150 words).
-
-Include:
-- Core problem statement
-- Key analytical approach
-- Expected reasoning pattern
-
-Output ONLY the draft prompt, no explanations.`,
-
-      research: `You are a research prompt draft generator. Create a focused research prompt (100-150 words).
-
-Include:
-- Research question
-- Primary sources to consult
-- Key evaluation criteria
-
-Output ONLY the draft prompt, no explanations.`,
-
-      socratic: `You are a Socratic teaching draft generator. Create a concise learning prompt (100-150 words).
-
-Include:
-- Learning objective
-- Progressive question approach
-- Key concepts to explore
-
-Output ONLY the draft prompt, no explanations.`,
-
-      optimize: `You are a prompt optimization draft generator. Create an improved prompt (100-150 words).
-
-Make it:
-- Clear and specific
-- Action-oriented
-- Well-structured
-
-Output ONLY the draft prompt, no explanations.`
-    };
-
-    return draftInstructions[mode] || draftInstructions.optimize;
   }
 
   /**
@@ -677,25 +892,6 @@ Output ONLY the draft prompt, no explanations.`
    */
   async assessPromptQuality(prompt: string, mode: OptimizationMode) {
     return this.qualityAssessment.assessQuality(prompt, mode);
-  }
-
-  /**
-   * Build cache key for optimization result
-   */
-  private buildCacheKey(
-    prompt: string,
-    mode: OptimizationMode,
-    context: InferredContext | null,
-    brainstormContext: Record<string, unknown> | null
-  ): string {
-    const parts = [
-      'prompt-opt',
-      mode,
-      prompt.substring(0, 100),
-      context ? JSON.stringify(context) : '',
-      brainstormContext ? JSON.stringify(brainstormContext) : ''
-    ];
-    return parts.join('::');
   }
 
   /**

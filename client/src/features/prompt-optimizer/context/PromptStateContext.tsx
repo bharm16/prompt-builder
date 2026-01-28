@@ -5,23 +5,42 @@
  * Manages all prompt-related state in one place
  */
 
-import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Video } from 'lucide-react';
+import { VideoCamera } from '@promptstudio/system/components/ui';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import { PromptContext } from '@utils/PromptContext/PromptContext';
-import { createHighlightSignature } from '../hooks/useSpanLabeling';
 import type {
+  PromptActionsState,
+  PromptConfigState,
+  PromptHighlightState,
+  PromptNavigationState,
+  PromptServicesState,
+  PromptSessionState,
   PromptStateContextValue,
   PromptStateProviderProps,
-  HighlightSnapshot,
+  PromptUIState,
   Mode,
-  PromptHistoryEntry,
 } from './types';
+import { usePromptHistoryActions } from './usePromptHistoryActions';
+import { useDraftHistorySync } from './hooks/useDraftHistorySync';
+import { usePromptStatePersistence } from './hooks/usePromptStatePersistence';
+import { usePromptConfigState } from './hooks/usePromptConfigState';
+import { usePromptUiState } from './hooks/usePromptUiState';
+import { usePromptSessionState } from './hooks/usePromptSessionState';
+import { useHighlightState } from './hooks/useHighlightState';
+import { useVersionEditTracking } from './hooks/useVersionEditTracking';
+import { useHistoryActionRefs } from './hooks/useHistoryActionRefs';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
+const PromptConfigContext = createContext<PromptConfigState | null>(null);
+const PromptUIContext = createContext<PromptUIState | null>(null);
+const PromptSessionContext = createContext<PromptSessionState | null>(null);
+const PromptHighlightContext = createContext<PromptHighlightState | null>(null);
+const PromptServicesContext = createContext<PromptServicesState | null>(null);
+const PromptActionsContext = createContext<PromptActionsState | null>(null);
+const PromptNavigationContext = createContext<PromptNavigationState | null>(null);
 
 /**
  * Hook to use prompt state
@@ -30,6 +49,62 @@ export function usePromptState(): PromptStateContextValue {
   const context = useContext(PromptStateContext);
   if (!context) {
     throw new Error('usePromptState must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptConfig(): PromptConfigState {
+  const context = useContext(PromptConfigContext);
+  if (!context) {
+    throw new Error('usePromptConfig must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptUIStateContext(): PromptUIState {
+  const context = useContext(PromptUIContext);
+  if (!context) {
+    throw new Error('usePromptUIStateContext must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptSession(): PromptSessionState {
+  const context = useContext(PromptSessionContext);
+  if (!context) {
+    throw new Error('usePromptSession must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptHighlights(): PromptHighlightState {
+  const context = useContext(PromptHighlightContext);
+  if (!context) {
+    throw new Error('usePromptHighlights must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptServices(): PromptServicesState {
+  const context = useContext(PromptServicesContext);
+  if (!context) {
+    throw new Error('usePromptServices must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptActions(): PromptActionsState {
+  const context = useContext(PromptActionsContext);
+  if (!context) {
+    throw new Error('usePromptActions must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptNavigation(): PromptNavigationState {
+  const context = useContext(PromptNavigationContext);
+  if (!context) {
+    throw new Error('usePromptNavigation must be used within PromptStateProvider');
   }
   return context;
 }
@@ -49,167 +124,21 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     {
       id: 'video',
       name: 'Video Prompt',
-      icon: Video,
+      icon: VideoCamera,
       description: 'Generate AI video prompts',
     },
   ], []);
 
-  // UI State
-  const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [showHistory, setShowHistory] = useState<boolean>(false);
-  const [showResults, setShowResults] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showShortcuts, setShowShortcuts] = useState<boolean>(false);
-  const [showImprover, setShowImprover] = useState<boolean>(false);
-  const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
-  const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
-
-  // Enhancement suggestions state
-  const [suggestionsData, setSuggestionsData] = useState<unknown | null>(null);
-  const [conceptElements, setConceptElements] = useState<unknown | null>(null);
-  const [promptContext, setPromptContext] = useState<PromptContext | null>(null);
-  const [currentPromptUuid, setCurrentPromptUuid] = useState<string | null>(null);
-  const [currentPromptDocId, setCurrentPromptDocId] = useState<string | null>(null);
-  const [initialHighlights, setInitialHighlights] = useState<HighlightSnapshot | null>(null);
-  const [initialHighlightsVersion, setInitialHighlightsVersion] = useState<number>(0);
-  const [canUndo, setCanUndo] = useState<boolean>(false);
-  const [canRedo, setCanRedo] = useState<boolean>(false);
-
-  // Refs
-  const latestHighlightRef = useRef<HighlightSnapshot | null>(null);
-  const persistedSignatureRef = useRef<string | null>(null);
-  const undoStackRef = useRef<unknown[]>([]);
-  const redoStackRef = useRef<unknown[]>([]);
-  const isApplyingHistoryRef = useRef<boolean>(false);
-  const skipLoadFromUrlRef = useRef<boolean>(false);
-
-  // Custom hooks
-  const promptOptimizer = usePromptOptimizer(selectedMode);
-  const promptHistory = usePromptHistory(user);
-
-  const currentMode: Mode = useMemo(
-    () => modes.find((m) => m.id === selectedMode) || modes[0]!,
-    [modes, selectedMode]
-  );
-
-  // Helper functions
-  const applyInitialHighlightSnapshot = useCallback((
-    snapshot: HighlightSnapshot | null,
-    { bumpVersion = false, markPersisted = false }: { bumpVersion?: boolean; markPersisted?: boolean } = {}
-  ): void => {
-    setInitialHighlights(snapshot ?? null);
-    if (bumpVersion) {
-      setInitialHighlightsVersion((prev) => prev + 1);
-    }
-    latestHighlightRef.current = snapshot ?? null;
-    if (markPersisted) {
-      persistedSignatureRef.current = snapshot?.signature ?? null;
-    }
-  }, []);
-
-  const resetEditStacks = useCallback((): void => {
-    undoStackRef.current = [];
-    redoStackRef.current = [];
-    setCanUndo(false);
-    setCanRedo(false);
-  }, []);
-
-  const setDisplayedPromptSilently = useCallback((text: string): void => {
-    isApplyingHistoryRef.current = true;
-    promptOptimizer.setDisplayedPrompt(text);
-    setTimeout(() => {
-      isApplyingHistoryRef.current = false;
-    }, 0);
-  }, [promptOptimizer]);
-
-  // Create new prompt
-  const handleCreateNew = useCallback((): void => {
-    debug.logAction('createNew');
-    skipLoadFromUrlRef.current = true;
-    promptOptimizer.resetPrompt();
-    setShowResults(false);
-    setSuggestionsData(null);
-    setConceptElements(null);
-    setPromptContext(null);
-    setCurrentPromptUuid(null);
-    setCurrentPromptDocId(null);
-    applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-    persistedSignatureRef.current = null;
-    resetEditStacks();
-    navigate('/', { replace: true });
-    debug.logAction('createNewComplete');
-  }, [promptOptimizer, navigate, applyInitialHighlightSnapshot, resetEditStacks]);
-
-  // Load from history
-  const loadFromHistory = useCallback((entry: PromptHistoryEntry): void => {
-    debug.logAction('loadFromHistory', { 
-      uuid: entry.uuid, 
-      mode: entry.mode,
-      hasContext: !!entry.brainstormContext,
-      hasHighlightCache: !!entry.highlightCache
-    });
-    debug.startTimer('loadFromHistory');
-
-    skipLoadFromUrlRef.current = true;
-    setCurrentPromptUuid(entry.uuid || null);
-    setCurrentPromptDocId(entry.id || null);
-
-    promptOptimizer.setInputPrompt(entry.input);
-    promptOptimizer.setOptimizedPrompt(entry.output);
-    setDisplayedPromptSilently(entry.output);
-    setSelectedMode(entry.mode || 'video');
-    setShowResults(true);
-
-    const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
-      ? {
-          ...(entry.highlightCache as Record<string, unknown>),
-          signature: (entry.highlightCache as { signature?: string })?.signature ?? createHighlightSignature(entry.output ?? ''),
-        } as HighlightSnapshot
-      : null;
-
-    applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
-    resetEditStacks();
-
-    if (entry.brainstormContext) {
-      try {
-        const contextData =
-          typeof entry.brainstormContext === 'string'
-            ? JSON.parse(entry.brainstormContext)
-            : entry.brainstormContext;
-        const restoredContext = PromptContext.fromJSON(contextData);
-        setPromptContext(restoredContext);
-        debug.logAction('contextRestored');
-      } catch (contextError) {
-        debug.logError('Failed to restore prompt context from history entry', contextError as Error);
-        setPromptContext(null);
-      }
-    } else {
-      setPromptContext(null);
-    }
-
-    if (entry.uuid) {
-      navigate(`/prompt/${entry.uuid}`, { replace: true });
-    } else {
-      navigate('/', { replace: true });
-    }
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        skipLoadFromUrlRef.current = false;
-        debug.endTimer('loadFromHistory', 'History entry loaded');
-      });
-    });
-  }, [promptOptimizer, setDisplayedPromptSilently, applyInitialHighlightSnapshot, resetEditStacks, navigate]);
-
-  // Context value
-  const value: PromptStateContextValue = {
-    // Mode
-    modes,
+  const {
     selectedMode,
     setSelectedMode,
-    currentMode,
+    selectedModel,
+    setSelectedModel,
+    generationParams,
+    setGenerationParams,
+  } = usePromptConfigState();
 
-    // UI State
+  const {
     showHistory,
     setShowHistory,
     showResults,
@@ -224,8 +153,13 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setShowBrainstorm,
     currentAIIndex,
     setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
+  } = usePromptUiState();
 
-    // Prompt State
+  const {
     suggestionsData,
     setSuggestionsData,
     conceptElements,
@@ -236,8 +170,11 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCurrentPromptUuid,
     currentPromptDocId,
     setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+  } = usePromptSessionState();
 
-    // Highlights
+  const {
     initialHighlights,
     setInitialHighlights,
     initialHighlightsVersion,
@@ -246,31 +183,250 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCanUndo,
     canRedo,
     setCanRedo,
-
-    // Refs
     latestHighlightRef,
     persistedSignatureRef,
     undoStackRef,
     redoStackRef,
-    isApplyingHistoryRef,
-    skipLoadFromUrlRef,
-
-    // Hooks
-    promptOptimizer,
-    promptHistory,
-
-    // Helper functions
     applyInitialHighlightSnapshot,
     resetEditStacks,
+  } = useHighlightState();
+
+  const { versionEditCountRef, versionEditsRef, registerPromptEdit, resetVersionEdits } =
+    useVersionEditTracking();
+
+  const { isApplyingHistoryRef, skipLoadFromUrlRef } = useHistoryActionRefs();
+
+  // Custom hooks
+  const promptOptimizer = usePromptOptimizer(selectedMode, selectedModel);
+  const promptHistory = usePromptHistory(user);
+
+  const currentMode: Mode = useMemo(
+    () => modes.find((m) => m.id === selectedMode) || modes[0]!,
+    [modes, selectedMode]
+  );
+
+  const { setDisplayedPromptSilently, handleCreateNew, loadFromHistory } = usePromptHistoryActions({
+    debug,
+    navigate,
+    promptOptimizer,
+    promptHistory,
+    selectedMode,
+    selectedModel,
+    generationParams,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    resetVersionEdits,
+    setSuggestionsData,
+    setConceptElements,
+    setPromptContext,
+    setGenerationParams,
+    setSelectedMode,
+    setSelectedModel,
+    setShowResults,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    persistedSignatureRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+  });
+
+  const configValue = useMemo<PromptConfigState>(() => ({
+    modes,
+    selectedMode,
+    setSelectedMode,
+    currentMode,
+    selectedModel,
+    setSelectedModel,
+    generationParams,
+    setGenerationParams,
+  }), [
+    modes,
+    selectedMode,
+    setSelectedMode,
+    currentMode,
+    selectedModel,
+    setSelectedModel,
+    generationParams,
+    setGenerationParams,
+  ]);
+
+  const uiValue = useMemo<PromptUIState>(() => ({
+    showHistory,
+    setShowHistory,
+    showResults,
+    setShowResults,
+    showSettings,
+    setShowSettings,
+    showShortcuts,
+    setShowShortcuts,
+    showImprover,
+    setShowImprover,
+    showBrainstorm,
+    setShowBrainstorm,
+    currentAIIndex,
+    setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
+  }), [
+    showHistory,
+    setShowHistory,
+    showResults,
+    setShowResults,
+    showSettings,
+    setShowSettings,
+    showShortcuts,
+    setShowShortcuts,
+    showImprover,
+    setShowImprover,
+    showBrainstorm,
+    setShowBrainstorm,
+    currentAIIndex,
+    setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
+  ]);
+
+  const sessionValue = useMemo<PromptSessionState>(() => ({
+    suggestionsData,
+    setSuggestionsData,
+    conceptElements,
+    setConceptElements,
+    promptContext,
+    setPromptContext,
+    currentPromptUuid,
+    setCurrentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+  }), [
+    suggestionsData,
+    setSuggestionsData,
+    conceptElements,
+    setConceptElements,
+    promptContext,
+    setPromptContext,
+    currentPromptUuid,
+    setCurrentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+  ]);
+
+  const highlightValue = useMemo<PromptHighlightState>(() => ({
+    initialHighlights,
+    setInitialHighlights,
+    initialHighlightsVersion,
+    setInitialHighlightsVersion,
+    canUndo,
+    setCanUndo,
+    canRedo,
+    setCanRedo,
+    latestHighlightRef,
+    persistedSignatureRef,
+    versionEditCountRef,
+    versionEditsRef,
+    undoStackRef,
+    redoStackRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+  }), [
+    initialHighlights,
+    setInitialHighlights,
+    initialHighlightsVersion,
+    setInitialHighlightsVersion,
+    canUndo,
+    setCanUndo,
+    canRedo,
+    setCanRedo,
+    latestHighlightRef,
+    persistedSignatureRef,
+    versionEditCountRef,
+    versionEditsRef,
+    undoStackRef,
+    redoStackRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+  ]);
+
+  const servicesValue = useMemo<PromptServicesState>(() => ({
+    promptOptimizer,
+    promptHistory,
+  }), [promptOptimizer, promptHistory]);
+
+  const actionsValue = useMemo<PromptActionsState>(() => ({
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
     setDisplayedPromptSilently,
     handleCreateNew,
     loadFromHistory,
+  }), [
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
+    setDisplayedPromptSilently,
+    handleCreateNew,
+    loadFromHistory,
+  ]);
 
-    // Navigation
+  const navigationValue = useMemo<PromptNavigationState>(() => ({
     navigate,
     uuid,
-  };
+  }), [navigate, uuid]);
 
-  return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
+  const combinedValue = useMemo<PromptStateContextValue>(() => ({
+    ...configValue,
+    ...uiValue,
+    ...sessionValue,
+    ...highlightValue,
+    ...servicesValue,
+    ...actionsValue,
+    ...navigationValue,
+  }), [
+    configValue,
+    uiValue,
+    sessionValue,
+    highlightValue,
+    servicesValue,
+    actionsValue,
+    navigationValue,
+  ]);
+
+  usePromptStatePersistence({ selectedModel, generationParams });
+  useDraftHistorySync({
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
+    promptOptimizer,
+    selectedModel,
+    generationParams,
+  });
+
+  return (
+    <PromptStateContext.Provider value={combinedValue}>
+      <PromptConfigContext.Provider value={configValue}>
+        <PromptUIContext.Provider value={uiValue}>
+          <PromptSessionContext.Provider value={sessionValue}>
+            <PromptHighlightContext.Provider value={highlightValue}>
+              <PromptServicesContext.Provider value={servicesValue}>
+                <PromptActionsContext.Provider value={actionsValue}>
+                  <PromptNavigationContext.Provider value={navigationValue}>
+                    {children}
+                  </PromptNavigationContext.Provider>
+                </PromptActionsContext.Provider>
+              </PromptServicesContext.Provider>
+            </PromptHighlightContext.Provider>
+          </PromptSessionContext.Provider>
+        </PromptUIContext.Provider>
+      </PromptConfigContext.Provider>
+    </PromptStateContext.Provider>
+  );
 }
-

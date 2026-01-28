@@ -66,3 +66,7 @@ export interface CacheStats {
   hitRate: number;
 }
 
+
+
+// Re-export AIService type for backward compatibility
+export type { AIService } from '../services/enhancement/services/types.ts';

@@ -1,23 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
+import type { HighlightSnapshot, StateSnapshot } from '@features/prompt-optimizer/context/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;
   setDisplayedPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
+  setPreviewPrompt?: (prompt: string | null) => void;
+  setPreviewAspectRatio?: (ratio: string | null) => void;
   [key: string]: unknown;
-}
-
-interface HighlightSnapshot {
-  signature?: string;
-  [key: string]: unknown;
-}
-
-interface StateSnapshot {
-  text: string;
-  highlight: HighlightSnapshot | null;
-  timestamp: number;
-  version: number;
 }
 
 type ChangeType = 'adding' | 'deleting' | null;
@@ -29,6 +20,7 @@ export interface UseUndoRedoParams {
     highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
+  onEdit?: (payload: { previousText: string; nextText: string; timestamp: number }) => void;
   undoStackRef: React.MutableRefObject<StateSnapshot[]>;
   redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
@@ -56,6 +48,7 @@ export function useUndoRedo({
   promptOptimizer,
   setDisplayedPromptSilently,
   applyInitialHighlightSnapshot,
+  onEdit,
   undoStackRef,
   redoStackRef,
   latestHighlightRef,
@@ -271,11 +264,16 @@ export function useUndoRedo({
       // Skip if text unchanged
       if (currentText === newText) return;
 
+      // Clear preview prompt once the user edits the output
+      promptOptimizer.setPreviewPrompt?.(null);
+      promptOptimizer.setPreviewAspectRatio?.(null);
+
       // Detect type of change for grouping logic
       const changeType: ChangeType = newText.length > currentText.length ? 'adding' : 'deleting';
 
       // DECISION: Do we start a new undo group?
-      if (shouldCreateUndoPoint(currentText, newText, cursorPosition)) {
+      const shouldCreate = shouldCreateUndoPoint(currentText, newText, cursorPosition);
+      if (shouldCreate) {
         // IMPORTANT: Save the state *BEFORE* the change (currentText)
         pushToUndoStack(createSnapshot(currentText));
         
@@ -285,6 +283,12 @@ export function useUndoRedo({
         
         // Increment version for this new editing session
         setVersionCounter(v => v + 1);
+
+        onEdit?.({
+          previousText: currentText,
+          nextText: newText,
+          timestamp: Date.now(),
+        });
       }
 
       // Update tracking refs
@@ -298,6 +302,7 @@ export function useUndoRedo({
     },
     [
       promptOptimizer,
+      onEdit,
       isApplyingHistoryRef,
       shouldCreateUndoPoint,
       pushToUndoStack,
@@ -328,4 +333,3 @@ export function useUndoRedo({
     clearHistory,
   };
 }
-

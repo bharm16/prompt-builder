@@ -1,8 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { parseConceptOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for parsing text concept descriptions into structured elements.
@@ -26,7 +25,7 @@ export class ConceptParsingService {
     const startTime = performance.now();
     const operation = 'parseConcept';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       conceptLength: params.concept.length,
     });
@@ -58,18 +57,23 @@ Return ONLY a JSON object with ALL elements:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'],
+      };
+      
       const elements = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_concept_parsing',
-          schema: parseConceptOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.5,
         }
       ) as Record<string, string>;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementCount: Object.keys(elements).length,
@@ -77,7 +81,7 @@ Return ONLY a JSON object with ALL elements:
       
       return { elements };
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -95,4 +99,3 @@ Return ONLY a JSON object with ALL elements:
     }
   }
 }
-

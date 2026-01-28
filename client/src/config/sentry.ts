@@ -1,15 +1,18 @@
 import * as Sentry from '@sentry/react';
 import type { User } from '../hooks/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT || import.meta.env.MODE || 'development';
 const RELEASE = import.meta.env.VITE_APP_VERSION || 'unknown';
+const log = logger.child('sentry');
 
 export function initSentry(): void {
   // Only initialize Sentry if DSN is provided
   if (!SENTRY_DSN) {
     if (import.meta.env.DEV) {
-      console.warn('Sentry DSN not configured. Error tracking is disabled.');
+      log.warn('Sentry DSN not configured; error tracking disabled', { operation: 'initSentry' });
     }
     return;
   }
@@ -102,19 +105,23 @@ export function initSentry(): void {
 }
 
 // Helper to set user context (call after Firebase auth)
-export function setSentryUser(user: User | null): void {
+export function setSentryUser(
+  user: { uid?: string; email?: string | null; displayName?: string | null } | null
+): void {
   if (!SENTRY_DSN) return;
 
   if (user) {
     const uid = typeof user.uid === 'string' ? user.uid : undefined;
     const email = typeof user.email === 'string' ? user.email : undefined;
     const displayName = typeof user.displayName === 'string' ? user.displayName : undefined;
-    
-    Sentry.setUser({
-      id: uid,
-      email: email,
-      username: displayName || email?.split('@')[0],
-    });
+
+    const username = displayName || email?.split('@')[0];
+    const sentryUser: { id?: string; email?: string; username?: string } = {};
+    if (uid) sentryUser.id = uid;
+    if (email) sentryUser.email = email;
+    if (username) sentryUser.username = username;
+
+    Sentry.setUser(Object.keys(sentryUser).length > 0 ? sentryUser : null);
   } else {
     Sentry.setUser(null);
   }
@@ -135,7 +142,11 @@ export function addSentryBreadcrumb(category: string, message: string, data: Rec
 // Helper to capture exceptions manually
 export function captureException(error: unknown, context: Record<string, unknown> = {}): void {
   if (!SENTRY_DSN) {
-    console.error('Error:', error, context);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('captureException called but Sentry is not configured', errObj, {
+      operation: 'captureException',
+      context,
+    });
     return;
   }
 
@@ -151,9 +162,11 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   if (!SENTRY_DSN) {
     // Fallback logging when Sentry is not configured
     if (level === 'error') {
-      console.error(message, context);
+      log.error(message, undefined, { operation: 'captureMessage', context });
+    } else if (level === 'warning') {
+      log.warn(message, { operation: 'captureMessage', context });
     } else {
-      console.warn(`[${level}]`, message, context);
+      log.info(message, { operation: 'captureMessage', context });
     }
     return;
   }
@@ -167,4 +180,3 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
 }
 
 export default Sentry;
-

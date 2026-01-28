@@ -1,16 +1,20 @@
 import { memo, useRef, useEffect } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  ArrowSquareOut,
+  Check,
   Copy,
   Download,
   FileText,
-  Check,
-  Share2,
-  RotateCcw,
-  RotateCw,
-} from 'lucide-react';
-import { Button } from '../../../components/Button';
+  Icon,
+  Share,
+} from '@promptstudio/system/components/ui';
 import type { FloatingToolbarProps } from '../types';
-import { ModelMenu } from './ModelMenu';
+import { usePromptConfig } from '../context/PromptStateContext';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
+import { cn } from '@/utils/cn';
 
 /**
  * Prompt Actions Component
@@ -32,134 +36,163 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   onRedo,
   canUndo,
   canRedo,
-  promptText = '',
-  showModelMenu,
-  onToggleModelMenu,
+  primaryVisible = true,
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const copyMenuRef = useRef<HTMLDivElement>(null);
+  const { selectedModel } = usePromptConfig();
+  const selectedModelId = AI_MODEL_IDS.find((modelId) => modelId === selectedModel) ?? null;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
         onToggleExportMenu(false);
       }
-      if (copyMenuRef.current && !copyMenuRef.current.contains(event.target as Node)) {
-        onToggleModelMenu(false);
-      }
     };
 
-    if (showExportMenu || showModelMenu) {
+    if (showExportMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
     return undefined;
-  }, [showExportMenu, showModelMenu, onToggleExportMenu, onToggleModelMenu]);
+  }, [showExportMenu, onToggleExportMenu]);
 
-  const handleCopyClick = (): void => {
-    if (showModelMenu) {
-      // If menu is open, just copy directly
-      onCopy();
-      onToggleModelMenu(false);
-    } else {
-      // Toggle menu
-      onToggleModelMenu(true);
+  const handleGenerateWithSelectedModel = (): void => {
+    if (!selectedModelId) {
+      return;
     }
+
+    onCopy();
+    window.open(AI_MODEL_URLS[selectedModelId], '_blank', 'noopener,noreferrer');
+    onToggleExportMenu(false);
   };
 
+  const generateButtonLabel = selectedModelId
+    ? `Generate with ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Generate with model';
+  const generateButtonTitle = selectedModelId
+    ? `Generate with ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Select a model to generate';
+
   return (
-    <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
-      <div className="relative -mx-0.5" ref={copyMenuRef}>
-        <Button
-          onClick={handleCopyClick}
-          svgOnly={!copied}
-          variant="ghost"
-          prefix={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          className={copied ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
-          aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
-          aria-expanded={showModelMenu}
-          title="Copy"
-        >
-          {copied && <span className="text-label-12">Copied!</span>}
-        </Button>
-        {showModelMenu && (
-          <ModelMenu
-            promptText={promptText}
-            onCopy={onCopy}
-            onClose={() => onToggleModelMenu(false)}
-          />
-        )}
-      </div>
+    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-2">
+      {/* Primary action(s) - only when hovering editor or when there is an active selection */}
+      {primaryVisible && (
+        <>
+          <Button
+            onClick={onCopy}
+            variant="ghost"
+            className={cn(
+              'gap-2 bg-surface-2 text-muted transition-colors hover:bg-surface-3',
+              copied && 'bg-info-50 text-accent hover:bg-info-100'
+            )}
+            aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
+            title="Copy"
+          >
+            {copied ? (
+              <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
+            ) : (
+              <Icon icon={Copy} size="sm" weight="bold" aria-hidden="true" />
+            )}
+            <span className="text-body-sm font-medium">{copied ? 'Copied' : 'Copy'}</span>
+          </Button>
+
+          <Button
+            onClick={handleGenerateWithSelectedModel}
+            variant="ghost"
+            className="gap-2 bg-surface-2 text-muted transition-colors hover:bg-surface-3"
+            aria-label={generateButtonLabel}
+            title={generateButtonTitle}
+            disabled={!selectedModelId}
+          >
+            <Icon icon={ArrowSquareOut} size="sm" weight="bold" aria-hidden="true" />
+            <span className="text-body-sm font-medium">{generateButtonLabel}</span>
+          </Button>
+        </>
+      )}
 
       <Button
         onClick={onShare}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-        className={shared ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
+        className={cn(
+          'bg-surface-2 text-muted transition-colors hover:bg-surface-3',
+          shared && 'bg-info-50 text-accent hover:bg-info-100'
+        )}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
-      />
+      >
+        {shared ? (
+          <Icon icon={Check} size="xs" weight="bold" aria-hidden="true" />
+        ) : (
+          <Icon icon={Share} size="xs" weight="bold" aria-hidden="true" />
+        )}
+      </Button>
 
-      <div className="relative -mx-0.5" ref={exportMenuRef}>
+      <div className="relative" ref={exportMenuRef}>
         <Button
           onClick={() => onToggleExportMenu(!showExportMenu)}
-          svgOnly
+          size="icon"
           variant="ghost"
-          prefix={<Download className="h-3 w-3" />}
+          className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
           aria-expanded={showExportMenu}
           title="Export"
-        />
+        >
+          <Icon icon={Download} size="xs" weight="bold" aria-hidden="true" />
+        </Button>
         {showExportMenu && (
-          <div className="absolute bottom-full right-0 mb-geist-2 w-36 bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1 z-30">
-            <button
+          <div className="absolute bottom-full right-0 mb-2 w-36 bg-app border border-border rounded-lg shadow-md py-1 z-30">
+            <Button
               onClick={() => onExport('text')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               Text (.txt)
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onExport('markdown')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               Markdown (.md)
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onExport('json')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <Icon icon={FileText} size="sm" weight="bold" aria-hidden="true" />
               JSON (.json)
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      <div className="w-px h-geist-4 bg-geist-accents-2 -mx-0.5" />
+      <div className="mx-1 h-5 w-px bg-border" />
 
       <Button
         onClick={onUndo}
         disabled={!canUndo}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={<RotateCcw className="h-3 w-3" />}
-        className="-mx-0.5"
+        className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Undo"
-      />
+      >
+        <Icon icon={ArrowCounterClockwise} size="xs" weight="bold" aria-hidden="true" />
+      </Button>
       <Button
         onClick={onRedo}
         disabled={!canRedo}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={<RotateCw className="h-3 w-3" />}
-        className="-mx-0.5"
+        className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Redo"
-      />
+      >
+        <Icon icon={ArrowClockwise} size="xs" weight="bold" aria-hidden="true" />
+      </Button>
     </div>
   );
 });
 
 PromptActions.displayName = 'PromptActions';
-

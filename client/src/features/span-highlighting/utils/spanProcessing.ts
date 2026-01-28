@@ -17,8 +17,8 @@ export interface SpanMetadata {
 }
 
 export interface SpanWithText {
-  start: number;
-  end: number;
+  start?: number;
+  end?: number;
   quote?: string;
   text?: string;
   role?: string;
@@ -43,6 +43,12 @@ export interface SpanContext {
   nearbySpans: NearbySpan[];
 }
 
+interface SpanFingerprintOptions {
+  maxSpans?: number;
+  maxNearby?: number;
+  maxTextLength?: number;
+}
+
 /**
  * Find spans that are near the selected text
  */
@@ -62,8 +68,13 @@ export function findNearbySpans(
     return [];
   }
 
+  type SpanWithRange = SpanWithText & { start: number; end: number };
+
   return allSpans
-    .filter((span) => {
+    .filter((span): span is SpanWithRange => {
+      if (typeof span.start !== 'number' || typeof span.end !== 'number') {
+        return false;
+      }
       // Don't include the selected span itself
       if (span.start === selectedStart && span.end === selectedEnd) {
         return false;
@@ -88,11 +99,11 @@ export function findNearbySpans(
         text: (span.quote || span.text || '').trim(),
         role: span.role || span.category || 'unknown',
         category: span.category || span.role || 'unknown',
-        confidence: span.confidence,
         distance,
         position,
         start: span.start,
         end: span.end,
+        ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
       };
     })
     .filter((span) => span.text) // Filter out spans with empty text
@@ -108,7 +119,7 @@ export function buildSimplifiedSpans(spans: unknown[]): NormalizedSpan[] {
   
   return sanitized
     .map(normalizeSpan)
-    .filter((span): span is NormalizedSpan => span !== null && span.text && span.text.length > 0);
+    .filter((span): span is NormalizedSpan => span !== null && typeof span.text === 'string' && span.text.length > 0);
 }
 
 /**
@@ -134,3 +145,33 @@ export function prepareSpanContext(
   };
 }
 
+/**
+ * Build a stable fingerprint for span context (for caching/deduplication)
+ */
+export function buildSpanFingerprint(
+  simplifiedSpans: NormalizedSpan[],
+  nearbySpans: NearbySpan[],
+  options: SpanFingerprintOptions = {}
+): string {
+  const {
+    maxSpans = 6,
+    maxNearby = 4,
+    maxTextLength = 40,
+  } = options;
+
+  const normalize = (value: string): string =>
+    value.trim().toLowerCase().slice(0, maxTextLength);
+
+  const spanPart = simplifiedSpans
+    .slice(0, maxSpans)
+    .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
+    .join('|');
+
+  const nearbyPart = nearbySpans
+    .slice(0, maxNearby)
+    .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
+    .join('|');
+
+  const combined = [spanPart, nearbyPart].filter(Boolean).join('||');
+  return combined;
+}

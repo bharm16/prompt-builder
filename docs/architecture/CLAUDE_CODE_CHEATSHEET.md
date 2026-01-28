@@ -5,6 +5,7 @@
 ```
 Follow [Frontend: VideoConceptBuilder | Backend: PromptOptimizationService] pattern.
 
+Each file should have ONE reason to change.
 Show me the proposed file structure BEFORE implementing.
 ```
 
@@ -12,59 +13,60 @@ Show me the proposed file structure BEFORE implementing.
 
 ## 📋 Copy-Paste Templates (Choose One)
 
-### 1️⃣ New Frontend Feature (Copy This)
+### 1️⃣ New Frontend Feature
 ```
 Add [FEATURE]
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- ComponentName.jsx (orchestrator, max 500 lines)
-- hooks/ (useReducer)
-- api/ (fetch calls)
-- components/ (UI < 200 lines each)
+- ComponentName.jsx (orchestration only—no business logic)
+- hooks/ (state + handlers, testable with ≤2 mocks)
+- api/ (fetch calls + response parsing)
+- components/ (display only—receives props, renders UI)
 
+RESPONSIBILITY CHECK: Each file = one sentence description, no "and"
 REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST
 ```
 
-### 2️⃣ New Backend Feature (Copy This)
+### 2️⃣ New Backend Feature
 ```
 Add [FEATURE]
 
 ARCHITECTURE: PromptOptimizationService pattern
-- MainService.js (orchestrator, max 500 lines)
-- services/feature-name/ (specialized services < 300 lines)
+- MainService.js (coordination only—delegates to specialized services)
+- services/feature-name/ (one responsibility per service)
 - templates/ (.md files for prompts)
 
-REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
+RESPONSIBILITY CHECK: Each service = one reason to change
+REFERENCE: server/src/services/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 ```
 
-### 3️⃣ Modify Existing Code (Copy This)
+### 3️⃣ Modify Existing Code
 ```
 Modify [FILE] to [DO WHAT]
 
-CURRENT: [file path] ([run: wc -l file])
-CONSTRAINTS:
-- Maintain existing pattern
-- No file over [500 orchestrators | 200 components | 300 services]
-- If exceeds, refactor first
+BEFORE CHANGING:
+- What responsibilities does this file currently have?
+- Does this change add a new responsibility?
+- If yes: extract to appropriate layer first
 
 SHOW WHAT CHANGES BEFORE implementing
 ```
 
-### 4️⃣ Full-Stack Feature (Copy This)
+### 4️⃣ Full-Stack Feature
 ```
 Add [FEATURE] (full-stack)
 
 BACKEND FIRST:
 - Service: server/src/services/[name]/
 - Pattern: PromptOptimizationService
-- Max 500 lines orchestrator, 300 lines specialized services
+- Each service: one responsibility, testable with ≤2 mocks
 
 THEN FRONTEND:
 - Component: client/src/features/[name]/
 - Pattern: VideoConceptBuilder
-- Max 500 lines orchestrator, 200 lines UI components
+- Orchestrator: wiring only. Logic in hooks/services.
 
 API CONTRACT:
 - [POST /api/endpoint { request }]
@@ -75,153 +77,108 @@ SHOW COMPLETE STRUCTURE FIRST
 
 ---
 
-## 🎯 Pattern Selection (CRITICAL)
+## 🎯 Pattern Selection
 
-**Always specify the correct pattern for the location:**
-
-| Working On | Pattern | Reference File |
-|------------|---------|----------------|
-| **Frontend** (client/src/) | VideoConceptBuilder | `client/src/components/VideoConceptBuilder/` |
-| **Backend** (server/src/) | PromptOptimizationService | `server/src/services/prompt-optimization/PromptOptimizationService.js` |
+| Working On | Pattern | Reference |
+|------------|---------|-----------|
+| **Frontend** | VideoConceptBuilder | `client/src/components/VideoConceptBuilder/` |
+| **Backend** | PromptOptimizationService | `server/src/services/PromptOptimizationService.js` |
 
 ### Frontend Structure
 ```
 ComponentName/
-├── ComponentName.jsx (orchestrator)
-├── hooks/ (useReducer, custom hooks)
-├── api/ (fetch wrappers) ← Frontend uses api/
-├── config/ (constants)
-├── utils/ (pure functions)
-└── components/ (UI pieces)
+├── ComponentName.jsx   → Wires pieces together. No if/else business logic.
+├── hooks/              → State, handlers, derived values. Testable alone.
+├── api/                → HTTP calls + response parsing. One place for endpoint changes.
+├── config/             → Constants, defaults. Change without touching logic.
+├── utils/              → Pure transforms. No dependencies.
+└── components/         → Display. Props in, JSX out.
 ```
 
 ### Backend Structure
 ```
 ServiceName/
-├── MainService.js (orchestrator)
-├── service-name/ (specialized services) ← Backend uses services/
-│   ├── SpecializedService.js
-│   └── Repository.js
-└── templates/ (.md files)
-```
-
-**Rule of thumb:**
-- `api/` = frontend fetches data
-- `services/` = backend processes data
-
----
-
-## 🚨 File Size Limits (Enforce These)
-
-| Type | Max Lines |
-|------|-----------|
-| Orchestrator Component/Service | **500** |
-| Regular UI Component | **200** |
-| React Hook | **150** |
-| Specialized Service | **300** |
-| Utility | **100** |
-| Config | **200** |
-| API Layer | **150** |
-
-**Note:** Orchestrators compose pieces (imports, hooks, handlers, JSX). Regular components contain UI logic. If your orchestrator has business logic, extract it.
-
----
-
-## ✅ After Every Claude Code Run
-
-```bash
-# Run this to check sizes
-find client/src server/src -type f \( -name "*.js" -o -name "*.jsx" \) -exec wc -l {} + | sort -rn | head -20
-
-# Or check specific file
-wc -l [file-path]
+├── MainService.js      → Coordinates. Doesn't implement.
+├── services/           → One responsibility each.
+│   ├── ValidationService.js
+│   └── TransformService.js
+├── repositories/       → Data access. Abstracts storage.
+└── templates/          → External prompts.
 ```
 
 ---
 
-## 📚 Reference Examples (Point to These)
+## 🚨 The Only Questions That Matter
 
-**Frontend:**
-- Pattern: `client/src/components/VideoConceptBuilder/`
-- Docs: `client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md`
+Before creating or splitting ANY file:
 
-**Backend:**
-- Pattern: `server/src/services/prompt-optimization/PromptOptimizationService.js`
-- Alt: `server/src/services/VideoConceptService.js`
+1. **"Can I describe this in one sentence without 'and'?"**
+   - ✅ "Manages wizard navigation"
+   - ❌ "Manages wizard navigation and validates input and saves to API"
+
+2. **"Can I test this with ≤2 mocks?"**
+   - If you need 5 mocks, it knows too much
+
+3. **"If I change X, what else breaks?"**
+   - If changing an API response touches 6 files, consolidate the parser
 
 ---
 
-## 🎯 The Formula
+## ✅ After Every Change
 
-**Every claude-code request should have:**
+Ask yourself:
 
-1. ✓ What to build
-2. ✓ Which pattern to follow (Frontend: VideoConceptBuilder | Backend: PromptOptimizationService)
-3. ✓ Reference to existing example
-4. ✓ File size constraints
-5. ✓ "Show structure BEFORE implementing"
+| Question | If "No" |
+|----------|---------|
+| Can I explain each file in ≤10 words? | Responsibility unclear—simplify or rename |
+| Do files that change together live together? | Shotgun surgery—consolidate |
+| Can I test each piece with ≤2 mocks? | Too much coupling—extract dependencies |
+| If I delete this file, does exactly one thing disappear? | Mixed responsibilities—split by concern |
 
-**Example:**
-```bash
-claude-code "Add PDF export feature
+---
 
-ARCHITECTURE: VideoConceptBuilder pattern
-- Orchestrator: client/src/features/prompt-optimizer/PdfExportManager.jsx (< 500 lines)
-- UI Components: components/PdfExportButton.jsx, components/PdfPreview.jsx (< 200 lines each)
-- Hook: hooks/usePdfExport.js (< 150 lines)
-- API: api/promptOptimizerApi.js (add exportToPdf method)
+## 🔥 Red Flags
 
-REFERENCE: client/src/components/VideoConceptBuilder/
-SHOW STRUCTURE FIRST"
+### ❌ Stop Immediately If You See
+- Splitting a file "because it's too long" (not a valid reason)
+- Creating a component used in exactly one place
+- Extracting code that always changes with its caller
+- Adding a wrapper that just calls another function
+
+### ⚠️ Investigate If You See
+- `if` statements with business logic in an orchestrator
+- A function using more data from another module than its own
+- Mocking 3+ things to test one function
+- "utils" file with unrelated functions
+
+---
+
+## 📚 Reference
+
+**Frontend:** `client/src/components/VideoConceptBuilder/`
+**Backend:** `server/src/services/PromptOptimizationService.js`
+
+---
+
+## 🔧 When Things Go Wrong
+
+```
+Refactor [file] following [pattern]
+
+PROBLEM: [describe actual issue—multiple responsibilities, hard to test, etc.]
+NOT: "it's too long"
+
+SPLIT BY: responsibility, not arbitrary boundaries
+SHOW REFACTORING PLAN FIRST
 ```
 
 ---
 
-## 🔥 Red Flags (Stop and Refactor First)
-
-- UI component approaching 200 lines (extract subcomponents)
-- Orchestrator approaching 500 lines (extract hooks/services)
-- Specialized service approaching 300 lines (split responsibilities)
-- Adding API calls inline (must go in api/ layer)
-- Adding useState when useReducer exists
-- Copy-pasting code (extract to shared utility)
-- Business logic in orchestrators (extract to hooks/services)
-- Hardcoding config (extract to config/)
-
----
-
-## 💡 Pro Tips
-
-1. **Always reference existing code**: "Follow the pattern in [specific file]"
-2. **Always request structure first**: "Show me the proposed structure BEFORE implementing"
-3. **Always validate after**: Run `wc -l [files]` to check sizes
-4. **Use project knowledge**: Your docs are indexed, mention them
-5. **Be specific with limits**: "max 500 lines orchestrator, 200 lines UI components" not "keep it small"
-6. **Understand orchestrator vs component**: Orchestrators compose (imports, hooks, handlers), components contain UI logic
-
----
-
-## 🔧 When You Forget
-
-If Claude Code creates a mess (god object, tight coupling, etc):
-
-```bash
-claude-code "Refactor [file] following [VideoConceptBuilder | PromptOptimizationService] pattern
-
-CURRENT: [wc -l file] lines with [describe problems]
-TARGET: Follow client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md
-SHOW REFACTORING PLAN FIRST"
-```
-
----
-
-## 📱 Mobile Quick Reference (Memorize This)
+## 📱 Quick Memory Aid
 
 ```
 Pattern: [VideoConceptBuilder | PromptOptimizationService]
-Reference: [existing similar code]
-Limits: [500 orchestrator | 200 UI | 300 service]
-Show structure first ← ALWAYS SAY THIS
+Test: One sentence description, no "and"
+Test: ≤2 mocks to test it
+Show structure first
 ```
-
-That's it. Keep this tab open when using Claude Code.

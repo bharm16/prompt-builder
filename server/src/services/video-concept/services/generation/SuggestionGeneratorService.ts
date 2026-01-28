@@ -1,11 +1,12 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { PromptBuilderService } from './SystemPromptBuilder.ts';
 import { TAXONOMY } from '#shared/taxonomy.ts';
-import type { AIService } from '../../../prompt-optimization/types.js';
-import type { PreferenceRepository } from '../../repositories/PreferenceRepository.js';
-import type { CacheService } from '../../../cache/CacheService.js';
+import type { AIService } from '@services/prompt-optimization/types';
+import type { PreferenceRepository } from '@services/video-concept/repositories/PreferenceRepository';
+import type { CacheService } from '@services/cache/CacheService';
+import type { ILogger } from '@interfaces/ILogger';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'] as const;
 
@@ -105,7 +106,7 @@ export class SuggestionGeneratorService {
       ? TAXONOMY.SUBJECT.id 
       : FIELD_CATEGORY_MAP[params.elementType];
 
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       normalizedElementType,
@@ -125,7 +126,7 @@ export class SuggestionGeneratorService {
 
     const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'creative-suggestions');
     if (cached) {
-      this.log.debug(`${operation} cache hit`, {
+      this.log.debug('Cache hit.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         suggestionCount: cached.suggestions.length,
@@ -134,17 +135,34 @@ export class SuggestionGeneratorService {
     }
 
     // Build system prompt with taxonomy scope
-    const systemPrompt = this.promptBuilder.buildSystemPrompt({
+    const systemPromptParams: {
+      elementType: string;
+      taxonomyScope?: string;
+      currentValue?: string;
+      context?: Record<string, string>;
+      concept?: string;
+    } = {
       elementType: normalizedElementType,
-      taxonomyScope,
-      currentValue: params.currentValue,
-      context: params.context,
-      concept: params.concept,
-    });
+    };
+    
+    if (taxonomyScope !== undefined) {
+      systemPromptParams.taxonomyScope = taxonomyScope;
+    }
+    if (params.currentValue !== undefined) {
+      systemPromptParams.currentValue = params.currentValue;
+    }
+    if (params.context !== undefined) {
+      systemPromptParams.context = params.context;
+    }
+    if (params.concept !== undefined) {
+      systemPromptParams.concept = params.concept;
+    }
+    
+    const systemPrompt = this.promptBuilder.buildSystemPrompt(systemPromptParams);
 
     // Define schema for validation
-    const schema = {
-      type: 'array',
+    const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
+      type: 'array' as const,
       items: {
         required: ['text', 'explanation'],
       },
@@ -173,9 +191,16 @@ export class SuggestionGeneratorService {
     // Apply semantic compatibility filtering if context exists
     let filteredSuggestions = suggestions;
     if (params.context && Object.keys(params.context).length > 0) {
+      const filterParams: { elementType: string; context: Record<string, string>; concept?: string } = {
+        elementType: normalizedElementType,
+        context: params.context,
+      };
+      if (params.concept !== undefined) {
+        filterParams.concept = params.concept;
+      }
       filteredSuggestions = await this.compatibilityService.filterBySemanticCompatibility(
         suggestions,
-        { elementType: normalizedElementType, context: params.context, concept: params.concept }
+        filterParams
       );
     }
 
@@ -193,7 +218,7 @@ export class SuggestionGeneratorService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       elementType: normalizedElementType,
@@ -281,7 +306,7 @@ export class SuggestionGeneratorService {
     const startTime = performance.now();
     const operation = 'getAlternativePhrasings';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       valueLength: params.value.length,
@@ -305,8 +330,8 @@ Return ONLY a JSON array:
 ]`;
 
     try {
-      const schema = {
-        type: 'array',
+      const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
+        type: 'array' as const,
         items: {
           required: ['text', 'tone'],
         },
@@ -324,7 +349,7 @@ Return ONLY a JSON array:
         }
       ) as AlternativePhrasing[];
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         alternativeCount: alternatives.length,
@@ -332,7 +357,7 @@ Return ONLY a JSON array:
       
       return { alternatives };
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,
@@ -341,4 +366,3 @@ Return ONLY a JSON array:
     }
   }
 }
-

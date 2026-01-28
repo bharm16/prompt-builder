@@ -2,7 +2,12 @@
 
 ## Overview
 
-Successfully implemented a **dictionary-based NLP fast-path** for span labeling that **bypasses expensive LLM calls** for 60-70% of requests, achieving:
+The NLP fast-path is now a **neuro-symbolic pipeline** for span labeling that reduces LLM calls by using:
+- **Closed vocabulary matching** (Aho-Corasick)
+- **Regex pattern extraction** (fps, durations, aspect ratios, f-stops, color temperature)
+- **GLiNER open vocabulary** (subjects, actions, environments, style, audio)
+
+The LLM remains the fallback when coverage or category completeness is insufficient.
 
 - **4000x speedup** over LLM calls (0.2ms vs 800ms average)
 - **$0 cost** vs $0.0005 per LLM call
@@ -15,7 +20,7 @@ Successfully implemented a **dictionary-based NLP fast-path** for span labeling 
 
 **Created:** `server/src/llm/span-labeling/nlp/vocab.json`
 
-Comprehensive vocabulary database with **281 terms** across **8 taxonomy categories**:
+Curated vocabulary database across technical, lighting, style, and audio taxonomy categories:
 
 - **camera.movement**: 35 terms (Pan, Tilt, Dolly, Crane, etc.)
 - **shot.type**: 39 terms (Close-Up, Wide Shot, Bird's-Eye View, etc.)
@@ -31,10 +36,10 @@ Comprehensive vocabulary database with **281 terms** across **8 taxonomy categor
 **Created:** `server/src/llm/span-labeling/nlp/NlpSpanService.ts`
 
 Core features:
-- **Regex-based matching** for deterministic extraction
+- **Aho-Corasick + regex** for deterministic extraction
+- **GLiNER open-vocabulary extraction** with taxonomy mapping
 - **Case-insensitive** matching with proper word boundaries
 - **Multi-word term support** (e.g., "Over-the-shoulder shot")
-- **Verb conjugation handling** (pan/pans/panning, dolly/dollies)
 - **Character offset tracking** for precise span positioning
 - **Overlap resolution** with preference for longer, more specific spans
 
@@ -52,17 +57,17 @@ Rules check surrounding context (20 chars before/after) for contextual keywords.
 
 ### 4. Service Integration (Phase 3)
 
-**Modified:** `server/src/llm/span-labeling/SpanLabelingService.js`
+**Modified:** `server/src/llm/span-labeling/SpanLabelingService.ts`
 
 Integration flow:
-1. **NLP Fast-Path** attempts dictionary matching first
-2. If ≥3 spans found → **return immediately** (bypass LLM)
-3. If <3 spans → **fall back to LLM** (hybrid mode)
+1. **NLP Fast-Path** attempts neuro-symbolic extraction first
+2. If coverage/category thresholds are met → **return immediately** (bypass LLM)
+3. If coverage is insufficient → **fall back to LLM** (hybrid mode)
 4. Track metrics: latency, span count, cost savings
 
 ### 5. Configuration (Phase 5)
 
-**Modified:** `server/src/llm/span-labeling/config/SpanLabelingConfig.js`
+**Modified:** `server/src/llm/span-labeling/config/SpanLabelingConfig.ts`
 
 New configuration section:
 ```javascript
@@ -72,6 +77,13 @@ NLP_FAST_PATH: {
   MIN_COVERAGE_PERCENT: 30,       // Minimum coverage threshold
   TRACK_METRICS: true,            // Enable metrics tracking
   TRACK_COST_SAVINGS: true        // Enable cost telemetry
+},
+NEURO_SYMBOLIC: {
+  GLINER: {
+    ENABLED: true,
+    MULTI_LABEL: false,
+    LABEL_THRESHOLDS: {}          // Optional per-label overrides
+  }
 }
 ```
 
@@ -161,8 +173,8 @@ const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
 
 ## Files Modified
 
-1. `server/src/llm/span-labeling/SpanLabelingService.js` - Added NLP fast-path integration
-2. `server/src/llm/span-labeling/config/SpanLabelingConfig.js` - Added configuration flags
+1. `server/src/llm/span-labeling/SpanLabelingService.ts` - Added NLP fast-path integration
+2. `server/src/llm/span-labeling/config/SpanLabelingConfig.ts` - Added configuration flags
 
 ## Testing & Validation
 
@@ -216,4 +228,3 @@ The system is **production-ready** and will provide significant performance and 
 
 **Implementation Date:** November 23, 2025
 **Status:** ✅ Complete and Validated
-

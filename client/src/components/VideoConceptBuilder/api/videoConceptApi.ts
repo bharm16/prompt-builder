@@ -6,7 +6,6 @@
  * Uses Zod schemas for runtime validation at API boundaries.
  */
 
-import { API_CONFIG } from '@config/api.config';
 import {
   ValidationResultSchema,
   CompatibilityScoreSchema,
@@ -22,6 +21,7 @@ import {
   type TechnicalParams,
   type CompleteSceneResponse,
 } from './schemas';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 /**
  * Base fetch wrapper with error handling
@@ -31,11 +31,12 @@ async function apiFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<unknown> {
+  const authHeaders = await buildFirebaseAuthHeaders();
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
       ...options.headers,
     },
   });
@@ -239,4 +240,3 @@ export class VideoConceptApi {
     return {};
   }
 }
-

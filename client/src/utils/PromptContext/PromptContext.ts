@@ -131,11 +131,11 @@ export class PromptContext {
   /**
    * Deserialize context from stored JSON
    */
-  static fromJSON(json: PromptContextJSON | null | undefined): PromptContext | null {
+  static fromJSON(json: PromptContextJSON | Record<string, unknown> | null | undefined): PromptContext | null {
     if (!json) return null;
-    return new PromptContext(json.elements || {}, json.metadata || {});
+    const data = json as PromptContextJSON;
+    return new PromptContext(data.elements || {}, data.metadata || {});
   }
 }
 
 export default PromptContext;
-

@@ -1,3 +1,4 @@
+import React from 'react';
 import { expect, afterEach, vi } from 'vitest';
 // Ensure all tests run with test environment semantics
 process.env.NODE_ENV = 'test';
@@ -31,7 +32,7 @@ Object.defineProperty(window, 'matchMedia', {
 const localStorageMock = (() => {
   let store = {};
   return {
-    getItem: vi.fn((key) => store[key] || null),
+    getItem: vi.fn((key) => store[key] ?? null),
     setItem: vi.fn((key, value) => {
       store[key] = String(value);
     }),
@@ -53,7 +54,18 @@ const localStorageMock = (() => {
 global.localStorage = localStorageMock;
 
 // Mock fetch
-global.fetch = vi.fn();
+// Provide a safe default fetch mock so tests that indirectly touch adapters
+// (e.g. GeminiAdapter) don't crash with "Cannot read properties of undefined (reading 'ok')".
+// Individual tests can still override `global.fetch` as needed.
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  statusText: 'OK',
+  json: async () => ({
+    candidates: [{ content: { parts: [{ text: 'stub' }] } }],
+  }),
+  text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'stub' }] } }] }),
+});
 
 // Mock Firebase
 vi.mock('./src/firebase.js', () => ({
@@ -91,4 +103,17 @@ vi.mock('./src/components/Toast.jsx', () => ({
   })),
   ToastProvider: ({ children }) => children,
   default: () => null,
+}));
+
+// Mock PromptStudio UI primitives used in components
+vi.mock('@promptstudio/system/components/ui/button', () => ({
+  Button: ({ children, ...props }) => React.createElement('button', props, children),
+}));
+
+vi.mock('@promptstudio/system/components/ui/input', () => ({
+  Input: (props) => React.createElement('input', props),
+}));
+
+vi.mock('@promptstudio/system/components/ui/textarea', () => ({
+  Textarea: (props) => React.createElement('textarea', props),
 }));

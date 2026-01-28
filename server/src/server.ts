@@ -10,9 +10,12 @@
 
 import type { Application } from 'express';
 import type { Server } from 'http';
+import type Redis from 'ioredis';
+import type { ServiceConfig } from './config/services.config.ts';
 import { logger } from './infrastructure/Logger.ts';
 import { closeRedisClient } from './config/redis.ts';
 import type { DIContainer } from './infrastructure/DIContainer.ts';
+import type { SpanLabelingCacheService } from './services/cache/SpanLabelingCacheService.ts';
 
 /**
  * Start the HTTP server
@@ -25,7 +28,7 @@ export async function startServer(
   app: Application,
   container: DIContainer
 ): Promise<Server> {
-  const config = container.resolve('config');
+  const config = container.resolve<ServiceConfig>('config');
   const PORT = config.server.port;
 
   return new Promise((resolve, reject) => {
@@ -35,18 +38,18 @@ export async function startServer(
           port: PORT,
           environment: config.server.environment,
           nodeVersion: process.version,
+          proxyUrl: `http://localhost:${PORT}`,
+          metricsPath: '/metrics',
+          healthPath: '/health',
         });
-
-        console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
-        console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
-        console.log(`💚 Health check at http://localhost:${PORT}/health`);
 
         resolve(server);
       });
 
       // Configure server timeouts
-      server.keepAliveTimeout = 65000; // 65 seconds (> ALB idle timeout)
-      server.headersTimeout = 66000;   // 66 seconds (> keepAliveTimeout)
+      server.keepAliveTimeout = 125000; // 125 seconds
+      server.headersTimeout = 126000;   // 126 seconds
+      server.timeout = 120000;          // 120 seconds (2 minutes)
 
       // Handle server errors
       server.on('error', (error) => {
@@ -54,8 +57,9 @@ export async function startServer(
         reject(error);
       });
 
-    } catch (error: any) {
-      logger.error('Failed to start server', error);
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to start server', errorObj);
       reject(error);
     }
   });
@@ -69,7 +73,7 @@ export async function startServer(
  */
 export function setupGracefulShutdown(server: Server, container: DIContainer): void {
   const shutdown = async (signal: string) => {
-    logger.info(`${signal} signal received: closing HTTP server`);
+    logger.info('Signal received; closing HTTP server.', { signal });
 
     // Stop accepting new connections
     server.close(async () => {
@@ -77,19 +81,21 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
 
       try {
         // Close Redis connection
-        const redisClient = container.resolve('redisClient');
+        const redisClient = container.resolve<Redis | null>('redisClient');
         await closeRedisClient(redisClient);
 
         // Stop cache cleanup interval
-        const spanLabelingCacheService = container.resolve('spanLabelingCacheService');
+        const spanLabelingCacheService =
+          container.resolve<SpanLabelingCacheService | null>('spanLabelingCacheService');
         if (spanLabelingCacheService && spanLabelingCacheService.stopPeriodicCleanup) {
           spanLabelingCacheService.stopPeriodicCleanup();
         }
 
         logger.info('All resources cleaned up successfully');
         process.exit(0);
-      } catch (error: any) {
-        logger.error('Error during graceful shutdown', error);
+      } catch (error) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Error during graceful shutdown', errorObj);
         process.exit(1);
       }
     });
@@ -112,7 +118,7 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled rejection', { reason, promise });
+    logger.error('Unhandled rejection', undefined, { reason, promise });
     shutdown('UNHANDLED_REJECTION');
   });
 }

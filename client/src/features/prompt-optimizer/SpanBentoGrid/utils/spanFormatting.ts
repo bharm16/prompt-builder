@@ -3,6 +3,9 @@
  */
 
 import type { RefObject } from 'react';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('spanFormatting');
 
 export interface Span {
   id: string;
@@ -25,7 +28,7 @@ export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | und
   ) as HTMLElement | null;
   
   if (!wrapper) {
-    console.warn('Span not found in editor:', span.id);
+    log.warn('Span not found in editor', { operation: 'scrollToSpan', spanId: span.id });
     return;
   }
   
@@ -37,11 +40,10 @@ export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | und
   });
   
   // Add temporary pulse animation
-  wrapper.classList.add('highlight-pulse');
+  wrapper.classList.add('ps-animate-span-pulse');
   
   // Remove pulse after animation completes (1000ms as defined in CSS)
   setTimeout(() => {
-    wrapper.classList.remove('highlight-pulse');
-  }, 1000);
+    wrapper.classList.remove('ps-animate-span-pulse');
+  }, 700);
 }
-

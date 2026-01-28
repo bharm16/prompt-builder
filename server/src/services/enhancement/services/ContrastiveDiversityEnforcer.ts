@@ -1,6 +1,13 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { Suggestion, AIService, ContrastiveDecodingContext, DiversityMetrics } from './types.js';
+import { detectProvider, type ProviderType } from '@utils/provider/ProviderDetector';
+import type {
+  Suggestion,
+  AIService,
+  ContrastiveDecodingContext,
+  DiversityMetrics,
+  OutputSchema,
+} from './types.js';
 
 /**
  * ContrastiveDiversityEnforcer
@@ -20,6 +27,7 @@ import type { Suggestion, AIService, ContrastiveDecodingContext, DiversityMetric
  * distinct ideas; models tend to cluster around the most probable synonyms."
  */
 export class ContrastiveDiversityEnforcer {
+  private readonly log = logger.child({ service: 'ContrastiveDiversityEnforcer' });
   private readonly config: {
     batchSizes: number[];
     temperatures: number[];
@@ -45,20 +53,41 @@ export class ContrastiveDiversityEnforcer {
    * @returns Array of diverse suggestions or null to use standard generation
    */
   async generateWithContrastiveDecoding(context: ContrastiveDecodingContext): Promise<Suggestion[] | null> {
-    const startTime = Date.now();
-    
-    if (!this.shouldUseContrastiveDecoding(context)) {
-      logger.debug('Contrastive decoding not needed for this context');
+    const operation = 'generateWithContrastiveDecoding';
+    const highlightedTextLength = context.highlightedText?.length ?? 0;
+    const systemPromptLength = context.systemPrompt.length;
+    const shouldUse = this.shouldUseContrastiveDecoding(context);
+
+    if (!shouldUse) {
+      this.log.debug('Contrastive decoding skipped', {
+        operation,
+        enabled: this.config.enabled,
+        isVideoPrompt: context.isVideoPrompt,
+        isPlaceholder: context.isPlaceholder,
+        highlightedTextLength,
+        systemPromptLength,
+      });
       return null; // Signal to use standard generation
     }
 
-    logger.info('Using contrastive decoding for enhanced diversity', {
+    const routing = this._getEnhancementRouting();
+    const startTime = Date.now();
+
+    this.log.debug('Contrastive decoding selected', {
+      operation,
       isVideoPrompt: context.isVideoPrompt,
-      highlightedText: context.highlightedText?.substring(0, 50),
+      isPlaceholder: context.isPlaceholder,
+      highlightedTextLength,
+      systemPromptLength,
+      provider: routing.provider,
+      model: routing.model,
+      batchSizes: this.config.batchSizes,
+      temperatures: this.config.temperatures,
     });
 
     try {
       const allSuggestions: Suggestion[] = [];
+      const modelOverrides = routing.model ? { model: routing.model } : {};
       
       // Batch 1: Standard temperature, no constraints
       const batch1 = await this._generateBatch({
@@ -67,6 +96,8 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[0]!,
         negativeConstraint: null,
         batchNumber: 1,
+        provider: routing.provider,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch1);
       
@@ -77,6 +108,8 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[1]!,
         negativeConstraint: this._buildNegativeConstraint(batch1),
         batchNumber: 2,
+        provider: routing.provider,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch2);
       
@@ -87,22 +120,41 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[2]!,
         negativeConstraint: this._buildNegativeConstraint([...batch1, ...batch2]),
         batchNumber: 3,
+        provider: routing.provider,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch3);
 
-      const totalTime = Date.now() - startTime;
+      const duration = Date.now() - startTime;
       
-      logger.info('Contrastive decoding completed', {
+      this.log.info('Contrastive decoding completed', {
+        operation,
+        duration,
         totalSuggestions: allSuggestions.length,
         batch1Count: batch1.length,
         batch2Count: batch2.length,
         batch3Count: batch3.length,
-        totalTime,
+        provider: routing.provider,
+        model: routing.model,
       });
 
       return allSuggestions;
     } catch (error) {
-      logger.error('Contrastive decoding failed, will fallback to standard generation', { error });
+      const duration = Date.now() - startTime;
+      this.log.error(
+        'Contrastive decoding failed, falling back to standard generation',
+        error as Error,
+        {
+          operation,
+          duration,
+          isVideoPrompt: context.isVideoPrompt,
+          isPlaceholder: context.isPlaceholder,
+          highlightedTextLength,
+          systemPromptLength,
+          provider: routing.provider,
+          model: routing.model,
+        }
+      );
       return null; // Signal to use standard generation
     }
   }
@@ -151,11 +203,13 @@ export class ContrastiveDiversityEnforcer {
    */
   private async _generateBatch(params: {
     systemPrompt: string;
-    schema: Record<string, unknown>;
+    schema: OutputSchema;
     temperature: number;
     count: number;
     negativeConstraint: string | null;
     batchNumber: number;
+    provider: ProviderType;
+    model?: string;
   }): Promise<Suggestion[]> {
     const {
       systemPrompt,
@@ -164,17 +218,27 @@ export class ContrastiveDiversityEnforcer {
       count,
       negativeConstraint,
       batchNumber,
+      provider,
+      model,
     } = params;
+    const operation = 'generateContrastiveBatch';
+    const hasConstraint = !!negativeConstraint;
+    const constraintLength = negativeConstraint?.length ?? 0;
 
     // Build augmented prompt with negative constraint
     const augmentedPrompt = negativeConstraint
       ? this._augmentPromptWithConstraint(systemPrompt, negativeConstraint)
       : systemPrompt;
 
-    logger.debug(`Generating batch ${batchNumber}`, {
+    this.log.debug('Generating contrastive batch', {
+      operation,
+      batchNumber,
       temperature,
       count,
-      hasConstraint: !!negativeConstraint,
+      hasConstraint,
+      constraintLength,
+      provider,
+      model,
     });
 
     try {
@@ -188,8 +252,8 @@ export class ContrastiveDiversityEnforcer {
           maxRetries: 2,
           temperature,
           operation: 'enhance_suggestions',
-          provider: 'groq',
-          model: 'llama-3.1-8b-instant',
+          provider,
+          ...(model ? { model } : {}),
         }
       ) as Suggestion[];
 
@@ -202,17 +266,41 @@ export class ContrastiveDiversityEnforcer {
       const batch = suggestions.slice(0, count);
       
       if (batch.length < count) {
-        logger.warn(`Batch ${batchNumber} generated fewer suggestions than requested`, {
+        this.log.warn('Contrastive batch returned fewer suggestions than requested', {
+          operation,
+          batchNumber,
           requested: count,
           received: batch.length,
+          temperature,
+          hasConstraint,
+          constraintLength,
+          provider,
+          model,
         });
       }
 
       return batch;
     } catch (error) {
-      logger.error(`Failed to generate batch ${batchNumber}`, error as Error);
+      this.log.error('Failed to generate contrastive batch', error as Error, {
+        operation,
+        batchNumber,
+        temperature,
+        count,
+        hasConstraint,
+        constraintLength,
+        provider,
+        model,
+      });
       throw error;
     }
+  }
+
+  private _getEnhancementRouting(): { provider: ProviderType; model?: string } {
+    const config = this.ai.getOperationConfig('enhance_suggestions');
+    return {
+      provider: detectProvider({ client: config.client, model: config.model }),
+      model: config.model,
+    };
   }
 
   /**
@@ -314,4 +402,3 @@ export class ContrastiveDiversityEnforcer {
     return intersection.size / union.size;
   }
 }
-

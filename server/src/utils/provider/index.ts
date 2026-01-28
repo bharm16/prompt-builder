@@ -9,7 +9,7 @@ export {
   shouldUseDeveloperMessage,
   type ProviderType,
   type ProviderCapabilities,
-} from './ProviderDetector.js';
+} from './ProviderDetector';
 
 export {
   getEnhancementSchema,
@@ -19,7 +19,7 @@ export {
   getShotInterpreterSchema,
   type JSONSchema,
   type SchemaOptions,
-} from './SchemaFactory.js';
+} from './SchemaFactory';
 
 export {
   buildProviderOptimizedPrompt,
@@ -28,4 +28,4 @@ export {
   wrapUserData,
   type PromptBuildContext,
   type BuiltPrompt,
-} from './PromptBuilder.js';
+} from './PromptBuilder';

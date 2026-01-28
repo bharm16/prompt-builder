@@ -12,43 +12,67 @@
 import { createContainer, type DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import { metricsService } from '@infrastructure/MetricsService';
+import type { MetricsService as EnhancementMetricsService } from '@services/enhancement/services/types';
 
 // Import generic LLM client
-import { LLMClient } from '../clients/LLMClient.ts';
-import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.ts';
-import { GroqLlamaAdapter } from '../clients/adapters/GroqLlamaAdapter.ts';
-import { GroqQwenAdapter } from '../clients/adapters/GroqQwenAdapter.ts';
-import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.ts';
-import { openAILimiter } from '../services/concurrency/ConcurrencyService.ts';
+import { LLMClient } from '@clients/LLMClient';
+import { OpenAICompatibleAdapter } from '@clients/adapters/OpenAICompatibleAdapter';
+import { GroqLlamaAdapter } from '@clients/adapters/GroqLlamaAdapter';
+import { GroqQwenAdapter } from '@clients/adapters/GroqQwenAdapter';
+import { GeminiAdapter } from '@clients/adapters/GeminiAdapter';
+import { openAILimiter, groqLimiter, qwenLimiter, geminiLimiter } from '@services/concurrency/ConcurrencyService';
 
 // Import AI Model Service
-import { AIModelService } from '../services/ai-model/index.ts';
+import { AIModelService } from '@services/ai-model/index';
 
 // Import services
-import { cacheService } from '../services/cache/CacheService.ts';
-import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.ts';
-import { EnhancementService } from '../services/EnhancementService.js';
-import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
-import { VideoConceptService } from '../services/VideoConceptService.ts';
-import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
-import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
+import { cacheService } from '@services/cache/CacheService';
+import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import { ImageObservationService } from '@services/image-observation';
+import { EnhancementService } from '@services/EnhancementService';
+import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
+import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
+import { VideoConceptService } from '@services/VideoConceptService';
+import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
+import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
+import { ReplicateFluxKontextFastProvider } from '@services/image-generation/providers/ReplicateFluxKontextFastProvider';
+import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
+import { VideoToImagePromptTransformer } from '@services/image-generation/providers/VideoToImagePromptTransformer';
+import { StoryboardFramePlanner } from '@services/image-generation/storyboard/StoryboardFramePlanner';
+import { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
+import type { ImagePreviewProvider } from '@services/image-generation/providers/types';
+import {
+  parseImagePreviewProviderOrder,
+  resolveImagePreviewProviderSelection,
+} from '@services/image-generation/providers/registry';
+import { createVideoAssetStore } from '@services/video-generation/storage';
+import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
+import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
+import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
+import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
+import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
+import { userCreditService } from '@services/credits/UserCreditService';
+import AssetService from '@services/asset/AssetService';
+import ReferenceImageService from '@services/reference-images/ReferenceImageService';
+import ConsistentVideoService from '@services/generation/ConsistentVideoService';
+import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
 
 // Import enhancement sub-services
-import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.ts';
-import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
-import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.ts';
-import { CleanPromptBuilder } from '../services/enhancement/services/CleanPromptBuilder.ts';
-import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.ts';
-import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.ts';
-import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.ts';
+import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
+import { VideoPromptService } from '@services/video-prompt-analysis/index';
+import { BrainstormContextBuilder } from '@services/enhancement/services/BrainstormContextBuilder';
+import { CleanPromptBuilder } from '@services/enhancement/services/CleanPromptBuilder';
+import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
+import { SuggestionDiversityEnforcer } from '@services/enhancement/services/SuggestionDeduplicator';
+import { CategoryAlignmentService } from '@services/enhancement/services/CategoryAlignmentService';
 
 // Import config
 import { createRedisClient } from './redis.ts';
+import { resolveFalApiKey } from '@utils/falApiKey';
 
-// Import NLP warmup
-import { warmupGliner } from '../llm/span-labeling/nlp/NlpSpanService.js';
 
-interface ServiceConfig {
+export interface ServiceConfig {
   openai: {
     apiKey: string | undefined;
     timeout: number;
@@ -98,6 +122,17 @@ export async function configureServices(): Promise<DIContainer> {
   container.registerValue('logger', logger);
   container.registerValue('metricsService', metricsService);
   container.registerValue('cacheService', cacheService);
+  container.registerValue('userCreditService', userCreditService);
+  container.register('videoAssetStore', () => createVideoAssetStore(), [], { singleton: true });
+  container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
+  container.register('videoContentAccessService', () => createVideoContentAccessService(), [], { singleton: true });
+  container.register(
+    'videoAssetRetentionService',
+    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) =>
+      createVideoAssetRetentionService(videoAssetStore),
+    ['videoAssetStore'],
+    { singleton: true }
+  );
 
   // ============================================================================
   // Configuration Values
@@ -120,9 +155,9 @@ export async function configureServices(): Promise<DIContainer> {
       model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
     },
     gemini: {
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     },
     redis: {
@@ -140,26 +175,33 @@ export async function configureServices(): Promise<DIContainer> {
   // API Clients
   // ============================================================================
 
-  // OpenAI client (CRITICAL - required)
+  // OpenAI client (optional)
   // Using generic LLMClient configured for OpenAI
   container.register(
     'claudeClient',
-    (config: ServiceConfig) => new LLMClient({
-      adapter: new OpenAICompatibleAdapter({
-        apiKey: config.openai.apiKey || '',
-        baseURL: 'https://api.openai.com/v1',
-        defaultModel: config.openai.model,
-        defaultTimeout: config.openai.timeout,
+    (config: ServiceConfig) => {
+      if (!config.openai.apiKey) {
+        logger.warn('OPENAI_API_KEY not provided, OpenAI adapter disabled');
+        return null;
+      }
+
+      return new LLMClient({
+        adapter: new OpenAICompatibleAdapter({
+          apiKey: config.openai.apiKey,
+          baseURL: 'https://api.openai.com/v1',
+          defaultModel: config.openai.model,
+          defaultTimeout: config.openai.timeout,
+          providerName: 'openai',
+        }),
         providerName: 'openai',
-      }),
-      providerName: 'openai',
-      defaultTimeout: config.openai.timeout,
-      circuitBreakerConfig: {
-        errorThresholdPercentage: 50,
-        resetTimeout: 30000,
-      },
-      concurrencyLimiter: openAILimiter, // Limit concurrent requests
-    }),
+        defaultTimeout: config.openai.timeout,
+        circuitBreakerConfig: {
+          errorThresholdPercentage: 50,
+          resetTimeout: 30000,
+        },
+        concurrencyLimiter: openAILimiter, // Limit concurrent requests
+      });
+    },
     ['config']
   );
 
@@ -190,7 +232,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 60, // More tolerant for fast provider
           resetTimeout: 15000, // Faster recovery
         },
-        concurrencyLimiter: null, // No concurrency limiting for Groq
+        concurrencyLimiter: groqLimiter,
       });
     },
     ['config']
@@ -220,7 +262,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 60,
           resetTimeout: 15000,
         },
-        concurrencyLimiter: null,
+        concurrencyLimiter: qwenLimiter,
       });
     },
     ['config']
@@ -249,7 +291,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 55,
           resetTimeout: 20000,
         },
-        concurrencyLimiter: null,
+        concurrencyLimiter: geminiLimiter,
       });
     },
     ['config']
@@ -352,8 +394,18 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'promptOptimizationService',
-    (aiService: AIModelService) =>
-      new PromptOptimizationService(aiService),
+    (
+      aiService: AIModelService,
+      videoService: VideoPromptService,
+      imageObservationService: ImageObservationService
+    ) =>
+      new PromptOptimizationService(aiService, videoService, imageObservationService),
+    ['aiService', 'videoService', 'imageObservationService']
+  );
+
+  container.register(
+    'imageObservationService',
+    (aiService: AIModelService) => new ImageObservationService(aiService),
     ['aiService']
   );
 
@@ -368,9 +420,9 @@ export async function configureServices(): Promise<DIContainer> {
       validationService: SuggestionValidationService,
       diversityEnforcer: SuggestionDiversityEnforcer,
       categoryAligner: CategoryAlignmentService,
-      metricsService: typeof metricsService
+      metrics: EnhancementMetricsService
     ) =>
-      new EnhancementService(
+      new EnhancementService({
         aiService,
         placeholderDetector,
         videoService,
@@ -379,8 +431,8 @@ export async function configureServices(): Promise<DIContainer> {
         validationService,
         diversityEnforcer,
         categoryAligner,
-        metricsService
-      ),
+        metricsService: metrics,
+      }),
     [
       'aiService',
       'placeholderDetector',
@@ -401,6 +453,12 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
+    'promptCoherenceService',
+    (aiService: AIModelService) => new PromptCoherenceService(aiService),
+    ['aiService']
+  );
+
+  container.register(
     'videoConceptService',
     (aiService: AIModelService) => new VideoConceptService(aiService),
     ['aiService']
@@ -410,192 +468,283 @@ export async function configureServices(): Promise<DIContainer> {
   // Image Generation Service
   // ============================================================================
 
+  // Video-to-image prompt transformer (uses Gemini for fast transformation)
+  container.register(
+    'videoToImageTransformer',
+    (geminiClient: LLMClient | null) => {
+      if (!geminiClient) {
+        logger.warn('Gemini client not available, video-to-image transformation disabled');
+        return null;
+      }
+      return new VideoToImagePromptTransformer({
+        llmClient: geminiClient,
+        timeoutMs: 5000,
+      });
+    },
+    ['geminiClient']
+  );
+
+  container.register(
+    'storyboardFramePlanner',
+    (geminiClient: LLMClient | null) => {
+      if (!geminiClient) {
+        logger.warn('Gemini client not available, storyboard frame planner disabled');
+        return null;
+      }
+      return new StoryboardFramePlanner({
+        llmClient: geminiClient,
+        timeoutMs: 8000,
+      });
+    },
+    ['geminiClient']
+  );
+
+  container.register(
+    'replicateFluxSchnellProvider',
+    (transformer: VideoToImagePromptTransformer | null) => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      if (!apiToken) {
+        logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
+        return null;
+      }
+      return new ReplicateFluxSchnellProvider({ apiToken, promptTransformer: transformer });
+    },
+    ['videoToImageTransformer']
+  );
+
+  container.register(
+    'replicateFluxKontextFastProvider',
+    (transformer: VideoToImagePromptTransformer | null) => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      if (!apiToken) {
+        logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
+        return null;
+      }
+      return new ReplicateFluxKontextFastProvider({
+        apiToken,
+        promptTransformer: transformer,
+      });
+    },
+    ['videoToImageTransformer']
+  );
+
   container.register(
     'imageGenerationService',
-    () => new ImageGenerationService({
-      apiToken: process.env.REPLICATE_API_TOKEN,
-    }),
-    []
+    (
+      replicateProvider: ReplicateFluxSchnellProvider | null,
+      kontextProvider: ReplicateFluxKontextFastProvider | null
+    ) => {
+      const providers = [replicateProvider, kontextProvider].filter(
+        (provider): provider is ImagePreviewProvider => Boolean(provider)
+      );
+
+      if (providers.length === 0) {
+        logger.warn('No image preview providers configured');
+        return null;
+      }
+
+      const selection = resolveImagePreviewProviderSelection(
+        process.env.IMAGE_PREVIEW_PROVIDER
+      );
+      if (process.env.IMAGE_PREVIEW_PROVIDER && !selection) {
+        logger.warn('Invalid IMAGE_PREVIEW_PROVIDER value', {
+          value: process.env.IMAGE_PREVIEW_PROVIDER,
+        });
+      }
+
+      const fallbackOrder = parseImagePreviewProviderOrder(
+        process.env.IMAGE_PREVIEW_PROVIDER_ORDER
+      );
+      if (process.env.IMAGE_PREVIEW_PROVIDER_ORDER && fallbackOrder.length === 0) {
+        logger.warn('No valid IMAGE_PREVIEW_PROVIDER_ORDER entries found', {
+          value: process.env.IMAGE_PREVIEW_PROVIDER_ORDER,
+        });
+      }
+
+      return new ImageGenerationService({
+        providers,
+        defaultProvider: selection ?? 'auto',
+        fallbackOrder,
+      });
+    },
+    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider']
+  );
+
+  container.register(
+    'storyboardPreviewService',
+    (
+      imageGenerationService: ImageGenerationService | null,
+      storyboardFramePlanner: StoryboardFramePlanner | null
+    ) => {
+      if (!imageGenerationService || !storyboardFramePlanner) {
+        logger.warn('Storyboard preview service disabled', {
+          imageGenerationServiceAvailable: Boolean(imageGenerationService),
+          storyboardFramePlannerAvailable: Boolean(storyboardFramePlanner),
+        });
+        return null;
+      }
+      return new StoryboardPreviewService({
+        imageGenerationService,
+        storyboardFramePlanner,
+      });
+    },
+    ['imageGenerationService', 'storyboardFramePlanner']
+  );
+
+  container.register(
+    'videoGenerationService',
+    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      const openAIKey = process.env.OPENAI_API_KEY;
+      const lumaApiKey = process.env.LUMA_API_KEY || process.env.LUMAAI_API_KEY;
+      const klingApiKey = process.env.KLING_API_KEY;
+      const klingBaseUrl = process.env.KLING_API_BASE_URL;
+      const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const geminiBaseUrl = process.env.GEMINI_BASE_URL;
+      if (!apiToken && !openAIKey && !lumaApiKey && !klingApiKey && !geminiApiKey) {
+        logger.warn(
+          'No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY or LUMAAI_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)'
+        );
+        return null;
+      }
+      return new VideoGenerationService({
+        assetStore: videoAssetStore,
+        ...(apiToken ? { apiToken } : {}),
+        ...(openAIKey ? { openAIKey } : {}),
+        ...(lumaApiKey ? { lumaApiKey } : {}),
+        ...(klingApiKey ? { klingApiKey } : {}),
+        ...(klingBaseUrl ? { klingBaseUrl } : {}),
+        ...(geminiApiKey ? { geminiApiKey } : {}),
+        ...(geminiBaseUrl ? { geminiBaseUrl } : {}),
+      });
+    },
+    ['videoAssetStore']
+  );
+
+  container.register(
+    'assetService',
+    () => {
+      try {
+        return new AssetService();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Asset service disabled', { error: errorMessage });
+        return null;
+      }
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'referenceImageService',
+    () => {
+      try {
+        return new ReferenceImageService();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Reference image service disabled', { error: errorMessage });
+        return null;
+      }
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'keyframeGenerationService',
+    () => {
+      const falKey = resolveFalApiKey();
+      if (!falKey) {
+        logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
+        return null;
+      }
+      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      return new KeyframeGenerationService({
+        falApiKey: falKey,
+        ...(replicateToken ? { apiToken: replicateToken } : {}),
+      });
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'keyframeService',
+    () => {
+      const falKey = resolveFalApiKey();
+      if (!falKey) {
+        logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
+        return null;
+      }
+      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      return new KeyframeGenerationService({
+        falApiKey: falKey,
+        ...(replicateToken ? { apiToken: replicateToken } : {}),
+      });
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'consistentVideoService',
+    (
+      videoGenerationService: VideoGenerationService | null,
+      assetService: AssetService | null,
+      keyframeGenerationService: KeyframeGenerationService | null
+    ) => {
+      if (!videoGenerationService || !assetService || !keyframeGenerationService) {
+        logger.warn('Consistent video service disabled', {
+          videoGenerationServiceAvailable: Boolean(videoGenerationService),
+          assetServiceAvailable: Boolean(assetService),
+          keyframeGenerationServiceAvailable: Boolean(keyframeGenerationService),
+        });
+        return null;
+      }
+
+      return new ConsistentVideoService({
+        videoGenerationService,
+        assetService,
+        keyframeService: keyframeGenerationService,
+      });
+    },
+    ['videoGenerationService', 'assetService', 'keyframeGenerationService']
+  );
+
+  container.register(
+    'videoJobWorker',
+    (
+      videoJobStore: VideoJobStore,
+      videoGenerationService: VideoGenerationService | null,
+      creditService: typeof userCreditService
+    ) => {
+      if (!videoGenerationService) {
+        return null;
+      }
+
+      const pollIntervalMs = Number.parseInt(process.env.VIDEO_JOB_POLL_INTERVAL_MS || '2000', 10);
+      const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
+      const maxConcurrent = Number.parseInt(process.env.VIDEO_JOB_MAX_CONCURRENT || '2', 10);
+
+      return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, {
+        pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
+        leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 900000,
+        maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
+      });
+    },
+    ['videoJobStore', 'videoGenerationService', 'userCreditService']
+  );
+
+  container.register(
+    'videoJobSweeper',
+    (videoJobStore: VideoJobStore, creditService: typeof userCreditService) =>
+      createVideoJobSweeper(videoJobStore, creditService),
+    ['videoJobStore', 'userCreditService'],
+    { singleton: true }
   );
 
   return container;
 }
 
-interface HealthCheckResult {
-  healthy: boolean;
-  error?: string;
-  responseTime?: number;
-}
-
-/**
- * Initialize and validate all services
- * Performs health checks on critical services
- *
- * @throws {Error} If critical services fail health checks
- */
-export async function initializeServices(container: DIContainer): Promise<DIContainer> {
-  logger.info('Initializing services...');
-
-  // Resolve OpenAI client and validate (CRITICAL)
-  const claudeClient = container.resolve<LLMClient>('claudeClient');
-  logger.info('Validating OpenAI API key...');
-
-  const openAIHealth = await claudeClient.healthCheck() as HealthCheckResult;
-
-  if (!openAIHealth.healthy) {
-    logger.error('❌ OpenAI API key validation failed', {
-      error: openAIHealth.error,
-    });
-    console.error('\n❌ FATAL: OpenAI API key validation failed');
-    console.error('The application cannot function without a valid OpenAI API key');
-    console.error('Please check your OPENAI_API_KEY in .env file\n');
-    throw new Error(`OpenAI API validation failed: ${openAIHealth.error || 'Unknown error'}`);
-  }
-
-  logger.info('✅ OpenAI API key validated successfully', {
-    responseTime: openAIHealth.responseTime,
-  });
-
-  // Resolve and validate Groq client (OPTIONAL)
-  const groqClient = container.resolve<LLMClient | null>('groqClient');
-  if (groqClient) {
-    logger.info('Groq client initialized for two-stage optimization');
-
-    try {
-      const groqHealth = await groqClient.healthCheck() as HealthCheckResult;
-
-      if (!groqHealth.healthy) {
-        logger.warn(
-          '⚠️  Groq API key validation failed - two-stage optimization disabled',
-          {
-            error: groqHealth.error,
-          }
-        );
-        // Override with null to disable
-        container.registerValue('groqClient', null);
-      } else {
-        logger.info('✅ Groq API key validated successfully', {
-          responseTime: groqHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Groq API key - two-stage optimization disabled',
-        {
-          error: errorMessage,
-        }
-      );
-      container.registerValue('groqClient', null);
-    }
-  }
-
-  // Resolve and validate Qwen client (OPTIONAL)
-  const qwenClient = container.resolve<LLMClient | null>('qwenClient');
-  if (qwenClient) {
-    logger.info('Qwen client initialized for adapter-based routing');
-
-    try {
-      const qwenHealth = await qwenClient.healthCheck() as HealthCheckResult;
-
-      if (!qwenHealth.healthy) {
-        logger.warn(
-          '⚠️  Qwen API key validation failed - adapter disabled',
-          {
-            error: qwenHealth.error,
-          }
-        );
-        container.registerValue('qwenClient', null);
-      } else {
-        logger.info('✅ Qwen API key validated successfully', {
-          responseTime: qwenHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Qwen API key - adapter disabled',
-        {
-          error: errorMessage,
-        }
-      );
-      container.registerValue('qwenClient', null);
-    }
-  }
-
-  // Resolve and validate Gemini client (OPTIONAL)
-  const geminiClient = container.resolve<LLMClient | null>('geminiClient');
-  if (geminiClient) {
-    logger.info('Gemini client initialized for adapter-based routing');
-
-    try {
-      const geminiHealth = await geminiClient.healthCheck() as HealthCheckResult;
-
-      if (!geminiHealth.healthy) {
-        logger.warn(
-          '⚠️  Gemini API key validation failed - adapter disabled',
-          {
-            error: geminiHealth.error,
-          }
-        );
-        container.registerValue('geminiClient', null);
-      } else {
-        logger.info('✅ Gemini API key validated successfully', {
-          responseTime: geminiHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Gemini API key - adapter disabled',
-        {
-          error: errorMessage,
-        }
-      );
-      container.registerValue('geminiClient', null);
-    }
-  }
-
-  // Pre-resolve all services to ensure they can be instantiated
-  // This catches configuration errors early
-  const serviceNames = [
-    'promptOptimizationService',
-    'enhancementService',
-    'sceneDetectionService',
-    'videoConceptService',
-    'spanLabelingCacheService',
-  ];
-
-  for (const serviceName of serviceNames) {
-    try {
-      container.resolve(serviceName);
-      logger.info(`✅ ${serviceName} initialized`);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`❌ Failed to initialize ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Service initialization failed for ${serviceName}: ${errorMessage}`);
-    }
-  }
-
-  logger.info('All services initialized and validated successfully');
-  
-  // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
-  const { NEURO_SYMBOLIC } = await import('../llm/span-labeling/config/SpanLabelingConfig.js');
-  if (NEURO_SYMBOLIC.ENABLED && NEURO_SYMBOLIC.GLINER?.ENABLED && NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP) {
-    try {
-      const glinerResult = await warmupGliner();
-      if (glinerResult.success) {
-        logger.info('✅ GLiNER model warmed up for semantic extraction');
-      } else {
-        logger.warn('⚠️ GLiNER warmup skipped: ' + (glinerResult.message || 'Unknown reason'));
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
-    }
-  } else {
-    logger.info('ℹ️ GLiNER warmup skipped (prewarm disabled or GLiNER disabled)');
-  }
-  
-  return container;
-}
+export { initializeServices } from './services.initialize';

@@ -1,14 +1,15 @@
 import { logger } from '@infrastructure/Logger';
-import { HierarchyValidator } from './services/HierarchyValidator.js';
-import { OrphanDetector } from './services/OrphanDetector.js';
-import { ValidationReporter } from './services/ValidationReporter.js';
+import { HierarchyValidator } from './services/HierarchyValidator';
+import { OrphanDetector } from './services/OrphanDetector';
+import { ValidationReporter } from './services/ValidationReporter';
 import type {
   Span,
   ValidationOptions,
   ValidationResult,
   PreAddValidation,
-  ValidationStats
-} from './types.js';
+  ValidationStats,
+  ValidationIssue
+} from './types';
 
 /**
  * TaxonomyValidationService
@@ -74,7 +75,7 @@ export class TaxonomyValidationService {
     const orphans = this.orphanDetector.findOrphanedAttributes(filteredSpans);
 
     // Step 2: Optional consistency checks (proximity, etc.)
-    let consistencyIssues = [];
+    let consistencyIssues: ValidationIssue[] = [];
     if (checkConsistency) {
       consistencyIssues = this.hierarchyValidator.validateConsistency(filteredSpans);
     }
@@ -166,4 +167,3 @@ export class TaxonomyValidationService {
 }
 
 export default TaxonomyValidationService;
-

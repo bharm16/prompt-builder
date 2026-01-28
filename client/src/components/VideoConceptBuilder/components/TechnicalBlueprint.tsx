@@ -4,7 +4,7 @@
  * Displays technical parameters generated from creative elements.
  */
 
-import { Wand2, Loader2 } from 'lucide-react';
+import { Wand2, Loader2 } from '@promptstudio/system/components/ui';
 import { formatLabel, describeNestedValue } from '../utils/formatting';
 import { TECHNICAL_SECTION_ORDER } from '../config/constants';
 
@@ -52,7 +52,7 @@ function getTechnicalSections(
 
   const keys = Object.keys(technicalParams);
   const ordered = TECHNICAL_SECTION_ORDER.filter((key) => keys.includes(key));
-  const additional = keys.filter((key) => !TECHNICAL_SECTION_ORDER.includes(key));
+  const additional = keys.filter((key) => !(TECHNICAL_SECTION_ORDER as readonly string[]).includes(key));
   const combined = [...ordered, ...additional];
 
   return combined.filter((key) => {
@@ -125,4 +125,3 @@ export function TechnicalBlueprint({
     </div>
   );
 }
-

@@ -1,57 +1,26 @@
-import { APIError, TimeoutError } from '../LLMClient.ts';
+/**
+ * GeminiAdapter - HTTP transport layer for Google Gemini API
+ *
+ * Single Responsibility: Handle HTTP communication with Gemini API.
+ * Delegates message building and response parsing to specialized classes.
+ *
+ * Changes when: API endpoints, authentication, or HTTP patterns change.
+ */
+
+import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import type { AIResponse } from '@interfaces/IAIClient';
+import CircuitBreaker from 'opossum';
+import { GeminiMessageBuilder } from './gemini/GeminiMessageBuilder.ts';
+import { GeminiResponseParser } from './gemini/GeminiResponseParser.ts';
+import type {
+  CompletionOptions,
+  AdapterConfig,
+  AbortControllerResult,
+  GeminiResponse,
+  AIResponse,
+} from './gemini/types.ts';
 
-interface CompletionOptions {
-  userMessage?: string;
-  model?: string;
-  maxTokens?: number;
-  temperature?: number;
-  timeout?: number;
-  signal?: AbortSignal;
-  jsonMode?: boolean;
-  isArray?: boolean;
-  messages?: Array<{ role: string; content: string | unknown }>;
-  onChunk?: (chunk: string) => void;
-}
-
-interface AdapterConfig {
-  apiKey: string;
-  baseURL?: string;
-  defaultModel: string;
-  defaultTimeout?: number;
-  providerName?: string;
-}
-
-interface AbortControllerResult {
-  controller: AbortController;
-  timeoutId: NodeJS.Timeout;
-}
-
-interface GeminiPayload {
-  contents: Array<{ role: string; parts: Array<{ text: string }> }>;
-  generationConfig: {
-    temperature: number;
-    maxOutputTokens: number;
-    responseMimeType?: string;
-  };
-  systemInstruction?: {
-    parts: Array<{ text: string }>;
-  };
-}
-
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
-  }>;
-}
-
-/**
- * Adapter for Google Gemini (Generative Language API)
- */
 export class GeminiAdapter {
   private apiKey: string;
   private baseURL: string;
@@ -59,7 +28,10 @@ export class GeminiAdapter {
   private defaultTimeout: number;
   private providerName: string;
   private readonly log: ILogger;
+  private readonly messageBuilder: GeminiMessageBuilder;
+  private readonly responseParser: GeminiResponseParser;
   public capabilities: { streaming: boolean };
+  private breaker: CircuitBreaker;
 
   constructor({
     apiKey,
@@ -81,25 +53,45 @@ export class GeminiAdapter {
     this.defaultTimeout = defaultTimeout;
     this.providerName = providerName;
     this.log = logger.child({ service: 'GeminiAdapter' });
+    this.messageBuilder = new GeminiMessageBuilder();
+    this.responseParser = new GeminiResponseParser();
     this.capabilities = { streaming: true };
-  }
 
-  async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
-    const startTime = performance.now();
-    const operation = 'complete';
-    const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
-
-    this.log.debug(`Starting ${operation}`, {
-      operation,
-      model: options.model || this.defaultModel,
-      maxTokens: options.maxTokens,
-      jsonMode: options.jsonMode,
+    // Initialize Circuit Breaker
+    this.breaker = new CircuitBreaker(this._executeRequest.bind(this), {
+      timeout: this.defaultTimeout + 5000, // Slightly higher than internal timeout
+      errorThresholdPercentage: 50,
+      resetTimeout: 10000, // Wait 10s before retrying after open
+      name: 'GeminiAPI',
     });
 
+    this.breaker.fallback(() => {
+      throw new APIError('Gemini API Circuit Breaker Open', 503, true);
+    });
+
+    this.breaker.on('open', () => this.log.warn('Gemini Circuit Breaker OPENED'));
+    this.breaker.on('halfOpen', () => this.log.info('Gemini Circuit Breaker HALF-OPEN'));
+    this.breaker.on('close', () => this.log.info('Gemini Circuit Breaker CLOSED'));
+  }
+
+  /**
+   * Internal method to execute the request, wrapped by Circuit Breaker
+   */
+  private async _executeRequest(
+    systemPrompt: string,
+    options: CompletionOptions
+  ): Promise<AIResponse> {
+    const operation = 'complete';
+    const timeout = options.timeout || this.defaultTimeout;
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(
+      timeout,
+      options.signal
+    );
+
     try {
-      const payload = this._buildPayload(systemPrompt, options);
+      const payload = this.messageBuilder.buildPayload(systemPrompt, options);
       const model = encodeURIComponent(options.model || this.defaultModel);
+
       const response = await fetch(`${this.baseURL}/models/${model}:generateContent`, {
         method: 'POST',
         headers: {
@@ -120,70 +112,78 @@ export class GeminiAdapter {
           response.status,
           isRetryable
         );
-        
-        this.log.warn('Gemini API request failed', {
-          operation,
-          status: response.status,
-          isRetryable,
-          error: errorBody.substring(0, 200),
-        });
-        
+
+        // Don't trip breaker for 4xx errors (except 429)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          throw apiError; // Will be caught below but we might want to suppress breaker failure
+        }
+
         throw apiError;
       }
 
-      const data = await response.json() as GeminiResponse;
-      const result = this._normalizeResponse(data);
-      
-      this.log.info(`${operation} completed`, {
+      const data = (await response.json()) as GeminiResponse;
+      const result = this.responseParser.parseResponse(data);
+
+      this.log.info('Operation completed.', {
         operation,
-        duration: Math.round(performance.now() - startTime),
         responseLength: result.text?.length || 0,
         model: options.model || this.defaultModel,
       });
-      
+
       return result;
     } catch (error) {
       clearTimeout(timeoutId);
-
-      const errorObj = error as Error;
-      if (errorObj.name === 'AbortError') {
-        const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
-        this.log.warn('Gemini API request timeout', {
-          operation,
-          timeout,
-        });
-        throw timeoutError;
-      }
-
-      this.log.error(`${operation} failed`, errorObj, {
-        operation,
-        duration: Math.round(performance.now() - startTime),
-      });
-
-      throw errorObj;
+      throw this._handleError(error, abortedByTimeout, timeout, operation, performance.now());
     }
   }
 
-  async streamComplete(systemPrompt: string, options: CompletionOptions & { onChunk: (chunk: string) => void }): Promise<string> {
+  async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
+    const startTime = performance.now();
+    const operation = 'complete';
+    
+    this.log.debug('Starting operation.', {
+      operation,
+      model: options.model || this.defaultModel,
+      maxTokens: options.maxTokens,
+      jsonMode: options.jsonMode,
+    });
+
+    // Map IAIClient 'schema' to Gemini 'responseSchema' if present
+    if (options.schema && !options.responseSchema) {
+      options.responseSchema = options.schema;
+    }
+
+    // Fire the circuit breaker
+    try {
+      return await this.breaker.fire(systemPrompt, options) as AIResponse;
+    } catch (error) {
+       // If it's a 4xx error that we allowed through, re-throw it. 
+       // If it's the breaker open error, let it bubble.
+       throw error;
+    }
+  }
+
+  async streamComplete(
+    systemPrompt: string,
+    options: CompletionOptions & { onChunk: (chunk: string) => void }
+  ): Promise<string> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
     let fullText = '';
 
     try {
-      const payload = this._buildPayload(systemPrompt, options);
+      const payload = this.messageBuilder.buildPayload(systemPrompt, options);
       const model = encodeURIComponent(options.model || this.defaultModel);
-      const response = await fetch(
-        `${this.baseURL}/models/${model}:streamGenerateContent?alt=sse`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey,
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        }
-      );
+
+      const response = await fetch(`${this.baseURL}/models/${model}:streamGenerateContent?alt=sse`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
       clearTimeout(timeoutId);
 
@@ -197,60 +197,44 @@ export class GeminiAdapter {
         );
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Response body is not readable');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith(':')) continue;
-
-          if (trimmed.startsWith('data: ')) {
-            const data = trimmed.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data) as GeminiResponse;
-              const content = this._extractTextFromParts(
-                parsed.candidates?.[0]?.content?.parts
-              );
-
-              if (content) {
-                fullText += content;
-                options.onChunk(content);
-              }
-            } catch (e) {
-              this.log.debug('Skipping malformed Gemini SSE chunk', {
-                operation: 'streamComplete',
-                chunk: data.substring(0, 100),
-              });
-            }
-          }
-        }
-      }
-
+      fullText = await this._processStream(response, options.onChunk);
       return fullText;
     } catch (error) {
       clearTimeout(timeoutId);
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
+        if (abortedByTimeout.value) {
+          throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
+        }
+        throw new ClientAbortError(`${this.providerName} streaming request aborted by client`);
       }
 
       throw errorObj;
+    }
+  }
+
+  async generateText(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    const response = await this.complete(prompt, options);
+    return response.text || '';
+  }
+
+  async generateStructuredOutput(prompt: string, schema: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await this.complete(prompt, {
+      responseSchema: schema,
+      jsonMode: true,
+      maxTokens: 2048, // Ensure enough tokens for JSON
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini for structured output');
+    }
+
+    try {
+      return JSON.parse(response.text);
+    } catch (e) {
+      this.log.error('Failed to parse structured output', e as Error, { text: response.text });
+      throw new Error('Invalid JSON response from Gemini');
     }
   }
 
@@ -269,115 +253,119 @@ export class GeminiAdapter {
     }
   }
 
-
-  private _buildPayload(systemPrompt: string, options: CompletionOptions): GeminiPayload {
-    const { systemInstruction, contents } = this._buildMessages(systemPrompt, options);
-    const generationConfig: GeminiPayload['generationConfig'] = {
-      temperature: options.temperature !== undefined ? options.temperature : 0.7,
-      maxOutputTokens: options.maxTokens || 2048,
-    };
-
-    if (options.jsonMode && !options.isArray) {
-      generationConfig.responseMimeType = 'application/json';
+  /**
+   * Process SSE stream from Gemini API
+   */
+  private async _processStream(response: Response, onChunk: (chunk: string) => void): Promise<string> {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Response body is not readable');
     }
 
-    const payload: GeminiPayload = {
-      contents,
-      generationConfig,
-    };
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
 
-    if (systemInstruction) {
-      payload.systemInstruction = {
-        parts: [{ text: systemInstruction }],
-      };
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(':')) continue;
+
+        // Standard Gemini SSE format
+        if (trimmed.startsWith('data: ')) {
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data) as GeminiResponse;
+            const content = this.responseParser.extractTextFromParts(
+              parsed.candidates?.[0]?.content?.parts
+            );
+
+            if (content) {
+              fullText += content;
+              onChunk(content);
+            }
+          } catch {
+            // If it fails to parse as JSON, treat it as raw text if it's not structural
+            // This is a fallback for some edge cases in Gemini's stream
+             this.log.debug('Skipping malformed Gemini SSE chunk', {
+              operation: 'streamComplete',
+              chunk: data.substring(0, 100),
+            });
+          }
+        } else {
+             // Fallback: Sometimes content comes without "data:" prefix in raw streams
+             // Attempt to parse as direct JSON if it looks like it
+             try {
+                const parsed = JSON.parse(trimmed) as GeminiResponse;
+                 const content = this.responseParser.extractTextFromParts(
+                  parsed.candidates?.[0]?.content?.parts
+                );
+                if (content) {
+                  fullText += content;
+                  onChunk(content);
+                }
+             } catch {
+                // Ignore truly non-JSON lines (noise)
+             }
+        }
+      }
     }
 
-    return payload;
+    return fullText;
   }
 
-  private _buildMessages(systemPrompt: string, options: CompletionOptions): {
-    systemInstruction: string;
-    contents: Array<{ role: string; parts: Array<{ text: string }> }>;
-  } {
-    if (options.messages && Array.isArray(options.messages)) {
-      const systemParts: string[] = [];
-      const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+  /**
+   * Handle errors from API calls, distinguishing timeout from client abort
+   */
+  private _handleError(
+    error: unknown,
+    abortedByTimeout: { value: boolean },
+    timeout: number,
+    operation: string,
+    startTime: number
+  ): Error {
+    const errorObj = error as Error;
 
-      for (const message of options.messages) {
-        if (message.role === 'system') {
-          if (message.content) {
-            systemParts.push(
-              typeof message.content === 'string'
-                ? message.content
-                : this._stringifyContent(message.content)
-            );
-          }
-          continue;
-        }
-
-        const role = message.role === 'assistant' ? 'model' : 'user';
-        const text = typeof message.content === 'string'
-          ? message.content
-          : this._stringifyContent(message.content);
-
-        contents.push({
-          role,
-          parts: [{ text }],
-        });
+    if (errorObj.name === 'AbortError') {
+      if (abortedByTimeout.value) {
+        const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        this.log.warn('Gemini API request timeout', { operation, timeout });
+        return timeoutError;
       }
 
-      return {
-        systemInstruction: systemParts.join('\n').trim() || systemPrompt,
-        contents: contents.length ? contents : [
-          { role: 'user', parts: [{ text: options.userMessage || 'Please proceed.' }] },
-        ],
-      };
+      const clientAbortError = new ClientAbortError(`${this.providerName} API request aborted by client`);
+      this.log.debug('Gemini API request aborted by client', { operation });
+      return clientAbortError;
     }
 
-    return {
-      systemInstruction: systemPrompt,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: options.userMessage || 'Please proceed.' }],
-        },
-      ],
-    };
+    this.log.error('Operation failed.', errorObj, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
+    });
+
+    return errorObj;
   }
 
-  private _extractTextFromParts(parts?: Array<{ text?: string }>): string {
-    if (!Array.isArray(parts)) return '';
-    return parts
-      .map((part) => (typeof part.text === 'string' ? part.text : ''))
-      .join('');
-  }
-
-  private _stringifyContent(content: unknown): string {
-    if (typeof content === 'string') return content;
-    if (Array.isArray(content)) {
-      return content
-        .map((c) => (typeof c === 'string' ? c : (c as { text?: string })?.text || ''))
-        .join('');
-    }
-    if (typeof content === 'object' && content !== null) {
-      return (content as { text?: string }).text || JSON.stringify(content);
-    }
-    return '';
-  }
-
-  private _normalizeResponse(data: GeminiResponse): AIResponse {
-    const text = this._extractTextFromParts(data.candidates?.[0]?.content?.parts);
-    return {
-      text,
-      metadata: {
-        raw: data,
-      },
-    };
-  }
-
+  /**
+   * Create an abort controller with timeout support
+   */
   private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const abortedByTimeout = { value: false };
+
+    const timeoutId = setTimeout(() => {
+      abortedByTimeout.value = true;
+      controller.abort();
+    }, timeout);
 
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -387,7 +375,9 @@ export class GeminiAdapter {
       }
     }
 
-    return { controller, timeoutId };
+    return { controller, timeoutId, abortedByTimeout };
   }
 }
 
+// Re-export types for consumers who import from adapter file
+export type { CompletionOptions, AdapterConfig, AIResponse } from './gemini/types.ts';

@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import type { AIService, OptimizationMode, QualityAssessment } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import type { AIService, OptimizationMode, QualityAssessment } from '../types';
 
 /**
  * Service for assessing the quality of prompts
@@ -25,7 +25,7 @@ export class QualityAssessmentService {
     const operation = 'assessQuality';
     const startTime = performance.now();
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       mode,
       promptLength: prompt.length,
@@ -45,7 +45,7 @@ export class QualityAssessmentService {
       const assessment = this.parseAssessment(rawOutput);
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration,
         overallScore: assessment.score,
@@ -56,7 +56,7 @@ export class QualityAssessmentService {
       return assessment;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration,
         mode,
@@ -85,7 +85,7 @@ export class QualityAssessmentService {
     const operation = 'identifyWeaknesses';
     const startTime = performance.now();
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       overallScore: assessment.score,
     });
@@ -110,7 +110,7 @@ export class QualityAssessmentService {
     }
 
     const duration = Math.round(performance.now() - startTime);
-    this.log.info(`${operation} completed`, {
+    this.log.info('Operation completed.', {
       operation,
       duration,
       weaknessCount: weaknesses.length,
@@ -160,16 +160,8 @@ Output only the JSON, nothing else:`;
   /**
    * Get mode-specific quality criteria
    */
-  private getModeSpecificCriteria(mode: OptimizationMode): string {
-    const criteria: Record<string, string> = {
-      reasoning: 'For reasoning prompts, also consider: Are deliverables specific? Are warnings domain-specific? Is context sufficient?',
-      research: 'For research prompts, also consider: Is research scope clear? Are source requirements specified? Are success metrics defined?',
-      socratic: 'For learning prompts, also consider: Is learning objective clear? Is difficulty appropriate? Are prerequisitesidentified?',
-      video: 'For video prompts, also consider: Are visual elements specific? Is cinematography style clear? Is duration/pacing specified?',
-      optimize: 'For general optimization, ensure the improved version addresses the core intent with better structure and clarity.'
-    };
-
-    return criteria[mode] || criteria.optimize;
+  private getModeSpecificCriteria(_mode: OptimizationMode): string {
+    return 'For video prompts, also consider: Are visual elements specific? Is cinematography style clear? Is duration/pacing specified?';
   }
 
   /**
@@ -180,7 +172,7 @@ Output only the JSON, nothing else:`;
 
     // Remove markdown code fences if present
     const jsonMatch = rawOutput.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
+    if (jsonMatch && jsonMatch[1]) {
       jsonText = jsonMatch[1];
     }
 
@@ -222,4 +214,3 @@ Output only the JSON, nothing else:`;
 }
 
 export default QualityAssessmentService;
-

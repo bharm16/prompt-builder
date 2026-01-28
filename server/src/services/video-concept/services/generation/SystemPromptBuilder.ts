@@ -3,14 +3,23 @@ import {
   buildAnalysisProcessTemplate,
   getElementPromptTemplate,
   VIDEO_PROMPT_PRINCIPLES,
-} from '@config/videoPromptTemplates.js';
+} from '@config/videoPromptTemplates';
 import {
   detectDescriptorCategory,
   getCategoryInstruction,
   getCategoryForbidden,
   getAllCategories,
-} from '../../config/descriptorCategories.js';
+} from '@services/video-concept/config/descriptorCategories';
 import { TAXONOMY } from '#shared/taxonomy.ts';
+
+/**
+ * Descriptor category detection result
+ */
+interface DescriptorCategoryDetection {
+  category: string | null;
+  taxonomyId: string | null;
+  confidence: number;
+}
 
 /**
  * Context analysis result
@@ -135,7 +144,7 @@ export class PromptBuilderService {
       concept: params.concept || '',
     });
 
-    return `You are a creative video consultant specializing in contextually-aware, visually compelling suggestions.
+    const systemPrompt = `You are a creative video consultant specializing in contextually-aware, visually compelling suggestions.
 
 ${VIDEO_PROMPT_PRINCIPLES}
 
@@ -208,7 +217,7 @@ Return ONLY a JSON array (no markdown, no code blocks):
 ]`;
     
     const duration = Math.round(performance.now() - startTime);
-    const prompt = result;
+    const prompt = systemPrompt;
     
     this.log.info('System prompt built', {
       operation,
@@ -225,10 +234,10 @@ Return ONLY a JSON array (no markdown, no code blocks):
    * Build specialized prompt for subject descriptors with category awareness
    */
   private buildDescriptorPrompt(params: {
-    currentValue?: string;
-    context?: Record<string, string>;
-    concept?: string;
-    taxonomyScope?: string;
+    currentValue?: string | undefined;
+    context?: Record<string, string> | undefined;
+    concept?: string | undefined;
+    taxonomyScope?: string | undefined;
   }): string {
     const operation = 'buildDescriptorPrompt';
     const isCompletion = !!(params.currentValue && params.currentValue.trim().length > 0);
@@ -241,7 +250,7 @@ Return ONLY a JSON array (no markdown, no code blocks):
     });
 
     // Detect category from current value or context
-    const detection = params.currentValue ? detectDescriptorCategory(params.currentValue) : null;
+    const detection: DescriptorCategoryDetection | null = params.currentValue ? detectDescriptorCategory(params.currentValue) as DescriptorCategoryDetection : null;
     const categoryHint = detection && detection.confidence > 0.5 ? detection.category : null;
 
     // Check if subject exists in context to provide better guidance
@@ -268,7 +277,7 @@ ${allCategories.map(cat => {
 💡 Choose ONE category focus per descriptor for maximum specificity and clarity.\n`;
     }
 
-    return `You are a video prompt expert specializing in rich, specific subject descriptions for AI video generation.
+    const descriptorPrompt = `You are a video prompt expert specializing in rich, specific subject descriptions for AI video generation.
 
 ${VIDEO_PROMPT_PRINCIPLES}
 
@@ -333,12 +342,12 @@ Return ONLY a JSON array (no markdown, no code blocks):
     
     this.log.debug('Descriptor prompt built', {
       operation,
-      promptLength: result.length,
-      categoryHint: detection?.category || null,
+      promptLength: descriptorPrompt.length,
+      categoryHint: detection?.category ?? null,
       hasSubject: !!params.context?.subject,
     });
     
-    return result;
+    return descriptorPrompt;
   }
 
   /**

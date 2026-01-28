@@ -7,6 +7,7 @@ export interface SpanLabelingCacheService {
     meta: SpanMeta | null;
     cacheId: string | null;
     signature: string;
+    text?: string;
     timestamp?: number;
   } | null;
   set(
@@ -78,4 +79,3 @@ export function useSpanLabelingCache(cacheService: SpanLabelingCacheService | nu
     setCache: setCacheForPayload,
   };
 }
-

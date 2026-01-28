@@ -1,12 +1,5 @@
 import { buildSpanKey } from '../utils/textUtils.js';
-
-interface SpanLike {
-  text: string;
-  start: number;
-  end: number;
-  confidence: number;
-  [key: string]: unknown;
-}
+import type { SpanLike } from '../types.js';
 
 interface TruncateResult {
   spans: SpanLike[];
@@ -42,8 +35,10 @@ export function truncateToMaxSpans(
 
   // Rank by confidence, break ties by position
   const ranked = [...spans].sort((a, b) => {
-    if (b.confidence === a.confidence) return a.start - b.start;
-    return b.confidence - a.confidence;
+    const confidenceA = typeof a.confidence === 'number' ? a.confidence : 0;
+    const confidenceB = typeof b.confidence === 'number' ? b.confidence : 0;
+    if (confidenceB === confidenceA) return a.start - b.start;
+    return confidenceB - confidenceA;
   });
 
   // Select top maxSpans spans

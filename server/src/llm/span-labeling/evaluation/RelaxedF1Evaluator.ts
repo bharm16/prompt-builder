@@ -104,7 +104,12 @@ export class RelaxedF1Evaluator {
         if (examples.length < 5) {
           examples.push({
             groundTruth: gt,
-            fragments: filtered.map((f) => ({ text: f.text, role: f.role, start: f.start, end: f.end })),
+            fragments: filtered.map((f) => ({ 
+              text: f.text ?? '', 
+              role: f.role ?? '', 
+              start: f.start ?? 0, 
+              end: f.end ?? 0 
+            })),
           });
         }
       }
@@ -196,7 +201,9 @@ export class RelaxedF1Evaluator {
 
       for (let i = 0; i < predicted.length; i++) {
         if (usedPred.has(i)) continue;
-        const iou = this.calculateIoU(predicted[i], gt);
+        const predSpan = predicted[i];
+        if (!predSpan) continue;
+        const iou = this.calculateIoU(predSpan, gt);
         if (iou > bestIou) {
           bestIou = iou;
           bestIdx = i;
@@ -207,8 +214,9 @@ export class RelaxedF1Evaluator {
       if (!updated[gtRole]) updated[gtRole] = {};
 
       if (bestIdx !== -1 && bestIou > iouThreshold) {
+        const matchedPred = predicted[bestIdx];
         const predRole =
-          typeof predicted[bestIdx].role === 'string' ? predicted[bestIdx].role : 'unknown';
+          matchedPred && typeof matchedPred.role === 'string' ? matchedPred.role : 'unknown';
         updated[gtRole][predRole] = (updated[gtRole][predRole] || 0) + 1;
         usedPred.add(bestIdx);
       } else {
@@ -219,7 +227,8 @@ export class RelaxedF1Evaluator {
     // Remaining predictions are spurious
     for (let i = 0; i < predicted.length; i++) {
       if (usedPred.has(i)) continue;
-      const predRole = typeof predicted[i].role === 'string' ? predicted[i].role : 'unknown';
+      const predSpan = predicted[i];
+      const predRole = predSpan && typeof predSpan.role === 'string' ? predSpan.role : 'unknown';
       if (!updated['<spurious>']) updated['<spurious>'] = {};
       updated['<spurious>'][predRole] = (updated['<spurious>'][predRole] || 0) + 1;
     }
@@ -273,11 +282,13 @@ export class RelaxedF1Evaluator {
     // Find true positives (predicted spans that match ground truth)
     for (let i = 0; i < predicted.length; i++) {
       const pred = predicted[i];
+      if (!pred) continue;
       
       for (let j = 0; j < groundTruth.length; j++) {
         if (matchedGT.has(j)) continue;
         
         const gt = groundTruth[j];
+        if (!gt) continue;
         const iou = this.calculateIoU(pred, gt);
         
         // Match if IoU > threshold AND roles match
@@ -331,6 +342,7 @@ export class RelaxedF1Evaluator {
         if (matchedGT.has(j)) continue;
         
         const gt = groundTruth[j];
+        if (!gt) continue;
         const iou = this.calculateIoU(pred, gt);
         
         // If spans overlap spatially
@@ -459,7 +471,11 @@ export class RelaxedF1Evaluator {
     const categories = new Set<string>();
     for (const testCase of testSuite.tests || []) {
       const groundTruth = Array.isArray(testCase.groundTruth) ? testCase.groundTruth : [];
-      groundTruth.forEach((span) => categories.add(span.role));
+      groundTruth.forEach((span) => {
+        if (span.role !== undefined) {
+          categories.add(span.role);
+        }
+      });
     }
 
     categories.forEach((category) => {
@@ -490,12 +506,14 @@ export class RelaxedF1Evaluator {
         const catRecall = tp + fn > 0 ? tp / (tp + fn) : 0;
         const catF1 = catPrecision + catRecall > 0 ? (2 * catPrecision * catRecall) / (catPrecision + catRecall) : 0;
 
-        results.byCategory[category] = {
-          f1: catF1,
-          precision: catPrecision,
-          recall: catRecall,
-          support,
-        };
+        if (category !== undefined) {
+          results.byCategory[category] = {
+            f1: catF1,
+            precision: catPrecision,
+            recall: catRecall,
+            support,
+          };
+        }
       }
     });
 

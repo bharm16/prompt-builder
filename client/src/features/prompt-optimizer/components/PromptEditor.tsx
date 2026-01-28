@@ -1,36 +1,47 @@
-import { forwardRef } from 'react';
+import { forwardRef, useCallback } from 'react';
 import type { PromptEditorProps } from '../types';
+import { cn } from '@/utils/cn';
 
 /**
  * Prompt Editor Component
  * ContentEditable editor for the optimized prompt
  */
 export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
+  className,
   onTextSelection,
   onHighlightClick,
   onHighlightMouseDown,
+  onHighlightMouseEnter,
+  onHighlightMouseLeave,
   onCopyEvent,
   onInput,
+  onKeyDown,
+  onFocus,
+  onBlur,
 }, ref): React.ReactElement => {
+  // Use event delegation for hover detection
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
+    if (onHighlightMouseEnter) {
+      onHighlightMouseEnter(e);
+    }
+  }, [onHighlightMouseEnter]);
+
   return (
     <div
       ref={ref}
       onMouseUp={onTextSelection}
       onClick={onHighlightClick}
       onMouseDown={onHighlightMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={onHighlightMouseLeave}
       onCopy={onCopyEvent}
       onInput={onInput}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      onBlur={onBlur}
       contentEditable
       suppressContentEditableWarning
-      className="outline-none focus:outline-none cursor-text font-sans text-copy-16 text-geist-foreground flex-1"
-      style={{
-        fontFamily: 'var(--font-geist-sans)',
-        caretColor: 'rgb(23, 23, 23)',
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-        minHeight: '1px',
-        width: '100%',
-      }}
+      className={cn('min-h-px w-full break-words', className)}
       role="textbox"
       aria-label="Optimized prompt"
     />
@@ -38,4 +49,3 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
 });
 
 PromptEditor.displayName = 'PromptEditor';
-

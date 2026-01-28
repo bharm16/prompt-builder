@@ -5,12 +5,12 @@
  * Handles model detection, section detection, phrase role analysis, and constraint generation.
  */
 
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type {
   VideoService,
   VideoConstraints,
   EnhancementMetrics,
-} from './types.js';
+} from './types';
 
 export interface VideoContextDetectionParams {
   fullPrompt: string;

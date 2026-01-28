@@ -9,6 +9,8 @@
 export {
   promptSchema,
   type PromptRequest,
+  compileSchema,
+  type CompileRequest,
 } from './promptSchemas.ts';
 
 // Suggestion schemas
@@ -16,9 +18,11 @@ export {
   suggestionSchema,
   customSuggestionSchema,
   sceneChangeSchema,
+  coherenceCheckSchema,
   type SuggestionRequest,
   type CustomSuggestionRequest,
   type SceneChangeRequest,
+  type CoherenceCheckRequest,
 } from './suggestionSchemas.ts';
 
 // Video/creative workflow schemas
@@ -56,5 +60,5 @@ export {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
+  coherenceCheckOutputSchema,
 } from './outputSchemas.ts';
-

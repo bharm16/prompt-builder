@@ -1,12 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css';
 import { initSentry } from './config/sentry';
-import { loadGeistFonts } from './utils/loadGeistFonts';
-
-// Load Geist fonts
-loadGeistFonts();
+import '@promptstudio/system/index.css';
+import './index.css';
 
 // Initialize Sentry before rendering
 // initSentry(); // Disabled
@@ -21,4 +18,3 @@ ReactDOM.createRoot(rootElement).render(
     <App />
   </React.StrictMode>
 );
-

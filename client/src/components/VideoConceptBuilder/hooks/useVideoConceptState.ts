@@ -28,6 +28,7 @@ const initialState: VideoConceptState = {
     subjectDescriptor2: '',
     subjectDescriptor3: '',
     action: '',
+    cameraMovement: '',
     location: '',
     time: '',
     mood: '',

@@ -9,7 +9,7 @@ interface ApiConfig {
   timeout?: {
     default?: number;
   };
-  apiKey: string;
+  apiKey?: string;
 }
 
 export class HttpClientConfig {
@@ -24,12 +24,13 @@ export class HttpClientConfig {
   }
 
   static fromApiConfig(apiConfig: ApiConfig): HttpClientConfig {
+    const apiKey = apiConfig.apiKey;
     return new HttpClientConfig({
       baseURL: apiConfig.baseURL,
       timeout: apiConfig.timeout?.default ?? undefined,
       defaultHeaders: {
         'Content-Type': 'application/json',
-        'X-API-Key': apiConfig.apiKey,
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}`, 'X-API-Key': apiKey } : {}),
       },
     });
   }
@@ -71,4 +72,3 @@ export class HttpClientConfig {
     return controller.signal;
   }
 }
-

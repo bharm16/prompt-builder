@@ -25,6 +25,9 @@ import { startServer, setupGracefulShutdown } from './src/server.js';
 // Load environment variables
 dotenv.config();
 
+const toError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error));
+
 /**
  * Bootstrap the application
  */
@@ -74,12 +77,13 @@ async function bootstrap() {
     return { app, server, container };
 
   } catch (error) {
-    logger.error('❌ Application bootstrap failed', error);
+    const caughtError = toError(error);
+    logger.error('❌ Application bootstrap failed', caughtError);
     console.error('\n❌ FATAL: Application failed to start');
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(caughtError.message);
 
     // Throw error instead of process.exit to allow parent processes to handle
-    throw error;
+    throw caughtError;
   }
 }
 
@@ -104,9 +108,10 @@ if (isTestEnv) {
     appInstance = createApp(containerInstance);
     logger.info('Application initialized successfully for testing');
   } catch (error) {
-    logger.error('Failed to initialize app in test mode', error);
-    console.error('Test initialization failed:', error);
-    throw error;
+    const caughtError = toError(error);
+    logger.error('Failed to initialize app in test mode', caughtError);
+    console.error('Test initialization failed:', caughtError);
+    throw caughtError;
   }
 } else {
   // Production mode: Full bootstrap with server startup

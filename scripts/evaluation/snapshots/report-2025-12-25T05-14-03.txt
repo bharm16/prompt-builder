@@ -1,0 +1,109 @@
+Evaluation Report - 2025-12-25T05:14:03.640Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (52 prompts evaluated):
+  Average Score:      19.81/25
+  Average Span Count: 25.46
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████████████████████ 52
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - consistent framing and subject continuity (36x)
+  - motion blur minimal (15x)
+  - soft shadows (4x)
+  - minimal motion blur (3x)
+  - Keep motion blur minimal (3x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - handheld tracking (6x)
+  - grading (4x)
+  - window (2x)
+  - static tripod (2x)
+  - emulating (2x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 11156 | P50: 10894 | P95: 16088 | P99: 18764
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: energetically chasing its own tail (action)
+  IMPORTANT: cheering crowd (environment), bright natural daylight (lighting), subtle game sounds and ambient room noise (audio), consistent framing and subject continuity (action), minimal motion blur (action)
+  MINOR: consistent framing and subject continuity (style), Keep motion blur minimal (action), consistent framing and subject continuity (action), motion blur minimal (style), consistent framing and subject continuity (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - action: 44
+  - lighting: 39
+  - style: 33
+  - subject: 30
+  - environment: 19
+  - audio: 6
+  - camera: 5
+  - unknown: 2
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.27 / 4.37
+  subject      3.54 / 3.42
+  action       2.90 / 2.73
+  environment  2.96 / 2.92
+  lighting     3.67 / 3.61
+  camera       4.48 / 4.42
+  style        2.92 / 2.85
+  technical    5.00 / 5.00
+  audio        2.35 / 2.33
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 19
+      e.g.: Faint sound, natural light, grading, gazing thoughtfully, emulating
+  - non_visual: 9
+      e.g.: sounds, distant bird calls, sounds, distant laughter, purring, sizzling, barking
+  - instruction_text: 2
+      e.g.: soft fill - **Style:** Commercial style, - **Style:** Bright,
+  - duplicate: 28
+      e.g.: Soft lamp light, window, soft daylight from window, raindrops, static tripod
+  - other: 15
+      e.g.: handheld tracking, game controller, computer games, POV shot, Contemporary action
+
+TOP TAXONOMY ERRORS:
+  - shot.type → camera.focus (8x) (e.g. "shallow focus", "deep focus", "shallow focus")
+  - camera.focus → camera.focus (8x) (e.g. "selective focus", "f/4-f/5.6", "f/4")
+  - lighting.quality → lighting.source (6x) (e.g. "bright monitor glow", "Natural light", "natural daylight")
+  - action.movement → action.state (5x) (e.g. "gaming", "curves with precise control", "barking enthusiastically")
+  - shot.type → camera.movement (4x) (e.g. "handheld tracking", "handheld tracking", "slow dolly in")
+
+📐 GRANULARITY ISSUES:
+  - too_fine: 6x (e.g., "f/4-f/5.6")
+  - too_coarse: 6x (e.g., "Bright, family-friendly, vibrant colors")
+
+ERRORS BY SECTION:
+  main            missed 164, falsePositives 41
+  technicalSpecs  missed 10, falsePositives 32
+  alternatives    missed 4, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   1.2% (9/780)
+    Failures: "dog" (subject.identity), "dog" (subject.identity), "warm" (lighting.colorTemp)
+  medium 13.3% (41/309)
+    Failures: "game controller" (camera.lens), "Soft lamp light" (lighting.quality), "raindrops" (subject.identity)
+  low    9.8% (23/235)
+    Failures: "handheld tracking" (audio.ambient), "window" (lighting.source), "Soft daylight from window" (lighting.quality)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [18/25] "storyboard with sketches panning from left to right"
+    Notes: The extraction missed several important visual elements related to the storyboard and its context. Some spans were incorrectly classified as abstract concepts, and there were taxonomy errors in the roles assigned to certain spans.
+  [18/25] "a large box, exploding outward with full bedroom decor, at in the middle of an empty bedroom, commercial style, during ad for a home decor stoor featuring chic modern furniture bursting out"
+    Notes: The extraction covers many elements but misses some important visual control points and has some misclassifications and boundary issues.
+  [18/25] "young botanist with vibrant green gloves, gathering fallen leaves with a canvas bag, at sun-drenched botanical garden pathway"
+    Notes: The extraction covers many elements but misses key actions and qualities. Some spans are too coarse, and there are duplicates and misclassifications.
+
+================================================================================

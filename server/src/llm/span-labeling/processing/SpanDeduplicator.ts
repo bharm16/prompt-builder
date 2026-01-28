@@ -1,4 +1,5 @@
 import { buildSpanKey } from '../utils/textUtils.js';
+import type { SpanLike } from '../types.js';
 
 /**
  * Span deduplication module
@@ -6,13 +7,6 @@ import { buildSpanKey } from '../utils/textUtils.js';
  * Removes duplicate spans based on position and text.
  * LLMs sometimes generate duplicate spans, especially after repairs.
  */
-
-interface SpanLike {
-  start: number;
-  end: number;
-  text: string;
-  [key: string]: unknown;
-}
 
 interface DedupeResult {
   spans: SpanLike[];

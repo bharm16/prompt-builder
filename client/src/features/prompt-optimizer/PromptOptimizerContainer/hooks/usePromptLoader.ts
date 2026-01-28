@@ -1,15 +1,21 @@
-import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { getPromptRepository } from '@/repositories';
-import { createHighlightSignature } from '../../hooks/useSpanLabeling.ts';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getPromptRepository } from '@repositories/index';
+import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
-import type { Toast } from '@hooks/types';
+import type { PromptVersionEntry, Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('usePromptLoader');
 
 interface PromptData {
   id?: string;
   uuid: string;
   input?: string;
   output?: string;
+  targetModel?: string | null;
   highlightCache?: {
     signature?: string;
     updatedAt?: string;
@@ -17,7 +23,7 @@ interface PromptData {
   } | null;
   brainstormContext?: string | Record<string, unknown> | null;
   timestamp?: string;
-  versions?: unknown[];
+  versions?: PromptVersionEntry[];
   [key: string]: unknown;
 }
 
@@ -25,7 +31,10 @@ interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   setDisplayedPrompt: (prompt: string) => void;
+  setGenericOptimizedPrompt?: (prompt: string | null) => void;
   displayedPrompt: string;
+  setPreviewPrompt?: (prompt: string | null) => void;
+  setPreviewAspectRatio?: (ratio: string | null) => void;
   [key: string]: unknown;
 }
 
@@ -37,16 +46,15 @@ interface UsePromptLoaderParams {
   promptOptimizer: PromptOptimizer;
   setDisplayedPromptSilently: (prompt: string) => void;
   applyInitialHighlightSnapshot: (
-    highlight: {
-      signature?: string;
-      [key: string]: unknown;
-    } | null,
+    highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
+  resetVersionEdits: () => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setCurrentPromptUuid: (uuid: string) => void;
   setShowResults: (show: boolean) => void;
+  setSelectedModel: (model: string) => void;
   setPromptContext: (context: PromptContext | null) => void;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
@@ -67,19 +75,43 @@ export function usePromptLoader({
   setDisplayedPromptSilently,
   applyInitialHighlightSnapshot,
   resetEditStacks,
+  resetVersionEdits,
   setCurrentPromptDocId,
   setCurrentPromptUuid,
   setShowResults,
+  setSelectedModel,
   setPromptContext,
   skipLoadFromUrlRef,
-}: UsePromptLoaderParams): void {
-  const location = useLocation();
+}: UsePromptLoaderParams): { isLoading: boolean } {
+  const {
+    setInputPrompt,
+    setOptimizedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
+  } = promptOptimizer;
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Initial state: loading if we have a UUID that doesn't match current
+    if (!uuid) return false;
+    if (uuid === currentPromptUuid) return false;
+    return true;
+  });
 
   // Handle loading from URL parameter
   useEffect(() => {
     const loadPromptFromUrl = async (): Promise<void> => {
-      if (!uuid) return;
-      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) return;
+      if (!uuid) {
+        setIsLoading(false);
+        return;
+      }
+      
+      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
 
       try {
         const promptRepository = getPromptRepository();
@@ -89,26 +121,31 @@ export function usePromptLoader({
 
         if (promptData) {
           // Load prompt data
-          promptOptimizer.setInputPrompt(promptData.input || '');
-          promptOptimizer.setOptimizedPrompt(promptData.output || '');
+          setInputPrompt(promptData.input || '');
+          setOptimizedPrompt(promptData.output || '');
           setDisplayedPromptSilently(promptData.output || '');
+          setGenericOptimizedPrompt?.(null);
+          setPreviewPrompt?.(null);
+          setPreviewAspectRatio?.(null);
           setCurrentPromptUuid(promptData.uuid);
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);
+          setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
 
           // Restore highlight cache
-          const preloadHighlight = promptData.highlightCache
-            ? {
+          const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
+            ? ({
                 ...promptData.highlightCache,
                 signature:
                   promptData.highlightCache.signature ??
                   createHighlightSignature(promptData.output ?? ''),
-              }
+              } as HighlightSnapshot)
             : null;
           applyInitialHighlightSnapshot(preloadHighlight, {
             bumpVersion: true,
             markPersisted: true,
           });
+          resetVersionEdits();
           resetEditStacks();
 
           // Restore brainstorm context if available
@@ -124,10 +161,13 @@ export function usePromptLoader({
               const restoredContext = PromptContext.fromJSON(contextData);
               setPromptContext(restoredContext);
             } catch (contextError) {
-              console.error(
-                'Failed to restore prompt context from shared link:',
-                contextError
-              );
+              const info = sanitizeError(contextError);
+              log.warn('Failed to restore prompt context from shared link', {
+                operation: 'restorePromptContext',
+                promptUuid: uuid,
+                error: info.message,
+                errorName: info.name,
+              });
               toast.warning(
                 'Could not restore video context. The prompt will still load.'
               );
@@ -137,13 +177,16 @@ export function usePromptLoader({
             setPromptContext(null);
           }
         } else {
-          toast.error('Prompt not found');
+          log.warn('Prompt not found for URL parameter', { operation: 'loadPromptFromUrl', promptUuid: uuid });
           navigate('/', { replace: true });
         }
       } catch (error) {
-        console.error('Error loading prompt from URL:', error);
+        const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
+        log.error('Error loading prompt from URL', err, { operation: 'loadPromptFromUrl', promptUuid: uuid });
         toast.error('Failed to load prompt');
         navigate('/', { replace: true });
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -153,16 +196,22 @@ export function usePromptLoader({
     currentPromptUuid,
     navigate,
     toast,
-    promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    resetVersionEdits,
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedModel,
     setPromptContext,
     skipLoadFromUrlRef,
-    location,
+    setInputPrompt,
+    setOptimizedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
   ]);
-}
 
+  return { isLoading };
+}

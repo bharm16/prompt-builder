@@ -14,26 +14,26 @@
  * Uses the most complete definition from HighlightSpan as the base
  */
 export interface Span {
-  id?: string;
+  id?: string | undefined;
   start: number;
   end: number;
-  displayStart?: number;
-  displayEnd?: number;
-  text?: string;
-  quote?: string;
-  displayQuote?: string;
-  category?: string;
-  role?: string;
-  confidence?: number;
-  source?: string;
-  startGrapheme?: number;
-  endGrapheme?: number;
-  validatorPass?: boolean;
-  idempotencyKey?: string;
-  leftCtx?: string;
-  rightCtx?: string;
-  displayLeftCtx?: string;
-  displayRightCtx?: string;
+  displayStart?: number | undefined;
+  displayEnd?: number | undefined;
+  text?: string | undefined;
+  quote?: string | undefined;
+  displayQuote?: string | undefined;
+  category?: string | undefined;
+  role?: string | undefined;
+  confidence?: number | undefined;
+  source?: string | undefined;
+  startGrapheme?: number | undefined;
+  endGrapheme?: number | undefined;
+  validatorPass?: boolean | undefined;
+  idempotencyKey?: string | undefined;
+  leftCtx?: string | undefined;
+  rightCtx?: string | undefined;
+  displayLeftCtx?: string | undefined;
+  displayRightCtx?: string | undefined;
   [key: string]: unknown;
 }
 
@@ -80,6 +80,7 @@ export interface SpanLabelingResult {
   signature: string;
   cacheId: string | null;
   source: 'initial' | 'cache' | 'network' | 'cache-fallback' | 'refresh-cache';
+  [key: string]: unknown;
 }
 
 export type SpanLabelingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale';
@@ -89,6 +90,7 @@ export interface SpanLabelingState {
   meta: SpanMeta | null;
   status: SpanLabelingStatus;
   error: Error | null;
+  signature: string | null;
 }
 
 /**
@@ -126,7 +128,7 @@ export interface InitialData {
 }
 
 export interface UseSpanLabelingOptions {
-  text: string | null | undefined;
+  text?: string | null;
   initialData?: InitialData | null;
   initialDataVersion?: number;
   cacheKey?: string | null;
@@ -146,6 +148,7 @@ export interface UseSpanLabelingReturn {
   meta: SpanMeta | null;
   status: SpanLabelingStatus;
   error: Error | null;
+  signature: string | null;
   refresh: () => void;
 }
 
@@ -306,4 +309,3 @@ export interface ValidationState {
 }
 
 export type ValidatorFunction = (span: Span) => ValidationResult;
-

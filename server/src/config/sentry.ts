@@ -2,8 +2,10 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import type { Application } from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import { logger } from '@infrastructure/Logger';
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
+const log = logger.child({ service: 'Sentry' });
 
 export function initSentry(app: Application): void {
   // Read environment variables inside function (after dotenv.config() has run)
@@ -13,7 +15,7 @@ export function initSentry(app: Application): void {
   // Only initialize Sentry if DSN is provided
   if (!SENTRY_DSN) {
     if (ENVIRONMENT === 'development') {
-      console.warn('Sentry DSN not configured. Error tracking is disabled.');
+      log.warn('Sentry DSN not configured. Error tracking is disabled.', { operation: 'initSentry' });
     }
     return;
   }
@@ -30,8 +32,6 @@ export function initSentry(app: Application): void {
     integrations: [
       // HTTP request tracking
       Sentry.httpIntegration(),
-      // Express request handler
-      Sentry.expressIntegration(app),
       // Profiling (optional, can be resource-intensive)
       nodeProfilingIntegration(),
     ],
@@ -54,15 +54,19 @@ export function initSentry(app: Application): void {
         delete event.request.headers['authorization'];
         delete event.request.headers['cookie'];
         delete event.request.headers['x-api-key'];
+        delete event.request.headers['x-firebase-token'];
       }
 
       // Remove sensitive query parameters
       if (event.request?.query_string) {
-        const sanitized = event.request.query_string
-          .replace(/api[_-]?key=[^&]*/gi, 'api_key=[REDACTED]')
-          .replace(/token=[^&]*/gi, 'token=[REDACTED]')
-          .replace(/secret=[^&]*/gi, 'secret=[REDACTED]');
-        event.request.query_string = sanitized;
+        const queryString = event.request.query_string;
+        if (typeof queryString === 'string') {
+          const sanitized = queryString
+            .replace(/api[_-]?key=[^&]*/gi, 'api_key=[REDACTED]')
+            .replace(/token=[^&]*/gi, 'token=[REDACTED]')
+            .replace(/secret=[^&]*/gi, 'secret=[REDACTED]');
+          event.request.query_string = sanitized;
+        }
       }
 
       return event;
@@ -93,7 +97,7 @@ export function initSentry(app: Application): void {
   // Sentry request handling is now done automatically through integrations
   // No need for explicit middleware in newer versions
   
-  console.log(`✓ Sentry initialized (env: ${ENVIRONMENT})`);
+  log.info('Sentry initialized', { operation: 'initSentry', environment: ENVIRONMENT });
 }
 
 // Error handler must be registered after all routes but before other error middleware
@@ -129,10 +133,13 @@ export function setSentryUser(user: SentryUser | null): void {
   if (!SENTRY_DSN) return;
 
   if (user) {
+    const email = user.email;
+    const displayName = user.displayName;
     Sentry.setUser({
       id: user.uid,
-      email: user.email,
-      username: user.displayName || user.email?.split('@')[0],
+      ...(email && { email }),
+      ...(displayName && { username: displayName }),
+      ...(!displayName && email && { username: email.split('@')[0] }),
     });
   } else {
     Sentry.setUser(null);
@@ -154,7 +161,8 @@ export function addSentryBreadcrumb(category: string, message: string, data: Rec
 // Helper to capture exceptions manually
 export function captureException(error: unknown, context: Record<string, unknown> = {}): void {
   if (!SENTRY_DSN) {
-    console.error('Error:', error, context);
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('captureException called but Sentry is not configured', err, { operation: 'captureException', context });
     return;
   }
 
@@ -168,7 +176,13 @@ export function captureException(error: unknown, context: Record<string, unknown
 // Helper to capture messages
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info', context: Record<string, unknown> = {}): void {
   if (!SENTRY_DSN) {
-    console.log(`[${level}]`, message, context);
+    if (level === 'error') {
+      log.error(message, undefined, { operation: 'captureMessage', context });
+    } else if (level === 'warning') {
+      log.warn(message, { operation: 'captureMessage', context });
+    } else {
+      log.info(message, { operation: 'captureMessage', context });
+    }
     return;
   }
 
@@ -180,15 +194,14 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   });
 }
 
-// Helper to start a transaction for performance tracking
-export function startTransaction(name: string, op: string): Sentry.Transaction | null {
+// Helper to start a span for performance tracking (replaces deprecated startTransaction)
+export function startSpan(name: string, op: string): Sentry.Span | null {
   if (!SENTRY_DSN) return null;
 
-  return Sentry.startTransaction({
+  return Sentry.startInactiveSpan({
     name,
     op,
   });
 }
 
 export default Sentry;
-

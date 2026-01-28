@@ -5,7 +5,7 @@ import {
   EMOTIONAL_TONE_PATTERNS,
   CONFLICT_PATTERNS,
 } from '../config/intentPatterns.js';
-import type { CreativeIntent, StyleConflict } from '../../types.js';
+import type { CreativeIntent, StyleConflict } from '@services/enhancement/services/types';
 
 /**
  * Creative Intent Analyzer

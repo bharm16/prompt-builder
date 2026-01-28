@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project integrates Radix UI Themes layout principles without requiring the full `@radix-ui/themes` package. The layout system is built on top of Tailwind CSS and works seamlessly with our existing Polaris and Geist design tokens.
+This project integrates Radix UI Themes layout principles without requiring the full `@radix-ui/themes` package. The layout system is built on top of Tailwind CSS and works seamlessly with our existing Polaris and PromptStudio design tokens.
 
 **Source:** [Radix UI Themes Layout Documentation](https://www.radix-ui.com/themes/docs/overview/layout)
 
@@ -214,9 +214,9 @@ All layout components support Polaris spacing tokens:
 </Box>
 ```
 
-### Geist Typography
+### PromptStudio Typography
 
-Layout components work seamlessly with Geist typography:
+Layout components work seamlessly with PromptStudio typography:
 
 ```tsx
 <Section size="md">
@@ -341,14 +341,13 @@ import { Flex, Box } from '@/components/layout';
 4. **Responsive**: Built-in responsive prop support
 5. **Composable**: Works with existing Tailwind classes
 6. **No Dependencies**: Pure Tailwind implementation
-7. **Design System Integration**: Works with Polaris and Geist tokens
+7. **Design System Integration**: Works with Polaris and PromptStudio tokens
 
 ## References
 
 - [Radix UI Themes Layout Docs](https://www.radix-ui.com/themes/docs/overview/layout)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [Polaris Design System](./geist-tokens-reference.md)
-- [Geist Typography](./geist-typography-migration-guide.md)
+- [PromptStudio System](./promptstudio-system.md)
 
 
 

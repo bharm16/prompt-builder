@@ -2,13 +2,14 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "target": "ES2022",
     "types": ["node"],
+    "typeRoots": ["../node_modules/@types", "./src/types"],
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "..",
     "baseUrl": ".",
     "paths": {
       "@infrastructure/*": ["src/infrastructure/*"],
@@ -19,10 +20,14 @@
       "@utils/*": ["src/utils/*"],
       "@config/*": ["src/config/*"],
       "@llm/*": ["src/llm/*"],
-      "@shared/*": ["../shared/*"]
+      "@middleware/*": ["src/middleware/*"],
+      "@routes/*": ["src/routes/*"],
+      "@clients/*": ["src/clients/*"],
+      "@server/*": ["src/*"],
+      "@shared/*": ["../shared/*"],
+      "#shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*", "index.ts", "instrument.mjs"],
+  "include": ["src/**/*", "src/types/**/*.d.ts", "index.ts", "instrument.mjs", "../shared/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
-

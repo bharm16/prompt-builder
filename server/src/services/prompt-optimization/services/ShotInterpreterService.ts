@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import type { AIService, ShotPlan } from '../types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService, ShotPlan } from '../types';
 
 /**
  * ShotInterpreterService
@@ -18,10 +18,15 @@ import type { AIService, ShotPlan } from '../types.js';
 export class ShotInterpreterService {
   private readonly ai: AIService;
   private readonly log: ILogger;
+  private readonly cache = new Map<string, { value: ShotPlan | null; expiresAt: number }>();
+  private readonly cacheTtlMs: number;
+  private readonly cacheMaxEntries: number;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
     this.log = logger.child({ service: 'ShotInterpreterService' });
+    this.cacheTtlMs = Number.parseInt(process.env.SHOT_PLAN_CACHE_TTL_MS || '300000', 10);
+    this.cacheMaxEntries = Number.parseInt(process.env.SHOT_PLAN_CACHE_MAX || '200', 10);
   }
 
   /**
@@ -32,14 +37,25 @@ export class ShotInterpreterService {
     const operation = 'interpret';
     
     if (!prompt || !prompt.trim()) {
-      this.log.debug(`${operation} skipped - empty prompt`, {
+      this.log.debug('Operation skipped.', {
         operation,
+        reason: 'empty_prompt',
         duration: Math.round(performance.now() - startTime),
       });
       return null;
     }
 
-    this.log.debug(`Starting ${operation}`, {
+    const cacheKey = this.getCacheKey(prompt);
+    const cached = this.getCached(cacheKey);
+    if (cached !== undefined) {
+      this.log.debug('Cache hit.', {
+        operation,
+        promptLength: prompt.length,
+      });
+      return cached;
+    }
+
+    this.log.debug('Starting operation.', {
       operation,
       promptLength: prompt.length,
     });
@@ -48,7 +64,7 @@ export class ShotInterpreterService {
 
     // Lightweight schema to keep output predictable without blocking optional fields
     const schema = {
-      type: 'object',
+      type: 'object' as const,
       required: ['shot_type', 'core_intent'],
       properties: {
         shot_type: { type: 'string' },
@@ -71,30 +87,65 @@ export class ShotInterpreterService {
     };
 
     try {
-      const parsed = await StructuredOutputEnforcer.enforceJSON(this.ai, systemPrompt, {
+      const parsed = await StructuredOutputEnforcer.enforceJSON<ShotPlan>(this.ai, systemPrompt, {
         operation: 'optimize_shot_interpreter',
         schema,
         maxRetries: 1,
         temperature: 0,
         maxTokens: 400,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         shotType: parsed.shot_type,
         confidence: parsed.confidence,
       });
 
+      this.setCached(cacheKey, parsed as ShotPlan);
       return parsed as ShotPlan;
     } catch (error) {
-      this.log.warn(`${operation} failed - continuing without structured plan`, {
+      this.log.warn('Operation failed; continuing without structured plan.', {
         operation,
         duration: Math.round(performance.now() - startTime),
-      }, error as Error);
+        error: (error as Error).message,
+      });
+      this.setCached(cacheKey, null);
       return null;
     }
+  }
+
+  private getCacheKey(prompt: string): string {
+    return prompt.trim().toLowerCase();
+  }
+
+  private getCached(cacheKey: string): ShotPlan | null | undefined {
+    const entry = this.cache.get(cacheKey);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(cacheKey);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  private setCached(cacheKey: string, value: ShotPlan | null): void {
+    if (this.cacheTtlMs <= 0 || this.cacheMaxEntries <= 0) {
+      return;
+    }
+
+    if (this.cache.size >= this.cacheMaxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + this.cacheTtlMs,
+    });
   }
 
   private _buildSystemPrompt(userPrompt: string): string {

@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { X, Info } from 'lucide-react';
+import { X, Info } from '@promptstudio/system/components/ui';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 interface ContextData {
   specificAspects?: string;
@@ -40,14 +41,16 @@ export const ContextPreviewBadge = memo<ContextPreviewBadgeProps>(({ context, on
         Context: {fieldCount} {fieldLabel}
       </span>
       {onClear && (
-        <button
+        <Button
           onClick={onClear}
-          className="ml-1 text-blue-600 hover:text-blue-800 transition-colors"
+          variant="ghost"
+          size="icon"
+          className="ml-1 h-6 w-6 text-blue-600 transition-colors hover:text-blue-800"
           aria-label="Clear context"
           title="Clear context"
         >
           <X className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       )}
 
       {/* Tooltip with context details */}
@@ -120,14 +123,16 @@ export const ContextIndicatorBanner = memo<ContextPreviewBadgeProps>(({ context,
           </div>
         </div>
         {onClear && (
-          <button
+          <Button
             onClick={onClear}
-            className="text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
+            variant="ghost"
+            size="icon"
+            className="flex-shrink-0 text-blue-600 transition-colors hover:text-blue-800"
             aria-label="Clear context"
             title="Clear context"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -160,14 +165,16 @@ export const ContextFieldTag = memo<ContextFieldTagProps>(({ label, value, onRem
         {displayValue}
       </span>
       {onRemove && (
-        <button
+        <Button
           onClick={onRemove}
-          className="ml-1 text-neutral-500 hover:text-neutral-700 transition-colors"
+          variant="ghost"
+          size="icon"
+          className="ml-1 h-6 w-6 text-neutral-500 transition-colors hover:text-neutral-700"
           aria-label={`Remove ${label}`}
           title={`Remove ${label}`}
         >
           <X className="h-3 w-3" />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -176,4 +183,3 @@ export const ContextFieldTag = memo<ContextFieldTagProps>(({ label, value, onRem
 ContextFieldTag.displayName = 'ContextFieldTag';
 
 export default ContextPreviewBadge;
-

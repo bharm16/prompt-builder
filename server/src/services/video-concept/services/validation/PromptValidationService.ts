@@ -1,11 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import {
-  validatePromptOutputSchema,
-  smartDefaultsOutputSchema,
-} from '@utils/validation.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Validation breakdown
@@ -53,7 +49,7 @@ export class PromptValidationService {
     const startTime = performance.now();
     const operation = 'validatePrompt';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementCount: Object.keys(params.elements).length,
       hasConcept: !!params.concept,
@@ -89,18 +85,23 @@ Return ONLY a JSON object:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['score', 'breakdown', 'feedback', 'strengths', 'weaknesses'],
+      };
+      
       const validation = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_prompt_validation',
-          schema: validatePromptOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.3,
         }
       ) as ValidationResult;
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: validation.score,
@@ -109,7 +110,7 @@ Return ONLY a JSON object:
       
       return validation;
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -138,7 +139,7 @@ Return ONLY a JSON object:
     const startTime = performance.now();
     const operation = 'getSmartDefaults';
     
-    this.log.debug(`Starting ${operation}`, {
+    this.log.debug('Starting operation.', {
       operation,
       elementType: params.elementType,
       existingElementCount: Object.keys(params.existingElements).length,
@@ -150,8 +151,9 @@ Return ONLY a JSON object:
       .join('\n');
 
     if (!dependencies) {
-      this.log.debug(`${operation} skipped - no dependencies`, {
+      this.log.debug('Operation skipped.', {
         operation,
+        reason: 'no_dependencies',
         duration: Math.round(performance.now() - startTime),
       });
       return { defaults: [] };
@@ -171,19 +173,23 @@ Return ONLY a JSON array:
 ["default 1", "default 2", "default 3"]`;
 
     try {
+      const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
+        type: 'array' as const,
+      };
+      
       const defaults = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_smart_defaults',
-          schema: smartDefaultsOutputSchema,
+          schema,
           isArray: true,
           maxTokens: 256,
           temperature: 0.6,
         }
       ) as string[];
       
-      this.log.info(`${operation} completed`, {
+      this.log.info('Operation completed.', {
         operation,
         duration: Math.round(performance.now() - startTime),
         defaultCount: defaults.length,
@@ -191,7 +197,7 @@ Return ONLY a JSON array:
       
       return { defaults };
     } catch (error) {
-      this.log.error(`${operation} failed`, error as Error, {
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,
@@ -200,4 +206,3 @@ Return ONLY a JSON array:
     }
   }
 }
-

@@ -23,7 +23,9 @@ export interface PromptBuildResult {
   /** Whether to use strict schema mode */
   useStrictSchema?: boolean;
   /** Provider hint for downstream processing */
-  provider: 'openai' | 'groq';
+  provider: 'openai' | 'groq' | 'qwen';
+  /** Optional reasoning effort for Qwen models */
+  reasoningEffort?: 'none' | 'default';
 }
 
 /**
@@ -62,6 +64,7 @@ export interface IPromptBuilder {
  */
 export interface SharedPromptContext {
   highlightedText: string;
+  highlightedCategory: string | null;
   inlineContext: string;
   prefix: string;
   suffix: string;

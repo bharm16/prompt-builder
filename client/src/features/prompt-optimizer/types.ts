@@ -1,5 +1,12 @@
-import type { LucideIcon } from 'lucide-react';
+import type { IconProps } from '@promptstudio/system/components/ui';
 import type { User } from '@hooks/types';
+import type { FormData } from '@/PromptImprovementForm';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { CapabilityValues } from '@shared/capabilities';
+import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
+import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from './types/coherence';
+import type { I2VContext } from './types/i2v';
 
 /**
  * Prompt optimization mode configuration
@@ -7,33 +14,8 @@ import type { User } from '@hooks/types';
 export interface PromptMode {
   id: string;
   name: string;
-  icon: LucideIcon;
+  icon: IconProps['icon'];
   description?: string;
-}
-
-/**
- * Props for ModeDropdown component
- */
-export interface ModeDropdownProps {
-  modes: PromptMode[];
-  selectedMode: string;
-  onModeChange: (modeId: string) => void;
-}
-
-/**
- * Props for PromptInput component
- */
-export interface PromptInputProps {
-  inputPrompt: string;
-  onInputChange: (value: string) => void;
-  selectedMode: string;
-  onModeChange: (modeId: string) => void;
-  onOptimize: () => void;
-  onShowBrainstorm?: () => void;
-  isProcessing: boolean;
-  modes: PromptMode[];
-  aiNames?: string[];
-  currentAIIndex?: number;
 }
 
 /**
@@ -50,6 +32,26 @@ export interface CategoryLegendProps {
  * Export format type
  */
 export type ExportFormat = 'text' | 'markdown' | 'json';
+
+export interface OptimizationOptions {
+  skipCache?: boolean;
+  generationParams?: CapabilityValues;
+  compileOnly?: boolean;
+  compilePrompt?: string;
+  createVersion?: boolean;
+  startImage?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
+}
+
+export interface LockedSpan {
+  id: string;
+  text: string;
+  leftCtx?: string;
+  rightCtx?: string;
+  category?: string;
+  source?: string;
+  confidence?: number;
+}
 
 /**
  * Props for FloatingToolbar component
@@ -69,57 +71,79 @@ export interface FloatingToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  promptText?: string;
-  showModelMenu: boolean;
-  onToggleModelMenu: (show: boolean) => void;
+  hoveredSpanId?: string | null;
+  primaryVisible?: boolean;
 }
 
 /**
  * Props for PromptEditor component
  */
 export interface PromptEditorProps {
+  className?: string;
   onTextSelection: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onCopyEvent: (e: React.ClipboardEvent<HTMLDivElement>) => void;
   onInput: (e: React.FormEvent<HTMLDivElement>) => void;
-}
-
-/**
- * Props for PromptInputSection component
- */
-export interface PromptInputSectionProps {
-  aiNames?: string[];
-  onOptimize: () => void;
-  onShowBrainstorm?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
 /**
  * Props for LoadingSkeleton component
  */
-export interface LoadingSkeletonProps {
-  selectedMode: string;
-}
-
 /**
  * Props for PromptModals component
  */
 export interface PromptModalsProps {
-  onImprovementComplete?: () => void;
-  onConceptComplete?: () => void;
+  onImprovementComplete?: (enhancedPrompt: string, formData: FormData) => void;
+  onConceptComplete?: (
+    finalConcept: string,
+    elements: Record<string, unknown>,
+    metadata: Record<string, unknown>
+  ) => void;
+  onSkipBrainstorm?: () => void;
 }
 
 /**
  * Props for PromptResultsSection component
  */
 export interface PromptResultsSectionProps {
+  user: User | null;
   onDisplayedPromptChange: (text: string) => void;
-  onFetchSuggestions: () => void;
-  onSuggestionClick: (suggestion: unknown) => void;
-  onHighlightsPersist: (highlights: unknown) => void;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+  onFetchSuggestions: (payload?: SuggestionPayload) => void;
+  onSuggestionClick: (suggestion: SuggestionItem | string) => void;
+  onHighlightsPersist: (highlights: {
+    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
+    meta: Record<string, unknown> | null;
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
+  }) => void;
   onUndo: () => void;
   onRedo: () => void;
-  stablePromptContext?: unknown;
+  stablePromptContext?: PromptContext | null | undefined;
+  coherenceAffectedSpanIds?: Set<string> | undefined;
+  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
+
+  // Coherence panel (inline, collapsible)
+  coherenceIssues?: CoherenceIssue[] | undefined;
+  isCoherenceChecking?: boolean | undefined;
+  isCoherencePanelExpanded?: boolean | undefined;
+  onToggleCoherencePanelExpanded?: (() => void) | undefined;
+  onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
+  onDismissAllCoherenceIssues?: (() => void) | undefined;
+  onApplyCoherenceFix?: ((
+    issueId: string,
+    recommendation: CoherenceRecommendation
+  ) => void) | undefined;
+  onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 /**
@@ -131,4 +155,3 @@ export interface PromptSidebarProps {
 
 // Re-export User type for convenience
 export type { User };
-

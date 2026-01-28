@@ -1,6 +1,6 @@
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -21,12 +21,31 @@ export function initializeFirebaseAdmin() {
 
   try {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-    
-    if (serviceAccountPath) {
-      // Method 1: Service account JSON file
-      console.log('Initializing Firebase Admin with service account...');
-      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-      
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    let serviceAccount: admin.ServiceAccount | null = null;
+
+    if (serviceAccountJson) {
+      try {
+        serviceAccount = JSON.parse(serviceAccountJson) as admin.ServiceAccount;
+      } catch (error) {
+        console.warn('Invalid FIREBASE_SERVICE_ACCOUNT_JSON, falling back to file/ADC', {
+          error: (error as Error).message,
+        });
+      }
+    }
+
+    if (!serviceAccount && serviceAccountPath) {
+      if (!existsSync(serviceAccountPath)) {
+        console.warn('FIREBASE_SERVICE_ACCOUNT_PATH not found, falling back to ADC', {
+          serviceAccountPath,
+        });
+      } else {
+        console.log('Initializing Firebase Admin with service account...');
+        serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8')) as admin.ServiceAccount;
+      }
+    }
+
+    if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -36,7 +55,7 @@ export function initializeFirebaseAdmin() {
       // This works in Cloud Run, GCE, or with gcloud auth application-default login
       console.log('Initializing Firebase Admin with Application Default Credentials...');
       console.log('Make sure you have run: gcloud auth application-default login');
-      
+
       admin.initializeApp({
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
       });

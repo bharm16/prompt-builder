@@ -23,6 +23,8 @@ const MODELS = {
 
 const ENV_FILE = join(__dirname, '../.env');
 const RESULTS_DIR = join(__dirname, '../test-results');
+const PROMPT_OUTPUT_ONLY = 'true';
+const BASE_ENV = { ...process.env, PROMPT_OUTPUT_ONLY };
 
 // Ensure results directory exists
 try {
@@ -84,7 +86,7 @@ function runTests(model: string, modelKey: string): void {
       { 
         encoding: 'utf-8',
         cwd: join(__dirname, '..'),
-        env: { ...process.env, SPAN_MODEL: model, ENHANCE_MODEL: model }
+        env: { ...BASE_ENV, SPAN_MODEL: model, ENHANCE_MODEL: model }
       }
     );
     
@@ -167,7 +169,7 @@ async function main(): Promise<void> {
   console.log(`\n📝 Step 1: Testing ${MODELS.baseline}`);
   updateEnvFile(MODELS.baseline);
   console.log('🔄 Restarting server...');
-  execSync('npm restart', { stdio: 'inherit', cwd: join(__dirname, '..') });
+  execSync('npm restart', { stdio: 'inherit', cwd: join(__dirname, '..'), env: BASE_ENV });
   
   if (!waitForServer()) {
     console.error('❌ Failed to start server');
@@ -180,7 +182,7 @@ async function main(): Promise<void> {
   console.log(`\n📝 Step 2: Testing ${MODELS.scout}`);
   updateEnvFile(MODELS.scout);
   console.log('🔄 Restarting server...');
-  execSync('npm restart', { stdio: 'inherit', cwd: join(__dirname, '..') });
+  execSync('npm restart', { stdio: 'inherit', cwd: join(__dirname, '..'), env: BASE_ENV });
   
   if (!waitForServer()) {
     console.error('❌ Failed to start server');
@@ -200,7 +202,6 @@ main().catch((error) => {
   console.error('\n❌ Test suite failed:', error);
   process.exit(1);
 });
-
 
 
 
