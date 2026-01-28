@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import type { LucideIcon } from 'lucide-react';
+import type { AppIcon } from '@/types';
 
 import { ToolNavButton } from '@components/ToolSidebar/components/ToolNavButton';
 import { ToolPanel } from '@components/ToolSidebar/components/ToolPanel';
@@ -15,7 +15,7 @@ vi.mock(
   { virtual: true }
 );
 
-const DummyIcon: LucideIcon = (props) => <svg data-testid="dummy-icon" {...props} />;
+const DummyIcon: AppIcon = (props) => <svg data-testid="dummy-icon" {...props} />;
 
 describe('ToolSidebar simple components', () => {
   describe('error handling', () => {

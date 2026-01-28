@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import type { Asset } from '@shared/types/asset';
 import { KeyframeOptionCard } from './KeyframeOptionCard';

@@ -1,28 +1,38 @@
-import React, { useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
-import SharedPrompt from './components/SharedPrompt';
 import { ToastProvider } from './components/Toast';
 import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppShellContext';
 import { MainWorkspace } from './components/layout/MainWorkspace';
-import { HomePage } from './pages/HomePage';
-import { ProductsPage } from './pages/ProductsPage';
-import { PricingPage } from './pages/PricingPage';
-import { DocsPage } from './pages/DocsPage';
-import { SignInPage } from './pages/SignInPage';
-import { SignUpPage } from './pages/SignUpPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { EmailVerificationPage } from './pages/EmailVerificationPage';
-import { PasswordResetPage } from './pages/PasswordResetPage';
-import { AccountPage } from './pages/AccountPage';
-import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
-import { TermsOfServicePage } from './pages/TermsOfServicePage';
-import { ContactSupportPage } from './pages/ContactSupportPage';
-import { BillingPage } from './pages/BillingPage';
-import { BillingInvoicesPage } from './pages/BillingInvoicesPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { AssetsPage } from './pages/AssetsPage';
+import { LoadingDots } from './components/LoadingDots';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
+const PricingPage = lazy(() => import('./pages/PricingPage').then((module) => ({ default: module.PricingPage })));
+const DocsPage = lazy(() => import('./pages/DocsPage').then((module) => ({ default: module.DocsPage })));
+const SignInPage = lazy(() => import('./pages/SignInPage').then((module) => ({ default: module.SignInPage })));
+const SignUpPage = lazy(() => import('./pages/SignUpPage').then((module) => ({ default: module.SignUpPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
+const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage').then((module) => ({ default: module.EmailVerificationPage })));
+const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage').then((module) => ({ default: module.PasswordResetPage })));
+const AccountPage = lazy(() => import('./pages/AccountPage').then((module) => ({ default: module.AccountPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then((module) => ({ default: module.TermsOfServicePage })));
+const ContactSupportPage = lazy(() => import('./pages/ContactSupportPage').then((module) => ({ default: module.ContactSupportPage })));
+const BillingPage = lazy(() => import('./pages/BillingPage').then((module) => ({ default: module.BillingPage })));
+const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').then((module) => ({ default: module.BillingInvoicesPage })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
+const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
+const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
+
+function RouteFallback(): React.ReactElement {
+  return (
+    <div className="flex min-h-[200px] items-center justify-center">
+      <LoadingDots />
+    </div>
+  );
+}
 
 function MarketingShell(): React.ReactElement {
   return (
@@ -121,7 +131,9 @@ function App(): React.ReactElement {
       <ToastProvider>
         <AppShellProvider>
           <Router>
-            <AppRoutes />
+            <Suspense fallback={<RouteFallback />}>
+              <AppRoutes />
+            </Suspense>
           </Router>
         </AppShellProvider>
       </ToastProvider>

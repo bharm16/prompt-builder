@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Chrome, Eye, EyeOff, Mail, User as UserIcon } from 'lucide-react';
+import { Chrome, Eye, EyeOff, Mail, User as UserIcon } from '@promptstudio/system/components/ui';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';

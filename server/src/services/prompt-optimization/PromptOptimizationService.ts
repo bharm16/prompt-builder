@@ -385,20 +385,6 @@ export class PromptOptimizationService {
 
     ensureNotAborted();
 
-    // Interpret shot plan if not already provided
-    let interpretedShotPlan: ShotPlan | null = shotPlan;
-    if (!interpretedShotPlan && !shotPlanAttempted) {
-      try {
-        ensureNotAborted();
-        interpretedShotPlan = await this.shotInterpreter.interpret(prompt, signal);
-      } catch (interpError) {
-        this.log.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
-          operation,
-          error: (interpError as Error).message,
-        });
-      }
-    }
-
     // Check cache
     const cacheKey = this.optimizationCache.buildCacheKey(
       prompt,
@@ -433,6 +419,20 @@ export class PromptOptimizationService {
         operation,
         mode: finalMode,
       });
+    }
+
+    // Interpret shot plan if not already provided
+    let interpretedShotPlan: ShotPlan | null = shotPlan;
+    if (!interpretedShotPlan && !shotPlanAttempted) {
+      try {
+        ensureNotAborted();
+        interpretedShotPlan = await this.shotInterpreter.interpret(prompt, signal);
+      } catch (interpError) {
+        this.log.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
+          operation,
+          error: (interpError as Error).message,
+        });
+      }
     }
 
     try {

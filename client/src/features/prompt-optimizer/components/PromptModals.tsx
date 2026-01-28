@@ -3,7 +3,7 @@ import Settings, { useSettings } from '@components/Settings';
 import KeyboardShortcuts from '@components/KeyboardShortcuts';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
 import PromptImprovementForm from '@/PromptImprovementForm';
-import { usePromptState } from '../context/PromptStateContext';
+import { usePromptServices, usePromptUIStateContext } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';
 import type { FormData } from '@/PromptImprovementForm';
 
@@ -25,9 +25,8 @@ export const PromptModals = ({
     setShowShortcuts,
     showImprover,
     setShowImprover,
-    promptOptimizer,
-    promptHistory,
-  } = usePromptState();
+  } = usePromptUIStateContext();
+  const { promptOptimizer, promptHistory } = usePromptServices();
 
   const { settings, updateSetting, resetSettings } = useSettings();
   const handleImprovementComplete =

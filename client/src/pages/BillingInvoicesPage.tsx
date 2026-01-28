@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CreditCard, ExternalLink, FileText, RefreshCw, ShieldAlert } from 'lucide-react';
+import { CreditCard, ExternalLink, FileText, RefreshCw, ShieldAlert } from '@promptstudio/system/components/ui';
 import { apiClient } from '@/services/ApiClient';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';

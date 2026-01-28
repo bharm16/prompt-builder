@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Badge,
   CaretDown,
@@ -39,7 +39,7 @@ const resolveEntryId = (entry: VersionEntry): string | null => {
   return null;
 };
 
-export const VersionsPanel = ({
+export const VersionsPanel = memo(function VersionsPanel({
   versions,
   selectedVersionId,
   onSelectVersion,
@@ -48,7 +48,7 @@ export const VersionsPanel = ({
   onExpandDrawer,
   onCollapseDrawer,
   layout = 'vertical',
-}: VersionsPanelProps): React.ReactElement => {
+}: VersionsPanelProps): React.ReactElement {
   const orderedVersions = versions ?? [];
   const fallbackId = orderedVersions[0]
     ? resolveEntryId(orderedVersions[0])
@@ -460,4 +460,6 @@ export const VersionsPanel = ({
       )}
     </aside>
   );
-};
+});
+
+VersionsPanel.displayName = 'VersionsPanel';

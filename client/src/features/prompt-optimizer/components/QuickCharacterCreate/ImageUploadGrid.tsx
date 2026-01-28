@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Plus, Star, X } from 'lucide-react';
+import { Plus, Star, X } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import type { UploadImageItem } from './hooks/useQuickCharacterCreate';
 

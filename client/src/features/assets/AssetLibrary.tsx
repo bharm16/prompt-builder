@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { Plus, User, Palette, MapPin, Box, Layers } from 'lucide-react';
+import { Plus, User, Palette, MapPin, Box, Layers } from '@promptstudio/system/components/ui';
 import type { Asset, AssetType, CreateAssetRequest, UpdateAssetRequest } from '@shared/types/asset';
 import { useAssetState } from './hooks/useAssetState';
 import { assetApi } from './api/assetApi';

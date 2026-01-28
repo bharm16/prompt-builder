@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { AppIcon } from '@/types';
 import { cn } from '@utils/cn';
 
 interface ToolNavButtonProps {
-  icon: LucideIcon;
+  icon: AppIcon;
   label: string;
   isActive: boolean;
   onClick: () => void;

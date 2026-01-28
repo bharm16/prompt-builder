@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check } from '@promptstudio/system/components/ui';
 import { getAuthRepository } from '@repositories/index';
 import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS } from '@/features/billing/subscriptionTiers';

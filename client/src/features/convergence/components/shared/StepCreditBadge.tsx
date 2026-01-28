@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Coins } from 'lucide-react';
+import { Coins } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import type { ConvergenceStep } from '@/features/convergence/types';
 

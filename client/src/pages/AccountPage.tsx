@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User as UserIcon } from 'lucide-react';
+import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User as UserIcon } from '@promptstudio/system/components/ui';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';

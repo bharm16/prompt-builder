@@ -1,11 +1,11 @@
 import React from 'react';
-import * as LucideIcons from 'lucide-react';
+import * as AppIcons from '@promptstudio/system/components/ui/icons';
 import { iconSizes } from '@/styles/tokens';
 import { logger } from '@/services/LoggingService';
 import type { CSSProperties } from 'react';
 
 export type IconSize = keyof typeof iconSizes;
-export type IconName = keyof typeof LucideIcons;
+export type IconName = keyof typeof AppIcons;
 
 export interface IconProps {
   /**
@@ -63,9 +63,9 @@ export function Icon({
   'aria-label': ariaLabel,
   'aria-hidden': ariaHidden,
 }: IconProps): React.ReactElement | null {
-  const LucideIcon = LucideIcons[name] as unknown as React.ComponentType<Record<string, unknown>> | undefined;
+  const AppIcon = AppIcons[name] as unknown as React.ComponentType<Record<string, unknown>> | undefined;
   
-  if (!LucideIcon) {
+  if (!AppIcon) {
     logger.warn('Icon not found', {
       component: 'Icon',
       iconName: name,
@@ -81,7 +81,7 @@ export function Icon({
   };
   
   return (
-    <LucideIcon
+    <AppIcon
       className={className}
       size={sizeValue}
       aria-label={ariaLabel}

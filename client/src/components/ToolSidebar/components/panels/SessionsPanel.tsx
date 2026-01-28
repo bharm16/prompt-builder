@@ -6,7 +6,7 @@ import React, {
   useState,
   type ReactElement,
 } from 'react';
-import { Search } from 'lucide-react';
+import { Search } from '@promptstudio/system/components/ui';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
 import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';

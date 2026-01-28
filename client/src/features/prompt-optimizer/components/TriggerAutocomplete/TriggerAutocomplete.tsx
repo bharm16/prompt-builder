@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { TriggerSuggestion } from './TriggerSuggestion';
 

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users } from '@promptstudio/system/components/ui';
 import type { Asset, AssetType } from '@shared/types/asset';
 import { AssetThumbnail } from '@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail';
 

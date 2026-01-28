@@ -247,6 +247,57 @@ export class StorageService {
     return result;
   }
 
+  async uploadStream(
+    userId: string,
+    type: StorageType,
+    stream: NodeJS.ReadableStream,
+    sizeBytes: number,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    viewUrl: string;
+    expiresAt: string;
+    sizeBytes: number;
+    contentType: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const result = await this.withTiming(
+      'uploadStream',
+      {
+        userId,
+        type,
+        contentType: normalizeContentType(contentType),
+        sizeBytes,
+      },
+      async () => {
+        const uploadResult = await this.uploadService.uploadStream(
+          stream,
+          sizeBytes,
+          userId,
+          type,
+          contentType,
+          metadata
+        );
+
+        const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+          uploadResult.storagePath
+        );
+
+        return {
+          ...uploadResult,
+          viewUrl,
+          expiresAt,
+        };
+      }
+    );
+
+    return result;
+  }
+
   async confirmUpload(userId: string, storagePath: string): Promise<{
     storagePath: string;
     sizeBytes: number;

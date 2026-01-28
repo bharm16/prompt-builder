@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   ArrowClockwise,
   Check,
@@ -38,7 +38,7 @@ const statusLabel = (status: Generation['status']): string => {
   return 'Pending';
 };
 
-export function GenerationCard({
+export const GenerationCard = memo(function GenerationCard({
   generation,
   onRetry,
   onDelete,
@@ -272,4 +272,6 @@ export function GenerationCard({
       </div>
     </div>
   );
-}
+});
+
+GenerationCard.displayName = 'GenerationCard';

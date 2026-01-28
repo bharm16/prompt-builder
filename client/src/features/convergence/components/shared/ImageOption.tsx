@@ -11,7 +11,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { cn } from '@/utils/cn';
-import { Check } from 'lucide-react';
+import { Check } from '@promptstudio/system/components/ui';
 
 export interface ImageOptionProps<OptionId extends string = string> {
   /** Unique identifier for the option */

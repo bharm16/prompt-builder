@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Copy, CopyPlus, ExternalLink, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Copy, CopyPlus, ExternalLink, Pencil, RotateCcw, Trash2 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import {
   DropdownMenu,

@@ -12,7 +12,7 @@ import {
   LogOut,
   Settings,
   User as UserIcon,
-} from 'lucide-react';
+} from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';

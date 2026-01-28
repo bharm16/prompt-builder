@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Palette, MapPin, Box } from 'lucide-react';
+import { User, Palette, MapPin, Box } from '@promptstudio/system/components/ui';
 import { getAssetTypeConfig } from '../config/assetConfig';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {

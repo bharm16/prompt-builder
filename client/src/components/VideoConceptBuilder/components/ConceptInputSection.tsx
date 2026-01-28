@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Zap as Brain } from 'lucide-react';
+import { Zap as Brain } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import type { ElementKey } from '../hooks/types';

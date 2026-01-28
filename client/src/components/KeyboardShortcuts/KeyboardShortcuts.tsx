@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Command, Search } from 'lucide-react';
+import { X, Command, Search } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
 import { Input } from '@promptstudio/system/components/ui/input';

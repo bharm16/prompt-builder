@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from '@promptstudio/system/components/ui';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';

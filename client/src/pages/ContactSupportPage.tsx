@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Mail, MessageSquare, ShieldAlert } from 'lucide-react';
+import { Copy, Mail, MessageSquare, ShieldAlert } from '@promptstudio/system/components/ui';
 import { MarketingPage } from './MarketingPage';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Card } from '@promptstudio/system/components/ui/card';

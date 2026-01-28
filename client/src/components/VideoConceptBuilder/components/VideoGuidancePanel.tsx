@@ -4,7 +4,7 @@
  * Displays examples and best practices for video prompt writing.
  */
 
-import { Lightbulb, X, CheckCircle, Sparkles } from 'lucide-react';
+import { Lightbulb, X, CheckCircle, Sparkles } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 
 interface VideoGuidancePanelProps {

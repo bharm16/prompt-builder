@@ -20,7 +20,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/utils/cn';
-import { Play, SkipForward, Loader2, Coins, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Play, SkipForward, Loader2, Coins, Sparkles, Image as ImageIcon } from '@promptstudio/system/components/ui';
 import { BackButton, StepCreditBadge } from '../shared';
 
 // ============================================================================

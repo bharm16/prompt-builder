@@ -1,6 +1,13 @@
 import React from 'react';
 import { PromptCanvas } from '../PromptCanvas';
-import { usePromptState } from '../context/PromptStateContext';
+import {
+  usePromptActions,
+  usePromptConfig,
+  usePromptHighlights,
+  usePromptServices,
+  usePromptSession,
+  usePromptUIStateContext,
+} from '../context/PromptStateContext';
 import type { PromptResultsSectionProps } from '../types';
 
 /**
@@ -31,18 +38,12 @@ export const PromptResultsSection = ({
   onScrollToCoherenceSpan,
   i2vContext,
 }: PromptResultsSectionProps): React.ReactElement => {
-  const {
-    showResults,
-    currentPromptUuid,
-    promptOptimizer,
-    currentMode,
-    suggestionsData,
-    initialHighlights,
-    initialHighlightsVersion,
-    canUndo,
-    canRedo,
-    handleCreateNew,
-  } = usePromptState();
+  const { showResults } = usePromptUIStateContext();
+  const { currentPromptUuid, suggestionsData } = usePromptSession();
+  const { currentMode } = usePromptConfig();
+  const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
+  const { handleCreateNew } = usePromptActions();
+  const { promptOptimizer } = usePromptServices();
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, ChevronDown, MapPin, Palette, Plus, User } from 'lucide-react';
+import { Box, ChevronDown, MapPin, Palette, Plus, User } from '@promptstudio/system/components/ui';
 import type { Asset, AssetType } from '@shared/types/asset';
 import { cn } from '@/utils/cn';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';

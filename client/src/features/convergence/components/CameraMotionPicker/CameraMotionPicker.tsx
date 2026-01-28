@@ -22,7 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Video } from 'lucide-react';
+import { Video } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
 import type { CameraMotionCategory, CameraPath } from '@/features/convergence/types';

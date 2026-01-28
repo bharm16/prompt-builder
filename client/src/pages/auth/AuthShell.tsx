@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Sparkles, Zap } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 
 type AuthShellProps = {

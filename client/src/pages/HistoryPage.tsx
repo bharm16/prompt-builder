@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '@promptstudio/system/components/ui';
 import { Container, Section } from '@components/layout';
 import { getAuthRepository } from '@repositories/index';
 import { usePromptHistory } from '@hooks/usePromptHistory';

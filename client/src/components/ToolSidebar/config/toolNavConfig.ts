@@ -1,4 +1,4 @@
-import { LayoutGrid, SlidersHorizontal, Users, Palette, Sparkles } from 'lucide-react';
+import { LayoutGrid, SlidersHorizontal, Users, Palette, Sparkles } from '@promptstudio/system/components/ui';
 import type { ToolNavItem } from '../types';
 
 export const toolNavItems: ToolNavItem[] = [

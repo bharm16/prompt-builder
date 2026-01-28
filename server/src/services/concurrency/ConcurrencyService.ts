@@ -403,14 +403,16 @@ const parseEnvInt = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const defaultMaxConcurrent = process.env.NODE_ENV === 'production' ? 10 : 5;
+
 export const openAILimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.OPENAI_MAX_CONCURRENT, 5),
+  maxConcurrent: parseEnvInt(process.env.OPENAI_MAX_CONCURRENT, defaultMaxConcurrent),
   queueTimeout: parseEnvInt(process.env.OPENAI_QUEUE_TIMEOUT_MS, 30000),
   enableCancellation: true,
 });
 
 export const groqLimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.GROQ_MAX_CONCURRENT, 5),
+  maxConcurrent: parseEnvInt(process.env.GROQ_MAX_CONCURRENT, defaultMaxConcurrent),
   queueTimeout: parseEnvInt(process.env.GROQ_QUEUE_TIMEOUT_MS, 30000),
   enableCancellation: true,
 });
@@ -419,7 +421,7 @@ export const groqLimiter = new ConcurrencyLimiter({
 export const qwenLimiter = groqLimiter;
 
 export const geminiLimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.GEMINI_MAX_CONCURRENT, 5),
+  maxConcurrent: parseEnvInt(process.env.GEMINI_MAX_CONCURRENT, defaultMaxConcurrent),
   queueTimeout: parseEnvInt(process.env.GEMINI_QUEUE_TIMEOUT_MS, 30000),
   enableCancellation: true,
 });

@@ -5,8 +5,7 @@
  * Following VideoConceptBuilder pattern: config/constants.js
  */
 
-import { AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { AlertTriangle, Sparkles, CheckCircle } from '@promptstudio/system/components/ui';
 
 // ===========================
 // DEFAULT STATES

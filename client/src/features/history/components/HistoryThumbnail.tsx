@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from 'lucide-react';
+import { Image } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 
 type HistoryThumbnailSize = 'sm' | 'md' | 'lg';

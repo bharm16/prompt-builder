@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Home } from 'lucide-react';
+import { Home } from '@promptstudio/system/components/ui';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';

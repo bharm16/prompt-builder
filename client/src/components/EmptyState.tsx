@@ -9,14 +9,14 @@ import {
   Zap,
   Coffee,
   Inbox,
-  type LucideIcon,
-} from 'lucide-react';
+} from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
+import type { AppIcon } from '@/types';
 
 type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
 
 interface EmptyStateConfig {
-  icon: LucideIcon;
+  icon: AppIcon;
   title: string;
   description: string;
   tips: string[];
@@ -25,12 +25,12 @@ interface EmptyStateConfig {
 interface EmptyStateAction {
   label: string;
   onClick: () => void;
-  icon?: LucideIcon;
+  icon?: AppIcon;
 }
 
 interface EmptyStateProps {
   variant?: EmptyStateVariant;
-  icon?: LucideIcon | null;
+  icon?: AppIcon | null;
   title?: string | null;
   description?: string | null;
   tips?: string[] | null;

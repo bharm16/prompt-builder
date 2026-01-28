@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics, type Analytics } from 'firebase/analytics';
+import type { Analytics } from 'firebase/analytics';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 
@@ -22,15 +22,19 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 let analytics: Analytics | null = null;
-try {
-  analytics = getAnalytics(app);
-} catch (error) {
-  const info = sanitizeError(error);
-  log.warn('Firebase Analytics initialization failed (ok in development)', {
-    operation: 'getAnalytics',
-    error: info.message,
-    errorName: info.name,
-  });
+if (typeof window !== 'undefined') {
+  import('firebase/analytics')
+    .then(({ getAnalytics }) => {
+      analytics = getAnalytics(app);
+    })
+    .catch((error) => {
+      const info = sanitizeError(error);
+      log.warn('Firebase Analytics initialization failed (ok in development)', {
+        operation: 'getAnalytics',
+        error: info.message,
+        errorName: info.name,
+      });
+    });
 }
 
 export { auth, db, analytics };

@@ -61,6 +61,7 @@ export interface AppShellProps extends Partial<Omit<ToolSidebarProps, 'user'>> {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
+  readonly toolSidebarProps?: Partial<Omit<ToolSidebarProps, 'user'>>;
 }
 
 // -----------------------------------------------------------------------------

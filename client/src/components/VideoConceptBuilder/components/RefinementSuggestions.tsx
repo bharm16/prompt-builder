@@ -4,7 +4,7 @@
  * Displays AI-generated refinement suggestions for existing elements.
  */
 
-import { Lightbulb, Loader2 } from 'lucide-react';
+import { Lightbulb, Loader2 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { formatLabel } from '../utils/formatting';
 import type { ElementKey } from '../hooks/types';

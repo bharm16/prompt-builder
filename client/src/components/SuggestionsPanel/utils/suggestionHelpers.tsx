@@ -5,8 +5,7 @@
  * Following VideoConceptBuilder pattern: utils/validation.ts
  */
 
-import { CheckCircle, AlertCircle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { CheckCircle, AlertCircle } from '@promptstudio/system/components/ui';
 import { COMPATIBILITY_THRESHOLDS, MAX_KEYBOARD_SHORTCUTS } from '../config/panelConfig';
 import type { SuggestionItem } from '../hooks/types';
 

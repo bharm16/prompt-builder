@@ -180,6 +180,63 @@ export class UploadService {
     };
   }
 
+  async uploadStream(
+    stream: NodeJS.ReadableStream,
+    sizeBytes: number,
+    userId: string,
+    type: StorageType,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    sizeBytes: number;
+    contentType: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const typeKey = resolveStorageTypeKey(type);
+    const maxSize = STORAGE_CONFIG.maxFileSize[typeKey];
+    if (sizeBytes > maxSize) {
+      throw new Error(`File too large: ${sizeBytes} bytes (max: ${maxSize})`);
+    }
+
+    const normalizedContentType = normalizeContentType(contentType);
+    if (!isAllowedContentType(type, normalizedContentType)) {
+      throw new Error(`Invalid content type: ${normalizedContentType}`);
+    }
+
+    const extension = resolveExtension(normalizedContentType);
+    const path = generateStoragePath(userId, type, extension);
+    const file = this.bucket.file(path);
+
+    await new Promise<void>((resolve, reject) => {
+      const writeStream = file.createWriteStream({
+        metadata: {
+          contentType: normalizedContentType,
+          metadata: {
+            ...metadata,
+            userId,
+            type,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      stream.on('error', reject);
+      writeStream.on('error', reject);
+      writeStream.on('finish', () => resolve());
+      stream.pipe(writeStream);
+    });
+
+    return {
+      storagePath: path,
+      sizeBytes,
+      contentType: normalizedContentType,
+    };
+  }
+
   async confirmUpload(
     path: string,
     userId: string

@@ -83,7 +83,7 @@ export class RequestCoalescingMiddleware {
       }
 
       // Skip coalescing for non-API routes
-      if (!req.path.startsWith('/api/')) {
+      if (!req.path.startsWith('/api/') && !req.path.startsWith('/llm/')) {
         return next();
       }
 

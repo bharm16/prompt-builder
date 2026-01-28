@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { AlertCircle, RefreshCw, X, WifiOff } from 'lucide-react';
+import { AlertCircle, RefreshCw, X, WifiOff } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import type { ConvergenceErrorCode } from '@/features/convergence/types';
 import { getErrorMessage, isRetryableError, type ErrorMessageConfig } from '@/features/convergence/utils/errorMessages';

@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@promptstudio/system/components/ui';
 import { useImagePreview } from '../hooks/useImagePreview';
 import type { PreviewProvider } from '../api/previewApi';
 import { cn } from '@/utils/cn';

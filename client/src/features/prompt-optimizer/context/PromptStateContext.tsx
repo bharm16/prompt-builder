@@ -12,8 +12,15 @@ import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type {
+  PromptActionsState,
+  PromptConfigState,
+  PromptHighlightState,
+  PromptNavigationState,
+  PromptServicesState,
+  PromptSessionState,
   PromptStateContextValue,
   PromptStateProviderProps,
+  PromptUIState,
   Mode,
 } from './types';
 import { usePromptHistoryActions } from './usePromptHistoryActions';
@@ -27,6 +34,13 @@ import { useVersionEditTracking } from './hooks/useVersionEditTracking';
 import { useHistoryActionRefs } from './hooks/useHistoryActionRefs';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
+const PromptConfigContext = createContext<PromptConfigState | null>(null);
+const PromptUIContext = createContext<PromptUIState | null>(null);
+const PromptSessionContext = createContext<PromptSessionState | null>(null);
+const PromptHighlightContext = createContext<PromptHighlightState | null>(null);
+const PromptServicesContext = createContext<PromptServicesState | null>(null);
+const PromptActionsContext = createContext<PromptActionsState | null>(null);
+const PromptNavigationContext = createContext<PromptNavigationState | null>(null);
 
 /**
  * Hook to use prompt state
@@ -35,6 +49,62 @@ export function usePromptState(): PromptStateContextValue {
   const context = useContext(PromptStateContext);
   if (!context) {
     throw new Error('usePromptState must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptConfig(): PromptConfigState {
+  const context = useContext(PromptConfigContext);
+  if (!context) {
+    throw new Error('usePromptConfig must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptUIStateContext(): PromptUIState {
+  const context = useContext(PromptUIContext);
+  if (!context) {
+    throw new Error('usePromptUIStateContext must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptSession(): PromptSessionState {
+  const context = useContext(PromptSessionContext);
+  if (!context) {
+    throw new Error('usePromptSession must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptHighlights(): PromptHighlightState {
+  const context = useContext(PromptHighlightContext);
+  if (!context) {
+    throw new Error('usePromptHighlights must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptServices(): PromptServicesState {
+  const context = useContext(PromptServicesContext);
+  if (!context) {
+    throw new Error('usePromptServices must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptActions(): PromptActionsState {
+  const context = useContext(PromptActionsContext);
+  if (!context) {
+    throw new Error('usePromptActions must be used within PromptStateProvider');
+  }
+  return context;
+}
+
+export function usePromptNavigation(): PromptNavigationState {
+  const context = useContext(PromptNavigationContext);
+  if (!context) {
+    throw new Error('usePromptNavigation must be used within PromptStateProvider');
   }
   return context;
 }
@@ -160,9 +230,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     skipLoadFromUrlRef,
   });
 
-  // Context value
-  const value: PromptStateContextValue = useMemo(() => ({
-    // Mode
+  const configValue = useMemo<PromptConfigState>(() => ({
     modes,
     selectedMode,
     setSelectedMode,
@@ -171,8 +239,18 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+  }), [
+    modes,
+    selectedMode,
+    setSelectedMode,
+    currentMode,
+    selectedModel,
+    setSelectedModel,
+    generationParams,
+    setGenerationParams,
+  ]);
 
-    // UI State
+  const uiValue = useMemo<PromptUIState>(() => ({
     showHistory,
     setShowHistory,
     showResults,
@@ -191,8 +269,28 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setOutputSaveState,
     outputLastSavedAt,
     setOutputLastSavedAt,
+  }), [
+    showHistory,
+    setShowHistory,
+    showResults,
+    setShowResults,
+    showSettings,
+    setShowSettings,
+    showShortcuts,
+    setShowShortcuts,
+    showImprover,
+    setShowImprover,
+    showBrainstorm,
+    setShowBrainstorm,
+    currentAIIndex,
+    setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
+  ]);
 
-    // Prompt State
+  const sessionValue = useMemo<PromptSessionState>(() => ({
     suggestionsData,
     setSuggestionsData,
     conceptElements,
@@ -205,8 +303,22 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCurrentPromptDocId,
     activeVersionId,
     setActiveVersionId,
+  }), [
+    suggestionsData,
+    setSuggestionsData,
+    conceptElements,
+    setConceptElements,
+    promptContext,
+    setPromptContext,
+    currentPromptUuid,
+    setCurrentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+  ]);
 
-    // Highlights
+  const highlightValue = useMemo<PromptHighlightState>(() => ({
     initialHighlights,
     setInitialHighlights,
     initialHighlightsVersion,
@@ -215,8 +327,6 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCanUndo,
     canRedo,
     setCanRedo,
-
-    // Refs
     latestHighlightRef,
     persistedSignatureRef,
     versionEditCountRef,
@@ -225,50 +335,31 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     redoStackRef,
     isApplyingHistoryRef,
     skipLoadFromUrlRef,
-
-    // Hooks
-    promptOptimizer,
-    promptHistory,
-
-    // Helper functions
-    applyInitialHighlightSnapshot,
-    resetEditStacks,
-    registerPromptEdit,
-    resetVersionEdits,
-    setDisplayedPromptSilently,
-    handleCreateNew,
-    loadFromHistory,
-
-    // Navigation
-    navigate,
-    uuid,
   }), [
-    modes,
-    selectedMode,
-    currentMode,
-    selectedModel,
-    generationParams,
-    showHistory,
-    showResults,
-    showSettings,
-    showShortcuts,
-    showImprover,
-    showBrainstorm,
-    currentAIIndex,
-    outputSaveState,
-    outputLastSavedAt,
-    suggestionsData,
-    conceptElements,
-    promptContext,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeVersionId,
     initialHighlights,
+    setInitialHighlights,
     initialHighlightsVersion,
+    setInitialHighlightsVersion,
     canUndo,
+    setCanUndo,
     canRedo,
+    setCanRedo,
+    latestHighlightRef,
+    persistedSignatureRef,
+    versionEditCountRef,
+    versionEditsRef,
+    undoStackRef,
+    redoStackRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+  ]);
+
+  const servicesValue = useMemo<PromptServicesState>(() => ({
     promptOptimizer,
     promptHistory,
+  }), [promptOptimizer, promptHistory]);
+
+  const actionsValue = useMemo<PromptActionsState>(() => ({
     applyInitialHighlightSnapshot,
     resetEditStacks,
     registerPromptEdit,
@@ -276,8 +367,37 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setDisplayedPromptSilently,
     handleCreateNew,
     loadFromHistory,
+  }), [
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
+    setDisplayedPromptSilently,
+    handleCreateNew,
+    loadFromHistory,
+  ]);
+
+  const navigationValue = useMemo<PromptNavigationState>(() => ({
     navigate,
     uuid,
+  }), [navigate, uuid]);
+
+  const combinedValue = useMemo<PromptStateContextValue>(() => ({
+    ...configValue,
+    ...uiValue,
+    ...sessionValue,
+    ...highlightValue,
+    ...servicesValue,
+    ...actionsValue,
+    ...navigationValue,
+  }), [
+    configValue,
+    uiValue,
+    sessionValue,
+    highlightValue,
+    servicesValue,
+    actionsValue,
+    navigationValue,
   ]);
 
   usePromptStatePersistence({ selectedModel, generationParams });
@@ -290,5 +410,23 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     generationParams,
   });
 
-  return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
+  return (
+    <PromptStateContext.Provider value={combinedValue}>
+      <PromptConfigContext.Provider value={configValue}>
+        <PromptUIContext.Provider value={uiValue}>
+          <PromptSessionContext.Provider value={sessionValue}>
+            <PromptHighlightContext.Provider value={highlightValue}>
+              <PromptServicesContext.Provider value={servicesValue}>
+                <PromptActionsContext.Provider value={actionsValue}>
+                  <PromptNavigationContext.Provider value={navigationValue}>
+                    {children}
+                  </PromptNavigationContext.Provider>
+                </PromptActionsContext.Provider>
+              </PromptServicesContext.Provider>
+            </PromptHighlightContext.Provider>
+          </PromptSessionContext.Provider>
+        </PromptUIContext.Provider>
+      </PromptConfigContext.Provider>
+    </PromptStateContext.Provider>
+  );
 }

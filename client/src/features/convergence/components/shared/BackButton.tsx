@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@promptstudio/system/components/ui';
 
 export interface BackButtonProps {
   /** Callback when back is clicked */

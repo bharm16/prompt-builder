@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { X, Info } from 'lucide-react';
+import { X, Info } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 
 interface ContextData {

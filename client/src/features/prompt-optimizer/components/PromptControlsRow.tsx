@@ -12,7 +12,7 @@ import {
   Icon,
   Timer,
 } from '@promptstudio/system/components/ui';
-import { usePromptState } from '../context/PromptStateContext';
+import { usePromptConfig, usePromptServices } from '../context/PromptStateContext';
 import { useCapabilities } from '../hooks/useCapabilities';
 import { useModelRegistry } from '../hooks/useModelRegistry';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
@@ -37,8 +37,8 @@ export function PromptControlsRow({
     setSelectedModel,
     generationParams,
     setGenerationParams,
-    promptOptimizer,
-  } = usePromptState();
+  } = usePromptConfig();
+  const { promptOptimizer } = usePromptServices();
   const showVideoPreview = selectedMode === 'video';
   const isOptimizing = Boolean(
     promptOptimizer.isProcessing || promptOptimizer.isRefining

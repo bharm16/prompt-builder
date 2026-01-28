@@ -2,6 +2,12 @@ import { logger } from '@infrastructure/Logger';
 import type { NextFunction, Request, Response } from 'express';
 import { isConvergenceError } from '@services/convergence';
 
+const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
+const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
+const CARD_RE = /\b\d{16}\b/g;
+const PHONE_RE = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+const KEY_RE = /\b[A-Za-z0-9]{32,}\b/g;
+
 /**
  * Redact sensitive data from strings
  * Removes PII like emails, SSNs, credit cards, phone numbers
@@ -10,15 +16,15 @@ function redactSensitiveData(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return obj
       // Redact email addresses
-      .replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL_REDACTED]')
+      .replace(EMAIL_RE, '[EMAIL_REDACTED]')
       // Redact SSN patterns (XXX-XX-XXXX)
-      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN_REDACTED]')
+      .replace(SSN_RE, '[SSN_REDACTED]')
       // Redact credit card numbers (16 digits)
-      .replace(/\b\d{16}\b/g, '[CARD_REDACTED]')
+      .replace(CARD_RE, '[CARD_REDACTED]')
       // Redact phone numbers (various formats)
-      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]')
+      .replace(PHONE_RE, '[PHONE_REDACTED]')
       // Redact API keys (common patterns)
-      .replace(/\b[A-Za-z0-9]{32,}\b/g, '[KEY_REDACTED]');
+      .replace(KEY_RE, '[KEY_REDACTED]');
   }
   
   if (typeof obj !== 'object' || obj === null) {

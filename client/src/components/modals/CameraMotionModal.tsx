@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import type { CameraPath } from '@/features/convergence/types';
 import { CameraMotionPickerWithErrorBoundary } from '@/features/convergence/components/CameraMotionPicker';

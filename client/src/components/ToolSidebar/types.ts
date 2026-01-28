@@ -1,9 +1,9 @@
-import type { LucideIcon } from 'lucide-react';
 import type { ReactNode, RefObject } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { CameraPath } from '@/features/convergence/types';
 import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
+import type { AppIcon } from '@/types';
 
 export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
 
@@ -106,7 +106,7 @@ export interface ToolPanelProps {
 
 export interface ToolNavItem {
   id: ToolPanelType;
-  icon: LucideIcon;
+  icon: AppIcon;
   label: string;
   variant: 'header' | 'default';
 }

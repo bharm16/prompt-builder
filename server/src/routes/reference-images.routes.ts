@@ -1,11 +1,10 @@
 import express, { type Request, type Response, type Router } from 'express';
-import multer from 'multer';
+import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+const upload = createDiskUpload({
+  fileSizeBytes: 10 * 1024 * 1024,
 });
 
 type RequestWithUser = Request & { user?: { uid?: string } };
@@ -60,13 +59,18 @@ export function createReferenceImagesRoutes(
       const label = normalizeOptionalString((req as Request & { body?: { label?: unknown } }).body?.label);
       const source = normalizeOptionalString((req as Request & { body?: { source?: unknown } }).body?.source);
 
-      const image = await referenceImageService.createFromBuffer(userId, file.buffer, {
-        label,
-        source,
-        originalName: file.originalname,
-      });
+      try {
+        const buffer = await readUploadBuffer(file);
+        const image = await referenceImageService.createFromBuffer(userId, buffer, {
+          label,
+          source,
+          originalName: file.originalname,
+        });
 
-      res.status(201).json(image);
+        res.status(201).json(image);
+      } finally {
+        await cleanupUploadFile(file);
+      }
     })
   );
 
@@ -117,4 +121,3 @@ export function createReferenceImagesRoutes(
 }
 
 export default createReferenceImagesRoutes;
-

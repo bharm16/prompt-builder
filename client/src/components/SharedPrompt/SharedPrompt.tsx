@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Home, Copy, Check } from 'lucide-react';
+import { Home, Copy, Check } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { useSharedPrompt } from './hooks/useSharedPrompt';
 import { getModeLabel } from './utils/promptUtils';

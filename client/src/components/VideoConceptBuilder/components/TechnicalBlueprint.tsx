@@ -4,7 +4,7 @@
  * Displays technical parameters generated from creative elements.
  */
 
-import { Wand2, Loader2 } from 'lucide-react';
+import { Wand2, Loader2 } from '@promptstudio/system/components/ui';
 import { formatLabel, describeNestedValue } from '../utils/formatting';
 import { TECHNICAL_SECTION_ORDER } from '../config/constants';
 

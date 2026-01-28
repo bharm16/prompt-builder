@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { usePromptState } from '../context/PromptStateContext';
+import { usePromptConfig, usePromptServices, usePromptUIStateContext } from '../context/PromptStateContext';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import {
@@ -47,12 +47,11 @@ export const PromptTopBar = ({
     showHistory,
     setShowHistory,
     showBrainstorm,
-    promptOptimizer,
     outputSaveState,
     outputLastSavedAt,
-    selectedModel,
-    setSelectedModel,
-  } = usePromptState();
+  } = usePromptUIStateContext();
+  const { selectedModel, setSelectedModel } = usePromptConfig();
+  const { promptOptimizer } = usePromptServices();
 
   // Hide when brainstorm modal is open
   if (showBrainstorm) {

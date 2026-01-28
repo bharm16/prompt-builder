@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
 import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';

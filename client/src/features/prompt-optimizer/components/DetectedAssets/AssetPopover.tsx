@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
 import { cn } from '@/utils/cn';

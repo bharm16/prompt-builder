@@ -1,12 +1,11 @@
 import express, { type Request, type Response, type Router } from 'express';
-import multer from 'multer';
+import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { AssetType } from '@shared/types/asset';
 import type { AssetService } from '@services/asset/AssetService';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+const upload = createDiskUpload({
+  fileSizeBytes: 5 * 1024 * 1024,
 });
 
 type RequestWithUser = Request & { user?: { uid?: string } };
@@ -188,14 +187,19 @@ export function createAssetRoutes(assetService: AssetService): Router {
         lighting: req.body?.lighting,
       };
 
-      const result = await assetService.addReferenceImage(
-        userId,
-        req.params.id,
-        req.file.buffer,
-        metadata
-      );
+      try {
+        const buffer = await readUploadBuffer(req.file);
+        const result = await assetService.addReferenceImage(
+          userId,
+          req.params.id,
+          buffer,
+          metadata
+        );
 
-      res.status(201).json(result);
+        res.status(201).json(result);
+      } finally {
+        await cleanupUploadFile(req.file);
+      }
     })
   );
 

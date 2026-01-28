@@ -15,8 +15,9 @@
  * - "gentle shadows" matches "soft diffused shadows" prototype
  */
 
-import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
+import type { FeatureExtractionPipeline } from '@huggingface/transformers';
 import { logger } from '@infrastructure/Logger';
+import { loadEmbeddingPipeline } from './embeddingPipeline';
 
 const log = logger.child({ service: 'LightingSemantics' });
 
@@ -97,18 +98,7 @@ async function initialize(): Promise<void> {
       log.info('Initializing lighting semantic classifier');
       const startTime = performance.now();
 
-      // Load a small, fast embedding model (same as VerbSemantics)
-      const createEmbeddingPipeline = pipeline as unknown as (
-        task: 'feature-extraction',
-        model: string,
-        options: { dtype: 'fp32' }
-      ) => Promise<FeatureExtractionPipeline>;
-
-      embeddingModel = await createEmbeddingPipeline(
-        'feature-extraction',
-        'Xenova/all-MiniLM-L6-v2',
-        { dtype: 'fp32' }
-      );
+      embeddingModel = await loadEmbeddingPipeline();
 
       // Pre-compute prototype embeddings
       prototypeEmbeddings = new Map();

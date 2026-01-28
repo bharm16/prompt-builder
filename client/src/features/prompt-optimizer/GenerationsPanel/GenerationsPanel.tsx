@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
@@ -53,7 +53,7 @@ const EmptyState = ({
   </div>
 );
 
-export function GenerationsPanel({
+export const GenerationsPanel = memo(function GenerationsPanel({
   prompt,
   promptVersionId,
   aspectRatio,
@@ -323,4 +323,6 @@ export function GenerationsPanel({
       </div>
     </div>
   );
-}
+});
+
+GenerationsPanel.displayName = 'GenerationsPanel';

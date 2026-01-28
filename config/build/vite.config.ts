@@ -1,6 +1,7 @@
 import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +17,30 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../../dist'),
     sourcemap: shouldGenerateSourcemaps,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-slider',
+            '@radix-ui/react-switch',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+          ],
+          'vendor-firebase': [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/analytics',
+          ],
+          'vendor-icons': ['@phosphor-icons/react'],
+        },
+      },
+    },
   },
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
@@ -61,6 +86,13 @@ export default defineConfig({
               ignoreMissing: true,
             },
           },
+        })
+      : undefined,
+    process.env.ANALYZE_BUNDLE === 'true'
+      ? visualizer({
+          filename: path.resolve(__dirname, '../../dist/bundle-stats.html'),
+          gzipSize: true,
+          brotliSize: true,
         })
       : undefined,
   ].filter(Boolean) as PluginOption[],

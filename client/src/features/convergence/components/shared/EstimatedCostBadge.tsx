@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Coins, Info } from 'lucide-react';
+import { Coins, Info } from '@promptstudio/system/components/ui';
 
 import { cn } from '@/utils/cn';
 

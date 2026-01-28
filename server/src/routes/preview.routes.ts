@@ -6,7 +6,7 @@
 
 import type { Router } from 'express';
 import express from 'express';
-import multer from 'multer';
+import { createDiskUpload } from '@utils/upload';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import type { PreviewRoutesServices } from './types';
@@ -22,9 +22,8 @@ import { createImageUploadHandler } from './preview/handlers/imageUpload';
 import { createImageAssetViewHandler } from './preview/handlers/imageAssetView';
 import { createVideoAssetViewHandler } from './preview/handlers/videoAssetView';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+const upload = createDiskUpload({
+  fileSizeBytes: 10 * 1024 * 1024,
 });
 
 /**

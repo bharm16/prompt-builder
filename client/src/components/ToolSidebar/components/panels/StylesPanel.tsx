@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Palette } from 'lucide-react';
+import { Palette } from '@promptstudio/system/components/ui';
 
 export function StylesPanel(): ReactElement {
   return (

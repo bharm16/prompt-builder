@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import fs from 'fs';
 import { logger } from '@infrastructure/Logger';
 import { getStorageService } from '@services/storage/StorageService';
+import { cleanupUploadFile, readUploadBuffer } from '@utils/upload';
 import { getAuthenticatedUserId } from '../auth';
 
 const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -62,18 +64,30 @@ export const createImageUploadHandler = () =>
     const storage = getStorageService();
 
     try {
-      const result = await storage.uploadBuffer(
-        userId,
-        'preview-image',
-        file.buffer,
-        file.mimetype,
-        {
-          ...metadata,
-          ...(source ? { source } : {}),
-          ...(label ? { label } : {}),
-          originalName: file.originalname,
-        }
-      );
+      const uploadMetadata = {
+        ...metadata,
+        ...(source ? { source } : {}),
+        ...(label ? { label } : {}),
+        originalName: file.originalname,
+      };
+
+      const result =
+        file.path && typeof storage.uploadStream === 'function'
+          ? await storage.uploadStream(
+              fs.createReadStream(file.path),
+              file.size,
+              userId,
+              'preview-image',
+              file.mimetype,
+              uploadMetadata
+            )
+          : await storage.uploadBuffer(
+              userId,
+              'preview-image',
+              await readUploadBuffer(file),
+              file.mimetype,
+              uploadMetadata
+            );
 
       return res.status(201).json({
         success: true,
@@ -100,6 +114,7 @@ export const createImageUploadHandler = () =>
         error: 'Image upload failed',
         message: errorMessage,
       });
+    } finally {
+      await cleanupUploadFile(file);
     }
   };
-

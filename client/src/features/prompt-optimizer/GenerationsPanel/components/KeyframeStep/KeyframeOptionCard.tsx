@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import type { KeyframeOption } from './hooks/useKeyframeGeneration';
 import { FaceMatchIndicator } from './FaceMatchIndicator';

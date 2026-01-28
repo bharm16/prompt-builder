@@ -5,7 +5,7 @@
  * Following VideoConceptBuilder pattern: Controlled form component
  */
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { MAX_REQUEST_LENGTH } from '../config/panelConfig';

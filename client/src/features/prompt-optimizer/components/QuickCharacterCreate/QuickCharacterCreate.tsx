@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '@promptstudio/system/components/ui';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@promptstudio/system/components/ui/dialog';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';

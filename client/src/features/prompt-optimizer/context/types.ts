@@ -114,17 +114,19 @@ export interface StateSnapshot {
   version: number;
 }
 
-export interface PromptStateContextValue {
+export interface PromptConfigState {
   // Mode
   modes: Mode[];
   selectedMode: string;
   setSelectedMode: (mode: string) => void;
   currentMode: Mode;
-  selectedModel: string; // New: selected video model
-  setSelectedModel: (model: string) => void; // New: setter for model
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
   generationParams: CapabilityValues;
   setGenerationParams: (params: CapabilityValues) => void;
+}
 
+export interface PromptUIState {
   // UI State
   showHistory: boolean;
   setShowHistory: (show: boolean) => void;
@@ -146,7 +148,9 @@ export interface PromptStateContextValue {
   setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
   outputLastSavedAt: number | null;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
+}
 
+export interface PromptSessionState {
   // Prompt State
   suggestionsData: SuggestionsData | null;
   setSuggestionsData: Dispatch<SetStateAction<SuggestionsData | null>>;
@@ -160,7 +164,9 @@ export interface PromptStateContextValue {
   setCurrentPromptDocId: (docId: string | null) => void;
   activeVersionId: string | null;
   setActiveVersionId: (id: string | null) => void;
+}
 
+export interface PromptHighlightState {
   // Highlights
   initialHighlights: HighlightSnapshot | null;
   setInitialHighlights: (highlights: HighlightSnapshot | null) => void;
@@ -180,11 +186,15 @@ export interface PromptStateContextValue {
   redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   isApplyingHistoryRef: React.MutableRefObject<boolean>;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
+}
 
+export interface PromptServicesState {
   // Hooks
   promptOptimizer: PromptOptimizer;
   promptHistory: PromptHistory;
+}
 
+export interface PromptActionsState {
   // Helper functions
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
@@ -196,11 +206,22 @@ export interface PromptStateContextValue {
   setDisplayedPromptSilently: (text: string) => void;
   handleCreateNew: () => void;
   loadFromHistory: (entry: PromptHistoryEntry) => void;
+}
 
+export interface PromptNavigationState {
   // Navigation
   navigate: NavigateFunction;
   uuid: string | undefined;
 }
+
+export type PromptStateContextValue =
+  PromptConfigState &
+  PromptUIState &
+  PromptSessionState &
+  PromptHighlightState &
+  PromptServicesState &
+  PromptActionsState &
+  PromptNavigationState;
 
 export interface PromptStateProviderProps {
   children: ReactNode;

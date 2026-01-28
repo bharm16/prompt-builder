@@ -93,6 +93,13 @@ export interface SuggestionItem {
   [key: string]: unknown;
 }
 
+export interface InlineSuggestion {
+  key: string;
+  text: string;
+  meta: string | null;
+  item: SuggestionItem | string;
+}
+
 export interface SuggestionsData {
   show: boolean;
   selectedText: string;

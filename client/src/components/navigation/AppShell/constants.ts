@@ -4,7 +4,7 @@
  * @see STYLE_RULES.md Section 3 - No Magic Strings
  */
 
-import { Clock, CreditCard, FileText, Home, MessageCircle, Package, Layers, Video } from 'lucide-react';
+import { Clock, CreditCard, FileText, Home, MessageCircle, Package, Layers, Video } from '@promptstudio/system/components/ui';
 import type { NavItem } from './types';
 
 // -----------------------------------------------------------------------------

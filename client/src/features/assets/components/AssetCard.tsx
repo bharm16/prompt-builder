@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Trash2, Wand2, User, Palette, MapPin, Box } from 'lucide-react';
+import { Edit, Trash2, Wand2, User, Palette, MapPin, Box } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '../config/assetConfig';
 

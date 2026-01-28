@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Sparkles, ArrowRight, Zap as Brain, BookOpen, Wand2, Info } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap as Brain, BookOpen, Wand2, Info } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { logger } from '../services/LoggingService';
 import { useDebugLogger } from '../hooks/useDebugLogger';

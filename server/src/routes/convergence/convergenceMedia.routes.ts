@@ -6,7 +6,7 @@
  */
 
 import express, { type Request, type Response, type Router } from 'express';
-import multer from 'multer';
+import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
 import { Readable } from 'node:stream';
 import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
@@ -16,9 +16,8 @@ import { getGCSStorageService } from '@services/convergence/storage';
 const STORAGE_HOST = 'storage.googleapis.com';
 const STORAGE_HOST_SUFFIX = '.storage.googleapis.com';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+const upload = createDiskUpload({
+  fileSizeBytes: 10 * 1024 * 1024,
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -95,11 +94,17 @@ export function createConvergenceMediaRoutes(): Router {
       const destination = `convergence/${userId}/uploads/${Date.now()}-${safeName}`;
       const storageService = getGCSStorageService();
 
-      const url = await storageService.uploadBuffer(
-        file.buffer,
-        destination,
-        file.mimetype || 'image/png'
-      );
+      let url: string;
+      try {
+        const buffer = await readUploadBuffer(file);
+        url = await storageService.uploadBuffer(
+          buffer,
+          destination,
+          file.mimetype || 'image/png'
+        );
+      } finally {
+        await cleanupUploadFile(file);
+      }
 
       logger.info('Convergence image uploaded', {
         userId,

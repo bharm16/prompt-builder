@@ -1,12 +1,12 @@
 import React from 'react';
-import { type LucideIcon } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
+import type { AppIcon } from '@/types';
 
 interface QuickAction {
   label: string;
   description?: string;
   category?: 'research' | 'writing' | 'learning' | 'creative';
-  icon: LucideIcon;
+  icon: AppIcon;
   [key: string]: unknown;
 }
 

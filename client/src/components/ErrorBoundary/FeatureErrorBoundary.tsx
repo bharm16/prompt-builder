@@ -1,5 +1,5 @@
 import React, { type ReactNode } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { ErrorBoundary, type FallbackProps } from './ErrorBoundary';
 

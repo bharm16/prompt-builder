@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { RefreshCw, Coins } from 'lucide-react';
+import { RefreshCw, Coins } from '@promptstudio/system/components/ui';
 
 /**
  * Maximum regenerations allowed per dimension

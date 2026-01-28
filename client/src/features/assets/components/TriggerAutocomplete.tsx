@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { User, Palette, MapPin, Box, Loader2 } from 'lucide-react';
+import { User, Palette, MapPin, Box, Loader2 } from '@promptstudio/system/components/ui';
 import { getAssetTypeConfig } from '../config/assetConfig';
 import type { AssetSuggestion } from '../hooks/useTriggerAutocomplete';
 

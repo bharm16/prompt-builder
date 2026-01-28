@@ -7,7 +7,7 @@
  * - 'none': Auth pages (no shell)
  */
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { memo, useEffect, useState, type ReactElement } from 'react';
 
 import { ToolSidebar } from '@components/ToolSidebar';
 import type { User } from '@hooks/types';
@@ -26,62 +26,67 @@ const EMPTY_ASSETS_BY_TYPE: Record<AssetType, Asset[]> = {
   object: [],
 };
 
-export function AppShell({
-  children,
-  history = [],
-  filteredHistory = [],
-  isLoadingHistory = false,
-  searchQuery = '',
-  onSearchChange = noop,
-  onLoadFromHistory = noop,
-  onCreateNew = noop,
-  onDelete = noop,
-  onDuplicate,
-  onRename,
-  currentPromptUuid,
-  currentPromptDocId,
-  activeStatusLabel,
-  activeModelLabel,
-  prompt = '',
-  onPromptChange,
-  onOptimize,
-  showResults,
-  isProcessing,
-  isRefining,
-  genericOptimizedPrompt,
-  promptInputRef,
-  onCreateFromTrigger,
-  aspectRatio = '16:9',
-  duration = 5,
-  selectedModel = '',
-  onModelChange = noop,
-  onAspectRatioChange = noop,
-  onDurationChange = noop,
-  onDraft = noop,
-  onRender = noop,
-  isDraftDisabled = true,
-  isRenderDisabled = true,
-  onImageUpload,
-  keyframes = [],
-  onAddKeyframe = noop,
-  onRemoveKeyframe = noop,
-  onClearKeyframes,
-  tier = 'render',
-  onTierChange = noop,
-  onStoryboard = noop,
-  activeDraftModel = null,
-  showMotionControls = false,
-  cameraMotion = null,
-  onCameraMotionChange = noop,
-  subjectMotion = '',
-  onSubjectMotionChange = noop,
-  assets = [],
-  assetsByType,
-  isLoadingAssets = false,
-  onInsertTrigger = noop,
-  onEditAsset = noop,
-  onCreateAsset = noop,
-}: AppShellProps): ReactElement {
+export const AppShell = memo(function AppShell(props: AppShellProps): ReactElement {
+  const { children, toolSidebarProps, ...restProps } = props;
+  const mergedProps = {
+    ...(toolSidebarProps ?? {}),
+    ...restProps,
+  };
+  const {
+    history = [],
+    filteredHistory = [],
+    isLoadingHistory = false,
+    searchQuery = '',
+    onSearchChange = noop,
+    onLoadFromHistory = noop,
+    onCreateNew = noop,
+    onDelete = noop,
+    onDuplicate,
+    onRename,
+    currentPromptUuid,
+    currentPromptDocId,
+    activeStatusLabel,
+    activeModelLabel,
+    prompt = '',
+    onPromptChange,
+    onOptimize,
+    showResults,
+    isProcessing,
+    isRefining,
+    genericOptimizedPrompt,
+    promptInputRef,
+    onCreateFromTrigger,
+    aspectRatio = '16:9',
+    duration = 5,
+    selectedModel = '',
+    onModelChange = noop,
+    onAspectRatioChange = noop,
+    onDurationChange = noop,
+    onDraft = noop,
+    onRender = noop,
+    isDraftDisabled = true,
+    isRenderDisabled = true,
+    onImageUpload,
+    keyframes = [],
+    onAddKeyframe = noop,
+    onRemoveKeyframe = noop,
+    onClearKeyframes,
+    tier = 'render',
+    onTierChange = noop,
+    onStoryboard = noop,
+    activeDraftModel = null,
+    showMotionControls = false,
+    cameraMotion = null,
+    onCameraMotionChange = noop,
+    subjectMotion = '',
+    onSubjectMotionChange = noop,
+    assets = [],
+    assetsByType,
+    isLoadingAssets = false,
+    onInsertTrigger = noop,
+    onEditAsset = noop,
+    onCreateAsset = noop,
+  } = mergedProps;
   const { variant, navItems } = useNavigationConfig();
   const [user, setUser] = useState<User | null>(null);
   const resolvedAssetsByType = assetsByType ?? EMPTY_ASSETS_BY_TYPE;
@@ -167,4 +172,6 @@ export function AppShell({
       </div>
     </div>
   );
-}
+});
+
+AppShell.displayName = 'AppShell';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Plus } from 'lucide-react';
+import { Layers, Plus } from '@promptstudio/system/components/ui';
 import type { Asset, AssetType } from '@shared/types/asset';
 import { AssetTypeSection } from './AssetTypeSection';
 

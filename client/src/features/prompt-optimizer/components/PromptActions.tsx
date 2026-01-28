@@ -12,7 +12,7 @@ import {
   Share,
 } from '@promptstudio/system/components/ui';
 import type { FloatingToolbarProps } from '../types';
-import { usePromptState } from '../context/PromptStateContext';
+import { usePromptConfig } from '../context/PromptStateContext';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
 import { cn } from '@/utils/cn';
 
@@ -39,7 +39,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   primaryVisible = true,
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const { selectedModel } = usePromptState();
+  const { selectedModel } = usePromptConfig();
   const selectedModelId = AI_MODEL_IDS.find((modelId) => modelId === selectedModel) ?? null;
 
   useEffect(() => {

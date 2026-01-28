@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Moon, Sun, Type, Save, Trash2, Download, FileText } from 'lucide-react';
+import { X, Moon, Sun, Type, Save, Trash2, Download, FileText } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@promptstudio/system/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@promptstudio/system/components/ui/dialog';

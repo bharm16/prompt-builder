@@ -15,7 +15,7 @@ import type { CoherenceRecommendation } from '../types/coherence';
  *
  * App shell (history sidebar + top bar) lives in PromptOptimizerWorkspace.
  */
-interface PromptResultsLayoutProps {
+export interface PromptResultsLayoutProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;

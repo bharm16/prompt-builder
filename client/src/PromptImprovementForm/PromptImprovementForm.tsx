@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Loader2 } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 

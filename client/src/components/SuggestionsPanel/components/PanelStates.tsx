@@ -5,7 +5,7 @@
  * Following VideoConceptBuilder pattern: components/ConflictsAlert.tsx
  */
 
-import { Info, type LucideIcon } from 'lucide-react';
+import { Info } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { getLoadingSkeletonCount } from '../utils/suggestionHelpers';
 import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './types';

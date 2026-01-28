@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldAlert } from '@promptstudio/system/components/ui';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';

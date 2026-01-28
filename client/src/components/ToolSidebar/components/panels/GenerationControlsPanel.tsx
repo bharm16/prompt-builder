@@ -18,7 +18,7 @@ import {
   Upload,
   Video,
   Wand2,
-} from 'lucide-react';
+} from '@promptstudio/system/components/ui';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { cn } from '@utils/cn';
 import { resolveFieldState } from '@shared/capabilities';

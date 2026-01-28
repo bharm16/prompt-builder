@@ -5,7 +5,7 @@
  * Following VideoConceptBuilder pattern: components/ProgressHeader.tsx
  */
 
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import type { PanelIcon } from './types';
 

@@ -18,7 +18,7 @@ import {
   Lightbulb,
   Tag,
   Video,
-} from 'lucide-react';
+} from '@promptstudio/system/components/ui';
 import type React from 'react';
 import { TAXONOMY } from '@shared/taxonomy';
 

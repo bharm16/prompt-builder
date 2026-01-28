@@ -5,7 +5,7 @@
  * For the 'subject' element, also displays subject descriptor cards.
  */
 
-import { Sparkles, CheckCircle, AlertCircle, Tag } from 'lucide-react';
+import { Sparkles, CheckCircle, AlertCircle, Tag } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
