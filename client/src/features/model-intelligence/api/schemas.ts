@@ -59,7 +59,7 @@ const PromptRequirementsSchema = z.object({
     isStylized: z.boolean(),
     isAbstract: z.boolean(),
     requiresCinematicLook: z.boolean(),
-    hasSpecificAesthetic: z.string().nullable().optional(),
+    hasSpecificAesthetic: z.string().nullable(),
   }),
   motion: z.object({
     cameraComplexity: z.enum(['static', 'simple', 'moderate', 'complex']),

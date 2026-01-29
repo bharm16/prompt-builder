@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContinuitySession, CreateShotInput, ContinuityMode, GenerationMode } from '../../types';
+import { IDENTITY_KEYFRAME_CREDIT_COST, STYLE_KEYFRAME_CREDIT_COST } from '../../constants';
 import { StrengthSlider } from '../StyleReferencePanel/StrengthSlider';
 import { ContinuityModeToggle } from './ContinuityModeToggle';
+import type { CapabilitiesSchema } from '@shared/capabilities';
+import { capabilitiesApi } from '@/services';
+import { useModelRegistry } from '@/hooks/useModelRegistry';
+import { toCanonicalModelId, toCapabilityModelId } from '../../utils/modelIds';
 
 interface ShotEditorProps {
   session: ContinuitySession;
@@ -28,7 +33,9 @@ export function ShotEditor({
     session.defaultSettings.defaultStyleStrength
   );
   const [styleReferenceId, setStyleReferenceId] = useState<string | null>(null);
-  const [modelId, setModelId] = useState(session.defaultSettings.defaultModel || '');
+  const [modelId, setModelId] = useState(
+    toCapabilityModelId(session.defaultSettings.defaultModel) || ''
+  );
   const [useCharacter, setUseCharacter] = useState(
     Boolean(session.defaultSettings.useCharacterConsistency)
   );
@@ -40,16 +47,39 @@ export function ShotEditor({
   const [cameraDolly, setCameraDolly] = useState('');
   const [usePreviousReference, setUsePreviousReference] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { models: registryModels, isLoading: modelsLoading } = useModelRegistry();
+  const [capabilityRegistry, setCapabilityRegistry] = useState<
+    Record<string, Record<string, CapabilitiesSchema>> | null
+  >(null);
+  const [registryError, setRegistryError] = useState<string | null>(null);
 
   useEffect(() => {
     setContinuityMode(session.defaultSettings.defaultContinuityMode);
     setStyleStrength(session.defaultSettings.defaultStyleStrength);
-    setModelId(session.defaultSettings.defaultModel || '');
+    setModelId(toCapabilityModelId(session.defaultSettings.defaultModel) || '');
     const lastShot = session.shots[session.shots.length - 1];
     setStyleReferenceId(lastShot?.id ?? null);
     setUseCharacter(Boolean(session.defaultSettings.useCharacterConsistency));
     setUsePreviousReference(false);
   }, [session.id, session.defaultSettings, session.shots]);
+
+  useEffect(() => {
+    let active = true;
+    capabilitiesApi
+      .getRegistry()
+      .then((registry) => {
+        if (!active) return;
+        setCapabilityRegistry(registry);
+        setRegistryError(null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setRegistryError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const styleReferenceOptions = useMemo(() => {
     const options: Array<{ label: string; value: string | null }> = [
@@ -63,6 +93,77 @@ export function ShotEditor({
 
   const hasPreviousShot = session.shots.length > 0;
   const showContinuityControls = generationMode === 'continuity';
+  const requiresCharacterConsistency = useCharacter || session.defaultSettings.useCharacterConsistency;
+
+  const capabilityMap = useMemo(() => {
+    if (!capabilityRegistry) return {};
+    const entries: Record<string, CapabilitiesSchema> = {};
+    for (const models of Object.values(capabilityRegistry)) {
+      for (const [id, schema] of Object.entries(models)) {
+        entries[id] = schema;
+      }
+    }
+    return entries;
+  }, [capabilityRegistry]);
+
+  const hasRegistry = Boolean(capabilityRegistry);
+  const isContinuityCapable = (capabilityId: string): boolean => {
+    if (!hasRegistry) return true;
+    const schema = capabilityMap[capabilityId];
+    if (!schema) return false;
+    const supportsImage = schema.fields?.image_input?.default === true;
+    const supportsStyle = schema.fields?.style_reference?.default === true;
+    return supportsImage || supportsStyle;
+  };
+
+  const continuityEligibleModels = useMemo(
+    () => registryModels.filter((model) => isContinuityCapable(model.id)),
+    [registryModels, capabilityMap]
+  );
+
+  const availableModels = showContinuityControls && continuityEligibleModels.length
+    ? continuityEligibleModels
+    : registryModels;
+
+  const selectedModelSchema = modelId ? capabilityMap[modelId] : undefined;
+  const selectedSupportsImage = selectedModelSchema?.fields?.image_input?.default === true;
+  const selectedSupportsStyle = selectedModelSchema?.fields?.style_reference?.default === true;
+  const selectedContinuityEligible = hasRegistry
+    ? Boolean(selectedSupportsImage || selectedSupportsStyle)
+    : true;
+  const resolvedModelId = useMemo(() => toCanonicalModelId(modelId), [modelId]);
+  const modelResolvable = !modelId || Boolean(resolvedModelId);
+  const canSubmitContinuity =
+    !showContinuityControls || (selectedContinuityEligible && modelResolvable);
+
+  useEffect(() => {
+    if (!showContinuityControls || !continuityEligibleModels.length) return;
+    if (modelId && selectedContinuityEligible) return;
+    const fallback = continuityEligibleModels[0];
+    if (fallback) {
+      setModelId(fallback.id);
+    }
+  }, [showContinuityControls, continuityEligibleModels, modelId, selectedContinuityEligible]);
+
+  const overheadInfo = useMemo(() => {
+    if (generationMode === 'continuity' && continuityMode === 'style-match') {
+      return requiresCharacterConsistency
+        ? { cost: IDENTITY_KEYFRAME_CREDIT_COST, label: 'identity keyframe' }
+        : { cost: STYLE_KEYFRAME_CREDIT_COST, label: 'style keyframe' };
+    }
+
+    if (generationMode === 'standard' && useCharacter && characterAssetId) {
+      return { cost: IDENTITY_KEYFRAME_CREDIT_COST, label: 'character keyframe' };
+    }
+
+    return { cost: 0, label: '' };
+  }, [
+    generationMode,
+    continuityMode,
+    requiresCharacterConsistency,
+    useCharacter,
+    characterAssetId,
+  ]);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
@@ -77,6 +178,7 @@ export function ShotEditor({
           }
         : undefined;
 
+      const resolvedModelId = toCanonicalModelId(modelId) || undefined;
       const input: CreateShotInput = {
         prompt: prompt.trim(),
         generationMode,
@@ -88,7 +190,7 @@ export function ShotEditor({
               : 'none',
         styleStrength: showContinuityControls ? styleStrength : undefined,
         styleReferenceId: showContinuityControls ? styleReferenceId : undefined,
-        modelId: modelId || undefined,
+        modelId: resolvedModelId,
         characterAssetId: useCharacter && characterAssetId ? characterAssetId : undefined,
         camera,
       };
@@ -119,13 +221,47 @@ export function ShotEditor({
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <input
-          type="text"
-          value={modelId}
-          onChange={(event) => setModelId(event.target.value)}
-          placeholder="Model ID (optional)"
-          className="w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm"
-        />
+        <div>
+          <label className="text-xs font-medium text-muted">Model</label>
+          <select
+            value={modelId || ''}
+            onChange={(event) => setModelId(event.target.value)}
+            className="mt-1 w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm"
+            disabled={modelsLoading || availableModels.length === 0}
+          >
+            {availableModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+          {registryError && (
+            <div className="mt-1 text-[11px] text-warning">
+              Unable to load model registry ({registryError}). Showing fallback models.
+            </div>
+          )}
+          {showContinuityControls && hasRegistry && !selectedContinuityEligible && (
+            <div className="mt-1 text-[11px] text-warning">
+              Selected model does not support image input or native style reference. Choose another
+              model for continuity.
+            </div>
+          )}
+          {showContinuityControls && !modelResolvable && (
+            <div className="mt-1 text-[11px] text-warning">
+              Selected model is not supported for generation. Choose a supported model.
+            </div>
+          )}
+          {showContinuityControls && hasRegistry && continuityEligibleModels.length === 0 && (
+            <div className="mt-1 text-[11px] text-warning">
+              No continuity-capable models are available. Check provider credentials.
+            </div>
+          )}
+          {showContinuityControls && !hasRegistry && (
+            <div className="mt-1 text-[11px] text-warning">
+              Model capabilities unavailable; continuity eligibility will be enforced on the server.
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <input
             id="use-character"
@@ -138,6 +274,12 @@ export function ShotEditor({
           </label>
         </div>
       </div>
+
+      {overheadInfo.cost > 0 && (
+        <div className="text-xs text-muted">
+          Continuity overhead: +{overheadInfo.cost} credits ({overheadInfo.label})
+        </div>
+      )}
 
       {useCharacter && (
         <input
@@ -248,9 +390,9 @@ export function ShotEditor({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isSubmitting || !prompt.trim()}
+        disabled={isSubmitting || !prompt.trim() || !canSubmitContinuity}
         className={`w-full rounded-md px-4 py-2 text-sm font-medium ${
-          isSubmitting || !prompt.trim()
+          isSubmitting || !prompt.trim() || !canSubmitContinuity
             ? 'bg-surface-3 text-muted cursor-not-allowed'
             : 'bg-accent text-white'
         }`}

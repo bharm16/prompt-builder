@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
-import type { Toast } from '@hooks/types';
+import type { PromptHistoryEntry, Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { logger } from '@/services/LoggingService';
@@ -13,12 +13,11 @@ interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
   optimize: (
     prompt: string,
-    context: unknown | null,
-    brainstormContext: unknown,
+    context: Record<string, unknown> | null,
+    brainstormContext: Record<string, unknown>,
     targetModel?: string,
     options?: { generationParams?: CapabilityValues }
   ) => Promise<{ optimized: string; score: number | null } | null>;
-  [key: string]: unknown;
 }
 
 interface PromptHistory {
@@ -29,12 +28,12 @@ interface PromptHistory {
     mode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    context?: unknown,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    context?: Record<string, unknown>,
+    highlightCache?: Record<string, unknown>,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<{ uuid: string; id?: string | null } | null>;
-  [key: string]: unknown;
 }
 
 interface UseConceptBrainstormParams {
@@ -43,6 +42,7 @@ interface UseConceptBrainstormParams {
   selectedMode: string;
   selectedModel?: string;
   generationParams: CapabilityValues;
+  keyframes?: PromptHistoryEntry['keyframes'];
   setConceptElements: (elements: Record<string, unknown>) => void;
   setPromptContext: (context: PromptContext | null) => void;
   setShowBrainstorm: (show: boolean) => void;
@@ -71,6 +71,7 @@ export function useConceptBrainstorm({
   selectedMode,
   selectedModel,
   generationParams,
+  keyframes = null,
   setConceptElements,
   setPromptContext,
   setShowBrainstorm,
@@ -152,7 +153,8 @@ export function useConceptBrainstorm({
               selectedMode,
               selectedMode === 'video' ? selectedModel ?? null : null,
               (generationParams as unknown as Record<string, unknown>) ?? null,
-              serializedContext
+              keyframes ?? null,
+              serializedContext as unknown as Record<string, unknown>
             );
 
             if (saveResult?.uuid) {
@@ -192,6 +194,7 @@ export function useConceptBrainstorm({
       selectedMode,
       selectedModel,
       generationParams,
+      keyframes,
       setConceptElements,
       setPromptContext,
       setShowBrainstorm,

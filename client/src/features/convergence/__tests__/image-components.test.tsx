@@ -10,16 +10,19 @@ import type { GeneratedImage } from '../types';
 
 const startMock = vi.fn();
 const stopMock = vi.fn();
-let capturedOnFrame: ((frame: string) => void) | null = null;
+let capturedOnFrame: ((frame: string, frameIndex: number) => void) | null = null;
 
 vi.mock('@/features/convergence/utils/cameraMotionRenderer', () => ({
-  createFrameAnimator: vi.fn((frames: string[], fps: number, onFrame: (frame: string) => void) => {
+  createFrameAnimator: vi.fn(
+    (frames: string[], fps: number, onFrame: (frame: string, frameIndex: number) => void) => {
     capturedOnFrame = onFrame;
     return {
       start: startMock,
       stop: stopMock,
+      isPlaying: vi.fn(),
     };
-  }),
+  }
+  ),
 }));
 
 // ============================================================================
@@ -217,8 +220,8 @@ describe('FrameAnimator', () => {
       const img = await screen.findByRole('img');
 
       act(() => {
-        capturedOnFrame?.('frame-b');
-        capturedOnFrame?.('frame-a');
+        capturedOnFrame?.('frame-b', 1);
+        capturedOnFrame?.('frame-a', 0);
       });
 
       expect(onLoopComplete).toHaveBeenCalledTimes(1);
@@ -240,7 +243,7 @@ describe('FrameAnimator', () => {
       expect(img).toHaveAttribute('src', 'frame-a');
 
       act(() => {
-        capturedOnFrame?.('frame-b');
+        capturedOnFrame?.('frame-b', 1);
       });
 
       expect(screen.getByRole('img')).toHaveAttribute('src', 'frame-b');

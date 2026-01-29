@@ -10,6 +10,7 @@ export function buildLabelSpansBody(payload: LabelSpansPayload): string {
     minConfidence: payload.minConfidence,
     policy: payload.policy,
     templateVersion: payload.templateVersion,
+    isI2VMode: payload.isI2VMode,
   };
 
   return JSON.stringify(body);

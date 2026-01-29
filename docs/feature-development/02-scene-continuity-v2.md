@@ -2041,3 +2041,12 @@ Shot 3 ◄─────────────────────┘
 5. **Provider capability updates**: Source capability gating from a single registry and keep it current via scheduled capability probes. `PROVIDER_CAPABILITIES` becomes a derived view, not a manual list.
 
 6. **3D proxy viability (Phase 2)**: Only enable 3D proxy when a **Scene Scan** shot exists and parallax is sufficient. Otherwise use direct anchors (frame bridge / keyframes).
+
+---
+
+## Implementation Notes (Post-Implementation)
+
+- **Runway native support still missing**: The capability registry includes Runway (`runway-gen45`) with native style refs, but there is no Runway video-generation provider wired in the server pipeline. Continuity sessions will error if that model is selected until a provider is added.
+- **Native style refs are passthrough-only**: The continuity service now forwards `style_reference` + `style_reference_weight` into generation options, but only providers that already accept those fields will use them. As of now, only the Replicate input builder explicitly passes them through.
+- **Scene proxy is depth‑parallax (not NeRF/Splat)**: The current `SceneProxyService` is a depth-map parallax renderer. NeRF/Splat proxies described in Phase 2 are still unimplemented.
+- **Continuity gating relies on capabilities**: The continuity UI uses the capabilities registry to filter eligible models. If the registry is unavailable, gating falls back to server‑side enforcement only.

@@ -42,7 +42,7 @@ export interface PromptRequirements {
     isStylized: boolean;
     isAbstract: boolean;
     requiresCinematicLook: boolean;
-    hasSpecificAesthetic?: string | null;
+    hasSpecificAesthetic: string | null;
   };
   motion: {
     cameraComplexity: 'static' | 'simple' | 'moderate' | 'complex';

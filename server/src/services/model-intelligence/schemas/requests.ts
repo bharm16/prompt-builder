@@ -19,3 +19,21 @@ export const ModelRecommendationRequestSchema = z.object({
 });
 
 export type ModelRecommendationRequestSchemaType = z.infer<typeof ModelRecommendationRequestSchema>;
+
+export const ModelRecommendationEventSchema = z.object({
+  event: z.enum([
+    'recommendation_viewed',
+    'compare_opened',
+    'model_selected',
+    'generation_started',
+  ]),
+  recommendationId: z.string().optional(),
+  promptId: z.string().optional(),
+  recommendedModelId: z.string().optional(),
+  selectedModelId: z.string().optional(),
+  mode: ModelRecommendationModeSchema.optional(),
+  durationSeconds: z.number().int().positive().optional(),
+  timeSinceRecommendationMs: z.number().int().nonnegative().optional(),
+});
+
+export type ModelRecommendationEventSchemaType = z.infer<typeof ModelRecommendationEventSchema>;

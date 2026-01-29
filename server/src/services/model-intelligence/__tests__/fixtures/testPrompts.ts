@@ -45,7 +45,7 @@ export const BASE_REQUIREMENTS: PromptRequirements = {
     isStylized: false,
     isAbstract: false,
     requiresCinematicLook: false,
-    hasSpecificAesthetic: undefined,
+    hasSpecificAesthetic: null,
   },
   motion: {
     cameraComplexity: 'static',

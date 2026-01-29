@@ -75,6 +75,7 @@ export function useModelRecommendation(
     const timeoutId = window.setTimeout(runFetch, debounceMs);
     return () => {
       window.clearTimeout(timeoutId);
+      abortRef.current?.abort();
     };
   }, [debounceMs, enabled, runFetch]);
 

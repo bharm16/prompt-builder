@@ -17,7 +17,6 @@ export type HighlightSnapshot = CanvasHighlightSnapshot;
 
 export interface User {
   uid: string;
-  [key: string]: unknown;
 }
 
 export interface Mode {
@@ -44,8 +43,8 @@ export interface PromptOptimizer {
   qualityScore: number | null;
   skipAnimation: boolean;
   setSkipAnimation: (skip: boolean) => void;
-  improvementContext: unknown | null;
-  setImprovementContext: (context: unknown | null) => void;
+  improvementContext: Record<string, unknown> | null;
+  setImprovementContext: (context: Record<string, unknown> | null) => void;
   draftPrompt: string;
   isDraftReady: boolean;
   isRefining: boolean;
@@ -54,22 +53,21 @@ export interface PromptOptimizer {
   lockedSpans: LockedSpan[];
   optimize: (
     prompt?: string,
-    context?: unknown | null,
-    brainstormContext?: unknown | null,
+    context?: Record<string, unknown> | null,
+    brainstormContext?: Record<string, unknown> | null,
     targetModel?: string,
     options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   compile: (
     prompt: string,
     targetModel?: string,
-    context?: unknown | null
+    context?: Record<string, unknown> | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
   setLockedSpans: (spans: LockedSpan[]) => void;
   addLockedSpan: (span: LockedSpan) => void;
   removeLockedSpan: (spanId: string) => void;
   clearLockedSpans: () => void;
-  [key: string]: unknown;
 }
 
 export interface PromptHistory {
@@ -85,8 +83,9 @@ export interface PromptHistory {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    brainstormContext?: unknown,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<{ uuid: string; id: string } | null>;
@@ -94,17 +93,17 @@ export interface PromptHistory {
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
+    keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
   }) => { uuid: string; id: string };
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
-  updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
+  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown>) => void;
   updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
-  [key: string]: unknown;
 }
 
 export interface StateSnapshot {
@@ -154,8 +153,8 @@ export interface PromptSessionState {
   // Prompt State
   suggestionsData: SuggestionsData | null;
   setSuggestionsData: Dispatch<SetStateAction<SuggestionsData | null>>;
-  conceptElements: unknown | null;
-  setConceptElements: (elements: unknown | null) => void;
+  conceptElements: Record<string, unknown> | null;
+  setConceptElements: (elements: Record<string, unknown> | null) => void;
   promptContext: PromptContext | null;
   setPromptContext: (context: PromptContext | null) => void;
   currentPromptUuid: string | null;

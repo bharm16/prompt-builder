@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, WarningCircle } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 
@@ -31,6 +31,33 @@ export function KontextFrameStrip({
     const step = slots.length > 1 ? safeDuration / (slots.length - 1) : safeDuration;
     return slots.map((_, index) => `${(step * index).toFixed(1)}s`);
   }, [slots, safeDuration]);
+  const prevSlotsRef = useRef<Array<string | null>>(slots);
+
+  useEffect(() => {
+    const prevSlots = prevSlotsRef.current;
+    if (!prevSlots) {
+      prevSlotsRef.current = slots;
+      return;
+    }
+
+    const changedIndices: number[] = [];
+    for (let index = 0; index < slots.length; index += 1) {
+      if (slots[index] !== prevSlots[index]) {
+        changedIndices.push(index);
+      }
+    }
+
+    if (changedIndices.length) {
+      setFailedIndices((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set(prev);
+        changedIndices.forEach((index) => next.delete(index));
+        return next;
+      });
+    }
+
+    prevSlotsRef.current = slots;
+  }, [slots]);
 
   const handleImageError = (index: number) => {
     console.warn('[KontextFrameStrip] Image failed to load:', {

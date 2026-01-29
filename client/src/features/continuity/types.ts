@@ -48,6 +48,7 @@ export interface ContinuityShot {
   styleReference?: StyleReference;
   frameBridge?: FrameBridge;
   characterAssetId?: string;
+  faceStrength?: number;
   camera?: {
     yaw?: number;
     pitch?: number;
@@ -59,6 +60,9 @@ export interface ContinuityShot {
   inheritedSeed?: number;
   videoAssetId?: string;
   generatedKeyframeUrl?: string;
+  styleTransferApplied?: boolean;
+  styleDegraded?: boolean;
+  styleDegradedReason?: string;
   sceneProxyRenderUrl?: string;
   continuityMechanismUsed?: string;
   styleScore?: number;
@@ -126,6 +130,7 @@ export interface CreateShotInput {
   styleStrength?: number;
   modelId?: string;
   characterAssetId?: string;
+  faceStrength?: number;
   camera?: {
     yaw?: number;
     pitch?: number;

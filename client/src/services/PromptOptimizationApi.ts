@@ -42,6 +42,7 @@ export class PromptOptimizationApi {
     skipCache,
     lockedSpans,
     startImage,
+    sourcePrompt,
     constraintMode,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
@@ -57,6 +58,7 @@ export class PromptOptimizationApi {
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(startImage ? { startImage } : {}),
+        ...(sourcePrompt ? { sourcePrompt } : {}),
         ...(constraintMode ? { constraintMode } : {}),
       }, requestOptions)) as OptimizeResult;
     } catch (error) {
@@ -330,7 +332,19 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext, generationParams, skipCache, lockedSpans, startImage, constraintMode } = options;
+    const {
+      prompt,
+      mode,
+      targetModel,
+      context,
+      brainstormContext,
+      generationParams,
+      skipCache,
+      lockedSpans,
+      startImage,
+      sourcePrompt,
+      constraintMode,
+    } = options;
 
     try {
       // Fallback to single-stage API
@@ -344,6 +358,7 @@ export class PromptOptimizationApi {
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(startImage ? { startImage } : {}),
+        ...(sourcePrompt ? { sourcePrompt } : {}),
         ...(constraintMode ? { constraintMode } : {}),
         ...(signal ? { signal } : {}),
       });

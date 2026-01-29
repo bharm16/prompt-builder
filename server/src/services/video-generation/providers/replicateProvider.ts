@@ -24,6 +24,9 @@ const WAN_I2V_MODEL_MAP: Record<string, string> = {
   'wan-video/wan-2.1-t2v-720p': 'wavespeedai/wan-2.1-i2v-720p',
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 function normalizeWanSize(rawSize: string): string | null {
   const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
   if (!cleaned) {
@@ -92,6 +95,12 @@ export function buildReplicateInput(
     if (options.startImage) {
       input.image = options.startImage;
     }
+    if (options.style_reference) {
+      input.style_reference = options.style_reference;
+    }
+    if (typeof options.style_reference_weight === 'number') {
+      input.style_reference_weight = options.style_reference_weight;
+    }
     return input;
   }
 
@@ -109,6 +118,12 @@ export function buildReplicateInput(
 
   if (options.startImage) {
     input.image = options.startImage;
+  }
+  if (options.style_reference) {
+    input.style_reference = options.style_reference;
+  }
+  if (typeof options.style_reference_weight === 'number') {
+    input.style_reference_weight = options.style_reference_weight;
   }
 
   return input;
@@ -148,11 +163,12 @@ export async function generateReplicateVideo(
 
   if (output && typeof output === 'object') {
     const outputRecord = output as Record<string, unknown>;
+    const metrics = isRecord(outputRecord.metrics) ? outputRecord.metrics : null;
     const seed =
       typeof outputRecord.seed === 'number'
         ? outputRecord.seed
-        : typeof (outputRecord.metrics as any)?.seed === 'number'
-          ? (outputRecord.metrics as any).seed
+        : typeof metrics?.seed === 'number'
+          ? metrics.seed
           : undefined;
 
     if ('url' in outputRecord && typeof outputRecord.url === 'function') {

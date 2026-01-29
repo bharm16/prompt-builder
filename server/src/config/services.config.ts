@@ -58,8 +58,10 @@ import AssetService from '@services/asset/AssetService';
 import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import ConsistentVideoService from '@services/generation/ConsistentVideoService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 import { getStorageService } from '@services/storage/StorageService';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
+import { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import {
   AnchorService,
   CharacterKeyframeService,
@@ -140,6 +142,7 @@ export async function configureServices(): Promise<DIContainer> {
   container.registerValue('metricsService', metricsService);
   container.registerValue('cacheService', cacheService);
   container.registerValue('userCreditService', userCreditService);
+  container.registerValue('billingProfileStore', new BillingProfileStore());
   container.register('storageService', () => getStorageService(), [], { singleton: true });
   container.register(
     'faceEmbeddingService',
@@ -657,14 +660,16 @@ export async function configureServices(): Promise<DIContainer> {
     (
       aiService: AIModelService,
       videoGenerationService: VideoGenerationService | null,
-      creditService: typeof userCreditService
+      creditService: typeof userCreditService,
+      billingProfileStore: BillingProfileStore
     ) =>
       new ModelIntelligenceService({
         aiService,
         videoGenerationService,
         userCreditService: creditService,
+        billingProfileStore,
       }),
-    ['aiService', 'videoGenerationService', 'userCreditService'],
+    ['aiService', 'videoGenerationService', 'userCreditService', 'billingProfileStore'],
     { singleton: true }
   );
 
@@ -814,8 +819,11 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'gradingService',
-    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) => new GradingService(videoAssetStore),
-    ['videoAssetStore'],
+    (
+      videoAssetStore: ReturnType<typeof createVideoAssetStore>,
+      storageService: ReturnType<typeof getStorageService>
+    ) => new GradingService(videoAssetStore, storageService),
+    ['videoAssetStore', 'storageService'],
     { singleton: true }
   );
 
@@ -899,6 +907,13 @@ export async function configureServices(): Promise<DIContainer> {
       'assetService',
       'continuitySessionStore',
     ]
+  );
+
+  container.register(
+    'capabilitiesProbeService',
+    () => new CapabilitiesProbeService(),
+    [],
+    { singleton: true }
   );
 
   container.register(

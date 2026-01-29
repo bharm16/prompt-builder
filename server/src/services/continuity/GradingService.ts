@@ -3,15 +3,19 @@ import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { logger } from '@infrastructure/Logger';
+import { StorageService } from '@services/storage/StorageService';
+import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
 import { createVideoAssetStore } from '@services/video-generation/storage';
 import type { VideoAssetStore } from '@services/video-generation/storage';
 
 export class GradingService {
   private readonly log = logger.child({ service: 'GradingService' });
   private readonly assetStore: VideoAssetStore;
+  private readonly storage: StorageService | undefined;
 
-  constructor(assetStore?: VideoAssetStore) {
+  constructor(assetStore?: VideoAssetStore, storageService?: StorageService) {
     this.assetStore = assetStore || createVideoAssetStore();
+    this.storage = storageService;
   }
 
   async matchPalette(
@@ -66,6 +70,67 @@ export class GradingService {
       return { applied: true, assetId: stored.id, videoUrl: stored.url };
     } catch (error) {
       this.log.warn('Palette match failed, skipping', {
+        error: (error as Error).message,
+      });
+      return { applied: false };
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  async matchImagePalette(
+    userId: string,
+    sourceImageUrl: string,
+    referenceImageUrl: string
+  ): Promise<{ applied: boolean; imageUrl?: string }> {
+    if (!this.storage) {
+      return { applied: false };
+    }
+
+    const tempDir = await fs.mkdtemp(join(tmpdir(), 'grade-img-'));
+    const inputPath = join(tempDir, 'input.png');
+    const refPath = join(tempDir, 'ref.png');
+    const outputPath = join(tempDir, 'output.png');
+
+    try {
+      const [sourceRes, refRes] = await Promise.all([
+        fetch(sourceImageUrl),
+        fetch(referenceImageUrl),
+      ]);
+
+      if (!sourceRes.ok) {
+        throw new Error(`Failed to download source image (${sourceRes.status})`);
+      }
+      if (!refRes.ok) {
+        throw new Error(`Failed to download reference image (${refRes.status})`);
+      }
+
+      await fs.writeFile(inputPath, Buffer.from(await sourceRes.arrayBuffer()));
+      await fs.writeFile(refPath, Buffer.from(await refRes.arrayBuffer()));
+
+      const args = [
+        '-y',
+        '-i', inputPath,
+        '-i', refPath,
+        '-filter_complex', '[0:v][1:v]histmatch,format=rgba',
+        '-frames:v', '1',
+        outputPath,
+      ];
+
+      await this.exec('ffmpeg', args);
+
+      const outputBuffer = await fs.readFile(outputPath);
+      const stored = await this.storage.saveFromBuffer(
+        userId,
+        outputBuffer,
+        STORAGE_TYPES.PREVIEW_IMAGE,
+        'image/png',
+        { source: 'continuity-style-transfer' }
+      );
+
+      return { applied: true, imageUrl: stored.viewUrl };
+    } catch (error) {
+      this.log.warn('Image palette match failed, skipping', {
         error: (error as Error).message,
       });
       return { applied: false };

@@ -62,7 +62,21 @@ describe('assetApi', () => {
     it('sends FormData with metadata when uploading images', async () => {
       fetchMock.mockResolvedValue({
         ok: true,
-        json: async () => ({ id: 'img-1' }),
+        json: async () => ({
+          image: {
+            id: 'img-1',
+            url: 'https://example.com/image.png',
+            thumbnailUrl: 'https://example.com/thumb.png',
+            isPrimary: false,
+            metadata: {
+              uploadedAt: 'now',
+              width: 100,
+              height: 100,
+              sizeBytes: 1234,
+            },
+          },
+          warnings: [],
+        }),
       });
 
       const file = new File(['image'], 'test.png', { type: 'image/png' });

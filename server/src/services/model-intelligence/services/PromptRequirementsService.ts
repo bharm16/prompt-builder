@@ -159,7 +159,7 @@ export class PromptRequirementsService {
       allText
     );
 
-    let specificAesthetic: string | undefined;
+    let specificAesthetic: string | null = null;
     const aesthetics = ['anime', 'noir', 'cyberpunk', 'vintage', 'retro', 'minimalist', 'surreal', 'gothic'];
     for (const aesthetic of aesthetics) {
       if (allText.includes(aesthetic)) {

@@ -22,6 +22,9 @@
 
 import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts';
 import { logger } from '@infrastructure/Logger';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 // OpenAI-specific imports
 import {
@@ -47,6 +50,10 @@ import {
  */
 export type Provider = 'openai' | 'groq' | 'gemini';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const I2V_TEMPLATE_PATH = join(__dirname, '../templates/i2v-span-labeling-prompt.md');
+
 const I2V_SYSTEM_PROMPT = `
 Label ONLY motion-related spans for image-to-video prompts.
 
@@ -69,6 +76,26 @@ Do NOT label:
 Return JSON only, matching the SpanLabelingResponse schema.
 `.trim();
 
+let cachedI2VPrompt: string | null = null;
+
+function loadI2VPromptTemplate(): string {
+  if (cachedI2VPrompt) {
+    return cachedI2VPrompt;
+  }
+
+  try {
+    const content = readFileSync(I2V_TEMPLATE_PATH, 'utf-8').trim();
+    cachedI2VPrompt = content.length > 0 ? content : I2V_SYSTEM_PROMPT;
+  } catch (error) {
+    logger.warn('I2V span labeling template missing; using inline prompt', {
+      error: (error as Error).message,
+    });
+    cachedI2VPrompt = I2V_SYSTEM_PROMPT;
+  }
+
+  return cachedI2VPrompt;
+}
+
 /**
  * Build system prompt optimized for specific provider
  * 
@@ -87,7 +114,7 @@ export function buildSystemPrompt(
   const normalizedProvider = provider.toLowerCase();
 
   if (templateVersion && templateVersion.toLowerCase().startsWith('i2v')) {
-    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${I2V_SYSTEM_PROMPT}`.trim();
+    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${loadI2VPromptTemplate()}`.trim();
   }
   
   let basePrompt: string;

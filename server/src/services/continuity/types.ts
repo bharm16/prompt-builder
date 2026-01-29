@@ -123,6 +123,7 @@ export interface ContinuityShot {
 
   // Character reference
   characterAssetId?: string;
+  faceStrength?: number;
 
   // Camera hints (optional)
   camera?: {
@@ -143,6 +144,9 @@ export interface ContinuityShot {
   videoAssetId?: string;
   previewAssetId?: string;
   generatedKeyframeUrl?: string;
+  styleTransferApplied?: boolean;
+  styleDegraded?: boolean;
+  styleDegradedReason?: string;
   sceneProxyRenderUrl?: string;
 
   // Which continuity mechanism was actually used
@@ -194,6 +198,8 @@ export interface ContinuitySession {
 
   status: 'active' | 'completed' | 'archived';
 
+  version?: number;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -224,6 +230,7 @@ export interface CreateShotRequest {
   styleStrength?: number;
   modelId?: VideoModelId;
   characterAssetId?: string;
+  faceStrength?: number;
   camera?: {
     yaw?: number;
     pitch?: number;

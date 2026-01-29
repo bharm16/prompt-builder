@@ -35,6 +35,7 @@ import {
   ModelSelector,
   useModelRecommendation,
 } from '@/features/model-intelligence';
+import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '../../config/modelConfig';
 import type { DraftModel, KeyframeTile, VideoTier } from '../../types';
@@ -188,6 +189,15 @@ export function GenerationControlsPanel({
     }
     return VIDEO_RENDER_MODELS[0]?.id ?? '';
   }, [selectedModel]);
+
+  const recommendationAgeMs = useMemo(() => {
+    const computedAt = modelRecommendation?.computedAt;
+    if (!computedAt) return null;
+    if (typeof computedAt !== 'string') return null;
+    const timestamp = Date.parse(computedAt);
+    if (!Number.isFinite(timestamp)) return null;
+    return Date.now() - timestamp;
+  }, [modelRecommendation?.computedAt]);
 
   const capabilitiesModelId = useMemo(() => {
     if (activeTab === 'video') {
@@ -572,14 +582,26 @@ export function GenerationControlsPanel({
             Storyboard
           </span>
         </button>
-        <button
-          type="button"
-          className="h-8 px-[10px] py-[4px] bg-[#2C22FA] text-white rounded-[4px] font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => {
-            if (tier === 'draft') {
-              onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
-              return;
-            }
+          <button
+            type="button"
+            className="h-8 px-[10px] py-[4px] bg-[#2C22FA] text-white rounded-[4px] font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => {
+              void trackModelRecommendationEvent({
+                event: 'generation_started',
+                recommendationId: modelRecommendation?.promptId,
+                promptId: modelRecommendation?.promptId,
+                recommendedModelId: modelRecommendation?.recommended?.modelId,
+                selectedModelId: tier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId,
+                mode: recommendationMode,
+                durationSeconds: duration,
+                ...(typeof recommendationAgeMs === 'number'
+                  ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
+                  : {}),
+              });
+              if (tier === 'draft') {
+                onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
+                return;
+              }
             onRender(renderModelId || selectedModel || 'sora-2');
           }}
           disabled={isGenerateDisabled}

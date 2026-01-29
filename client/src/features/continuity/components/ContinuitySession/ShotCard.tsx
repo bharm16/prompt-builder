@@ -47,6 +47,14 @@ export function ShotCard({
             Continuity: {shot.continuityMechanismUsed}
           </div>
         )}
+        {shot.styleTransferApplied && (
+          <div className="mt-1 text-[11px] text-muted">Style transfer applied</div>
+        )}
+        {shot.styleDegraded && (
+          <div className="mt-1 text-[11px] text-warning">
+            Style degraded{shot.styleDegradedReason ? ` (${shot.styleDegradedReason})` : ''}
+          </div>
+        )}
         {(shot.styleScore !== undefined || shot.identityScore !== undefined) && (
           <div className="mt-1 text-[11px] text-muted">
             {shot.styleScore !== undefined && (

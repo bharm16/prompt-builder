@@ -15,12 +15,14 @@ export function ContinuitySessionView(): React.ReactElement {
     createSceneProxy,
     updateStyleReference,
     updatePrimaryStyleReference,
+    updateSessionSettings,
   } = useContinuitySession();
   const [mode, setMode] = useState<GenerationMode>(
     session?.defaultSettings.generationMode ?? 'continuity'
   );
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isUpdatingMode, setIsUpdatingMode] = useState(false);
 
   useEffect(() => {
     if (session?.defaultSettings.generationMode) {
@@ -86,6 +88,30 @@ export function ContinuitySessionView(): React.ReactElement {
     await createSceneProxy({ sourceShotId });
   };
 
+  const onModeChange = async (nextMode: GenerationMode) => {
+    if (nextMode === mode) return;
+    setMode(nextMode);
+    setIsUpdatingMode(true);
+    try {
+      await updateSessionSettings({ generationMode: nextMode });
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsUpdatingMode(false);
+    }
+  };
+
+  const onToggleSceneProxy = async (enabled: boolean) => {
+    setIsUpdatingMode(true);
+    try {
+      await updateSessionSettings({ useSceneProxy: enabled });
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsUpdatingMode(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -102,7 +128,7 @@ export function ContinuitySessionView(): React.ReactElement {
             className={`px-3 py-1 rounded ${
               mode === 'continuity' ? 'bg-foreground text-white' : 'bg-surface-2 text-muted'
             }`}
-            onClick={() => setMode('continuity')}
+            onClick={() => void onModeChange('continuity')}
           >
             Continuity
           </button>
@@ -111,10 +137,11 @@ export function ContinuitySessionView(): React.ReactElement {
             className={`px-3 py-1 rounded ${
               mode === 'standard' ? 'bg-foreground text-white' : 'bg-surface-2 text-muted'
             }`}
-            onClick={() => setMode('standard')}
+            onClick={() => void onModeChange('standard')}
           >
             Standard
           </button>
+          {isUpdatingMode && <span className="text-xs text-muted">Saving…</span>}
         </div>
       </div>
 
@@ -158,6 +185,14 @@ export function ContinuitySessionView(): React.ReactElement {
               <h2 className="text-base font-semibold text-foreground">Scene Proxy (Phase 2)</h2>
               <span className="text-xs text-muted">Optional</span>
             </div>
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={Boolean(session.defaultSettings.useSceneProxy)}
+                onChange={(event) => void onToggleSceneProxy(event.target.checked)}
+              />
+              Use scene proxy when available
+            </label>
             {session.sceneProxy?.status === 'ready' ? (
               <div className="space-y-2">
                 <img

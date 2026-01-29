@@ -3,15 +3,17 @@ import { isIP } from 'node:net';
 import { logger } from '@infrastructure/Logger';
 import { parseVideoPreviewRequest } from '@routes/preview/videoRequest';
 import { getVideoCost } from '@config/modelCosts';
+import { VIDEO_MODELS } from '@config/modelConfig';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PreviewRoutesServices } from '@routes/types';
-import type { VideoGenerationOptions } from '@services/video-generation/types';
+import type { VideoGenerationOptions, VideoModelId } from '@services/video-generation/types';
 import {
   CAMERA_MOTION_DESCRIPTIONS,
   CAMERA_PATHS,
 } from '@services/convergence/constants';
+import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import { getAuthenticatedUserId } from '../auth';
-import { getCapabilityModelIds } from '../availability';
 import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
 
@@ -146,6 +148,31 @@ export const createVideoGenerateHandler = ({
       characterAssetId,
       autoKeyframe = true,
     } = parsed.payload;
+
+    // Validate user-provided URLs to prevent SSRF
+    if (startImage) {
+      try {
+        assertUrlSafe(startImage, 'startImage');
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid startImage URL',
+          message: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (inputReference) {
+      try {
+        assertUrlSafe(inputReference, 'inputReference');
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid inputReference URL',
+          message: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+
     const { cleaned: cleanedPrompt, wasStripped: promptWasStripped } =
       stripVideoPreviewPrompt(prompt);
     const userId = await getAuthenticatedUserId(req);
@@ -282,8 +309,17 @@ export const createVideoGenerateHandler = ({
       if (keyframeCost > 0) {
         await userCreditService.refundCredits(userId, keyframeCost);
       }
-      const report = videoGenerationService.getAvailabilityReport(getCapabilityModelIds());
-      const statusCode = availability.statusCode || 424;
+      const snapshot = videoGenerationService.getAvailabilitySnapshot(
+        Object.values(VIDEO_MODELS) as VideoModelId[]
+      );
+      const availableCapabilityModels = Array.from(
+        new Set(
+          snapshot.availableModelIds
+            .map((modelId) => resolveCapabilityModelId(modelId))
+            .filter((modelId): modelId is string => typeof modelId === 'string' && modelId.length > 0)
+        )
+      );
+      const statusCode = availability.statusCode || 503;
       return res.status(statusCode).json({
         success: false,
         error: 'Video model not available',
@@ -292,7 +328,8 @@ export const createVideoGenerateHandler = ({
         reason: availability.reason,
         requiredKey: availability.requiredKey,
         resolvedModelId: availability.resolvedModelId,
-        availableModels: report.availableModels,
+        availableModels: snapshot.availableModelIds,
+        availableCapabilityModels,
       });
     }
 
@@ -476,14 +513,19 @@ export const createVideoGenerateHandler = ({
         userCreditService,
       });
 
-      return res.status(202).json({
-        success: true,
+      const responsePayload = {
         jobId: job.id,
         status: job.status,
         creditsReserved: videoCost,
         creditsDeducted: videoCost + keyframeCost,
         keyframeGenerated: Boolean(generatedKeyframeUrl),
         keyframeUrl: generatedKeyframeUrl,
+      };
+
+      return res.status(202).json({
+        success: true,
+        data: responsePayload,
+        ...responsePayload,
       });
     } catch (error: unknown) {
       await userCreditService.refundCredits(userId, videoCost);

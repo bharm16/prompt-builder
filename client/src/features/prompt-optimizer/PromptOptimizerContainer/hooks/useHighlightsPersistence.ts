@@ -13,7 +13,6 @@ interface Span {
   end: number;
   category: string;
   confidence: number;
-  [key: string]: unknown;
 }
 
 interface PersistenceResult {
@@ -26,12 +25,10 @@ interface PersistenceResult {
 
 interface User {
   uid: string;
-  [key: string]: unknown;
 }
 
 interface PromptHistory {
   updateEntryHighlight: (uuid: string, snapshot: HighlightSnapshot) => void;
-  [key: string]: unknown;
 }
 
 interface UseHighlightsPersistenceParams {

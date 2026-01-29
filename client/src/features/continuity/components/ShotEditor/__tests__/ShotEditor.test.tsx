@@ -1,7 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { ShotEditor } from '../ShotEditor';
 import type { ContinuitySession } from '../../../types';
+
+vi.mock('@/hooks/useModelRegistry', () => ({
+  useModelRegistry: () => ({
+    models: [{ id: 'model-1', label: 'Model 1', provider: 'replicate' }],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('@/services', async () => {
+  const actual = await vi.importActual<typeof import('@/services')>('@/services');
+  return {
+    ...actual,
+    capabilitiesApi: {
+      getRegistry: vi.fn().mockResolvedValue({}),
+      getVideoAvailability: vi.fn().mockResolvedValue({ availableModels: [], availableCapabilityModels: [] }),
+      getCapabilities: vi.fn(),
+      listProviders: vi.fn(),
+      listModels: vi.fn(),
+    },
+  };
+});
 
 const buildSession = (): ContinuitySession => ({
   id: 'session-1',
@@ -29,17 +51,21 @@ const buildSession = (): ContinuitySession => ({
 });
 
 describe('ShotEditor', () => {
-  it('shows standard mode controls when generationMode is standard', () => {
+  it('shows standard mode controls when generationMode is standard', async () => {
     const session = buildSession();
-    render(<ShotEditor session={session} generationMode="standard" onAddShot={vi.fn()} />);
+    await act(async () => {
+      render(<ShotEditor session={session} generationMode="standard" onAddShot={vi.fn()} />);
+    });
     expect(
       screen.getByText('Use previous shot as reference (best effort)')
     ).toBeInTheDocument();
   });
 
-  it('shows continuity mode controls when generationMode is continuity', () => {
+  it('shows continuity mode controls when generationMode is continuity', async () => {
     const session = buildSession();
-    render(<ShotEditor session={session} generationMode="continuity" onAddShot={vi.fn()} />);
+    await act(async () => {
+      render(<ShotEditor session={session} generationMode="continuity" onAddShot={vi.fn()} />);
+    });
     expect(screen.getAllByText('Continuity mode').length).toBeGreaterThan(0);
     expect(screen.getByText('Style source')).toBeInTheDocument();
   });

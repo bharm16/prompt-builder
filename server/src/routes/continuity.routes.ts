@@ -1,4 +1,5 @@
 import express, { type Request, type Response, type Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
@@ -9,10 +10,65 @@ const STYLE_KEYFRAME_CREDIT_COST = 2;
 
 type RequestWithUser = Request & { user?: { uid?: string } };
 
+const CreateSessionSchema = z
+  .object({
+    name: z.string().min(1),
+    description: z.string().optional(),
+    sourceVideoId: z.string().optional().nullable(),
+    sourceImageUrl: z.string().optional().nullable(),
+    initialPrompt: z.string().optional(),
+    settings: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strip();
+
+const CreateShotSchema = z
+  .object({
+    prompt: z.string().min(1),
+    continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
+    generationMode: z.enum(['continuity', 'standard']).optional(),
+    styleReferenceId: z.string().nullable().optional(),
+    styleStrength: z.number().optional(),
+    modelId: z.string().optional(),
+    characterAssetId: z.string().optional(),
+    faceStrength: z.number().optional(),
+    camera: z
+      .object({
+        yaw: z.number().optional(),
+        pitch: z.number().optional(),
+        roll: z.number().optional(),
+        dolly: z.number().optional(),
+      })
+      .partial()
+      .optional(),
+  })
+  .strip();
+
+const UpdateStyleReferenceSchema = z.object({
+  styleReferenceId: z.string().nullable(),
+});
+
+const UpdateSessionSettingsSchema = z.object({
+  settings: z.record(z.string(), z.unknown()),
+});
+
+const UpdatePrimaryStyleReferenceSchema = z
+  .object({
+    sourceVideoId: z.string().optional(),
+    sourceImageUrl: z.string().optional(),
+  })
+  .strip();
+
+const CreateSceneProxySchema = z
+  .object({
+    sourceShotId: z.string().optional(),
+    sourceVideoId: z.string().optional(),
+  })
+  .strip();
+
 function requireUserId(req: RequestWithUser, res: Response): string | null {
   const userId = req.user?.uid;
   if (!userId) {
-    res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ success: false, error: 'Authentication required' });
     return null;
   }
   return userId;
@@ -28,17 +84,17 @@ async function requireSessionForUser(
 
   const sessionId = req.params.sessionId;
   if (!sessionId || Array.isArray(sessionId)) {
-    res.status(400).json({ error: 'Invalid sessionId' });
+    res.status(400).json({ success: false, error: 'Invalid sessionId' });
     return null;
   }
 
   const session = await service.getSession(sessionId);
   if (!session) {
-    res.status(404).json({ error: 'Session not found' });
+    res.status(404).json({ success: false, error: 'Session not found' });
     return null;
   }
   if (session.userId !== userId) {
-    res.status(403).json({ error: 'Access denied' });
+    res.status(403).json({ success: false, error: 'Access denied' });
     return null;
   }
   return session;
@@ -56,22 +112,28 @@ export function createContinuityRoutes(
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const { name, description, sourceVideoId, sourceImageUrl, initialPrompt, settings } = req.body || {};
-      if (!name || typeof name !== 'string') {
-        res.status(400).json({ error: 'name is required' });
+      const parsed = CreateSessionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
         return;
       }
 
+      const { name, description, sourceVideoId, sourceImageUrl, initialPrompt, settings } = parsed.data;
+
       const session = await service.createSession(userId, {
         name,
-        description,
-        sourceVideoId,
-        sourceImageUrl,
-        initialPrompt,
-        settings,
+        ...(typeof description === 'string' ? { description } : {}),
+        ...(typeof sourceVideoId === 'string' ? { sourceVideoId } : {}),
+        ...(typeof sourceImageUrl === 'string' ? { sourceImageUrl } : {}),
+        ...(typeof initialPrompt === 'string' ? { initialPrompt } : {}),
+        ...(settings ? { settings } : {}),
       });
 
-      res.json({ success: true, data: session });
+      res.status(201).json({ success: true, data: session });
     })
   );
 
@@ -100,25 +162,40 @@ export function createContinuityRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const session = await requireSessionForUser(service, req, res);
       if (!session) return;
-      const { prompt, continuityMode, generationMode, styleReferenceId, styleStrength, modelId, characterAssetId, camera } = req.body || {};
-      if (!prompt || typeof prompt !== 'string') {
-        res.status(400).json({ error: 'prompt is required' });
+      const parsed = CreateShotSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
         return;
       }
+
+      const { prompt, continuityMode, generationMode, styleReferenceId, styleStrength, modelId, characterAssetId, faceStrength, camera } =
+        parsed.data;
 
       const shot = await service.addShot({
         sessionId: session.id,
         prompt,
-        continuityMode,
-        generationMode,
-        styleReferenceId,
-        styleStrength,
-        modelId,
-        characterAssetId,
-        camera,
+        ...(continuityMode ? { continuityMode } : {}),
+        ...(generationMode ? { generationMode } : {}),
+        ...(styleReferenceId !== undefined ? { styleReferenceId } : {}),
+        ...(styleStrength !== undefined ? { styleStrength } : {}),
+        ...(modelId ? { modelId } : {}),
+        ...(characterAssetId ? { characterAssetId } : {}),
+        ...(faceStrength !== undefined ? { faceStrength } : {}),
+        ...(camera ? {
+          camera: {
+            ...(camera.yaw !== undefined ? { yaw: camera.yaw } : {}),
+            ...(camera.pitch !== undefined ? { pitch: camera.pitch } : {}),
+            ...(camera.roll !== undefined ? { roll: camera.roll } : {}),
+            ...(camera.dolly !== undefined ? { dolly: camera.dolly } : {}),
+          },
+        } : {}),
       });
 
-      res.json({ success: true, data: shot });
+      res.status(201).json({ success: true, data: shot });
     })
   );
 
@@ -128,18 +205,18 @@ export function createContinuityRoutes(
       const session = await requireSessionForUser(service, req, res);
       if (!session) return;
       if (!userCreditService) {
-        res.status(503).json({ error: 'Credit service unavailable' });
+        res.status(503).json({ success: false, error: 'Credit service unavailable' });
         return;
       }
       const shotId = req.params.shotId;
       if (!shotId || Array.isArray(shotId)) {
-        res.status(400).json({ error: 'Invalid shotId' });
+        res.status(400).json({ success: false, error: 'Invalid shotId' });
         return;
       }
 
       const shot = session.shots.find((s) => s.id === shotId);
       if (!shot) {
-        res.status(404).json({ error: 'Shot not found' });
+        res.status(404).json({ success: false, error: 'Shot not found' });
         return;
       }
 
@@ -158,20 +235,32 @@ export function createContinuityRoutes(
         extraCost += KEYFRAME_CREDIT_COST;
       }
 
-      const totalCost = videoCost + extraCost;
+      const maxRetries = session.defaultSettings.maxRetries ?? 1;
+      const perAttemptCost = videoCost + extraCost;
+      // Reserve credits for worst-case (all retries). Only first attempt cost is guaranteed;
+      // actual usage may be lower. Excess is refunded after generation.
+      const totalCost = perAttemptCost * (maxRetries + 1);
+
       const reserved = await userCreditService.reserveCredits(session.userId, totalCost);
       if (!reserved) {
         res.status(402).json({
+          success: false,
           error: 'Insufficient credits',
-          message: `This generation requires ${totalCost} credits.`,
+          message: `This generation requires up to ${totalCost} credits (including possible retries).`,
         });
         return;
       }
 
       try {
         const result = await service.generateShot(session.id, shotId);
+        const actualRetries = result.retryCount ?? 0;
+        const actualCost = perAttemptCost * (actualRetries + 1);
+        const refundAmount = totalCost - actualCost;
+        if (refundAmount > 0) {
+          await userCreditService.refundCredits(session.userId, refundAmount);
+        }
         if (result.status === 'failed') {
-          await userCreditService.refundCredits(session.userId, totalCost);
+          await userCreditService.refundCredits(session.userId, actualCost);
         }
         res.json({ success: true, data: result });
       } catch (error) {
@@ -188,14 +277,19 @@ export function createContinuityRoutes(
       if (!session) return;
       const shotId = req.params.shotId;
       if (!shotId || Array.isArray(shotId)) {
-        res.status(400).json({ error: 'Invalid shotId' });
+        res.status(400).json({ success: false, error: 'Invalid shotId' });
         return;
       }
-      const { styleReferenceId } = req.body || {};
-      if (styleReferenceId === undefined) {
-        res.status(400).json({ error: 'styleReferenceId is required' });
+      const parsed = UpdateStyleReferenceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
         return;
       }
+      const { styleReferenceId } = parsed.data;
       const normalizedStyleReferenceId =
         styleReferenceId === null || styleReferenceId === 'primary'
           ? null
@@ -210,11 +304,43 @@ export function createContinuityRoutes(
   );
 
   router.put(
+    '/sessions/:sessionId/settings',
+    asyncHandler(async (req: Request, res: Response) => {
+      const authorizedSession = await requireSessionForUser(service, req, res);
+      if (!authorizedSession) return;
+      const parsed = UpdateSessionSettingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
+        return;
+      }
+      const { settings } = parsed.data;
+      const updatedSession = await service.updateSessionSettings(
+        authorizedSession.id,
+        settings
+      );
+      res.json({ success: true, data: updatedSession });
+    })
+  );
+
+  router.put(
     '/sessions/:sessionId/style-reference',
     asyncHandler(async (req: Request, res: Response) => {
       const authorizedSession = await requireSessionForUser(service, req, res);
       if (!authorizedSession) return;
-      const { sourceVideoId, sourceImageUrl } = req.body || {};
+      const parsed = UpdatePrimaryStyleReferenceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
+        return;
+      }
+      const { sourceVideoId, sourceImageUrl } = parsed.data;
       const updatedSession = await service.updatePrimaryStyleReference(
         authorizedSession.id,
         sourceVideoId,
@@ -229,13 +355,22 @@ export function createContinuityRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const authorizedSession = await requireSessionForUser(service, req, res);
       if (!authorizedSession) return;
-      const { sourceShotId, sourceVideoId } = req.body || {};
+      const parsed = CreateSceneProxySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
+        return;
+      }
+      const { sourceShotId, sourceVideoId } = parsed.data;
       const updatedSession = await service.createSceneProxy(
         authorizedSession.id,
         sourceShotId,
         sourceVideoId
       );
-      res.json({ success: true, data: updatedSession });
+      res.status(201).json({ success: true, data: updatedSession });
     })
   );
 

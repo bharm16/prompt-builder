@@ -9,7 +9,7 @@
  * - 17.1-17.7: Tool switching and handoff
  */
 
-import React, { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { ConvergenceHandoff } from '@features/convergence/types';
 
 /**
@@ -110,12 +110,15 @@ export function AppShellProvider({
     [activeTool, isGeneratingCheck]
   );
 
-  const value: AppShellContextValue = {
-    activeTool,
-    convergenceHandoff,
-    setActiveTool,
-    setConvergenceHandoff,
-  };
+  const value: AppShellContextValue = useMemo(
+    () => ({
+      activeTool,
+      convergenceHandoff,
+      setActiveTool,
+      setConvergenceHandoff,
+    }),
+    [activeTool, convergenceHandoff, setActiveTool, setConvergenceHandoff]
+  );
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;
 }

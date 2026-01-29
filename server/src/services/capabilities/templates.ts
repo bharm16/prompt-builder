@@ -85,6 +85,42 @@ export const imageInputField = (supported = false): CapabilityField => ({
   },
 });
 
+export const styleReferenceField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Style Reference',
+    description: 'Supports native style reference inputs',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 6,
+  },
+});
+
+export const characterReferenceField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Character Reference',
+    description: 'Supports native character/identity reference inputs',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 7,
+  },
+});
+
+export const extendVideoField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Extend Video',
+    description: 'Supports extending an existing video asset',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 8,
+  },
+});
+
 export const seedField = (): CapabilityField => ({
   type: 'int',
   default: 0,

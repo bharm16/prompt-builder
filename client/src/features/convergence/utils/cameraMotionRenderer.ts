@@ -662,13 +662,13 @@ export async function renderCameraMotionFrames(
  *
  * @param frames - Array of frame data URLs to animate
  * @param fps - Frames per second for playback
- * @param onFrame - Callback called with each frame's data URL
+ * @param onFrame - Callback called with each frame's data URL and index
  * @returns Controls for starting, stopping, and checking playback state
  */
 export function createFrameAnimator(
   frames: string[],
   fps: number,
-  onFrame: (frameDataUrl: string) => void
+  onFrame: (frameDataUrl: string, frameIndex: number) => void
 ): FrameAnimatorControls {
   let animationFrameId: number | null = null;
   let isAnimating = false;
@@ -694,7 +694,7 @@ export function createFrameAnimator(
       // Call the frame callback (with bounds check)
       const frame = frames[currentFrameIndex];
       if (frame) {
-        onFrame(frame);
+        onFrame(frame, currentFrameIndex);
       }
 
       // Move to next frame (loop back to start)
@@ -719,7 +719,7 @@ export function createFrameAnimator(
       // Show first frame immediately (with bounds check)
       const firstFrame = frames[0];
       if (firstFrame) {
-        onFrame(firstFrame);
+        onFrame(firstFrame, 0);
       }
 
       // Start animation loop

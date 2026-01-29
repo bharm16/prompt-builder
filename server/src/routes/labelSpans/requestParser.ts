@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { LabelSpansParams, ValidationPolicy } from '@llm/span-labeling/types';
 
 export interface ParsedLabelSpansRequest {
@@ -7,6 +8,7 @@ export interface ParsedLabelSpansRequest {
   minConfidence?: number;
   policy?: ValidationPolicy;
   templateVersion?: string;
+  isI2VMode?: boolean;
 }
 
 export type LabelSpansRequestParseResult =
@@ -22,55 +24,63 @@ const sanitizeNumber = (value: unknown): number | undefined => {
   return undefined;
 };
 
+const LabelSpansRequestSchema = z
+  .object({
+    text: z.string().min(1, 'text is required'),
+    maxSpans: z
+      .preprocess(sanitizeNumber, z.number().int().min(1).max(80))
+      .optional(),
+    minConfidence: z
+      .preprocess(sanitizeNumber, z.number().min(0).max(1))
+      .optional(),
+    policy: z.record(z.string(), z.unknown()).optional(),
+    templateVersion: z.string().optional(),
+    isI2VMode: z
+      .preprocess(
+        (value: unknown) =>
+          typeof value === 'boolean'
+            ? value
+            : typeof value === 'string'
+              ? value.toLowerCase() === 'true'
+              : undefined,
+        z.boolean()
+      )
+      .optional(),
+  })
+  .strip();
+
 export function parseLabelSpansRequest(
   body: unknown
 ): LabelSpansRequestParseResult {
-  const { text, maxSpans, minConfidence, policy, templateVersion } =
-    (body || {}) as {
-      text?: unknown;
-      maxSpans?: unknown;
-      minConfidence?: unknown;
-      policy?: ValidationPolicy;
-      templateVersion?: string;
-    };
-
-  if (typeof text !== 'string' || !text.trim()) {
-    return { ok: false, status: 400, error: 'text is required' };
-  }
-
-  const safeMaxSpans = sanitizeNumber(maxSpans);
-  if (
-    safeMaxSpans !== undefined &&
-    (!Number.isInteger(safeMaxSpans) || safeMaxSpans <= 0 || safeMaxSpans > 80)
-  ) {
+  const parsed = LabelSpansRequestSchema.safeParse(body ?? {});
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return {
       ok: false,
       status: 400,
-      error: 'maxSpans must be an integer between 1 and 80',
+      error: issue?.message || 'Invalid request',
     };
   }
 
-  const safeMinConfidence = sanitizeNumber(minConfidence);
-  if (
-    safeMinConfidence !== undefined &&
-    (typeof safeMinConfidence !== 'number' ||
-      Number.isNaN(safeMinConfidence) ||
-      safeMinConfidence < 0 ||
-      safeMinConfidence > 1)
-  ) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'minConfidence must be between 0 and 1',
-    };
-  }
+  const {
+    text,
+    maxSpans,
+    minConfidence,
+    policy,
+    templateVersion,
+    isI2VMode,
+  } = parsed.data;
+
+  const normalizedIsI2VMode = Boolean(isI2VMode);
+
+  const resolvedTemplateVersion = templateVersion || (normalizedIsI2VMode ? 'i2v-v1' : undefined);
 
   const payload: LabelSpansParams = {
     text,
-    ...(safeMaxSpans !== undefined ? { maxSpans: safeMaxSpans } : {}),
-    ...(safeMinConfidence !== undefined ? { minConfidence: safeMinConfidence } : {}),
-    ...(policy ? { policy } : {}),
-    ...(templateVersion ? { templateVersion } : {}),
+    ...(maxSpans !== undefined ? { maxSpans } : {}),
+    ...(minConfidence !== undefined ? { minConfidence } : {}),
+    ...(policy ? { policy: policy as ValidationPolicy } : {}),
+    ...(resolvedTemplateVersion ? { templateVersion: resolvedTemplateVersion } : {}),
   };
 
   return {
@@ -78,12 +88,11 @@ export function parseLabelSpansRequest(
     data: {
       payload,
       text,
-      ...(safeMaxSpans !== undefined ? { maxSpans: safeMaxSpans } : {}),
-      ...(safeMinConfidence !== undefined
-        ? { minConfidence: safeMinConfidence }
-        : {}),
-      ...(policy ? { policy } : {}),
-      ...(templateVersion ? { templateVersion } : {}),
+      ...(maxSpans !== undefined ? { maxSpans } : {}),
+      ...(minConfidence !== undefined ? { minConfidence } : {}),
+      ...(policy ? { policy: policy as ValidationPolicy } : {}),
+      ...(resolvedTemplateVersion ? { templateVersion: resolvedTemplateVersion } : {}),
+      ...(normalizedIsI2VMode ? { isI2VMode: true } : {}),
     },
   };
 }

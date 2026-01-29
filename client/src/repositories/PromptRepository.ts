@@ -119,6 +119,7 @@ export class PromptRepository {
         ...(promptData.mode !== undefined ? { mode: promptData.mode } : {}),
         ...(promptData.targetModel !== undefined ? { targetModel: promptData.targetModel } : {}),
         ...(promptData.generationParams !== undefined ? { generationParams: promptData.generationParams } : {}),
+        ...(promptData.keyframes !== undefined ? { keyframes: promptData.keyframes } : {}),
         ...(promptData.brainstormContext !== undefined ? { brainstormContext: promptData.brainstormContext } : {}),
         ...(promptData.highlightCache !== undefined ? { highlightCache: promptData.highlightCache } : {}),
         timestamp: serverTimestamp(),
@@ -239,6 +240,9 @@ export class PromptRepository {
       }
       if (updates.generationParams !== undefined) {
         updatePayload.generationParams = updates.generationParams;
+      }
+      if (updates.keyframes !== undefined) {
+        updatePayload.keyframes = updates.keyframes;
       }
 
       if (Object.keys(updatePayload).length === 0) {
@@ -435,6 +439,11 @@ export class PromptRepository {
       entry.generationParams = null;
     } else if (data.generationParams && typeof data.generationParams === 'object') {
       entry.generationParams = data.generationParams as Record<string, unknown>;
+    }
+    if (Array.isArray(data.keyframes)) {
+      entry.keyframes = data.keyframes as PromptHistoryEntry['keyframes'];
+    } else if (data.keyframes === null) {
+      entry.keyframes = null;
     }
     if (data.brainstormContext !== undefined) {
       entry.brainstormContext = data.brainstormContext as unknown;

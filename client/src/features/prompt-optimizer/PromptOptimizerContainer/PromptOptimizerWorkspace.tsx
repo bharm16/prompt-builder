@@ -9,7 +9,7 @@
  * - Conditional layout rendering
  */
 
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
@@ -34,6 +34,7 @@ import {
 } from '../context/GenerationControlsContext';
 import type { VideoTier } from '@components/ToolSidebar/types';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
+import { areKeyframesEqual, hydrateKeyframes, serializeKeyframes } from '../utils/keyframeTransforms';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import { assetApi } from '@/features/assets/api/assetApi';
 import { uploadPreviewImage } from '@/features/preview/api/previewApi';
@@ -163,6 +164,7 @@ function PromptOptimizerContent({
   const {
     controls: generationControls,
     keyframes,
+    setKeyframes,
     addKeyframe,
     removeKeyframe,
     clearKeyframes,
@@ -179,6 +181,56 @@ function PromptOptimizerContent({
     setCameraMotion(null);
     setSubjectMotion('');
   }, [mode, setCameraMotion, setSubjectMotion]);
+
+  const keyframesRef = useRef(keyframes);
+  const keyframeSessionRef = useRef<{ uuid: string | null; docId: string | null }>({
+    uuid: currentPromptUuid ?? null,
+    docId: currentPromptDocId ?? null,
+  });
+
+  useEffect(() => {
+    keyframesRef.current = keyframes;
+  }, [keyframes]);
+
+  useEffect(() => {
+    if (!currentPromptUuid) {
+      if (keyframesRef.current.length) {
+        setKeyframes([]);
+      }
+      return;
+    }
+    const entry = promptHistory.history.find((item) => item.uuid === currentPromptUuid);
+    if (!entry) {
+      if (keyframesRef.current.length) {
+        setKeyframes([]);
+      }
+      return;
+    }
+    const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
+    if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
+    setKeyframes(nextKeyframes);
+  }, [currentPromptUuid, promptHistory.history, setKeyframes]);
+
+  useEffect(() => {
+    if (!currentPromptUuid) {
+      keyframeSessionRef.current = { uuid: null, docId: null };
+      return;
+    }
+    keyframeSessionRef.current = {
+      uuid: currentPromptUuid,
+      docId: currentPromptDocId ?? null,
+    };
+  }, [keyframes, currentPromptUuid, currentPromptDocId]);
+
+  useEffect(() => {
+    const { uuid, docId } = keyframeSessionRef.current;
+    if (!uuid) return;
+    const entry = promptHistory.history.find((item) => item.uuid === uuid);
+    if (!entry) return;
+    const serialized = serializeKeyframes(keyframes);
+    if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
+    promptHistory.updateEntryPersisted(uuid, docId, { keyframes: serialized });
+  }, [keyframes, promptHistory.history, promptHistory.updateEntryPersisted]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -265,6 +317,9 @@ function PromptOptimizerContent({
     setShowResults,
     setSelectedModel,
     setPromptContext,
+    onLoadKeyframes: (stored) => {
+      setKeyframes(hydrateKeyframes(stored));
+    },
     skipLoadFromUrlRef,
   });
 
@@ -376,6 +431,19 @@ function PromptOptimizerContent({
     ]
   );
 
+  const handleLoadFromHistory = useCallback(
+    (entry: PromptHistoryEntry): void => {
+      setKeyframes(hydrateKeyframes(entry.keyframes ?? []));
+      loadFromHistory(entry);
+    },
+    [loadFromHistory, setKeyframes]
+  );
+
+  const handleCreateNewWithKeyframes = useCallback((): void => {
+    setKeyframes([]);
+    handleCreateNew();
+  }, [handleCreateNew, setKeyframes]);
+
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
       const mode =
@@ -389,6 +457,7 @@ function PromptOptimizerContent({
         mode,
         entry.targetModel ?? null,
         (entry.generationParams as Record<string, unknown>) ?? null,
+        entry.keyframes ?? null,
         entry.brainstormContext ?? null,
         entry.highlightCache ?? null,
         null,
@@ -396,7 +465,7 @@ function PromptOptimizerContent({
       );
 
       if (result?.uuid) {
-        loadFromHistory({
+        handleLoadFromHistory({
           id: result.id,
           uuid: result.uuid,
           timestamp: new Date().toISOString(),
@@ -407,13 +476,14 @@ function PromptOptimizerContent({
           mode,
           targetModel: entry.targetModel ?? null,
           generationParams: entry.generationParams ?? null,
+          keyframes: entry.keyframes ?? null,
           brainstormContext: entry.brainstormContext ?? null,
           highlightCache: entry.highlightCache ?? null,
           versions: Array.isArray(entry.versions) ? entry.versions : [],
         });
       }
     },
-    [promptHistory, loadFromHistory]
+    [promptHistory, handleLoadFromHistory]
   );
 
   const handleRename = useCallback(
@@ -672,6 +742,7 @@ function PromptOptimizerContent({
     }),
     [generationParams, cameraMotion?.id]
   );
+  const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
@@ -681,7 +752,9 @@ function PromptOptimizerContent({
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframes,
     startImageUrl: i2vContext.startImageUrl,
+    sourcePrompt: i2vContext.startImageSourcePrompt,
     constraintMode: i2vContext.constraintMode,
     currentPromptUuid,
     setCurrentPromptUuid,
@@ -715,6 +788,7 @@ function PromptOptimizerContent({
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframes,
     setConceptElements,
     setPromptContext,
     setShowBrainstorm,
@@ -825,7 +899,7 @@ function PromptOptimizerContent({
   useKeyboardShortcuts({
     openShortcuts: () => setShowShortcuts(true),
     openSettings: () => setShowSettings(true),
-    createNew: handleCreateNew,
+    createNew: handleCreateNewWithKeyframes,
     optimize: () => !promptOptimizer.isProcessing && showResults === false && handleOptimize(),
     improveFirst: handleImproveFirst,
     canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),
@@ -873,8 +947,8 @@ function PromptOptimizerContent({
     isLoadingHistory: promptHistory.isLoadingHistory,
     searchQuery: promptHistory.searchQuery,
     onSearchChange: promptHistory.setSearchQuery,
-    onLoadFromHistory: loadFromHistory,
-    onCreateNew: handleCreateNew,
+    onLoadFromHistory: handleLoadFromHistory,
+    onCreateNew: handleCreateNewWithKeyframes,
     onDelete: promptHistory.deleteFromHistory,
     onDuplicate: handleDuplicate,
     onRename: handleRename,
@@ -927,8 +1001,8 @@ function PromptOptimizerContent({
     promptHistory.isLoadingHistory,
     promptHistory.searchQuery,
     promptHistory.setSearchQuery,
-    loadFromHistory,
-    handleCreateNew,
+    handleLoadFromHistory,
+    handleCreateNewWithKeyframes,
     promptHistory.deleteFromHistory,
     handleDuplicate,
     handleRename,

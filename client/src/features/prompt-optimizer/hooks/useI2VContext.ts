@@ -11,6 +11,7 @@ import {
 export function useI2VContext(): I2VContext {
   const { keyframes, cameraMotion } = useGenerationControlsContext();
   const startImageUrl = keyframes[0]?.url ?? null;
+  const startImageSourcePrompt = keyframes[0]?.sourcePrompt ?? null;
   const [constraintMode, setConstraintModeState] = useState<I2VConstraintMode>('strict');
   const [observation, setObservation] = useState<ImageObservation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -47,7 +48,10 @@ export function useI2VContext(): I2VContext {
 
     try {
       const result = await observeImage(
-        { image: startImageUrl },
+        {
+          image: startImageUrl,
+          ...(startImageSourcePrompt ? { sourcePrompt: startImageSourcePrompt } : {}),
+        },
         { signal: controller.signal }
       );
 
@@ -70,7 +74,7 @@ export function useI2VContext(): I2VContext {
         setIsAnalyzing(false);
       }
     }
-  }, [startImageUrl]);
+  }, [startImageSourcePrompt, startImageUrl]);
 
   useEffect(() => {
     if (!startImageUrl) {
@@ -82,11 +86,13 @@ export function useI2VContext(): I2VContext {
       return;
     }
 
-    if (lastImageRef.current === startImageUrl) {
+    const imageKey = `${startImageUrl}|${startImageSourcePrompt ?? ''}`;
+
+    if (lastImageRef.current === imageKey) {
       return;
     }
 
-    lastImageRef.current = startImageUrl;
+    lastImageRef.current = imageKey;
     setObservation(null);
     setError(null);
     void refreshObservation();
@@ -94,11 +100,12 @@ export function useI2VContext(): I2VContext {
     return () => {
       abortRef.current?.abort();
     };
-  }, [refreshObservation, startImageUrl]);
+  }, [refreshObservation, startImageSourcePrompt, startImageUrl]);
 
   return {
     isI2VMode,
     startImageUrl,
+    startImageSourcePrompt,
     observation,
     lockMap,
     constraintMode,

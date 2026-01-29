@@ -61,6 +61,7 @@ import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInt
 import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
+import { useGenerationControlsContext } from './context/GenerationControlsContext';
 import {
   usePromptActions,
   usePromptConfig,
@@ -68,6 +69,7 @@ import {
   usePromptServices,
   usePromptSession,
 } from './context/PromptStateContext';
+import { serializeKeyframes } from './utils/keyframeTransforms';
 
 const log = logger.child('PromptCanvas');
 
@@ -166,6 +168,7 @@ export function PromptCanvas({
   // Get model + layout state from context
   const { selectedModel, generationParams } = usePromptConfig();
   const { promptOptimizer, promptHistory } = usePromptServices();
+  const { keyframes } = useGenerationControlsContext();
   const {
     currentPromptUuid,
     currentPromptDocId,
@@ -186,6 +189,7 @@ export function PromptCanvas({
     versionEditsRef,
   } = usePromptHighlights();
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
+  const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
@@ -414,6 +418,7 @@ export function PromptCanvas({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
       generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+      keyframes: serializedKeyframes,
     });
     setCurrentPromptUuid(draft.uuid);
     setCurrentPromptDocId(draft.id);
@@ -425,6 +430,7 @@ export function PromptCanvas({
     promptHistory,
     selectedMode,
     selectedModel,
+    serializedKeyframes,
     setCurrentPromptDocId,
     setCurrentPromptUuid,
   ]);

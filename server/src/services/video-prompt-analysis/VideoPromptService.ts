@@ -8,6 +8,7 @@ import { ModelDetectionService } from './services/detection/ModelDetectionServic
 import { SectionDetectionService } from './services/detection/SectionDetectionService';
 import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
 import { countWords } from './utils/textHelpers';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 import {
   StrategyRegistry,
   runwayStrategy,
@@ -47,22 +48,6 @@ export class VideoPromptService {
   private static readonly PIPELINE_VERSION = '1.0.0';
   private static readonly MAX_CONCURRENT_MODEL_OPTIMIZATIONS = 3;
 
-  // Mapping from short IDs to strategy IDs
-  public static readonly MODEL_ID_MAP: Record<string, string> = {
-    'runway': 'runway-gen45',
-    'luma': 'luma-ray3',
-    'kling': 'kling-26',
-    'sora': 'sora-2',
-    'veo': 'veo-4',
-    'veo3': 'veo-4',
-    'veo-3': 'veo-4',
-    'veo-3.0-generate-001': 'veo-4',
-    'veo-3.0-fast-generate-001': 'veo-4',
-    'veo-3.1': 'veo-4',
-    'veo-3.1-generate-preview': 'veo-4',
-    'google/veo-3': 'veo-4',
-    'wan': 'wan-2.2'
-  };
 
   constructor() {
     this.detector = new VideoPromptDetectionService();
@@ -180,11 +165,7 @@ export class VideoPromptService {
    */
   detectTargetModel(fullPrompt: string | null | undefined): string | null {
     const detected = this.modelDetector.detectTargetModel(fullPrompt);
-    // Always resolve to full strategy ID if possible
-    if (detected && VideoPromptService.MODEL_ID_MAP[detected]) {
-      return VideoPromptService.MODEL_ID_MAP[detected];
-    }
-    return detected;
+    return detected ? resolvePromptModelId(detected) : null;
   }
 
   /**
@@ -301,14 +282,7 @@ export class VideoPromptService {
 
     // Detect model if not provided
     let detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
-
-    // Resolve short ID to full strategy ID
-    if (detectedModelId) {
-      const mappedModelId = VideoPromptService.MODEL_ID_MAP[detectedModelId];
-      if (mappedModelId) {
-        detectedModelId = mappedModelId;
-      }
-    }
+    detectedModelId = detectedModelId ? resolvePromptModelId(detectedModelId) : null;
 
     this.log.info('Starting prompt optimization', {
       operation,

@@ -34,7 +34,6 @@ export interface Span {
   rightCtx?: string | undefined;
   displayLeftCtx?: string | undefined;
   displayRightCtx?: string | undefined;
-  [key: string]: unknown;
 }
 
 /**
@@ -43,7 +42,6 @@ export interface Span {
 export interface ParseResult {
   spans?: Span[];
   displayText?: string;
-  [key: string]: unknown;
 }
 
 /**
@@ -80,7 +78,6 @@ export interface SpanLabelingResult {
   signature: string;
   cacheId: string | null;
   source: 'initial' | 'cache' | 'network' | 'cache-fallback' | 'refresh-cache';
-  [key: string]: unknown;
 }
 
 export type SpanLabelingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale';
@@ -119,6 +116,7 @@ export interface SpanLabelingPayload {
   minConfidence?: number;
   policy?: SpanLabelingPolicy;
   templateVersion?: string;
+  isI2VMode?: boolean;
 }
 
 export interface InitialData {
@@ -262,7 +260,6 @@ export interface ProcessingOptions {
   minConfidence?: number;
   maxSpans?: number;
   removeOverlaps?: boolean;
-  [key: string]: unknown;
 }
 
 export interface ProcessedResult {
@@ -272,7 +269,6 @@ export interface ProcessedResult {
     processedCount: number;
     processingTime: number;
     usedWorker: boolean;
-    [key: string]: unknown;
   };
 }
 

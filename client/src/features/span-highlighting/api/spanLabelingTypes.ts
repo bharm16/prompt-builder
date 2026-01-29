@@ -1,3 +1,5 @@
+import type { SpanLabelingPolicy } from '../hooks/types';
+
 export interface SpanLabel {
   start: number;
   end: number;
@@ -5,15 +7,15 @@ export interface SpanLabel {
   confidence: number;
   text?: string;
   role?: string;
-  [key: string]: unknown;
 }
 
 export interface LabelSpansPayload {
   text: string;
   maxSpans?: number;
   minConfidence?: number;
-  policy?: unknown;
+  policy?: SpanLabelingPolicy;
   templateVersion?: string;
+  isI2VMode?: boolean;
 }
 
 export interface LabelSpansResponse {

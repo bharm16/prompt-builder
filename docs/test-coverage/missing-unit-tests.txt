@@ -22,10 +22,6 @@ client/src/features/prompt-optimizer/components/constants.ts
 client/src/features/prompt-optimizer/context/GenerationControlsContext.tsx
 client/src/features/prompt-optimizer/context/PromptStateContext.tsx
 client/src/features/prompt-optimizer/layouts/PromptResultsLayout.tsx
-client/src/features/prompt-optimizer/utils/applyCoherenceRecommendation.ts
-client/src/features/prompt-optimizer/utils/applySpanEdit.ts
-client/src/features/prompt-optimizer/utils/scrollToSpanById.ts
-client/src/features/prompt-optimizer/utils/updateSpanListForSuggestion.ts
 client/src/features/reference-images/ReferenceImageLibrary.tsx
 client/src/features/reference-images/api/referenceImageApi.ts
 client/src/features/reference-images/hooks/useReferenceImages.ts
@@ -156,7 +152,6 @@ server/src/services/cache/SpanLabelingCacheService.ts
 server/src/services/capabilities/manualRegistry.ts
 server/src/services/capabilities/modelProviders.ts
 server/src/services/capabilities/templates.ts
-server/src/services/capabilities/validation.ts
 server/src/services/concurrency/ConcurrencyService.ts
 server/src/services/convergence/ConvergenceService.ts
 server/src/services/convergence/constants.ts
@@ -203,12 +198,7 @@ server/src/services/payment/StripeWebhookEventStore.ts
 server/src/services/prompt-optimization/PromptOptimizationService.ts
 server/src/services/prompt-optimization/evaluation/OptimizationQualityEvaluator.ts
 server/src/services/prompt-optimization/evaluation/dimensions/intentPreservation.ts
-server/src/services/prompt-optimization/evaluation/dimensions/modelCompliance.ts
-server/src/services/prompt-optimization/evaluation/dimensions/structuralCompleteness.ts
-server/src/services/prompt-optimization/evaluation/dimensions/technicalDensity.ts
-server/src/services/prompt-optimization/evaluation/dimensions/wordCountCompliance.ts
 server/src/services/prompt-optimization/evaluation/integrations/spanLabeling.ts
-server/src/services/prompt-optimization/evaluation/utils/text.ts
 server/src/services/prompt-optimization/services/ContextInferenceService.ts
 server/src/services/prompt-optimization/services/DraftGenerationService.ts
 server/src/services/prompt-optimization/services/ModeDetectionService.ts
@@ -273,8 +263,6 @@ server/src/services/video-generation/providers/veoProvider.ts
 server/src/services/video-generation/storage/GcsVideoAssetStore.ts
 server/src/services/video-generation/storage/LocalVideoAssetStore.ts
 server/src/services/video-generation/storage/VideoAssetRetentionService.ts
-server/src/services/video-generation/storage/utils.ts
-server/src/services/video-generation/utils/sleep.ts
 server/src/services/video-generation/workflows/generateVideo.ts
 server/src/services/video-prompt-analysis/VideoPromptService.ts
 server/src/services/video-prompt-analysis/services/analysis/ConstraintGenerationService.ts
@@ -303,7 +291,6 @@ server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts
 server/src/services/video-prompt-analysis/strategies/SoraStrategy.ts
 server/src/services/video-prompt-analysis/strategies/VeoStrategy.ts
 server/src/services/video-prompt-analysis/strategies/WanStrategy.ts
-server/src/services/video-prompt-analysis/utils/textHelpers.ts
 server/src/utils/ConstitutionalAI.ts
 server/src/utils/SecurityPrompts.ts
 server/src/utils/StructuredOutputEnforcer.ts
@@ -313,7 +300,6 @@ server/src/utils/gcsCredentials.ts
 server/src/utils/logging/sanitize.ts
 server/src/utils/provider/PromptBuilder.ts
 server/src/utils/provider/SchemaFactory.ts
-server/src/utils/requestHelpers.ts
 server/src/utils/structured-output/StructuredOutputEnforcer.ts
 server/src/utils/structured-output/parse.ts
 server/src/utils/validateEnv.ts
@@ -756,3 +742,18 @@ server/src/utils/structured-output/unwrapper.ts
 server/src/utils/structured-output/validate.ts
 server/src/services/enhancement/utils/CacheKeyFactory.ts
 server/src/services/enhancement/utils/text.ts
+client/src/features/prompt-optimizer/utils/applyCoherenceRecommendation.ts
+client/src/features/prompt-optimizer/utils/applySpanEdit.ts
+client/src/features/prompt-optimizer/utils/keyframeTransforms.ts
+client/src/features/prompt-optimizer/utils/scrollToSpanById.ts
+client/src/features/prompt-optimizer/utils/updateSpanListForSuggestion.ts
+server/src/services/capabilities/validation.ts
+server/src/services/prompt-optimization/evaluation/dimensions/modelCompliance.ts
+server/src/services/prompt-optimization/evaluation/dimensions/structuralCompleteness.ts
+server/src/services/prompt-optimization/evaluation/dimensions/technicalDensity.ts
+server/src/services/prompt-optimization/evaluation/dimensions/wordCountCompliance.ts
+server/src/services/prompt-optimization/evaluation/utils/text.ts
+server/src/services/video-generation/storage/utils.ts
+server/src/services/video-generation/utils/sleep.ts
+server/src/services/video-prompt-analysis/utils/textHelpers.ts
+server/src/utils/requestHelpers.ts

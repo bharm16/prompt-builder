@@ -4,6 +4,7 @@ import { extractUserId } from '@utils/requestHelpers';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import { createSseChannel } from '@routes/optimize/sse';
 import type { PromptOptimizationServiceContract } from '../types';
+import { promptSchema } from '@config/schemas/promptSchemas';
 
 export const createOptimizeStreamHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -12,6 +13,26 @@ export const createOptimizeStreamHandler = (
     const requestId = req.id || 'unknown';
     const userId = extractUserId(req);
     const operation = 'optimize-stream';
+
+    const parsed = promptSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn('Optimize-stream request validation failed', {
+        operation,
+        requestId,
+        userId,
+        issues: parsed.error.issues.map((issue) => ({
+          code: issue.code,
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: parsed.error.issues,
+      });
+      return;
+    }
 
     const {
       prompt,
@@ -23,10 +44,11 @@ export const createOptimizeStreamHandler = (
       skipCache,
       lockedSpans,
       startImage,
-    } = req.body;
+    } = parsed.data;
 
     if (typeof startImage === 'string' && startImage.trim().length > 0) {
       res.status(400).json({
+        success: false,
         error: 'Streaming optimization does not support image-to-video. Use /api/optimize.',
       });
       return;
@@ -40,7 +62,11 @@ export const createOptimizeStreamHandler = (
       userId,
     });
     if (error) {
-      res.status(error.status).json({ error: error.error, details: error.details });
+      res.status(error.status).json({
+        success: false,
+        error: error.error,
+        details: error.details,
+      });
       return;
     }
 

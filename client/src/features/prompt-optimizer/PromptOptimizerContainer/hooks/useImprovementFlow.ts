@@ -5,15 +5,14 @@ import type { OptimizationOptions } from '../../types';
 interface PromptOptimizer {
   inputPrompt: string;
   setInputPrompt: (prompt: string) => void;
-  setImprovementContext: (context: unknown) => void;
-  [key: string]: unknown;
+  setImprovementContext: (context: Record<string, unknown> | null) => void;
 }
 
 interface UseImprovementFlowParams {
   promptOptimizer: PromptOptimizer;
   toast: Toast;
   setShowImprover: (show: boolean) => void;
-  handleOptimize: (prompt: string, context: unknown, options?: OptimizationOptions) => void;
+  handleOptimize: (prompt: string, context: Record<string, unknown> | null, options?: OptimizationOptions) => void;
 }
 
 /**
@@ -49,9 +48,10 @@ export function useImprovementFlow({
   const handleImprovementComplete = useCallback(
     async (enhancedPrompt: string, context: unknown): Promise<void> => {
       setShowImprover(false);
-      promptOptimizer.setImprovementContext(context);
+      const ctx = (context ?? null) as Record<string, unknown> | null;
+      promptOptimizer.setImprovementContext(ctx);
       promptOptimizer.setInputPrompt(enhancedPrompt);
-      handleOptimize(enhancedPrompt, context);
+      handleOptimize(enhancedPrompt, ctx);
     },
     [setShowImprover, promptOptimizer, handleOptimize]
   );

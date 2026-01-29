@@ -40,6 +40,7 @@ export interface OptimizationOptions {
   compilePrompt?: string;
   createVersion?: boolean;
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
 }
 

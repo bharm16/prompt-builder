@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
 import { getVideoCost } from '@config/modelCosts';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
@@ -6,6 +7,7 @@ import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { VideoModelId } from '@services/video-generation/types';
+import type { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import { ModelCapabilityRegistry } from './services/ModelCapabilityRegistry';
 import { ModelScoringService } from './services/ModelScoringService';
 import { PromptRequirementsService } from './services/PromptRequirementsService';
@@ -17,6 +19,7 @@ interface ModelIntelligenceDependencies {
   aiService: AIModelService;
   videoGenerationService: VideoGenerationService | null;
   userCreditService: UserCreditService | null;
+  billingProfileStore?: BillingProfileStore | null;
   requirementsService?: PromptRequirementsService;
   registry?: ModelCapabilityRegistry;
   scoringService?: ModelScoringService;
@@ -47,7 +50,11 @@ export class ModelIntelligenceService {
     this.explainerService = deps.explainerService ?? new RecommendationExplainerService();
     this.availabilityGate =
       deps.availabilityGate ??
-      new AvailabilityGateService(deps.videoGenerationService, deps.userCreditService);
+      new AvailabilityGateService(
+        deps.videoGenerationService,
+        deps.userCreditService,
+        deps.billingProfileStore
+      );
   }
 
   async getRecommendation(prompt: string, options: RecommendationOptions = {}): Promise<ModelRecommendation> {
@@ -77,29 +84,23 @@ export class ModelIntelligenceService {
       userId: options.userId,
     });
 
-    const scoredAvailable = availability.availableModelIds
-      .map((modelId) => {
-        const capabilities = this.registry.getCapabilities(modelId);
-        if (!capabilities) return null;
-        return this.scoringService.scoreModel(modelId, capabilities, requirements, mode);
-      })
-      .filter((score): score is ModelScore => Boolean(score))
-      .sort((a, b) => b.overallScore - a.overallScore);
+    const availabilityState =
+      availability.availableModelIds.length > 0
+        ? 'available'
+        : availability.unknownModelIds.length > 0
+          ? 'unknown'
+          : 'unavailable';
 
-    const scoredFallback = scoredAvailable.length
-      ? scoredAvailable
-      : modelIds
-          .map((modelId) => {
-            const capabilities = this.registry.getCapabilities(modelId);
-            if (!capabilities) return null;
-            return this.scoringService.scoreModel(modelId, capabilities, requirements, mode);
-          })
-          .filter((score): score is ModelScore => Boolean(score))
-          .sort((a, b) => b.overallScore - a.overallScore);
+    metricsService.recordModelRecommendationRequest(mode, availabilityState);
 
-    const recommendations = scoredAvailable.length ? scoredAvailable : scoredFallback;
+    const candidateIds =
+      availability.availableModelIds.length > 0
+        ? availability.availableModelIds
+        : availability.unknownModelIds;
+
+    const recommendations = this.scoreModels(candidateIds, requirements, mode);
     const recommendedScore = recommendations[0];
-    const recommended = this.determineRecommendation(recommendations, requirements);
+    const recommended = this.determineRecommendation(recommendations, requirements, availabilityState);
     const alsoConsider = this.determineEfficientOption(recommendations, recommendedScore, durationSeconds);
     const comparison = this.shouldSuggestComparison(recommendations);
 
@@ -115,6 +116,7 @@ export class ModelIntelligenceService {
       promptLength: prompt.length,
       mode,
       availableCount: availability.availableModelIds.length,
+      unknownCount: availability.unknownModelIds.length,
       recommendationCount: recommendations.length,
     });
 
@@ -132,19 +134,39 @@ export class ModelIntelligenceService {
     };
   }
 
+  private scoreModels(
+    modelIds: VideoModelId[],
+    requirements: PromptRequirements,
+    mode: 't2v' | 'i2v'
+  ): ModelScore[] {
+    return modelIds
+      .map((modelId) => {
+        const capabilities = this.registry.getCapabilities(modelId);
+        if (!capabilities) return null;
+        return this.scoringService.scoreModel(modelId, capabilities, requirements, mode);
+      })
+      .filter((score): score is ModelScore => Boolean(score))
+      .sort((a, b) => b.overallScore - a.overallScore);
+  }
+
   private determineRecommendation(
     scores: ModelScore[],
-    requirements: PromptRequirements
+    requirements: PromptRequirements,
+    availabilityState: 'available' | 'unknown' | 'unavailable'
   ): ModelRecommendation['recommended'] {
     const topScore = scores[0];
     const secondScore = scores[1];
 
     if (!topScore) {
       const fallbackModel = this.registry.getAllModels()[0] ?? VIDEO_MODELS.DRAFT;
+      const reasoning =
+        availabilityState === 'unavailable'
+          ? 'No available models based on current credentials or entitlements.'
+          : 'No scoring data available; defaulting to baseline model.';
       return {
         modelId: fallbackModel,
         confidence: 'low',
-        reasoning: 'No scoring data available; defaulting to baseline model.',
+        reasoning,
       };
     }
 

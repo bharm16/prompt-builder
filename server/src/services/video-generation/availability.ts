@@ -5,26 +5,55 @@ import {
   isOpenAISoraModel,
   isVeoModel,
 } from './modelResolver';
-import type { VideoAvailabilityReport, VideoModelAvailability, VideoProviderAvailability } from './types';
+import type {
+  VideoAvailabilityReport,
+  VideoAvailabilitySnapshot,
+  VideoModelAvailability,
+  VideoModelId,
+  VideoProviderAvailability,
+} from './types';
+import { VIDEO_MODELS } from '@config/modelConfig';
 import { resolveAutoModelId } from './providers/ProviderRegistry';
 import { MANUAL_CAPABILITIES_REGISTRY } from '@services/capabilities/manualRegistry';
+import { getDynamicCapabilitiesRegistry } from '@services/capabilities/dynamicRegistry';
 import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
 
 type LogSink = { warn: (message: string, meta?: Record<string, unknown>) => void };
 
+const CANONICAL_VIDEO_MODEL_IDS = new Set<VideoModelId>(
+  Object.values(VIDEO_MODELS) as VideoModelId[]
+);
+
+const isCanonicalVideoModelId = (modelId: string): modelId is VideoModelId =>
+  CANONICAL_VIDEO_MODEL_IDS.has(modelId as VideoModelId);
+
 export function getModelCapabilities(
   modelId: string
-): { supportsImageInput: boolean; capabilityModelId: string | null } {
+): {
+  supportsImageInput: boolean;
+  supportsSeed: boolean;
+  supportsStyleReference: boolean;
+  supportsCharacterReference: boolean;
+  supportsExtendVideo: boolean;
+  capabilityModelId: string | null;
+} {
   const resolvedCapabilityId = resolveCapabilityModelId(modelId);
   const lookupId = resolvedCapabilityId ?? modelId;
 
-  for (const [, models] of Object.entries(MANUAL_CAPABILITIES_REGISTRY)) {
-    for (const [id, schema] of Object.entries(models)) {
-      if (id === lookupId || schema.model === lookupId) {
-        return {
-          supportsImageInput: schema.fields?.image_input?.default === true,
-          capabilityModelId: id,
-        };
+  const registries = [getDynamicCapabilitiesRegistry(), MANUAL_CAPABILITIES_REGISTRY];
+  for (const registry of registries) {
+    for (const [, models] of Object.entries(registry)) {
+      for (const [id, schema] of Object.entries(models)) {
+        if (id === lookupId || schema.model === lookupId) {
+          return {
+            supportsImageInput: schema.fields?.image_input?.default === true,
+            supportsSeed: Boolean(schema.fields?.seed),
+            supportsStyleReference: schema.fields?.style_reference?.default === true,
+            supportsCharacterReference: schema.fields?.character_reference?.default === true,
+            supportsExtendVideo: schema.fields?.extend_video?.default === true,
+            capabilityModelId: id,
+          };
+        }
       }
     }
   }
@@ -32,6 +61,10 @@ export function getModelCapabilities(
   const i2vModels = ['sora-2', 'sora-2-pro', 'luma-ray3', 'kling-26', 'wan-2.2'];
   return {
     supportsImageInput: i2vModels.some((entry) => lookupId.includes(entry)),
+    supportsSeed: false,
+    supportsStyleReference: false,
+    supportsCharacterReference: false,
+    supportsExtendVideo: false,
     capabilityModelId: resolvedCapabilityId ?? null,
   };
 }
@@ -251,4 +284,48 @@ export function getAvailabilityReport(
     .map((model) => model.capabilityModelId ?? model.id);
 
   return { providers, models, availableModels, availableCapabilityModels };
+}
+
+export function getAvailabilitySnapshot(
+  modelIds: VideoModelId[],
+  providers: VideoProviderAvailability,
+  log: LogSink
+): VideoAvailabilitySnapshot {
+  const uniqueIds = Array.from(new Set(modelIds));
+
+  const models = uniqueIds.map((modelId) => {
+    if (!isCanonicalVideoModelId(modelId)) {
+      log.warn('Non-canonical video model ID supplied to availability snapshot', { modelId });
+      return {
+        id: modelId,
+        available: false,
+        reason: 'unsupported_model' as const,
+        supportsI2V: false,
+        supportsImageInput: false,
+        entitled: false,
+        planTier: 'unknown',
+      };
+    }
+
+    const availability = getModelAvailability(modelId, providers, log);
+    const supportsI2V = availability.supportsI2V ?? availability.supportsImageInput ?? false;
+
+    return {
+      id: modelId,
+      available: availability.available,
+      reason: availability.available ? undefined : availability.reason ?? 'unknown_availability',
+      requiredKey: availability.requiredKey,
+      supportsI2V,
+      supportsImageInput: availability.supportsImageInput,
+      entitled: availability.entitled,
+      planTier: availability.planTier ?? 'unknown',
+    };
+  });
+
+  const availableModelIds = models.filter((model) => model.available).map((model) => model.id);
+  const unknownModelIds = models
+    .filter((model) => !model.available && model.reason === 'unknown_availability')
+    .map((model) => model.id);
+
+  return { models, availableModelIds, unknownModelIds };
 }

@@ -7,6 +7,7 @@
 // Re-export shared types to maintain backward compatibility
 export type {
   User,
+  PromptKeyframe,
   PromptHistoryEntry,
   PromptVersionEdit,
   PromptVersionPreview,
@@ -15,7 +16,7 @@ export type {
   Toast,
 } from '@hooks/types';
 
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '@hooks/types';
 
 export interface HistoryState {
   history: PromptHistoryEntry[];
@@ -32,6 +33,7 @@ export interface SaveEntryParams {
   mode: string;
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;
+  keyframes?: PromptKeyframe[] | null;
   brainstormContext?: unknown | null;
   highlightCache?: unknown | null;
   versions?: PromptVersionEntry[];

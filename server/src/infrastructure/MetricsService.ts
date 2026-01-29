@@ -54,6 +54,9 @@ export class MetricsService implements IMetricsCollector {
   private suggestionAcceptedTotal: promClient.Counter<string>;
   private suggestionRejectedTotal: promClient.Counter<string>;
   private undoActionsTotal: promClient.Counter<string>;
+  private modelRecommendationRequestsTotal: promClient.Counter<string>;
+  private modelRecommendationEventsTotal: promClient.Counter<string>;
+  private modelRecommendationTimeToGeneration: promClient.Histogram<string>;
 
   constructor() {
     this.register = new promClient.Registry();
@@ -263,6 +266,29 @@ export class MetricsService implements IMetricsCollector {
       name: 'undo_actions_total',
       help: 'Total number of undo actions',
       labelNames: ['category'],
+      registers: [this.register],
+    });
+
+    // Model intelligence metrics
+    this.modelRecommendationRequestsTotal = new promClient.Counter({
+      name: 'model_recommendation_requests_total',
+      help: 'Total model recommendation requests',
+      labelNames: ['mode', 'availability'],
+      registers: [this.register],
+    });
+
+    this.modelRecommendationEventsTotal = new promClient.Counter({
+      name: 'model_recommendation_events_total',
+      help: 'Total model recommendation events',
+      labelNames: ['event', 'mode', 'followed'],
+      registers: [this.register],
+    });
+
+    this.modelRecommendationTimeToGeneration = new promClient.Histogram({
+      name: 'model_recommendation_time_to_generation_ms',
+      help: 'Time from recommendation to generation start in milliseconds',
+      labelNames: ['followed'],
+      buckets: [100, 250, 500, 1000, 2000, 5000, 10000, 20000, 40000],
       registers: [this.register],
     });
   }
@@ -521,13 +547,36 @@ export class MetricsService implements IMetricsCollector {
       case 'undo_actions_total':
         this.undoActionsTotal.inc(labels);
         break;
+      case 'model_recommendation_requests_total':
+        this.modelRecommendationRequestsTotal.inc(labels);
+        break;
+      case 'model_recommendation_events_total':
+        this.modelRecommendationEventsTotal.inc(labels);
+        break;
       default:
         // Silently ignore unknown counters
         break;
     }
   }
+
+  recordModelRecommendationRequest(mode: string, availability: string): void {
+    this.modelRecommendationRequestsTotal.inc({ mode, availability });
+  }
+
+  recordModelRecommendationEvent(event: string, mode: string, followed?: boolean): void {
+    this.modelRecommendationEventsTotal.inc({
+      event,
+      mode,
+      followed: typeof followed === 'boolean' ? String(followed) : 'unknown',
+    });
+  }
+
+  recordModelRecommendationTimeToGeneration(durationMs: number, followed?: boolean): void {
+    this.modelRecommendationTimeToGeneration.observe({
+      followed: typeof followed === 'boolean' ? String(followed) : 'unknown',
+    }, durationMs);
+  }
 }
 
 // Export singleton instance
 export const metricsService = new MetricsService();
-

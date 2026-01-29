@@ -8,7 +8,7 @@ import { AvailabilityGateService } from '../services/AvailabilityGateService';
 import { SAMPLE_PROMPT, SAMPLE_SPANS } from './fixtures/testPrompts';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import type { VideoAvailabilityReport, VideoModelAvailability } from '@services/video-generation/types';
+import type { VideoAvailabilitySnapshot, VideoAvailabilitySnapshotModel } from '@services/video-generation/types';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
 
 vi.mock('@llm/span-labeling/SpanLabelingService', () => ({
@@ -30,25 +30,23 @@ describe('ModelIntelligenceService (integration)', () => {
 
     const registry = new ModelCapabilityRegistry();
     const modelIds = registry.getAllModels();
-    const models: VideoModelAvailability[] = modelIds.map((id) => ({
+    const models: VideoAvailabilitySnapshotModel[] = modelIds.map((id) => ({
       id,
       available: true,
-      resolvedModelId: id,
-      supportsImageInput: true,
       supportsI2V: true,
+      supportsImageInput: true,
       entitled: true,
       planTier: 'unknown',
     }));
 
-    const report: VideoAvailabilityReport = {
-      providers: { replicate: true, openai: true, luma: true, kling: true, gemini: true },
+    const snapshot: VideoAvailabilitySnapshot = {
       models,
-      availableModels: modelIds,
-      availableCapabilityModels: modelIds,
+      availableModelIds: modelIds,
+      unknownModelIds: [],
     };
 
     const videoGenerationService = {
-      getAvailabilityReport: vi.fn().mockReturnValue(report),
+      getAvailabilitySnapshot: vi.fn().mockReturnValue(snapshot),
     } as unknown as VideoGenerationService;
 
     const aiService = { execute: vi.fn<AIModelService['execute']>() } as unknown as AIModelService;

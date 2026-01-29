@@ -26,6 +26,7 @@ interface GenerationControlsContextValue {
   controls: GenerationControlsHandlers | null;
   setControls: (controls: GenerationControlsHandlers | null) => void;
   keyframes: KeyframeTile[];
+  setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
   addKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
   removeKeyframe: (id: string) => void;
   clearKeyframes: () => void;
@@ -40,7 +41,7 @@ const GenerationControlsContext = createContext<GenerationControlsContextValue |
 
 export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
-  const [keyframes, setKeyframes] = useState<KeyframeTile[]>([]);
+  const [keyframes, setKeyframesState] = useState<KeyframeTile[]>([]);
   const [cameraMotion, setCameraMotionState] = useState<CameraPath | null>(null);
   const [subjectMotion, setSubjectMotionState] = useState('');
   const lastFirstKeyframeUrlRef = useRef<string | null>(null);
@@ -58,7 +59,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   };
 
   const addKeyframe = useCallback((tile: Omit<KeyframeTile, 'id'>): void => {
-    setKeyframes((prev) => {
+    setKeyframesState((prev) => {
       if (prev.length >= 3) {
         log.warn('Keyframe add ignored because limit was reached', {
           previousCount: prev.length,
@@ -81,7 +82,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   }, []);
 
   const removeKeyframe = useCallback((id: string): void => {
-    setKeyframes((prev) => {
+    setKeyframesState((prev) => {
       const next = prev.filter((tile) => tile.id !== id);
       log.info('Keyframe removed in generation controls context', {
         removedKeyframeId: id,
@@ -94,8 +95,17 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
     });
   }, []);
 
+  const setKeyframes = useCallback((tiles: KeyframeTile[] | null | undefined): void => {
+    const normalized = Array.isArray(tiles) ? tiles.slice(0, 3) : [];
+    setKeyframesState(normalized);
+    log.info('Keyframes set in generation controls context', {
+      keyframesCount: normalized.length,
+      primaryKeyframeUrlHost: safeUrlHost(normalized[0]?.url),
+    });
+  }, []);
+
   const clearKeyframes = useCallback((): void => {
-    setKeyframes((prev) => {
+    setKeyframesState((prev) => {
       if (prev.length > 0) {
         log.info('Keyframes cleared in generation controls context', {
           previousCount: prev.length,
@@ -196,22 +206,36 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
 
   const onStoryboard = useMemo(() => controls?.onStoryboard ?? null, [controls]);
 
+  const contextValue = useMemo<GenerationControlsContextValue>(() => ({
+    controls,
+    setControls,
+    keyframes,
+    setKeyframes,
+    addKeyframe,
+    removeKeyframe,
+    clearKeyframes,
+    onStoryboard,
+    cameraMotion,
+    subjectMotion,
+    setCameraMotion,
+    setSubjectMotion,
+  }), [
+    controls,
+    setControls,
+    keyframes,
+    setKeyframes,
+    addKeyframe,
+    removeKeyframe,
+    clearKeyframes,
+    onStoryboard,
+    cameraMotion,
+    subjectMotion,
+    setCameraMotion,
+    setSubjectMotion,
+  ]);
+
   return (
-    <GenerationControlsContext.Provider
-      value={{
-        controls,
-        setControls,
-        keyframes,
-        addKeyframe,
-        removeKeyframe,
-        clearKeyframes,
-        onStoryboard,
-        cameraMotion,
-        subjectMotion,
-        setCameraMotion,
-        setSubjectMotion,
-      }}
-    >
+    <GenerationControlsContext.Provider value={contextValue}>
       {children}
     </GenerationControlsContext.Provider>
   );

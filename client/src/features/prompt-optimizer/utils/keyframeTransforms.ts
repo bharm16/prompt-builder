@@ -1,0 +1,78 @@
+import type { KeyframeTile } from '@components/ToolSidebar/types';
+import type { PromptKeyframe } from '@hooks/types';
+
+const MAX_KEYFRAMES = 3;
+
+const createKeyframeId = (): string => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `keyframe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const normalizeForCompare = (
+  keyframes: Array<PromptKeyframe | KeyframeTile> | null | undefined
+): Array<{ url: string; source: string; assetId: string | null }> => {
+  if (!Array.isArray(keyframes)) {
+    return [];
+  }
+  return keyframes
+    .filter((frame) => typeof frame?.url === 'string' && frame.url.trim())
+    .slice(0, MAX_KEYFRAMES)
+    .map((frame) => ({
+      url: frame.url,
+      source: frame.source ?? '',
+      assetId: frame.assetId ?? null,
+    }));
+};
+
+export const serializeKeyframes = (
+  keyframes: KeyframeTile[] | null | undefined
+): PromptKeyframe[] => {
+  if (!Array.isArray(keyframes)) {
+    return [];
+  }
+  return keyframes.slice(0, MAX_KEYFRAMES).map((frame) => ({
+    id: frame.id,
+    url: frame.url,
+    source: frame.source,
+    ...(frame.assetId ? { assetId: frame.assetId } : {}),
+  }));
+};
+
+export const hydrateKeyframes = (
+  keyframes: PromptKeyframe[] | null | undefined
+): KeyframeTile[] => {
+  if (!Array.isArray(keyframes)) {
+    return [];
+  }
+  return keyframes
+    .filter((frame) => typeof frame?.url === 'string' && frame.url.trim())
+    .slice(0, MAX_KEYFRAMES)
+    .map((frame) => ({
+      id: frame.id ?? createKeyframeId(),
+      url: frame.url,
+      source: frame.source ?? 'upload',
+      ...(frame.assetId ? { assetId: frame.assetId } : {}),
+    }));
+};
+
+export const areKeyframesEqual = (
+  left: Array<PromptKeyframe | KeyframeTile> | null | undefined,
+  right: Array<PromptKeyframe | KeyframeTile> | null | undefined
+): boolean => {
+  const leftNormalized = normalizeForCompare(left);
+  const rightNormalized = normalizeForCompare(right);
+  if (leftNormalized.length !== rightNormalized.length) {
+    return false;
+  }
+  for (let i = 0; i < leftNormalized.length; i += 1) {
+    const leftFrame = leftNormalized[i];
+    const rightFrame = rightNormalized[i];
+    if (!leftFrame || !rightFrame) return false;
+    if (leftFrame.url !== rightFrame.url) return false;
+    if (leftFrame.source !== rightFrame.source) return false;
+    if ((leftFrame.assetId ?? null) !== (rightFrame.assetId ?? null)) return false;
+  }
+  return true;
+};

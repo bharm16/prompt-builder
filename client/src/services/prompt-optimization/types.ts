@@ -12,6 +12,7 @@ export interface OptimizeOptions {
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
 }

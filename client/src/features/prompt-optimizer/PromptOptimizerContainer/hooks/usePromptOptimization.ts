@@ -10,20 +10,19 @@ import type { CapabilityValues } from '@shared/capabilities';
 interface PromptOptimizer {
   inputPrompt: string;
   genericOptimizedPrompt?: string | null;
-  improvementContext: unknown;
+  improvementContext: Record<string, unknown> | null;
   optimize: (
     prompt: string,
-    context: unknown | null,
-    brainstormContext: unknown | null,
+    context: Record<string, unknown> | null,
+    brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
     options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   compile: (
     prompt: string,
     targetModel?: string,
-    context?: unknown | null
+    context?: Record<string, unknown> | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
-  [key: string]: unknown;
 }
 
 interface PromptHistory {
@@ -36,12 +35,12 @@ interface PromptHistory {
     mode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    brainstormContext?: unknown | null,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<{ uuid: string; id?: string } | null>;
-  [key: string]: unknown;
 }
 
 export interface UsePromptOptimizationParams {
@@ -51,7 +50,9 @@ export interface UsePromptOptimizationParams {
   selectedMode: string;
   selectedModel?: string; // New: optional selected model
   generationParams: CapabilityValues;
+  keyframes?: PromptHistoryEntry['keyframes'];
   startImageUrl?: string | null;
+  sourcePrompt?: string | null;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
@@ -71,6 +72,9 @@ export interface UsePromptOptimizationParams {
 export interface UsePromptOptimizationReturn {
   handleOptimize: (
     promptToOptimize?: string,
+    // TODO: This parameter is typed as `unknown` because callers pass different shapes
+    // (Record<string, unknown> | null from improvement flow, OptimizationOptions from reoptimize).
+    // A future refactor should split this into separate methods.
     context?: unknown,
     options?: OptimizationOptions
   ) => Promise<void>;
@@ -87,7 +91,9 @@ export function usePromptOptimization({
   selectedMode,
   selectedModel, // Extract new param
   generationParams,
+  keyframes = null,
   startImageUrl,
+  sourcePrompt,
   constraintMode,
   currentPromptUuid,
   setCurrentPromptUuid,
@@ -110,7 +116,7 @@ export function usePromptOptimization({
       options?: OptimizationOptions
     ): Promise<void> => {
       const prompt = promptToOptimize || promptOptimizer.inputPrompt;
-      const ctx = context || promptOptimizer.improvementContext;
+      const ctx = (context as Record<string, unknown> | null | undefined) || promptOptimizer.improvementContext;
 
       // Serialize prompt context
       const serializedContext = promptContext
@@ -145,6 +151,7 @@ export function usePromptOptimization({
       const effectiveOptions: OptimizationOptions = {
         ...(options ?? {}),
         ...(options?.startImage ? {} : startImageUrl ? { startImage: startImageUrl } : {}),
+        ...(options?.sourcePrompt ? {} : sourcePrompt ? { sourcePrompt } : {}),
         ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
       };
 
@@ -174,7 +181,8 @@ export function usePromptOptimization({
           selectedMode,
           selectedMode === 'video' ? selectedModel ?? null : null,
           (generationParams as unknown as Record<string, unknown>) ?? null,
-          serializedContext,
+          keyframes ?? null,
+          serializedContext as unknown as Record<string, unknown> | null,
           null,
           currentPromptUuid
         );
@@ -241,7 +249,9 @@ export function usePromptOptimization({
       selectedMode,
       selectedModel, // Added dependency
       generationParams,
+      keyframes,
       startImageUrl,
+      sourcePrompt,
       constraintMode,
       currentPromptUuid,
       setCurrentPromptUuid,

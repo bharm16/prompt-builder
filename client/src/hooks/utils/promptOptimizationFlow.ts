@@ -12,6 +12,7 @@ import {
 import type { SpansData } from '../usePromptOptimizerState';
 import type { Toast } from '../types';
 import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import type { I2VOptimizationResult } from '@/features/prompt-optimizer/types/i2v';
 import type { CapabilityValues } from '@shared/capabilities';
 
 export interface PromptOptimizerActions {
@@ -61,6 +62,7 @@ type AnalyzeAndOptimize = (options: {
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
 }) => Promise<{
@@ -68,7 +70,7 @@ type AnalyzeAndOptimize = (options: {
   optimizedPrompt?: string;
   inputMode?: 't2v' | 'i2v';
   metadata?: Record<string, unknown>;
-  i2v?: Record<string, unknown>;
+  i2v?: I2VOptimizationResult;
 }>;
 
 function normalizeSpans(spans: unknown[]): SpansData['spans'] {
@@ -353,6 +355,7 @@ export interface SingleStageOptimizationOptions {
   brainstormContext: unknown | null;
   generationParams?: CapabilityValues;
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   abortController: AbortController;
   skipCache?: boolean;
@@ -372,6 +375,7 @@ export async function runSingleStageOptimization({
   brainstormContext,
   generationParams,
   startImage,
+  sourcePrompt,
   constraintMode,
   abortController,
   skipCache,
@@ -397,6 +401,7 @@ export async function runSingleStageOptimization({
     ...(skipCache ? { skipCache } : {}),
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
     ...(startImage ? { startImage } : {}),
+    ...(sourcePrompt ? { sourcePrompt } : {}),
     ...(constraintMode ? { constraintMode } : {}),
   });
 

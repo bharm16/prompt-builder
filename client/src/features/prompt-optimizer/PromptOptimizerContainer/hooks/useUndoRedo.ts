@@ -8,7 +8,6 @@ interface PromptOptimizer {
   setOptimizedPrompt: (prompt: string) => void;
   setPreviewPrompt?: (prompt: string | null) => void;
   setPreviewAspectRatio?: (ratio: string | null) => void;
-  [key: string]: unknown;
 }
 
 type ChangeType = 'adding' | 'deleting' | null;

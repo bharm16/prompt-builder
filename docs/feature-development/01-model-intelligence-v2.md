@@ -899,3 +899,12 @@ router.post('/recommend', async (req, res) => {
 7. [ ] Integrate with generation flow
 8. [ ] Add tests
 9. [ ] Deploy and monitor metrics
+
+---
+
+## Remaining Implementation Notes
+
+- [ ] Define and configure `MODEL_TIER_REQUIREMENTS` for real plan gating (currently empty, so entitlements effectively allow all models when plan tier is unknown).
+- [ ] Ensure `planTier` is reliably populated for existing users (webhook updates on new invoices only; may need backfill/migration).
+- [ ] Close the success-metrics loop: persist/aggregate telemetry, add dashboards/queries, and instrument generation outcomes to compute success-rate deltas, multi-model usage, and time-to-first-generation in practice.
+- [ ] Deploy and monitor the new recommendation metrics in production.

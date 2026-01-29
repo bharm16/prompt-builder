@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { logger } from '@infrastructure/Logger';
 import type { WebhookHandlerDeps } from '../types';
+import { resolvePlanTierFromPriceIds } from '@config/subscriptionTiers';
 
 type WebhookEventHandlerDeps = Pick<
   WebhookHandlerDeps,
@@ -97,11 +98,18 @@ export const createWebhookEventHandlers = ({
           ? (invoice.subscription.id as string)
           : null;
 
+    const invoicePriceIds = (invoice.lines?.data ?? [])
+      .map((line) => line.price?.id)
+      .filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+    const resolvedPlanTier = resolvePlanTierFromPriceIds(invoicePriceIds);
+
     if (stripeCustomerId) {
       try {
         await billingProfileStore.upsertProfile(userId, {
           stripeCustomerId,
           ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+          ...(resolvedPlanTier ? { planTier: resolvedPlanTier } : {}),
+          ...(invoicePriceIds[0] ? { subscriptionPriceId: invoicePriceIds[0] } : {}),
           stripeLivemode: invoice.livemode,
         });
       } catch (error) {

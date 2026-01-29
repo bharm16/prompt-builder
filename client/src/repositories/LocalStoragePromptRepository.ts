@@ -9,6 +9,15 @@ const log = logger.child('LocalStoragePromptRepository');
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 const GenerationParamsSchema = z.record(z.string(), CapabilityValueSchema);
+const KeyframeSchema = z
+  .object({
+    id: z.string().optional(),
+    url: z.string(),
+    source: z.enum(['upload', 'library', 'generation', 'asset']).optional(),
+    assetId: z.string().optional(),
+  })
+  .passthrough();
+const KeyframesSchema = z.array(KeyframeSchema);
 
 const PromptVersionEditSchema = z
   .object({
@@ -64,6 +73,7 @@ const PromptHistoryEntrySchema = z
     mode: z.string().optional(),
     targetModel: z.string().nullable().optional(),
     generationParams: GenerationParamsSchema.nullable().optional(),
+    keyframes: KeyframesSchema.nullable().optional(),
     brainstormContext: z.unknown().nullable().optional(),
     highlightCache: z.unknown().nullable().optional(),
     versions: VersionsSchema.optional(),
@@ -105,6 +115,9 @@ export class LocalStoragePromptRepository {
         promptData.generationParams && typeof promptData.generationParams === 'object'
           ? promptData.generationParams
           : (existing?.generationParams ?? null);
+      const keyframes = Array.isArray(promptData.keyframes)
+        ? promptData.keyframes
+        : (existing?.keyframes ?? []);
       const entry: PromptHistoryEntry = {
         ...(existing ?? {}),
         id: existing?.id ?? String(Date.now()),
@@ -115,6 +128,7 @@ export class LocalStoragePromptRepository {
         output: promptData.output,
         score: promptData.score ?? null,
         generationParams,
+        keyframes,
         brainstormContext: promptData.brainstormContext ?? (existing?.brainstormContext ?? null),
         highlightCache: promptData.highlightCache ?? null,
         versions,
@@ -187,6 +201,7 @@ export class LocalStoragePromptRepository {
           ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
           ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
           ...(updates.generationParams !== undefined ? { generationParams: updates.generationParams } : {}),
+          ...(updates.keyframes !== undefined ? { keyframes: updates.keyframes } : {}),
         };
       });
 

@@ -445,6 +445,7 @@ export function useSpanLabeling({
       minConfidence,
       policy: mergedPolicy,
       templateVersion,
+      isI2VMode: templateVersion?.toLowerCase().startsWith('i2v') ?? false,
       ...(typeof cacheKey === 'string' ? { cacheId: cacheKey } : {}),
     };
 

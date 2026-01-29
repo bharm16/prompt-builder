@@ -16,6 +16,7 @@ export interface KeyframeTile {
   url: string;
   source: 'upload' | 'library' | 'generation' | 'asset';
   assetId?: string;
+  sourcePrompt?: string;
 }
 
 export interface StartImage {

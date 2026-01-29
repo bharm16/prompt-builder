@@ -4,6 +4,8 @@ import { logger } from '@infrastructure/Logger';
 export type BillingProfileRecord = {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  subscriptionPriceId?: string;
+  planTier?: string;
   stripeLivemode?: boolean;
   createdAtMs: number;
   updatedAtMs: number;
@@ -58,4 +60,3 @@ export class BillingProfileStore {
     }
   }
 }
-

@@ -9,6 +9,14 @@ import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import {
+  GeneratePreviewResponseSchema,
+  GenerateStoryboardPreviewResponseSchema,
+  GenerateVideoResponseSchema,
+  MediaViewUrlResponseSchema,
+  UploadPreviewImageResponseSchema,
+  VideoJobStatusResponseSchema,
+} from './schemas';
 
 const log = logger.child('previewApi');
 const VIDEO_OPERATION = 'generateVideoPreview';
@@ -155,7 +163,7 @@ export async function generatePreview(
   const isKontext =
     resolvedOptions?.provider === 'replicate-flux-kontext-fast' || Boolean(inputImageUrl);
 
-  return apiClient.post(
+  const payload = (await apiClient.post(
     '/preview/generate',
     {
       prompt: prompt.trim(),
@@ -169,7 +177,9 @@ export async function generatePreview(
         : {}),
     },
     isKontext ? { timeout: 60000 } : {}
-  ) as Promise<GeneratePreviewResponse>;
+  )) as unknown;
+
+  return GeneratePreviewResponseSchema.parse(payload);
 }
 
 /**
@@ -183,7 +193,7 @@ export async function generateStoryboardPreview(
 
   const seedImageUrl = options?.seedImageUrl?.trim();
 
-  return apiClient.post(
+  const payload = (await apiClient.post(
     '/preview/generate/storyboard',
     {
       prompt: prompt.trim(),
@@ -195,21 +205,25 @@ export async function generateStoryboardPreview(
     {
       timeout: API_CONFIG.timeout.storyboard,
     }
-  ) as Promise<GenerateStoryboardPreviewResponse>;
+  )) as unknown;
+
+  return GenerateStoryboardPreviewResponseSchema.parse(payload);
 }
 
 export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
   requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
-  return apiClient.get(`/preview/image/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
+  const payload = (await apiClient.get(`/preview/image/view?assetId=${encoded}`)) as unknown;
+  return MediaViewUrlResponseSchema.parse(payload);
 }
 
 export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
   requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
-  return apiClient.get(`/preview/video/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
+  const payload = (await apiClient.get(`/preview/video/view?assetId=${encoded}`)) as unknown;
+  return MediaViewUrlResponseSchema.parse(payload);
 }
 
 export async function uploadPreviewImage(
@@ -249,7 +263,22 @@ export async function uploadPreviewImage(
     throw new Error(payload?.error || payload?.message || 'Failed to upload image');
   }
 
-  return payload || { success: false, error: 'Failed to upload image' };
+  if (!payload) {
+    return UploadPreviewImageResponseSchema.parse({
+      success: false,
+      error: 'Failed to upload image',
+    });
+  }
+
+  const parsed = UploadPreviewImageResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    return UploadPreviewImageResponseSchema.parse({
+      success: false,
+      error: 'Failed to upload image',
+    });
+  }
+
+  return parsed.data;
 }
 
 export interface GenerateVideoResponse {
@@ -342,13 +371,15 @@ export async function generateVideoPreview(
   });
 
   try {
-    const response = (await apiClient.post(
+    const responsePayload = (await apiClient.post(
       '/preview/video/generate',
       payload,
       {
         timeout: API_CONFIG.timeout.video,
       }
-    )) as GenerateVideoResponse;
+    )) as unknown;
+
+    const response = GenerateVideoResponseSchema.parse(responsePayload);
 
     const durationMs = Math.round(
       (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
@@ -398,9 +429,11 @@ export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStat
     throw new Error('jobId is required');
   }
 
-  return apiClient.get(`/preview/video/jobs/${jobId}`, {
+  const payload = (await apiClient.get(`/preview/video/jobs/${jobId}`, {
     fetchOptions: {
       cache: 'no-store',
     },
-  }) as Promise<VideoJobStatusResponse>;
+  })) as unknown;
+
+  return VideoJobStatusResponseSchema.parse(payload);
 }

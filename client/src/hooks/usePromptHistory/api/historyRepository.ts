@@ -29,6 +29,7 @@ export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEn
     title: entry.title ?? null,
     brainstormContext: entry.brainstormContext ?? null,
     generationParams: entry.generationParams ?? null,
+    keyframes: entry.keyframes ?? null,
     highlightCache: entry.highlightCache ?? null,
     versions: entry.versions ?? [],
   }));
@@ -110,6 +111,7 @@ export async function saveEntry(
       mode: params.mode,
       ...(params.targetModel ? { targetModel: params.targetModel } : {}),
       ...(params.generationParams ? { generationParams: params.generationParams } : {}),
+      ...(params.keyframes ? { keyframes: params.keyframes } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
       ...(Array.isArray(params.versions) ? { versions: params.versions } : {}),

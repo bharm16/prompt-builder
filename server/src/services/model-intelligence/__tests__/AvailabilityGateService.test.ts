@@ -1,22 +1,22 @@
 import { describe, expect, it, vi, type MockedFunction } from 'vitest';
 import { AvailabilityGateService } from '../services/AvailabilityGateService';
 import { VIDEO_MODELS } from '@config/modelConfig';
-import type { VideoAvailabilityReport, VideoModelAvailability } from '@services/video-generation/types';
+import type { VideoAvailabilitySnapshot, VideoAvailabilitySnapshotModel } from '@services/video-generation/types';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 
 type MockVideoGenerationService = {
-  getAvailabilityReport: MockedFunction<VideoGenerationService['getAvailabilityReport']>;
+  getAvailabilitySnapshot: MockedFunction<VideoGenerationService['getAvailabilitySnapshot']>;
 };
 
 type MockUserCreditService = {
   getBalance: MockedFunction<UserCreditService['getBalance']>;
 };
 
-const createReport = (models: VideoModelAvailability[]): VideoAvailabilityReport => ({
-  providers: { replicate: true, openai: true, luma: true, kling: true, gemini: true },
+const createSnapshot = (models: VideoAvailabilitySnapshotModel[]): VideoAvailabilitySnapshot => ({
   models,
-  availableModels: models.filter((model) => model.available).map((model) => model.resolvedModelId ?? model.id),
+  availableModelIds: models.filter((model) => model.available).map((model) => model.id),
+  unknownModelIds: models.filter((model) => model.reason === 'unknown_availability').map((model) => model.id),
 });
 
 describe('AvailabilityGateService', () => {
@@ -29,30 +29,31 @@ describe('AvailabilityGateService', () => {
       );
 
       expect(result.availableModelIds).toEqual([]);
+      expect(result.unknownModelIds).toHaveLength(2);
       expect(result.filteredOut).toHaveLength(2);
-      expect(result.filteredOut[0]?.reason).toBe('video_generation_unavailable');
+      expect(result.filteredOut[0]?.reason).toBe('unknown_availability');
     });
   });
 
   describe('core behavior', () => {
     it('filters out models that do not support image input in i2v mode', async () => {
-      const report = createReport([
+      const snapshot = createSnapshot([
         {
           id: VIDEO_MODELS.SORA_2,
           available: true,
-          resolvedModelId: VIDEO_MODELS.SORA_2,
-          supportsImageInput: true,
+          supportsI2V: true,
         },
         {
           id: VIDEO_MODELS.DRAFT,
           available: true,
-          resolvedModelId: VIDEO_MODELS.DRAFT,
-          supportsImageInput: false,
+          supportsI2V: false,
         },
       ]);
 
       const mockVideoService: MockVideoGenerationService = {
-        getAvailabilityReport: vi.fn<VideoGenerationService['getAvailabilityReport']>().mockReturnValue(report),
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
       };
 
       const service = new AvailabilityGateService(
@@ -72,17 +73,18 @@ describe('AvailabilityGateService', () => {
     });
 
     it('filters out models when user credits are insufficient', async () => {
-      const report = createReport([
+      const snapshot = createSnapshot([
         {
           id: VIDEO_MODELS.VEO_3,
           available: true,
-          resolvedModelId: VIDEO_MODELS.VEO_3,
-          supportsImageInput: true,
+          supportsI2V: true,
         },
       ]);
 
       const mockVideoService: MockVideoGenerationService = {
-        getAvailabilityReport: vi.fn<VideoGenerationService['getAvailabilityReport']>().mockReturnValue(report),
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
       };
       const mockCreditService: MockUserCreditService = {
         getBalance: vi.fn<UserCreditService['getBalance']>().mockResolvedValue(1),
@@ -105,18 +107,13 @@ describe('AvailabilityGateService', () => {
       );
     });
 
-    it('matches canonical IDs against availability aliases', async () => {
-      const report = createReport([
-        {
-          id: 'veo-3',
-          available: true,
-          resolvedModelId: VIDEO_MODELS.VEO_3,
-          supportsImageInput: true,
-        },
-      ]);
+    it('marks models as unknown when snapshot is missing entries', async () => {
+      const snapshot = createSnapshot([]);
 
       const mockVideoService: MockVideoGenerationService = {
-        getAvailabilityReport: vi.fn<VideoGenerationService['getAvailabilityReport']>().mockReturnValue(report),
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
       };
 
       const service = new AvailabilityGateService(
@@ -129,8 +126,11 @@ describe('AvailabilityGateService', () => {
         durationSeconds: 8,
       });
 
-      expect(result.availableModelIds).toEqual([VIDEO_MODELS.VEO_3]);
-      expect(result.filteredOut).toEqual([]);
+      expect(result.availableModelIds).toEqual([]);
+      expect(result.unknownModelIds).toEqual([VIDEO_MODELS.VEO_3]);
+      expect(result.filteredOut).toEqual(
+        expect.arrayContaining([{ modelId: VIDEO_MODELS.VEO_3, reason: 'unknown_availability' }])
+      );
     });
   });
 });

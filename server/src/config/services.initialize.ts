@@ -5,6 +5,7 @@ import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
 import type { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
+import type { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 
 interface HealthCheckResult {
   healthy: boolean;
@@ -187,6 +188,17 @@ export async function initializeServices(container: DIContainer): Promise<DICont
         { serviceName }
       );
       throw new Error(`Service initialization failed for ${serviceName}: ${errorMessage}`);
+    }
+  }
+
+  const capabilitiesProbe = container.resolve<CapabilitiesProbeService | null>('capabilitiesProbeService');
+  if (capabilitiesProbe) {
+    try {
+      capabilitiesProbe.start();
+    } catch (error) {
+      logger.warn('Capabilities probe failed to start', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

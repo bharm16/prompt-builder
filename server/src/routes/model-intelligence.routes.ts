@@ -4,7 +4,9 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import {
   ModelRecommendationRequestSchema,
+  ModelRecommendationEventSchema,
 } from '@services/model-intelligence/schemas/requests';
+import { metricsService } from '@infrastructure/MetricsService';
 
 interface RequestWithUser extends Request {
   user?: { uid?: string };
@@ -68,15 +70,69 @@ export function createModelIntelligenceRoutes(
         } satisfies ApiResponse<typeof recommendation>);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const safeDetails =
+          process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+            ? errorMessage
+            : undefined;
         log.error('Model recommendation failed', error instanceof Error ? error : new Error(errorMessage), {
           error: errorMessage,
         });
         return res.status(500).json({
           success: false,
           error: 'Failed to generate recommendation',
-          details: errorMessage,
+          ...(safeDetails ? { details: safeDetails } : {}),
         } satisfies ApiResponse<never>);
       }
+    })
+  );
+
+  router.post(
+    '/model-intelligence/track',
+    asyncHandler(async (req: RequestWithUser, res: Response): Promise<Response> => {
+      const parsed = ModelRecommendationEventSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        } satisfies ApiResponse<never>);
+      }
+
+      const {
+        event,
+        recommendationId,
+        promptId,
+        recommendedModelId,
+        selectedModelId,
+        mode = 't2v',
+        durationSeconds,
+        timeSinceRecommendationMs,
+      } = parsed.data;
+
+      const followed =
+        Boolean(recommendedModelId) &&
+        Boolean(selectedModelId) &&
+        recommendedModelId === selectedModelId;
+
+      metricsService.recordModelRecommendationEvent(event, mode, followed);
+      if (event === 'generation_started' && typeof timeSinceRecommendationMs === 'number') {
+        metricsService.recordModelRecommendationTimeToGeneration(timeSinceRecommendationMs, followed);
+      }
+
+      log.info('Model intelligence telemetry event', {
+        event,
+        recommendationId: recommendationId ?? null,
+        promptId: promptId ?? null,
+        recommendedModelId: recommendedModelId ?? null,
+        selectedModelId: selectedModelId ?? null,
+        followed,
+        mode,
+        durationSeconds: durationSeconds ?? null,
+        timeSinceRecommendationMs: timeSinceRecommendationMs ?? null,
+        userId: req.user?.uid ?? null,
+      });
+
+      return res.json({ success: true } satisfies ApiResponse<{ success: true }>);
     })
   );
 

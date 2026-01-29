@@ -3,12 +3,15 @@ import {
   aspectRatioField,
   audioField,
   buildSchema,
+  characterReferenceField,
   durationField,
+  extendVideoField,
   fpsField,
   guidanceField,
   imageInputField,
   resolutionField,
   seedField,
+  styleReferenceField,
 } from './templates';
 
 export const MANUAL_CAPABILITIES_REGISTRY: Record<
@@ -53,6 +56,10 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       fps: fpsField([24, 30]),
       seed: seedField(),
       guidance: guidanceField(6),
+      image_input: imageInputField(true),
+      style_reference: styleReferenceField(true),
+      character_reference: characterReferenceField(true),
+      extend_video: extendVideoField(true),
     }),
   },
   luma: {
@@ -63,6 +70,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       fps: fpsField([24]),
       seed: seedField(),
       image_input: imageInputField(true),
+      extend_video: extendVideoField(true),
     }),
   },
   google: {
@@ -86,6 +94,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       audio: audioField(true),
       seed: seedField(),
       image_input: imageInputField(true),
+      character_reference: characterReferenceField(true),
     }),
   },
   wan: {

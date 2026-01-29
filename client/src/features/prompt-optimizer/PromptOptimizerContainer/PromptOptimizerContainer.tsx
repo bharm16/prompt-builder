@@ -8,7 +8,7 @@
  * - Wiring event handlers
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import { AppShell } from '@components/navigation/AppShell';
 import DebugButton from '@components/DebugButton';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
@@ -30,6 +30,7 @@ import { usePromptState, PromptStateProvider } from '../context/PromptStateConte
 import { GenerationControlsProvider, useGenerationControlsContext } from '../context/GenerationControlsContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
+import { areKeyframesEqual, hydrateKeyframes, serializeKeyframes } from '../utils/keyframeTransforms';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
   usePromptLoader,
@@ -132,7 +133,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
-  const { cameraMotion } = useGenerationControlsContext();
+  const { cameraMotion, keyframes, setKeyframes } = useGenerationControlsContext();
   const i2vContext = useI2VContext();
 
   // Stabilize promptContext to prevent infinite loops
@@ -150,6 +151,56 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     promptContext?.metadata?.format,
     promptContext?.version,
   ]);
+
+  const keyframesRef = useRef(keyframes);
+  const keyframeSessionRef = useRef<{ uuid: string | null; docId: string | null }>({
+    uuid: currentPromptUuid ?? null,
+    docId: currentPromptDocId ?? null,
+  });
+
+  useEffect(() => {
+    keyframesRef.current = keyframes;
+  }, [keyframes]);
+
+  useEffect(() => {
+    if (!currentPromptUuid) {
+      if (keyframesRef.current.length) {
+        setKeyframes([]);
+      }
+      return;
+    }
+    const entry = promptHistory.history.find((item) => item.uuid === currentPromptUuid);
+    if (!entry) {
+      if (keyframesRef.current.length) {
+        setKeyframes([]);
+      }
+      return;
+    }
+    const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
+    if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
+    setKeyframes(nextKeyframes);
+  }, [currentPromptUuid, promptHistory.history, setKeyframes]);
+
+  useEffect(() => {
+    if (!currentPromptUuid) {
+      keyframeSessionRef.current = { uuid: null, docId: null };
+      return;
+    }
+    keyframeSessionRef.current = {
+      uuid: currentPromptUuid,
+      docId: currentPromptDocId ?? null,
+    };
+  }, [keyframes, currentPromptUuid, currentPromptDocId]);
+
+  useEffect(() => {
+    const { uuid, docId } = keyframeSessionRef.current;
+    if (!uuid) return;
+    const entry = promptHistory.history.find((item) => item.uuid === uuid);
+    if (!entry) return;
+    const serialized = serializeKeyframes(keyframes);
+    if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
+    promptHistory.updateEntryPersisted(uuid, docId, { keyframes: serialized });
+  }, [keyframes, promptHistory.history, promptHistory.updateEntryPersisted]);
 
   // ============================================================================
   // Custom Hooks - Business Logic Delegation
@@ -171,6 +222,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setShowResults,
     setSelectedModel,
     setPromptContext,
+    onLoadKeyframes: (stored) => {
+      setKeyframes(hydrateKeyframes(stored));
+    },
     skipLoadFromUrlRef,
   });
 
@@ -201,6 +255,19 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setCanRedo,
   });
 
+  const handleLoadFromHistory = useCallback(
+    (entry: PromptHistoryEntry): void => {
+      setKeyframes(hydrateKeyframes(entry.keyframes ?? []));
+      loadFromHistory(entry);
+    },
+    [loadFromHistory, setKeyframes]
+  );
+
+  const handleCreateNewWithKeyframes = useCallback((): void => {
+    setKeyframes([]);
+    handleCreateNew();
+  }, [handleCreateNew, setKeyframes]);
+
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
       const mode =
@@ -214,6 +281,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         mode,
         entry.targetModel ?? null,
         (entry.generationParams as Record<string, unknown>) ?? null,
+        entry.keyframes ?? null,
         entry.brainstormContext ?? null,
         entry.highlightCache ?? null,
         null,
@@ -221,7 +289,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       );
 
       if (result?.uuid) {
-        loadFromHistory({
+        handleLoadFromHistory({
           id: result.id,
           uuid: result.uuid,
           timestamp: new Date().toISOString(),
@@ -232,13 +300,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           mode,
           targetModel: entry.targetModel ?? null,
           generationParams: entry.generationParams ?? null,
+          keyframes: entry.keyframes ?? null,
           brainstormContext: entry.brainstormContext ?? null,
           highlightCache: entry.highlightCache ?? null,
           versions: Array.isArray(entry.versions) ? entry.versions : [],
         });
       }
     },
-    [promptHistory, loadFromHistory]
+    [promptHistory, handleLoadFromHistory]
   );
 
   const handleRename = useCallback(
@@ -265,6 +334,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     }),
     [generationParams, cameraMotion?.id]
   );
+  const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
@@ -274,7 +344,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframes,
     startImageUrl: i2vContext.startImageUrl,
+    sourcePrompt: i2vContext.startImageSourcePrompt,
     constraintMode: i2vContext.constraintMode,
     currentPromptUuid,
     setCurrentPromptUuid,
@@ -303,6 +375,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframes,
     setConceptElements,
     setPromptContext,
     setShowBrainstorm,
@@ -421,7 +494,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     },
     createNew: () => {
       debug.logAction('createNew');
-      handleCreateNew();
+      handleCreateNewWithKeyframes();
     },
     optimize: () => {
       if (!promptOptimizer.isProcessing && showResults === false) {
@@ -480,8 +553,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       isLoadingHistory={promptHistory.isLoadingHistory}
       searchQuery={promptHistory.searchQuery}
       onSearchChange={promptHistory.setSearchQuery}
-      onLoadFromHistory={loadFromHistory}
-      onCreateNew={handleCreateNew}
+      onLoadFromHistory={handleLoadFromHistory}
+      onCreateNew={handleCreateNewWithKeyframes}
       onDelete={promptHistory.deleteFromHistory}
       onDuplicate={handleDuplicate}
       onRename={handleRename}

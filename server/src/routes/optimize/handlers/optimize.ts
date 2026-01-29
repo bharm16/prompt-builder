@@ -3,6 +3,7 @@ import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PromptOptimizationServiceContract } from '../types';
+import { promptSchema } from '@config/schemas/promptSchemas';
 
 export const createOptimizeHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -12,6 +13,25 @@ export const createOptimizeHandler = (
     const requestId = req.id || 'unknown';
     const userId = extractUserId(req);
     const operation = 'optimize';
+
+    const parsed = promptSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn('Optimize request validation failed', {
+        operation,
+        requestId,
+        userId,
+        issues: parsed.error.issues.map((issue) => ({
+          code: issue.code,
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: parsed.error.issues,
+      });
+    }
 
     const {
       prompt,
@@ -24,7 +44,8 @@ export const createOptimizeHandler = (
       lockedSpans,
       startImage,
       constraintMode,
-    } = req.body;
+      sourcePrompt,
+    } = parsed.data;
 
     const { normalizedGenerationParams, error } = normalizeGenerationParams({
       generationParams,
@@ -34,7 +55,9 @@ export const createOptimizeHandler = (
       userId,
     });
     if (error) {
-      return res.status(error.status).json({ error: error.error, details: error.details });
+      return res
+        .status(error.status)
+        .json({ success: false, error: error.error, details: error.details });
     }
 
     logger.info('Optimize request received', {
@@ -65,6 +88,7 @@ export const createOptimizeHandler = (
         lockedSpans,
         startImage,
         constraintMode,
+        sourcePrompt,
       });
 
       logger.info('Optimize request completed', {
@@ -76,12 +100,18 @@ export const createOptimizeHandler = (
         outputLength: result.prompt?.length || 0,
       });
 
-      return res.json({
+      const responsePayload = {
         prompt: result.prompt,
         optimizedPrompt: result.prompt,
         inputMode: result.inputMode,
         ...(result.i2v ? { i2v: result.i2v } : {}),
         ...(result.metadata ? { metadata: result.metadata } : {}),
+      };
+
+      return res.json({
+        success: true,
+        data: responsePayload,
+        ...responsePayload,
       });
     } catch (error: unknown) {
       const errorInstance = error instanceof Error ? error : new Error(String(error));

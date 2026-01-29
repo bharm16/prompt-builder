@@ -1,22 +1,10 @@
 import { AppError } from '@server/types/common';
-import {
-  isKlingModel,
-  isLumaModel,
-  isOpenAISoraModel,
-  isVeoModel,
-  resolveModelSelection,
-} from '../modelResolver';
-import { generateReplicateVideo } from '../providers/replicateProvider';
-import { generateSoraVideo } from '../providers/soraProvider';
-import { generateLumaVideo } from '../providers/lumaProvider';
-import { generateKlingVideo } from '../providers/klingProvider';
-import { generateVeoVideo } from '../providers/veoProvider';
-import { storeVideoFromUrl } from '../storage/utils';
+import { resolveModelSelection } from '../modelResolver';
 import type { StoredVideoAsset, VideoAssetStore } from '../storage';
 import type { VideoGenerationOptions, VideoGenerationResult } from '../types';
-import { getProviderAvailability } from '../providers/ProviderRegistry';
+import { getProviderAvailability, resolveProviderForModel } from '../providers/ProviderRegistry';
 import { getModelAvailability } from '../availability';
-import type { ProviderClients } from '../providers/ProviderClients';
+import type { VideoProviderMap } from '../providers/VideoProviders';
 
 type LogSink = {
   debug: (message: string, meta?: Record<string, unknown>) => void;
@@ -28,14 +16,14 @@ type LogSink = {
 export async function generateVideoWorkflow(
   prompt: string,
   options: VideoGenerationOptions,
-  clients: ProviderClients,
+  providers: VideoProviderMap,
   assetStore: VideoAssetStore,
   log: LogSink
 ): Promise<VideoGenerationResult> {
   const modelSelection = typeof options.model === 'string' ? options.model.trim() : options.model;
   const startImageUrl = options.startImage || options.inputReference;
   const inputMode: VideoGenerationResult['inputMode'] = startImageUrl ? 'i2v' : 't2v';
-  const availability = getModelAvailability(modelSelection, getProviderAvailability(clients), log);
+  const availability = getModelAvailability(modelSelection, getProviderAvailability(providers), log);
   if (!availability.available) {
     throw new AppError(
       availability.message || 'Requested video model is not available',
@@ -60,72 +48,12 @@ export async function generateVideoWorkflow(
   });
 
   try {
-    if (isOpenAISoraModel(modelId)) {
-      if (!clients.openai) {
-        throw new Error('Sora video generation requires OPENAI_API_KEY.');
-      }
-      const asset = await generateSoraVideo(
-        clients.openai,
-        prompt,
-        modelId,
-        options,
-        assetStore,
-        log
-      );
-      return formatResult(asset, inputMode, startImageUrl);
+    const providerKey = resolveProviderForModel(modelId);
+    const provider = providers[providerKey];
+    if (!provider) {
+      throw new Error(`No provider registered for model: ${modelId}`);
     }
-
-    if (isLumaModel(modelId)) {
-      if (!clients.luma) {
-        throw new Error('Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.');
-      }
-      const url = await generateLumaVideo(clients.luma, prompt, options, log);
-      const asset = await storeVideoFromUrl(assetStore, url, log);
-      return formatResult(asset, inputMode, startImageUrl);
-    }
-
-    if (isKlingModel(modelId)) {
-      if (!clients.klingApiKey) {
-        throw new Error('Kling video generation requires KLING_API_KEY.');
-      }
-      const url = await generateKlingVideo(
-        clients.klingApiKey,
-        clients.klingBaseUrl,
-        prompt,
-        modelId,
-        options,
-        log
-      );
-      const asset = await storeVideoFromUrl(assetStore, url, log);
-      return formatResult(asset, inputMode, startImageUrl);
-    }
-
-    if (isVeoModel(modelId)) {
-      if (!clients.geminiApiKey) {
-        throw new Error('Veo video generation requires GEMINI_API_KEY.');
-      }
-      const asset = await generateVeoVideo(
-        clients.geminiApiKey,
-        clients.geminiBaseUrl,
-        prompt,
-        assetStore,
-        log
-      );
-      return formatResult(asset, inputMode, startImageUrl);
-    }
-
-    if (!clients.replicate) {
-      throw new Error('Replicate API token is required for the selected video model.');
-    }
-
-    const { url, seed } = await generateReplicateVideo(
-      clients.replicate,
-      prompt,
-      modelId,
-      options,
-      log
-    );
-    const asset = await storeVideoFromUrl(assetStore, url, log);
+    const { asset, seed } = await provider.generate(prompt, modelId, options, assetStore, log);
     return formatResult(asset, inputMode, startImageUrl, seed);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

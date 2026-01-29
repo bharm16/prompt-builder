@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput } from '../types';
 import { continuityApi } from '../api/continuityApi';
 
@@ -12,6 +12,7 @@ interface ContinuitySessionContextValue {
   generateShot: (shotId: string) => Promise<ContinuityShot>;
   updateStyleReference: (shotId: string, styleReferenceId: string | null) => Promise<ContinuityShot>;
   updatePrimaryStyleReference: (input: Record<string, unknown>) => Promise<ContinuitySession>;
+  updateSessionSettings: (settings: Record<string, unknown>) => Promise<ContinuitySession>;
   createSceneProxy: (input: Record<string, unknown>) => Promise<void>;
 }
 
@@ -30,7 +31,7 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSession = async (sessionId: string) => {
+  const loadSession = useCallback(async (sessionId: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -41,9 +42,9 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createSession = async (input: CreateSessionInput) => {
+  const createSession = useCallback(async (input: CreateSessionInput) => {
     setLoading(true);
     setError(null);
     try {
@@ -53,9 +54,9 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const addShot = async (input: CreateShotInput) => {
+  const addShot = useCallback(async (input: CreateShotInput) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.addShot(session.id, input);
     setSession((prev) => {
@@ -63,9 +64,9 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       return { ...prev, shots: [...prev.shots, shot] };
     });
     return shot;
-  };
+  }, [session]);
 
-  const generateShot = async (shotId: string) => {
+  const generateShot = useCallback(async (shotId: string) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.generateShot(session.id, shotId);
     setSession((prev) => {
@@ -76,9 +77,9 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       };
     });
     return shot;
-  };
+  }, [session]);
 
-  const updateStyleReference = async (shotId: string, styleReferenceId: string | null) => {
+  const updateStyleReference = useCallback(async (shotId: string, styleReferenceId: string | null) => {
     if (!session) throw new Error('No active session');
     const shot = await continuityApi.updateShotStyleReference(session.id, shotId, styleReferenceId);
     setSession((prev) => {
@@ -89,20 +90,27 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       };
     });
     return shot;
-  };
+  }, [session]);
 
-  const createSceneProxy = async (input: Record<string, unknown>) => {
+  const createSceneProxy = useCallback(async (input: Record<string, unknown>) => {
     if (!session) throw new Error('No active session');
     const updated = await continuityApi.createSceneProxy(session.id, input);
     setSession(updated);
-  };
+  }, [session]);
 
-  const updatePrimaryStyleReference = async (input: Record<string, unknown>) => {
+  const updateSessionSettings = useCallback(async (settings: Record<string, unknown>) => {
+    if (!session) throw new Error('No active session');
+    const updated = await continuityApi.updateSessionSettings(session.id, settings);
+    setSession(updated);
+    return updated;
+  }, [session]);
+
+  const updatePrimaryStyleReference = useCallback(async (input: Record<string, unknown>) => {
     if (!session) throw new Error('No active session');
     const updated = await continuityApi.updatePrimaryStyleReference(session.id, input);
     setSession(updated);
     return updated;
-  };
+  }, [session]);
 
   const value = useMemo(
     () => ({
@@ -115,9 +123,22 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       generateShot,
       updateStyleReference,
       updatePrimaryStyleReference,
+      updateSessionSettings,
       createSceneProxy,
     }),
-    [session, loading, error]
+    [
+      session,
+      loading,
+      error,
+      loadSession,
+      createSession,
+      addShot,
+      generateShot,
+      updateStyleReference,
+      updatePrimaryStyleReference,
+      updateSessionSettings,
+      createSceneProxy,
+    ]
   );
 
   return (

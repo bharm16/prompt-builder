@@ -45,6 +45,7 @@ interface UseHistoryPersistenceReturn {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
+    keyframes?: PromptHistoryEntry['keyframes'],
     brainstormContext?: unknown,
     highlightCache?: unknown,
     existingUuid?: string | null,
@@ -54,6 +55,7 @@ interface UseHistoryPersistenceReturn {
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
+    keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
   }) => SaveResult;
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
@@ -197,6 +199,7 @@ export function useHistoryPersistence({
       selectedMode: string,
       targetModel: string | null = null,
       generationParams: Record<string, unknown> | null = null,
+      keyframes: PromptHistoryEntry['keyframes'] = null,
       brainstormContext: unknown = null,
       highlightCache: unknown = null,
       existingUuid: string | null = null,
@@ -224,6 +227,7 @@ export function useHistoryPersistence({
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           ...(generationParams ? { generationParams } : {}),
+          ...(keyframes ? { keyframes } : {}),
           brainstormContext,
           highlightCache,
         });
@@ -239,6 +243,7 @@ export function useHistoryPersistence({
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           generationParams: generationParams ?? null,
+          keyframes: keyframes ?? null,
           brainstormContext: brainstormContext ?? null,
           highlightCache: highlightCache ?? null,
         };
@@ -267,6 +272,7 @@ export function useHistoryPersistence({
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
+      keyframes?: PromptHistoryEntry['keyframes'];
       uuid?: string;
     }): SaveResult => {
       const uuid = typeof params.uuid === 'string' && params.uuid.trim() ? params.uuid.trim() : uuidv4();
@@ -283,6 +289,7 @@ export function useHistoryPersistence({
         mode: params.mode,
         targetModel: params.targetModel ?? null,
         generationParams: params.generationParams ?? null,
+        keyframes: params.keyframes ?? null,
         brainstormContext: null,
         highlightCache: null,
         versions: [],
@@ -314,6 +321,7 @@ export function useHistoryPersistence({
       if (updates.mode !== undefined) localUpdates.mode = updates.mode;
       if (updates.targetModel !== undefined) localUpdates.targetModel = updates.targetModel;
       if (updates.generationParams !== undefined) localUpdates.generationParams = updates.generationParams;
+      if (updates.keyframes !== undefined) localUpdates.keyframes = updates.keyframes;
 
       updateEntry(uuid, localUpdates);
     },

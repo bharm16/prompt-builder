@@ -9,7 +9,11 @@ import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
 import { detectProvider } from '@utils/provider/ProviderDetector';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
-import type { VideoPromptSlots, VideoPromptStructuredResponse } from './videoPromptTypes';
+import {
+  parseVideoPromptStructuredResponse,
+  type VideoPromptSlots,
+  type VideoPromptStructuredResponse,
+} from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
 import { renderAlternativeApproaches, renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
 import { buildStreamingPrompt } from './video/prompts/buildStreamingPrompt';
@@ -201,7 +205,7 @@ export class VideoStrategy implements OptimizationStrategy {
         ...(signal ? { signal } : {}),
       });
 
-      const parsedResponse = JSON.parse(response.text) as VideoPromptStructuredResponse;
+      const parsedResponse = parseVideoPromptStructuredResponse(response.text);
       const normalizedSlots = normalizeSlots(parsedResponse);
 
       const lint = mergeLintResults(
@@ -495,7 +499,7 @@ ${JSON.stringify(options.originalJson, null, 2)}
       ...(options.signal ? { signal: options.signal } : {}),
     });
 
-    const repaired = JSON.parse(response.text) as VideoPromptStructuredResponse;
+    const repaired = parseVideoPromptStructuredResponse(response.text);
     const normalizedSlots = normalizeSlots(repaired);
     return { ...repaired, ...normalizedSlots };
   }

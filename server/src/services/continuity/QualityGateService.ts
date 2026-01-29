@@ -18,10 +18,15 @@ interface QualityGateOptions {
   identityThreshold?: number;
 }
 
+type ClipPipeline = (
+  input: Buffer,
+  options: { pool: boolean }
+) => Promise<{ data?: ArrayLike<number> }>;
+
 export class QualityGateService {
   private readonly log = logger.child({ service: 'QualityGateService' });
   private readonly faceEmbedding: FaceEmbeddingService | null;
-  private static clipPipelinePromise: Promise<unknown> | null = null;
+  private static clipPipelinePromise: Promise<ClipPipeline> | null = null;
 
   constructor(
     faceEmbedding?: FaceEmbeddingService | null,
@@ -83,22 +88,24 @@ export class QualityGateService {
     const duration = await this.getVideoDuration(videoUrl);
     const timestamp = duration > 0 ? duration / 2 : 0;
     const tempDir = await fs.mkdtemp(join(tmpdir(), 'quality-'));
-    const outputPath = join(tempDir, 'frame.png');
 
-    const args = [
-      '-y',
-      '-ss', String(Math.max(0, timestamp)),
-      '-i', videoUrl,
-      '-frames:v', '1',
-      '-f', 'image2',
-      '-vcodec', 'png',
-      outputPath,
-    ];
+    try {
+      const outputPath = join(tempDir, 'frame.png');
+      const args = [
+        '-y',
+        '-ss', String(Math.max(0, timestamp)),
+        '-i', videoUrl,
+        '-frames:v', '1',
+        '-f', 'image2',
+        '-vcodec', 'png',
+        outputPath,
+      ];
 
-    await this.exec('ffmpeg', args);
-    const buffer = await fs.readFile(outputPath);
-    await fs.rm(tempDir, { recursive: true, force: true });
-    return buffer;
+      await this.exec('ffmpeg', args);
+      return await fs.readFile(outputPath);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 
   private async getVideoDuration(videoUrl: string): Promise<number> {
@@ -130,8 +137,8 @@ export class QualityGateService {
 
     try {
       const [refTensor, frameTensor] = await Promise.all([
-        (pipeline as any)(referenceBuffer, { pool: true }),
-        (pipeline as any)(frameBuffer, { pool: true }),
+        pipeline(referenceBuffer, { pool: true }),
+        pipeline(frameBuffer, { pool: true }),
       ]);
 
       const refEmbedding = this.normalizeEmbedding(this.extractEmbedding(refTensor));
@@ -151,7 +158,7 @@ export class QualityGateService {
     }
   }
 
-  private async getClipPipeline(): Promise<unknown | null> {
+  private async getClipPipeline(): Promise<ClipPipeline | null> {
     if (process.env.DISABLE_CONTINUITY_CLIP === 'true') {
       return null;
     }
@@ -159,7 +166,8 @@ export class QualityGateService {
     if (!QualityGateService.clipPipelinePromise) {
       QualityGateService.clipPipelinePromise = (async () => {
         const transformers = await import('@huggingface/transformers');
-        return transformers.pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+        const pipeline = await transformers.pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+        return pipeline as ClipPipeline;
       })();
     }
 

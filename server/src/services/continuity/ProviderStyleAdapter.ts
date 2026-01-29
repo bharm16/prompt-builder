@@ -8,7 +8,7 @@ import { isKlingModel, isLumaModel, isOpenAISoraModel, isVeoModel } from '@servi
 import { getModelCapabilities } from '@services/video-generation/availability';
 import type { VideoModelId } from '@services/video-generation/types';
 
-const PROVIDER_CAPABILITIES: Record<string, ProviderContinuityCapabilities> = {
+const PROVIDER_DEFAULTS: Record<string, ProviderContinuityCapabilities> = {
   runway: {
     supportsNativeStyleReference: true,
     supportsNativeCharacterReference: true,
@@ -79,6 +79,10 @@ export class ProviderStyleAdapter {
       return { type: 'ip-adapter' };
     }
 
+    if (mode === 'frame-bridge' && !caps.supportsStartImage && caps.supportsNativeStyleReference) {
+      return { type: 'native-style-ref', provider };
+    }
+
     return { type: 'none' };
   }
 
@@ -112,15 +116,17 @@ export class ProviderStyleAdapter {
   }
 
   getCapabilities(provider: string, modelId?: VideoModelId): ProviderContinuityCapabilities {
-    const base = (PROVIDER_CAPABILITIES[provider] ?? PROVIDER_CAPABILITIES.replicate) as ProviderContinuityCapabilities;
+    const base = (PROVIDER_DEFAULTS[provider] ?? PROVIDER_DEFAULTS.replicate) as ProviderContinuityCapabilities;
     if (!modelId) return base;
     const modelCaps = getModelCapabilities(modelId);
     return {
-      supportsNativeStyleReference: base.supportsNativeStyleReference,
-      supportsNativeCharacterReference: base.supportsNativeCharacterReference,
+      supportsNativeStyleReference:
+        modelCaps.supportsStyleReference ?? base.supportsNativeStyleReference,
+      supportsNativeCharacterReference:
+        modelCaps.supportsCharacterReference ?? base.supportsNativeCharacterReference,
       supportsStartImage: modelCaps.supportsImageInput,
-      supportsSeedPersistence: base.supportsSeedPersistence,
-      supportsExtendVideo: base.supportsExtendVideo,
+      supportsSeedPersistence: modelCaps.supportsSeed ?? base.supportsSeedPersistence,
+      supportsExtendVideo: modelCaps.supportsExtendVideo ?? base.supportsExtendVideo,
       ...(base.styleReferenceParam ? { styleReferenceParam: base.styleReferenceParam } : {}),
       ...(base.maxStyleReferenceImages !== undefined
         ? { maxStyleReferenceImages: base.maxStyleReferenceImages }

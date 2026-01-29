@@ -48,7 +48,7 @@ export interface PromptDebuggerState {
   displayedPrompt?: string;
   optimizedPrompt?: string;
   selectedMode?: string;
-  promptContext?: unknown;
+  promptContext?: object | null;
   highlights?: Highlight[];
 }
 
@@ -60,7 +60,15 @@ export interface Highlight {
 
 export interface User {
   uid: string;
-  [key: string]: unknown;
+}
+
+export type PromptKeyframeSource = 'upload' | 'library' | 'generation' | 'asset';
+
+export interface PromptKeyframe {
+  id?: string;
+  url: string;
+  source?: PromptKeyframeSource;
+  assetId?: string;
 }
 
 export interface PromptHistoryEntry {
@@ -74,8 +82,9 @@ export interface PromptHistoryEntry {
   mode?: string;
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;
-  brainstormContext?: unknown | null;
-  highlightCache?: unknown | null;
+  keyframes?: PromptKeyframe[] | null;
+  brainstormContext?: Record<string, unknown> | null;
+  highlightCache?: Record<string, unknown> | null;
   versions?: PromptVersionEntry[];
 }
 
@@ -104,7 +113,7 @@ export interface PromptVersionEntry {
   signature: string;
   prompt: string;
   timestamp: string;
-  highlights?: unknown | null | undefined;
+  highlights?: Record<string, unknown> | null;
   editCount?: number | undefined;
   edits?: PromptVersionEdit[] | undefined;
   preview?: PromptVersionPreview | null | undefined;

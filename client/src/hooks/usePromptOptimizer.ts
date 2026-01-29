@@ -27,6 +27,9 @@ const log = logger.child('usePromptOptimizer');
 interface OptimizationOptions {
   skipCache?: boolean;
   generationParams?: CapabilityValues;
+  startImage?: string;
+  sourcePrompt?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
 }
 
 export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
@@ -165,6 +168,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           ...(typeof options?.skipCache === 'boolean' ? { skipCache: options.skipCache } : {}),
           ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
           ...(options?.startImage ? { startImage: options.startImage } : {}),
+          ...(options?.sourcePrompt ? { sourcePrompt: options.sourcePrompt } : {}),
           ...(options?.constraintMode ? { constraintMode: options.constraintMode } : {}),
           lockedSpans: state.lockedSpans,
           actions,

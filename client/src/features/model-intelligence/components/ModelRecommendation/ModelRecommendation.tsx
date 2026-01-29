@@ -1,4 +1,4 @@
-import React, { type ReactElement, useCallback, useMemo } from 'react';
+import React, { type ReactElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useModelRecommendation } from '../../hooks/useModelRecommendation';
 import { useModelComparison } from '../../hooks/useModelComparison';
 import { getModelLabel, normalizeModelIdForSelection } from '../../utils/modelLabels';
@@ -6,6 +6,7 @@ import type { ModelRecommendationProps } from './types';
 import { ModelScoreCard } from './ModelScoreCard';
 import { ModelComparison } from '../ModelComparison/ModelComparison';
 import { cn } from '@/utils/cn';
+import { trackModelRecommendationEvent } from '../../api';
 
 const confidenceStyles: Record<string, string> = {
   high: 'bg-green-500/15 text-green-400',
@@ -21,6 +22,7 @@ const reasonLabels: Record<string, string> = {
   not_entitled: 'Not entitled',
   video_generation_unavailable: 'Unavailable',
   unavailable: 'Unavailable',
+  unknown_availability: 'Availability unknown',
 };
 
 const formatReason = (reason: string): string => reasonLabels[reason] ?? 'Unavailable';
@@ -62,11 +64,37 @@ export function ModelRecommendation({
     comparisonModels,
   });
 
+  const lastTrackedRecommendationRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const recommendationId = recommendation?.promptId;
+    if (!recommendationId) return;
+    if (lastTrackedRecommendationRef.current === recommendationId) return;
+    lastTrackedRecommendationRef.current = recommendationId;
+    void trackModelRecommendationEvent({
+      event: 'recommendation_viewed',
+      recommendationId,
+      promptId: recommendationId,
+      recommendedModelId: recommendation?.recommended?.modelId,
+      mode,
+      durationSeconds,
+    });
+  }, [durationSeconds, mode, recommendation?.promptId, recommendation?.recommended?.modelId]);
+
   const handleSelectModel = useCallback(
     (modelId: string) => {
+      void trackModelRecommendationEvent({
+        event: 'model_selected',
+        recommendationId: recommendation?.promptId,
+        promptId: recommendation?.promptId,
+        recommendedModelId: recommendation?.recommended?.modelId,
+        selectedModelId: modelId,
+        mode,
+        durationSeconds,
+      });
       onSelectModel(normalizeModelIdForSelection(modelId));
     },
-    [onSelectModel]
+    [durationSeconds, mode, onSelectModel, recommendation?.promptId, recommendation?.recommended?.modelId]
   );
 
   const bestLabel = useMemo(
@@ -218,6 +246,14 @@ export function ModelRecommendation({
           <button
             type="button"
             onClick={() => {
+              void trackModelRecommendationEvent({
+                event: 'compare_opened',
+                recommendationId: recommendation?.promptId,
+                promptId: recommendation?.promptId,
+                recommendedModelId: recommendation?.recommended?.modelId,
+                mode,
+                durationSeconds,
+              });
               onCompareModels?.(comparisonModels);
               openComparison(comparisonModels);
             }}

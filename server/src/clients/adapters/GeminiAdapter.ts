@@ -13,6 +13,7 @@ import type { ILogger } from '@interfaces/ILogger';
 import CircuitBreaker from 'opossum';
 import { GeminiMessageBuilder } from './gemini/GeminiMessageBuilder.ts';
 import { GeminiResponseParser } from './gemini/GeminiResponseParser.ts';
+import { z } from 'zod';
 import type {
   CompletionOptions,
   AdapterConfig,
@@ -231,7 +232,13 @@ export class GeminiAdapter {
     }
 
     try {
-      return JSON.parse(response.text);
+      const parsed = JSON.parse(response.text);
+      const validated = z.record(z.unknown()).safeParse(parsed);
+      if (!validated.success) {
+        this.log.error('Failed to validate structured output', validated.error, { text: response.text });
+        throw new Error('Invalid JSON response from Gemini');
+      }
+      return validated.data;
     } catch (e) {
       this.log.error('Failed to parse structured output', e as Error, { text: response.text });
       throw new Error('Invalid JSON response from Gemini');

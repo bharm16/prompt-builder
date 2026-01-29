@@ -4,6 +4,7 @@ import OptimizationConfig from '@config/OptimizationConfig';
 import type { OptimizationMode, QualityAssessment } from '../types';
 import { VideoPromptService } from '../../video-prompt-analysis/VideoPromptService';
 import { QualityAssessmentService } from './QualityAssessmentService';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 
 interface CompileOptimizedPromptParams {
   operation: string;
@@ -33,8 +34,8 @@ export class VideoPromptCompilationService {
     const explicitModel = targetModel && targetModel.trim() !== '' ? targetModel : undefined;
     let resolvedTargetModel = explicitModel;
 
-    if (resolvedTargetModel && VideoPromptService.MODEL_ID_MAP[resolvedTargetModel]) {
-      resolvedTargetModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
+    if (resolvedTargetModel) {
+      resolvedTargetModel = resolvePromptModelId(resolvedTargetModel) ?? resolvedTargetModel;
     }
 
     if (!resolvedTargetModel) {
@@ -154,10 +155,7 @@ export class VideoPromptCompilationService {
       throw new Error('Target model is required for compilation');
     }
 
-    const mappedModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
-    if (mappedModel) {
-      resolvedTargetModel = mappedModel;
-    }
+    resolvedTargetModel = resolvePromptModelId(resolvedTargetModel) ?? resolvedTargetModel;
 
     this.log.info('Compiling prompt for target model', {
       operation,

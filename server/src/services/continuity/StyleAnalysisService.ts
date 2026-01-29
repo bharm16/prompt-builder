@@ -1,6 +1,16 @@
 import { logger } from '@infrastructure/Logger';
 import type { AIService } from '@services/prompt-optimization/types';
 import type { StyleAnalysisMetadata } from './types';
+import { z } from 'zod';
+
+const StyleAnalysisResponseSchema = z
+  .object({
+    colors: z.array(z.string()).optional(),
+    lighting: z.string().optional(),
+    mood: z.string().optional(),
+    confidence: z.number().optional(),
+  })
+  .passthrough();
 
 export class StyleAnalysisService {
   private readonly log = logger.child({ service: 'StyleAnalysisService' });
@@ -37,12 +47,16 @@ Be concise. This is for display only, not generation.`;
       });
 
       const parsed = JSON.parse(response.text);
+      const validated = StyleAnalysisResponseSchema.safeParse(parsed);
+      if (!validated.success) {
+        throw new Error(`Invalid style analysis JSON: ${validated.error.message}`);
+      }
 
       return {
-        dominantColors: parsed.colors || [],
-        lightingDescription: parsed.lighting || 'Unknown',
-        moodDescription: parsed.mood || 'Unknown',
-        confidence: parsed.confidence || 0.5,
+        dominantColors: validated.data.colors || [],
+        lightingDescription: validated.data.lighting || 'Unknown',
+        moodDescription: validated.data.mood || 'Unknown',
+        confidence: validated.data.confidence || 0.5,
       };
     } catch (error) {
       this.log.warn('Style analysis failed', {

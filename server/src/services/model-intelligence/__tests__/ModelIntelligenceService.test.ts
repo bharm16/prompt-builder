@@ -96,7 +96,7 @@ describe('ModelIntelligenceService', () => {
             isStylized: true,
             isAbstract: false,
             requiresCinematicLook: false,
-            hasSpecificAesthetic: undefined,
+            hasSpecificAesthetic: null,
           },
           motion: {
             cameraComplexity: 'static',
@@ -117,8 +117,9 @@ describe('ModelIntelligenceService', () => {
       const availabilityGate: MockAvailabilityGate = {
         filterModels: vi.fn<AvailabilityGateService['filterModels']>().mockResolvedValue({
           availableModelIds: [VIDEO_MODELS.VEO_3, VIDEO_MODELS.SORA_2],
+          unknownModelIds: [],
           filteredOut: [],
-          report: null,
+          snapshot: null,
         }),
       };
 

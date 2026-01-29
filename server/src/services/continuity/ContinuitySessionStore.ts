@@ -1,5 +1,19 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
+import { z } from 'zod';
 import type { ContinuitySession, ContinuityShot } from './types';
+
+const StoredShotSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  sequenceIndex: z.number(),
+  userPrompt: z.string(),
+  continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']),
+  styleStrength: z.number(),
+  styleReferenceId: z.string().nullable(),
+  modelId: z.string(),
+  status: z.enum(['draft', 'generating-keyframe', 'generating-video', 'completed', 'failed']),
+  createdAt: z.number(),
+}).passthrough();
 
 interface StoredSession {
   userId: string;
@@ -12,6 +26,20 @@ interface StoredSession {
   status: ContinuitySession['status'];
   createdAtMs: number;
   updatedAtMs: number;
+  version?: number;
+}
+
+export class ContinuitySessionVersionMismatchError extends Error {
+  constructor(
+    readonly sessionId: string,
+    readonly expectedVersion: number,
+    readonly actualVersion?: number
+  ) {
+    super(
+      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? 'unknown'})`
+    );
+    this.name = 'ContinuitySessionVersionMismatchError';
+  }
 }
 
 export class ContinuitySessionStore {
@@ -19,6 +47,14 @@ export class ContinuitySessionStore {
   private readonly collection = this.db.collection('continuity_sessions');
 
   async save(session: ContinuitySession): Promise<void> {
+    await this.saveInternal(session);
+  }
+
+  async saveWithVersion(session: ContinuitySession, expectedVersion: number): Promise<number> {
+    return await this.saveInternal(session, expectedVersion);
+  }
+
+  private async saveInternal(session: ContinuitySession, expectedVersion?: number): Promise<number> {
     const docRef = this.collection.doc(session.id);
     const now = Date.now();
 
@@ -35,11 +71,52 @@ export class ContinuitySessionStore {
       updatedAtMs: now,
     };
 
+    if (typeof expectedVersion === 'number') {
+      const newVersion = expectedVersion + 1;
+      await this.db.runTransaction(async (transaction) => {
+        const docSnapshot = await transaction.get(docRef);
+        if (!docSnapshot.exists) {
+          throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, undefined);
+        }
+        const stored = docSnapshot.data() as StoredSession | undefined;
+        const actualVersion = stored?.version;
+        if (typeof actualVersion === 'number' && actualVersion !== expectedVersion) {
+          throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, actualVersion);
+        }
+        transaction.set(
+          docRef,
+          {
+            ...payload,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            version: newVersion,
+          },
+          { merge: true }
+        );
+      });
+      return newVersion;
+    }
+
+    const docSnapshot = await docRef.get();
+    if (docSnapshot.exists) {
+      await docRef.set(
+        {
+          ...payload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          version: admin.firestore.FieldValue.increment(1),
+        },
+        { merge: true }
+      );
+      const stored = docSnapshot.data() as StoredSession | undefined;
+      return typeof stored?.version === 'number' ? stored.version + 1 : 1;
+    }
+
     await docRef.set({
       ...payload,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+      version: 1,
+    });
+    return 1;
   }
 
   async get(sessionId: string): Promise<ContinuitySession | null> {
@@ -64,6 +141,10 @@ export class ContinuitySessionStore {
 
   private fromStored(sessionId: string, stored: StoredSession): ContinuitySession {
     const sceneProxy = stored.sceneProxy ? this.deserializeSceneProxy(stored.sceneProxy) : undefined;
+    const storedRecord = stored as unknown as Record<string, unknown>;
+    const version = typeof storedRecord.version === 'number'
+      ? storedRecord.version
+      : undefined;
     return {
       id: sessionId,
       userId: stored.userId,
@@ -74,6 +155,7 @@ export class ContinuitySessionStore {
       shots: stored.shots.map((shot) => this.deserializeShot(shot)),
       defaultSettings: stored.defaultSettings,
       status: stored.status,
+      ...(version !== undefined ? { version } : {}),
       createdAt: new Date(stored.createdAtMs),
       updatedAt: new Date(stored.updatedAtMs),
     };
@@ -101,7 +183,13 @@ export class ContinuitySessionStore {
   }
 
   private deserializeShot(raw: Record<string, unknown>): ContinuityShot {
-    const createdAt = typeof raw.createdAt === 'number' ? new Date(raw.createdAt) : new Date();
+    const parsed = StoredShotSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`Invalid shot data in Firestore: ${parsed.error.message}`);
+    }
+
+    const data = parsed.data;
+    const createdAt = new Date(data.createdAt);
     const generatedAt =
       typeof raw.generatedAt === 'number' ? new Date(raw.generatedAt) : undefined;
     const seedInfoRaw = raw.seedInfo as Record<string, unknown> | undefined;
@@ -169,9 +257,9 @@ export class ContinuitySessionStore {
   private deserializeSceneProxy(raw: Record<string, unknown>): ContinuitySession['sceneProxy'] {
     const createdAt = typeof raw.createdAt === 'number' ? new Date(raw.createdAt) : new Date();
     const proxy = raw as unknown as ContinuitySession['sceneProxy'];
-    if (proxy) {
-      (proxy as any).createdAt = createdAt;
+    if (!proxy) {
+      return proxy;
     }
-    return proxy;
+    return { ...proxy, createdAt };
   }
 }

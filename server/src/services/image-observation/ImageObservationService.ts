@@ -7,13 +7,21 @@
 
 import { logger } from '@infrastructure/Logger';
 import { createHash } from 'crypto';
+import { promises as fs } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { ObservationCache } from './cache/ObservationCache';
 import {
   SHOT_MOVEMENT_COMPATIBILITY,
   POSITION_MOVEMENT_RISKS,
+  SHOT_TYPES,
+  CAMERA_ANGLES,
+  LIGHTING_QUALITIES,
+  SUBJECT_POSITIONS,
   type CameraMovement,
 } from '@shared/cinematography';
 import type { AIService } from '@services/prompt-optimization/types';
+import { z } from 'zod';
 import type {
   ImageObservation,
   ImageObservationRequest,
@@ -24,7 +32,92 @@ import type {
   MotionCompatibility,
 } from './types';
 
+type ImageObservationResponse = {
+  subject?: {
+    type?: SubjectObservation['type'];
+    description?: string;
+    position?: SubjectObservation['position'];
+  };
+  framing?: {
+    shotType?: FramingObservation['shotType'];
+    angle?: FramingObservation['angle'];
+  };
+  lighting?: {
+    quality?: LightingObservation['quality'];
+    timeOfDay?: LightingObservation['timeOfDay'];
+  };
+  confidence?: number;
+};
+
+const SUBJECT_TYPES = ['person', 'animal', 'object', 'scene', 'abstract'] as const;
+const TIME_OF_DAY_VALUES = ['day', 'night', 'golden-hour', 'blue-hour', 'indoor', 'unknown'] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const asEnum = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
+  typeof value === 'string' && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+
+const ImageObservationResponseSchema = z
+  .object({
+    subject: z
+      .object({
+        type: z.string().optional(),
+        description: z.string().optional(),
+        position: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    framing: z
+      .object({
+        shotType: z.string().optional(),
+        angle: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    lighting: z
+      .object({
+        quality: z.string().optional(),
+        timeOfDay: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    confidence: z.number().optional(),
+  })
+  .passthrough();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const TEMPLATE_PATH = join(__dirname, 'templates', 'image-observation-prompt.md');
+
+const DEFAULT_SYSTEM_PROMPT = [
+  'Analyze this image for video generation constraints.',
+  'Return JSON only (no markdown, no extra text).',
+  '',
+  '{',
+  '  "subject": {',
+  '    "type": "person|animal|object|scene|abstract",',
+  '    "description": "brief description (10 words max)",',
+  '    "position": "center|left|right|top|bottom|left-third|right-third"',
+  '  },',
+  '  "framing": {',
+  '    "shotType": "extreme-close-up|close-up|medium-close-up|medium|medium-wide|wide|extreme-wide",',
+  '    "angle": "eye-level|low-angle|high-angle|birds-eye|worms-eye|dutch|over-shoulder"',
+  '  },',
+  '  "lighting": {',
+  '    "quality": "natural|artificial|dramatic|flat|mixed",',
+  '    "timeOfDay": "day|night|golden-hour|blue-hour|indoor|unknown"',
+  '  },',
+  '  "confidence": 0.0-1.0',
+  '}',
+  '',
+  'Be precise. Only describe what you clearly see.',
+].join('\n');
+
 export class ImageObservationService {
+  private static cachedPrompt: string | null = null;
   private readonly ai: AIService;
   private readonly cache: ObservationCache;
   private readonly log = logger.child({ service: 'ImageObservationService' });
@@ -137,29 +230,7 @@ export class ImageObservationService {
    * Vision path: analyze with multimodal model
    */
   private async analyzeWithVision(image: string, imageHash: string): Promise<ImageObservation> {
-    const systemPrompt = [
-      'Analyze this image for video generation constraints.',
-      'Return JSON only (no markdown, no extra text).',
-      '',
-      '{',
-      '  "subject": {',
-      '    "type": "person|animal|object|scene|abstract",',
-      '    "description": "brief description (10 words max)",',
-      '    "position": "center|left|right|top|bottom|left-third|right-third"',
-      '  },',
-      '  "framing": {',
-      '    "shotType": "extreme-close-up|close-up|medium-close-up|medium|medium-wide|wide|extreme-wide",',
-      '    "angle": "eye-level|low-angle|high-angle|birds-eye|worms-eye|dutch|over-shoulder"',
-      '  },',
-      '  "lighting": {',
-      '    "quality": "natural|artificial|dramatic|flat|mixed",',
-      '    "timeOfDay": "day|night|golden-hour|blue-hour|indoor|unknown"',
-      '  },',
-      '  "confidence": 0.0-1.0',
-      '}',
-      '',
-      'Be precise. Only describe what you clearly see.',
-    ].join('\n');
+    const systemPrompt = await this.loadSystemPrompt();
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -313,12 +384,79 @@ export class ImageObservationService {
     return 'unknown';
   }
 
-  private parseJsonResponse(text: string): Record<string, any> {
+  private parseJsonResponse(text: string): ImageObservationResponse {
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     try {
-      return JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+      const validated = ImageObservationResponseSchema.safeParse(parsed);
+      if (!validated.success) {
+        this.log.warn('Invalid image observation JSON response', {
+          error: validated.error.message,
+        });
+        return {};
+      }
+      return this.coerceJsonResponse(validated.data);
     } catch {
       return {};
     }
+  }
+
+  private coerceJsonResponse(value: unknown): ImageObservationResponse {
+    if (!isRecord(value)) {
+      return {};
+    }
+
+    const subjectValue = isRecord(value.subject) ? value.subject : undefined;
+    const framingValue = isRecord(value.framing) ? value.framing : undefined;
+    const lightingValue = isRecord(value.lighting) ? value.lighting : undefined;
+
+    const subject: ImageObservationResponse['subject'] | undefined = subjectValue
+      ? {
+          type: asEnum(subjectValue.type, SUBJECT_TYPES),
+          description:
+            typeof subjectValue.description === 'string' ? subjectValue.description : undefined,
+          position: asEnum(subjectValue.position, SUBJECT_POSITIONS),
+        }
+      : undefined;
+
+    const framing: ImageObservationResponse['framing'] | undefined = framingValue
+      ? {
+          shotType: asEnum(framingValue.shotType, SHOT_TYPES),
+          angle: asEnum(framingValue.angle, CAMERA_ANGLES),
+        }
+      : undefined;
+
+    const lighting: ImageObservationResponse['lighting'] | undefined = lightingValue
+      ? {
+          quality: asEnum(lightingValue.quality, LIGHTING_QUALITIES),
+          timeOfDay: asEnum(lightingValue.timeOfDay, TIME_OF_DAY_VALUES),
+        }
+      : undefined;
+
+    return {
+      subject,
+      framing,
+      lighting,
+      confidence: typeof value.confidence === 'number' ? value.confidence : undefined,
+    };
+  }
+
+  private async loadSystemPrompt(): Promise<string> {
+    if (ImageObservationService.cachedPrompt) {
+      return ImageObservationService.cachedPrompt;
+    }
+
+    try {
+      const content = await fs.readFile(TEMPLATE_PATH, 'utf-8');
+      const trimmed = content.trim();
+      ImageObservationService.cachedPrompt = trimmed.length > 0 ? trimmed : DEFAULT_SYSTEM_PROMPT;
+    } catch (error) {
+      this.log.warn('Image observation prompt template missing; using fallback prompt', {
+        error: (error as Error).message,
+      });
+      ImageObservationService.cachedPrompt = DEFAULT_SYSTEM_PROMPT;
+    }
+
+    return ImageObservationService.cachedPrompt;
   }
 }

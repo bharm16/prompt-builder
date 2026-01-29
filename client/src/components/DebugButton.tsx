@@ -9,7 +9,7 @@ interface DebugButtonProps {
   displayedPrompt?: string;
   optimizedPrompt?: string;
   selectedMode?: string;
-  promptContext?: unknown;
+  promptContext?: Record<string, unknown> | null;
   style?: CSSProperties;
   className?: string;
 }
@@ -43,7 +43,7 @@ export default function DebugButton({
     ...(typeof displayedPrompt === 'string' ? { displayedPrompt } : {}),
     ...(typeof optimizedPrompt === 'string' ? { optimizedPrompt } : {}),
     ...(typeof selectedMode === 'string' ? { selectedMode } : {}),
-    ...(promptContext !== undefined ? { promptContext } : {}),
+    ...(promptContext != null ? { promptContext } : {}),
   };
 
   const { capturePromptData, exportToFile, isCapturing } = usePromptDebugger(state);

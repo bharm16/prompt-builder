@@ -35,6 +35,10 @@ export interface VideoGenerationOptions {
   seconds?: '4' | '8' | '12';
   size?: string;
   seed?: number;
+  /** Provider-native style reference image (if supported) */
+  style_reference?: string;
+  /** Optional weight/strength for provider-native style reference */
+  style_reference_weight?: number;
   /** Asset ID of a character - triggers automatic PuLID keyframe generation */
   characterAssetId?: string;
   /** If true (default), automatically generate keyframe for character assets */
@@ -65,7 +69,7 @@ export interface VideoProviderAvailability {
 export interface VideoModelAvailability {
   id: string;
   available: boolean;
-  reason?: 'unsupported_model' | 'missing_credentials';
+  reason?: 'unsupported_model' | 'missing_credentials' | 'unknown_availability';
   requiredKey?: string;
   resolvedModelId?: VideoModelId;
   capabilityModelId?: string;
@@ -83,4 +87,21 @@ export interface VideoAvailabilityReport {
   models: VideoModelAvailability[];
   availableModels: string[];
   availableCapabilityModels?: string[];
+}
+
+export interface VideoAvailabilitySnapshotModel {
+  id: VideoModelId;
+  available: boolean;
+  reason?: VideoModelAvailability['reason'];
+  requiredKey?: string;
+  supportsI2V?: boolean;
+  supportsImageInput?: boolean;
+  planTier?: string;
+  entitled?: boolean;
+}
+
+export interface VideoAvailabilitySnapshot {
+  models: VideoAvailabilitySnapshotModel[];
+  availableModelIds: VideoModelId[];
+  unknownModelIds: VideoModelId[];
 }

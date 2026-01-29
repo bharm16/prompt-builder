@@ -20,6 +20,7 @@ interface PromptHistoryActionsOptions {
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
+      keyframes?: PromptHistoryEntry['keyframes'];
       uuid?: string;
     }) => { uuid: string; id: string };
   };

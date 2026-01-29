@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
-import type { PromptVersionEntry, Toast } from '@hooks/types';
+import type { PromptKeyframe, PromptVersionEntry, Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -16,15 +16,14 @@ interface PromptData {
   input?: string;
   output?: string;
   targetModel?: string | null;
+  keyframes?: PromptKeyframe[] | null;
   highlightCache?: {
     signature?: string;
     updatedAt?: string;
-    [key: string]: unknown;
   } | null;
   brainstormContext?: string | Record<string, unknown> | null;
   timestamp?: string;
   versions?: PromptVersionEntry[];
-  [key: string]: unknown;
 }
 
 interface PromptOptimizer {
@@ -35,7 +34,6 @@ interface PromptOptimizer {
   displayedPrompt: string;
   setPreviewPrompt?: (prompt: string | null) => void;
   setPreviewAspectRatio?: (ratio: string | null) => void;
-  [key: string]: unknown;
 }
 
 interface UsePromptLoaderParams {
@@ -56,6 +54,7 @@ interface UsePromptLoaderParams {
   setShowResults: (show: boolean) => void;
   setSelectedModel: (model: string) => void;
   setPromptContext: (context: PromptContext | null) => void;
+  onLoadKeyframes?: (keyframes: PromptKeyframe[] | null | undefined) => void;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
 
@@ -81,6 +80,7 @@ export function usePromptLoader({
   setShowResults,
   setSelectedModel,
   setPromptContext,
+  onLoadKeyframes,
   skipLoadFromUrlRef,
 }: UsePromptLoaderParams): { isLoading: boolean } {
   const {
@@ -100,12 +100,14 @@ export function usePromptLoader({
 
   // Handle loading from URL parameter
   useEffect(() => {
+    let cancelled = false;
+
     const loadPromptFromUrl = async (): Promise<void> => {
       if (!uuid) {
         setIsLoading(false);
         return;
       }
-      
+
       if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
         setIsLoading(false);
         return;
@@ -119,6 +121,8 @@ export function usePromptLoader({
           | PromptData
           | null;
 
+        if (cancelled) return;
+
         if (promptData) {
           // Load prompt data
           setInputPrompt(promptData.input || '');
@@ -131,6 +135,7 @@ export function usePromptLoader({
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);
           setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
+          onLoadKeyframes?.(promptData.keyframes);
 
           // Restore highlight cache
           const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
@@ -147,6 +152,8 @@ export function usePromptLoader({
           });
           resetVersionEdits();
           resetEditStacks();
+
+          if (cancelled) return;
 
           // Restore brainstorm context if available
           if (promptData.brainstormContext) {
@@ -181,16 +188,23 @@ export function usePromptLoader({
           navigate('/', { replace: true });
         }
       } catch (error) {
+        if (cancelled) return;
         const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
         log.error('Error loading prompt from URL', err, { operation: 'loadPromptFromUrl', promptUuid: uuid });
         toast.error('Failed to load prompt');
         navigate('/', { replace: true });
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadPromptFromUrl();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     uuid,
     currentPromptUuid,
@@ -205,6 +219,7 @@ export function usePromptLoader({
     setShowResults,
     setSelectedModel,
     setPromptContext,
+    onLoadKeyframes,
     skipLoadFromUrlRef,
     setInputPrompt,
     setOptimizedPrompt,

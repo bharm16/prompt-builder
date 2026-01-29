@@ -11,6 +11,8 @@ export const VideoGenerationOptionsSchema = z.object({
   inputReference: z.string().optional(),
   seconds: z.enum(['4', '8', '12']).optional(),
   size: z.string().optional(),
+  style_reference: z.string().optional(),
+  style_reference_weight: z.number().optional(),
 }).partial();
 
 export const VideoJobRequestSchema = z.object({

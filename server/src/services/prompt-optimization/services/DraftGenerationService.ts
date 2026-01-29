@@ -1,4 +1,5 @@
 import { AIService, OptimizationMode, ShotPlan } from '../types';
+import type { CapabilityValues } from '@shared/capabilities';
 import OptimizationConfig from '@config/OptimizationConfig';
 import { logger } from '@infrastructure/Logger';
 
@@ -18,7 +19,7 @@ export class DraftGenerationService {
     prompt: string,
     mode: OptimizationMode,
     shotPlan: ShotPlan | null,
-    generationParams: Record<string, any> | null,
+    generationParams: CapabilityValues | null,
     signal?: AbortSignal,
     onChunk?: (delta: string) => void
   ): Promise<string> {
@@ -70,15 +71,19 @@ export class DraftGenerationService {
   private getDraftSystemPrompt(
     mode: OptimizationMode,
     shotPlan: ShotPlan | null = null,
-    generationParams: Record<string, any> | null = null
+    generationParams: CapabilityValues | null = null
   ): string {
     let constraints = '';
     if (generationParams) {
       const overrides = [];
-      if (generationParams.aspect_ratio) overrides.push(`Aspect Ratio: ${generationParams.aspect_ratio}`);
-      if (generationParams.duration_s) overrides.push(`Duration: ${generationParams.duration_s}s`);
-      if (generationParams.fps) overrides.push(`Frame Rate: ${generationParams.fps}fps`);
-      if (typeof generationParams.audio === 'boolean') overrides.push(`Audio: ${generationParams.audio ? 'Enabled' : 'Muted'}`);
+      const aspectRatio = generationParams.aspect_ratio;
+      if (typeof aspectRatio === 'string') overrides.push(`Aspect Ratio: ${aspectRatio}`);
+      const duration = generationParams.duration_s;
+      if (typeof duration === 'number') overrides.push(`Duration: ${duration}s`);
+      const fps = generationParams.fps;
+      if (typeof fps === 'number') overrides.push(`Frame Rate: ${fps}fps`);
+      const audio = generationParams.audio;
+      if (typeof audio === 'boolean') overrides.push(`Audio: ${audio ? 'Enabled' : 'Muted'}`);
       
       if (overrides.length > 0) {
         constraints = `
