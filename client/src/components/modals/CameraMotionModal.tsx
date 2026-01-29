@@ -10,6 +10,7 @@ import { CameraMotionPickerWithErrorBoundary } from '@/features/convergence/comp
 import { useCameraMotion } from '@/hooks/useCameraMotion';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 
 const log = logger.child('CameraMotionModal');
 const OPERATION = 'cameraMotionModal';
@@ -34,17 +35,6 @@ export function CameraMotionModal({
   const lastImageUrlRef = useRef<string | null>(null);
   const previousIsOpenRef = useRef(false);
   const hasLoggedEstimateRef = useRef(false);
-
-  const safeUrlHost = (url: unknown): string | null => {
-    if (typeof url !== 'string' || url.trim().length === 0) {
-      return null;
-    }
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return null;
-    }
-  };
 
   useEffect(() => {
     if (isOpen && !previousIsOpenRef.current) {

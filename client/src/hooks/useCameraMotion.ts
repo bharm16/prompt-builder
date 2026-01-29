@@ -7,6 +7,7 @@ import type { CameraPath } from '@/features/convergence/types';
 import { estimateDepth } from '@/api/motionApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 
 const log = logger.child('useCameraMotion');
 const OPERATION = 'estimateDepth';
@@ -81,17 +82,6 @@ function reducer(state: State, action: Action): State {
       return state;
   }
 }
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 export function useCameraMotion() {
   const [state, dispatch] = useReducer(reducer, initialState);

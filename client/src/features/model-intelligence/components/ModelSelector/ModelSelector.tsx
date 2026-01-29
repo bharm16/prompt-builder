@@ -9,8 +9,8 @@ export interface ModelSelectorOption {
 interface ModelSelectorProps {
   options: ModelSelectorOption[];
   selectedModel?: string;
-  recommendedId?: string;
-  efficientId?: string;
+  recommendedId?: string | undefined;
+  efficientId?: string | undefined;
   disabled?: boolean;
   onChange: (modelId: string) => void;
   className?: string;

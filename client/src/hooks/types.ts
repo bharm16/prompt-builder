@@ -69,6 +69,8 @@ export interface PromptKeyframe {
   url: string;
   source?: PromptKeyframeSource;
   assetId?: string;
+  storagePath?: string;
+  viewUrlExpiresAt?: string;
 }
 
 export interface PromptHistoryEntry {

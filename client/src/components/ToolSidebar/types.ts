@@ -17,12 +17,16 @@ export interface KeyframeTile {
   source: 'upload' | 'library' | 'generation' | 'asset';
   assetId?: string;
   sourcePrompt?: string;
+  storagePath?: string;
+  viewUrlExpiresAt?: string;
 }
 
 export interface StartImage {
   url: string;
   source: string;
   assetId?: string;
+  storagePath?: string;
+  viewUrlExpiresAt?: string;
 }
 
 export interface ToolSidebarProps {

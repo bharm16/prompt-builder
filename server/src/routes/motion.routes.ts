@@ -12,6 +12,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
 import { createDepthEstimationServiceForUser } from '@services/convergence/depth';
 import { getGCSStorageService } from '@services/convergence/storage';
+import { safeUrlHost } from '@utils/url';
 
 const log = logger.child({ routes: 'motion' });
 const OPERATION = 'estimateDepth';
@@ -204,16 +205,5 @@ export function createMotionRoutes(): Router {
 
   return router;
 }
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 export default createMotionRoutes;

@@ -5,6 +5,7 @@
  */
 
 import type { ConvergenceStep, DimensionType } from './types';
+import { RetryPolicy } from '@utils/RetryPolicy';
 
 // ============================================================================
 // Order Constants
@@ -190,24 +191,11 @@ export async function withRetry<T>(
   maxRetries: number = 2,
   baseDelay: number = 1000
 ): Promise<T> {
-  let lastError: Error;
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      return await operation();
-    } catch (e) {
-      lastError = e as Error;
-      if (i < maxRetries) {
-        await sleep(baseDelay * Math.pow(2, i)); // Exponential backoff
-      }
-    }
-  }
-  throw lastError!;
+  return RetryPolicy.execute(operation, {
+    maxRetries,
+    getDelayMs: (attempt) => baseDelay * Math.pow(2, attempt - 1),
+    logRetries: false,
+  });
 }
 
-/**
- * Sleep utility for delays
- * @param ms - Milliseconds to sleep
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+export { sleep } from '@utils/sleep';

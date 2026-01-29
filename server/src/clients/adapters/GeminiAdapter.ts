@@ -10,6 +10,7 @@
 import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
+import { createAbortController } from '@clients/utils/abortController';
 import CircuitBreaker from 'opossum';
 import { GeminiMessageBuilder } from './gemini/GeminiMessageBuilder.ts';
 import { GeminiResponseParser } from './gemini/GeminiResponseParser.ts';
@@ -17,7 +18,6 @@ import { z } from 'zod';
 import type {
   CompletionOptions,
   AdapterConfig,
-  AbortControllerResult,
   GeminiResponse,
   AIResponse,
 } from './gemini/types.ts';
@@ -84,7 +84,7 @@ export class GeminiAdapter {
   ): Promise<AIResponse> {
     const operation = 'complete';
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(
+    const { controller, timeoutId, abortedByTimeout } = createAbortController(
       timeout,
       options.signal
     );
@@ -169,7 +169,7 @@ export class GeminiAdapter {
     options: CompletionOptions & { onChunk: (chunk: string) => void }
   ): Promise<string> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = createAbortController(timeout, options.signal);
     let fullText = '';
 
     try {
@@ -233,7 +233,7 @@ export class GeminiAdapter {
 
     try {
       const parsed = JSON.parse(response.text);
-      const validated = z.record(z.unknown()).safeParse(parsed);
+      const validated = z.record(z.string(), z.unknown()).safeParse(parsed);
       if (!validated.success) {
         this.log.error('Failed to validate structured output', validated.error, { text: response.text });
         throw new Error('Invalid JSON response from Gemini');
@@ -362,28 +362,7 @@ export class GeminiAdapter {
     return errorObj;
   }
 
-  /**
-   * Create an abort controller with timeout support
-   */
-  private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
-    const controller = new AbortController();
-    const abortedByTimeout = { value: false };
-
-    const timeoutId = setTimeout(() => {
-      abortedByTimeout.value = true;
-      controller.abort();
-    }, timeout);
-
-    if (externalSignal) {
-      if (externalSignal.aborted) {
-        controller.abort();
-      } else {
-        externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
-      }
-    }
-
-    return { controller, timeoutId, abortedByTimeout };
-  }
+  
 }
 
 // Re-export types for consumers who import from adapter file

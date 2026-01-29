@@ -23,6 +23,7 @@ import { cn } from '@/utils/cn';
 import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
 import type { CameraPath } from '@/features/convergence/types';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 import { FrameAnimator } from '../shared/FrameAnimator';
 
 // ============================================================================
@@ -52,17 +53,6 @@ export const CAMERA_MOTION_DESCRIPTIONS: Record<string, string> = {
   arc_left: 'Camera orbits left around subject. Dynamic perspective shift.',
   arc_right: 'Camera orbits right around subject. Dynamic perspective shift.',
   reveal: 'Combined push and pan. Builds anticipation for dramatic reveal.',
-};
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
 };
 
 // ============================================================================

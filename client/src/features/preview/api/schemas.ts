@@ -95,7 +95,7 @@ export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
     creditsReserved: z.number().optional(),
     creditsDeducted: z.number().optional(),
     keyframeGenerated: z.boolean().optional(),
-    keyframeUrl: z.string().optional(),
+    keyframeUrl: z.string().nullish(),
     error: z.string().optional(),
     message: z.string().optional(),
   })

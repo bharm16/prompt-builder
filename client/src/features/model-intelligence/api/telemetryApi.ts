@@ -3,9 +3,9 @@ import { logger } from '@/services/LoggingService';
 
 export type ModelRecommendationEvent = {
   event: 'recommendation_viewed' | 'compare_opened' | 'model_selected' | 'generation_started';
-  recommendationId?: string;
-  promptId?: string;
-  recommendedModelId?: string;
+  recommendationId?: string | undefined;
+  promptId?: string | undefined;
+  recommendedModelId?: string | undefined;
   selectedModelId?: string;
   mode?: 't2v' | 'i2v';
   durationSeconds?: number;

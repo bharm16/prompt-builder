@@ -6,6 +6,47 @@ import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
+import { storageApi } from '@/api/storageApi';
+import {
+  extractStorageObjectPath,
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
+
+const OPTIMIZATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+const parseExpiresAtMs = (value?: string | null): number | null => {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  if (expiresAtMs !== null) {
+    return Date.now() >= expiresAtMs - OPTIMIZATION_REFRESH_BUFFER_MS;
+  }
+  return hasGcsSignedUrlParams(url);
+};
+
+const resolveOptimizationStartImageUrl = async (
+  url: string | null | undefined,
+  storagePath?: string | null,
+  viewUrlExpiresAt?: string | null
+): Promise<string | null> => {
+  if (!url || typeof url !== 'string') return url ?? null;
+  const resolvedStoragePath = storagePath || extractStorageObjectPath(url);
+  if (!resolvedStoragePath) return url;
+  const expiresAtMs = parseExpiresAtMs(viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
+  const needsRefresh = shouldRefreshStartImage(url, expiresAtMs);
+  if (!needsRefresh) return url;
+  try {
+    const response = (await storageApi.getViewUrl(resolvedStoragePath)) as { viewUrl: string };
+    return response?.viewUrl || url;
+  } catch {
+    return url;
+  }
+};
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -148,9 +189,18 @@ export function usePromptOptimization({
         setDisplayedPromptSilently('');
       }
 
+      const primaryKeyframe = Array.isArray(keyframes) ? keyframes[0] : null;
+      const resolvedStartImageUrl = options?.startImage
+        ? options.startImage
+        : await resolveOptimizationStartImageUrl(
+            startImageUrl ?? null,
+            primaryKeyframe?.storagePath ?? null,
+            primaryKeyframe?.viewUrlExpiresAt ?? null
+          );
+
       const effectiveOptions: OptimizationOptions = {
         ...(options ?? {}),
-        ...(options?.startImage ? {} : startImageUrl ? { startImage: startImageUrl } : {}),
+        ...(options?.startImage ? {} : resolvedStartImageUrl ? { startImage: resolvedStartImageUrl } : {}),
         ...(options?.sourcePrompt ? {} : sourcePrompt ? { sourcePrompt } : {}),
         ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
       };

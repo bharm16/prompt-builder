@@ -20,7 +20,9 @@ const normalizeForCompare = (
     .filter((frame) => typeof frame?.url === 'string' && frame.url.trim())
     .slice(0, MAX_KEYFRAMES)
     .map((frame) => ({
-      url: frame.url,
+      url: typeof frame.storagePath === 'string' && frame.storagePath.trim().length > 0
+        ? frame.storagePath
+        : frame.url,
       source: frame.source ?? '',
       assetId: frame.assetId ?? null,
     }));
@@ -37,6 +39,8 @@ export const serializeKeyframes = (
     url: frame.url,
     source: frame.source,
     ...(frame.assetId ? { assetId: frame.assetId } : {}),
+    ...(frame.storagePath ? { storagePath: frame.storagePath } : {}),
+    ...(frame.viewUrlExpiresAt ? { viewUrlExpiresAt: frame.viewUrlExpiresAt } : {}),
   }));
 };
 
@@ -54,6 +58,8 @@ export const hydrateKeyframes = (
       url: frame.url,
       source: frame.source ?? 'upload',
       ...(frame.assetId ? { assetId: frame.assetId } : {}),
+      ...(frame.storagePath ? { storagePath: frame.storagePath } : {}),
+      ...(frame.viewUrlExpiresAt ? { viewUrlExpiresAt: frame.viewUrlExpiresAt } : {}),
     }));
 };
 

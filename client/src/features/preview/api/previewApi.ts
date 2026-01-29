@@ -9,6 +9,7 @@ import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 import {
   GeneratePreviewResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
@@ -20,17 +21,6 @@ import {
 
 const log = logger.child('previewApi');
 const VIDEO_OPERATION = 'generateVideoPreview';
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -295,7 +285,7 @@ export interface GenerateVideoResponse {
   creditsReserved?: number;
   creditsDeducted?: number;
   keyframeGenerated?: boolean;
-  keyframeUrl?: string;
+  keyframeUrl?: string | null;
   error?: string;
   message?: string;
 }

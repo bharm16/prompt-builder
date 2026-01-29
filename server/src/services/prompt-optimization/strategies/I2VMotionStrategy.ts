@@ -61,6 +61,16 @@ export class I2VMotionStrategy {
   }
 
   private async parsePrompt(prompt: string): Promise<ParsedPrompt> {
+    const normalizeNullableString = (value: unknown): string | null => {
+      if (value === null || typeof value === 'undefined') return null;
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const lowered = trimmed.toLowerCase();
+      if (['null', 'none', 'n/a', 'na', 'unknown'].includes(lowered)) return null;
+      return trimmed;
+    };
+
     const systemPrompt = `You separate video prompts into motion vs visual components.
 
 Motion = actions, movements, camera moves, pacing, emotional changes
@@ -98,17 +108,17 @@ Return JSON:
 
       return {
         motion: {
-          subjectAction: parsed.motion?.subjectAction || null,
-          cameraMovement: parsed.motion?.cameraMovement || null,
-          pacing: parsed.motion?.pacing || null,
-          emotional: parsed.motion?.emotional || null,
+          subjectAction: normalizeNullableString(parsed.motion?.subjectAction),
+          cameraMovement: normalizeNullableString(parsed.motion?.cameraMovement),
+          pacing: normalizeNullableString(parsed.motion?.pacing),
+          emotional: normalizeNullableString(parsed.motion?.emotional),
         },
         visual: {
-          subjectDescription: parsed.visual?.subjectDescription || null,
-          lighting: parsed.visual?.lighting || null,
-          environment: parsed.visual?.environment || null,
-          shotType: parsed.visual?.shotType || null,
-          timeOfDay: parsed.visual?.timeOfDay || null,
+          subjectDescription: normalizeNullableString(parsed.visual?.subjectDescription),
+          lighting: normalizeNullableString(parsed.visual?.lighting),
+          environment: normalizeNullableString(parsed.visual?.environment),
+          shotType: normalizeNullableString(parsed.visual?.shotType),
+          timeOfDay: normalizeNullableString(parsed.visual?.timeOfDay),
         },
         raw: prompt,
         parseFailed: false,

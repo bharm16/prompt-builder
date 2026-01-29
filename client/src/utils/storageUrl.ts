@@ -60,3 +60,42 @@ export function extractVideoContentAssetId(rawUrl: string): string | null {
   return assetId || null;
 }
 
+export function hasGcsSignedUrlParams(rawUrl: string): boolean {
+  const url = safeParseUrl(rawUrl);
+  if (!url) return false;
+  return (
+    url.searchParams.has('X-Goog-Algorithm') ||
+    url.searchParams.has('X-Goog-Signature') ||
+    url.searchParams.has('X-Goog-Expires')
+  );
+}
+
+export function parseGcsSignedUrlExpiryMs(rawUrl: string): number | null {
+  const url = safeParseUrl(rawUrl);
+  if (!url) return null;
+  const date = url.searchParams.get('X-Goog-Date');
+  const expires = url.searchParams.get('X-Goog-Expires');
+  if (!date || !expires) return null;
+  if (!/^\d{8}T\d{6}Z$/.test(date)) return null;
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(4, 6));
+  const day = Number(date.slice(6, 8));
+  const hour = Number(date.slice(9, 11));
+  const minute = Number(date.slice(11, 13));
+  const second = Number(date.slice(13, 15));
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+  const expiresSeconds = Number.parseInt(expires, 10);
+  if (!Number.isFinite(expiresSeconds)) return null;
+  const baseMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  if (!Number.isFinite(baseMs)) return null;
+  return baseMs + expiresSeconds * 1000;
+}

@@ -1,9 +1,21 @@
 import { logger } from '@infrastructure/Logger';
+import { sleep } from './sleep';
 
 export interface RetryOptions {
   maxRetries?: number;
   shouldRetry?: (error: Error, attempt: number) => boolean;
   onRetry?: (error: Error, attempt: number) => void;
+  logRetries?: boolean;
+  /**
+   * Fixed delay between retries in milliseconds.
+   * Ignored if getDelayMs is provided.
+   */
+  delayMs?: number;
+  /**
+   * Dynamic delay between retries in milliseconds.
+   * The attempt parameter is 1-based (first retry is attempt=1).
+   */
+  getDelayMs?: (attempt: number) => number;
 }
 
 /**
@@ -29,6 +41,9 @@ export class RetryPolicy {
       maxRetries = 2,
       shouldRetry = () => true,
       onRetry,
+      logRetries = true,
+      delayMs,
+      getDelayMs,
     } = options;
 
     let lastError: Error | null = null;
@@ -53,25 +68,34 @@ export class RetryPolicy {
           onRetry(errorObj, attempt);
         }
 
-        logger.warn('Operation failed, retrying', {
-          attempt,
-          maxRetries: maxRetries + 1,
-          error: errorObj.message,
-          willRetry: attempt <= maxRetries,
-        });
+        if (logRetries) {
+          logger.warn('Operation failed, retrying', {
+            attempt,
+            maxRetries: maxRetries + 1,
+            error: errorObj.message,
+            willRetry: attempt <= maxRetries,
+          });
+        }
 
         // If this was the last attempt, break to throw error
         if (attempt > maxRetries) {
           break;
         }
+
+        const computedDelay = getDelayMs ? getDelayMs(attempt) : delayMs;
+        if (typeof computedDelay === 'number' && computedDelay > 0) {
+          await sleep(computedDelay);
+        }
       }
     }
 
     // All retries exhausted
-    logger.error('All retry attempts exhausted', lastError ?? undefined, {
-      attempts: maxRetries + 1,
-      lastErrorMessage: lastError?.message,
-    });
+    if (logRetries) {
+      logger.error('All retry attempts exhausted', lastError ?? undefined, {
+        attempts: maxRetries + 1,
+        lastErrorMessage: lastError?.message,
+      });
+    }
 
     if (!lastError) {
       throw new Error('Unknown error during retry execution');
@@ -98,8 +122,6 @@ export class RetryPolicy {
     };
   }
 }
-
-
 
 
 

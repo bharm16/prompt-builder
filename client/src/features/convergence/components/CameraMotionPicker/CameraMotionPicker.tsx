@@ -25,6 +25,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 
 import { Video } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
+import { safeUrlHost } from '@/utils/url';
 import type { CameraMotionCategory, CameraPath } from '@/features/convergence/types';
 import { CameraMotionOption } from './CameraMotionOption';
 import { CameraMotionErrorBoundary } from './CameraMotionErrorBoundary';
@@ -43,17 +44,6 @@ const CATEGORY_LABELS: Record<CameraMotionCategory | 'all', string> = {
   crane: 'Crane',
   orbital: 'Orbital',
   compound: 'Compound',
-};
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
 };
 
 // ============================================================================

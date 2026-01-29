@@ -15,6 +15,7 @@
 import { z, type ZodSchema } from 'zod';
 import { logger } from '@infrastructure/Logger';
 import { resolveFalApiKey } from '@utils/falApiKey';
+import { sleep } from '@utils/sleep';
 
 export interface FalPulidKeyframeOptions {
   prompt: string;
@@ -298,7 +299,7 @@ export class FalPulidKeyframeProvider {
         }
       }
 
-      await this.sleep(pollInterval);
+      await sleep(pollInterval);
     }
 
     throw new Error('Fal generation timed out');
@@ -330,9 +331,6 @@ export class FalPulidKeyframeProvider {
     return null;
   }
 
-  private async sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 }
 
 export default FalPulidKeyframeProvider;

@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { API_CONFIG } from '@/config/api.config';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 import type {
   CameraMotionCategory,
   CameraPath,
@@ -93,17 +94,6 @@ const DEFAULT_DISPLACEMENT_SCALE = 0.3;
 const log = logger.child('cameraMotionRenderer');
 const OPERATION = 'renderCameraMotionFrames';
 const proxiedHostsLogged = new Set<string>();
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 // ============================================================================
 // Shader Code

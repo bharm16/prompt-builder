@@ -3,6 +3,7 @@ import { SignedUrlService } from './services/SignedUrlService';
 import { UploadService } from './services/UploadService';
 import { RetentionService } from './services/RetentionService';
 import { ensureGcsCredentials } from '@utils/gcsCredentials';
+import { safeUrlHost } from '@utils/url';
 import { logger } from '@infrastructure/Logger';
 import {
   STORAGE_CONFIG,
@@ -29,14 +30,6 @@ function isAllowedContentType(type: StorageType, contentType: string): boolean {
   const allowed = STORAGE_CONFIG.allowedContentTypes[key] || [];
   const normalized = normalizeContentType(contentType);
   return allowed.some((allowedType) => normalized.startsWith(allowedType));
-}
-
-function safeUrlHost(value: string): string | null {
-  try {
-    return new URL(value).hostname;
-  } catch {
-    return null;
-  }
 }
 
 type SuccessLogLevel = 'debug' | 'info';

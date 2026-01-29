@@ -16,6 +16,7 @@ import { fal } from '@fal-ai/client';
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { isFalKeyPlaceholder, resolveFalApiKey } from '@utils/falApiKey';
+import { safeUrlHost } from '@utils/url';
 import { withRetry } from '../helpers';
 import type { StorageService } from '../storage';
 import type { DepthEstimationProvider, FalDepthResponse } from './types';
@@ -30,9 +31,9 @@ import type { DepthEstimationProvider, FalDepthResponse } from './types';
 const FAL_DEPTH_MODEL = 'fal-ai/image-preprocessors/depth-anything/v2' as const;
 
 /**
- * Replicate fallback model identifier (Depth Anything v1)
+ * Replicate fallback model identifier (Depth Anything v2)
  */
-const REPLICATE_DEPTH_MODEL_FALLBACK = 'cjwbw/depth-anything' as const;
+const REPLICATE_DEPTH_MODEL_FALLBACK = 'chenxwh/depth-anything-v2' as const;
 
 /**
  * Configuration for depth estimation
@@ -113,17 +114,6 @@ let warmerInitialized = false;
 let warmIntervalId: ReturnType<typeof setInterval> | null = null;
 let warmupInFlight: Promise<void> | null = null;
 let lastWarmupAt = 0;
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
   if (warmupInFlight) {
@@ -498,6 +488,26 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
     // Object with url property or method
     if (output && typeof output === 'object') {
       const outputRecord = output as Record<string, unknown>;
+
+      // Depth Anything v2 returns grey/color depth URLs as fields
+      const depthKeys = ['grey_depth', 'gray_depth', 'color_depth', 'colour_depth'];
+      for (const key of depthKeys) {
+        if (!(key in outputRecord)) continue;
+        const value = outputRecord[key];
+        if (typeof value === 'string' && value.startsWith('http')) {
+          return value;
+        }
+        if (value && typeof value === 'object') {
+          const valueRecord = value as Record<string, unknown>;
+          if ('url' in valueRecord && typeof valueRecord.url === 'function') {
+            const url = (valueRecord.url as () => unknown)();
+            return typeof url === 'string' ? url : String(url);
+          }
+          if ('url' in valueRecord && typeof valueRecord.url === 'string') {
+            return valueRecord.url;
+          }
+        }
+      }
 
       // FileOutput with url() method
       if ('url' in outputRecord && typeof outputRecord.url === 'function') {

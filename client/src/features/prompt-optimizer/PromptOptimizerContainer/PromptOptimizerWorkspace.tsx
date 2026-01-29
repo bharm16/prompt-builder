@@ -631,7 +631,12 @@ function PromptOptimizerContent({
         if (!imageUrl) {
           throw new Error('Upload did not return an image URL');
         }
-        addKeyframe({ url: imageUrl, source: 'upload' });
+        addKeyframe({
+          url: imageUrl,
+          source: 'upload',
+          ...(response.data.storagePath ? { storagePath: response.data.storagePath } : {}),
+          ...(response.data.viewUrlExpiresAt ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt } : {}),
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Upload failed');
       }

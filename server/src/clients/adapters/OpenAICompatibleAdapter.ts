@@ -21,6 +21,8 @@
 
 import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
+import { createAbortController } from '@clients/utils/abortController';
+import { sleep } from '@utils/sleep';
 import type { ILogger } from '@interfaces/ILogger';
 import { validateLLMResponse } from './ResponseValidator.js';
 import { OpenAiMessageBuilder } from './openai/OpenAiMessageBuilder.ts';
@@ -30,7 +32,6 @@ import { OpenAiStreamParser } from './openai/OpenAiStreamParser.ts';
 import type {
   CompletionOptions,
   AdapterConfig,
-  AbortControllerResult,
   OpenAIResponseData,
   AIResponse,
 } from './openai/types.ts';
@@ -171,7 +172,7 @@ export class OpenAICompatibleAdapter {
             error: error.message,
           });
           attempt++;
-          await this._sleep(Math.pow(2, attempt) * 500);
+          await sleep(Math.pow(2, attempt) * 500);
           continue;
         }
 
@@ -197,7 +198,7 @@ export class OpenAICompatibleAdapter {
     options: CompletionOptions
   ): Promise<AIResponse> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = createAbortController(timeout, options.signal);
 
     try {
       const payload = this.requestBuilder.buildPayload(systemPrompt, options, false);
@@ -269,7 +270,7 @@ export class OpenAICompatibleAdapter {
     options: CompletionOptions & { onChunk: (chunk: string) => void }
   ): Promise<string> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = createAbortController(timeout, options.signal);
 
     try {
       const payload = this.requestBuilder.buildPayload(systemPrompt, options, true);
@@ -338,27 +339,4 @@ export class OpenAICompatibleAdapter {
     }
   }
 
-  private _sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
-    const controller = new AbortController();
-    const abortedByTimeout = { value: false };
-
-    const timeoutId = setTimeout(() => {
-      abortedByTimeout.value = true;
-      controller.abort();
-    }, timeout);
-
-    if (externalSignal) {
-      if (externalSignal.aborted) {
-        controller.abort();
-      } else {
-        externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
-      }
-    }
-
-    return { controller, timeoutId, abortedByTimeout };
-  }
 }

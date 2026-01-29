@@ -428,16 +428,25 @@ export async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 
   if (shouldUseGlinerWorker()) {
     if (!isGlinerReady()) {
-      if (!glinerWorkerInitPromise && !glinerWorkerInitFailed) {
-        void initializeGlinerWorker();
+      if (glinerWorkerInitFailed) {
+        log.warn('GLiNER worker init previously failed, skipping open-vocabulary extraction', {
+          operation: 'extractOpenVocabulary',
+          textLength: text.length,
+        });
+        return [];
       }
-      log.warn('GLiNER worker not ready, skipping open-vocabulary extraction', {
-        operation: 'extractOpenVocabulary',
-        glinerReady: isGlinerReady(),
-        glinerInitFailed: glinerWorkerInitFailed,
-        textLength: text.length,
-      });
-      return [];
+
+      const initResult = await (glinerWorkerInitPromise ?? initializeGlinerWorker());
+
+      if (!initResult || !isGlinerReady()) {
+        log.warn('GLiNER worker not ready after awaiting init, skipping open-vocabulary extraction', {
+          operation: 'extractOpenVocabulary',
+          glinerReady: isGlinerReady(),
+          glinerInitFailed: glinerWorkerInitFailed,
+          textLength: text.length,
+        });
+        return [];
+      }
     }
 
     try {
@@ -476,16 +485,25 @@ export async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
   }
 
   if (!glinerInitialized || glinerInitFailed || !gliner) {
-    if (!glinerInitPromise && !glinerInitFailed) {
-      void initializeGliner();
+    if (glinerInitFailed) {
+      log.warn('GLiNER init previously failed, skipping open-vocabulary extraction', {
+        operation: 'extractOpenVocabulary',
+        textLength: text.length,
+      });
+      return [];
     }
-    log.warn('GLiNER not ready, skipping open-vocabulary extraction', {
-      operation: 'extractOpenVocabulary',
-      glinerReady: glinerInitialized && !glinerInitFailed,
-      glinerInitFailed,
-      textLength: text.length,
-    });
-    return [];
+
+    const initResult = await (glinerInitPromise ?? initializeGliner());
+
+    if (!initResult || !glinerInitialized || !gliner) {
+      log.warn('GLiNER not ready after awaiting init, skipping open-vocabulary extraction', {
+        operation: 'extractOpenVocabulary',
+        glinerReady: glinerInitialized && !glinerInitFailed,
+        glinerInitFailed,
+        textLength: text.length,
+      });
+      return [];
+    }
   }
 
   try {

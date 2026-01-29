@@ -7,6 +7,7 @@
  */
 
 import type { AIResponse } from '@interfaces/IAIClient';
+export type { AbortControllerResult } from '@clients/utils/abortController';
 
 /**
  * Options for completion requests
@@ -35,15 +36,6 @@ export interface AdapterConfig {
   defaultModel: string;
   defaultTimeout?: number;
   providerName?: string;
-}
-
-/**
- * Result from creating an abort controller with timeout
- */
-export interface AbortControllerResult {
-  controller: AbortController;
-  timeoutId: NodeJS.Timeout;
-  abortedByTimeout: { value: boolean };
 }
 
 /**

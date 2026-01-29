@@ -7,11 +7,34 @@ import {
   type I2VContext,
   type ImageObservation,
 } from '../types/i2v';
+import { storageApi } from '@/api/storageApi';
+import {
+  extractStorageObjectPath,
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
+
+const OBSERVATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+const parseExpiresAtMs = (value?: string | null): number | null => {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const shouldRefreshObservationUrl = (url: string | null, expiresAtMs: number | null): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  if (expiresAtMs !== null) {
+    return Date.now() >= expiresAtMs - OBSERVATION_REFRESH_BUFFER_MS;
+  }
+  return hasGcsSignedUrlParams(url);
+};
 
 export function useI2VContext(): I2VContext {
   const { keyframes, cameraMotion } = useGenerationControlsContext();
   const startImageUrl = keyframes[0]?.url ?? null;
   const startImageSourcePrompt = keyframes[0]?.sourcePrompt ?? null;
+  const startImageViewUrlExpiresAt = keyframes[0]?.viewUrlExpiresAt ?? null;
   const [constraintMode, setConstraintModeState] = useState<I2VConstraintMode>('strict');
   const [observation, setObservation] = useState<ImageObservation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -34,6 +57,27 @@ export function useI2VContext(): I2VContext {
     setConstraintModeState(mode);
   }, []);
 
+  const resolveObservationUrl = useCallback(
+    async (url: string | null): Promise<string | null> => {
+      if (!url || typeof url !== 'string') return url;
+      const storagePath = extractStorageObjectPath(url);
+      if (!storagePath) return url;
+
+      const expiresAtMs =
+        parseExpiresAtMs(startImageViewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
+      const needsRefresh = shouldRefreshObservationUrl(url, expiresAtMs);
+      if (!needsRefresh) return url;
+
+      try {
+        const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string };
+        return response?.viewUrl || url;
+      } catch {
+        return url;
+      }
+    },
+    [startImageViewUrlExpiresAt]
+  );
+
   const refreshObservation = useCallback(async () => {
     if (!startImageUrl) {
       return;
@@ -47,9 +91,10 @@ export function useI2VContext(): I2VContext {
     setError(null);
 
     try {
+      const resolvedUrl = await resolveObservationUrl(startImageUrl);
       const result = await observeImage(
         {
-          image: startImageUrl,
+          image: resolvedUrl || startImageUrl,
           ...(startImageSourcePrompt ? { sourcePrompt: startImageSourcePrompt } : {}),
         },
         { signal: controller.signal }
@@ -74,7 +119,7 @@ export function useI2VContext(): I2VContext {
         setIsAnalyzing(false);
       }
     }
-  }, [startImageSourcePrompt, startImageUrl]);
+  }, [resolveObservationUrl, startImageSourcePrompt, startImageUrl]);
 
   useEffect(() => {
     if (!startImageUrl) {

@@ -6,6 +6,13 @@ import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, wait
 import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { storageApi } from '@/api/storageApi';
+import { safeUrlHost } from '@/utils/url';
+import {
+  extractStorageObjectPath,
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
 
 interface UseGenerationActionsOptions {
   aspectRatio?: string | undefined;
@@ -49,14 +56,70 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   } as const;
 };
 
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
+const START_IMAGE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+const parseExpiresAtMs = (value?: string | null): number | null => {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  if (expiresAtMs !== null) {
+    return Date.now() >= expiresAtMs - START_IMAGE_REFRESH_BUFFER_MS;
   }
+  return hasGcsSignedUrlParams(url);
+};
+
+const resolveStartImageUrl = async (
+  startImage: GenerationParams['startImage']
+): Promise<GenerationParams['startImage']> => {
+  if (!startImage || typeof startImage.url !== 'string') {
+    return startImage;
+  }
+
+  const storagePath = startImage.storagePath || extractStorageObjectPath(startImage.url);
+  if (!storagePath) {
+    return startImage;
+  }
+
+  const expiresAtMs =
+    parseExpiresAtMs(startImage.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(startImage.url);
+  const needsRefresh = shouldRefreshStartImage(startImage.url, expiresAtMs);
+  if (!needsRefresh) {
+    return {
+      ...startImage,
+      storagePath,
+    };
+  }
+
   try {
-    return new URL(url).hostname;
+    const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string; expiresAt?: string };
+    if (!response?.viewUrl) return { ...startImage, storagePath };
+    return {
+      ...startImage,
+      url: response.viewUrl,
+      storagePath,
+      ...(response.expiresAt ? { viewUrlExpiresAt: response.expiresAt } : {}),
+    };
   } catch {
-    return null;
+    return { ...startImage, storagePath };
+  }
+};
+
+const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Promise<string | null> => {
+  if (!seedImageUrl || typeof seedImageUrl !== 'string') return seedImageUrl ?? null;
+  const storagePath = extractStorageObjectPath(seedImageUrl);
+  if (!storagePath) return seedImageUrl;
+  const expiresAtMs = parseGcsSignedUrlExpiryMs(seedImageUrl);
+  const needsRefresh = shouldRefreshStartImage(seedImageUrl, expiresAtMs);
+  if (!needsRefresh) return seedImageUrl;
+  try {
+    const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string };
+    return response?.viewUrl || seedImageUrl;
+  } catch {
+    return seedImageUrl;
   }
 };
 
@@ -308,9 +371,10 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
+        const resolvedSeedImageUrl = await resolveSeedImageUrl(seedImageUrl ?? null);
         const response = await generateStoryboardPreview(prompt, {
           ...(resolved.aspectRatio ? { aspectRatio: resolved.aspectRatio } : {}),
-          ...(seedImageUrl ? { seedImageUrl } : {}),
+          ...(resolvedSeedImageUrl ? { seedImageUrl: resolvedSeedImageUrl } : {}),
         });
         if (controller.signal.aborted) return;
         if (!response.success || !response.data?.imageUrls?.length) {
@@ -394,17 +458,25 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
+        const resolvedStartImage = !isCharacterAsset
+          ? await resolveStartImageUrl(resolved.startImage ?? null)
+          : resolved.startImage ?? null;
+        const requestStartImageUrlHost =
+          !isCharacterAsset && resolvedStartImage?.url
+            ? safeUrlHost(resolvedStartImage.url)
+            : startImageUrlHost;
+
         log.info('Render request dispatched', {
           generationId: generation.id,
           model,
           aspectRatio: resolved.aspectRatio ?? null,
           isCharacterAsset,
-          startImageUrlHost,
+          startImageUrlHost: requestStartImageUrlHost,
           ...motionMeta,
         });
         const response = await generateVideoPreview(prompt, resolved.aspectRatio ?? undefined, model, {
-          ...(!isCharacterAsset && resolved.startImage?.url
-            ? { startImage: resolved.startImage.url }
+          ...(!isCharacterAsset && resolvedStartImage?.url
+            ? { startImage: resolvedStartImage.url }
             : {}),
           ...(isCharacterAsset ? { characterAssetId: resolved.startImage?.assetId } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),

@@ -35,6 +35,8 @@ export interface GenerationParams {
     url: string;
     assetId?: string | undefined;
     source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation' | undefined;
+    storagePath?: string | undefined;
+    viewUrlExpiresAt?: string | undefined;
   } | null | undefined;
 }
 

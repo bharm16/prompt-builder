@@ -7,6 +7,7 @@
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
+import { sleep as sleepForMs } from '@utils/sleep';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 import type { ImagePreviewProvider, ImagePreviewRequest, ImagePreviewResult } from './types';
 import { VideoToImagePromptTransformer } from './VideoToImagePromptTransformer';
@@ -187,7 +188,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
           throw predictionError;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await this.sleep(pollInterval);
         currentPrediction = await this.replicate.predictions.get(prediction.id);
 
         this.log.debug('Polling prediction', {
@@ -369,7 +370,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
     if (!Number.isFinite(ms) || ms <= 0) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await sleepForMs(ms);
   }
 
   private parseReplicateErrorDetail(message: string, fallback: string): string {

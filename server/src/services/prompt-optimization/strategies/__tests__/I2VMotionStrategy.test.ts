@@ -103,4 +103,36 @@ describe('I2VMotionStrategy', () => {
     expect(lower).toContain('kitchen');
     expect(lower).toContain('pan left');
   });
+
+  it('drops string "null" values from parsed motion fields', async () => {
+    const ai = createAIStub({
+      motion: {
+        subjectAction: 'man',
+        cameraMovement: 'null',
+        pacing: 'fast',
+        emotional: 'null',
+      },
+      visual: {
+        subjectDescription: 'null',
+        lighting: 'null',
+        environment: 'null',
+        shotType: 'null',
+        timeOfDay: 'null',
+      },
+    });
+
+    const strategy = new I2VMotionStrategy(ai);
+    const result = await strategy.optimize({
+      prompt: 'man running away from camera',
+      observation: baseObservation,
+      mode: 'strict',
+      cameraMotionLocked: false,
+    });
+
+    expect(result.prompt).toContain('man');
+    expect(result.prompt).toContain('dynamic energetic motion');
+    expect(result.prompt.toLowerCase()).not.toContain('null');
+    expect(result.extractedMotion.cameraMovement).toBeNull();
+    expect(result.extractedMotion.pacing).toBe('fast');
+  });
 });

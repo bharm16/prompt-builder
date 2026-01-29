@@ -65,6 +65,8 @@ export function useKeyframeWorkflow({
           url: startImageOverride.url,
           source: startImageOverride.source,
           ...(startImageOverride.assetId ? { assetId: startImageOverride.assetId } : {}),
+          ...(startImageOverride.storagePath ? { storagePath: startImageOverride.storagePath } : {}),
+          ...(startImageOverride.viewUrlExpiresAt ? { viewUrlExpiresAt: startImageOverride.viewUrlExpiresAt } : {}),
         };
       } else if (selectedKeyframe) {
         startImage = {
@@ -107,6 +109,8 @@ export function useKeyframeWorkflow({
           url: primaryKeyframe.url,
           source: primaryKeyframe.source,
           ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
+          ...(primaryKeyframe.storagePath ? { storagePath: primaryKeyframe.storagePath } : {}),
+          ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
         });
         return;
       }
