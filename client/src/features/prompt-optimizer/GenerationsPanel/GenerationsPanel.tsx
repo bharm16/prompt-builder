@@ -186,9 +186,23 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     (model: DraftModel) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
-      generateDraft(model, prompt, { promptVersionId: versionId });
+      const primaryKeyframe = keyframes[0];
+      const startImage = primaryKeyframe
+        ? {
+            url: primaryKeyframe.url,
+            source: primaryKeyframe.source,
+            ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
+            ...(primaryKeyframe.storagePath ? { storagePath: primaryKeyframe.storagePath } : {}),
+            ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
+          }
+        : null;
+
+      generateDraft(model, prompt, {
+        promptVersionId: versionId,
+        ...(startImage ? { startImage } : {}),
+      });
     },
-    [generateDraft, onCreateVersionIfNeeded, prompt]
+    [generateDraft, keyframes, onCreateVersionIfNeeded, prompt]
   );
 
   const {

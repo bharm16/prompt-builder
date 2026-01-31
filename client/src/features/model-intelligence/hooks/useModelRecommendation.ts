@@ -26,6 +26,7 @@ export function useModelRecommendation(
   {
     mode = 't2v',
     durationSeconds,
+    spans,
     debounceMs = 500,
     enabled = true,
   }: UseModelRecommendationOptions = {}

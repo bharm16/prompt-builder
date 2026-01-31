@@ -204,6 +204,7 @@ export function useGenerationActions(
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
+      const startImageUrlHost = resolved.startImage?.url ? safeUrlHost(resolved.startImage.url) : null;
 
       log.info('Draft generation started', {
         generationId: generation.id,
@@ -211,6 +212,8 @@ export function useGenerationActions(
         model,
         promptLength: prompt.trim().length,
         aspectRatio: resolved.aspectRatio ?? null,
+        hasStartImage: Boolean(resolved.startImage),
+        startImageUrlHost,
         ...motionMeta,
       });
 
@@ -267,14 +270,25 @@ export function useGenerationActions(
         }
         if (controller.signal.aborted) return;
 
+        const resolvedStartImage = resolved.startImage
+          ? await resolveStartImageUrl(resolved.startImage)
+          : null;
+        if (controller.signal.aborted) return;
+        const requestStartImageUrlHost = resolvedStartImage?.url
+          ? safeUrlHost(resolvedStartImage.url)
+          : startImageUrlHost;
+
         log.info('Video draft request dispatched', {
           generationId: generation.id,
           model,
           promptLength: wanPrompt.length,
           aspectRatio: resolved.aspectRatio ?? null,
+          hasStartImage: Boolean(resolvedStartImage?.url),
+          startImageUrlHost: requestStartImageUrlHost,
           ...motionMeta,
         });
         const response = await generateVideoPreview(wanPrompt, resolved.aspectRatio ?? undefined, model, {
+          ...(resolvedStartImage?.url ? { startImage: resolvedStartImage.url } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
         });
         if (controller.signal.aborted) return;
