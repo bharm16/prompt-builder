@@ -15,8 +15,8 @@ interface GenerationFooterProps {
   tier: VideoTier;
   renderModelOptions: ModelOption[];
   renderModelId: string;
-  recommendedModelId?: string;
-  efficientModelId?: string;
+  recommendedModelId?: string | undefined;
+  efficientModelId?: string | undefined;
   onModelChange: (model: string) => void;
   optimizationActions: React.ReactNode;
   onStoryboard: () => void;

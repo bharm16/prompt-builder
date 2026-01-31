@@ -5,19 +5,15 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { IconProps } from '@promptstudio/system/components/ui';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry, User } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
 
-export type { PromptHistoryEntry };
+export type { PromptHistoryEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
-
-export interface User {
-  uid: string;
-}
 
 export interface Mode {
   id: string;

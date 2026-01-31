@@ -1,26 +1,68 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@features/*": ["src/features/*"],
-      "@hooks/*": ["src/hooks/*"],
-      "@types/*": ["src/types/*"],
-      "@utils/*": ["src/utils/*"],
-      "@config/*": ["src/config/*"],
-      "@services/*": ["src/services/*"],
-      "@styles/*": ["src/styles/*"],
-      "@lib/*": ["src/lib/*"],
-      "@schemas/*": ["src/schemas/*"],
-      "@repositories/*": ["src/repositories/*"],
-      "@shared/*": ["../shared/*"],
-      "#shared/*": ["../shared/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@components/*": [
+        "src/components/*"
+      ],
+      "@features/*": [
+        "src/features/*"
+      ],
+      "@hooks/*": [
+        "src/hooks/*"
+      ],
+      "@types/*": [
+        "src/types/*"
+      ],
+      "@utils/*": [
+        "src/utils/*"
+      ],
+      "@config/*": [
+        "src/config/*"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@styles/*": [
+        "src/styles/*"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ],
+      "@schemas/*": [
+        "src/schemas/*"
+      ],
+      "@repositories/*": [
+        "src/repositories/*"
+      ],
+      "@shared/*": [
+        "../shared/*"
+      ],
+      "#shared/*": [
+        "../shared/*"
+      ],
+      "@promptstudio/system/*": [
+        "../packages/promptstudio-system/src/*"
+      ]
     }
   },
-  "include": ["src/**/*", "vite.config.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "src/**/*",
+    "vite.config.ts"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
 }

@@ -1,15 +1,27 @@
 import { beforeAll, describe, it, expect, vi } from 'vitest';
 import type { ContinuitySessionService as ContinuitySessionServiceType } from '../ContinuitySessionService';
+import type { ContinuityProviderService as ContinuityProviderServiceType } from '../ContinuityProviderService';
+import type { ContinuityMediaService as ContinuityMediaServiceType } from '../ContinuityMediaService';
+import type { ContinuityPostProcessingService as ContinuityPostProcessingServiceType } from '../ContinuityPostProcessingService';
+import type { ContinuityShotGenerator as ContinuityShotGeneratorType } from '../ContinuityShotGenerator';
 import type { ContinuitySession, ContinuityShot, StyleReference } from '../types';
 
 let ContinuitySessionService: typeof ContinuitySessionServiceType;
+let ContinuityProviderService: typeof ContinuityProviderServiceType;
+let ContinuityMediaService: typeof ContinuityMediaServiceType;
+let ContinuityPostProcessingService: typeof ContinuityPostProcessingServiceType;
+let ContinuityShotGenerator: typeof ContinuityShotGeneratorType;
 
 beforeAll(async () => {
   process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'test-bucket';
-  ({ ContinuitySessionService } = await import('../ContinuitySessionService'));
+  ({
+    ContinuitySessionService,
+    ContinuityProviderService,
+    ContinuityMediaService,
+    ContinuityPostProcessingService,
+    ContinuityShotGenerator,
+  } = await import('../'));
 });
-
-type ServiceDeps = ConstructorParameters<typeof ContinuitySessionServiceType>;
 
 const buildSession = (overrides: Partial<ContinuitySession> = {}): ContinuitySession => {
   const primaryStyleReference: StyleReference = {
@@ -154,24 +166,39 @@ const buildService = (
     ...(overrides.sessionStore ?? {}),
   };
 
-  const deps: ServiceDeps = [
+  const providerService = new ContinuityProviderService(
     anchorService as any,
+    providerAdapter as any,
+    seedService as any
+  );
+  const mediaService = new ContinuityMediaService(
     frameBridge as any,
     styleReference as any,
-    characterKeyframes as any,
-    providerAdapter as any,
-    seedService as any,
     styleAnalysis as any,
+    videoGenerator as any,
+    assetService as any
+  );
+  const postProcessingService = new ContinuityPostProcessingService(
     grading as any,
     qualityGate as any,
-    sceneProxy as any,
-    videoGenerator as any,
-    assetService as any,
-    sessionStore as any,
-  ];
+    sceneProxy as any
+  );
+  const shotGenerator = new ContinuityShotGenerator(
+    providerService,
+    mediaService,
+    postProcessingService,
+    characterKeyframes as any,
+    sessionStore as any
+  );
 
   return {
-    service: new ContinuitySessionService(...deps),
+    service: new ContinuitySessionService(
+      providerService,
+      mediaService,
+      postProcessingService,
+      shotGenerator,
+      sessionStore as any
+    ),
     providerAdapter,
     videoGenerator,
     sessionStore,

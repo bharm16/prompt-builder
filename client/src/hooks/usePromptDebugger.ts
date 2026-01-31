@@ -5,7 +5,16 @@ import { fetchHighlightSuggestions } from './usePromptDebuggerApi';
 import { buildHighlightSuggestionPayload } from './usePromptDebuggerUtils';
 import type { PromptDebuggerState, Highlight } from './types';
 
-export function usePromptDebugger(state: PromptDebuggerState) {
+interface UsePromptDebuggerResult {
+  capturePromptData: () => ReturnType<typeof promptDebugger.captureFullPromptData>;
+  exportToFile: () => void;
+  exportAllCaptures: () => void;
+  isCapturing: boolean;
+  lastCapture: typeof promptDebugger.lastCapture;
+  debugger: typeof promptDebugger;
+}
+
+export function usePromptDebugger(state: PromptDebuggerState): UsePromptDebuggerResult {
   const [isCapturing, setIsCapturing] = useState(false);
 
   /**

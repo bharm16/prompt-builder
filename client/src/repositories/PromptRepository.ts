@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
-import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
+import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '../hooks/types';
 import type { PromptData, SavedPromptResult, UpdateHighlightsOptions, UpdatePromptOptions } from './promptRepositoryTypes';
 import { PromptRepositoryError } from './promptRepositoryTypes';
 
@@ -441,12 +441,14 @@ export class PromptRepository {
       entry.generationParams = data.generationParams as Record<string, unknown>;
     }
     if (Array.isArray(data.keyframes)) {
-      entry.keyframes = data.keyframes as PromptHistoryEntry['keyframes'];
+      entry.keyframes = data.keyframes as PromptKeyframe[];
     } else if (data.keyframes === null) {
       entry.keyframes = null;
     }
-    if (data.brainstormContext !== undefined) {
-      entry.brainstormContext = data.brainstormContext as unknown;
+    if (data.brainstormContext === null) {
+      entry.brainstormContext = null;
+    } else if (data.brainstormContext && typeof data.brainstormContext === 'object') {
+      entry.brainstormContext = data.brainstormContext as Record<string, unknown>;
     }
     if (data.highlightCache !== undefined) {
       entry.highlightCache = highlightCache;

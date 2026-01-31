@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { VIDEO_MODELS } from './modelConfig';
 import type { VideoModelId } from '@services/video-generation/types';
 
@@ -21,6 +22,8 @@ const DEFAULT_MODEL_TIER_REQUIREMENTS: Partial<Record<VideoModelId, PlanTier>> =
   // Leave empty to avoid gating unless explicitly configured.
 };
 
+const TierRequirementsSchema = z.record(z.unknown());
+
 const normalizePlanTier = (value: unknown): PlanTier => {
   if (typeof value !== 'string') return 'unknown';
   const normalized = value.trim().toLowerCase();
@@ -38,9 +41,13 @@ const parseTierRequirements = (): Partial<Record<VideoModelId, PlanTier>> => {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw);
+    const validation = TierRequirementsSchema.safeParse(parsed);
+    if (!validation.success) {
+      return DEFAULT_MODEL_TIER_REQUIREMENTS;
+    }
     const resolved: Partial<Record<VideoModelId, PlanTier>> = {};
-    for (const [modelId, tier] of Object.entries(parsed)) {
+    for (const [modelId, tier] of Object.entries(validation.data)) {
       if (!modelId) continue;
       const normalizedTier = normalizePlanTier(tier);
       if (normalizedTier === 'unknown') continue;

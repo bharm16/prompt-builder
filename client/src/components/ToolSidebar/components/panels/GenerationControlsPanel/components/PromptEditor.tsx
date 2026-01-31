@@ -5,13 +5,13 @@ import { PromptTriggerAutocomplete, type AutocompleteState } from './PromptTrigg
 
 interface PromptEditorProps {
   prompt: string;
-  onPromptChange?: (prompt: string) => void;
+  onPromptChange?: ((prompt: string) => void) | undefined;
   isInputLocked: boolean;
   isOptimizing: boolean;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
   onPromptInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onPromptKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCreateFromTrigger?: (trigger: string) => void;
+  onCreateFromTrigger?: ((trigger: string) => void) | undefined;
   autocomplete: AutocompleteState;
   placeholder?: string;
   rows?: number;

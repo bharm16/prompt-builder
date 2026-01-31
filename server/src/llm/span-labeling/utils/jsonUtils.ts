@@ -25,8 +25,8 @@ type ParseResult =
  * LLMs often wrap JSON in ```json ... ``` blocks even when told not to.
  * This function strips those wrappers for safe parsing.
  *
- * @param {string} value - Raw string that may contain markdown fences
- * @returns {string} Cleaned string without markdown fences
+ * @param value - Raw string that may contain markdown fences
+ * @returns Cleaned string without markdown fences
  */
 export function cleanJsonEnvelope(value: unknown): string {
   if (typeof value !== 'string') return '';
@@ -51,8 +51,8 @@ export function cleanJsonEnvelope(value: unknown): string {
  * Returns a result object with either success (ok: true, value)
  * or failure (ok: false, error) to avoid exception handling.
  *
- * @param {string} raw - Raw JSON string to parse
- * @returns {Object} {ok: boolean, value?: any, error?: string}
+ * @param raw - Raw JSON string to parse
+ * @returns Result object with ok, value, and error fields
  */
 export function parseJson(raw: string): ParseResult {
   const cleaned = cleanJsonEnvelope(raw);
@@ -187,13 +187,13 @@ function escapeNewlinesInStrings(value: string): string {
  * 
  * SECURITY (PDF Section 1.6): Wraps user text in XML tags to prevent prompt injection
  *
- * @param {Object} params
- * @param {string} params.task - Task description
- * @param {Object} params.policy - Validation policy
- * @param {string} params.text - Source text to label
- * @param {string} params.templateVersion - Template version
- * @param {Object} [params.validation] - Optional validation feedback for repair
- * @returns {string} JSON stringified payload
+ * @param params - Payload inputs for the LLM request
+ * @param params.task - Task description
+ * @param params.policy - Validation policy
+ * @param params.text - Source text to label
+ * @param params.templateVersion - Template version
+ * @param params.validation - Optional validation feedback for repair
+ * @returns JSON stringified payload
  */
 export function buildUserPayload({
   task,

@@ -5,7 +5,7 @@ import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
 
 function getSafeRedirect(search: string): string | null {
@@ -55,7 +55,7 @@ export function SignUpPage(): React.ReactElement {
   const redirect = getSafeRedirect(location.search);
   const suppressAutoRedirect = React.useRef(false);
 
-  const [user, setUser] = React.useState<User | null>(null);
+  const user = useAuthUser();
   const [displayName, setDisplayName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -63,13 +63,6 @@ export function SignUpPage(): React.ReactElement {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
 
   React.useEffect(() => {
     if (!user) return;

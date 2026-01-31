@@ -7,11 +7,10 @@
  * - 'none': Auth pages (no shell)
  */
 
-import { memo, useEffect, useState, type ReactElement } from 'react';
+import { memo, type ReactElement } from 'react';
 
 import { ToolSidebar } from '@components/ToolSidebar';
-import type { User } from '@hooks/types';
-import { getAuthRepository } from '@repositories/index';
+import { useAuthUser } from '@hooks/useAuthUser';
 import type { Asset, AssetType } from '@shared/types/asset';
 
 import type { AppShellProps } from './types';
@@ -88,13 +87,8 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
     onCreateAsset = noop,
   } = mergedProps;
   const { variant, navItems } = useNavigationConfig();
-  const [user, setUser] = useState<User | null>(null);
+  const user = useAuthUser();
   const resolvedAssetsByType = assetsByType ?? EMPTY_ASSETS_BY_TYPE;
-
-  useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged(setUser);
-    return () => unsubscribe();
-  }, []);
 
   if (variant === 'none') {
     return <>{children}</>;

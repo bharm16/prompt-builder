@@ -1,3 +1,5 @@
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+
 export interface Span {
   text: string;
   start: number;
@@ -48,7 +50,7 @@ export interface PromptDebuggerState {
   displayedPrompt?: string;
   optimizedPrompt?: string;
   selectedMode?: string;
-  promptContext?: object | null;
+  promptContext?: Record<string, unknown> | null;
   highlights?: Highlight[];
 }
 
@@ -60,6 +62,11 @@ export interface Highlight {
 
 export interface User {
   uid: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string | null;
+  emailVerified?: boolean;
+  isAnonymous?: boolean;
 }
 
 export type PromptKeyframeSource = 'upload' | 'library' | 'generation' | 'asset';
@@ -111,16 +118,16 @@ export interface PromptVersionVideo {
 
 export interface PromptVersionEntry {
   versionId: string;
-  label?: string | undefined;
+  label?: string;
   signature: string;
   prompt: string;
   timestamp: string;
-  highlights?: Record<string, unknown> | null;
-  editCount?: number | undefined;
-  edits?: PromptVersionEdit[] | undefined;
-  preview?: PromptVersionPreview | null | undefined;
-  video?: PromptVersionVideo | null | undefined;
-  generations?: Generation[] | null | undefined;
+  highlights?: Record<string, unknown>;
+  editCount?: number;
+  edits?: PromptVersionEdit[];
+  preview?: PromptVersionPreview;
+  video?: PromptVersionVideo;
+  generations?: Generation[];
 }
 
 export interface Toast {
@@ -129,4 +136,3 @@ export interface Toast {
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
 }
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';

@@ -1,3 +1,4 @@
+import type { NextFunction, Request, Response } from 'express';
 import { admin } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 
@@ -7,14 +8,23 @@ import { logger } from '@infrastructure/Logger';
  * Validates API keys from either the X-API-Key header, Authorization: Bearer header,
  * or apiKey query parameter. Requires ALLOWED_API_KEYS (preferred) or API_KEY.
  *
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Express next middleware function
+ * @param req - Express request object
+ * @param res - Express response object
+ * @param next - Express next middleware function
  */
 const DEV_FALLBACK_KEY = 'dev-key-12345';
 const BEARER_PREFIX = 'Bearer ';
 
-function normalizeHeaderValue(headerValue) {
+interface ApiAuthRequest extends Request {
+  apiKey?: string;
+  user?: { uid: string };
+  id?: string;
+  query: Request['query'] & { apiKey?: string };
+}
+
+function normalizeHeaderValue(
+  headerValue: string | string[] | undefined
+): string | null {
   if (Array.isArray(headerValue)) {
     return headerValue[0] || null;
   }
@@ -24,7 +34,7 @@ function normalizeHeaderValue(headerValue) {
   return null;
 }
 
-function extractBearerToken(headerValue) {
+function extractBearerToken(headerValue: string | string[] | undefined): string | null {
   const value = normalizeHeaderValue(headerValue);
   if (!value || !value.startsWith(BEARER_PREFIX)) {
     return null;
@@ -33,10 +43,14 @@ function extractBearerToken(headerValue) {
   return token.length > 0 ? token : null;
 }
 
-export async function apiAuthMiddleware(req, res, next) {
+export async function apiAuthMiddleware(
+  req: ApiAuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const headerApiKey = normalizeHeaderValue(req.headers['x-api-key']);
   const authBearer = extractBearerToken(req.headers.authorization);
-  const queryApiKey = typeof req.query?.apiKey === 'string' ? req.query.apiKey : null;
+  const queryApiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : null;
   const apiKeyCandidate = headerApiKey || queryApiKey || authBearer;
 
   // Get allowed API keys from environment
@@ -66,7 +80,8 @@ export async function apiAuthMiddleware(req, res, next) {
 
     req.apiKey = apiKeyCandidate;
     req.user = { uid: `api-key:${apiKeyCandidate}` };
-    return next();
+    next();
+    return;
   }
 
   const firebaseTokenHeader = normalizeHeaderValue(req.headers['x-firebase-token']);
@@ -83,7 +98,8 @@ export async function apiAuthMiddleware(req, res, next) {
         requestId: req.id,
         userId: decoded.uid,
       });
-      return next();
+      next();
+      return;
     } catch (error) {
       logger.warn('Invalid Firebase token', {
         ip: req.ip,
@@ -103,11 +119,12 @@ export async function apiAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Authentication required',
       message: 'Provide a Firebase token or API key to access this endpoint',
       requestId: req.id,
     });
+    return;
   }
 
   logger.warn('Authentication failed', {
@@ -117,8 +134,9 @@ export async function apiAuthMiddleware(req, res, next) {
     requestId: req.id,
   });
 
-  return res.status(403).json({
+  res.status(403).json({
     error: 'Unauthorized',
     message: 'The provided credentials are not authorized',
   });
+  return;
 }

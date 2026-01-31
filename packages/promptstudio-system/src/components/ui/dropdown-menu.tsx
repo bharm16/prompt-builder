@@ -95,24 +95,28 @@ DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
-    ref={ref}
-    className={cn(
-      "relative flex min-h-ps-10 cursor-pointer select-none items-center rounded-md py-ps-2 pl-ps-9 pr-ps-3 text-body outline-none transition-colors duration-base data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    checked={checked}
-    {...props}
-  >
-    <span className="absolute left-ps-3 flex size-icon-sm items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Check size={16} />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-))
+>(({ className, children, checked, ...props }, ref) => {
+  const checkedProps = checked === undefined ? {} : { checked }
+
+  return (
+    <DropdownMenuPrimitive.CheckboxItem
+      ref={ref}
+      className={cn(
+        "relative flex min-h-ps-10 cursor-pointer select-none items-center rounded-md py-ps-2 pl-ps-9 pr-ps-3 text-body outline-none transition-colors duration-base data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        className
+      )}
+      {...checkedProps}
+      {...props}
+    >
+      <span className="absolute left-ps-3 flex size-icon-sm items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <Check size={16} />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+})
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName
 

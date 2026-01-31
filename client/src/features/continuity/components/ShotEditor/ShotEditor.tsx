@@ -20,6 +20,15 @@ const parseNumber = (value: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const getCapabilityDefault = (
+  schema: CapabilitiesSchema | undefined,
+  fieldId: string
+): boolean => {
+  if (!schema) return false;
+  const field = schema.fields[fieldId];
+  return field?.default === true;
+};
+
 export function ShotEditor({
   session,
   generationMode,
@@ -111,8 +120,8 @@ export function ShotEditor({
     if (!hasRegistry) return true;
     const schema = capabilityMap[capabilityId];
     if (!schema) return false;
-    const supportsImage = schema.fields?.image_input?.default === true;
-    const supportsStyle = schema.fields?.style_reference?.default === true;
+    const supportsImage = getCapabilityDefault(schema, 'image_input');
+    const supportsStyle = getCapabilityDefault(schema, 'style_reference');
     return supportsImage || supportsStyle;
   };
 
@@ -126,8 +135,8 @@ export function ShotEditor({
     : registryModels;
 
   const selectedModelSchema = modelId ? capabilityMap[modelId] : undefined;
-  const selectedSupportsImage = selectedModelSchema?.fields?.image_input?.default === true;
-  const selectedSupportsStyle = selectedModelSchema?.fields?.style_reference?.default === true;
+  const selectedSupportsImage = getCapabilityDefault(selectedModelSchema, 'image_input');
+  const selectedSupportsStyle = getCapabilityDefault(selectedModelSchema, 'style_reference');
   const selectedContinuityEligible = hasRegistry
     ? Boolean(selectedSupportsImage || selectedSupportsStyle)
     : true;

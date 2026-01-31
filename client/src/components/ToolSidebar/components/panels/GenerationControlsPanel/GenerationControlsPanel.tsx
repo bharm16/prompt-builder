@@ -1,7 +1,7 @@
 import React, { type ReactElement } from 'react';
 import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
-import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
+import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationFooter } from './components/GenerationFooter';
 import { PanelHeader } from './components/PanelHeader';
 import { VideoPromptToolbar } from './components/VideoPromptToolbar';
@@ -11,7 +11,6 @@ import { ImageTabContent } from './components/ImageTabContent';
 import { VideoTabContent } from './components/VideoTabContent';
 import { useGenerationControlsPanel } from './hooks/useGenerationControlsPanel';
 import type { GenerationControlsPanelProps } from './types';
-import type { DraftModel } from '@components/ToolSidebar/types';
 
 export function GenerationControlsPanel(props: GenerationControlsPanelProps): ReactElement {
   const {
@@ -115,6 +114,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       onStoryboard={onStoryboard}
       isStoryboardDisabled={derived.isStoryboardDisabled}
       onGenerate={() => {
+        const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? '';
         void trackModelRecommendationEvent({
           event: 'generation_started',
           recommendationId: recommendation.modelRecommendation?.promptId,
@@ -128,10 +128,10 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
             : {}),
         });
         if (tier === 'draft') {
-          onDraft(VIDEO_DRAFT_MODEL.id as DraftModel);
+          onDraft(VIDEO_DRAFT_MODEL.id);
           return;
         }
-        onRender(recommendation.renderModelId || selectedModel || 'sora-2');
+        onRender(recommendation.renderModelId || selectedModel || fallbackRenderModelId);
       }}
       isGenerateDisabled={derived.isGenerateDisabled}
     />

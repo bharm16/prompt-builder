@@ -1,0 +1,392 @@
+import { describe, it, expect } from 'vitest';
+import { CategoryGuidanceService } from '@services/video-prompt-analysis/services/guidance/CategoryGuidanceService';
+import type { GuidanceSpan, EditHistoryEntry } from '@services/video-prompt-analysis/types';
+
+function createService(): CategoryGuidanceService {
+  return new CategoryGuidanceService();
+}
+
+describe('CategoryGuidanceService', () => {
+  // ===========================================================================
+  // ERROR HANDLING & INVALID INPUT (~50%)
+  // ===========================================================================
+  describe('error handling - getCategoryFocusGuidance', () => {
+    it('returns null when phraseRole is null', () => {
+      const service = createService();
+      expect(service.getCategoryFocusGuidance(null, null)).toBeNull();
+    });
+
+    it('returns null when phraseRole is undefined', () => {
+      const service = createService();
+      expect(service.getCategoryFocusGuidance(undefined, undefined)).toBeNull();
+    });
+
+    it('returns null when phraseRole is empty string', () => {
+      const service = createService();
+      expect(service.getCategoryFocusGuidance('', '')).toBeNull();
+    });
+
+    it('returns null when no guidance key matches role or hint', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'completely unknown role xyz',
+        'unknown hint abc'
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('error handling - analyzeExistingElements', () => {
+    it('handles empty context and spans', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('', []);
+      expect(elements.timeOfDay).toBeNull();
+      expect(elements.location).toBeNull();
+      expect(elements.mood).toBeNull();
+      expect(elements.subject.core).toBe('');
+      expect(elements.lighting.direction).toBe(false);
+      expect(elements.camera.movement).toBe(false);
+    });
+  });
+
+  describe('error handling - identifyGaps', () => {
+    it('returns empty gaps for non-matching category', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('', []);
+      const gaps = service.identifyGaps('unknown_category', elements);
+      expect(gaps).toEqual([]);
+    });
+  });
+
+  describe('error handling - analyzeRelationships', () => {
+    it('returns empty relationships when no elements match', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('', []);
+      const relationships = service.analyzeRelationships('lighting', elements);
+      expect(relationships.constraints).toEqual([]);
+      expect(relationships.opportunities).toEqual([]);
+    });
+  });
+
+  // ===========================================================================
+  // EDGE CASES (~30%)
+  // ===========================================================================
+  describe('edge cases - static guidance fallback', () => {
+    it('returns static guidance for subject role when no context provided', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('subject detail', null);
+      expect(result).not.toBeNull();
+      expect(result!.length).toBeGreaterThan(0);
+    });
+
+    it('returns static guidance for lighting role when no context provided', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('lighting description', null);
+      expect(result).not.toBeNull();
+      expect(result!.length).toBeGreaterThan(0);
+    });
+
+    it('returns static guidance for camera role when no context provided', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('camera movement', null);
+      expect(result).not.toBeNull();
+      expect(result!.length).toBeGreaterThan(0);
+    });
+
+    it('returns static guidance for location role when no context provided', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('environment detail', null);
+      expect(result).not.toBeNull();
+      expect(result!.length).toBeGreaterThan(0);
+    });
+
+    it('returns static guidance for action role when no context provided', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('action movement', null);
+      expect(result).not.toBeNull();
+      expect(result!.length).toBeGreaterThan(0);
+    });
+
+    it('categoryHint can provide guidance key even when role does not match', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance('generic role', 'lighting description');
+      expect(result).not.toBeNull();
+    });
+  });
+
+  // ===========================================================================
+  // CONTEXT-AWARE GUIDANCE (~20%)
+  // ===========================================================================
+  describe('context-aware guidance', () => {
+    it('provides lighting gap-filling guidance when no lighting spans exist', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'lighting description',
+        'lighting',
+        'A man walks through a dark forest at night',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('direction') || g.includes('DIRECTION'))).toBe(true);
+    });
+
+    it('provides camera gap-filling guidance when no camera spans exist', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'camera description',
+        'camera',
+        'A woman runs along the beach at golden hour',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('CAMERA') || g.includes('camera'))).toBe(true);
+    });
+
+    it('provides subject gap-filling guidance', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'subject detail',
+        'subject',
+        'Someone walks through the city',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('PHYSICAL') || g.includes('appearance'))).toBe(true);
+    });
+
+    it('provides location guidance', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'location detail',
+        'location',
+        'A scene takes place somewhere interesting',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('SPECIFIC') || g.includes('ENVIRONMENTAL'))).toBe(
+        true
+      );
+    });
+
+    it('provides mood guidance', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'mood atmosphere',
+        'mood',
+        'The scene has an unsettling quality',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('Mood') || g.includes('SENSORY'))).toBe(true);
+    });
+
+    it('provides action guidance', () => {
+      const service = createService();
+      const result = service.getCategoryFocusGuidance(
+        'action movement',
+        'action',
+        'The character moves through the space',
+        [],
+        []
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('VERB') || g.includes('MANNER'))).toBe(true);
+    });
+  });
+
+  describe('relationship analysis', () => {
+    it('golden hour time of day creates lighting opportunities', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('golden hour sunset', []);
+      const relationships = service.analyzeRelationships('lighting', elements);
+      expect(relationships.opportunities.length).toBeGreaterThan(0);
+      expect(relationships.opportunities.some((o) => o.includes('warm') || o.includes('rim'))).toBe(
+        true
+      );
+    });
+
+    it('night time creates lighting constraints', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a dark night scene', []);
+      const relationships = service.analyzeRelationships('lighting', elements);
+      expect(relationships.opportunities.length).toBeGreaterThan(0);
+    });
+
+    it('underwater location creates lighting and camera constraints', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('deep underwater scene', []);
+
+      const lightRel = service.analyzeRelationships('lighting', elements);
+      expect(lightRel.opportunities.some((o) => o.includes('caustic') || o.includes('Caustic'))).toBe(
+        true
+      );
+
+      const camRel = service.analyzeRelationships('camera', elements);
+      expect(camRel.opportunities.some((o) => o.includes('fluid') || o.includes('Slow'))).toBe(
+        true
+      );
+    });
+
+    it('desert location creates lighting constraints', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('vast desert landscape', []);
+      const relationships = service.analyzeRelationships('lighting', elements);
+      expect(relationships.opportunities.some((o) => o.includes('harsh') || o.includes('Harsh'))).toBe(
+        true
+      );
+    });
+
+    it('moody atmosphere creates lighting constraints', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a dark moody scene', []);
+      const relationships = service.analyzeRelationships('lighting', elements);
+      expect(relationships.opportunities.some((o) => o.includes('low key') || o.includes('Low key'))).toBe(
+        true
+      );
+    });
+  });
+
+  describe('gap identification', () => {
+    it('identifies all lighting gaps when no lighting spans exist', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a scene', []);
+      const gaps = service.identifyGaps('lighting', elements);
+      expect(gaps).toContain('direction');
+      expect(gaps).toContain('quality');
+      expect(gaps).toContain('temperature');
+      expect(gaps).toContain('intensity');
+    });
+
+    it('identifies all camera gaps when no camera spans exist', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a scene', []);
+      const gaps = service.identifyGaps('camera', elements);
+      expect(gaps).toContain('movement');
+      expect(gaps).toContain('lens');
+      expect(gaps).toContain('angle');
+      expect(gaps).toContain('framing');
+    });
+
+    it('identifies subject gaps when no subject spans exist', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a scene', []);
+      const gaps = service.identifyGaps('subject', elements);
+      expect(gaps).toContain('appearance');
+      expect(gaps).toContain('emotion');
+      expect(gaps).toContain('details');
+    });
+
+    it('does not report gaps when lighting spans cover direction', () => {
+      const service = createService();
+      const spans: GuidanceSpan[] = [
+        { category: 'lighting', text: 'side light from left' },
+      ];
+      const elements = service.analyzeExistingElements('', spans);
+      const gaps = service.identifyGaps('lighting', elements);
+      expect(gaps).not.toContain('direction');
+    });
+  });
+
+  describe('edit history awareness', () => {
+    it('respects moody lighting edit history', () => {
+      const service = createService();
+      const editHistory: EditHistoryEntry[] = [
+        { category: 'lighting', original: 'bright sun', replacement: 'moody shadows' },
+      ];
+      const result = service.getCategoryFocusGuidance(
+        'lighting description',
+        'lighting',
+        'A scene in a dark room',
+        [],
+        editHistory
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('MOODY') || g.includes('moody'))).toBe(true);
+    });
+
+    it('respects soft lighting edit history', () => {
+      const service = createService();
+      const editHistory: EditHistoryEntry[] = [
+        { category: 'lighting', original: 'harsh light', replacement: 'soft diffused' },
+      ];
+      const result = service.getCategoryFocusGuidance(
+        'lighting description',
+        'lighting',
+        'A gentle scene',
+        [],
+        editHistory
+      );
+      expect(result).not.toBeNull();
+      expect(result!.some((g) => g.includes('SOFT') || g.includes('soft'))).toBe(true);
+    });
+
+    it('respects mood evolution in edit history', () => {
+      const service = createService();
+      const editHistory: EditHistoryEntry[] = [
+        { category: 'mood', original: 'cheerful', replacement: 'melancholic' },
+      ];
+      const result = service.getCategoryFocusGuidance(
+        'mood atmosphere',
+        'mood',
+        'A scene with mixed feelings',
+        [],
+        editHistory
+      );
+      expect(result).not.toBeNull();
+      expect(
+        result!.some((g) => g.includes('cheerful') && g.includes('melancholic'))
+      ).toBe(true);
+    });
+  });
+
+  describe('element extraction', () => {
+    it('extracts time of day from context', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('at golden hour the scene begins', []);
+      expect(elements.timeOfDay).toBe('golden hour');
+    });
+
+    it('extracts location from context', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('deep in the forest', []);
+      expect(elements.location).toBe('forest');
+    });
+
+    it('extracts mood from context', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('a tense standoff', []);
+      expect(elements.mood).toBe('tense');
+    });
+
+    it('extracts style from context', () => {
+      const service = createService();
+      const elements = service.analyzeExistingElements('cinematic quality shot', []);
+      expect(elements.style).toBe('cinematic');
+    });
+
+    it('extracts subject from spans', () => {
+      const service = createService();
+      const spans: GuidanceSpan[] = [
+        { category: 'subject', text: 'elderly woman' },
+      ];
+      const elements = service.analyzeExistingElements('', spans);
+      expect(elements.subject.core).toContain('elderly woman');
+      expect(elements.subject.appearance).toBe(true);
+    });
+
+    it('extracts camera info from spans', () => {
+      const service = createService();
+      const spans: GuidanceSpan[] = [
+        { category: 'camera', text: 'dolly in with 50mm lens' },
+      ];
+      const elements = service.analyzeExistingElements('', spans);
+      expect(elements.camera.movement).toBe(true);
+      expect(elements.camera.lens).toBe(true);
+    });
+  });
+});

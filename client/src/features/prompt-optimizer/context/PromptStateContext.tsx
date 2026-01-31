@@ -85,6 +85,10 @@ export function usePromptHighlights(): PromptHighlightState {
   return context;
 }
 
+export function useOptionalPromptHighlights(): PromptHighlightState | null {
+  return useContext(PromptHighlightContext);
+}
+
 export function usePromptServices(): PromptServicesState {
   const context = useContext(PromptServicesContext);
   if (!context) {

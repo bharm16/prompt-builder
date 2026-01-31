@@ -48,6 +48,19 @@ type Action =
   | { type: 'SET_SUBJECT_MOTION'; motion: string }
   | { type: 'RESET' };
 
+interface UseCameraMotionActions {
+  estimateDepth: (imageUrl: string) => Promise<void>;
+  selectCameraMotion: (cameraPath: CameraPath) => void;
+  clearSelection: () => void;
+  setSubjectMotion: (motion: string) => void;
+  reset: () => void;
+}
+
+interface UseCameraMotionResult {
+  state: State;
+  actions: UseCameraMotionActions;
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'ESTIMATE_START':
@@ -83,7 +96,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function useCameraMotion() {
+export function useCameraMotion(): UseCameraMotionResult {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleEstimateDepth = useCallback(async (imageUrl: string) => {

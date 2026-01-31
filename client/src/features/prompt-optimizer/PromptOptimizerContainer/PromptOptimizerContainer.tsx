@@ -8,29 +8,21 @@
  * - Wiring event handlers
  */
 
-import React, { useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { AppShell } from '@components/navigation/AppShell';
 import DebugButton from '@components/DebugButton';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
-import { getAuthRepository } from '@/repositories';
 import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import type { PromptHistoryEntry } from '@hooks/types';
-import type { CoherenceRecommendation } from '../types/coherence';
+import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
-import {
-  useCoherenceAnnotations,
-  type CoherenceIssue,
-} from '../components/coherence/useCoherenceAnnotations';
 import { PromptModals } from '../components/PromptModals';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { GenerationControlsProvider, useGenerationControlsContext } from '../context/GenerationControlsContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
-import { areKeyframesEqual, hydrateKeyframes, serializeKeyframes } from '../utils/keyframeTransforms';
+import { resolveActiveModelLabel, resolveActiveStatusLabel } from '../utils/activeStatusLabel';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import {
   usePromptLoader,
@@ -40,29 +32,14 @@ import {
   useImprovementFlow,
   useConceptBrainstorm,
   useEnhancementSuggestions,
+  usePromptKeyframesSync,
+  usePromptHistoryActions,
+  useStablePromptContext,
+  usePromptCoherence,
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 
 const log = logger.child('PromptOptimizerContainer');
-
-export function resolveActiveStatusLabel(params: {
-  inputPrompt: string;
-  displayedPrompt: string;
-  isProcessing: boolean;
-  isRefining: boolean;
-  hasHighlights: boolean;
-}): string {
-  const hasInput = params.inputPrompt.trim().length > 0;
-  const hasOutput = params.displayedPrompt.trim().length > 0;
-
-  if (params.isRefining) return 'Refining';
-  if (params.isProcessing) return 'Optimizing';
-  if (!hasInput && !hasOutput) return 'Draft';
-  if (hasOutput && params.hasHighlights) return 'Generated';
-  if (hasOutput) return 'Optimized';
-  if (hasInput) return 'Draft';
-  return 'Incomplete';
-}
 
 /**
  * Inner component with access to PromptStateContext
@@ -136,71 +113,15 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   const { cameraMotion, keyframes, setKeyframes } = useGenerationControlsContext();
   const i2vContext = useI2VContext();
 
-  // Stabilize promptContext to prevent infinite loops
-  const stablePromptContext = useMemo(() => {
-    if (!promptContext) return null;
-    return promptContext;
-  }, [
-    promptContext?.elements?.subject,
-    promptContext?.elements?.action,
-    promptContext?.elements?.location,
-    promptContext?.elements?.time,
-    promptContext?.elements?.mood,
-    promptContext?.elements?.style,
-    promptContext?.elements?.event,
-    promptContext?.metadata?.format,
-    promptContext?.version,
-  ]);
+  const stablePromptContext = useStablePromptContext(promptContext);
 
-  const keyframesRef = useRef(keyframes);
-  const keyframeSessionRef = useRef<{ uuid: string | null; docId: string | null }>({
-    uuid: currentPromptUuid ?? null,
-    docId: currentPromptDocId ?? null,
+  const { serializedKeyframes, onLoadKeyframes } = usePromptKeyframesSync({
+    keyframes,
+    setKeyframes,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
   });
-
-  useEffect(() => {
-    keyframesRef.current = keyframes;
-  }, [keyframes]);
-
-  useEffect(() => {
-    if (!currentPromptUuid) {
-      if (keyframesRef.current.length) {
-        setKeyframes([]);
-      }
-      return;
-    }
-    const entry = promptHistory.history.find((item) => item.uuid === currentPromptUuid);
-    if (!entry) {
-      if (keyframesRef.current.length) {
-        setKeyframes([]);
-      }
-      return;
-    }
-    const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
-    if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
-    setKeyframes(nextKeyframes);
-  }, [currentPromptUuid, promptHistory.history, setKeyframes]);
-
-  useEffect(() => {
-    if (!currentPromptUuid) {
-      keyframeSessionRef.current = { uuid: null, docId: null };
-      return;
-    }
-    keyframeSessionRef.current = {
-      uuid: currentPromptUuid,
-      docId: currentPromptDocId ?? null,
-    };
-  }, [keyframes, currentPromptUuid, currentPromptDocId]);
-
-  useEffect(() => {
-    const { uuid, docId } = keyframeSessionRef.current;
-    if (!uuid) return;
-    const entry = promptHistory.history.find((item) => item.uuid === uuid);
-    if (!entry) return;
-    const serialized = serializeKeyframes(keyframes);
-    if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
-    promptHistory.updateEntryPersisted(uuid, docId, { keyframes: serialized });
-  }, [keyframes, promptHistory.history, promptHistory.updateEntryPersisted]);
 
   // ============================================================================
   // Custom Hooks - Business Logic Delegation
@@ -222,9 +143,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setShowResults,
     setSelectedModel,
     setPromptContext,
-    onLoadKeyframes: (stored) => {
-      setKeyframes(hydrateKeyframes(stored));
-    },
+    onLoadKeyframes,
     skipLoadFromUrlRef,
   });
 
@@ -255,68 +174,17 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setCanRedo,
   });
 
-  const handleLoadFromHistory = useCallback(
-    (entry: PromptHistoryEntry): void => {
-      setKeyframes(hydrateKeyframes(entry.keyframes ?? []));
-      loadFromHistory(entry);
-    },
-    [loadFromHistory, setKeyframes]
-  );
-
-  const handleCreateNewWithKeyframes = useCallback((): void => {
-    setKeyframes([]);
-    handleCreateNew();
-  }, [handleCreateNew, setKeyframes]);
-
-  const handleDuplicate = useCallback(
-    async (entry: PromptHistoryEntry): Promise<void> => {
-      const mode =
-        typeof entry.mode === 'string' && entry.mode.trim()
-          ? entry.mode.trim()
-          : 'video';
-      const result = await promptHistory.saveToHistory(
-        entry.input,
-        entry.output,
-        entry.score ?? null,
-        mode,
-        entry.targetModel ?? null,
-        (entry.generationParams as Record<string, unknown>) ?? null,
-        entry.keyframes ?? null,
-        entry.brainstormContext ?? null,
-        entry.highlightCache ?? null,
-        null,
-        entry.title ?? null
-      );
-
-      if (result?.uuid) {
-        handleLoadFromHistory({
-          id: result.id,
-          uuid: result.uuid,
-          timestamp: new Date().toISOString(),
-          title: entry.title ?? null,
-          input: entry.input,
-          output: entry.output,
-          score: entry.score ?? null,
-          mode,
-          targetModel: entry.targetModel ?? null,
-          generationParams: entry.generationParams ?? null,
-          keyframes: entry.keyframes ?? null,
-          brainstormContext: entry.brainstormContext ?? null,
-          highlightCache: entry.highlightCache ?? null,
-          versions: Array.isArray(entry.versions) ? entry.versions : [],
-        });
-      }
-    },
-    [promptHistory, handleLoadFromHistory]
-  );
-
-  const handleRename = useCallback(
-    (entry: PromptHistoryEntry, title: string): void => {
-      if (!entry.uuid) return;
-      promptHistory.updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
-    },
-    [promptHistory]
-  );
+  const {
+    handleLoadFromHistory,
+    handleCreateNewWithKeyframes,
+    handleDuplicate,
+    handleRename,
+  } = usePromptHistoryActions({
+    promptHistory,
+    setKeyframes,
+    loadFromHistory,
+    handleCreateNew,
+  });
 
   const activeStatusLabel = resolveActiveStatusLabel({
     inputPrompt: promptOptimizer.inputPrompt,
@@ -325,7 +193,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     isRefining: promptOptimizer.isRefining,
     hasHighlights: Boolean(initialHighlights),
   });
-  const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
+  const activeModelLabel = resolveActiveModelLabel(selectedModel);
 
   const optimizationGenerationParams = useMemo<CapabilityValues>(
     () => ({
@@ -334,7 +202,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     }),
     [generationParams, cameraMotion?.id]
   );
-  const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
@@ -391,61 +258,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     toast,
   });
 
-  const handleApplyCoherenceFix = useCallback(
-    (recommendation: CoherenceRecommendation, issue: CoherenceIssue): boolean => {
-      const currentPrompt = promptOptimizer.displayedPrompt;
-      if (!currentPrompt) {
-        return false;
-      }
-
-      const result = applyCoherenceRecommendation({
-        recommendation,
-        prompt: currentPrompt,
-        spans: issue.spans,
-        highlightSnapshot: latestHighlightRef.current,
-      });
-
-      if (!result.updatedPrompt) {
-        return false;
-      }
-
-      if (result.updatedSnapshot) {
-        applyInitialHighlightSnapshot(result.updatedSnapshot, {
-          bumpVersion: true,
-          markPersisted: false,
-        });
-      }
-
-      handleDisplayedPromptChange(result.updatedPrompt);
-
-      if (currentPromptUuid) {
-        try {
-          promptHistory.updateEntryOutput(currentPromptUuid, currentPromptDocId, result.updatedPrompt);
-        } catch (error) {
-          const info = sanitizeError(error);
-          log.warn('Failed to persist coherence edits', {
-            operation: 'updateEntryOutput',
-            promptUuid: currentPromptUuid,
-            promptDocId: currentPromptDocId,
-            error: info.message,
-            errorName: info.name,
-          });
-        }
-      }
-
-      return true;
-    },
-    [
-      applyInitialHighlightSnapshot,
-      currentPromptDocId,
-      currentPromptUuid,
-      handleDisplayedPromptChange,
-      latestHighlightRef,
-      promptHistory,
-      promptOptimizer.displayedPrompt,
-    ]
-  );
-
   const {
     issues: coherenceIssues,
     isChecking: isCoherenceChecking,
@@ -457,9 +269,16 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     dismissIssue,
     dismissAll,
     applyFix,
-  } = useCoherenceAnnotations({
-    onApplyFix: handleApplyCoherenceFix,
+  } = usePromptCoherence({
+    promptOptimizer,
+    latestHighlightRef,
+    applyInitialHighlightSnapshot,
+    handleDisplayedPromptChange,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
     toast,
+    log,
   });
 
   // Enhancement suggestions
@@ -637,24 +456,20 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
  */
 function PromptOptimizerContainer(): React.ReactElement {
   const debug = useDebugLogger('PromptOptimizerContainer');
-  const [user, setUser] = React.useState<User | null>(null);
-
-  // Listen for auth state changes
-  React.useEffect(() => {
-    debug.logEffect('Auth state listener initialized');
-    const authRepository = getAuthRepository();
-    const unsubscribe = authRepository.onAuthStateChanged((currentUser) => {
-      debug.logAction('authStateChanged', { 
-        authenticated: !!currentUser,
-        userId: currentUser?.uid 
-      });
-      setUser(currentUser);
-    });
-    return () => {
+  const user = useAuthUser({
+    onInit: () => {
+      debug.logEffect('Auth state listener initialized');
+    },
+    onCleanup: () => {
       debug.logEffect('Auth state listener cleanup');
-      unsubscribe();
-    };
-  }, []);
+    },
+    onChange: (currentUser) => {
+      debug.logAction('authStateChanged', {
+        authenticated: !!currentUser,
+        userId: currentUser?.uid,
+      });
+    },
+  });
 
   return (
     <PromptStateProvider user={user}>

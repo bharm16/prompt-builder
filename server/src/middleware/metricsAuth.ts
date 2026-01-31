@@ -1,10 +1,5 @@
+import type { NextFunction, Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
-
-/**
- * @typedef {import('express').Request} Request
- * @typedef {import('express').Response} Response
- * @typedef {import('express').NextFunction} NextFunction
- */
 
 /**
  * Metrics Authentication Middleware
@@ -12,11 +7,15 @@ import { logger } from '@infrastructure/Logger';
  * Validates bearer token for accessing metrics and stats endpoints.
  * Requires METRICS_TOKEN environment variable.
  *
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {NextFunction} next - Express next middleware function
+ * @param req - Express request object
+ * @param res - Express response object
+ * @param next - Express next middleware function
  */
-export function metricsAuthMiddleware(req, res, next) {
+export function metricsAuthMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   // Extract bearer token from Authorization header
   const authHeader = req.headers.authorization;
 
@@ -27,10 +26,11 @@ export function metricsAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Authorization required',
       message: 'Please provide Bearer token in Authorization header',
     });
+    return;
   }
 
   // Validate Bearer token format
@@ -41,10 +41,11 @@ export function metricsAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Invalid authorization format',
       message: 'Authorization header must use Bearer token format',
     });
+    return;
   }
 
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -57,10 +58,11 @@ export function metricsAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Server configuration error',
       message: 'Metrics authentication not properly configured',
     });
+    return;
   }
 
   // Validate token (constant-time comparison to prevent timing attacks)
@@ -75,10 +77,11 @@ export function metricsAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Invalid token',
       message: 'The provided token is not authorized',
     });
+    return;
   }
 
   // Constant-time comparison
@@ -96,10 +99,11 @@ export function metricsAuthMiddleware(req, res, next) {
       requestId: req.id,
     });
 
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Invalid token',
       message: 'The provided token is not authorized',
     });
+    return;
   }
 
   // Authentication successful

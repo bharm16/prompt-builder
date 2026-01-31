@@ -24,6 +24,7 @@ const DepthEstimationRequestSchema = z.object({
 
 interface RequestWithUser extends Request {
   user?: { uid?: string };
+  id?: string;
 }
 
 interface DepthEstimationSuccessPayload {
@@ -75,7 +76,7 @@ export function createMotionRoutes(): Router {
   router.post(
     '/depth',
     asyncHandler(async (req: RequestWithUser, res: Response) => {
-      const requestId = (req as RequestWithUser & { id?: string }).id ?? null;
+      const requestId = req.id ?? null;
       const depthRequestId = `depth-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const startedAt = Date.now();
 

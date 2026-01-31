@@ -1,15 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Check, CreditCard, FileText } from '@promptstudio/system/components/ui';
-import { apiClient } from '@/services/ApiClient';
+import { createBillingPortalSession, createCheckoutSession } from '@/api/billingApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';
-import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { useUserCreditBalance } from '@hooks/useUserCreditBalance';
-import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@/features/billing/subscriptionTiers';
 import { CREDIT_PACKS } from '@/features/billing/creditPacks';
 import { AuthShell } from './auth/AuthShell';
@@ -31,15 +30,8 @@ export function BillingPage(): React.ReactElement {
   const location = useLocation();
   const log = React.useMemo(() => logger.child('BillingPage'), []);
 
-  const [user, setUser] = React.useState<User | null>(null);
   const [isBusy, setIsBusy] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
 
   const { balance, isLoading: isLoadingBalance, error: balanceError } = useUserCreditBalance(user?.uid ?? null);
   const checkout = React.useMemo(() => deriveCheckoutStatus(location.search), [location.search]);
@@ -62,8 +54,7 @@ export function BillingPage(): React.ReactElement {
 
     setIsBusy(priceId);
     try {
-      const response = await apiClient.post('/api/payment/checkout', { priceId });
-      const redirectUrl = (response as { url?: string }).url;
+      const { url: redirectUrl } = await createCheckoutSession(priceId);
 
       if (!redirectUrl) {
         throw new Error('Missing checkout URL');
@@ -94,8 +85,7 @@ export function BillingPage(): React.ReactElement {
 
     setIsBusy('portal');
     try {
-      const response = await apiClient.post('/api/payment/portal', {});
-      const redirectUrl = (response as { url?: string }).url;
+      const { url: redirectUrl } = await createBillingPortalSession();
 
       if (!redirectUrl) {
         throw new Error('Missing billing portal URL');

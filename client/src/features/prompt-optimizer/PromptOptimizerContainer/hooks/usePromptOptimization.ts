@@ -277,9 +277,6 @@ export function usePromptOptimization({
                 signature,
                 prompt: promptText,
                 timestamp: new Date().toISOString(),
-                highlights: null,
-                preview: null,
-                video: null,
               };
 
               promptHistory.updateEntryVersions(

@@ -1,4 +1,10 @@
-export const VIDEO_DRAFT_MODEL = { id: 'wan-2.2', label: 'Wan', cost: 5 };
+import type { DraftModel } from '@components/ToolSidebar/types';
+
+export const VIDEO_DRAFT_MODEL: { id: DraftModel; label: string; cost: number } = {
+  id: 'wan-2.2',
+  label: 'Wan',
+  cost: 5,
+};
 
 export const VIDEO_RENDER_MODELS = [
   { id: 'sora-2', label: 'Sora', cost: 80 },

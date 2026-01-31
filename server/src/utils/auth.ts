@@ -3,6 +3,10 @@ import type { Request } from 'express';
 const BEARER_PREFIX = 'Bearer ';
 const FIREBASE_TOKEN_HEADER = 'x-firebase-token';
 
+export interface RequestWithApiKey extends Request {
+  apiKey?: string;
+}
+
 export function normalizeHeaderValue(
   headerValue: string | string[] | undefined
 ): string | null {
@@ -26,18 +30,17 @@ export function extractBearerToken(
   return token.length > 0 ? token : null;
 }
 
-export function extractFirebaseToken(req: Request): string | null {
+export function extractFirebaseToken(req: RequestWithApiKey): string | null {
   const headerToken = normalizeHeaderValue(req.headers[FIREBASE_TOKEN_HEADER]);
   if (headerToken) {
     return headerToken;
   }
 
   const bearerToken = extractBearerToken(req.headers.authorization);
-  const apiKey = (req as Request & { apiKey?: string }).apiKey;
+  const apiKey = req.apiKey;
   if (bearerToken && bearerToken !== apiKey) {
     return bearerToken;
   }
 
   return null;
 }
-

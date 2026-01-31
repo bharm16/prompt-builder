@@ -18,6 +18,15 @@ export interface SuggestionsContext {
   isVideoPrompt?: boolean;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isSuggestion = (value: unknown): value is { text: string } =>
+  isRecord(value) && typeof value.text === 'string';
+
+const isSuggestionArray = (value: unknown[]): value is Array<{ text: string }> =>
+  value.every(isSuggestion);
+
 function validationError(message: string): ValidationFailure {
   return { ok: false, status: 400, error: 'Invalid request', message };
 }
@@ -25,13 +34,23 @@ function validationError(message: string): ValidationFailure {
 function extractContext(
   context: unknown
 ): ValidationResult<SuggestionsContext> {
-  const ctx = context as Record<string, unknown> | undefined;
-  if (!ctx || !ctx.highlightedText) {
+  if (!isRecord(context)) {
     return validationError('context.highlightedText is required');
   }
+  const highlightedText = context.highlightedText;
+  if (typeof highlightedText !== 'string' || highlightedText.length === 0) {
+    return validationError('context.highlightedText is required');
+  }
+  const fullPrompt = typeof context.fullPrompt === 'string' ? context.fullPrompt : undefined;
+  const isVideoPrompt =
+    typeof context.isVideoPrompt === 'boolean' ? context.isVideoPrompt : undefined;
   return {
     ok: true,
-    data: { highlightedText: ctx.highlightedText as string, ...ctx } as SuggestionsContext,
+    data: {
+      highlightedText,
+      ...(fullPrompt !== undefined ? { fullPrompt } : {}),
+      ...(isVideoPrompt !== undefined ? { isVideoPrompt } : {}),
+    },
   };
 }
 
@@ -57,6 +76,9 @@ export function validateEvaluateRequest(
   if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
     return validationError('suggestions must be a non-empty array');
   }
+  if (!isSuggestionArray(suggestions)) {
+    return validationError('suggestions must be an array of { text: string }');
+  }
 
   const ctxResult = extractContext(context);
   if (!ctxResult.ok) return ctxResult;
@@ -64,7 +86,7 @@ export function validateEvaluateRequest(
   return {
     ok: true,
     data: withOptionalRubric(
-      { suggestions: suggestions as Array<{ text: string }>, context: ctxResult.data },
+      { suggestions, context: ctxResult.data },
       rubric
     ),
   };
@@ -105,6 +127,9 @@ export function validateCompareRequest(
   if (!Array.isArray(setA) || !Array.isArray(setB)) {
     return validationError('setA and setB must be arrays');
   }
+  if (!isSuggestionArray(setA) || !isSuggestionArray(setB)) {
+    return validationError('setA and setB must contain { text: string } entries');
+  }
 
   const ctxResult = extractContext(context);
   if (!ctxResult.ok) return ctxResult;
@@ -113,8 +138,8 @@ export function validateCompareRequest(
     ok: true,
     data: withOptionalRubric(
       {
-        setA: setA as Array<{ text: string }>,
-        setB: setB as Array<{ text: string }>,
+        setA,
+        setB,
         context: ctxResult.data,
       },
       rubric

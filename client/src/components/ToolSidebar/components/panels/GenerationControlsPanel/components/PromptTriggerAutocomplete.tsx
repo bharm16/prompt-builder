@@ -16,7 +16,7 @@ export interface AutocompleteState {
 
 interface PromptTriggerAutocompleteProps {
   autocomplete: AutocompleteState;
-  onCreateFromTrigger?: (trigger: string) => void;
+  onCreateFromTrigger?: ((trigger: string) => void) | undefined;
 }
 
 export function PromptTriggerAutocomplete({

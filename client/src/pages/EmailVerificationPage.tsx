@@ -4,7 +4,7 @@ import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from '@promptstudio/system
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
 
 function getSafeRedirect(search: string): string | null {
@@ -95,19 +95,12 @@ export function EmailVerificationPage(): React.ReactElement {
   const oobCode = getOobCode(location.search);
   const mode = getMode(location.search);
 
-  const [user, setUser] = React.useState<User | null>(null);
+  const user = useAuthUser();
   const [verifyState, setVerifyState] = React.useState<VerifyState>('idle');
   const [error, setError] = React.useState<string | null>(null);
   const [isResending, setIsResending] = React.useState(false);
   const [resendCooldown, setResendCooldown] = React.useState(0);
   const [emailHint, setEmailHint] = React.useState(() => getInitialEmail(location.search));
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
 
   React.useEffect(() => {
     const initial = getInitialEmail(location.search);

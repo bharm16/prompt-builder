@@ -1,7 +1,7 @@
 import React, { useMemo, type ReactElement } from 'react';
 import { Highlighter, Plus, Upload } from '@promptstudio/system/components/ui';
 import { cn } from '@utils/cn';
-import type { KeyframeTile } from '../../types';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
 
 interface ImageReferenceSlotsRowProps {
   keyframes: KeyframeTile[];

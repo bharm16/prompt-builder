@@ -1,22 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Check } from '@promptstudio/system/components/ui';
-import { getAuthRepository } from '@repositories/index';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { SUBSCRIPTION_TIERS } from '@/features/billing/subscriptionTiers';
 import { CREDIT_PACKS } from '@/features/billing/creditPacks';
 import { MarketingPage } from './MarketingPage';
 import { Card } from '@promptstudio/system/components/ui/card';
 
 export function PricingPage(): React.ReactElement {
-  const [user, setUser] = React.useState<User | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
 
   const billingPath = '/settings/billing';
   const buildBillingLink = React.useCallback(

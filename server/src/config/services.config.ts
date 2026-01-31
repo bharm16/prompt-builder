@@ -65,8 +65,12 @@ import { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import {
   AnchorService,
   CharacterKeyframeService,
+  ContinuityMediaService,
+  ContinuityPostProcessingService,
+  ContinuityProviderService,
   ContinuitySessionService,
   ContinuitySessionStore,
+  ContinuityShotGenerator,
   FrameBridgeService,
   GradingService,
   ProviderStyleAdapter,
@@ -876,19 +880,36 @@ export async function configureServices(): Promise<DIContainer> {
         logger.warn('Character keyframe service unavailable; PuLID identity continuity will be disabled.');
       }
 
-      return new ContinuitySessionService(
+      const providerService = new ContinuityProviderService(
         anchorService,
+        providerStyleAdapter,
+        seedPersistenceService
+      );
+      const mediaService = new ContinuityMediaService(
         frameBridgeService,
         styleReferenceService,
-        characterKeyframeService,
-        providerStyleAdapter,
-        seedPersistenceService,
         styleAnalysisService,
+        videoGenerationService,
+        assetService
+      );
+      const postProcessingService = new ContinuityPostProcessingService(
         gradingService,
         qualityGateService,
-        sceneProxyService,
-        videoGenerationService,
-        assetService,
+        sceneProxyService
+      );
+      const shotGenerator = new ContinuityShotGenerator(
+        providerService,
+        mediaService,
+        postProcessingService,
+        characterKeyframeService,
+        continuitySessionStore
+      );
+
+      return new ContinuitySessionService(
+        providerService,
+        mediaService,
+        postProcessingService,
+        shotGenerator,
         continuitySessionStore
       );
     },

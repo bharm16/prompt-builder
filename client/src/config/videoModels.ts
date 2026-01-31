@@ -39,3 +39,31 @@ export const AI_MODEL_PROVIDERS: Record<AIModelId, string> = {
   'kling-26': 'kling',
   'wan-2.2': 'wan',
 } as const;
+
+export type ModelMeta = {
+  strength: string;
+  badges: string[];
+};
+
+export const resolveModelMeta = (modelId: string): ModelMeta => {
+  const id = modelId.toLowerCase();
+  if (id.includes('sora')) {
+    return { strength: 'Cinematic motion and high fidelity', badges: ['Cinematic', 'Photoreal'] };
+  }
+  if (id.includes('veo')) {
+    return { strength: 'Strong lighting, realism, and camera', badges: ['Cinematic', 'Photoreal'] };
+  }
+  if (id.includes('kling')) {
+    return { strength: 'Stable subjects and dynamic movement', badges: ['Cinematic', 'Character'] };
+  }
+  if (id.includes('luma')) {
+    return { strength: 'Fast, clean previews with realism', badges: ['Fast', 'Photoreal'] };
+  }
+  if (id.includes('runway')) {
+    return { strength: 'Quick iterations with strong style', badges: ['Fast', 'Cinematic'] };
+  }
+  if (id.includes('wan')) {
+    return { strength: 'Speedy motion checks for iteration', badges: ['Fast', 'Balanced'] };
+  }
+  return { strength: 'Balanced preview defaults', badges: ['Balanced'] };
+};

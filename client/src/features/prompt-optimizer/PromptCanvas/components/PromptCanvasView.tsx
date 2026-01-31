@@ -19,7 +19,7 @@ import { CollapsibleDrawer, type DrawerDisplayMode } from '@components/Collapsib
 import { LoadingDots } from '@components/LoadingDots';
 import { MAX_REQUEST_LENGTH } from '@components/SuggestionsPanel/config/panelConfig';
 import { cn } from '@/utils/cn';
-import TriggerAutocomplete from '@features/assets/components/TriggerAutocomplete';
+import { TriggerAutocomplete } from '@features/assets/components/TriggerAutocomplete';
 import type { AssetSuggestion } from '@features/assets/hooks/useTriggerAutocomplete';
 import type { PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';

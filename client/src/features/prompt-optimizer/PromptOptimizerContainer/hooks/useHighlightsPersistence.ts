@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { getPromptRepository } from '@repositories/index';
-import type { Toast } from '@hooks/types';
+import type { Toast, User } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -21,10 +21,6 @@ interface PersistenceResult {
   signature: string;
   cacheId?: string | null;
   source?: string;
-}
-
-interface User {
-  uid: string;
 }
 
 interface PromptHistory {

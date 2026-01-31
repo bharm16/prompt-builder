@@ -30,6 +30,10 @@ import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMed
 import { createMotionRoutes } from '@routes/motion.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
 
+interface RequestWithId extends Request {
+  id?: string;
+}
+
 /**
  * Register all application routes
  */
@@ -106,7 +110,11 @@ export function registerRoutes(app: Application, container: DIContainer): void {
 
   // Batch endpoint for processing multiple span labeling requests
   // Reduces API calls by 60% under concurrent load
-  app.post('/llm/label-spans-batch', apiAuthMiddleware, createBatchMiddleware());
+  app.post(
+    '/llm/label-spans-batch',
+    apiAuthMiddleware,
+    createBatchMiddleware(container.resolve('aiService'))
+  );
 
   // ============================================================================
   // Role Classification Route (with auth and DI)
@@ -152,11 +160,11 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // 404 Handler (must be registered AFTER all routes)
   // ============================================================================
 
-  app.use((req: Request, res: Response): void => {
+  app.use((req: RequestWithId, res: Response): void => {
     res.status(404).json({
       error: 'Not found',
       path: req.path,
-      requestId: (req as Request & { id?: string }).id,
+      requestId: req.id,
     });
   });
 }

@@ -444,7 +444,7 @@ export function applyLoggingAndMetricsMiddleware(app: Application, services: Mid
  * Reduces duplicate API calls by 50-80%
  */
 export function applyRequestCoalescingMiddleware(app: Application): void {
-  app.use((requestCoalescing as unknown as { middleware: () => express.RequestHandler }).middleware());
+  app.use(requestCoalescing.middleware());
 }
 
 /**

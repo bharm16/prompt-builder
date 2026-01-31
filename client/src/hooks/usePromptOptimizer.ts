@@ -15,7 +15,9 @@ import { useToast } from '../components/Toast';
 import { logger } from '../services/LoggingService';
 import type { Toast } from './types';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptOptimizerActions } from './utils/promptOptimizationFlow';
+import type { PromptOptimizerActions, OptimizationOutcome } from './utils/promptOptimizationFlow';
+import type { PromptOptimizerState } from './usePromptOptimizerState';
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
 
 import { usePromptOptimizerApi } from './usePromptOptimizerApi';
 import { usePromptOptimizerState } from './usePromptOptimizerState';
@@ -32,7 +34,55 @@ interface OptimizationOptions {
   constraintMode?: 'strict' | 'flexible' | 'transform';
 }
 
-export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
+interface UsePromptOptimizerResult {
+  inputPrompt: string;
+  setInputPrompt: (prompt: string) => void;
+  isProcessing: boolean;
+  optimizedPrompt: string;
+  setOptimizedPrompt: (prompt: string) => void;
+  displayedPrompt: string;
+  setDisplayedPrompt: (prompt: string) => void;
+  genericOptimizedPrompt: string | null;
+  setGenericOptimizedPrompt: (prompt: string | null) => void;
+  previewPrompt: string | null;
+  setPreviewPrompt: (prompt: string | null) => void;
+  previewAspectRatio: string | null;
+  setPreviewAspectRatio: (ratio: string | null) => void;
+  qualityScore: number | null;
+  skipAnimation: boolean;
+  setSkipAnimation: (skip: boolean) => void;
+  improvementContext: unknown | null;
+  setImprovementContext: (context: unknown | null) => void;
+  draftPrompt: string;
+  isDraftReady: boolean;
+  isRefining: boolean;
+  draftSpans: PromptOptimizerState['draftSpans'];
+  refinedSpans: PromptOptimizerState['refinedSpans'];
+  lockedSpans: LockedSpan[];
+  optimize: (
+    promptToOptimize?: string,
+    context?: unknown | null,
+    brainstormContext?: unknown | null,
+    targetModel?: string,
+    options?: OptimizationOptions
+  ) => Promise<OptimizationOutcome | null>;
+  compile: (
+    promptToCompile: string,
+    targetModel?: string,
+    context?: unknown | null
+  ) => Promise<{ optimized: string; score: number | null } | null>;
+  resetPrompt: () => void;
+  setLockedSpans: (spans: LockedSpan[]) => void;
+  addLockedSpan: (span: LockedSpan) => void;
+  removeLockedSpan: (spanId: string) => void;
+  clearLockedSpans: () => void;
+}
+
+export const usePromptOptimizer = (
+  selectedMode: string,
+  selectedModel?: string,
+  useTwoStage: boolean = true
+): UsePromptOptimizerResult => {
   const toast = useToast() as Toast;
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);

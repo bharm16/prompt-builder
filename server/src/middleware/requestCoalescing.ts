@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import type { Request, RequestHandler, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 
 const COALESCING_WINDOW_MS = 100;
@@ -17,6 +18,10 @@ const MAX_INLINE_KEY_LENGTH = 512;
  * - Significant savings for slow operations (Claude API calls)
  */
 export class RequestCoalescingMiddleware {
+  private pendingRequests: Map<string, { promise: Promise<unknown>; completedAt: number | null }>;
+  private stats: { coalesced: number; unique: number; totalSaved: number };
+  private cleanupTimer: ReturnType<typeof setTimeout> | null;
+
   constructor() {
     // Map of request keys to pending promises with completion timestamps
     this.pendingRequests = new Map();
@@ -34,7 +39,7 @@ export class RequestCoalescingMiddleware {
    * Generate a cache key from request
    * Uses only essential request data for key generation
    */
-  generateKey(req) {
+  generateKey(req: Request): string {
     // Include: method, path, and request body
     // Exclude: headers (except auth), timestamps, request IDs
     const auth = req.get('authorization');
@@ -75,16 +80,18 @@ export class RequestCoalescingMiddleware {
   /**
    * Express middleware function
    */
-  middleware() {
-    return async (req, res, next) => {
+  middleware(): RequestHandler {
+    return async (req, res, next): Promise<void> => {
       // Only coalesce POST requests (GET should use HTTP cache)
       if (req.method !== 'POST') {
-        return next();
+        next();
+        return;
       }
 
       // Skip coalescing for non-API routes
       if (!req.path.startsWith('/api/') && !req.path.startsWith('/llm/')) {
-        return next();
+        next();
+        return;
       }
 
       const requestKey = this.generateKey(req);
@@ -111,7 +118,8 @@ export class RequestCoalescingMiddleware {
             return;
           } catch (error) {
             // If the coalesced request failed, let this one fail too
-            return next(error);
+            next(error);
+            return;
           }
         }
       }
@@ -119,10 +127,10 @@ export class RequestCoalescingMiddleware {
       // This is a unique request - create a promise for it
       this.stats.unique++;
 
-      let resolvePromise;
-      let rejectPromise;
+      let resolvePromise: (value: unknown) => void = () => undefined;
+      let rejectPromise: (reason?: unknown) => void = () => undefined;
 
-      const requestPromise = new Promise((resolve, reject) => {
+      const requestPromise = new Promise<unknown>((resolve, reject) => {
         resolvePromise = resolve;
         rejectPromise = reject;
       });
@@ -135,7 +143,8 @@ export class RequestCoalescingMiddleware {
 
       // Override res.json to capture the response
       const originalJson = res.json.bind(res);
-      res.json = (data) => {
+      const wrappedJson: Response['json'] = (...args) => {
+        const [data] = args;
         // Resolve the promise with the response data
         resolvePromise(data);
 
@@ -148,15 +157,14 @@ export class RequestCoalescingMiddleware {
         this._scheduleCleanup();
 
         // Send the original response
-        return originalJson(data);
+        return originalJson(...args);
       };
+      res.json = wrappedJson;
 
       // Handle errors
-      const originalErrorHandler = res.on.bind(res);
       res.on('error', (error) => {
         rejectPromise(error);
         this.pendingRequests.delete(requestKey);
-        originalErrorHandler('error', error);
       });
 
       // Continue to the actual handler
@@ -168,7 +176,7 @@ export class RequestCoalescingMiddleware {
    * Clean up completed requests after the coalescing window
    * @private
    */
-  _cleanupCompletedRequests() {
+  _cleanupCompletedRequests(): void {
     const now = Date.now();
 
     for (const [key, entry] of this.pendingRequests.entries()) {
@@ -178,7 +186,7 @@ export class RequestCoalescingMiddleware {
     }
   }
 
-  _hasCompletedEntries() {
+  _hasCompletedEntries(): boolean {
     for (const entry of this.pendingRequests.values()) {
       if (entry.completedAt) {
         return true;
@@ -187,7 +195,7 @@ export class RequestCoalescingMiddleware {
     return false;
   }
 
-  _scheduleCleanup() {
+  _scheduleCleanup(): void {
     if (this.cleanupTimer) {
       return;
     }
@@ -204,7 +212,14 @@ export class RequestCoalescingMiddleware {
   /**
    * Get coalescing statistics
    */
-  getStats() {
+  getStats(): {
+    coalesced: number;
+    unique: number;
+    totalSaved: number;
+    total: number;
+    coalescingRate: string;
+    activePending: number;
+  } {
     const total = this.stats.coalesced + this.stats.unique;
     const coalescingRate = total > 0 ? (this.stats.coalesced / total) * 100 : 0;
 
@@ -219,7 +234,7 @@ export class RequestCoalescingMiddleware {
   /**
    * Reset statistics
    */
-  resetStats() {
+  resetStats(): void {
     this.stats = {
       coalesced: 0,
       unique: 0,
@@ -230,7 +245,7 @@ export class RequestCoalescingMiddleware {
   /**
    * Clear all pending requests (for shutdown)
    */
-  clear() {
+  clear(): void {
     this.pendingRequests.clear();
     if (this.cleanupTimer) {
       clearTimeout(this.cleanupTimer);

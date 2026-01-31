@@ -78,7 +78,7 @@ describe('fetchCustomSuggestions', () => {
 
     const result = await fetchCustomSuggestions(defaultParams);
 
-    expect(result).toEqual(['one', 'two']);
+    expect(result).toEqual([{ text: 'one' }, { text: 'two' }]);
     expect(mockBuildFirebaseAuthHeaders).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/get-custom-suggestions',

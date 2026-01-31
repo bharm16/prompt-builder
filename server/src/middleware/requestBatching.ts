@@ -1,5 +1,23 @@
+import type { RequestHandler } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { metricsService } from '@infrastructure/MetricsService';
+import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import type { LabelSpansParams, LabelSpansResult } from '@llm/span-labeling/types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
+import { toPublicLabelSpansResult, type PublicLabelSpansResult } from '../routes/labelSpans/transform';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isLabelSpansParams = (value: unknown): value is LabelSpansParams =>
+  isRecord(value) && typeof value.text === 'string' && value.text.trim().length > 0;
+
+const isLabelSpansParamsArray = (value: unknown[]): value is LabelSpansParams[] =>
+  value.every(isLabelSpansParams);
+
+type BatchResult =
+  | { success: true; data: LabelSpansResult; index: number }
+  | { success: false; error: { message: string; code: string }; index: number };
 
 /**
  * Request Batching Middleware for Span Labeling
@@ -21,10 +39,24 @@ import { metricsService } from '@infrastructure/MetricsService';
  * - Maintains <200ms latency for each request
  *
  * Usage:
- * app.post('/llm/label-spans-batch', requestBatching.middleware());
+ * app.post('/llm/label-spans-batch', requestBatching.middleware(aiService));
  */
 export class RequestBatchingService {
-  constructor(options = {}) {
+  private batchWindow: number;
+  private maxBatchSize: number;
+  private maxConcurrency: number;
+  private pendingRequests: Array<unknown>;
+  private batchTimer: ReturnType<typeof setTimeout> | null;
+  private isProcessing: boolean;
+  private stats: {
+    totalRequests: number;
+    totalBatches: number;
+    avgBatchSize: number;
+    maxBatchSize: number;
+    batchSavings: number;
+  };
+
+  constructor(options: { batchWindow?: number; maxBatchSize?: number; maxConcurrency?: number } = {}) {
     this.batchWindow = options.batchWindow || 50; // 50ms collection window
     this.maxBatchSize = options.maxBatchSize || 10; // Max requests per batch
     this.maxConcurrency = options.maxConcurrency || 5; // Max parallel processing
@@ -70,30 +102,40 @@ export class RequestBatchingService {
    *   { spans: [...], meta: {...} }
    * ]
    */
-  middleware() {
-    return async (req, res, next) => {
+  middleware(aiService: BaseAIService): RequestHandler {
+    return async (req, res, next): Promise<void> => {
       try {
         const requests = req.body;
 
         // Validate input
         if (!Array.isArray(requests)) {
-          return res.status(400).json({
+          res.status(400).json({
             error: 'Body must be an array of span labeling requests',
           });
+          return;
+        }
+
+        if (!isLabelSpansParamsArray(requests)) {
+          res.status(400).json({
+            error: 'Each request must include a non-empty text field',
+          });
+          return;
         }
 
         if (requests.length === 0) {
-          return res.json([]);
+          res.json([]);
+          return;
         }
 
         if (requests.length > this.maxBatchSize) {
-          return res.status(400).json({
+          res.status(400).json({
             error: `Batch size exceeds maximum of ${this.maxBatchSize}`,
           });
+          return;
         }
 
         // Process batch
-        const results = await this.processBatch(requests, req);
+        const results = await this.processBatch(requests, aiService);
 
         // Update metrics
         this.stats.totalRequests += requests.length;
@@ -114,13 +156,16 @@ export class RequestBatchingService {
         metricsService.recordHistogram('batch_size', requests.length);
         metricsService.recordCounter('batched_requests_total', requests.length);
 
-        return res.json(results);
+        res.json(results);
+        return;
       } catch (error) {
-        logger.error('Batch processing failed', error);
-        return res.status(500).json({
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error('Batch processing failed', err);
+        res.status(500).json({
           error: 'Batch processing failed',
-          message: error.message,
+          message: err.message,
         });
+        return;
       }
     };
   }
@@ -128,11 +173,14 @@ export class RequestBatchingService {
   /**
    * Process a batch of span labeling requests with parallel execution
    *
-   * @param {Array} requests - Array of span labeling request payloads
-   * @param {Object} req - Express request object (for accessing services)
-   * @returns {Promise<Array>} Array of results
+   * @param requests - Array of span labeling request payloads
+   * @param aiService - AI service for span labeling
+   * @returns Array of results
    */
-  async processBatch(requests, req) {
+  async processBatch(
+    requests: LabelSpansParams[],
+    aiService: BaseAIService
+  ): Promise<Array<PublicLabelSpansResult | { error: { message: string; code: string } }>> {
     const startTime = Date.now();
 
     logger.debug('Processing batch', {
@@ -143,13 +191,10 @@ export class RequestBatchingService {
     // Process requests in parallel with concurrency control
     const results = await this._processWithConcurrency(
       requests,
-      async (request, index) => {
+      async (request, index): Promise<BatchResult> => {
         try {
-          // Import labelSpans dynamically to avoid circular dependencies
-          const { labelSpans } = await import('../llm/spanLabeler.js');
-
           // Process individual request
-          const result = await labelSpans(request);
+          const result = await labelSpans(request, aiService);
 
           logger.debug('Batch item completed', {
             index,
@@ -162,13 +207,18 @@ export class RequestBatchingService {
             index,
           };
         } catch (error) {
-          logger.error('Batch item failed', error, { index });
+          const err = error instanceof Error ? error : new Error(String(error));
+          logger.error('Batch item failed', err, { index });
+          const code =
+            isRecord(error) && typeof error.code === 'string'
+              ? error.code
+              : 'UNKNOWN_ERROR';
 
           return {
             success: false,
             error: {
-              message: error.message,
-              code: error.code || 'UNKNOWN_ERROR',
+              message: err.message,
+              code,
             },
             index,
           };
@@ -189,34 +239,24 @@ export class RequestBatchingService {
     metricsService.recordHistogram('batch_processing_duration_ms', duration);
 
     // Return results in original order, transforming role → category for frontend
-    return results.map(r => {
-      if (!r.success) {
-        return { error: r.error };
-      }
-      // Transform: backend uses 'role', frontend expects 'category'
-      return {
-        ...r.data,
-        spans: (r.data.spans || []).map(span => ({
-          text: span.text,
-          start: span.start,
-          end: span.end,
-          category: span.role, // Map role → category for frontend
-          confidence: span.confidence,
-        })),
-      };
-    });
+    return results.map((result) =>
+      result.success ? toPublicLabelSpansResult(result.data) : { error: result.error }
+    );
   }
 
   /**
    * Process items with controlled concurrency
    *
    * @private
-   * @param {Array} items - Items to process
-   * @param {Function} processor - Async function to process each item
-   * @returns {Promise<Array>} Processing results
+   * @param items - Items to process
+   * @param processor - Async function to process each item
+   * @returns Processing results
    */
-  async _processWithConcurrency(items, processor) {
-    const results = new Array(items.length);
+  async _processWithConcurrency<TItem, TResult>(
+    items: TItem[],
+    processor: (item: TItem, index: number) => Promise<TResult>
+  ): Promise<TResult[]> {
+    const results: TResult[] = new Array(items.length);
     let index = 0;
 
     // Worker function
@@ -242,9 +282,17 @@ export class RequestBatchingService {
   /**
    * Get batching statistics
    *
-   * @returns {Object} Statistics object
+   * @returns Statistics object
    */
-  getStats() {
+  getStats(): {
+    totalRequests: number;
+    totalBatches: number;
+    avgBatchSize: number;
+    maxBatchSize: number;
+    batchSavings: number;
+    savingsPercent: string;
+    efficiency: number;
+  } {
     const savingsPercent =
       this.stats.totalRequests > 0
         ? (this.stats.batchSavings / this.stats.totalRequests) * 100
@@ -263,7 +311,7 @@ export class RequestBatchingService {
   /**
    * Reset statistics
    */
-  resetStats() {
+  resetStats(): void {
     this.stats = {
       totalRequests: 0,
       totalBatches: 0,
@@ -284,6 +332,6 @@ export const requestBatchingService = new RequestBatchingService({
 /**
  * Express middleware for batch endpoint
  */
-export function createBatchMiddleware() {
-  return requestBatchingService.middleware();
+export function createBatchMiddleware(aiService: BaseAIService): RequestHandler {
+  return requestBatchingService.middleware(aiService);
 }

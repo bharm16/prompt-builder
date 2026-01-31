@@ -2,9 +2,9 @@ import React from 'react';
 import type { CameraPath } from '@/features/convergence/types';
 import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
 import type { ImageSubTab } from '../types';
-import { KeyframeSlotsRow } from '../../KeyframeSlotsRow';
+import { KeyframeSlotsRow } from '@components/ToolSidebar/components/panels/KeyframeSlotsRow';
 import { CameraMotionSelector } from './CameraMotionSelector';
-import { ImageSubTabSelector } from './ImageSubTabSelector';
+import { ImageSubTabToolbar } from './ImageSubTabToolbar';
 import { PromptEditor } from './PromptEditor';
 import { type AutocompleteState } from './PromptTriggerAutocomplete';
 import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
@@ -23,13 +23,13 @@ interface VideoTabContentProps {
   cameraMotion: CameraPath | null;
   onOpenCameraMotion: () => void;
   prompt: string;
-  onPromptChange?: (prompt: string) => void;
+  onPromptChange?: ((prompt: string) => void) | undefined;
   isInputLocked: boolean;
   isOptimizing: boolean;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
   onPromptInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onPromptKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCreateFromTrigger?: (trigger: string) => void;
+  onCreateFromTrigger?: ((trigger: string) => void) | undefined;
   autocomplete: AutocompleteState;
   imageSubTab: ImageSubTab;
   onImageSubTabChange: (tab: ImageSubTab) => void;
@@ -100,9 +100,7 @@ export function VideoTabContent({
           />
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <ImageSubTabSelector activeTab={imageSubTab} onSelect={onImageSubTabChange} />
-        </div>
+        <ImageSubTabToolbar className="mt-3" activeTab={imageSubTab} onSelect={onImageSubTabChange} />
 
         <div className="mt-3 rounded-md" role="tabpanel">
           <ReferencesOnboardingCard onUpload={onRequestUpload} isUploadDisabled={isUploadDisabled} />

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchModelRecommendation } from '../api';
-import type { ModelRecommendation } from '../types';
+import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '../constants';
+import type { ModelRecommendation, ModelRecommendationSpan } from '../types';
 import { logger } from '@/services/LoggingService';
 
 interface UseModelRecommendationOptions {
   mode?: 't2v' | 'i2v';
   durationSeconds?: number;
+  spans?: ModelRecommendationSpan[];
   debounceMs?: number;
   enabled?: boolean;
 }
@@ -35,7 +37,7 @@ export function useModelRecommendation(
 
   const runFetch = useCallback(() => {
     if (!enabled) return;
-    if (!prompt || prompt.trim().length < 10) {
+    if (!prompt || prompt.trim().length < MIN_PROMPT_LENGTH_FOR_RECOMMENDATION) {
       setRecommendation(null);
       return;
     }
@@ -51,6 +53,7 @@ export function useModelRecommendation(
       {
         prompt,
         mode,
+        ...(spans?.length ? { spans } : {}),
         ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
       },
       controller.signal
@@ -68,7 +71,7 @@ export function useModelRecommendation(
         if (controller.signal.aborted) return;
         setIsLoading(false);
       });
-  }, [durationSeconds, enabled, mode, prompt]);
+  }, [durationSeconds, enabled, mode, prompt, spans]);
 
   useEffect(() => {
     if (!enabled) return;

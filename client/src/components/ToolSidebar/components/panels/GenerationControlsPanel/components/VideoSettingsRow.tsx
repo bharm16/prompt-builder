@@ -8,8 +8,8 @@ interface VideoSettingsRowProps {
   durationOptions: number[];
   onAspectRatioChange: (value: string) => void;
   onDurationChange: (value: number) => void;
-  isAspectRatioDisabled?: boolean;
-  isDurationDisabled?: boolean;
+  isAspectRatioDisabled?: boolean | undefined;
+  isDurationDisabled?: boolean | undefined;
 }
 
 export function VideoSettingsRow({

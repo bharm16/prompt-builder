@@ -1,4 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type Dispatch,
+  type KeyboardEvent,
+  type RefObject,
+  type SetStateAction,
+} from 'react';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
@@ -6,16 +17,115 @@ import { sanitizeText } from '@/features/span-highlighting';
 import { logger } from '@/services/LoggingService';
 import { safeUrlHost } from '@/utils/url';
 import { useModelRecommendation } from '@/features/model-intelligence';
+import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '@/features/model-intelligence/constants';
 import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from '../constants';
+import type { AutocompleteState } from '../components/PromptTriggerAutocomplete';
 import type { GenerationControlsPanelProps, GenerationControlsTab, ImageSubTab } from '../types';
-import { getFieldInfo, resolveNumberOptions, resolveStringOptions } from '../utils/capabilities';
+import { getFieldInfo, resolveNumberOptions, resolveStringOptions, type FieldInfo } from '../utils/capabilities';
 import type { CameraPath } from '@/features/convergence/types';
+import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
+import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/types';
+import type { ModelRecommendation, ModelRecommendationSpan } from '@/features/model-intelligence/types';
 
 const log = logger.child('GenerationControlsPanel');
 
-export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) => {
+type HighlightSpan = HighlightSnapshot['spans'][number];
+
+export interface UseGenerationControlsPanelResult {
+  refs: {
+    fileInputRef: RefObject<HTMLInputElement>;
+    resolvedPromptInputRef: RefObject<HTMLTextAreaElement | null>;
+  };
+  state: {
+    activeTab: GenerationControlsTab;
+    imageSubTab: ImageSubTab;
+    showCameraMotionModal: boolean;
+    isEditing: boolean;
+  };
+  derived: {
+    canOptimize: boolean;
+    isOptimizing: boolean;
+    hasPrimaryKeyframe: boolean;
+    isKeyframeLimitReached: boolean;
+    isUploadDisabled: boolean;
+    primaryKeyframeUrlHost: string | null;
+    hasPrompt: boolean;
+    isImageGenerateDisabled: boolean;
+    isVideoGenerateDisabled: boolean;
+    isStoryboardDisabled: boolean;
+    isInputLocked: boolean;
+    isOptimizeDisabled: boolean;
+    isGenerateDisabled: boolean;
+  };
+  recommendation: {
+    recommendationMode: 'i2v' | 't2v';
+    modelRecommendation: ModelRecommendation | null;
+    isRecommendationLoading: boolean;
+    recommendationError: string | null;
+    recommendedModelId?: string;
+    efficientModelId?: string;
+    renderModelOptions: Array<{ id: string; label: string }>;
+    renderModelId: string;
+    recommendationAgeMs: number | null;
+  };
+  capabilities: {
+    aspectRatioInfo: FieldInfo | null;
+    durationInfo: FieldInfo | null;
+    aspectRatioOptions: string[];
+    durationOptions: number[];
+  };
+  autocomplete: AutocompleteState;
+  actions: {
+    setActiveTab: Dispatch<SetStateAction<GenerationControlsTab>>;
+    setImageSubTab: Dispatch<SetStateAction<ImageSubTab>>;
+    handleFile: (file: File) => Promise<void>;
+    handleUploadRequest: () => void;
+    handleCameraMotionButtonClick: () => void;
+    handleCloseCameraMotionModal: () => void;
+    handleSelectCameraMotion: (path: CameraPath) => void;
+    handleInputPromptChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+    handleEditClick: () => void;
+    handleCancelEdit: () => void;
+    handleUpdate: () => void;
+    handleReoptimize: () => void;
+    handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+    handleCopy: () => Promise<void>;
+  };
+}
+
+const buildRecommendationSpans = (
+  prompt: string,
+  spans: HighlightSpan[] | undefined
+): ModelRecommendationSpan[] | undefined => {
+  if (!spans?.length) return undefined;
+  if (!prompt.trim()) return undefined;
+
+  const maxIndex = prompt.length;
+  const normalizedSpans = spans
+    .map((span) => {
+      const start = Math.max(0, Math.min(maxIndex, Math.floor(span.start)));
+      const end = Math.max(0, Math.min(maxIndex, Math.floor(span.end)));
+      if (start >= end) return null;
+      const text = prompt.slice(start, end).trim();
+      if (!text) return null;
+      return {
+        text,
+        start,
+        end,
+        category: span.category,
+        confidence: span.confidence,
+      };
+    })
+    .filter((span): span is ModelRecommendationSpan => Boolean(span));
+
+  return normalizedSpans.length ? normalizedSpans : undefined;
+};
+
+export const useGenerationControlsPanel = (
+  props: GenerationControlsPanelProps
+): UseGenerationControlsPanelResult => {
   const {
     prompt,
     onPromptChange,
@@ -44,6 +154,7 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const localPromptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
+  const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<GenerationControlsTab>('video');
@@ -57,6 +168,13 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   const isKeyframeLimitReached = keyframes.length >= 3;
   const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
   const primaryKeyframeUrlHost = safeUrlHost(keyframes[0]?.url);
+  const trimmedPrompt = prompt.trim();
+  const trimmedPromptLength = trimmedPrompt.length;
+
+  const recommendationSpans = useMemo(
+    () => buildRecommendationSpans(prompt, promptHighlights?.initialHighlights?.spans),
+    [prompt, promptHighlights?.initialHighlights?.spans]
+  );
 
   const recommendationMode = useMemo(
     () => (keyframes.length > 0 ? 'i2v' : 't2v'),
@@ -64,8 +182,8 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   );
 
   const shouldLoadRecommendations = useMemo(
-    () => activeTab === 'video' && prompt.trim().length >= 10,
-    [activeTab, prompt]
+    () => activeTab === 'video' && trimmedPromptLength >= MIN_PROMPT_LENGTH_FOR_RECOMMENDATION,
+    [activeTab, trimmedPromptLength]
   );
 
   const {
@@ -75,6 +193,7 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   } = useModelRecommendation(prompt, {
     mode: recommendationMode,
     durationSeconds: duration,
+    spans: recommendationSpans,
     enabled: shouldLoadRecommendations,
   });
 
@@ -260,7 +379,7 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   );
 
   const handleInputPromptChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    (event: ChangeEvent<HTMLTextAreaElement>): void => {
       if (!onPromptChange) return;
       const updatedPrompt = sanitizeText(event.target.value);
       onPromptChange(updatedPrompt);
@@ -337,7 +456,7 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
   }, [canOptimize, isOptimizing, onOptimize, prompt]);
 
   const handlePromptKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    (event: KeyboardEvent<HTMLTextAreaElement>): void => {
       if (handleAutocompleteKeyDown(event)) {
         return;
       }
@@ -379,9 +498,9 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
     }
   }, [prompt]);
 
-  const hasPrompt = Boolean(prompt.trim());
+  const hasPrompt = Boolean(trimmedPrompt);
   const isImageGenerateDisabled = activeTab === 'image' && keyframes.length === 0;
-  const isVideoGenerateDisabled = activeTab === 'video' && !hasPrompt;
+  const isVideoGenerateDisabled = activeTab === 'video' && !hasPrompt && keyframes.length === 0;
   const isStoryboardDisabled = !hasPrompt && keyframes.length === 0;
   const isInputLocked = (canOptimize && showResults && !isEditing) || isOptimizing;
   const isOptimizeDisabled = !hasPrompt || isOptimizing;
@@ -443,7 +562,6 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
       setAutocompleteSelectedIndex,
       closeAutocomplete,
       updateAutocompletePosition,
-      handleAutocompleteKeyDown,
     },
     actions: {
       setActiveTab,
@@ -461,5 +579,5 @@ export const useGenerationControlsPanel = (props: GenerationControlsPanelProps) 
       handlePromptKeyDown,
       handleCopy,
     },
-  } as const;
+  };
 };

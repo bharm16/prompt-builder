@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, type ReactElement } from 'react';
 import { Plus } from '@promptstudio/system/components/ui';
 import { cn } from '@utils/cn';
-import type { KeyframeTile } from '../../types';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
 
 interface KeyframeSlotsRowProps {
   keyframes: KeyframeTile[];

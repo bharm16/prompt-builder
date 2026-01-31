@@ -82,9 +82,19 @@ export interface ModelRecommendation {
   computedAt?: string;
 }
 
+export interface ModelRecommendationSpan {
+  text: string;
+  role?: string;
+  category?: string;
+  start?: number;
+  end?: number;
+  confidence?: number;
+}
+
 export interface ModelRecommendationRequest {
   prompt: string;
   mode?: 't2v' | 'i2v';
+  spans?: ModelRecommendationSpan[];
   durationSeconds?: number;
 }
 

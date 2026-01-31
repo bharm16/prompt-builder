@@ -228,11 +228,11 @@ export function usePromptVersioning({
         signature,
         prompt,
         timestamp: new Date().toISOString(),
-        highlights: highlights ?? null,
+        ...(typeof highlights !== 'undefined' ? { highlights } : {}),
         ...(editCount > 0 ? { editCount } : {}),
         ...(edits.length ? { edits } : {}),
-        preview: preview ?? null,
-        video: video ?? null,
+        ...(typeof preview !== 'undefined' ? { preview } : {}),
+        ...(typeof video !== 'undefined' ? { video } : {}),
       };
     },
     [currentVersions.length, versionEditCountRef, versionEditsRef]
@@ -273,9 +273,9 @@ export function usePromptVersioning({
         const newVersion = createVersionEntry({
           signature,
           prompt: promptText,
-          highlights: latestHighlightRef.current ?? null,
-          preview: previewPayload ?? null,
-          video: videoPayload ?? null,
+          highlights: latestHighlightRef.current ?? undefined,
+          preview: previewPayload,
+          video: videoPayload,
         });
         persistVersions([...versions, newVersion]);
         resetVersionEdits();

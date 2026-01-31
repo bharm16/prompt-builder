@@ -1,11 +1,13 @@
 import React from 'react';
-import { ModelRecommendation } from '@/features/model-intelligence';
+import { ModelRecommendation as ModelRecommendationComponent } from '@/features/model-intelligence';
+import type { ModelRecommendation as ModelRecommendationType } from '@/features/model-intelligence/types';
+import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '@/features/model-intelligence/constants';
 
 interface VideoFooterSectionProps {
   prompt: string;
   duration: number;
   recommendationMode: 'i2v' | 't2v';
-  recommendation: unknown;
+  recommendation?: ModelRecommendationType | null;
   isLoading: boolean;
   error: string | null;
   onSelectModel: (model: string) => void;
@@ -22,13 +24,13 @@ export function VideoFooterSection({
   onSelectModel,
   footer,
 }: VideoFooterSectionProps): React.ReactElement {
-  const shouldShowRecommendation = prompt.trim().length >= 10;
+  const shouldShowRecommendation = prompt.trim().length >= MIN_PROMPT_LENGTH_FOR_RECOMMENDATION;
 
   return (
     <>
       {shouldShowRecommendation && (
         <div className="px-4 pb-2">
-          <ModelRecommendation
+          <ModelRecommendationComponent
             prompt={prompt}
             mode={recommendationMode}
             durationSeconds={duration}

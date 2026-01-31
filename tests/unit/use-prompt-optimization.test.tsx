@@ -309,9 +309,6 @@ describe('usePromptOptimization', () => {
           signature: 'signature-new',
           prompt: 'Next prompt',
           versionId: expect.stringMatching(/^v-1704067200000-/),
-          preview: null,
-          video: null,
-          highlights: null,
         }),
       ])
     );

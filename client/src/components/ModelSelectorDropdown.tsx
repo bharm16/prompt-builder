@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { CaretDown, Check, Icon, VideoCamera } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from '@/config/videoModels';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS, resolveModelMeta } from '@/config/videoModels';
 import { useModelRegistry } from '@/hooks/useModelRegistry';
 
 /**
@@ -35,29 +35,6 @@ export const ModelSelectorDropdown = memo<{
       left: number;
       placement: 'bottom' | 'top';
     } | null>(null);
-
-    const resolveModelMeta = (modelId: string): { strength: string; badges: Array<string> } => {
-      const id = modelId.toLowerCase();
-      if (id.includes('sora')) {
-        return { strength: 'Cinematic motion and high fidelity', badges: ['Cinematic', 'Photoreal'] };
-      }
-      if (id.includes('veo')) {
-        return { strength: 'Strong lighting, realism, and camera', badges: ['Cinematic', 'Photoreal'] };
-      }
-      if (id.includes('kling')) {
-        return { strength: 'Stable subjects and dynamic movement', badges: ['Cinematic', 'Character'] };
-      }
-      if (id.includes('luma')) {
-        return { strength: 'Fast, clean previews with realism', badges: ['Fast', 'Photoreal'] };
-      }
-      if (id.includes('runway')) {
-        return { strength: 'Quick iterations with strong style', badges: ['Fast', 'Cinematic'] };
-      }
-      if (id.includes('wan')) {
-        return { strength: 'Speedy motion checks for iteration', badges: ['Fast', 'Balanced'] };
-      }
-      return { strength: 'Balanced preview defaults', badges: ['Balanced'] };
-    };
 
     // Use Prompt Studio system badges (keeps menu consistent with the rest of PromptCanvas).
     const badgeClass =

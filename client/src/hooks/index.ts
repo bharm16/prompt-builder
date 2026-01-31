@@ -10,6 +10,7 @@ export { usePromptOptimizer } from './usePromptOptimizer';
 export { usePromptOptimizerState } from './usePromptOptimizerState';
 export { usePromptHistory } from './usePromptHistory/index';
 export { useHierarchyValidation } from './useHierarchyValidation';
+export { useAuthUser } from './useAuthUser';
 export { useUserCreditBalance } from './useUserCreditBalance';
 export { useMediaStorage } from './useMediaStorage';
 

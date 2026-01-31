@@ -132,7 +132,6 @@ describe('usePromptVersioning', () => {
         signature: 'sig-same',
         prompt: 'Prompt',
         timestamp: '2023-01-01T00:00:00.000Z',
-        preview: null,
       },
     ];
 
@@ -227,7 +226,6 @@ describe('usePromptVersioning', () => {
         signature: 'sig-new',
         prompt: 'Prompt',
         timestamp: '2023-01-01T00:00:00.000Z',
-        highlights: null,
       },
     ];
 

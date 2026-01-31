@@ -10,3 +10,7 @@ export { usePromptOptimization } from './usePromptOptimization';
 export { useImprovementFlow } from './useImprovementFlow';
 export { useConceptBrainstorm } from './useConceptBrainstorm';
 export { useEnhancementSuggestions } from './useEnhancementSuggestions';
+export { usePromptKeyframesSync } from './usePromptKeyframesSync';
+export { usePromptHistoryActions } from './usePromptHistoryActions';
+export { useStablePromptContext } from './useStablePromptContext';
+export { usePromptCoherence } from './usePromptCoherence';

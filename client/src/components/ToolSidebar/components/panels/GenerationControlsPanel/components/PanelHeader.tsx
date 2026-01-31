@@ -5,7 +5,7 @@ import type { GenerationControlsTab } from '../types';
 
 interface PanelHeaderProps {
   activeTab: GenerationControlsTab;
-  onBack?: () => void;
+  onBack?: (() => void) | undefined;
   onSelectTab: (tab: GenerationControlsTab) => void;
 }
 
