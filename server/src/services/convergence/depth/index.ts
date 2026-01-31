@@ -14,4 +14,5 @@ export {
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
   initializeDepthWarmer,
+  warmupDepthEstimationOnStartup,
 } from './DepthEstimationService';

@@ -2,6 +2,7 @@ import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import type { LLMClient } from '@clients/LLMClient';
 import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
+import { warmupDepthEstimationOnStartup } from '@services/convergence/depth';
 import type { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
@@ -229,6 +230,33 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   } else {
     const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'prewarm disabled or GLiNER disabled';
     logger.info('ℹ️ GLiNER warmup skipped', { reason });
+  }
+
+  if (!isTestEnv && !promptOutputOnly) {
+    try {
+      const depthWarmup = await warmupDepthEstimationOnStartup();
+      if (depthWarmup.success) {
+        logger.info('✅ Depth estimation warmed up', {
+          provider: depthWarmup.provider,
+          durationMs: depthWarmup.durationMs,
+        });
+      } else if (depthWarmup.skipped) {
+        logger.info('ℹ️ Depth warmup skipped', {
+          reason: depthWarmup.message || 'Unknown reason',
+        });
+      } else {
+        logger.warn('⚠️ Depth warmup failed', {
+          provider: depthWarmup.provider,
+          reason: depthWarmup.message || 'Unknown reason',
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
+    }
+  } else {
+    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'test environment';
+    logger.info('ℹ️ Depth warmup skipped', { reason });
   }
 
   if (!isTestEnv && !promptOutputOnly) {

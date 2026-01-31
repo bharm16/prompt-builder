@@ -200,9 +200,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       generateDraft(model, prompt, {
         promptVersionId: versionId,
         ...(startImage ? { startImage } : {}),
+        ...(mergedGenerationParams ? { generationParams: mergedGenerationParams } : {}),
       });
     },
-    [generateDraft, keyframes, onCreateVersionIfNeeded, prompt]
+    [generateDraft, keyframes, mergedGenerationParams, onCreateVersionIfNeeded, prompt]
   );
 
   const {

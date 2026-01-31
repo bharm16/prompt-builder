@@ -109,11 +109,52 @@ const FAL_WARM_START_CONFIG = {
     'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
 } as const;
 
+const getDepthStartupWarmupConfig = () =>
+  ({
+    enabled: (() => {
+      if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+        return false;
+      }
+      const flag = process.env.DEPTH_WARMUP_ON_STARTUP;
+      if (flag === 'true') return true;
+      if (flag === 'false') return false;
+      // Default to enabled so cold starts don't cause first-request timeouts.
+      return true;
+    })(),
+    timeoutMs: (() => {
+      const raw = Number.parseInt(process.env.DEPTH_WARMUP_TIMEOUT_MS || '', 10);
+      if (Number.isFinite(raw) && raw >= 5_000) {
+        return raw;
+      }
+      // Allow extra time for cold-start model spin-up.
+      return 60_000;
+    })(),
+  }) as const;
+
 const warmLog = logger.child({ service: 'FalDepthWarmer' });
+const startupWarmLog = logger.child({ service: 'DepthWarmup' });
 let warmerInitialized = false;
 let warmIntervalId: ReturnType<typeof setInterval> | null = null;
 let warmupInFlight: Promise<void> | null = null;
 let lastWarmupAt = 0;
+let replicateWarmupInFlight: Promise<boolean> | null = null;
+let startupWarmupPromise: Promise<DepthWarmupResult> | null = null;
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Depth warmup timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
 
 const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
   if (warmupInFlight) {
@@ -164,6 +205,60 @@ const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
   return warmupInFlight;
 };
 
+const runReplicateWarmup = (
+  replicateApiToken: string,
+  warmupImageUrl: string
+): Promise<boolean> => {
+  if (replicateWarmupInFlight) {
+    return replicateWarmupInFlight;
+  }
+
+  const startedAt = Date.now();
+  const warmupImageUrlHost = safeUrlHost(warmupImageUrl);
+  replicateWarmupInFlight = (async () => {
+    try {
+      startupWarmLog.debug('Starting Replicate depth warmup', {
+        operation: 'replicateDepthWarmup',
+        warmupImageUrlHost,
+      });
+
+      const replicate = new Replicate({ auth: replicateApiToken });
+      await replicate.run(REPLICATE_DEPTH_MODEL_FALLBACK as `${string}/${string}`, {
+        input: { image: warmupImageUrl },
+      });
+
+      startupWarmLog.info('Completed Replicate depth warmup', {
+        operation: 'replicateDepthWarmup',
+        durationMs: Date.now() - startedAt,
+        warmupImageUrlHost,
+      });
+
+      return true;
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      startupWarmLog.warn('Replicate depth warmup failed', {
+        operation: 'replicateDepthWarmup',
+        durationMs: Date.now() - startedAt,
+        warmupImageUrlHost,
+        error: errObj.message,
+      });
+      return false;
+    } finally {
+      replicateWarmupInFlight = null;
+    }
+  })();
+
+  return replicateWarmupInFlight;
+};
+
+export interface DepthWarmupResult {
+  success: boolean;
+  provider?: DepthEstimationProvider;
+  durationMs?: number;
+  message?: string;
+  skipped?: boolean;
+}
+
 /**
  * Initialize a periodic fal depth warmer to reduce cold starts.
  *
@@ -193,7 +288,9 @@ export function initializeDepthWarmer(): void {
     warmupImageUrlHost,
   });
 
-  void runFalWarmup('startup');
+  if (lastWarmupAt === 0) {
+    void runFalWarmup('startup');
+  }
 
   warmIntervalId = setInterval(() => {
     void runFalWarmup('interval');
@@ -202,6 +299,122 @@ export function initializeDepthWarmer(): void {
   if (warmIntervalId && typeof warmIntervalId.unref === 'function') {
     warmIntervalId.unref();
   }
+}
+
+/**
+ * Warm up depth estimation at startup to avoid first-request timeouts.
+ */
+export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
+  if (startupWarmupPromise) {
+    return startupWarmupPromise;
+  }
+
+  startupWarmupPromise = (async () => {
+    const startupWarmupConfig = getDepthStartupWarmupConfig();
+    if (!startupWarmupConfig.enabled) {
+      return { success: false, skipped: true, message: 'disabled' };
+    }
+
+    if (process.env.PROMPT_OUTPUT_ONLY === 'true') {
+      return { success: false, skipped: true, message: 'PROMPT_OUTPUT_ONLY' };
+    }
+
+    const falApiKey = resolveFalApiKey();
+    const replicateApiToken = process.env.REPLICATE_API_TOKEN;
+
+    if (!falApiKey && !replicateApiToken) {
+      return { success: false, skipped: true, message: 'no-providers' };
+    }
+
+    const warmupImageUrl = FAL_WARM_START_CONFIG.warmupImageUrl;
+    const warmupImageUrlHost = safeUrlHost(warmupImageUrl);
+    const timeoutMs = startupWarmupConfig.timeoutMs;
+    const startedAt = Date.now();
+
+    if (falApiKey) {
+      fal.config({ credentials: falApiKey });
+
+      if (lastWarmupAt > 0) {
+        return {
+          success: true,
+          provider: 'fal.ai',
+          durationMs: 0,
+          message: 'already-warmed',
+        };
+      }
+
+      startupWarmLog.info('Depth warmup starting (fal.ai)', {
+        operation: 'depthStartupWarmup',
+        provider: 'fal.ai',
+        timeoutMs,
+        warmupImageUrlHost,
+      });
+
+      const beforeWarmupAt = lastWarmupAt;
+      try {
+        await withTimeout(runFalWarmup('startup'), timeoutMs);
+      } catch (error) {
+        const errObj = error instanceof Error ? error : new Error(String(error));
+        startupWarmLog.warn('Depth warmup timed out (fal.ai)', {
+          operation: 'depthStartupWarmup',
+          provider: 'fal.ai',
+          timeoutMs,
+          warmupImageUrlHost,
+          error: errObj.message,
+        });
+      }
+
+      const durationMs = Date.now() - startedAt;
+      if (lastWarmupAt > beforeWarmupAt) {
+        return { success: true, provider: 'fal.ai', durationMs };
+      }
+
+      return {
+        success: false,
+        provider: 'fal.ai',
+        durationMs,
+        message: 'fal-warmup-failed',
+      };
+    }
+
+    startupWarmLog.info('Depth warmup starting (replicate)', {
+      operation: 'depthStartupWarmup',
+      provider: 'replicate',
+      timeoutMs,
+      warmupImageUrlHost,
+    });
+
+    let replicateSuccess = false;
+    try {
+      replicateSuccess = await withTimeout(
+        runReplicateWarmup(replicateApiToken!, warmupImageUrl),
+        timeoutMs
+      );
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      startupWarmLog.warn('Depth warmup timed out (replicate)', {
+        operation: 'depthStartupWarmup',
+        provider: 'replicate',
+        timeoutMs,
+        warmupImageUrlHost,
+        error: errObj.message,
+      });
+    }
+
+    const durationMs = Date.now() - startedAt;
+    if (replicateSuccess) {
+      return { success: true, provider: 'replicate', durationMs };
+    }
+
+    return {
+      success: false,
+      provider: 'replicate',
+      durationMs,
+      message: 'replicate-warmup-failed',
+    };
+  })();
+
+  return startupWarmupPromise;
 }
 
 // ============================================================================
