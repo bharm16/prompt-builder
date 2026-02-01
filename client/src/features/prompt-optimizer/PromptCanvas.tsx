@@ -61,7 +61,7 @@ import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInt
 import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
-import { useGenerationControlsContext } from './context/GenerationControlsContext';
+import { useGenerationControlsStoreState } from './context/GenerationControlsStore';
 import {
   usePromptActions,
   usePromptConfig,
@@ -168,7 +168,8 @@ export function PromptCanvas({
   // Get model + layout state from context
   const { selectedModel, generationParams } = usePromptConfig();
   const { promptOptimizer, promptHistory } = usePromptServices();
-  const { keyframes } = useGenerationControlsContext();
+  const { domain } = useGenerationControlsStoreState();
+  const keyframes = domain.keyframes;
   const {
     currentPromptUuid,
     currentPromptDocId,

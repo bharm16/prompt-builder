@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useGenerationControlsContext } from '../context/GenerationControlsContext';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../context/GenerationControlsStore';
 import { observeImage } from '../api/i2vApi';
 import {
   deriveLockMap,
@@ -13,7 +16,6 @@ import {
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
 } from '@/utils/storageUrl';
-import { loadConstraintMode, persistConstraintMode } from '../context/generationControlsStorage';
 
 const OBSERVATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
@@ -32,11 +34,14 @@ const shouldRefreshObservationUrl = (url: string | null, expiresAtMs: number | n
 };
 
 export function useI2VContext(): I2VContext {
-  const { keyframes, cameraMotion } = useGenerationControlsContext();
+  const { domain, ui } = useGenerationControlsStoreState();
+  const { setConstraintMode } = useGenerationControlsStoreActions();
+  const keyframes = domain.keyframes;
+  const cameraMotion = domain.cameraMotion;
   const startImageUrl = keyframes[0]?.url ?? null;
   const startImageSourcePrompt = keyframes[0]?.sourcePrompt ?? null;
   const startImageViewUrlExpiresAt = keyframes[0]?.viewUrlExpiresAt ?? null;
-  const [constraintMode, setConstraintModeState] = useState<I2VConstraintMode>(() => loadConstraintMode());
+  const constraintMode = ui.constraintMode as I2VConstraintMode;
   const [observation, setObservation] = useState<ImageObservation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +59,9 @@ export function useI2VContext(): I2VContext {
     [cameraMotionLocked, constraintMode, isI2VMode]
   );
 
-  const setConstraintMode = useCallback((mode: I2VConstraintMode) => {
-    setConstraintModeState(mode);
-    persistConstraintMode(mode);
-  }, []);
+  const handleSetConstraintMode = useCallback((mode: I2VConstraintMode) => {
+    setConstraintMode(mode);
+  }, [setConstraintMode]);
 
   const resolveObservationUrl = useCallback(
     async (url: string | null): Promise<string | null> => {
@@ -158,7 +162,7 @@ export function useI2VContext(): I2VContext {
     constraintMode,
     isAnalyzing,
     error,
-    setConstraintMode,
+    setConstraintMode: handleSetConstraintMode,
     refreshObservation,
   };
 }

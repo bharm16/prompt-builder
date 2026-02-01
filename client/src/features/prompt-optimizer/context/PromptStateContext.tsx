@@ -410,7 +410,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     navigationValue,
   ]);
 
-  usePromptStatePersistence({ selectedModel, generationParams, selectedMode, videoTier });
+  usePromptStatePersistence({ selectedMode });
   useDraftHistorySync({
     currentPromptUuid,
     currentPromptDocId,

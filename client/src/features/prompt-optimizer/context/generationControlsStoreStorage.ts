@@ -7,20 +7,11 @@ import {
   loadImageSubTab,
   loadKeyframes,
   loadSubjectMotion,
-  persistActiveTab,
-  persistCameraMotion,
-  persistConstraintMode,
-  persistImageSubTab,
-  persistKeyframes,
-  persistSubjectMotion,
 } from './generationControlsStorage';
 import {
   loadGenerationParams,
   loadSelectedModel,
   loadVideoTier,
-  persistGenerationParams,
-  persistSelectedModel,
-  persistVideoTier,
 } from './promptStateStorage';
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
@@ -148,14 +139,5 @@ export const persistGenerationControlsStoreState = (
     // ignore
   }
 
-  // Maintain legacy keys so existing contexts stay in sync.
-  persistSelectedModel(state.domain.selectedModel);
-  persistGenerationParams(state.domain.generationParams);
-  persistVideoTier(state.domain.videoTier);
-  persistKeyframes(state.domain.keyframes);
-  persistCameraMotion(state.domain.cameraMotion);
-  persistSubjectMotion(state.domain.subjectMotion);
-  persistActiveTab(state.ui.activeTab);
-  persistImageSubTab(state.ui.imageSubTab);
-  persistConstraintMode(state.ui.constraintMode);
+  // Legacy keys are no longer written; keep load-only migration for one release.
 };

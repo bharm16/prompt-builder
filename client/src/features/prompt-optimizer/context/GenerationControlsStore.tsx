@@ -68,11 +68,11 @@ const reconcileMotionAfterKeyframes = (
   state: GenerationControlsState,
   nextKeyframes: KeyframeTile[]
 ): Pick<GenerationControlsState['domain'], 'cameraMotion' | 'subjectMotion'> => {
-  const previousPrimaryUrl = state.domain.keyframes[0]?.url ?? null;
-  const nextPrimaryUrl = nextKeyframes[0]?.url ?? null;
+  const previousPrimaryId = state.domain.keyframes[0]?.id ?? null;
+  const nextPrimaryId = nextKeyframes[0]?.id ?? null;
 
-  if (!nextPrimaryUrl) {
-    if (!previousPrimaryUrl) {
+  if (!nextPrimaryId) {
+    if (!previousPrimaryId) {
       return {
         cameraMotion: state.domain.cameraMotion,
         subjectMotion: state.domain.subjectMotion,
@@ -81,14 +81,14 @@ const reconcileMotionAfterKeyframes = (
     return { cameraMotion: null, subjectMotion: '' };
   }
 
-  if (!previousPrimaryUrl) {
+  if (!previousPrimaryId) {
     return {
       cameraMotion: state.domain.cameraMotion,
       subjectMotion: state.domain.subjectMotion,
     };
   }
 
-  if (previousPrimaryUrl !== nextPrimaryUrl) {
+  if (previousPrimaryId !== nextPrimaryId) {
     return { cameraMotion: null, subjectMotion: '' };
   }
 

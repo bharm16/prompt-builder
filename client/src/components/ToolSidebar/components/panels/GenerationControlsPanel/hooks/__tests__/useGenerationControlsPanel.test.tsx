@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import type { CapabilitiesSchema } from '@shared/capabilities';
 import type { GenerationControlsPanelProps } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/types';
 import { useGenerationControlsPanel } from '../useGenerationControlsPanel';
+import {
+  GenerationControlsStoreProvider,
+} from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import {
+  DEFAULT_GENERATION_CONTROLS_STATE,
+  type GenerationControlsState,
+} from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
 
 let mockSchema: CapabilitiesSchema | null = null;
 
@@ -50,24 +59,33 @@ const buildBaseProps = (
   overrides: Partial<GenerationControlsPanelProps> = {}
 ): GenerationControlsPanelProps => ({
   prompt: 'Test prompt',
-  aspectRatio: '4:5',
-  duration: 7,
-  selectedModel: 'test-model',
-  onModelChange: vi.fn(),
-  onAspectRatioChange: vi.fn(),
-  onDurationChange: vi.fn(),
   onDraft: vi.fn(),
   onRender: vi.fn(),
-  isDraftDisabled: false,
-  isRenderDisabled: false,
-  keyframes: [],
-  onAddKeyframe: vi.fn(),
-  onRemoveKeyframe: vi.fn(),
-  tier: 'render',
-  onTierChange: vi.fn(),
   onStoryboard: vi.fn(),
   ...overrides,
 });
+
+const buildInitialState = (
+  overrides: Partial<GenerationControlsState> = {}
+): GenerationControlsState => ({
+  ...DEFAULT_GENERATION_CONTROLS_STATE,
+  ...overrides,
+  domain: {
+    ...DEFAULT_GENERATION_CONTROLS_STATE.domain,
+    ...(overrides.domain ?? {}),
+  },
+  ui: {
+    ...DEFAULT_GENERATION_CONTROLS_STATE.ui,
+    ...(overrides.ui ?? {}),
+  },
+});
+
+const buildWrapper = (initialState?: GenerationControlsState) =>
+  ({ children }: { children: ReactNode }) => (
+    <GenerationControlsStoreProvider initialState={initialState}>
+      <GenerationControlsProvider>{children}</GenerationControlsProvider>
+    </GenerationControlsStoreProvider>
+  );
 
 beforeEach(() => {
   mockSchema = {
@@ -89,35 +107,46 @@ beforeEach(() => {
 
 describe('useGenerationControlsPanel', () => {
   it('clamps invalid aspect ratio and duration to supported values', async () => {
-    const onAspectRatioChange = vi.fn();
-    const onDurationChange = vi.fn();
-    const props = buildBaseProps({ onAspectRatioChange, onDurationChange });
+    const props = buildBaseProps();
+    const initialState = buildInitialState({
+      domain: {
+        generationParams: {
+          aspect_ratio: '4:5',
+          duration_s: 7,
+        },
+      },
+    });
 
-    renderHook(() => useGenerationControlsPanel(props));
-
-    await waitFor(() => {
-      expect(onAspectRatioChange).toHaveBeenCalledWith('16:9');
+    const { result } = renderHook(() => useGenerationControlsPanel(props), {
+      wrapper: buildWrapper(initialState),
     });
 
     await waitFor(() => {
-      expect(onDurationChange).toHaveBeenCalledWith(5);
+      expect(result.current.store.aspectRatio).toBe('16:9');
+    });
+
+    await waitFor(() => {
+      expect(result.current.store.duration).toBe(5);
     });
   });
 
   it('does not clamp when values are already supported', async () => {
-    const onAspectRatioChange = vi.fn();
-    const onDurationChange = vi.fn();
-    const props = buildBaseProps({
-      aspectRatio: '16:9',
-      duration: 10,
-      onAspectRatioChange,
-      onDurationChange,
+    const props = buildBaseProps();
+    const initialState = buildInitialState({
+      domain: {
+        generationParams: {
+          aspect_ratio: '16:9',
+          duration_s: 10,
+        },
+      },
     });
 
-    renderHook(() => useGenerationControlsPanel(props));
+    const { result } = renderHook(() => useGenerationControlsPanel(props), {
+      wrapper: buildWrapper(initialState),
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(onAspectRatioChange).not.toHaveBeenCalled();
-    expect(onDurationChange).not.toHaveBeenCalled();
+    expect(result.current.store.aspectRatio).toBe('16:9');
+    expect(result.current.store.duration).toBe(10);
   });
 });

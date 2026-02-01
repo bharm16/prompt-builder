@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast';
 import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppShellContext';
 import { MainWorkspace } from './components/layout/MainWorkspace';
 import { LoadingDots } from './components/LoadingDots';
+import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
@@ -146,13 +147,15 @@ function App(): React.ReactElement {
       message="The application encountered an unexpected error. Please refresh the page to continue."
     >
       <ToastProvider>
-        <AppShellProvider>
-          <Router>
-            <Suspense fallback={<RouteFallback />}>
-              <AppRoutes />
-            </Suspense>
-          </Router>
-        </AppShellProvider>
+        <GenerationControlsStoreProvider>
+          <AppShellProvider>
+            <Router>
+              <Suspense fallback={<RouteFallback />}>
+                <AppRoutes />
+              </Suspense>
+            </Router>
+          </AppShellProvider>
+        </GenerationControlsStoreProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

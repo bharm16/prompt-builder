@@ -18,34 +18,32 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     onPromptChange,
     onOptimize,
     showResults = false,
-    aspectRatio,
-    duration,
-    selectedModel,
-    onModelChange,
-    onAspectRatioChange,
-    onDurationChange,
     onDraft,
     onRender,
     onBack,
-    keyframes,
-    onRemoveKeyframe,
-    tier,
-    onTierChange,
     onStoryboard,
-    showMotionControls = false,
-    cameraMotion = null,
     onCreateFromTrigger,
   } = props;
 
   const {
     refs,
     state,
+    store,
     derived,
     recommendation,
     capabilities,
     autocomplete,
     actions,
   } = useGenerationControlsPanel(props);
+  const {
+    aspectRatio,
+    duration,
+    selectedModel,
+    tier,
+    keyframes,
+    cameraMotion,
+  } = store;
+  const showMotionControls = true;
 
   const renderOptimizationActions = (): ReactElement | null => {
     if (!derived.canOptimize) return null;
@@ -109,7 +107,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       renderModelId={recommendation.renderModelId}
       recommendedModelId={recommendation.recommendedModelId}
       efficientModelId={recommendation.efficientModelId}
-      onModelChange={onModelChange}
+      onModelChange={actions.handleModelChange}
       optimizationActions={renderOptimizationActions()}
       onStoryboard={onStoryboard}
       isStoryboardDisabled={derived.isStoryboardDisabled}
@@ -163,12 +161,12 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       {state.activeTab === 'video' ? (
         <VideoTabContent
           tier={tier}
-          onTierChange={onTierChange}
+          onTierChange={actions.handleTierChange}
           keyframes={keyframes}
           isUploadDisabled={derived.isUploadDisabled}
           onRequestUpload={actions.handleUploadRequest}
           onUploadFile={actions.handleFile}
-          onRemoveKeyframe={onRemoveKeyframe}
+          onRemoveKeyframe={actions.handleRemoveKeyframe}
           showMotionControls={showMotionControls}
           hasPrimaryKeyframe={derived.hasPrimaryKeyframe}
           cameraMotion={cameraMotion}
@@ -190,7 +188,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           keyframes={keyframes}
           isUploadDisabled={derived.isUploadDisabled}
           onRequestUpload={actions.handleUploadRequest}
-          onRemoveKeyframe={onRemoveKeyframe}
+          onRemoveKeyframe={actions.handleRemoveKeyframe}
           prompt={prompt}
           onPromptChange={onPromptChange}
           isInputLocked={derived.isInputLocked}
@@ -225,8 +223,8 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
             duration={duration}
             aspectRatioOptions={capabilities.aspectRatioOptions}
             durationOptions={capabilities.durationOptions}
-            onAspectRatioChange={onAspectRatioChange}
-            onDurationChange={onDurationChange}
+            onAspectRatioChange={actions.handleAspectRatioChange}
+            onDurationChange={actions.handleDurationChange}
             isAspectRatioDisabled={capabilities.aspectRatioInfo?.state.disabled}
             isDurationDisabled={capabilities.durationInfo?.state.disabled}
           />
@@ -238,7 +236,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
             recommendation={recommendation.modelRecommendation}
             isLoading={recommendation.isRecommendationLoading}
             error={recommendation.recommendationError}
-            onSelectModel={onModelChange}
+            onSelectModel={actions.handleModelChange}
             footer={generationFooter}
           />
         </>

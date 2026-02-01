@@ -5,17 +5,9 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type Dispatch,
   type KeyboardEvent,
   type RefObject,
-  type SetStateAction,
 } from 'react';
-import {
-  loadActiveTab,
-  loadImageSubTab,
-  persistActiveTab,
-  persistImageSubTab,
-} from '@features/prompt-optimizer/context/generationControlsStorage';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
@@ -31,6 +23,12 @@ import type { AutocompleteState } from '../components/PromptTriggerAutocomplete'
 import type { GenerationControlsPanelProps, GenerationControlsTab, ImageSubTab } from '../types';
 import { getFieldInfo, resolveNumberOptions, resolveStringOptions, type FieldInfo } from '../utils/capabilities';
 import type { CameraPath } from '@/features/convergence/types';
+import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
+import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '@/features/prompt-optimizer/context/GenerationControlsStore';
 import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
 import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/types';
 import type { ModelRecommendation, ModelRecommendationSpan } from '@/features/model-intelligence/types';
@@ -49,6 +47,14 @@ export interface UseGenerationControlsPanelResult {
     imageSubTab: ImageSubTab;
     showCameraMotionModal: boolean;
     isEditing: boolean;
+  };
+  store: {
+    aspectRatio: string;
+    duration: number;
+    selectedModel: string;
+    tier: VideoTier;
+    keyframes: KeyframeTile[];
+    cameraMotion: CameraPath | null;
   };
   derived: {
     canOptimize: boolean;
@@ -84,8 +90,13 @@ export interface UseGenerationControlsPanelResult {
   };
   autocomplete: AutocompleteState;
   actions: {
-    setActiveTab: Dispatch<SetStateAction<GenerationControlsTab>>;
-    setImageSubTab: Dispatch<SetStateAction<ImageSubTab>>;
+    setActiveTab: (tab: GenerationControlsTab) => void;
+    setImageSubTab: (tab: ImageSubTab) => void;
+    handleModelChange: (model: string) => void;
+    handleAspectRatioChange: (ratio: string) => void;
+    handleDurationChange: (duration: number) => void;
+    handleTierChange: (tier: VideoTier) => void;
+    handleRemoveKeyframe: (id: string) => void;
     handleFile: (file: File) => Promise<void>;
     handleUploadRequest: () => void;
     handleCameraMotionButtonClick: () => void;
@@ -143,20 +154,7 @@ export const useGenerationControlsPanel = (
     promptInputRef,
     assets = [],
     onInsertTrigger,
-    aspectRatio,
-    duration,
-    selectedModel,
-    onModelChange,
-    onAspectRatioChange,
-    onDurationChange,
-    isDraftDisabled,
-    isRenderDisabled,
     onImageUpload,
-    keyframes,
-    tier,
-    showMotionControls = false,
-    cameraMotion = null,
-    onCameraMotionChange,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,24 +163,68 @@ export const useGenerationControlsPanel = (
   const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTabState] = useState<GenerationControlsTab>(() => loadActiveTab());
-  const [imageSubTab, setImageSubTabState] = useState<ImageSubTab>(() => loadImageSubTab());
+  const { controls } = useGenerationControlsContext();
+  const { domain, ui } = useGenerationControlsStoreState();
+  const storeActions = useGenerationControlsStoreActions();
 
-  const setActiveTab: Dispatch<SetStateAction<GenerationControlsTab>> = useCallback((action) => {
-    setActiveTabState((prev) => {
-      const next = typeof action === 'function' ? action(prev) : action;
-      persistActiveTab(next);
-      return next;
-    });
-  }, []);
+  const activeTab = ui.activeTab;
+  const imageSubTab = ui.imageSubTab;
+  const selectedModel = domain.selectedModel;
+  const generationParams = domain.generationParams;
+  const tier = domain.videoTier;
+  const keyframes = domain.keyframes;
+  const cameraMotion = domain.cameraMotion;
+  const showMotionControls = true;
 
-  const setImageSubTab: Dispatch<SetStateAction<ImageSubTab>> = useCallback((action) => {
-    setImageSubTabState((prev) => {
-      const next = typeof action === 'function' ? action(prev) : action;
-      persistImageSubTab(next);
-      return next;
-    });
-  }, []);
+  const aspectRatio = useMemo(() => {
+    const fromParams = generationParams?.aspect_ratio;
+    if (typeof fromParams === 'string' && fromParams.trim()) {
+      return fromParams.trim();
+    }
+    return '16:9';
+  }, [generationParams?.aspect_ratio]);
+
+  const duration = useMemo(() => {
+    const durationValue = generationParams?.duration_s;
+    if (typeof durationValue === 'number') {
+      return Number.isFinite(durationValue) ? durationValue : 5;
+    }
+    if (typeof durationValue === 'string') {
+      const parsed = Number.parseFloat(durationValue);
+      return Number.isFinite(parsed) ? parsed : 5;
+    }
+    return 5;
+  }, [generationParams?.duration_s]);
+
+  const handleModelChange = useCallback((model: string): void => {
+    storeActions.setSelectedModel(model);
+  }, [storeActions]);
+
+  const handleAspectRatioChange = useCallback((ratio: string): void => {
+    if (generationParams?.aspect_ratio === ratio) return;
+    storeActions.mergeGenerationParams({ aspect_ratio: ratio });
+  }, [generationParams?.aspect_ratio, storeActions]);
+
+  const handleDurationChange = useCallback((nextDuration: number): void => {
+    if (generationParams?.duration_s === nextDuration) return;
+    storeActions.mergeGenerationParams({ duration_s: nextDuration });
+  }, [generationParams?.duration_s, storeActions]);
+
+  const handleTierChange = useCallback((nextTier: VideoTier): void => {
+    storeActions.setVideoTier(nextTier);
+  }, [storeActions]);
+
+  const handleRemoveKeyframe = useCallback((id: string): void => {
+    storeActions.removeKeyframe(id);
+  }, [storeActions]);
+
+  const setActiveTab = useCallback((tab: GenerationControlsTab) => {
+    storeActions.setActiveTab(tab);
+  }, [storeActions]);
+
+  const setImageSubTab = useCallback((tab: ImageSubTab) => {
+    storeActions.setImageSubTab(tab);
+  }, [storeActions]);
 
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(() => {
@@ -285,6 +327,8 @@ export const useGenerationControlsPanel = (
   const { schema } = useCapabilities(capabilitiesModelId);
   const canOptimize = typeof onOptimize === 'function';
   const isOptimizing = Boolean(isProcessing || isRefining);
+  const isGenerating = controls?.isGenerating ?? false;
+  const isGenerationReady = Boolean(controls);
 
   const currentParams = useMemo<CapabilityValues>(
     () => ({
@@ -315,7 +359,6 @@ export const useGenerationControlsPanel = (
   );
 
   useEffect(() => {
-    if (!onAspectRatioChange) return;
     if (!aspectRatioOptions.length) return;
     if (aspectRatioOptions.includes(aspectRatio)) return;
     const nextRatio = aspectRatioOptions[0];
@@ -324,11 +367,10 @@ export const useGenerationControlsPanel = (
       nextAspectRatio: nextRatio,
       allowedAspectRatios: aspectRatioOptions,
     });
-    onAspectRatioChange(nextRatio);
-  }, [aspectRatioOptions, aspectRatio, onAspectRatioChange]);
+    handleAspectRatioChange(nextRatio);
+  }, [aspectRatioOptions, aspectRatio, handleAspectRatioChange]);
 
   useEffect(() => {
-    if (!onDurationChange) return;
     if (!durationOptions.length) return;
     if (durationOptions.includes(duration)) return;
     const closest = durationOptions.reduce((best, value) =>
@@ -339,8 +381,8 @@ export const useGenerationControlsPanel = (
       nextDuration: closest,
       allowedDurations: durationOptions,
     });
-    onDurationChange(closest);
-  }, [durationOptions, duration, onDurationChange]);
+    handleDurationChange(closest);
+  }, [durationOptions, duration, handleDurationChange]);
 
   useEffect(() => {
     if (!showMotionControls) return;
@@ -448,10 +490,10 @@ export const useGenerationControlsPanel = (
         cameraMotionLabel: path.label,
         primaryKeyframeUrlHost,
       });
-      onCameraMotionChange?.(path);
+      storeActions.setCameraMotion(path);
       setShowCameraMotionModal(false);
     },
-    [onCameraMotionChange, primaryKeyframeUrlHost]
+    [primaryKeyframeUrlHost, storeActions]
   );
 
   const handleInputPromptChange = useCallback(
@@ -479,12 +521,12 @@ export const useGenerationControlsPanel = (
     if (!canOptimize) return;
     onPromptChange?.(originalInputPrompt);
     if (originalSelectedModel !== undefined) {
-      onModelChange(originalSelectedModel);
+      handleModelChange(originalSelectedModel);
     }
     setIsEditing(false);
     setOriginalInputPrompt('');
     setOriginalSelectedModel(undefined);
-  }, [canOptimize, onModelChange, onPromptChange, originalInputPrompt, originalSelectedModel]);
+  }, [canOptimize, handleModelChange, onPromptChange, originalInputPrompt, originalSelectedModel]);
 
   const handleUpdate = useCallback((): void => {
     if (!canOptimize || isOptimizing || !onOptimize) {
@@ -580,6 +622,8 @@ export const useGenerationControlsPanel = (
   const isStoryboardDisabled = !hasPrompt && keyframes.length === 0;
   const isInputLocked = (canOptimize && showResults && !isEditing) || isOptimizing;
   const isOptimizeDisabled = !hasPrompt || isOptimizing;
+  const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerating;
+  const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerating;
   const isGenerateDisabled =
     (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
@@ -595,6 +639,14 @@ export const useGenerationControlsPanel = (
       imageSubTab,
       showCameraMotionModal,
       isEditing,
+    },
+    store: {
+      aspectRatio,
+      duration,
+      selectedModel,
+      tier,
+      keyframes,
+      cameraMotion,
     },
     derived: {
       canOptimize,
@@ -642,6 +694,11 @@ export const useGenerationControlsPanel = (
     actions: {
       setActiveTab,
       setImageSubTab,
+      handleModelChange,
+      handleAspectRatioChange,
+      handleDurationChange,
+      handleTierChange,
+      handleRemoveKeyframe,
       handleFile,
       handleUploadRequest,
       handleCameraMotionButtonClick,

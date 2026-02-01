@@ -20,7 +20,11 @@ import type { User } from '../context/types';
 import { PromptModals } from '../components/PromptModals';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
-import { GenerationControlsProvider, useGenerationControlsContext } from '../context/GenerationControlsContext';
+import { GenerationControlsProvider } from '../context/GenerationControlsContext';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../context/GenerationControlsStore';
 import type { CapabilityValues } from '@shared/capabilities';
 import { resolveActiveModelLabel, resolveActiveStatusLabel } from '../utils/activeStatusLabel';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
@@ -110,7 +114,11 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
-  const { cameraMotion, keyframes, setKeyframes, subjectMotion } = useGenerationControlsContext();
+  const { domain } = useGenerationControlsStoreState();
+  const { setKeyframes } = useGenerationControlsStoreActions();
+  const keyframes = domain.keyframes;
+  const cameraMotion = domain.cameraMotion;
+  const subjectMotion = domain.subjectMotion;
   const i2vContext = useI2VContext();
 
   const stablePromptContext = useStablePromptContext(promptContext);

@@ -1,0 +1,160 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
+import type { CameraPath } from '@/features/convergence/types';
+import {
+  DEFAULT_GENERATION_CONTROLS_STATE,
+  type GenerationControlsState,
+} from '../generationControlsStoreTypes';
+import {
+  GenerationControlsStoreProvider,
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../GenerationControlsStore';
+
+const SAMPLE_CAMERA_MOTION: CameraPath = {
+  id: 'pan_left',
+  label: 'Pan Left',
+  category: 'pan_tilt',
+  start: {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { pitch: 0, yaw: 0, roll: 0 },
+  },
+  end: {
+    position: { x: 1, y: 0, z: 0 },
+    rotation: { pitch: 0, yaw: 0.1, roll: 0 },
+  },
+  duration: 1,
+};
+
+const buildInitialState = (overrides: Partial<GenerationControlsState> = {}): GenerationControlsState => ({
+  ...DEFAULT_GENERATION_CONTROLS_STATE,
+  ...overrides,
+  domain: {
+    ...DEFAULT_GENERATION_CONTROLS_STATE.domain,
+    ...(overrides.domain ?? {}),
+  },
+  ui: {
+    ...DEFAULT_GENERATION_CONTROLS_STATE.ui,
+    ...(overrides.ui ?? {}),
+  },
+});
+
+const buildWrapper = (initialState?: GenerationControlsState) =>
+  ({ children }: { children: ReactNode }) => (
+    <GenerationControlsStoreProvider initialState={initialState}>
+      {children}
+    </GenerationControlsStoreProvider>
+  );
+
+describe('GenerationControlsStore', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('normalizes keyframes to max 3', () => {
+    const keyframes: KeyframeTile[] = Array.from({ length: 4 }, (_, index) => ({
+      id: `kf-${index + 1}`,
+      url: `https://example.com/${index + 1}.png`,
+      source: 'upload',
+    }));
+
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper() }
+    );
+
+    act(() => {
+      result.current.actions.setKeyframes(keyframes);
+    });
+
+    expect(result.current.state.domain.keyframes).toHaveLength(3);
+  });
+
+  it('clears motion when primary keyframe changes', () => {
+    const initialState = buildInitialState({
+      domain: {
+        keyframes: [
+          { id: 'kf-1', url: 'https://example.com/1.png', source: 'upload' },
+        ],
+        cameraMotion: SAMPLE_CAMERA_MOTION,
+        subjectMotion: 'Walk forward',
+      },
+    });
+
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper(initialState) }
+    );
+
+    act(() => {
+      result.current.actions.setKeyframes([
+        { id: 'kf-2', url: 'https://example.com/2.png', source: 'upload' },
+      ]);
+    });
+
+    expect(result.current.state.domain.cameraMotion).toBeNull();
+    expect(result.current.state.domain.subjectMotion).toBe('');
+  });
+
+  it('returns same state reference on no-op updates', () => {
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper() }
+    );
+
+    const previousState = result.current.state;
+    act(() => {
+      result.current.actions.setActiveTab('video');
+    });
+
+    expect(result.current.state).toBe(previousState);
+  });
+
+  it('hydrates from storage and persists updates', () => {
+    const hydratedState = buildInitialState({
+      domain: {
+        selectedModel: 'model-x',
+        generationParams: { aspect_ratio: '16:9' },
+      },
+      ui: {
+        activeTab: 'image',
+      },
+    });
+
+    localStorage.setItem(
+      'prompt-optimizer:generationControlsStore',
+      JSON.stringify(hydratedState)
+    );
+
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper() }
+    );
+
+    expect(result.current.state.domain.selectedModel).toBe('model-x');
+    expect(result.current.state.ui.activeTab).toBe('image');
+
+    act(() => {
+      result.current.actions.setSelectedModel('model-y');
+    });
+
+    const persisted = JSON.parse(
+      localStorage.getItem('prompt-optimizer:generationControlsStore') ?? '{}'
+    ) as GenerationControlsState;
+    expect(persisted.domain.selectedModel).toBe('model-y');
+  });
+});

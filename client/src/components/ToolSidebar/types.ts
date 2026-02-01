@@ -1,7 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { CameraPath } from '@/features/convergence/types';
 import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 import type { AppIcon } from '@/types';
 
@@ -61,32 +60,10 @@ export interface ToolSidebarProps {
   genericOptimizedPrompt?: string | null;
   promptInputRef?: RefObject<HTMLTextAreaElement | null>;
   onCreateFromTrigger?: (trigger: string) => void;
-  aspectRatio: string;
-  duration: number;
-  selectedModel: string;
-  onModelChange: (model: string) => void;
-  onAspectRatioChange: (ratio: string) => void;
-  onDurationChange: (duration: number) => void;
   onDraft: (model: DraftModel) => void;
   onRender: (model: string) => void;
-  isDraftDisabled: boolean;
-  isRenderDisabled: boolean;
   onImageUpload?: (file: File) => void | Promise<void>;
-  keyframes: KeyframeTile[];
-  onAddKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
-  onRemoveKeyframe: (id: string) => void;
-  onClearKeyframes?: () => void;
-  tier: VideoTier;
-  onTierChange: (tier: VideoTier) => void;
   onStoryboard: () => void;
-  activeDraftModel?: string | null;
-  showMotionControls?: boolean;
-  cameraMotion?: CameraPath | null;
-  onCameraMotionChange?: (cameraPath: CameraPath | null) => void;
-  /** @deprecated Subject motion is now part of the main prompt. */
-  subjectMotion?: string;
-  /** @deprecated Subject motion is now part of the main prompt. */
-  onSubjectMotionChange?: (motion: string) => void;
 
   // Characters panel
   assets: Asset[];

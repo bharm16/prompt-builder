@@ -22,9 +22,11 @@ import type { OptimizationOptions } from '../types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
+import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 import {
-  useGenerationControlsContext,
-} from '../context/GenerationControlsContext';
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../context/GenerationControlsStore';
 import { resolveActiveModelLabel, resolveActiveStatusLabel } from '../utils/activeStatusLabel';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import { assetApi } from '@/features/assets/api/assetApi';
@@ -123,8 +125,6 @@ function PromptOptimizerContent({
     setSelectedModel,
     generationParams,
     setGenerationParams,
-    videoTier,
-    setVideoTier,
     showResults,
     showSettings,
     setShowSettings,
@@ -178,18 +178,19 @@ function PromptOptimizerContent({
     uuid,
   } = usePromptState();
   const assetsSidebar = useAssetsSidebar();
+  const { controls: generationControls } = useGenerationControlsContext();
+  const { domain } = useGenerationControlsStoreState();
   const {
-    controls: generationControls,
-    keyframes,
     setKeyframes,
     addKeyframe,
     removeKeyframe,
     clearKeyframes,
-    cameraMotion,
-    subjectMotion,
     setCameraMotion,
     setSubjectMotion,
-  } = useGenerationControlsContext();
+  } = useGenerationControlsStoreActions();
+  const keyframes = domain.keyframes;
+  const cameraMotion = domain.cameraMotion;
+  const subjectMotion = domain.subjectMotion;
   const i2vContext = useI2VContext();
 
   const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
@@ -598,42 +599,6 @@ function PromptOptimizerContent({
     [promptOptimizer, setDisplayedPromptSilently, setShowResults]
   );
 
-  const effectiveAspectRatio = useMemo(() => {
-    const fromParams = generationParams?.aspect_ratio;
-    if (typeof fromParams === 'string' && fromParams.trim()) {
-      return fromParams.trim();
-    }
-    return '16:9';
-  }, [generationParams?.aspect_ratio]);
-
-  const durationSeconds = useMemo(() => {
-    const durationValue = generationParams?.duration_s;
-    if (typeof durationValue === 'number') {
-      return Number.isFinite(durationValue) ? durationValue : 5;
-    }
-    if (typeof durationValue === 'string') {
-      const parsed = Number.parseFloat(durationValue);
-      return Number.isFinite(parsed) ? parsed : 5;
-    }
-    return 5;
-  }, [generationParams?.duration_s]);
-
-  const handleAspectRatioChange = useCallback(
-    (ratio: string): void => {
-      if (generationParams?.aspect_ratio === ratio) return;
-      setGenerationParams({ ...(generationParams ?? {}), aspect_ratio: ratio });
-    },
-    [generationParams, setGenerationParams]
-  );
-
-  const handleDurationChange = useCallback(
-    (nextDuration: number): void => {
-      if (generationParams?.duration_s === nextDuration) return;
-      setGenerationParams({ ...(generationParams ?? {}), duration_s: nextDuration });
-    },
-    [generationParams, setGenerationParams]
-  );
-
   const handleDraft = useCallback(
     (model: 'flux-kontext' | 'wan-2.2'): void => {
       generationControls?.onDraft?.(model);
@@ -808,11 +773,6 @@ function PromptOptimizerContent({
   // ============================================================================
   // Only show the blocking loading UI when we are actively loading a prompt.
   const shouldShowLoading = isLoading;
-  const isDraftDisabled =
-    !promptForGeneration.trim() || !isGenerationReady || isGenerating;
-  const isRenderDisabled =
-    !promptForGeneration.trim() || !isGenerationReady || isGenerating;
-
   const toggleCoherencePanelExpanded = useCallback(() => {
     setIsPanelExpanded((prev) => !prev);
   }, []);
@@ -841,30 +801,10 @@ function PromptOptimizerContent({
     genericOptimizedPrompt: promptOptimizer.genericOptimizedPrompt ?? null,
     promptInputRef,
     onCreateFromTrigger: handleCreateFromTrigger,
-    aspectRatio: effectiveAspectRatio,
-    duration: durationSeconds,
-    selectedModel,
-    onModelChange: setSelectedModel,
-    onAspectRatioChange: handleAspectRatioChange,
-    onDurationChange: handleDurationChange,
     onDraft: handleDraft,
     onRender: handleRender,
-    isDraftDisabled,
-    isRenderDisabled,
-    keyframes,
-    onAddKeyframe: addKeyframe,
-    onRemoveKeyframe: removeKeyframe,
-    onClearKeyframes: clearKeyframes,
-    tier: videoTier,
-    onTierChange: setVideoTier,
     onStoryboard: handleStoryboard,
     onImageUpload: handleImageUpload,
-    activeDraftModel: generationControls?.activeDraftModel ?? null,
-    showMotionControls: true,
-    cameraMotion,
-    onCameraMotionChange: setCameraMotion,
-    subjectMotion,
-    onSubjectMotionChange: setSubjectMotion,
     assets: assetsSidebar.assets,
     assetsByType: assetsSidebar.byType,
     isLoadingAssets: assetsSidebar.isLoading,
@@ -895,29 +835,10 @@ function PromptOptimizerContent({
     promptOptimizer.genericOptimizedPrompt,
     promptInputRef,
     handleCreateFromTrigger,
-    effectiveAspectRatio,
-    durationSeconds,
-    selectedModel,
-    setSelectedModel,
-    handleAspectRatioChange,
-    handleDurationChange,
     handleDraft,
     handleRender,
-    isDraftDisabled,
-    isRenderDisabled,
-    keyframes,
-    addKeyframe,
-    removeKeyframe,
-    clearKeyframes,
-    videoTier,
-    setVideoTier,
     handleStoryboard,
     handleImageUpload,
-    generationControls?.activeDraftModel,
-    cameraMotion,
-    setCameraMotion,
-    subjectMotion,
-    setSubjectMotion,
     assetsSidebar.assets,
     assetsSidebar.byType,
     assetsSidebar.isLoading,

@@ -55,30 +55,10 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
     genericOptimizedPrompt,
     promptInputRef,
     onCreateFromTrigger,
-    aspectRatio = '16:9',
-    duration = 5,
-    selectedModel = '',
-    onModelChange = noop,
-    onAspectRatioChange = noop,
-    onDurationChange = noop,
     onDraft = noop,
     onRender = noop,
-    isDraftDisabled = true,
-    isRenderDisabled = true,
     onImageUpload,
-    keyframes = [],
-    onAddKeyframe = noop,
-    onRemoveKeyframe = noop,
-    onClearKeyframes,
-    tier = 'render',
-    onTierChange = noop,
     onStoryboard = noop,
-    activeDraftModel = null,
-    showMotionControls = false,
-    cameraMotion = null,
-    onCameraMotionChange = noop,
-    subjectMotion = '',
-    onSubjectMotionChange = noop,
     assets = [],
     assetsByType,
     isLoadingAssets = false,
@@ -130,30 +110,10 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
         genericOptimizedPrompt={genericOptimizedPrompt ?? null}
         {...(promptInputRef ? { promptInputRef } : {})}
         {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
-        aspectRatio={aspectRatio}
-        duration={duration}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        onAspectRatioChange={onAspectRatioChange}
-        onDurationChange={onDurationChange}
         onDraft={onDraft}
         onRender={onRender}
-        isDraftDisabled={isDraftDisabled}
-        isRenderDisabled={isRenderDisabled}
         {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-        keyframes={keyframes}
-        onAddKeyframe={onAddKeyframe}
-        onRemoveKeyframe={onRemoveKeyframe}
-        {...(typeof onClearKeyframes === 'function' ? { onClearKeyframes } : {})}
-        tier={tier}
-        onTierChange={onTierChange}
         onStoryboard={onStoryboard}
-        {...(activeDraftModel !== null ? { activeDraftModel } : {})}
-        showMotionControls={showMotionControls}
-        cameraMotion={cameraMotion}
-        onCameraMotionChange={onCameraMotionChange}
-        subjectMotion={subjectMotion}
-        onSubjectMotionChange={onSubjectMotionChange}
         assets={assets}
         assetsByType={resolvedAssetsByType}
         isLoadingAssets={isLoadingAssets}

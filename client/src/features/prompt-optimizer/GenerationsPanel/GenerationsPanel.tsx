@@ -13,6 +13,7 @@ import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
 import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
 import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
+import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
 import { logger } from '@/services/LoggingService';
 
 type DraftModel = 'flux-kontext' | 'wan-2.2';
@@ -82,7 +83,11 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   useGenerationMediaRefresh(generations, dispatch);
 
-  const { setControls, keyframes, cameraMotion, subjectMotion } = useGenerationControlsContext();
+  const { setControls } = useGenerationControlsContext();
+  const { domain } = useGenerationControlsStoreState();
+  const keyframes = domain.keyframes;
+  const cameraMotion = domain.cameraMotion;
+  const subjectMotion = domain.subjectMotion;
 
   const mergedGenerationParams = useMemo(() => {
     const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;

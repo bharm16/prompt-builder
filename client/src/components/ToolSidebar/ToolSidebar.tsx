@@ -41,30 +41,10 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     genericOptimizedPrompt,
     promptInputRef,
     onCreateFromTrigger,
-    aspectRatio,
-    duration,
-    selectedModel,
-    onModelChange,
-    onAspectRatioChange,
-    onDurationChange,
     onDraft,
     onRender,
-    isDraftDisabled,
-    isRenderDisabled,
     onImageUpload,
-    keyframes,
-    onAddKeyframe,
-    onRemoveKeyframe,
-    onClearKeyframes,
-    tier,
-    onTierChange,
     onStoryboard,
-    activeDraftModel,
-    showMotionControls = false,
-    cameraMotion = null,
-    onCameraMotionChange,
-    subjectMotion = '',
-    onSubjectMotionChange,
     assets,
     assetsByType,
     isLoadingAssets,
@@ -116,30 +96,10 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             genericOptimizedPrompt={genericOptimizedPrompt ?? null}
             {...(promptInputRef ? { promptInputRef } : {})}
             {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
-            aspectRatio={aspectRatio}
-            duration={duration}
-            selectedModel={selectedModel}
-            onModelChange={onModelChange}
-            onAspectRatioChange={onAspectRatioChange}
-            onDurationChange={onDurationChange}
             onDraft={onDraft}
             onRender={onRender}
-            isDraftDisabled={isDraftDisabled}
-            isRenderDisabled={isRenderDisabled}
             {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-            keyframes={keyframes}
-            onAddKeyframe={onAddKeyframe}
-            onRemoveKeyframe={onRemoveKeyframe}
-            {...(typeof onClearKeyframes === 'function' ? { onClearKeyframes } : {})}
-            tier={tier}
-            onTierChange={onTierChange}
             onStoryboard={onStoryboard}
-            {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
-            showMotionControls={showMotionControls}
-            cameraMotion={cameraMotion}
-            {...(typeof onCameraMotionChange === 'function' ? { onCameraMotionChange } : {})}
-            subjectMotion={subjectMotion}
-            {...(typeof onSubjectMotionChange === 'function' ? { onSubjectMotionChange } : {})}
             assets={assets}
             onInsertTrigger={onInsertTrigger}
             onBack={() => setActivePanel('sessions')}
