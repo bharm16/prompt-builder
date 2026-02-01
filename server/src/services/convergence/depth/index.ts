@@ -14,6 +14,7 @@ export {
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
   getDepthWarmupStatus,
+  getStartupWarmupPromise,
   initializeDepthWarmer,
   warmupDepthEstimationOnStartup,
 } from './DepthEstimationService';

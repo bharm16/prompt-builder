@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
-import { createDepthEstimationServiceForUser, getDepthWarmupStatus } from '@services/convergence/depth';
+import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
 import { getGCSStorageService } from '@services/convergence/storage';
 import { safeUrlHost } from '@utils/url';
 
@@ -165,6 +165,24 @@ export function createMotionRoutes(): Router {
       }
 
       try {
+        // If startup warmup is still in-flight, wait for it so the model is warm
+        // before making the user's depth estimation call.
+        const pendingWarmup = getStartupWarmupPromise();
+        if (pendingWarmup) {
+          const { warmupInFlight: wif } = getDepthWarmupStatus();
+          if (wif) {
+            log.debug('Waiting for startup warmup to complete before depth estimation', {
+              operation: OPERATION,
+              userId,
+              requestId,
+              depthRequestId,
+            });
+            await pendingWarmup.catch(() => {
+              // Warmup failure is non-fatal; proceed with estimation anyway
+            });
+          }
+        }
+
         const { warmupInFlight, lastWarmupAt } = getDepthWarmupStatus();
         const coldStart = warmupInFlight || lastWarmupAt === 0;
         const timeoutMs = coldStart

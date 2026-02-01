@@ -22,4 +22,18 @@ describe('buildReplicateInput', () => {
 
     expect(input.seed).toBe(0);
   });
+
+  it('defaults prompt_extend to true for Wan inputs', () => {
+    const modelId = 'wan-video/wan-2.2-t2v-fast' as VideoModelId;
+    const input = buildReplicateInput(modelId, 'prompt', {});
+
+    expect(input.prompt_extend).toBe(true);
+  });
+
+  it('respects promptExtend override for Wan inputs', () => {
+    const modelId = 'wan-video/wan-2.2-t2v-fast' as VideoModelId;
+    const input = buildReplicateInput(modelId, 'prompt', { promptExtend: false });
+
+    expect(input.prompt_extend).toBe(false);
+  });
 });

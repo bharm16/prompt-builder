@@ -30,6 +30,8 @@ export interface VideoGenerationOptions {
   numFrames?: number;
   fps?: number;
   negativePrompt?: string;
+  /** Override Replicate's prompt_extend behavior for Wan models */
+  promptExtend?: boolean;
   startImage?: string;
   inputReference?: string;
   seconds?: '4' | '8' | '12';

@@ -37,61 +37,6 @@ const normalizeMotionString = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const CAMERA_MOTION_PROMPTS: Record<string, string> = {
-  static: 'Camera remains static with no movement.',
-  pan_left: 'Camera pans left in a smooth, continuous motion.',
-  pan_right: 'Camera pans right in a smooth, continuous motion.',
-  tilt_up: 'Camera tilts upward smoothly.',
-  tilt_down: 'Camera tilts downward smoothly.',
-  dutch_left: 'Camera rolls left into a dutch angle.',
-  dutch_right: 'Camera rolls right into a dutch angle.',
-  push_in: 'Camera pushes in (dolly in) toward the subject.',
-  pull_back: 'Camera pulls back (dolly out) away from the subject.',
-  track_left: 'Camera tracks left, moving laterally.',
-  track_right: 'Camera tracks right, moving laterally.',
-  pedestal_up: 'Camera moves upward (pedestal up).',
-  pedestal_down: 'Camera moves downward (pedestal down).',
-  crane_up: 'Camera cranes upward with a gentle tilt.',
-  crane_down: 'Camera cranes downward with a gentle tilt.',
-  arc_left: 'Camera arcs left around the subject.',
-  arc_right: 'Camera arcs right around the subject.',
-  reveal: 'Camera performs a reveal: push in and pan to unveil the subject.',
-};
-
-const resolveCameraMotionPrompt = (cameraMotionId: string): string =>
-  CAMERA_MOTION_PROMPTS[cameraMotionId] ??
-  `Camera movement: ${cameraMotionId.replace(/[_-]+/g, ' ')}.`;
-
-const appendMotionGuidance = (
-  basePrompt: string,
-  cameraMotionId: string | null,
-  subjectMotion: string | null
-): string => {
-  const guidanceLines: string[] = [];
-  const motionParts: string[] = [];
-
-  if (cameraMotionId) {
-    motionParts.push(resolveCameraMotionPrompt(cameraMotionId));
-  }
-  if (subjectMotion) {
-    motionParts.push(`Subject motion: ${subjectMotion}.`);
-  }
-
-  if (motionParts.length > 0) {
-    guidanceLines.push(`Motion: ${motionParts.join(' ')}`);
-  }
-  if (cameraMotionId) {
-    guidanceLines.push('Camera movement is the primary visible motion in the shot.');
-  }
-
-  if (guidanceLines.length === 0) {
-    return basePrompt;
-  }
-
-  const trimmedPrompt = basePrompt.trim();
-  return `${trimmedPrompt}\n\n${guidanceLines.join('\n')}`;
-};
-
 const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   const params = generationParams ?? {};
   const generationParamKeys = Object.keys(params);
@@ -311,8 +256,6 @@ export function useGenerationActions(
           return;
         }
 
-        const cameraMotionId = normalizeMotionString(resolved.generationParams?.camera_motion_id);
-        const subjectMotion = normalizeMotionString(resolved.generationParams?.subject_motion);
         let wanPrompt = prompt.trim();
         try {
           wanPrompt = await compileWanPrompt(prompt, controller.signal);
@@ -326,9 +269,7 @@ export function useGenerationActions(
           wanPrompt = prompt.trim();
         }
         if (controller.signal.aborted) return;
-        const baseWanPrompt = wanPrompt.trim();
-        wanPrompt = appendMotionGuidance(wanPrompt, cameraMotionId, subjectMotion);
-        const motionPromptInjected = wanPrompt.trim() !== baseWanPrompt;
+        const motionPromptInjected = false;
 
         const resolvedStartImage = resolved.startImage
           ? await resolveStartImageUrl(resolved.startImage)

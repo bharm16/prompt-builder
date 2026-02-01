@@ -424,6 +424,14 @@ export function getDepthWarmupStatus(): { warmupInFlight: boolean; lastWarmupAt:
   };
 }
 
+/**
+ * Returns the in-flight startup warmup promise (if any).
+ * Route handlers can await this to ensure the model is warm before making estimation calls.
+ */
+export function getStartupWarmupPromise(): Promise<DepthWarmupResult> | null {
+  return startupWarmupPromise;
+}
+
 // ============================================================================
 // Interface
 // ============================================================================

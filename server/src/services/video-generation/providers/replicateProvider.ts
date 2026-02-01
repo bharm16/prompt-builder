@@ -112,7 +112,9 @@ export function buildReplicateInput(
   input.size = wanSize;
   input.num_frames = options.numFrames || 81;
   input.frames_per_second = options.fps || 16;
-  input.prompt_extend = true;
+  const promptExtend =
+    typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+  input.prompt_extend = promptExtend;
   input.go_fast = true;
   input.sample_shift = 12;
 

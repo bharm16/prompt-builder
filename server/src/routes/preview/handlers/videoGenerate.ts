@@ -392,6 +392,8 @@ export const createVideoGenerateHandler = ({
         : undefined;
 
     const motionContext = resolveMotionContext(normalizedParams, generationParams);
+    const isI2VRequest = Boolean(resolvedStartImage || inputReference);
+    const disablePromptExtend = isI2VRequest && Boolean(motionContext.cameraMotionId);
     const promptWithMotion = appendMotionGuidance(cleanedPrompt, motionContext);
     const normalizedMotionMeta = extractMotionMeta(normalizedParams);
     const promptLengthBeforeMotion = cleanedPrompt.trim().length;
@@ -402,6 +404,9 @@ export const createVideoGenerateHandler = ({
       operation: 'resolveMotionContext',
       requestId,
       userId,
+      hasStartImage: Boolean(resolvedStartImage),
+      hasInputReference: Boolean(inputReference),
+      isI2VRequest,
       rawHasCameraMotion: rawMotionMeta.hasCameraMotion,
       rawCameraMotionId: rawMotionMeta.cameraMotionId,
       rawHasSubjectMotion: rawMotionMeta.hasSubjectMotion,
@@ -413,10 +418,22 @@ export const createVideoGenerateHandler = ({
       resolvedCameraMotionId: motionContext.cameraMotionId,
       resolvedCameraMotionText: motionContext.cameraMotionText,
       resolvedSubjectMotionLength: motionContext.subjectMotion?.length ?? 0,
+      disablePromptExtend,
       motionGuidanceAppended,
       promptLengthBeforeMotion,
       promptLengthAfterMotion,
     });
+
+    if (disablePromptExtend) {
+      log.info('Disabling Wan prompt_extend for I2V camera motion', {
+        operation: 'configureWanPromptExtend',
+        requestId,
+        userId,
+        cameraMotionId: motionContext.cameraMotionId,
+        hasStartImage: Boolean(resolvedStartImage),
+        hasInputReference: Boolean(inputReference),
+      });
+    }
 
     const hasCredits = await userCreditService.reserveCredits(userId, videoCost);
     if (!hasCredits) {
@@ -456,6 +473,9 @@ export const createVideoGenerateHandler = ({
     if (typeof numFrames === 'number') {
       options.numFrames = numFrames;
     }
+    if (disablePromptExtend) {
+      options.promptExtend = false;
+    }
 
     log.debug('Queueing operation.', {
       operation,
@@ -476,6 +496,7 @@ export const createVideoGenerateHandler = ({
       cameraMotionId: motionContext.cameraMotionId,
       hasSubjectMotion: Boolean(motionContext.subjectMotion),
       subjectMotionLength: motionContext.subjectMotion?.length ?? 0,
+      promptExtend: options.promptExtend ?? null,
     });
 
     try {

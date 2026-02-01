@@ -7,6 +7,7 @@ export const VideoGenerationOptionsSchema = z.object({
   numFrames: z.number().int().positive().optional(),
   fps: z.number().positive().optional(),
   negativePrompt: z.string().optional(),
+  promptExtend: z.boolean().optional(),
   startImage: z.string().optional(),
   inputReference: z.string().optional(),
   seconds: z.enum(['4', '8', '12']).optional(),

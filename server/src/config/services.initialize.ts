@@ -232,24 +232,30 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     logger.info('ℹ️ GLiNER warmup skipped', { reason });
   }
 
+  const logDepthWarmupResult = (
+    depthWarmup: Awaited<ReturnType<typeof warmupDepthEstimationOnStartup>>
+  ) => {
+    if (depthWarmup.success) {
+      logger.info('✅ Depth estimation warmed up', {
+        provider: depthWarmup.provider,
+        durationMs: depthWarmup.durationMs,
+      });
+    } else if (depthWarmup.skipped) {
+      logger.info('ℹ️ Depth warmup skipped', {
+        reason: depthWarmup.message || 'Unknown reason',
+      });
+    } else {
+      logger.warn('⚠️ Depth warmup failed', {
+        provider: depthWarmup.provider,
+        reason: depthWarmup.message || 'Unknown reason',
+      });
+    }
+  };
+
   if (!isTestEnv && !promptOutputOnly) {
     try {
       const depthWarmup = await warmupDepthEstimationOnStartup();
-      if (depthWarmup.success) {
-        logger.info('✅ Depth estimation warmed up', {
-          provider: depthWarmup.provider,
-          durationMs: depthWarmup.durationMs,
-        });
-      } else if (depthWarmup.skipped) {
-        logger.info('ℹ️ Depth warmup skipped', {
-          reason: depthWarmup.message || 'Unknown reason',
-        });
-      } else {
-        logger.warn('⚠️ Depth warmup failed', {
-          provider: depthWarmup.provider,
-          reason: depthWarmup.message || 'Unknown reason',
-        });
-      }
+      logDepthWarmupResult(depthWarmup);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
