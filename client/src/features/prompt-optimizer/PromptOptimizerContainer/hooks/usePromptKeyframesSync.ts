@@ -29,12 +29,17 @@ export function usePromptKeyframesSync({
     uuid: currentPromptUuid ?? null,
     docId: currentPromptDocId ?? null,
   });
+  const localWritePendingRef = useRef(false);
 
   useEffect(() => {
     keyframesRef.current = keyframes;
   }, [keyframes]);
 
   useEffect(() => {
+    if (localWritePendingRef.current) {
+      localWritePendingRef.current = false;
+      return;
+    }
     if (!currentPromptUuid) {
       if (keyframesRef.current.length) {
         setKeyframes([]);
@@ -71,6 +76,7 @@ export function usePromptKeyframesSync({
     if (!entry) return;
     const serialized = serializeKeyframes(keyframes);
     if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
+    localWritePendingRef.current = true;
     promptHistory.updateEntryPersisted(uuid, docId, { keyframes: serialized });
   }, [keyframes, promptHistory.history, promptHistory.updateEntryPersisted]);
 

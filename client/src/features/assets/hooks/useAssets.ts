@@ -1,12 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Asset, AssetListResponse, AssetType } from '@shared/types/asset';
 import { assetApi } from '../api/assetApi';
 
 export function useAssets() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeOpsRef = useRef(0);
 
   const withLoading = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+    activeOpsRef.current++;
     setIsLoading(true);
     setError(null);
     try {
@@ -16,7 +18,10 @@ export function useAssets() {
       setError(message);
       throw err;
     } finally {
-      setIsLoading(false);
+      activeOpsRef.current--;
+      if (activeOpsRef.current === 0) {
+        setIsLoading(false);
+      }
     }
   }, []);
 

@@ -13,6 +13,7 @@ import {
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
 } from '@/utils/storageUrl';
+import { loadConstraintMode, persistConstraintMode } from '../context/generationControlsStorage';
 
 const OBSERVATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
@@ -35,7 +36,7 @@ export function useI2VContext(): I2VContext {
   const startImageUrl = keyframes[0]?.url ?? null;
   const startImageSourcePrompt = keyframes[0]?.sourcePrompt ?? null;
   const startImageViewUrlExpiresAt = keyframes[0]?.viewUrlExpiresAt ?? null;
-  const [constraintMode, setConstraintModeState] = useState<I2VConstraintMode>('strict');
+  const [constraintMode, setConstraintModeState] = useState<I2VConstraintMode>(() => loadConstraintMode());
   const [observation, setObservation] = useState<ImageObservation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export function useI2VContext(): I2VContext {
 
   const setConstraintMode = useCallback((mode: I2VConstraintMode) => {
     setConstraintModeState(mode);
+    persistConstraintMode(mode);
   }, []);
 
   const resolveObservationUrl = useCallback(

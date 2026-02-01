@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type { CameraPath } from '@/features/convergence/types';
 import {
   loadCameraMotion,
+  loadKeyframes,
   loadSubjectMotion,
   persistCameraMotion,
+  persistKeyframes,
   persistSubjectMotion,
 } from '../generationControlsStorage';
 
@@ -57,5 +60,49 @@ describe('generationControlsStorage', () => {
     persistSubjectMotion('');
     expect(loadSubjectMotion()).toBe('');
     expect(localStorage.getItem('generation-controls:subjectMotion')).toBeNull();
+  });
+
+  describe('keyframes', () => {
+    const SAMPLE_KEYFRAMES: KeyframeTile[] = [
+      {
+        id: 'kf-1',
+        url: 'https://storage.example.com/frame1.png',
+        source: 'upload',
+        storagePath: 'uploads/frame1.png',
+      },
+      {
+        id: 'kf-2',
+        url: 'https://storage.example.com/frame2.png',
+        source: 'asset',
+        assetId: 'asset-123',
+      },
+    ];
+
+    it('persists and loads keyframes', () => {
+      persistKeyframes(SAMPLE_KEYFRAMES);
+      expect(loadKeyframes()).toEqual(SAMPLE_KEYFRAMES);
+    });
+
+    it('returns empty array for corrupted keyframes data', () => {
+      localStorage.setItem('generation-controls:keyframes', 'not json');
+      expect(loadKeyframes()).toEqual([]);
+
+      localStorage.setItem('generation-controls:keyframes', JSON.stringify([{ id: 'bad' }]));
+      expect(loadKeyframes()).toEqual([]);
+    });
+
+    it('clears keyframes when persisted empty array', () => {
+      persistKeyframes(SAMPLE_KEYFRAMES);
+      persistKeyframes([]);
+      expect(loadKeyframes()).toEqual([]);
+      expect(localStorage.getItem('generation-controls:keyframes')).toBeNull();
+    });
+
+    it('loads single keyframe', () => {
+      persistKeyframes(SAMPLE_KEYFRAMES.slice(0, 1));
+      const loaded = loadKeyframes();
+      expect(loaded).toHaveLength(1);
+      expect(loaded[0]?.id).toBe('kf-1');
+    });
   });
 });

@@ -10,6 +10,12 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react';
+import {
+  loadActiveTab,
+  loadImageSubTab,
+  persistActiveTab,
+  persistImageSubTab,
+} from '@features/prompt-optimizer/context/generationControlsStorage';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
@@ -159,12 +165,52 @@ export const useGenerationControlsPanel = (
   const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<GenerationControlsTab>('video');
-  const [imageSubTab, setImageSubTab] = useState<ImageSubTab>('references');
+  const [activeTab, setActiveTabState] = useState<GenerationControlsTab>(() => loadActiveTab());
+  const [imageSubTab, setImageSubTabState] = useState<ImageSubTab>(() => loadImageSubTab());
+
+  const setActiveTab: Dispatch<SetStateAction<GenerationControlsTab>> = useCallback((action) => {
+    setActiveTabState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      persistActiveTab(next);
+      return next;
+    });
+  }, []);
+
+  const setImageSubTab: Dispatch<SetStateAction<ImageSubTab>> = useCallback((action) => {
+    setImageSubTabState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      persistImageSubTab(next);
+      return next;
+    });
+  }, []);
+
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [originalInputPrompt, setOriginalInputPrompt] = useState('');
-  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(undefined);
+  const [isEditing, setIsEditing] = useState(() => {
+    try { return window.sessionStorage.getItem('generation-controls:isEditing') === 'true'; } catch { return false; }
+  });
+  const [originalInputPrompt, setOriginalInputPrompt] = useState(() => {
+    try { return window.sessionStorage.getItem('generation-controls:originalInputPrompt') ?? ''; } catch { return ''; }
+  });
+  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(() => {
+    try { return window.sessionStorage.getItem('generation-controls:originalSelectedModel') ?? undefined; } catch { return undefined; }
+  });
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('generation-controls:isEditing', String(isEditing));
+      if (isEditing) {
+        window.sessionStorage.setItem('generation-controls:originalInputPrompt', originalInputPrompt);
+        if (originalSelectedModel !== undefined) {
+          window.sessionStorage.setItem('generation-controls:originalSelectedModel', originalSelectedModel);
+        }
+      } else {
+        window.sessionStorage.removeItem('generation-controls:originalInputPrompt');
+        window.sessionStorage.removeItem('generation-controls:originalSelectedModel');
+      }
+    } catch {
+      // ignore
+    }
+  }, [isEditing, originalInputPrompt, originalSelectedModel]);
 
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const isKeyframeLimitReached = keyframes.length >= 3;

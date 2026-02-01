@@ -24,8 +24,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const normalizeSettings = (settings: Partial<AppSettings>): AppSettings => {
-  const merged = { ...DEFAULT_SETTINGS, ...settings };
-  return { ...merged, darkMode: false };
+  return { ...DEFAULT_SETTINGS, ...settings };
 };
 
 const loadSettings = (): AppSettings => {

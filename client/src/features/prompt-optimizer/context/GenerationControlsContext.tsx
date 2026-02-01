@@ -20,8 +20,10 @@ import {
 import { safeUrlHost } from '@/utils/url';
 import {
   loadCameraMotion,
+  loadKeyframes,
   loadSubjectMotion,
   persistCameraMotion,
+  persistKeyframes,
   persistSubjectMotion,
 } from './generationControlsStorage';
 
@@ -78,7 +80,7 @@ const GenerationControlsContext = createContext<GenerationControlsContextValue |
 
 export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
-  const [keyframes, setKeyframesState] = useState<KeyframeTile[]>([]);
+  const [keyframes, setKeyframesState] = useState<KeyframeTile[]>(() => loadKeyframes());
   const [cameraMotion, setCameraMotionState] = useState<CameraPath | null>(() => loadCameraMotion());
   const [subjectMotion, setSubjectMotionState] = useState(() => loadSubjectMotion());
   const lastFirstKeyframeUrlRef = useRef<string | null>(null);
@@ -100,6 +102,10 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   useEffect(() => {
     persistSubjectMotion(subjectMotion);
   }, [subjectMotion]);
+
+  useEffect(() => {
+    persistKeyframes(keyframes);
+  }, [keyframes]);
 
   const refreshStaleKeyframes = useCallback(async () => {
     const frames = keyframesRef.current;
@@ -179,7 +185,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [refreshStaleKeyframes]);
+  }, [refreshStaleKeyframes, keyframes.length]);
 
   const addKeyframe = useCallback((tile: Omit<KeyframeTile, 'id'>): void => {
     setKeyframesState((prev) => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { assetApi } from '@/features/assets/api/assetApi';
 import type { ResolvedPrompt } from '@shared/types/asset';
 
@@ -24,6 +24,7 @@ export function useAssetReferenceImages(
   const [resolvedPrompt, setResolvedPrompt] = useState<ResolvedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchReferenceImages = useCallback(async () => {
     if (!prompt || !/@[a-zA-Z]/.test(prompt)) {
@@ -34,25 +35,33 @@ export function useAssetReferenceImages(
       return;
     }
 
+    const currentRequestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
 
     try {
       const result = await assetApi.resolve(prompt);
+      if (requestIdRef.current !== currentRequestId) return;
       setReferenceImages(result.referenceImages || []);
       setResolvedPrompt(result);
     } catch (err) {
+      if (requestIdRef.current !== currentRequestId) return;
       setError(err instanceof Error ? err.message : 'Failed to resolve assets');
       setReferenceImages([]);
       setResolvedPrompt(null);
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   }, [prompt]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(fetchReferenceImages, 500);
-    return () => clearTimeout(debounceTimer);
+    return () => {
+      clearTimeout(debounceTimer);
+      requestIdRef.current++;
+    };
   }, [fetchReferenceImages]);
 
   return {

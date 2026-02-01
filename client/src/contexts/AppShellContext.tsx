@@ -9,13 +9,35 @@
  * - 17.1-17.7: Tool switching and handoff
  */
 
-import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ConvergenceHandoff } from '@features/convergence/types';
 
 /**
  * Active tool type - determines which tool is displayed in the main workspace
  */
 export type ActiveTool = 'create' | 'studio';
+
+const ACTIVE_TOOL_STORAGE_KEY = 'app-shell:activeTool';
+
+const loadActiveTool = (fallback: ActiveTool): ActiveTool => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const value = window.localStorage.getItem(ACTIVE_TOOL_STORAGE_KEY);
+    if (value === 'create' || value === 'studio') return value;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const persistActiveTool = (value: ActiveTool): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ACTIVE_TOOL_STORAGE_KEY, value);
+  } catch {
+    // ignore
+  }
+};
 
 /**
  * Context value interface for AppShell
@@ -81,8 +103,12 @@ export function AppShellProvider({
   initialTool = 'studio',
   isGeneratingCheck,
 }: AppShellProviderProps): React.ReactElement {
-  const [activeTool, setActiveToolState] = useState<ActiveTool>(initialTool);
+  const [activeTool, setActiveToolState] = useState<ActiveTool>(() => loadActiveTool(initialTool));
   const [convergenceHandoff, setConvergenceHandoff] = useState<ConvergenceHandoff | null>(null);
+
+  useEffect(() => {
+    persistActiveTool(activeTool);
+  }, [activeTool]);
 
   /**
    * Set active tool with generation-in-progress warning (Requirement 17.7)

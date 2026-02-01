@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput } from '../types';
 import { continuityApi } from '../api/continuityApi';
 
@@ -30,6 +30,17 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
   const [session, setSession] = useState<ContinuitySession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionRef = useRef<ContinuitySession | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  const getSessionOrThrow = useCallback((): ContinuitySession => {
+    const current = sessionRef.current;
+    if (!current) throw new Error('No active session');
+    return current;
+  }, []);
 
   const loadSession = useCallback(async (sessionId: string) => {
     setLoading(true);
@@ -57,18 +68,18 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
   }, []);
 
   const addShot = useCallback(async (input: CreateShotInput) => {
-    if (!session) throw new Error('No active session');
-    const shot = await continuityApi.addShot(session.id, input);
+    const current = getSessionOrThrow();
+    const shot = await continuityApi.addShot(current.id, input);
     setSession((prev) => {
       if (!prev) return prev;
       return { ...prev, shots: [...prev.shots, shot] };
     });
     return shot;
-  }, [session]);
+  }, [getSessionOrThrow]);
 
   const generateShot = useCallback(async (shotId: string) => {
-    if (!session) throw new Error('No active session');
-    const shot = await continuityApi.generateShot(session.id, shotId);
+    const current = getSessionOrThrow();
+    const shot = await continuityApi.generateShot(current.id, shotId);
     setSession((prev) => {
       if (!prev) return prev;
       return {
@@ -77,11 +88,11 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       };
     });
     return shot;
-  }, [session]);
+  }, [getSessionOrThrow]);
 
   const updateStyleReference = useCallback(async (shotId: string, styleReferenceId: string | null) => {
-    if (!session) throw new Error('No active session');
-    const shot = await continuityApi.updateShotStyleReference(session.id, shotId, styleReferenceId);
+    const current = getSessionOrThrow();
+    const shot = await continuityApi.updateShotStyleReference(current.id, shotId, styleReferenceId);
     setSession((prev) => {
       if (!prev) return prev;
       return {
@@ -90,27 +101,27 @@ export function ContinuitySessionProvider({ children }: { children: ReactNode })
       };
     });
     return shot;
-  }, [session]);
+  }, [getSessionOrThrow]);
 
   const createSceneProxy = useCallback(async (input: Record<string, unknown>) => {
-    if (!session) throw new Error('No active session');
-    const updated = await continuityApi.createSceneProxy(session.id, input);
-    setSession(updated);
-  }, [session]);
+    const current = getSessionOrThrow();
+    const updated = await continuityApi.createSceneProxy(current.id, input);
+    setSession((prev) => (prev?.id === updated.id ? updated : prev));
+  }, [getSessionOrThrow]);
 
   const updateSessionSettings = useCallback(async (settings: Record<string, unknown>) => {
-    if (!session) throw new Error('No active session');
-    const updated = await continuityApi.updateSessionSettings(session.id, settings);
-    setSession(updated);
+    const current = getSessionOrThrow();
+    const updated = await continuityApi.updateSessionSettings(current.id, settings);
+    setSession((prev) => (prev?.id === updated.id ? updated : prev));
     return updated;
-  }, [session]);
+  }, [getSessionOrThrow]);
 
   const updatePrimaryStyleReference = useCallback(async (input: Record<string, unknown>) => {
-    if (!session) throw new Error('No active session');
-    const updated = await continuityApi.updatePrimaryStyleReference(session.id, input);
-    setSession(updated);
+    const current = getSessionOrThrow();
+    const updated = await continuityApi.updatePrimaryStyleReference(current.id, input);
+    setSession((prev) => (prev?.id === updated.id ? updated : prev));
     return updated;
-  }, [session]);
+  }, [getSessionOrThrow]);
 
   const value = useMemo(
     () => ({

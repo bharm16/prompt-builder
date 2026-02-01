@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContinuitySession, CreateShotInput, ContinuityMode, GenerationMode } from '../../types';
 import { IDENTITY_KEYFRAME_CREDIT_COST, STYLE_KEYFRAME_CREDIT_COST } from '../../constants';
 import { StrengthSlider } from '../StyleReferencePanel/StrengthSlider';
@@ -61,16 +61,24 @@ export function ShotEditor({
     Record<string, Record<string, CapabilitiesSchema>> | null
   >(null);
   const [registryError, setRegistryError] = useState<string | null>(null);
+  const lastSessionIdRef = useRef(session.id);
 
+  // Reset all editor settings when a different session is loaded
   useEffect(() => {
+    if (lastSessionIdRef.current === session.id) return;
+    lastSessionIdRef.current = session.id;
     setContinuityMode(session.defaultSettings.defaultContinuityMode);
     setStyleStrength(session.defaultSettings.defaultStyleStrength);
     setModelId(toCapabilityModelId(session.defaultSettings.defaultModel) || '');
-    const lastShot = session.shots[session.shots.length - 1];
-    setStyleReferenceId(lastShot?.id ?? null);
     setUseCharacter(Boolean(session.defaultSettings.useCharacterConsistency));
     setUsePreviousReference(false);
-  }, [session.id, session.defaultSettings, session.shots]);
+  }, [session.id, session.defaultSettings]);
+
+  // Auto-select the latest shot as style reference when shots change
+  useEffect(() => {
+    const lastShot = session.shots[session.shots.length - 1];
+    setStyleReferenceId(lastShot?.id ?? null);
+  }, [session.id, session.shots.length]);
 
   useEffect(() => {
     let active = true;
@@ -116,18 +124,21 @@ export function ShotEditor({
   }, [capabilityRegistry]);
 
   const hasRegistry = Boolean(capabilityRegistry);
-  const isContinuityCapable = (capabilityId: string): boolean => {
-    if (!hasRegistry) return true;
-    const schema = capabilityMap[capabilityId];
-    if (!schema) return false;
-    const supportsImage = getCapabilityDefault(schema, 'image_input');
-    const supportsStyle = getCapabilityDefault(schema, 'style_reference');
-    return supportsImage || supportsStyle;
-  };
+  const isContinuityCapable = useCallback(
+    (capabilityId: string): boolean => {
+      if (!hasRegistry) return true;
+      const schema = capabilityMap[capabilityId];
+      if (!schema) return false;
+      const supportsImage = getCapabilityDefault(schema, 'image_input');
+      const supportsStyle = getCapabilityDefault(schema, 'style_reference');
+      return supportsImage || supportsStyle;
+    },
+    [hasRegistry, capabilityMap]
+  );
 
   const continuityEligibleModels = useMemo(
     () => registryModels.filter((model) => isContinuityCapable(model.id)),
-    [registryModels, capabilityMap]
+    [registryModels, isContinuityCapable]
   );
 
   const availableModels = showContinuityControls && continuityEligibleModels.length
@@ -187,7 +198,7 @@ export function ShotEditor({
           }
         : undefined;
 
-      const resolvedModelId = toCanonicalModelId(modelId) || undefined;
+      const canonicalModelId = toCanonicalModelId(modelId) || undefined;
       const input: CreateShotInput = {
         prompt: prompt.trim(),
         generationMode,
@@ -199,7 +210,7 @@ export function ShotEditor({
               : 'none',
         styleStrength: showContinuityControls ? styleStrength : undefined,
         styleReferenceId: showContinuityControls ? styleReferenceId : undefined,
-        modelId: resolvedModelId,
+        modelId: canonicalModelId,
         characterAssetId: useCharacter && characterAssetId ? characterAssetId : undefined,
         camera,
       };

@@ -90,11 +90,13 @@ export function ContinuitySessionView(): React.ReactElement {
 
   const onModeChange = async (nextMode: GenerationMode) => {
     if (nextMode === mode) return;
+    const previousMode = mode;
     setMode(nextMode);
     setIsUpdatingMode(true);
     try {
       await updateSessionSettings({ generationMode: nextMode });
     } catch (error) {
+      setMode(previousMode);
       setLocalError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsUpdatingMode(false);

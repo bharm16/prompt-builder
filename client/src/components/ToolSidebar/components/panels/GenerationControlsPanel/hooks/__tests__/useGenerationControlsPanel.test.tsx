@@ -38,13 +38,9 @@ vi.mock('@/features/prompt-optimizer/components/TriggerAutocomplete', () => ({
   }),
 }));
 
-vi.mock('@/features/prompt-optimizer/context/PromptStateContext', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/prompt-optimizer/context/PromptStateContext')>();
-  return {
-    ...actual,
-    useOptionalPromptHighlights: () => null,
-  };
-});
+vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
+  useOptionalPromptHighlights: () => null,
+}));
 
 vi.mock('@/features/span-highlighting', () => ({
   sanitizeText: (value: string) => value,

@@ -162,3 +162,28 @@ Anything in scope 3 or 4 that the user expects to behave like scope 1 or 2 feels
 7. **Capability clamping**: Select 21:9 on render → switch to draft → aspect ratio should auto-clamp
 8. **Corrupt localStorage**: Manually set garbage in `generation-controls:cameraMotion` → reload → should gracefully fallback to `null`
 9. **Run existing tests**: `npm run test:unit` — all should pass
+
+---
+
+## Draft: Unified Generation Controls Store (Reducer + Migration)
+
+To start consolidating state without breaking existing consumers, a draft reducer-based store was added that hydrates from legacy storage keys and persists back to both the new key and the legacy keys.
+
+**Files**:
+- `client/src/features/prompt-optimizer/context/generationControlsStoreTypes.ts`
+- `client/src/features/prompt-optimizer/context/generationControlsStoreStorage.ts`
+- `client/src/features/prompt-optimizer/context/GenerationControlsStore.tsx`
+
+**State shape**:
+- `domain`: `selectedModel`, `generationParams`, `videoTier`, `keyframes`, `cameraMotion`, `subjectMotion`
+- `ui`: `activeTab`, `imageSubTab`, `constraintMode`
+
+**Migration behavior**:
+- If `prompt-optimizer:generationControlsStore` is missing or invalid, hydrate from:
+  - `prompt-optimizer:*` (`selectedModel`, `generationParams`, `videoTier`)
+  - `generation-controls:*` (`keyframes`, `cameraMotion`, `subjectMotion`, `activeTab`, `imageSubTab`, `constraintMode`)
+- Persist writes to the unified key and mirrors legacy keys for backward compatibility
+
+**Next wiring step (optional)**:
+- Wrap the app shell (or `PromptStateProvider`) with `GenerationControlsStoreProvider`
+- Move `GenerationControlsContext` and `PromptStateContext` to read/write through store actions
