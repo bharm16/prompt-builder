@@ -417,6 +417,13 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
   return startupWarmupPromise;
 }
 
+export function getDepthWarmupStatus(): { warmupInFlight: boolean; lastWarmupAt: number } {
+  return {
+    warmupInFlight: Boolean(warmupInFlight),
+    lastWarmupAt,
+  };
+}
+
 // ============================================================================
 // Interface
 // ============================================================================

@@ -10,13 +10,27 @@ import { z } from 'zod';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
-import { createDepthEstimationServiceForUser } from '@services/convergence/depth';
+import { createDepthEstimationServiceForUser, getDepthWarmupStatus } from '@services/convergence/depth';
 import { getGCSStorageService } from '@services/convergence/storage';
 import { safeUrlHost } from '@utils/url';
 
 const log = logger.child({ routes: 'motion' });
 const OPERATION = 'estimateDepth';
-const DEPTH_ESTIMATION_TIMEOUT_MS = 25_000;
+const DEPTH_ESTIMATION_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_TIMEOUT_MS || '', 10);
+  if (Number.isFinite(raw) && raw >= 5_000) {
+    return raw;
+  }
+  return 25_000;
+})();
+
+const DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS || '', 10);
+  if (Number.isFinite(raw) && raw >= 5_000) {
+    return raw;
+  }
+  return Math.max(60_000, DEPTH_ESTIMATION_TIMEOUT_MS);
+})();
 
 const DepthEstimationRequestSchema = z.object({
   imageUrl: z.string().url('Invalid image URL'),
@@ -151,17 +165,24 @@ export function createMotionRoutes(): Router {
       }
 
       try {
+        const { warmupInFlight, lastWarmupAt } = getDepthWarmupStatus();
+        const coldStart = warmupInFlight || lastWarmupAt === 0;
+        const timeoutMs = coldStart
+          ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
+          : DEPTH_ESTIMATION_TIMEOUT_MS;
+
         log.debug('Depth estimation starting', {
           operation: OPERATION,
           userId,
           requestId,
           depthRequestId,
           imageUrlHost,
-          timeoutMs: DEPTH_ESTIMATION_TIMEOUT_MS,
+          timeoutMs,
+          coldStart,
         });
         const depthMapUrl = await withTimeout(
           depthService.estimateDepth(imageUrl),
-          DEPTH_ESTIMATION_TIMEOUT_MS
+          timeoutMs
         );
         const duration = Date.now() - startedAt;
         const depthMapUrlHost = safeUrlHost(depthMapUrl);
@@ -188,6 +209,11 @@ export function createMotionRoutes(): Router {
         const duration = Date.now() - startedAt;
         const errorMessage = error instanceof Error ? error.message : String(error);
         const timedOut = errorMessage.includes('timed out');
+        const { warmupInFlight, lastWarmupAt } = getDepthWarmupStatus();
+        const coldStart = warmupInFlight || lastWarmupAt === 0;
+        const timeoutMs = coldStart
+          ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
+          : DEPTH_ESTIMATION_TIMEOUT_MS;
         log.warn('Depth estimation failed; returning fallback mode', {
           operation: OPERATION,
           userId,
@@ -197,7 +223,8 @@ export function createMotionRoutes(): Router {
           imageUrlHost,
           error: errorMessage,
           timedOut,
-          timeoutMs: DEPTH_ESTIMATION_TIMEOUT_MS,
+          timeoutMs,
+          coldStart,
         });
         return res.json(buildFallbackResponse());
       }

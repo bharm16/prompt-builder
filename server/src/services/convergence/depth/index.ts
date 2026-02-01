@@ -13,6 +13,7 @@ export {
   ReplicateDepthEstimationService,
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
+  getDepthWarmupStatus,
   initializeDepthWarmer,
   warmupDepthEstimationOnStartup,
 } from './DepthEstimationService';
