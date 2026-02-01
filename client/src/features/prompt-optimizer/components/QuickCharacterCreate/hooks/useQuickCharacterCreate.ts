@@ -119,7 +119,7 @@ export function useQuickCharacterCreate({
         await assetApi.setPrimaryImage(asset.id, primaryUpload.id);
       }
 
-      return asset;
+      return await assetApi.get(asset.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create character.';
       setError(message);

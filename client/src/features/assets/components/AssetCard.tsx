@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit, Trash2, Wand2, User, Palette, MapPin, Box } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '../config/assetConfig';
@@ -32,6 +32,24 @@ export function AssetCard({
 
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) || asset.referenceImages?.[0];
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
+  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
+  const [didTryFull, setDidTryFull] = useState(false);
+
+  useEffect(() => {
+    setImageUrl(thumbnailUrl || fullUrl);
+    setDidTryFull(false);
+  }, [thumbnailUrl, fullUrl]);
+
+  const handleImageError = () => {
+    if (!didTryFull && fullUrl && imageUrl !== fullUrl) {
+      setDidTryFull(true);
+      setImageUrl(fullUrl);
+      return;
+    }
+    setImageUrl('');
+  };
 
   return (
     <div
@@ -41,11 +59,12 @@ export function AssetCard({
       }`}
     >
       <div className="aspect-square bg-surface-2">
-        {primaryImage ? (
+        {imageUrl ? (
           <img
-            src={primaryImage.thumbnailUrl || primaryImage.url}
+            src={imageUrl}
             alt={asset.name}
             className="h-full w-full object-cover"
+            onError={handleImageError}
           />
         ) : (
           <div className={`flex h-full w-full items-center justify-center ${config.bgClass}`}>
