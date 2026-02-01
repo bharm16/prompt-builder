@@ -17,7 +17,7 @@ import { logger } from '@/services/LoggingService';
 import type { Asset, AssetType } from '@shared/types/asset';
 import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
-import type { ConvergenceHandoff } from '@/features/convergence/types';
+import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
 import type { OptimizationOptions } from '../types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
@@ -25,7 +25,6 @@ import { usePromptState, PromptStateProvider } from '../context/PromptStateConte
 import {
   useGenerationControlsContext,
 } from '../context/GenerationControlsContext';
-import type { VideoTier } from '@components/ToolSidebar/types';
 import { resolveActiveModelLabel, resolveActiveStatusLabel } from '../utils/activeStatusLabel';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import { assetApi } from '@/features/assets/api/assetApi';
@@ -47,6 +46,45 @@ import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
 
 const log = logger.child('PromptOptimizerWorkspace');
+const buildDefaultCameraTransform = (): CameraPath['start'] => ({
+  position: { x: 0, y: 0, z: 0 },
+  rotation: { pitch: 0, yaw: 0, roll: 0 },
+});
+
+const formatCameraMotionLabel = (id: string): string =>
+  id
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const inferCameraMotionCategory = (id: string): CameraMotionCategory => {
+  if (id === 'static') return 'static';
+  if (id.startsWith('pan_') || id.startsWith('tilt_') || id.startsWith('dutch_')) {
+    return 'pan_tilt';
+  }
+  if (['push_in', 'pull_back', 'track_left', 'track_right'].includes(id)) {
+    return 'dolly';
+  }
+  if (id.startsWith('crane_') || id.startsWith('pedestal_')) {
+    return 'crane';
+  }
+  if (id.startsWith('arc_')) {
+    return 'orbital';
+  }
+  if (id === 'reveal') {
+    return 'compound';
+  }
+  return 'static';
+};
+
+const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
+  id: cameraMotionId,
+  label: formatCameraMotionLabel(cameraMotionId),
+  category: inferCameraMotionCategory(cameraMotionId),
+  start: buildDefaultCameraTransform(),
+  end: buildDefaultCameraTransform(),
+  duration: 1,
+});
 
 /**
  * Inner component with access to PromptStateContext
@@ -85,6 +123,8 @@ function PromptOptimizerContent({
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
     showResults,
     showSettings,
     setShowSettings,
@@ -151,13 +191,6 @@ function PromptOptimizerContent({
     setSubjectMotion,
   } = useGenerationControlsContext();
   const i2vContext = useI2VContext();
-  const [videoTier, setVideoTier] = React.useState<VideoTier>('render');
-
-  useEffect(() => {
-    if (mode === 'create') return;
-    setCameraMotion(null);
-    setSubjectMotion('');
-  }, [mode, setCameraMotion, setSubjectMotion]);
 
   const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
     keyframes,
@@ -199,6 +232,15 @@ function PromptOptimizerContent({
     
     // Pre-fill the input prompt with the converged prompt
     promptOptimizer.setInputPrompt(convergenceHandoff.prompt);
+
+    const handoffCameraMotionId = convergenceHandoff.cameraMotion?.trim();
+    if (handoffCameraMotionId) {
+      setCameraMotion(buildFallbackCameraPath(handoffCameraMotionId));
+    }
+    const handoffSubjectMotion = convergenceHandoff.subjectMotion?.trim();
+    if (handoffSubjectMotion) {
+      setSubjectMotion(handoffSubjectMotion);
+    }
     
     // Clear any existing displayed prompt to show the input
     setDisplayedPromptSilently('');
@@ -214,7 +256,16 @@ function PromptOptimizerContent({
       cameraMotion: convergenceHandoff.cameraMotion,
       hasSubjectMotion: Boolean(convergenceHandoff.subjectMotion),
     });
-  }, [convergenceHandoff, mode, promptOptimizer, setDisplayedPromptSilently, setShowResults, toast]);
+  }, [
+    convergenceHandoff,
+    mode,
+    promptOptimizer,
+    setCameraMotion,
+    setSubjectMotion,
+    setDisplayedPromptSilently,
+    setShowResults,
+    toast,
+  ]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
 
@@ -612,8 +663,9 @@ function PromptOptimizerContent({
     () => ({
       ...(generationParams ?? {}),
       ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
+      ...(subjectMotion.trim() ? { subject_motion: subjectMotion.trim() } : {}),
     }),
-    [generationParams, cameraMotion?.id]
+    [generationParams, cameraMotion?.id, subjectMotion]
   );
 
   // Prompt optimization
@@ -808,7 +860,7 @@ function PromptOptimizerContent({
     onStoryboard: handleStoryboard,
     onImageUpload: handleImageUpload,
     activeDraftModel: generationControls?.activeDraftModel ?? null,
-    showMotionControls: mode === 'create',
+    showMotionControls: true,
     cameraMotion,
     onCameraMotionChange: setCameraMotion,
     subjectMotion,
@@ -862,7 +914,6 @@ function PromptOptimizerContent({
     handleStoryboard,
     handleImageUpload,
     generationControls?.activeDraftModel,
-    mode,
     cameraMotion,
     setCameraMotion,
     subjectMotion,

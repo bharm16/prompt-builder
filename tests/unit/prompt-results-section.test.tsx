@@ -2,10 +2,22 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { PromptResultsSection } from '@features/prompt-optimizer/components/PromptResultsSection';
-import { usePromptState } from '@features/prompt-optimizer/context/PromptStateContext';
+import {
+  usePromptActions,
+  usePromptConfig,
+  usePromptHighlights,
+  usePromptServices,
+  usePromptSession,
+  usePromptUIStateContext,
+} from '@features/prompt-optimizer/context/PromptStateContext';
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptState: vi.fn(),
+  usePromptActions: vi.fn(),
+  usePromptConfig: vi.fn(),
+  usePromptHighlights: vi.fn(),
+  usePromptServices: vi.fn(),
+  usePromptSession: vi.fn(),
+  usePromptUIStateContext: vi.fn(),
 }));
 
 vi.mock('@features/prompt-optimizer/PromptCanvas', () => ({
@@ -17,35 +29,62 @@ vi.mock('@features/prompt-optimizer/PromptCanvas', () => ({
   ),
 }));
 
-const mockUsePromptState = vi.mocked(usePromptState);
+const mockUsePromptActions = vi.mocked(usePromptActions);
+const mockUsePromptConfig = vi.mocked(usePromptConfig);
+const mockUsePromptHighlights = vi.mocked(usePromptHighlights);
+const mockUsePromptServices = vi.mocked(usePromptServices);
+const mockUsePromptSession = vi.mocked(usePromptSession);
+const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
+
+const buildPromptOptimizer = (overrides: Partial<ReturnType<typeof usePromptServices>['promptOptimizer']> = {}) => ({
+  inputPrompt: 'input',
+  displayedPrompt: 'output',
+  optimizedPrompt: 'opt',
+  previewPrompt: null,
+  previewAspectRatio: null,
+  qualityScore: null,
+  isDraftReady: true,
+  isRefining: false,
+  isProcessing: false,
+  draftSpans: null,
+  refinedSpans: null,
+  setInputPrompt: vi.fn(),
+  ...overrides,
+});
 
 describe('PromptResultsSection', () => {
   describe('error handling', () => {
     it('shows the refining banner when refining is true', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptUIStateContext.mockReturnValue({
         showResults: true,
+      } as ReturnType<typeof usePromptUIStateContext>);
+
+      mockUsePromptSession.mockReturnValue({
         currentPromptUuid: 'uuid-1',
-        promptOptimizer: {
-          inputPrompt: 'input',
-          displayedPrompt: 'output',
-          optimizedPrompt: 'opt',
-          previewPrompt: null,
-          previewAspectRatio: null,
-          qualityScore: null,
-          isDraftReady: true,
-          isRefining: true,
-          isProcessing: false,
-          draftSpans: null,
-          refinedSpans: null,
-        },
-        currentMode: { id: 'video' },
         suggestionsData: null,
+      } as ReturnType<typeof usePromptSession>);
+
+      mockUsePromptConfig.mockReturnValue({
+        currentMode: { id: 'video' },
+      } as ReturnType<typeof usePromptConfig>);
+
+      mockUsePromptHighlights.mockReturnValue({
         initialHighlights: null,
         initialHighlightsVersion: 0,
         canUndo: false,
         canRedo: false,
+      } as ReturnType<typeof usePromptHighlights>);
+
+      mockUsePromptActions.mockReturnValue({
         handleCreateNew: vi.fn(),
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptActions>);
+
+      mockUsePromptServices.mockReturnValue({
+        promptOptimizer: buildPromptOptimizer({
+          isRefining: true,
+          isDraftReady: true,
+        }),
+      } as ReturnType<typeof usePromptServices>);
 
       render(
         <PromptResultsSection
@@ -66,30 +105,37 @@ describe('PromptResultsSection', () => {
 
   describe('core behavior', () => {
     it('passes prompt data into PromptCanvas', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptUIStateContext.mockReturnValue({
         showResults: true,
+      } as ReturnType<typeof usePromptUIStateContext>);
+
+      mockUsePromptSession.mockReturnValue({
         currentPromptUuid: 'uuid-1',
-        promptOptimizer: {
-          inputPrompt: 'input prompt',
-          displayedPrompt: 'displayed prompt',
-          optimizedPrompt: 'opt',
-          previewPrompt: null,
-          previewAspectRatio: null,
-          qualityScore: null,
-          isDraftReady: false,
-          isRefining: false,
-          isProcessing: false,
-          draftSpans: null,
-          refinedSpans: null,
-        },
-        currentMode: { id: 'video' },
         suggestionsData: null,
+      } as ReturnType<typeof usePromptSession>);
+
+      mockUsePromptConfig.mockReturnValue({
+        currentMode: { id: 'video' },
+      } as ReturnType<typeof usePromptConfig>);
+
+      mockUsePromptHighlights.mockReturnValue({
         initialHighlights: null,
         initialHighlightsVersion: 0,
         canUndo: false,
         canRedo: false,
+      } as ReturnType<typeof usePromptHighlights>);
+
+      mockUsePromptActions.mockReturnValue({
         handleCreateNew: vi.fn(),
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptActions>);
+
+      mockUsePromptServices.mockReturnValue({
+        promptOptimizer: buildPromptOptimizer({
+          inputPrompt: 'input prompt',
+          displayedPrompt: 'displayed prompt',
+          isDraftReady: false,
+        }),
+      } as ReturnType<typeof usePromptServices>);
 
       render(
         <PromptResultsSection

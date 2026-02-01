@@ -140,6 +140,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   } = usePromptConfigState();
 
   const {
@@ -243,6 +245,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   }), [
     modes,
     selectedMode,
@@ -252,6 +256,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   ]);
 
   const uiValue = useMemo<PromptUIState>(() => ({
@@ -404,7 +410,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     navigationValue,
   ]);
 
-  usePromptStatePersistence({ selectedModel, generationParams });
+  usePromptStatePersistence({ selectedModel, generationParams, selectedMode, videoTier });
   useDraftHistorySync({
     currentPromptUuid,
     currentPromptDocId,

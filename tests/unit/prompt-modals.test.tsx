@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import { PromptModals } from '@features/prompt-optimizer/components/PromptModals';
-import { usePromptState } from '@features/prompt-optimizer/context/PromptStateContext';
+import { usePromptServices, usePromptUIStateContext } from '@features/prompt-optimizer/context/PromptStateContext';
 import { useSettings } from '@components/Settings';
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptState: vi.fn(),
+  usePromptServices: vi.fn(),
+  usePromptUIStateContext: vi.fn(),
 }));
 
 vi.mock('@components/Settings', () => ({
@@ -34,22 +35,26 @@ vi.mock('@/PromptImprovementForm', () => ({
   ),
 }));
 
-const mockUsePromptState = vi.mocked(usePromptState);
+const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
+const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUseSettings = vi.mocked(useSettings);
 
 describe('PromptModals', () => {
   describe('error handling', () => {
     it('renders settings closed when showSettings is false', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptUIStateContext.mockReturnValue({
         showSettings: false,
         setShowSettings: vi.fn(),
         showShortcuts: false,
         setShowShortcuts: vi.fn(),
         showImprover: false,
         setShowImprover: vi.fn(),
+      } as ReturnType<typeof usePromptUIStateContext>);
+
+      mockUsePromptServices.mockReturnValue({
         promptOptimizer: { inputPrompt: 'hello' },
         promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptServices>);
 
       mockUseSettings.mockReturnValue({
         settings: {},
@@ -65,16 +70,19 @@ describe('PromptModals', () => {
 
   describe('edge cases', () => {
     it('renders keyboard shortcuts when enabled', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptUIStateContext.mockReturnValue({
         showSettings: false,
         setShowSettings: vi.fn(),
         showShortcuts: true,
         setShowShortcuts: vi.fn(),
         showImprover: false,
         setShowImprover: vi.fn(),
+      } as ReturnType<typeof usePromptUIStateContext>);
+
+      mockUsePromptServices.mockReturnValue({
         promptOptimizer: { inputPrompt: 'hello' },
         promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptServices>);
 
       mockUseSettings.mockReturnValue({
         settings: {},
@@ -92,16 +100,19 @@ describe('PromptModals', () => {
     it('renders improvement form with the current prompt', async () => {
       const setShowSettings = vi.fn();
 
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptUIStateContext.mockReturnValue({
         showSettings: true,
         setShowSettings,
         showShortcuts: false,
         setShowShortcuts: vi.fn(),
         showImprover: true,
         setShowImprover: vi.fn(),
+      } as ReturnType<typeof usePromptUIStateContext>);
+
+      mockUsePromptServices.mockReturnValue({
         promptOptimizer: { inputPrompt: 'hello world' },
         promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptServices>);
 
       mockUseSettings.mockReturnValue({
         settings: {},

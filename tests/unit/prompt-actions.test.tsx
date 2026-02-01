@@ -3,14 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { PromptActions } from '@features/prompt-optimizer/components/PromptActions';
-import { usePromptState } from '@features/prompt-optimizer/context/PromptStateContext';
+import { usePromptConfig } from '@features/prompt-optimizer/context/PromptStateContext';
 import { AI_MODEL_URLS } from '@features/prompt-optimizer/components/constants';
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptState: vi.fn(),
+  usePromptConfig: vi.fn(),
 }));
 
-const mockUsePromptState = vi.mocked(usePromptState);
+const mockUsePromptConfig = vi.mocked(usePromptConfig);
 
 describe('PromptActions', () => {
   const baseProps = {
@@ -37,7 +37,7 @@ describe('PromptActions', () => {
 
   describe('error handling', () => {
     it('disables generate when no supported model is selected', async () => {
-      mockUsePromptState.mockReturnValue({ selectedModel: undefined } as ReturnType<typeof usePromptState>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: undefined } as ReturnType<typeof usePromptConfig>);
 
       render(<PromptActions {...baseProps} />);
 
@@ -48,7 +48,7 @@ describe('PromptActions', () => {
 
   describe('edge cases', () => {
     it('closes export menu when clicking outside', () => {
-      mockUsePromptState.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptState>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptConfig>);
       const onToggleExportMenu = vi.fn();
 
       render(
@@ -67,7 +67,7 @@ describe('PromptActions', () => {
 
   describe('core behavior', () => {
     it('copies prompt and opens model URL for the selected model', async () => {
-      mockUsePromptState.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptState>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptConfig>);
       const user = userEvent.setup();
       const onCopy = vi.fn();
       const onToggleExportMenu = vi.fn();

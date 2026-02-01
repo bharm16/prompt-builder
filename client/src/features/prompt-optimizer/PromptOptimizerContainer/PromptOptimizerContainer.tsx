@@ -110,7 +110,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
-  const { cameraMotion, keyframes, setKeyframes } = useGenerationControlsContext();
+  const { cameraMotion, keyframes, setKeyframes, subjectMotion } = useGenerationControlsContext();
   const i2vContext = useI2VContext();
 
   const stablePromptContext = useStablePromptContext(promptContext);
@@ -199,8 +199,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     () => ({
       ...(generationParams ?? {}),
       ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
+      ...(subjectMotion.trim() ? { subject_motion: subjectMotion.trim() } : {}),
     }),
-    [generationParams, cameraMotion?.id]
+    [generationParams, cameraMotion?.id, subjectMotion]
   );
 
   // Prompt optimization

@@ -11,6 +11,7 @@ import type { CapabilityValues } from '@shared/capabilities';
 import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
+import type { VideoTier } from '@components/ToolSidebar/types';
 
 export type { PromptHistoryEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
@@ -119,6 +120,8 @@ export interface PromptConfigState {
   setSelectedModel: (model: string) => void;
   generationParams: CapabilityValues;
   setGenerationParams: (params: CapabilityValues) => void;
+  videoTier: VideoTier;
+  setVideoTier: (tier: VideoTier) => void;
 }
 
 export interface PromptUIState {

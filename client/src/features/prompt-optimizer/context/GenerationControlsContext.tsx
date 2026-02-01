@@ -18,6 +18,12 @@ import {
   parseGcsSignedUrlExpiryMs,
 } from '@/utils/storageUrl';
 import { safeUrlHost } from '@/utils/url';
+import {
+  loadCameraMotion,
+  loadSubjectMotion,
+  persistCameraMotion,
+  persistSubjectMotion,
+} from './generationControlsStorage';
 
 const log = logger.child('GenerationControlsContext');
 const KEYFRAME_REFRESH_INTERVAL_MS = 60 * 1000;
@@ -73,10 +79,11 @@ const GenerationControlsContext = createContext<GenerationControlsContextValue |
 export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
   const [keyframes, setKeyframesState] = useState<KeyframeTile[]>([]);
-  const [cameraMotion, setCameraMotionState] = useState<CameraPath | null>(null);
-  const [subjectMotion, setSubjectMotionState] = useState('');
+  const [cameraMotion, setCameraMotionState] = useState<CameraPath | null>(() => loadCameraMotion());
+  const [subjectMotion, setSubjectMotionState] = useState(() => loadSubjectMotion());
   const lastFirstKeyframeUrlRef = useRef<string | null>(null);
   const subjectMotionLogBucketRef = useRef<number>(0);
+  const hasHydratedKeyframesRef = useRef(false);
 
   const keyframesRef = useRef<KeyframeTile[]>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
@@ -85,6 +92,14 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   useEffect(() => {
     keyframesRef.current = keyframes;
   }, [keyframes]);
+
+  useEffect(() => {
+    persistCameraMotion(cameraMotion);
+  }, [cameraMotion]);
+
+  useEffect(() => {
+    persistSubjectMotion(subjectMotion);
+  }, [subjectMotion]);
 
   const refreshStaleKeyframes = useCallback(async () => {
     const frames = keyframesRef.current;
@@ -187,6 +202,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
       });
       return next;
     });
+    hasHydratedKeyframesRef.current = true;
   }, []);
 
   const removeKeyframe = useCallback((id: string): void => {
@@ -201,11 +217,13 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
       });
       return next;
     });
+    hasHydratedKeyframesRef.current = true;
   }, []);
 
   const setKeyframes = useCallback((tiles: KeyframeTile[] | null | undefined): void => {
     const normalized = Array.isArray(tiles) ? tiles.slice(0, 3) : [];
     setKeyframesState(normalized);
+    hasHydratedKeyframesRef.current = true;
     log.info('Keyframes set in generation controls context', {
       keyframesCount: normalized.length,
       primaryKeyframeUrlHost: safeUrlHost(normalized[0]?.url),
@@ -223,6 +241,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
       }
       return [];
     });
+    hasHydratedKeyframesRef.current = true;
   }, [cameraMotion?.id, subjectMotion]);
 
   const setCameraMotion = useCallback((nextCameraMotion: CameraPath | null): void => {
@@ -269,6 +288,9 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   useEffect(() => {
     if (!firstKeyframeUrl) {
       lastFirstKeyframeUrlRef.current = null;
+      if (!hasHydratedKeyframesRef.current) {
+        return;
+      }
       if (cameraMotion !== null) {
         log.info('Clearing camera motion because no primary keyframe is available', {
           previousCameraMotionId: cameraMotion.id,

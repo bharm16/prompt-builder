@@ -141,6 +141,8 @@ export const useGenerationControlsPanel = (
     duration,
     selectedModel,
     onModelChange,
+    onAspectRatioChange,
+    onDurationChange,
     isDraftDisabled,
     isRenderDisabled,
     onImageUpload,
@@ -265,6 +267,34 @@ export const useGenerationControlsPanel = (
     () => resolveNumberOptions(durationInfo?.allowedValues, DEFAULT_DURATIONS),
     [durationInfo?.allowedValues]
   );
+
+  useEffect(() => {
+    if (!onAspectRatioChange) return;
+    if (!aspectRatioOptions.length) return;
+    if (aspectRatioOptions.includes(aspectRatio)) return;
+    const nextRatio = aspectRatioOptions[0];
+    log.info('Clamping aspect ratio to supported option', {
+      previousAspectRatio: aspectRatio,
+      nextAspectRatio: nextRatio,
+      allowedAspectRatios: aspectRatioOptions,
+    });
+    onAspectRatioChange(nextRatio);
+  }, [aspectRatioOptions, aspectRatio, onAspectRatioChange]);
+
+  useEffect(() => {
+    if (!onDurationChange) return;
+    if (!durationOptions.length) return;
+    if (durationOptions.includes(duration)) return;
+    const closest = durationOptions.reduce((best, value) =>
+      Math.abs(value - duration) < Math.abs(best - duration) ? value : best
+    );
+    log.info('Clamping duration to supported option', {
+      previousDuration: duration,
+      nextDuration: closest,
+      allowedDurations: durationOptions,
+    });
+    onDurationChange(closest);
+  }, [durationOptions, duration, onDurationChange]);
 
   useEffect(() => {
     if (!showMotionControls) return;
