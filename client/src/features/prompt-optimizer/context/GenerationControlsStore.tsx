@@ -64,6 +64,35 @@ const createKeyframeId = (): string => {
   return `keyframe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
+const areGenerationParamsEqual = (left: CapabilityValues, right: CapabilityValues): boolean => {
+  if (left === right) return true;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (const key of leftKeys) {
+    if (!Object.is(left[key], right[key])) return false;
+  }
+  return true;
+};
+
+const areKeyframesEqual = (left: KeyframeTile[], right: KeyframeTile[]): boolean => {
+  if (left === right) return true;
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftFrame = left[index];
+    const rightFrame = right[index];
+    if (!leftFrame || !rightFrame) return false;
+    if (leftFrame.id !== rightFrame.id) return false;
+    if (leftFrame.url !== rightFrame.url) return false;
+    if (leftFrame.source !== rightFrame.source) return false;
+    if (leftFrame.assetId !== rightFrame.assetId) return false;
+    if (leftFrame.sourcePrompt !== rightFrame.sourcePrompt) return false;
+    if (leftFrame.storagePath !== rightFrame.storagePath) return false;
+    if (leftFrame.viewUrlExpiresAt !== rightFrame.viewUrlExpiresAt) return false;
+  }
+  return true;
+};
+
 const reconcileMotionAfterKeyframes = (
   state: GenerationControlsState,
   nextKeyframes: KeyframeTile[]
@@ -110,11 +139,16 @@ const reducer = (
         domain: { ...state.domain, selectedModel: action.value },
       };
     case 'setGenerationParams':
+      if (areGenerationParamsEqual(state.domain.generationParams, action.value)) return state;
       return {
         ...state,
         domain: { ...state.domain, generationParams: action.value },
       };
-    case 'mergeGenerationParams':
+    case 'mergeGenerationParams': {
+      const hasChanges = Object.keys(action.value).some(
+        (key) => !Object.is(state.domain.generationParams[key], action.value[key])
+      );
+      if (!hasChanges) return state;
       return {
         ...state,
         domain: {
@@ -122,6 +156,7 @@ const reducer = (
           generationParams: { ...state.domain.generationParams, ...action.value },
         },
       };
+    }
     case 'setVideoTier':
       if (state.domain.videoTier === action.value) return state;
       return {
@@ -130,6 +165,7 @@ const reducer = (
       };
     case 'setKeyframes': {
       const nextKeyframes = normalizeKeyframes(action.value);
+      if (areKeyframesEqual(state.domain.keyframes, nextKeyframes)) return state;
       const motion = reconcileMotionAfterKeyframes(state, nextKeyframes);
       return {
         ...state,
