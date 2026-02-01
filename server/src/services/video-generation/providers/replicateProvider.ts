@@ -23,6 +23,9 @@ const WAN_I2V_MODEL_MAP: Record<string, string> = {
   'wan-video/wan-2.1-t2v-480p': 'wavespeedai/wan-2.1-i2v-480p',
   'wan-video/wan-2.1-t2v-720p': 'wavespeedai/wan-2.1-i2v-720p',
 };
+const WAN_T2V_FALLBACK_MODEL = 'wan-video/wan-2.2-t2v-fast';
+
+const isWan25Model = (modelId: string): boolean => modelId.includes('wan-2.5');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -57,8 +60,49 @@ function resolveWanSize(aspectRatio: string, rawSize?: string): string {
   return WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ?? defaultSize;
 }
 
+function resolveWan25Resolution(rawSize?: string): string | null {
+  if (typeof rawSize !== 'string') {
+    return null;
+  }
+  const cleaned = rawSize.trim().toLowerCase();
+  if (!cleaned) {
+    return null;
+  }
+  if (/^\d+p$/.test(cleaned)) {
+    return cleaned;
+  }
+  const match = cleaned.match(/^(\d{2,5})[x*](\d{2,5})$/);
+  if (match) {
+    return `${match[2]}p`;
+  }
+  return null;
+}
+
+function resolveWan25Duration(options: VideoGenerationOptions): number | null {
+  if (typeof options.seconds === 'string' && options.seconds.trim().length > 0) {
+    const parsed = Number(options.seconds);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  if (typeof options.numFrames === 'number' && typeof options.fps === 'number' && options.fps > 0) {
+    const duration = Math.round(options.numFrames / options.fps);
+    return duration > 0 ? duration : null;
+  }
+  return null;
+}
+
 function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string {
-  if (!hasStartImage || !modelId.includes('wan')) {
+  if (!modelId.includes('wan')) {
+    return modelId;
+  }
+
+  const isI2VModel = modelId.includes('i2v');
+  if (!hasStartImage) {
+    return isI2VModel ? WAN_T2V_FALLBACK_MODEL : modelId;
+  }
+
+  if (isI2VModel) {
     return modelId;
   }
 
@@ -100,6 +144,27 @@ export function buildReplicateInput(
     }
     if (typeof options.style_reference_weight === 'number') {
       input.style_reference_weight = options.style_reference_weight;
+    }
+    return input;
+  }
+
+  if (isWan25Model(modelId)) {
+    const wanNegativePrompt = options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
+    const promptExtend =
+      typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+    const resolution = resolveWan25Resolution(options.size);
+    const duration = resolveWan25Duration(options);
+
+    input.negative_prompt = wanNegativePrompt;
+    input.enable_prompt_expansion = promptExtend;
+    if (resolution) {
+      input.resolution = resolution;
+    }
+    if (typeof duration === 'number') {
+      input.duration = duration;
+    }
+    if (options.startImage) {
+      input.image = options.startImage;
     }
     return input;
   }

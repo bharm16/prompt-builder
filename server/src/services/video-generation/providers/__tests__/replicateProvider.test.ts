@@ -36,4 +36,20 @@ describe('buildReplicateInput', () => {
 
     expect(input.prompt_extend).toBe(false);
   });
+
+  it('maps Wan 2.5 inputs to resolution/duration and prompt expansion flag', () => {
+    const modelId = 'wan-video/wan-2.5-i2v' as VideoModelId;
+    const input = buildReplicateInput(modelId, 'prompt', {
+      promptExtend: false,
+      size: '1280x720',
+      seconds: '8',
+      startImage: 'https://example.com/image.png',
+    });
+
+    expect(input.enable_prompt_expansion).toBe(false);
+    expect(input.resolution).toBe('720p');
+    expect(input.duration).toBe(8);
+    expect(input.image).toBe('https://example.com/image.png');
+    expect(input.prompt_extend).toBeUndefined();
+  });
 });

@@ -74,6 +74,7 @@ export const GENERATION_COSTS: Record<string, number> = {
   'kling-v2.1': 35,
   'luma-ray-3': 40,
   'wan-2.2': 15,
+  'wan-2.5': 15,
   'runway-gen4': 50,
 };
 

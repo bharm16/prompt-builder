@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { Generation, GenerationParams } from '../types';
+import type { DraftModel } from '@components/ToolSidebar/types';
 import type { GenerationsAction } from './useGenerationsState';
 import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, waitForVideoJob } from '../api';
 import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
@@ -207,7 +208,7 @@ export function useGenerationActions(
 
   // Bug 9 fix: read options from ref to avoid callback recreation on every options change
   const generateDraft = useCallback(
-    async (model: 'flux-kontext' | 'wan-2.2', prompt: string, params: GenerationParams) => {
+    async (model: DraftModel, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('draft', model, prompt, resolved);
       dispatch({ type: 'ADD_GENERATION', payload: generation });
@@ -660,7 +661,7 @@ export function useGenerationActions(
         generationParams: opts.generationParams,
       };
       if (generation.tier === 'draft') {
-        generateDraft(generation.model as 'flux-kontext' | 'wan-2.2', generation.prompt, params);
+        generateDraft(generation.model as DraftModel, generation.prompt, params);
         return;
       }
       generateRender(generation.model, generation.prompt, params);

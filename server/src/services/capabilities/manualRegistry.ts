@@ -106,5 +106,14 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       seed: seedField(),
       image_input: imageInputField(true),
     }),
+    'wan-2.5': buildSchema('wan', 'wan-2.5', {
+      aspect_ratio: aspectRatioField(),
+      duration_s: durationField([5, 8, 10]),
+      resolution: resolutionField(['480p', '720p', '1080p']),
+      fps: fpsField([24, 30]),
+      audio: audioField(true),
+      seed: seedField(),
+      image_input: imageInputField(true),
+    }),
   },
 };

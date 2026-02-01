@@ -58,7 +58,7 @@ export function getModelCapabilities(
     }
   }
 
-  const i2vModels = ['sora-2', 'sora-2-pro', 'luma-ray3', 'kling-26', 'wan-2.2'];
+  const i2vModels = ['sora-2', 'sora-2-pro', 'luma-ray3', 'kling-26', 'wan-2.2', 'wan-2.5'];
   return {
     supportsImageInput: i2vModels.some((entry) => lookupId.includes(entry)),
     supportsSeed: false,

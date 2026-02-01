@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { promptOptimizationApiV2 } from '@/services';
 import { generateVideoPreview, getVideoPreviewStatus } from '../api/previewApi';
+import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 
 interface UseVideoPreviewOptions {
   prompt: string;
@@ -125,7 +126,7 @@ export function useVideoPreview({
       abortControllerRef.current = abortController;
 
       try {
-        const resolvedModel = model && model.trim().length > 0 ? model.trim() : 'wan-2.2';
+        const resolvedModel = model && model.trim().length > 0 ? model.trim() : VIDEO_DRAFT_MODEL.id;
         const normalizedModel = resolvedModel.toLowerCase();
         const isWanModel = normalizedModel.includes('wan');
         const isSoraModel = normalizedModel.includes('sora');

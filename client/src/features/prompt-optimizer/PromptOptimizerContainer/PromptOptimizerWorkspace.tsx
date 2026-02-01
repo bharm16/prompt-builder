@@ -15,7 +15,7 @@ import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
 import { logger } from '@/services/LoggingService';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { GenerationOverrides } from '@components/ToolSidebar/types';
+import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
 import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
 import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
@@ -601,7 +601,7 @@ function PromptOptimizerContent({
   );
 
   const handleDraft = useCallback(
-    (model: 'flux-kontext' | 'wan-2.2', overrides?: GenerationOverrides): void => {
+    (model: DraftModel, overrides?: GenerationOverrides): void => {
       generationControls?.onDraft?.(model, overrides);
     },
     [generationControls]

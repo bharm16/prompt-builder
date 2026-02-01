@@ -1,14 +1,21 @@
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@/components/ToolSidebar/config/modelConfig';
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_DRAFT_MODELS,
+  VIDEO_RENDER_MODELS,
+} from '@/components/ToolSidebar/config/modelConfig';
 
 const MODEL_LABELS = new Map<string, string>([
-  [VIDEO_DRAFT_MODEL.id, VIDEO_DRAFT_MODEL.label],
+  ...VIDEO_DRAFT_MODELS.map((model) => [model.id, model.label] as const),
   ...VIDEO_RENDER_MODELS.map((model) => [model.id, model.label] as const),
 ]);
 
 const MODEL_ID_ALIASES = new Map<string, string>([
-  ['wan-video/wan-2.2-t2v-fast', VIDEO_DRAFT_MODEL.id],
-  ['wan-video/wan-2.2-i2v-fast', VIDEO_DRAFT_MODEL.id],
-  ['wan-2.2', VIDEO_DRAFT_MODEL.id],
+  ['wan-video/wan-2.2-t2v-fast', 'wan-2.2'],
+  ['wan-video/wan-2.2-i2v-fast', 'wan-2.2'],
+  ['wan-2.2', 'wan-2.2'],
+  ['wan-video/wan-2.5-i2v', 'wan-2.5'],
+  ['wan-video/wan-2.5-i2v-fast', 'wan-2.5'],
+  ['wan-2.5', 'wan-2.5'],
   ['kling-26', 'kling-v2-1-master'],
   ['veo-4', 'google/veo-3'],
   ['veo-3', 'google/veo-3'],

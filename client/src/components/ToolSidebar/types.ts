@@ -6,7 +6,7 @@ import type { AppIcon } from '@/types';
 
 export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
 
-export type DraftModel = 'flux-kontext' | 'wan-2.2';
+export type DraftModel = 'flux-kontext' | 'wan-2.2' | 'wan-2.5';
 
 export type VideoTier = 'draft' | 'render';
 

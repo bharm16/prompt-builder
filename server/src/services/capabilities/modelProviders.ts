@@ -7,14 +7,21 @@ const MODEL_ID_ALIASES: Record<string, string> = {
   sora: 'sora-2',
   veo: 'veo-4',
   wan: 'wan-2.2',
+  'wan-2.5': 'wan-2.5',
   // Video-generation model keys/ids (used by /preview/video/generate)
   PRO: 'wan-2.2',
   DRAFT: 'wan-2.2',
+  DRAFT_I2V: 'wan-2.5',
+  DRAFT_I2V_LEGACY: 'wan-2.2',
+  DRAFT_I2V_WAN_2_5: 'wan-2.5',
   'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
+  'wan-video/wan-2.2-i2v-fast': 'wan-2.2',
   'kling-v2-1-master': 'kling-26',
   'kwaivgi/kling-v2.1': 'kling-26',
   'google/veo-3': 'veo-4',
   'veo-3': 'veo-4',
+  'wan-video/wan-2.5-i2v': 'wan-2.5',
+  'wan-video/wan-2.5-i2v-fast': 'wan-2.5',
 };
 
 const MODEL_PROVIDER_MAP: Record<string, string> = {
@@ -24,6 +31,7 @@ const MODEL_PROVIDER_MAP: Record<string, string> = {
   'veo-4': 'google',
   'kling-26': 'kling',
   'wan-2.2': 'wan',
+  'wan-2.5': 'wan',
 };
 
 export const resolveModelId = (modelId?: string | null): string | null => {

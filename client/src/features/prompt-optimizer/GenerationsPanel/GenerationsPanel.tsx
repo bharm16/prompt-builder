@@ -3,7 +3,8 @@ import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
 import type { Generation, GenerationsPanelProps } from './types';
-import type { GenerationOverrides } from '@components/ToolSidebar/types';
+import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
+import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
 import { KeyframeStep } from './components/KeyframeStep';
@@ -17,7 +18,6 @@ import { useGenerationControlsContext } from '../context/GenerationControlsConte
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
 import { logger } from '@/services/LoggingService';
 
-type DraftModel = 'flux-kontext' | 'wan-2.2';
 const log = logger.child('GenerationsPanel');
 
 const EmptyState = ({
@@ -182,10 +182,14 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   );
 
   const defaultDraftModel: DraftModel = useMemo(() => {
-    if (activeDraftModel === 'flux-kontext' || activeDraftModel === 'wan-2.2') {
+    if (
+      activeDraftModel === 'flux-kontext' ||
+      activeDraftModel === 'wan-2.2' ||
+      activeDraftModel === 'wan-2.5'
+    ) {
       return activeDraftModel;
     }
-    return 'wan-2.2';
+    return VIDEO_DRAFT_MODEL.id;
   }, [activeDraftModel]);
 
   const faceSwapOverride = useMemo<GenerationOverrides | null>(() => {

@@ -9,6 +9,7 @@ export const AI_MODEL_IDS = [
   'veo-4',
   'kling-26',
   'wan-2.2',
+  'wan-2.5',
 ] as const;
 
 export type AIModelId = typeof AI_MODEL_IDS[number];
@@ -20,6 +21,7 @@ export const AI_MODEL_URLS: Record<AIModelId, string> = {
   'veo-4': 'https://deepmind.google/models/veo/',
   'kling-26': 'https://kling.ai/',
   'wan-2.2': 'https://wanvideo.alibaba.com/',
+  'wan-2.5': 'https://wanvideo.alibaba.com/',
 } as const;
 
 export const AI_MODEL_LABELS: Record<AIModelId, string> = {
@@ -29,6 +31,7 @@ export const AI_MODEL_LABELS: Record<AIModelId, string> = {
   'veo-4': 'Veo',
   'kling-26': 'Kling',
   'wan-2.2': 'Wan 2.2',
+  'wan-2.5': 'Wan 2.5',
 } as const;
 
 export const AI_MODEL_PROVIDERS: Record<AIModelId, string> = {
@@ -38,6 +41,7 @@ export const AI_MODEL_PROVIDERS: Record<AIModelId, string> = {
   'veo-4': 'google',
   'kling-26': 'kling',
   'wan-2.2': 'wan',
+  'wan-2.5': 'wan',
 } as const;
 
 export type ModelMeta = {

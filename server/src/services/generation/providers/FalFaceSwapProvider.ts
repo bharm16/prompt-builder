@@ -16,7 +16,7 @@ export interface FaceSwapOptions {
   targetImageUrl: string;
   preserveHair?: 'user' | 'target';
   upscale?: boolean;
-  gender?: 'male' | 'female' | '';
+  gender?: 'male' | 'female' | 'non-binary';
 }
 
 export interface FaceSwapResult {
@@ -61,6 +61,14 @@ const FAL_SUBMIT_RESPONSE_SCHEMA = z.object({
 });
 
 const FAL_FACE_SWAP_MODEL = 'easel-ai/advanced-face-swap';
+
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '(invalid-url)';
+  }
+}
 const DEFAULT_PRESERVE_HAIR: FaceSwapOptions['preserveHair'] = 'user';
 const DEFAULT_UPSCALE = true;
 
@@ -103,11 +111,8 @@ export class FalFaceSwapProvider {
       target_image: options.targetImageUrl,
       workflow_type: workflowType,
       upscale,
+      gender_0: options.gender ?? 'female',
     };
-
-    if (options.gender !== undefined) {
-      input.gender_0 = options.gender;
-    }
 
     this.log.info('Submitting face swap to fal.ai', {
       operation,
@@ -115,7 +120,9 @@ export class FalFaceSwapProvider {
       preserveHair,
       workflowType,
       upscale,
-      hasGender: options.gender !== undefined,
+      gender: options.gender ?? 'female (default)',
+      faceImageHost: safeHost(options.faceImageUrl),
+      targetImageHost: safeHost(options.targetImageUrl),
     });
 
     try {
@@ -153,6 +160,11 @@ export class FalFaceSwapProvider {
         durationMs: Math.round(performance.now() - startTime),
         preserveHair,
         upscale,
+      });
+      // TODO: Remove after debugging Fal 500 — temporary diagnostic URLs
+      this.log.warn('Face swap debug: input URLs on failure', {
+        faceImageUrl: options.faceImageUrl,
+        targetImageUrl: options.targetImageUrl,
       });
       throw new Error(`Face swap failed: ${errorMessage}`);
     }
@@ -201,11 +213,14 @@ export class FalFaceSwapProvider {
       });
 
       if (!statusResponse.ok) {
-        throw new Error(`Fal status check failed: ${statusResponse.status}`);
+        const errorText = await statusResponse.text();
+        throw new Error(`Fal status check failed (${statusResponse.status}): ${errorText}`);
       }
 
       const statusJson: unknown = await statusResponse.json();
       const status = FAL_QUEUE_UPDATE_SCHEMA.parse(statusJson);
+
+      const falLogs = status.logs?.map((l) => l.message).filter(Boolean) ?? [];
 
       if (status.status === 'COMPLETED') {
         const resultResponse = await fetch(response_url, {
@@ -213,7 +228,15 @@ export class FalFaceSwapProvider {
         });
 
         if (!resultResponse.ok) {
-          throw new Error(`Fal result fetch failed: ${resultResponse.status}`);
+          const errorText = await resultResponse.text();
+          this.log.error('Fal result fetch failed after COMPLETED status', undefined, {
+            operation,
+            requestId: request_id,
+            resultStatus: resultResponse.status,
+            resultBody: errorText,
+            falLogs,
+          });
+          throw new Error(`Fal result fetch failed (${resultResponse.status}): ${errorText}`);
         }
 
         const resultJson: unknown = await resultResponse.json();
@@ -225,14 +248,17 @@ export class FalFaceSwapProvider {
           typeof status.error === 'string'
             ? status.error
             : status.error?.message ?? 'Unknown error';
+        this.log.error('Fal generation reported FAILED', undefined, {
+          operation,
+          requestId: request_id,
+          falError: status.error,
+          falLogs,
+        });
         throw new Error(`Fal generation failed: ${errorMessage}`);
       }
 
-      if (status.logs && status.logs.length > 0) {
-        const lastLog = status.logs[status.logs.length - 1];
-        if (lastLog) {
-          this.log.debug('Fal progress', { operation, requestId: request_id, message: lastLog.message });
-        }
+      if (falLogs.length > 0) {
+        this.log.debug('Fal progress', { operation, requestId: request_id, falLogs });
       }
 
       await sleep(pollInterval);

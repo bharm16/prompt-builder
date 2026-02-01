@@ -149,5 +149,35 @@ export class ModelCapabilityRegistry {
       costTier: 'low',
       qualityTier: 'preview',
     });
+
+    const draftI2vCaps = {
+      physics: 0.55,
+      particleSystems: 0.5,
+      fluidDynamics: 0.48,
+      facialPerformance: 0.58,
+      bodyLanguage: 0.55,
+      characterActing: 0.52,
+      cinematicLighting: 0.6,
+      atmospherics: 0.58,
+      environmentDetail: 0.58,
+      architecturalAccuracy: 0.55,
+      motionComplexity: 0.55,
+      cameraControl: 0.52,
+      stylization: 0.6,
+      photorealism: 0.55,
+      morphing: 0.5,
+      transitions: 0.48,
+      t2vBoost: 1,
+      i2vBoost: 1,
+      speedTier: 'fast',
+      costTier: 'low',
+      qualityTier: 'preview',
+    };
+
+    this.capabilities.set(VIDEO_MODELS.DRAFT_I2V, draftI2vCaps);
+    this.capabilities.set(VIDEO_MODELS.DRAFT_I2V_LEGACY, draftI2vCaps);
+    this.capabilities.set(VIDEO_MODELS.DRAFT_I2V_WAN_2_5, {
+      ...draftI2vCaps,
+    });
   }
 }

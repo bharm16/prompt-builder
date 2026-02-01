@@ -521,20 +521,31 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 };
 
+const WAN_2_2_T2V_FAST = 'wan-video/wan-2.2-t2v-fast';
+const WAN_2_2_I2V_FAST = 'wan-video/wan-2.2-i2v-fast';
+const WAN_2_5_I2V = process.env.WAN_2_5_I2V_MODEL || 'wan-video/wan-2.5-i2v';
+const DEFAULT_DRAFT_I2V_MODEL = process.env.DRAFT_I2V_MODEL || WAN_2_5_I2V;
+
 /**
  * Video Models Configuration (Dec 2025 Update)
- * 
+ *
  * Defines the hierarchy of video generation models used in the application.
  */
 export const VIDEO_MODELS = {
   /** ⚡ DRAFT TIER: Extremely cheap ($0.01), fast, decent motion. */
-  DRAFT: "wan-video/wan-2.2-t2v-fast", 
+  DRAFT: WAN_2_2_T2V_FAST,
 
-  /** ⚡ DRAFT TIER i2v: image-to-video fast. */
-  DRAFT_I2V: "wan-video/wan-2.2-i2v-fast",
+  /** ⚡ DRAFT TIER i2v: image-to-video fast (toggle via DRAFT_I2V_MODEL). */
+  DRAFT_I2V: DEFAULT_DRAFT_I2V_MODEL,
+
+  /** ⚡ DRAFT TIER i2v (legacy Wan 2.2). */
+  DRAFT_I2V_LEGACY: WAN_2_2_I2V_FAST,
+
+  /** ⚡ DRAFT TIER i2v (Wan 2.5). */
+  DRAFT_I2V_WAN_2_5: WAN_2_5_I2V,
   
   /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
-  PRO: "wan-video/wan-2.2-t2v-fast", 
+  PRO: WAN_2_2_T2V_FAST,
 
   /** 🌌 FLAGSHIP: OpenAI Sora 2 (text/image → video, audio-capable). */
   SORA_2: "sora-2",

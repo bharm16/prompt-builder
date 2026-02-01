@@ -39,6 +39,9 @@ const GENERATION_MODEL_ALIASES: Record<string, VideoModelId> = {
   'wan-2.2': 'wan-video/wan-2.2-t2v-fast',
   'wan-video/wan-2.2-t2v-fast': 'wan-video/wan-2.2-t2v-fast',
   'wan-video/wan-2.2-i2v-fast': 'wan-video/wan-2.2-i2v-fast',
+  'wan-2.5': 'wan-video/wan-2.5-i2v',
+  'wan-video/wan-2.5-i2v': 'wan-video/wan-2.5-i2v',
+  'wan-video/wan-2.5-i2v-fast': 'wan-video/wan-2.5-i2v-fast',
 };
 
 const PROMPT_MODEL_ALIASES: Record<string, string> = {
@@ -73,6 +76,9 @@ const PROMPT_MODEL_ALIASES: Record<string, string> = {
   'wan-2.2': 'wan-2.2',
   'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
   'wan-video/wan-2.2-i2v-fast': 'wan-2.2',
+  'wan-2.5': 'wan-2.2',
+  'wan-video/wan-2.5-i2v': 'wan-2.2',
+  'wan-video/wan-2.5-i2v-fast': 'wan-2.2',
   // Subscription-friendly aliases
   'pro': 'wan-2.2',
   'draft': 'wan-2.2',

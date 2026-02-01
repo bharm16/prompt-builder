@@ -93,6 +93,8 @@ export const CANONICAL_PLAN_TIER_LABELS: Record<PlanTier, string> = {
 export const CANONICAL_MODEL_TIER_LABELS: Record<VideoModelId, string> = {
   [VIDEO_MODELS.DRAFT]: 'draft',
   [VIDEO_MODELS.DRAFT_I2V]: 'draft',
+  [VIDEO_MODELS.DRAFT_I2V_LEGACY]: 'draft',
+  [VIDEO_MODELS.DRAFT_I2V_WAN_2_5]: 'draft',
   [VIDEO_MODELS.PRO]: 'pro',
   [VIDEO_MODELS.SORA_2]: 'flagship',
   [VIDEO_MODELS.SORA_2_PRO]: 'flagship',
