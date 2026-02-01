@@ -58,6 +58,8 @@ import AssetService from '@services/asset/AssetService';
 import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import ConsistentVideoService from '@services/generation/ConsistentVideoService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import FaceSwapService from '@services/generation/FaceSwapService';
+import { FalFaceSwapProvider } from '@services/generation/providers/FalFaceSwapProvider';
 import { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 import { getStorageService } from '@services/storage/StorageService';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
@@ -93,7 +95,6 @@ import { CategoryAlignmentService } from '@services/enhancement/services/Categor
 // Import config
 import { createRedisClient } from './redis.ts';
 import { resolveFalApiKey } from '@utils/falApiKey';
-
 
 export interface ServiceConfig {
   openai: {
@@ -738,6 +739,25 @@ export async function configureServices(): Promise<DIContainer> {
         falApiKey: falKey,
         ...(replicateToken ? { apiToken: replicateToken } : {}),
       });
+    },
+    [],
+    { singleton: true }
+  );
+
+  container.register(
+    'faceSwapService',
+    () => {
+      const falKey = resolveFalApiKey();
+      if (!falKey) {
+        logger.warn('FaceSwapService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
+        return null;
+      }
+      const faceSwapProvider = new FalFaceSwapProvider({ apiKey: falKey });
+      if (!faceSwapProvider.isAvailable()) {
+        logger.warn('FaceSwapService: Fal face swap provider unavailable');
+        return null;
+      }
+      return new FaceSwapService({ faceSwapProvider });
     },
     [],
     { singleton: true }

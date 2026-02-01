@@ -21,6 +21,7 @@ import { createImageContentHandler } from './preview/handlers/imageContent';
 import { createImageUploadHandler } from './preview/handlers/imageUpload';
 import { createImageAssetViewHandler } from './preview/handlers/imageAssetView';
 import { createVideoAssetViewHandler } from './preview/handlers/videoAssetView';
+import { createFaceSwapPreviewHandler } from './preview/handlers/faceSwap';
 
 const upload = createDiskUpload({
   fileSizeBytes: 10 * 1024 * 1024,
@@ -36,6 +37,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
     ...services,
     userCreditService: services.userCreditService ?? defaultUserCreditService,
     ...(services.keyframeService !== undefined ? { keyframeService: services.keyframeService } : {}),
+    ...(services.faceSwapService !== undefined ? { faceSwapService: services.faceSwapService } : {}),
     ...(services.assetService !== undefined ? { assetService: services.assetService } : {}),
   };
 
@@ -49,6 +51,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const imageUploadHandler = createImageUploadHandler();
   const imageAssetViewHandler = createImageAssetViewHandler(resolvedServices);
   const videoAssetViewHandler = createVideoAssetViewHandler(resolvedServices);
+  const faceSwapPreviewHandler = createFaceSwapPreviewHandler(resolvedServices);
 
   router.post('/generate', asyncHandler(imageGenerateHandler));
   router.post('/generate/storyboard', asyncHandler(imageStoryboardGenerateHandler));
@@ -56,6 +59,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.get('/image/view', asyncHandler(imageAssetViewHandler));
   router.get('/video/view', asyncHandler(videoAssetViewHandler));
   router.get('/video/availability', asyncHandler(videoAvailabilityHandler));
+  router.post('/face-swap', asyncHandler(faceSwapPreviewHandler));
   router.post('/video/generate', asyncHandler(videoGenerateHandler));
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));
   router.get('/video/content/:contentId', asyncHandler(videoContentHandler));

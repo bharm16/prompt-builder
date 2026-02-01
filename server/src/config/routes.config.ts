@@ -144,6 +144,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       videoContentAccessService: container.resolve('videoContentAccessService'),
       userCreditService,
       keyframeService: container.resolve('keyframeService'),
+      faceSwapService: container.resolve('faceSwapService'),
       assetService: container.resolve('assetService'),
     });
     app.use('/api/preview', apiAuthMiddleware, previewRoutes);

@@ -22,6 +22,9 @@ export interface Generation {
   mediaUrls: string[];
   mediaAssetIds?: string[] | undefined;
   thumbnailUrl?: string | null | undefined;
+  characterAssetId?: string | null | undefined;
+  faceSwapApplied?: boolean | null | undefined;
+  faceSwapUrl?: string | null | undefined;
   error?: string | null | undefined;
 }
 
@@ -34,10 +37,13 @@ export interface GenerationParams {
   startImage?: {
     url: string;
     assetId?: string | undefined;
-    source?: 'preview' | 'upload' | 'asset' | 'library' | 'keyframe' | 'generation' | undefined;
+    source?: string | undefined;
     storagePath?: string | undefined;
     viewUrlExpiresAt?: string | undefined;
   } | null | undefined;
+  characterAssetId?: string | null | undefined;
+  faceSwapAlreadyApplied?: boolean | undefined;
+  faceSwapUrl?: string | null | undefined;
 }
 
 export interface GenerationsPanelProps {

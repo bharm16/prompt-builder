@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Asset } from '@shared/types/asset';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type { GenerationParams } from '../types';
+import type { GenerationOverrides } from '@components/ToolSidebar/types';
 
 interface AssetReferenceImage {
   assetId: string;
@@ -56,17 +57,17 @@ export function useKeyframeWorkflow({
   }, [prompt]);
 
   const runRender = useCallback(
-    (model: string, startImageOverride?: GenerationParams['startImage'] | null) => {
+    (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
       let startImage = null;
-      if (startImageOverride) {
+      if (overrides?.startImage) {
         startImage = {
-          url: startImageOverride.url,
-          source: startImageOverride.source,
-          ...(startImageOverride.assetId ? { assetId: startImageOverride.assetId } : {}),
-          ...(startImageOverride.storagePath ? { storagePath: startImageOverride.storagePath } : {}),
-          ...(startImageOverride.viewUrlExpiresAt ? { viewUrlExpiresAt: startImageOverride.viewUrlExpiresAt } : {}),
+          url: overrides.startImage.url,
+          source: overrides.startImage.source,
+          ...(overrides.startImage.assetId ? { assetId: overrides.startImage.assetId } : {}),
+          ...(overrides.startImage.storagePath ? { storagePath: overrides.startImage.storagePath } : {}),
+          ...(overrides.startImage.viewUrlExpiresAt ? { viewUrlExpiresAt: overrides.startImage.viewUrlExpiresAt } : {}),
         };
       } else if (selectedKeyframe) {
         startImage = {
@@ -89,6 +90,10 @@ export function useKeyframeWorkflow({
       generateRender(model, prompt, {
         promptVersionId: versionId,
         startImage,
+        ...(overrides?.characterAssetId ? { characterAssetId: overrides.characterAssetId } : {}),
+        ...(overrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
+        ...(overrides?.faceSwapUrl ? { faceSwapUrl: overrides.faceSwapUrl } : {}),
+        ...(overrides?.generationParams ? { generationParams: overrides.generationParams } : {}),
       });
       setSelectedKeyframe(null);
       setKeyframeStep({
@@ -101,16 +106,22 @@ export function useKeyframeWorkflow({
   );
 
   const handleRender = useCallback(
-    (model: string) => {
+    (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
+      if (overrides?.startImage || overrides?.characterAssetId || overrides?.faceSwapAlreadyApplied) {
+        runRender(model, overrides);
+        return;
+      }
       const primaryKeyframe = keyframes[0];
       if (primaryKeyframe) {
         runRender(model, {
-          url: primaryKeyframe.url,
-          source: primaryKeyframe.source,
-          ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
-          ...(primaryKeyframe.storagePath ? { storagePath: primaryKeyframe.storagePath } : {}),
-          ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
+          startImage: {
+            url: primaryKeyframe.url,
+            source: primaryKeyframe.source,
+            ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
+            ...(primaryKeyframe.storagePath ? { storagePath: primaryKeyframe.storagePath } : {}),
+            ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
+          },
         });
         return;
       }
@@ -127,7 +138,7 @@ export function useKeyframeWorkflow({
         return;
       }
 
-      runRender(model, null);
+      runRender(model, undefined);
     },
     [detectedCharacter, keyframeStep.isActive, keyframes, prompt, runRender]
   );
@@ -135,14 +146,14 @@ export function useKeyframeWorkflow({
   const handleApproveKeyframe = useCallback(
     (keyframeUrl: string) => {
       const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-      runRender(modelToUse, { url: keyframeUrl, source: 'keyframe' });
+      runRender(modelToUse, { startImage: { url: keyframeUrl, source: 'keyframe' } });
     },
     [keyframeStep.pendingModel, runRender]
   );
 
   const handleSkipKeyframe = useCallback(() => {
     const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-    runRender(modelToUse, null);
+    runRender(modelToUse, undefined);
   }, [keyframeStep.pendingModel, runRender]);
 
   const handleSelectFrame = useCallback(

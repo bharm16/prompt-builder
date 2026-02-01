@@ -18,6 +18,8 @@ import { useModelRecommendation } from '@/features/model-intelligence';
 import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '@/features/model-intelligence/constants';
 import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
+import { getModelConfig } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { faceSwapPreview as requestFaceSwapPreview } from '@/features/preview/api/previewApi';
 import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from '../constants';
 import type { AutocompleteState } from '../components/PromptTriggerAutocomplete';
 import type { GenerationControlsPanelProps, GenerationControlsTab, ImageSubTab } from '../types';
@@ -34,8 +36,10 @@ import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/type
 import type { ModelRecommendation, ModelRecommendationSpan } from '@/features/model-intelligence/types';
 
 const log = logger.child('GenerationControlsPanel');
+const FACE_SWAP_CREDIT_COST = 2;
 
 type HighlightSpan = HighlightSnapshot['spans'][number];
+type FaceSwapMode = 'direct' | 'face-swap';
 
 export interface UseGenerationControlsPanelResult {
   refs: {
@@ -70,6 +74,21 @@ export interface UseGenerationControlsPanelResult {
     isInputLocked: boolean;
     isOptimizeDisabled: boolean;
     isGenerateDisabled: boolean;
+    canPreviewFaceSwap: boolean;
+    isFaceSwapPreviewDisabled: boolean;
+  };
+  faceSwap: {
+    mode: FaceSwapMode;
+    selectedCharacterId: string;
+    characterOptions: Array<{ id: string; label: string }>;
+    previewUrl: string | null;
+    isPreviewReady: boolean;
+    isLoading: boolean;
+    error: string | null;
+    isModalOpen: boolean;
+    faceSwapCredits: number;
+    videoCredits: number | null;
+    totalCredits: number | null;
   };
   recommendation: {
     recommendationMode: 'i2v' | 't2v';
@@ -109,6 +128,12 @@ export interface UseGenerationControlsPanelResult {
     handleReoptimize: () => void;
     handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     handleCopy: () => Promise<void>;
+    setFaceSwapMode: (mode: FaceSwapMode) => void;
+    setFaceSwapCharacterId: (assetId: string) => void;
+    handleFaceSwapPreview: () => Promise<void>;
+    handleOpenFaceSwapModal: () => void;
+    handleCloseFaceSwapModal: () => void;
+    handleFaceSwapTryDifferent: () => void;
   };
 }
 
@@ -163,7 +188,14 @@ export const useGenerationControlsPanel = (
   const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
-  const { controls } = useGenerationControlsContext();
+  const [faceSwapMode, setFaceSwapMode] = useState<FaceSwapMode>('direct');
+  const [selectedCharacterId, setSelectedCharacterId] = useState('');
+  const [faceSwapCreditsUsed, setFaceSwapCreditsUsed] = useState<number | null>(null);
+  const [faceSwapError, setFaceSwapError] = useState<string | null>(null);
+  const [isFaceSwapLoading, setIsFaceSwapLoading] = useState(false);
+  const [isFaceSwapModalOpen, setIsFaceSwapModalOpen] = useState(false);
+  const { controls, faceSwapPreview: faceSwapPreviewState, setFaceSwapPreview } =
+    useGenerationControlsContext();
   const { domain, ui } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -257,7 +289,8 @@ export const useGenerationControlsPanel = (
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const isKeyframeLimitReached = keyframes.length >= 3;
   const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
-  const primaryKeyframeUrlHost = safeUrlHost(keyframes[0]?.url);
+  const primaryKeyframeUrl = keyframes[0]?.url ?? null;
+  const primaryKeyframeUrlHost = safeUrlHost(primaryKeyframeUrl);
   const trimmedPrompt = prompt.trim();
   const trimmedPromptLength = trimmedPrompt.length;
 
@@ -357,6 +390,60 @@ export const useGenerationControlsPanel = (
     () => resolveNumberOptions(durationInfo?.allowedValues, DEFAULT_DURATIONS),
     [durationInfo?.allowedValues]
   );
+
+  const characterOptions = useMemo(
+    () =>
+      assets
+        .filter((asset) => asset.type === 'character')
+        .map((asset) => ({
+          id: asset.id,
+          label: asset.name || asset.trigger || `Character ${asset.id.slice(0, 6)}`,
+        })),
+    [assets]
+  );
+
+  useEffect(() => {
+    if (!selectedCharacterId) return;
+    const stillExists = characterOptions.some((asset) => asset.id === selectedCharacterId);
+    if (!stillExists) {
+      setSelectedCharacterId('');
+    }
+  }, [characterOptions, selectedCharacterId]);
+
+  useEffect(() => {
+    if (faceSwapMode !== 'face-swap') return;
+    if (selectedCharacterId || characterOptions.length !== 1) return;
+    setSelectedCharacterId(characterOptions[0]?.id ?? '');
+  }, [characterOptions, faceSwapMode, selectedCharacterId]);
+
+  const resetFaceSwapPreview = useCallback(() => {
+    setFaceSwapPreview(null);
+    setFaceSwapCreditsUsed(null);
+    setFaceSwapError(null);
+    setIsFaceSwapLoading(false);
+    setIsFaceSwapModalOpen(false);
+  }, [setFaceSwapPreview]);
+
+  useEffect(() => {
+    if (!faceSwapPreviewState) return;
+    if (faceSwapMode !== 'face-swap') {
+      resetFaceSwapPreview();
+      return;
+    }
+    if (!selectedCharacterId || faceSwapPreviewState.characterAssetId !== selectedCharacterId) {
+      resetFaceSwapPreview();
+      return;
+    }
+    if (!primaryKeyframeUrl || faceSwapPreviewState.targetImageUrl !== primaryKeyframeUrl) {
+      resetFaceSwapPreview();
+    }
+  }, [
+    faceSwapMode,
+    faceSwapPreviewState,
+    selectedCharacterId,
+    primaryKeyframeUrl,
+    resetFaceSwapPreview,
+  ]);
 
   useEffect(() => {
     if (!aspectRatioOptions.length) return;
@@ -628,6 +715,74 @@ export const useGenerationControlsPanel = (
     (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
     isVideoGenerateDisabled;
+  const canPreviewFaceSwap =
+    faceSwapMode === 'face-swap' && hasPrimaryKeyframe && Boolean(selectedCharacterId);
+  const isFaceSwapPreviewDisabled = !canPreviewFaceSwap || isFaceSwapLoading;
+  const videoCredits = useMemo(() => {
+    const modelId = tier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId;
+    return getModelConfig(modelId)?.credits ?? null;
+  }, [renderModelId, tier]);
+  const totalCredits =
+    videoCredits !== null ? videoCredits + FACE_SWAP_CREDIT_COST : null;
+
+  const handleFaceSwapPreview = useCallback(async () => {
+    if (!canPreviewFaceSwap || !primaryKeyframeUrl) return;
+    setIsFaceSwapModalOpen(true);
+    setIsFaceSwapLoading(true);
+    setFaceSwapError(null);
+    setFaceSwapPreview(null);
+    setFaceSwapCreditsUsed(null);
+    try {
+      const response = await requestFaceSwapPreview({
+        characterAssetId: selectedCharacterId,
+        targetImageUrl: primaryKeyframeUrl,
+        ...(aspectRatio ? { aspectRatio } : {}),
+      });
+      if (!response.success || !response.data?.faceSwapUrl) {
+        throw new Error(response.error || response.message || 'Failed to preview face swap');
+      }
+      setFaceSwapPreview({
+        url: response.data.faceSwapUrl,
+        characterAssetId: selectedCharacterId,
+        targetImageUrl: primaryKeyframeUrl,
+        createdAt: Date.now(),
+      });
+      setFaceSwapCreditsUsed(response.data.creditsDeducted ?? FACE_SWAP_CREDIT_COST);
+      log.info('Face swap preview completed', {
+        characterAssetId: selectedCharacterId,
+        targetImageUrlHost: primaryKeyframeUrlHost,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setFaceSwapError(message);
+      log.error('Face swap preview failed', error as Error, {
+        characterAssetId: selectedCharacterId,
+        targetImageUrlHost: primaryKeyframeUrlHost,
+      });
+    } finally {
+      setIsFaceSwapLoading(false);
+    }
+  }, [
+    aspectRatio,
+    canPreviewFaceSwap,
+    primaryKeyframeUrl,
+    primaryKeyframeUrlHost,
+    selectedCharacterId,
+    setFaceSwapPreview,
+  ]);
+
+  const handleOpenFaceSwapModal = useCallback(() => {
+    if (!faceSwapPreviewState?.url) return;
+    setIsFaceSwapModalOpen(true);
+  }, [faceSwapPreviewState?.url]);
+
+  const handleCloseFaceSwapModal = useCallback(() => {
+    setIsFaceSwapModalOpen(false);
+  }, []);
+
+  const handleFaceSwapTryDifferent = useCallback(() => {
+    resetFaceSwapPreview();
+  }, [resetFaceSwapPreview]);
 
   return {
     refs: {
@@ -662,6 +817,21 @@ export const useGenerationControlsPanel = (
       isInputLocked,
       isOptimizeDisabled,
       isGenerateDisabled,
+      canPreviewFaceSwap,
+      isFaceSwapPreviewDisabled,
+    },
+    faceSwap: {
+      mode: faceSwapMode,
+      selectedCharacterId,
+      characterOptions,
+      previewUrl: faceSwapPreviewState?.url ?? null,
+      isPreviewReady: Boolean(faceSwapPreviewState?.url),
+      isLoading: isFaceSwapLoading,
+      error: faceSwapError,
+      isModalOpen: isFaceSwapModalOpen,
+      faceSwapCredits: faceSwapCreditsUsed ?? FACE_SWAP_CREDIT_COST,
+      videoCredits,
+      totalCredits,
     },
     recommendation: {
       recommendationMode,
@@ -711,6 +881,12 @@ export const useGenerationControlsPanel = (
       handleReoptimize,
       handlePromptKeyDown,
       handleCopy,
+      setFaceSwapMode,
+      setFaceSwapCharacterId: setSelectedCharacterId,
+      handleFaceSwapPreview,
+      handleOpenFaceSwapModal,
+      handleCloseFaceSwapModal,
+      handleFaceSwapTryDifferent,
     },
   };
 };

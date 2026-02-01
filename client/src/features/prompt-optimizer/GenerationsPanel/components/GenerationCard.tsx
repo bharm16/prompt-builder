@@ -12,6 +12,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { cn } from '@/utils/cn';
 import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
 import { extractVideoContentAssetId } from '@/utils/storageUrl';
+import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
 
 import type { Generation } from '../types';
 import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
@@ -230,6 +231,15 @@ export const GenerationCard = memo(function GenerationCard({
               <X size={14} weight="bold" aria-hidden="true" />
             </button>
           )}
+        </div>
+      )}
+
+      {generation.faceSwapUrl && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2">
+          <div className="h-10 w-10 overflow-hidden rounded-md border border-border">
+            <ImagePreview src={generation.faceSwapUrl} alt="Face swap preview" />
+          </div>
+          <span className="text-xs text-foreground flex-1">Face swap applied</span>
         </div>
       )}
 

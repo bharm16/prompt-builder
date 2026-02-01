@@ -1,6 +1,6 @@
 # PromptCanvas: Current Capabilities Reference
 
-> **Last Updated:** December 2024  
+> **Last Updated:** February 1, 2026  
 > **Purpose:** Accurate inventory of implemented features and their locations
 
 ---
@@ -180,6 +180,21 @@ Collects span labeling requests within 50ms window for parallel processing. **In
 - `server/src/services/cache/SpanLabelingCacheService.ts` - Span-specific caching
 
 **Tiers:** Memory → Redis
+
+---
+
+### 11. Face-Swap Preprocessing (Character + Composition)
+
+**Locations:**
+- `server/src/services/generation/FaceSwapService.ts`
+- `server/src/services/generation/providers/FalFaceSwapProvider.ts`
+- `server/src/routes/preview/handlers/videoGenerate.ts`
+
+**Capabilities:**
+- ✅ When both `startImage` and `characterAssetId` are provided, the system performs a face-swap before i2v.
+- ✅ Uses Easel AI (fal.ai `easel-ai/advanced-face-swap`) to composite the character's face onto the composition.
+- ✅ Preserves the original composition while applying the character identity.
+- ✅ Charges 2 credits for face-swap preprocessing and returns `faceSwapApplied`/`faceSwapUrl` in the response.
 
 ---
 

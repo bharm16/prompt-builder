@@ -1,5 +1,6 @@
-import React, { type ReactElement } from 'react';
+import React, { type ReactElement, useCallback } from 'react';
 import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
+import { FaceSwapPreviewModal } from '@/components/modals/FaceSwapPreviewModal';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationFooter } from './components/GenerationFooter';
@@ -11,6 +12,7 @@ import { ImageTabContent } from './components/ImageTabContent';
 import { VideoTabContent } from './components/VideoTabContent';
 import { useGenerationControlsPanel } from './hooks/useGenerationControlsPanel';
 import type { GenerationControlsPanelProps } from './types';
+import type { GenerationOverrides } from '@components/ToolSidebar/types';
 
 export function GenerationControlsPanel(props: GenerationControlsPanelProps): ReactElement {
   const {
@@ -29,6 +31,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     refs,
     state,
     store,
+    faceSwap,
     derived,
     recommendation,
     capabilities,
@@ -44,6 +47,43 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     cameraMotion,
   } = store;
   const showMotionControls = true;
+  const isFaceSwapMode = faceSwap.mode === 'face-swap';
+  const isFaceSwapFlow = isFaceSwapMode && state.activeTab === 'video';
+
+  const handleGenerate = useCallback(
+    (overrides?: GenerationOverrides) => {
+      const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? '';
+      void trackModelRecommendationEvent({
+        event: 'generation_started',
+        recommendationId: recommendation.modelRecommendation?.promptId,
+        promptId: recommendation.modelRecommendation?.promptId,
+        recommendedModelId: recommendation.modelRecommendation?.recommended?.modelId,
+        selectedModelId: tier === 'draft' ? VIDEO_DRAFT_MODEL.id : recommendation.renderModelId,
+        mode: recommendation.recommendationMode,
+        durationSeconds: duration,
+        ...(typeof recommendation.recommendationAgeMs === 'number'
+          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendation.recommendationAgeMs)) }
+          : {}),
+      });
+      if (tier === 'draft') {
+        onDraft(VIDEO_DRAFT_MODEL.id, overrides);
+        return;
+      }
+      onRender(recommendation.renderModelId || selectedModel || fallbackRenderModelId, overrides);
+    },
+    [
+      duration,
+      onDraft,
+      onRender,
+      recommendation.modelRecommendation?.promptId,
+      recommendation.modelRecommendation?.recommended?.modelId,
+      recommendation.recommendationAgeMs,
+      recommendation.recommendationMode,
+      recommendation.renderModelId,
+      selectedModel,
+      tier,
+    ]
+  );
 
   const renderOptimizationActions = (): ReactElement | null => {
     if (!derived.canOptimize) return null;
@@ -112,26 +152,28 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       onStoryboard={onStoryboard}
       isStoryboardDisabled={derived.isStoryboardDisabled}
       onGenerate={() => {
-        const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? '';
-        void trackModelRecommendationEvent({
-          event: 'generation_started',
-          recommendationId: recommendation.modelRecommendation?.promptId,
-          promptId: recommendation.modelRecommendation?.promptId,
-          recommendedModelId: recommendation.modelRecommendation?.recommended?.modelId,
-          selectedModelId: tier === 'draft' ? VIDEO_DRAFT_MODEL.id : recommendation.renderModelId,
-          mode: recommendation.recommendationMode,
-          durationSeconds: duration,
-          ...(typeof recommendation.recommendationAgeMs === 'number'
-            ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendation.recommendationAgeMs)) }
-            : {}),
-        });
-        if (tier === 'draft') {
-          onDraft(VIDEO_DRAFT_MODEL.id);
+        if (!isFaceSwapFlow) {
+          handleGenerate();
           return;
         }
-        onRender(recommendation.renderModelId || selectedModel || fallbackRenderModelId);
+        if (!faceSwap.previewUrl) {
+          void actions.handleFaceSwapPreview();
+          return;
+        }
+        actions.handleOpenFaceSwapModal();
       }}
-      isGenerateDisabled={derived.isGenerateDisabled}
+      isGenerateDisabled={
+        isFaceSwapFlow
+          ? derived.isGenerateDisabled || derived.isFaceSwapPreviewDisabled
+          : derived.isGenerateDisabled
+      }
+      generateLabel={
+        isFaceSwapFlow
+          ? faceSwap.previewUrl
+            ? 'Proceed to Video'
+            : 'Preview Face Swap'
+          : 'Generate'
+      }
     />
   );
 
@@ -182,6 +224,25 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           autocomplete={autocomplete}
           imageSubTab={state.imageSubTab}
           onImageSubTabChange={actions.setImageSubTab}
+          faceSwapMode={faceSwap.mode}
+          onFaceSwapModeChange={actions.setFaceSwapMode}
+          faceSwapCharacterOptions={faceSwap.characterOptions}
+          selectedCharacterId={faceSwap.selectedCharacterId}
+          onFaceSwapCharacterChange={actions.setFaceSwapCharacterId}
+          onFaceSwapPreview={() => {
+            if (faceSwap.isPreviewReady) {
+              actions.handleOpenFaceSwapModal();
+              return;
+            }
+            void actions.handleFaceSwapPreview();
+          }}
+          isFaceSwapPreviewDisabled={derived.isFaceSwapPreviewDisabled}
+          faceSwapPreviewReady={faceSwap.isPreviewReady}
+          faceSwapPreviewLoading={faceSwap.isLoading}
+          faceSwapError={faceSwap.error}
+          faceSwapCredits={faceSwap.faceSwapCredits}
+          videoCredits={faceSwap.videoCredits}
+          totalCredits={faceSwap.totalCredits}
         />
       ) : (
         <ImageTabContent
@@ -251,6 +312,31 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           initialSelection={cameraMotion}
         />
       )}
+
+      <FaceSwapPreviewModal
+        isOpen={faceSwap.isModalOpen}
+        isLoading={faceSwap.isLoading}
+        imageUrl={faceSwap.previewUrl}
+        error={faceSwap.error}
+        faceSwapCredits={faceSwap.faceSwapCredits}
+        videoCredits={faceSwap.videoCredits}
+        totalCredits={faceSwap.totalCredits}
+        onClose={actions.handleCloseFaceSwapModal}
+        onTryDifferent={actions.handleFaceSwapTryDifferent}
+        onProceed={() => {
+          if (!faceSwap.previewUrl) return;
+          actions.handleCloseFaceSwapModal();
+          handleGenerate({
+            startImage: {
+              url: faceSwap.previewUrl,
+              source: 'face-swap',
+            },
+            characterAssetId: faceSwap.selectedCharacterId || null,
+            faceSwapAlreadyApplied: true,
+            faceSwapUrl: faceSwap.previewUrl,
+          });
+        }}
+      />
     </div>
   );
 }

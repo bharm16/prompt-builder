@@ -18,13 +18,19 @@ import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
 
 const KEYFRAME_CREDIT_COST = 2;
+const FACE_SWAP_CREDIT_COST = 2;
 const CAMERA_MOTION_KEY = 'camera_motion_id';
 const SUBJECT_MOTION_KEY = 'subject_motion';
 const log = logger.child({ route: 'preview.videoGenerate' });
 
 type VideoGenerateServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'userCreditService' | 'keyframeService' | 'assetService'
+  'videoGenerationService'
+  | 'videoJobStore'
+  | 'userCreditService'
+  | 'keyframeService'
+  | 'faceSwapService'
+  | 'assetService'
 >;
 
 interface MotionContext {
@@ -119,6 +125,7 @@ export const createVideoGenerateHandler = ({
   videoJobStore,
   userCreditService,
   keyframeService,
+  faceSwapService,
   assetService,
 }: VideoGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
@@ -147,6 +154,7 @@ export const createVideoGenerateHandler = ({
       generationParams,
       characterAssetId,
       autoKeyframe = true,
+      faceSwapAlreadyApplied = false,
     } = parsed.payload;
 
     // Validate user-provided URLs to prevent SSRF
@@ -190,6 +198,7 @@ export const createVideoGenerateHandler = ({
       hasInputReference: Boolean(inputReference),
       hasCharacterAssetId: Boolean(characterAssetId),
       autoKeyframe,
+      faceSwapAlreadyApplied,
       ...rawMotionMeta,
     });
 
@@ -214,9 +223,89 @@ export const createVideoGenerateHandler = ({
 
     let resolvedStartImage = startImage;
     let generatedKeyframeUrl: string | null = null;
+    let swappedImageUrl: string | null = null;
     let keyframeCost = 0;
+    let faceSwapCost = 0;
 
-    if (characterAssetId && autoKeyframe && !startImage) {
+    if (startImage && characterAssetId && faceSwapAlreadyApplied) {
+      resolvedStartImage = startImage;
+      swappedImageUrl = startImage;
+      log.info('Using pre-applied face swap image', {
+        requestId,
+        characterAssetId,
+        hasStartImage: true,
+      });
+    } else if (startImage && characterAssetId) {
+      if (!faceSwapService || !assetService) {
+        log.warn('Face-swap service unavailable', {
+          requestId,
+          characterAssetId,
+        });
+        return res.status(400).json({
+          success: false,
+          error: 'Face-swap not available',
+          message: 'Character + composition reference requires face-swap service. Use startImage alone for direct i2v, or characterAssetId alone for auto-keyframe.',
+        });
+      }
+
+      const hasFaceSwapCredits = await userCreditService.reserveCredits(
+        userId,
+        FACE_SWAP_CREDIT_COST
+      );
+      if (!hasFaceSwapCredits) {
+        return res.status(402).json({
+          success: false,
+          error: 'Insufficient credits',
+          message: `Character-composition face-swap requires ${FACE_SWAP_CREDIT_COST} credits plus video credits.`,
+        });
+      }
+      faceSwapCost = FACE_SWAP_CREDIT_COST;
+
+      try {
+        const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
+        if (!characterData.primaryImageUrl) {
+          await userCreditService.refundCredits(userId, faceSwapCost);
+          return res.status(400).json({
+            success: false,
+            error: 'Character has no reference image',
+            message: 'The character asset must have a reference image for face-swap.',
+          });
+        }
+
+        log.info('Performing face-swap preprocessing', {
+          requestId,
+          characterAssetId,
+          hasStartImage: true,
+        });
+
+        const swapResult = await faceSwapService.swap({
+          characterPrimaryImageUrl: characterData.primaryImageUrl,
+          targetCompositionUrl: startImage,
+          aspectRatio,
+        });
+
+        resolvedStartImage = swapResult.swappedImageUrl;
+        swappedImageUrl = swapResult.swappedImageUrl;
+
+        log.info('Face-swap completed', {
+          requestId,
+          characterAssetId,
+          durationMs: swapResult.durationMs,
+        });
+      } catch (error) {
+        await userCreditService.refundCredits(userId, faceSwapCost);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        log.error('Face-swap failed', error instanceof Error ? error : new Error(errorMessage), {
+          requestId,
+          characterAssetId,
+        });
+        return res.status(500).json({
+          success: false,
+          error: 'Face-swap failed',
+          message: `Failed to composite character face: ${errorMessage}`,
+        });
+      }
+    } else if (characterAssetId && autoKeyframe && !startImage) {
       if (!keyframeService) {
         log.warn('Keyframe service unavailable, falling back to direct generation', {
           requestId,
@@ -309,6 +398,9 @@ export const createVideoGenerateHandler = ({
       if (keyframeCost > 0) {
         await userCreditService.refundCredits(userId, keyframeCost);
       }
+      if (faceSwapCost > 0) {
+        await userCreditService.refundCredits(userId, faceSwapCost);
+      }
       const snapshot = videoGenerationService.getAvailabilitySnapshot(
         Object.values(VIDEO_MODELS) as VideoModelId[]
       );
@@ -347,6 +439,9 @@ export const createVideoGenerateHandler = ({
     if (normalized.error) {
       if (keyframeCost > 0) {
         await userCreditService.refundCredits(userId, keyframeCost);
+      }
+      if (faceSwapCost > 0) {
+        await userCreditService.refundCredits(userId, faceSwapCost);
       }
       return res.status(normalized.error.status).json({
         success: false,
@@ -440,10 +535,14 @@ export const createVideoGenerateHandler = ({
       if (keyframeCost > 0) {
         await userCreditService.refundCredits(userId, keyframeCost);
       }
+      if (faceSwapCost > 0) {
+        await userCreditService.refundCredits(userId, faceSwapCost);
+      }
+      const preprocessingCost = keyframeCost + faceSwapCost;
       return res.status(402).json({
         success: false,
         error: 'Insufficient credits',
-        message: `This generation requires ${videoCost} credits${keyframeCost > 0 ? ` (plus ${keyframeCost} already reserved for keyframe)` : ''}.`,
+        message: `This generation requires ${videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ''}.`,
       });
     }
 
@@ -460,6 +559,15 @@ export const createVideoGenerateHandler = ({
     }
     if (inputReference) {
       options.inputReference = inputReference;
+    }
+    if (characterAssetId) {
+      options.characterAssetId = characterAssetId;
+    }
+    if (faceSwapAlreadyApplied) {
+      options.faceSwapAlreadyApplied = true;
+    }
+    if (swappedImageUrl) {
+      options.faceSwapUrl = swappedImageUrl;
     }
     if (typeof paramFps === 'number') {
       options.fps = paramFps;
@@ -490,8 +598,10 @@ export const createVideoGenerateHandler = ({
       model,
       videoCost,
       keyframeCost,
-      totalCost: videoCost + keyframeCost,
+      faceSwapCost,
+      totalCost: videoCost + keyframeCost + faceSwapCost,
       usedKeyframe: Boolean(generatedKeyframeUrl),
+      faceSwapApplied: Boolean(swappedImageUrl),
       hasCameraMotion: Boolean(motionContext.cameraMotionId),
       cameraMotionId: motionContext.cameraMotionId,
       hasSubjectMotion: Boolean(motionContext.subjectMotion),
@@ -516,7 +626,9 @@ export const createVideoGenerateHandler = ({
         jobId: job.id,
         videoCost,
         keyframeCost,
+        faceSwapCost,
         keyframeUrl: generatedKeyframeUrl,
+        faceSwapUrl: swappedImageUrl,
         hasCameraMotion: Boolean(motionContext.cameraMotionId),
         cameraMotionId: motionContext.cameraMotionId,
         hasSubjectMotion: Boolean(motionContext.subjectMotion),
@@ -538,9 +650,11 @@ export const createVideoGenerateHandler = ({
         jobId: job.id,
         status: job.status,
         creditsReserved: videoCost,
-        creditsDeducted: videoCost + keyframeCost,
+        creditsDeducted: videoCost + keyframeCost + faceSwapCost,
         keyframeGenerated: Boolean(generatedKeyframeUrl),
         keyframeUrl: generatedKeyframeUrl,
+        faceSwapApplied: Boolean(swappedImageUrl),
+        faceSwapUrl: swappedImageUrl,
       };
 
       return res.status(202).json({
@@ -553,6 +667,9 @@ export const createVideoGenerateHandler = ({
       if (keyframeCost > 0) {
         await userCreditService.refundCredits(userId, keyframeCost);
       }
+      if (faceSwapCost > 0) {
+        await userCreditService.refundCredits(userId, faceSwapCost);
+      }
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
@@ -562,7 +679,7 @@ export const createVideoGenerateHandler = ({
         operation,
         requestId,
         userId,
-        refundAmount: videoCost + keyframeCost,
+        refundAmount: videoCost + keyframeCost + faceSwapCost,
         statusCode,
       });
 

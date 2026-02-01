@@ -28,6 +28,14 @@ export interface StartImage {
   viewUrlExpiresAt?: string;
 }
 
+export interface GenerationOverrides {
+  startImage?: StartImage | null;
+  generationParams?: Record<string, unknown>;
+  characterAssetId?: string | null;
+  faceSwapAlreadyApplied?: boolean;
+  faceSwapUrl?: string | null;
+}
+
 export interface ToolSidebarProps {
   user: User | null;
 
@@ -60,8 +68,8 @@ export interface ToolSidebarProps {
   genericOptimizedPrompt?: string | null;
   promptInputRef?: RefObject<HTMLTextAreaElement | null>;
   onCreateFromTrigger?: (trigger: string) => void;
-  onDraft: (model: DraftModel) => void;
-  onRender: (model: string) => void;
+  onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
+  onRender: (model: string, overrides?: GenerationOverrides) => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;
 

@@ -14,6 +14,10 @@ export const VideoGenerationOptionsSchema = z.object({
   size: z.string().optional(),
   style_reference: z.string().optional(),
   style_reference_weight: z.number().optional(),
+  characterAssetId: z.string().optional(),
+  autoKeyframe: z.boolean().optional(),
+  faceSwapAlreadyApplied: z.boolean().optional(),
+  faceSwapUrl: z.string().optional(),
 }).partial();
 
 export const VideoJobRequestSchema = z.object({

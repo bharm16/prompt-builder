@@ -56,6 +56,16 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   } as const;
 };
 
+const extractFaceSwapMeta = (params?: GenerationParams) => {
+  const resolvedFaceSwapUrl =
+    params?.faceSwapUrl ?? (params?.faceSwapAlreadyApplied ? params.startImage?.url ?? null : null);
+  return {
+    faceSwapUrl: resolvedFaceSwapUrl,
+    faceSwapApplied: Boolean(resolvedFaceSwapUrl),
+    characterAssetId: params?.characterAssetId ?? null,
+  } as const;
+};
+
 const START_IMAGE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 const parseExpiresAtMs = (value?: string | null): number | null => {
@@ -204,6 +214,7 @@ export function useGenerationActions(
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
+      const faceSwapMeta = extractFaceSwapMeta(resolved);
       const startImageUrlHost = resolved.startImage?.url ? safeUrlHost(resolved.startImage.url) : null;
 
       log.info('Draft generation started', {
@@ -214,6 +225,9 @@ export function useGenerationActions(
         aspectRatio: resolved.aspectRatio ?? null,
         hasStartImage: Boolean(resolved.startImage),
         startImageUrlHost,
+        faceSwapApplied: faceSwapMeta.faceSwapApplied,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        characterAssetId: faceSwapMeta.characterAssetId,
         ...motionMeta,
       });
 
@@ -287,11 +301,16 @@ export function useGenerationActions(
           hasStartImage: Boolean(resolvedStartImage?.url),
           startImageUrlHost: requestStartImageUrlHost,
           motionPromptInjected,
+          faceSwapApplied: faceSwapMeta.faceSwapApplied,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          characterAssetId: faceSwapMeta.characterAssetId,
           ...motionMeta,
         });
         const response = await generateVideoPreview(wanPrompt, resolved.aspectRatio ?? undefined, model, {
           ...(resolvedStartImage?.url ? { startImage: resolvedStartImage.url } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
+          ...(resolved.characterAssetId ? { characterAssetId: resolved.characterAssetId } : {}),
+          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         });
         if (controller.signal.aborted) return;
 
@@ -301,8 +320,22 @@ export function useGenerationActions(
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
+          faceSwapApplied: response.faceSwapApplied ?? false,
+          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
           ...motionMeta,
         });
+        if (response.faceSwapApplied || response.faceSwapUrl) {
+          dispatch({
+            type: 'UPDATE_GENERATION',
+            payload: {
+              id: generation.id,
+              updates: {
+                faceSwapApplied: response.faceSwapApplied ?? true,
+                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+              },
+            },
+          });
+        }
         let videoUrl: string | null = null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
@@ -333,6 +366,7 @@ export function useGenerationActions(
         log.info('Video draft generation succeeded', {
           generationId: generation.id,
           durationMs,
+          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
         finalizeGeneration(generation.id, {
@@ -450,6 +484,7 @@ export function useGenerationActions(
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
+      const faceSwapMeta = extractFaceSwapMeta(resolved);
       const isCharacterAsset =
         resolved.startImage?.source === 'asset' && Boolean(resolved.startImage?.assetId);
       const startImageUrlHost =
@@ -467,6 +502,9 @@ export function useGenerationActions(
         isCharacterAsset,
         startImageUrlHost,
         characterAssetId: isCharacterAsset ? resolved.startImage?.assetId ?? null : null,
+        faceSwapApplied: faceSwapMeta.faceSwapApplied,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        characterAssetIdOverride: faceSwapMeta.characterAssetId,
         ...motionMeta,
       });
 
@@ -488,6 +526,9 @@ export function useGenerationActions(
           aspectRatio: resolved.aspectRatio ?? null,
           isCharacterAsset,
           startImageUrlHost: requestStartImageUrlHost,
+          faceSwapApplied: faceSwapMeta.faceSwapApplied,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          characterAssetId: faceSwapMeta.characterAssetId,
           ...motionMeta,
         });
         const response = await generateVideoPreview(prompt, resolved.aspectRatio ?? undefined, model, {
@@ -495,7 +536,11 @@ export function useGenerationActions(
             ? { startImage: resolvedStartImage.url }
             : {}),
           ...(isCharacterAsset ? { characterAssetId: resolved.startImage?.assetId } : {}),
+          ...(!isCharacterAsset && resolved.characterAssetId
+            ? { characterAssetId: resolved.characterAssetId }
+            : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
+          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         });
         if (controller.signal.aborted) return;
 
@@ -505,8 +550,22 @@ export function useGenerationActions(
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
+          faceSwapApplied: response.faceSwapApplied ?? false,
+          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
           ...motionMeta,
         });
+        if (response.faceSwapApplied || response.faceSwapUrl) {
+          dispatch({
+            type: 'UPDATE_GENERATION',
+            payload: {
+              id: generation.id,
+              updates: {
+                faceSwapApplied: response.faceSwapApplied ?? true,
+                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+              },
+            },
+          });
+        }
         let videoUrl: string | null = null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
@@ -537,6 +596,7 @@ export function useGenerationActions(
         log.info('Render generation succeeded', {
           generationId: generation.id,
           durationMs,
+          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
         finalizeGeneration(generation.id, {

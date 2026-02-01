@@ -11,6 +11,7 @@ import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { safeUrlHost } from '@/utils/url';
 import {
+  FaceSwapPreviewResponseSchema,
   GeneratePreviewResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
   GenerateVideoResponseSchema,
@@ -134,6 +135,16 @@ export interface MediaViewUrlResponse {
   message?: string;
 }
 
+export interface FaceSwapPreviewResponse {
+  success: boolean;
+  data?: {
+    faceSwapUrl: string;
+    creditsDeducted: number;
+  };
+  error?: string;
+  message?: string;
+}
+
 /**
  * Generate a preview image from a prompt
  *
@@ -198,6 +209,31 @@ export async function generateStoryboardPreview(
   )) as unknown;
 
   return GenerateStoryboardPreviewResponseSchema.parse(payload);
+}
+
+export async function faceSwapPreview(options: {
+  characterAssetId: string;
+  targetImageUrl: string;
+  aspectRatio?: string;
+}): Promise<FaceSwapPreviewResponse> {
+  requireNonEmptyString(options?.characterAssetId, 'characterAssetId');
+  requireNonEmptyString(options?.targetImageUrl, 'targetImageUrl');
+
+  const payload = (await apiClient.post('/preview/face-swap', {
+    characterAssetId: options.characterAssetId.trim(),
+    targetImageUrl: options.targetImageUrl.trim(),
+    ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+  })) as unknown;
+
+  const parsed = FaceSwapPreviewResponseSchema.parse(payload);
+
+  log.info('Face-swap preview request completed', {
+    hasFaceSwapUrl: Boolean(parsed.data?.faceSwapUrl),
+    faceSwapUrlHost: parsed.data?.faceSwapUrl ? safeUrlHost(parsed.data.faceSwapUrl) : null,
+    creditsDeducted: parsed.data?.creditsDeducted ?? null,
+  });
+
+  return parsed;
 }
 
 export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
@@ -286,6 +322,8 @@ export interface GenerateVideoResponse {
   creditsDeducted?: number;
   keyframeGenerated?: boolean;
   keyframeUrl?: string | null;
+  faceSwapApplied?: boolean;
+  faceSwapUrl?: string | null;
   error?: string;
   message?: string;
 }
@@ -317,6 +355,7 @@ export interface GenerateVideoPreviewOptions {
   generationParams?: Record<string, unknown> | undefined;
   characterAssetId?: string | undefined;
   autoKeyframe?: boolean | undefined;
+  faceSwapAlreadyApplied?: boolean | undefined;
 }
 
 /**
@@ -344,6 +383,7 @@ export async function generateVideoPreview(
     ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
     ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
     ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
+    ...(options?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
   };
 
   log.info('Video preview request started', {
@@ -357,6 +397,7 @@ export async function generateVideoPreview(
     inputReferenceUrlHost,
     hasCharacterAssetId: Boolean(options?.characterAssetId),
     autoKeyframe: options?.autoKeyframe ?? null,
+    faceSwapAlreadyApplied: options?.faceSwapAlreadyApplied ?? null,
     ...motionMeta,
   });
 
@@ -407,6 +448,7 @@ export async function generateVideoPreview(
       inputReferenceUrlHost,
       hasCharacterAssetId: Boolean(options?.characterAssetId),
       autoKeyframe: options?.autoKeyframe ?? null,
+      faceSwapAlreadyApplied: options?.faceSwapAlreadyApplied ?? null,
       errorName: info.name,
       ...motionMeta,
     });

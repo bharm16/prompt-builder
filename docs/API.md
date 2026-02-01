@@ -825,9 +825,16 @@ Queue a video preview job. Requires API key **and** Firebase ID token (`X-Fireba
   "model": "string (optional)",
   "startImage": "string (optional)",
   "inputReference": "string (optional)",
-  "generationParams": "object (optional)"
+  "generationParams": "object (optional)",
+  "characterAssetId": "string (optional)",
+  "autoKeyframe": "boolean (optional, defaults to true)"
 }
 ```
+
+**Behavior notes:**
+- `startImage` only → direct i2v
+- `characterAssetId` only (with `autoKeyframe=true`) → PuLID keyframe → i2v
+- `startImage` + `characterAssetId` → face-swap preprocessing → i2v
 
 **Response:** `202 Accepted`
 ```json
@@ -835,7 +842,12 @@ Queue a video preview job. Requires API key **and** Firebase ID token (`X-Fireba
   "success": true,
   "jobId": "job_123",
   "status": "queued",
-  "creditsReserved": 5
+  "creditsReserved": 40,
+  "creditsDeducted": 42,
+  "keyframeGenerated": false,
+  "keyframeUrl": null,
+  "faceSwapApplied": true,
+  "faceSwapUrl": "https://..."
 }
 ```
 

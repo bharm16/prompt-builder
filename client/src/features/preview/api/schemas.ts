@@ -3,6 +3,7 @@ import type {
   GeneratePreviewResponse,
   GenerateStoryboardPreviewResponse,
   GenerateVideoResponse,
+  FaceSwapPreviewResponse,
   MediaViewUrlResponse,
   UploadPreviewImageResponse,
   VideoJobStatusResponse,
@@ -80,6 +81,20 @@ export const MediaViewUrlResponseSchema: z.ZodType<MediaViewUrlResponse> = z
   })
   .passthrough();
 
+export const FaceSwapPreviewResponseSchema: z.ZodType<FaceSwapPreviewResponse> = z
+  .object({
+    success: z.boolean(),
+    data: z
+      .object({
+        faceSwapUrl: z.string(),
+        creditsDeducted: z.number(),
+      })
+      .optional(),
+    error: z.string().optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
+
 export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
   .object({
     success: z.boolean(),
@@ -96,6 +111,8 @@ export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
     creditsDeducted: z.number().optional(),
     keyframeGenerated: z.boolean().optional(),
     keyframeUrl: z.string().nullish(),
+    faceSwapApplied: z.boolean().optional(),
+    faceSwapUrl: z.string().nullish(),
     error: z.string().optional(),
     message: z.string().optional(),
   })

@@ -45,6 +45,10 @@ export interface VideoGenerationOptions {
   characterAssetId?: string;
   /** If true (default), automatically generate keyframe for character assets */
   autoKeyframe?: boolean;
+  /** When true, startImage already includes a face-swap result (skip preprocessing). */
+  faceSwapAlreadyApplied?: boolean;
+  /** Optional face-swap preview URL for provenance/metadata. */
+  faceSwapUrl?: string;
 }
 
 export interface VideoGenerationResult {

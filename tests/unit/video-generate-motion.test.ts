@@ -46,6 +46,7 @@ describe('videoGenerate motion guidance', () => {
         refundCredits: vi.fn(async () => undefined),
       } as never,
       keyframeService: null as never,
+      faceSwapService: null as never,
       assetService: null as never,
     });
 
@@ -77,4 +78,3 @@ describe('videoGenerate motion guidance', () => {
     expect(prompt).toContain('Subject motion: running steadily toward the horizon');
   });
 });
-

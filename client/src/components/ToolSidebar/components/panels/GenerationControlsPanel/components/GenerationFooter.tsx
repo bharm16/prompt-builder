@@ -23,6 +23,7 @@ interface GenerationFooterProps {
   isStoryboardDisabled: boolean;
   onGenerate: () => void;
   isGenerateDisabled: boolean;
+  generateLabel?: string;
 }
 
 export function GenerationFooter({
@@ -37,6 +38,7 @@ export function GenerationFooter({
   isStoryboardDisabled,
   onGenerate,
   isGenerateDisabled,
+  generateLabel = 'Generate',
 }: GenerationFooterProps): React.ReactElement {
   return (
     <footer className="h-[73px] px-4 py-3 flex items-center justify-between border-t border-[#29292D]">
@@ -86,7 +88,7 @@ export function GenerationFooter({
           onClick={onGenerate}
           disabled={isGenerateDisabled}
         >
-          Generate
+          {generateLabel}
         </button>
       </div>
     </footer>

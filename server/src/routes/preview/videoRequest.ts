@@ -11,6 +11,7 @@ export interface VideoPreviewPayload {
   generationParams?: unknown;
   characterAssetId?: string;
   autoKeyframe?: boolean;
+  faceSwapAlreadyApplied?: boolean;
 }
 
 interface VideoPreviewParseSuccess {
@@ -36,6 +37,7 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     generationParams,
     characterAssetId,
     autoKeyframe,
+    faceSwapAlreadyApplied,
   } = (body || {}) as {
     prompt?: unknown;
     aspectRatio?: VideoAspectRatio;
@@ -45,6 +47,7 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     generationParams?: unknown;
     characterAssetId?: unknown;
     autoKeyframe?: unknown;
+    faceSwapAlreadyApplied?: unknown;
   };
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -67,11 +70,16 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     return { ok: false, status: 400, error: 'autoKeyframe must be a boolean' };
   }
 
+  if (faceSwapAlreadyApplied !== undefined && typeof faceSwapAlreadyApplied !== 'boolean') {
+    return { ok: false, status: 400, error: 'faceSwapAlreadyApplied must be a boolean' };
+  }
+
   const resolvedCharacterAssetId =
     typeof characterAssetId === 'string' && characterAssetId.trim().length > 0
       ? characterAssetId.trim()
       : undefined;
   const resolvedAutoKeyframe = autoKeyframe !== false;
+  const resolvedFaceSwapAlreadyApplied = faceSwapAlreadyApplied === true;
 
   return {
     ok: true,
@@ -84,6 +92,7 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
       ...(generationParams !== undefined ? { generationParams } : {}),
       ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
       autoKeyframe: resolvedAutoKeyframe,
+      ...(resolvedFaceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
     },
   };
 };

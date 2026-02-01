@@ -3,6 +3,7 @@ import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
 import type { Generation, GenerationsPanelProps } from './types';
+import type { GenerationOverrides } from '@components/ToolSidebar/types';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
 import { KeyframeStep } from './components/KeyframeStep';
@@ -83,7 +84,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   useGenerationMediaRefresh(generations, dispatch);
 
-  const { setControls } = useGenerationControlsContext();
+  const { setControls, faceSwapPreview } = useGenerationControlsContext();
   const { domain } = useGenerationControlsStoreState();
   const keyframes = domain.keyframes;
   const cameraMotion = domain.cameraMotion;
@@ -187,12 +188,26 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     return 'wan-2.2';
   }, [activeDraftModel]);
 
+  const faceSwapOverride = useMemo<GenerationOverrides | null>(() => {
+    if (!faceSwapPreview?.url) return null;
+    return {
+      startImage: {
+        url: faceSwapPreview.url,
+        source: 'face-swap',
+      },
+      characterAssetId: faceSwapPreview.characterAssetId,
+      faceSwapAlreadyApplied: true,
+      faceSwapUrl: faceSwapPreview.url,
+    };
+  }, [faceSwapPreview?.characterAssetId, faceSwapPreview?.url]);
+
   const handleDraft = useCallback(
-    (model: DraftModel) => {
+    (model: DraftModel, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
+      const resolvedOverrides = overrides ?? faceSwapOverride ?? undefined;
       const versionId = onCreateVersionIfNeeded();
       const primaryKeyframe = keyframes[0];
-      const startImage = primaryKeyframe
+      const startImage = resolvedOverrides?.startImage ?? (primaryKeyframe
         ? {
             url: primaryKeyframe.url,
             source: primaryKeyframe.source,
@@ -200,15 +215,19 @@ export const GenerationsPanel = memo(function GenerationsPanel({
             ...(primaryKeyframe.storagePath ? { storagePath: primaryKeyframe.storagePath } : {}),
             ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
           }
-        : null;
+        : null);
 
       generateDraft(model, prompt, {
         promptVersionId: versionId,
         ...(startImage ? { startImage } : {}),
+        ...(resolvedOverrides?.characterAssetId ? { characterAssetId: resolvedOverrides.characterAssetId } : {}),
+        ...(resolvedOverrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
+        ...(resolvedOverrides?.faceSwapUrl ? { faceSwapUrl: resolvedOverrides.faceSwapUrl } : {}),
         ...(mergedGenerationParams ? { generationParams: mergedGenerationParams } : {}),
+        ...(resolvedOverrides?.generationParams ? { generationParams: resolvedOverrides.generationParams } : {}),
       });
     },
-    [generateDraft, keyframes, mergedGenerationParams, onCreateVersionIfNeeded, prompt]
+    [faceSwapOverride, generateDraft, keyframes, mergedGenerationParams, onCreateVersionIfNeeded, prompt]
   );
 
   const {
@@ -227,6 +246,17 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     onCreateVersionIfNeeded,
     generateRender,
   });
+
+  const handleRenderWithFaceSwap = useCallback(
+    (model: string, overrides?: GenerationOverrides) => {
+      if (!overrides && faceSwapOverride) {
+        handleRender(model, faceSwapOverride);
+        return;
+      }
+      handleRender(model, overrides);
+    },
+    [faceSwapOverride, handleRender]
+  );
 
   const handleStoryboard = useCallback(() => {
     const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
@@ -281,12 +311,12 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   const controlsPayload = useMemo(
     () => ({
       onDraft: handleDraft,
-      onRender: handleRender,
+      onRender: handleRenderWithFaceSwap,
       onStoryboard: handleStoryboard,
       isGenerating,
       activeDraftModel,
     }),
-    [handleDraft, handleRender, handleStoryboard, isGenerating, activeDraftModel]
+    [handleDraft, handleRenderWithFaceSwap, handleStoryboard, isGenerating, activeDraftModel]
   );
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import type { Asset } from '@shared/types/asset';
 import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
-import type { DraftModel } from '@components/ToolSidebar/types';
+import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
 export type {
   GenerationControlsTab,
   ImageSubTab,
@@ -22,8 +22,8 @@ export interface GenerationControlsPanelProps {
   assets?: Asset[];
   onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
   onCreateFromTrigger?: (trigger: string) => void;
-  onDraft: (model: DraftModel) => void;
-  onRender: (model: string) => void;
+  onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
+  onRender: (model: string, overrides?: GenerationOverrides) => void;
   onBack?: () => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;

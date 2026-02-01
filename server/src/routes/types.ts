@@ -11,6 +11,7 @@ import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
 import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import type { FaceSwapService } from '@services/generation/FaceSwapService';
 import type { AssetService } from '@services/asset/AssetService';
 
 /**
@@ -24,6 +25,7 @@ export interface PreviewRoutesServices {
   videoContentAccessService?: VideoContentAccessService | null;
   userCreditService?: UserCreditService | null;
   keyframeService?: KeyframeGenerationService | null;
+  faceSwapService?: FaceSwapService | null;
   assetService?: AssetService | null;
 }
 

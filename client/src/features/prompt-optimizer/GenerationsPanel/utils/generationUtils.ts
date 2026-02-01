@@ -14,6 +14,9 @@ export const resolveGenerationOptions = (
   fps: overrides?.fps ?? base?.fps ?? null,
   generationParams: overrides?.generationParams ?? base?.generationParams,
   startImage: overrides?.startImage ?? base?.startImage ?? null,
+  characterAssetId: overrides?.characterAssetId ?? base?.characterAssetId ?? null,
+  faceSwapAlreadyApplied: overrides?.faceSwapAlreadyApplied ?? base?.faceSwapAlreadyApplied,
+  faceSwapUrl: overrides?.faceSwapUrl ?? base?.faceSwapUrl ?? null,
 });
 
 export const buildGeneration = (
@@ -23,6 +26,8 @@ export const buildGeneration = (
   params: GenerationParams
 ): Generation => {
   const config = getModelConfig(model);
+  const resolvedFaceSwapUrl =
+    params.faceSwapUrl ?? (params.faceSwapAlreadyApplied ? params.startImage?.url ?? null : null);
   return {
     id: createGenerationId(),
     tier,
@@ -40,6 +45,9 @@ export const buildGeneration = (
     mediaType: config?.mediaType ?? 'video',
     mediaUrls: [],
     thumbnailUrl: null,
+    characterAssetId: params.characterAssetId ?? null,
+    faceSwapApplied: Boolean(resolvedFaceSwapUrl),
+    faceSwapUrl: resolvedFaceSwapUrl,
     error: null,
   };
 };

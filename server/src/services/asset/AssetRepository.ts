@@ -70,15 +70,16 @@ function normalizeBucketName(raw: string): string {
 }
 
 function resolveBucketName(explicit?: string): string {
-  // Prefer server-side env vars over VITE_ (client-side) config
+  // Prefer Firebase storage bucket for assets; fall back to generic GCS bucket only if unset.
   const envBucket =
     explicit ||
-    process.env.GCS_BUCKET_NAME ||
+    process.env.ASSET_STORAGE_BUCKET ||
     process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.VITE_FIREBASE_STORAGE_BUCKET;
+    process.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    process.env.GCS_BUCKET_NAME;
   if (!envBucket) {
     throw new Error(
-      'Missing storage bucket config: VITE_FIREBASE_STORAGE_BUCKET or GCS_BUCKET_NAME'
+      'Missing storage bucket config: FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_STORAGE_BUCKET, or GCS_BUCKET_NAME'
     );
   }
   return normalizeBucketName(envBucket);
