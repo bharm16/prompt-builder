@@ -147,11 +147,11 @@ export function SessionsPanel({
 
   const handleOpenInNewTab = useCallback(
     (entry: PromptHistoryEntry): void => {
-      if (!entry.uuid) {
-        toast.warning('This prompt is not available in a new tab yet.');
+      if (!entry.id) {
+        toast.warning('This session is not available in a new tab yet.');
         return;
       }
-      window.open(`/prompt/${entry.uuid}`, '_blank', 'noopener,noreferrer');
+      window.open(`/session/${entry.id}/studio`, '_blank', 'noopener,noreferrer');
     },
     [toast]
   );

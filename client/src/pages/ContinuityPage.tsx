@@ -80,7 +80,7 @@ function ContinuityLanding(): React.ReactElement {
       };
 
       const session = await createSession(payload);
-      navigate(`/continuity/${session.id}`);
+      navigate(`/session/${session.id}/continuity`);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -223,7 +223,7 @@ function ContinuityLanding(): React.ReactElement {
               {sessions.map((session) => (
                 <Link
                   key={session.id}
-                  to={`/continuity/${session.id}`}
+                  to={`/session/${session.id}/continuity`}
                   className="block rounded-lg border border-border px-3 py-2 text-sm hover:border-border-strong"
                 >
                   <div className="font-medium text-foreground">{session.name}</div>
@@ -262,7 +262,7 @@ function ContinuityPageInner(): React.ReactElement {
     return (
       <div className="p-6 space-y-2">
         <div className="text-red-500">{error}</div>
-        <Link to="/continuity" className="text-sm text-accent">
+        <Link to="/session/new/continuity" className="text-sm text-accent">
           Create a new session
         </Link>
       </div>
@@ -273,7 +273,7 @@ function ContinuityPageInner(): React.ReactElement {
     return (
       <div className="p-6">
         <div>No session found.</div>
-        <Link to="/continuity" className="text-sm text-accent">
+        <Link to="/session/new/continuity" className="text-sm text-accent">
           Create a new session
         </Link>
       </div>

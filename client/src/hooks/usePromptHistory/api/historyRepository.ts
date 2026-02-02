@@ -12,7 +12,7 @@ import type { UpdatePromptOptions } from '../../../repositories/promptRepository
 
 const log = logger.child('historyRepository');
 
-const isValidFirestoreDocId = (docId: string | null | undefined): docId is string => {
+const isValidSessionId = (docId: string | null | undefined): docId is string => {
   if (!docId) {
     return false;
   }
@@ -140,14 +140,8 @@ export async function updatePrompt(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
-
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          return;
-        }
+      if (userId && isValidSessionId(docId)) {
         await repository.updatePrompt(docId, updates);
         return;
       }
@@ -168,16 +162,22 @@ export async function updatePrompt(
 export async function updateHighlights(
   userId: string | undefined,
   uuid: string,
+  docId: string | null,
   highlightCache: unknown
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
     try {
+      if (userId && isValidSessionId(docId)) {
+        await repository.updateHighlights(docId, { highlightCache });
+        return;
+      }
       await repository.updateHighlights(uuid, { highlightCache });
     } catch (error) {
       log.warn('Unable to persist updated highlights', {
         uuid,
+        docId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -196,14 +196,8 @@ export async function updateOutput(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
-
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          return;
-        }
+      if (userId && isValidSessionId(docId)) {
         await repository.updateOutput(docId, output);
         return;
       }
@@ -230,22 +224,15 @@ export async function updateVersions(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateVersions' in repository && typeof repository.updateVersions === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
-
     const generationCount = versions.reduce(
       (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
       0
     );
 
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          log.debug('Skipping Firestore version update — draft or invalid docId', { uuid, docId });
-          return;
-        }
+      if (userId && isValidSessionId(docId)) {
         await repository.updateVersions(docId, versions);
-        log.debug('Versions persisted to Firestore', { uuid, docId, versionCount: versions.length, generationCount });
+        log.debug('Versions persisted to session store', { uuid, docId, versionCount: versions.length, generationCount });
         return;
       }
       await repository.updateVersions(uuid, versions);

@@ -176,7 +176,7 @@ function PromptOptimizerContent({
 
     // Navigation
     navigate,
-    uuid,
+    sessionId,
   } = usePromptState();
   const assetsSidebar = useAssetsSidebar();
   const { controls: generationControls } = useGenerationControlsContext();
@@ -277,10 +277,11 @@ function PromptOptimizerContent({
 
   // Load prompt from URL parameter
   const { isLoading } = usePromptLoader({
-    uuid,
+    sessionId,
     currentPromptUuid,
     navigate,
     toast,
+    user,
     promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,

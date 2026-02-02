@@ -26,7 +26,7 @@ export function ContinueSceneButton({
         name: defaultName,
         sourceVideoId,
       });
-      navigate(`/continuity/${session.id}`);
+      navigate(`/session/${session.id}/continuity`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

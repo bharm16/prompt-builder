@@ -86,6 +86,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     referenceImageService: container.resolve('referenceImageService'),
     imageObservationService: container.resolve('imageObservationService'),
     continuitySessionService: container.resolve('continuitySessionService'),
+    sessionService: container.resolve('sessionService'),
     modelIntelligenceService: container.resolve('modelIntelligenceService'),
   });
 

@@ -26,6 +26,8 @@ export function ToolRail({
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
   const userActionLabel = user ? 'Account' : 'Sign in';
+  const sessionIdMatch = location.pathname.match(/^\\/session\\/([^/]+)/);
+  const activeSessionId = sessionIdMatch?.[1] ?? null;
 
   /**
    * Handle panel change with tool switching for Create/Studio
@@ -46,9 +48,9 @@ export function ToolRail({
         return;
       }
       log.info('Navigating to create route from rail', {
-        toPath: '/create',
+        toPath: activeSessionId ? `/session/${activeSessionId}/create` : '/create',
       });
-      navigate('/create');
+      navigate(activeSessionId ? `/session/${activeSessionId}/create` : '/create');
       onPanelChange(panelId);
     } else if (panelId === 'studio') {
       log.info('Studio tool selected from rail', {
@@ -64,10 +66,27 @@ export function ToolRail({
         return;
       }
       log.info('Navigating to studio route from rail', {
-        toPath: '/',
+        toPath: activeSessionId ? `/session/${activeSessionId}/studio` : '/',
       });
-      navigate('/');
+      navigate(activeSessionId ? `/session/${activeSessionId}/studio` : '/');
       onPanelChange(panelId);
+    } else if (panelId === 'continuity') {
+      log.info('Continuity tool selected from rail', {
+        fromPath: location.pathname,
+        activeTool,
+      });
+      const result = setActiveTool('continuity');
+      if (result === 'blocked') {
+        log.warn('Continuity tool switch blocked by generation-in-progress guard', {
+          fromPath: location.pathname,
+          activeTool,
+        });
+        return;
+      }
+      const target = activeSessionId ? `/session/${activeSessionId}/continuity` : '/session/new/continuity';
+      log.info('Navigating to continuity route from rail', { toPath: target });
+      navigate(target);
+      onPanelChange('sessions');
     } else {
       log.debug('Non-tool panel selected from rail', {
         panelId,
@@ -87,6 +106,9 @@ export function ToolRail({
     }
     if (panelId === 'studio') {
       return activeTool === 'studio';
+    }
+    if (panelId === 'continuity') {
+      return activeTool === 'continuity';
     }
     return activePanel === panelId;
   };

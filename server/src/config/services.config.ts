@@ -82,6 +82,8 @@ import {
   StyleAnalysisService,
   StyleReferenceService,
 } from '@services/continuity';
+import { SessionStore } from '@services/sessions/SessionStore';
+import { SessionService } from '@services/sessions/SessionService';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -789,6 +791,13 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register('continuitySessionStore', () => new ContinuitySessionStore(), [], { singleton: true });
+  container.register('sessionStore', () => new SessionStore(), [], { singleton: true });
+  container.register(
+    'sessionService',
+    (sessionStore: SessionStore) => new SessionService(sessionStore),
+    ['sessionStore'],
+    { singleton: true }
+  );
 
   container.register(
     'frameBridgeService',

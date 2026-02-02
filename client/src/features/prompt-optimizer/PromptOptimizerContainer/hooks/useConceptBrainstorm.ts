@@ -172,7 +172,11 @@ export function useConceptBrainstorm({
               });
               resetEditStacks();
               persistedSignatureRef.current = null;
-              navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+              if (saveResult.id) {
+                navigate(`/session/${saveResult.id}/studio`, { replace: true });
+              } else {
+                navigate('/create', { replace: true });
+              }
             }
           }
         } catch (error) {

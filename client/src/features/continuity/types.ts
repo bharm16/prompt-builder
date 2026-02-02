@@ -1,117 +1,35 @@
-export type GenerationMode = 'continuity' | 'standard';
-export type ContinuityMode = 'frame-bridge' | 'style-match' | 'native' | 'none';
+import type {
+  SessionContinuity,
+  SessionContinuityMode,
+  SessionContinuitySettings,
+  SessionContinuityShot,
+  SessionGenerationMode,
+  SessionFrameBridge,
+  SessionSeedInfo,
+  SessionSceneProxy,
+  SessionStyleReference,
+} from '@shared/types/session';
 
-export interface StyleReference {
-  id: string;
-  sourceVideoId?: string;
-  sourceFrameIndex?: number;
-  frameUrl: string;
-  frameTimestamp: number;
-  resolution: { width: number; height: number };
-  aspectRatio: string;
-  analysisMetadata?: {
-    dominantColors: string[];
-    lightingDescription: string;
-    moodDescription: string;
-    confidence: number;
-  };
-}
-
-export interface FrameBridge {
-  id: string;
-  sourceVideoId: string;
-  sourceShotId: string;
-  frameUrl: string;
-  framePosition: 'first' | 'last' | 'representative';
-  frameTimestamp: number;
-  resolution: { width: number; height: number };
-  aspectRatio: string;
-  extractedAt: string;
-}
-
-export interface SeedInfo {
-  seed: number;
-  provider: string;
-  modelId: string;
-  extractedAt: string;
-}
-
-export interface ContinuityShot {
-  id: string;
-  sessionId: string;
-  sequenceIndex: number;
-  userPrompt: string;
-  generationMode?: GenerationMode;
-  continuityMode: ContinuityMode;
-  styleStrength: number;
-  styleReferenceId: string | null;
-  styleReference?: StyleReference;
-  frameBridge?: FrameBridge;
-  characterAssetId?: string;
-  faceStrength?: number;
-  camera?: {
-    yaw?: number;
-    pitch?: number;
-    roll?: number;
-    dolly?: number;
-  };
-  modelId: string;
-  seedInfo?: SeedInfo;
-  inheritedSeed?: number;
-  videoAssetId?: string;
-  generatedKeyframeUrl?: string;
-  styleTransferApplied?: boolean;
-  styleDegraded?: boolean;
-  styleDegradedReason?: string;
-  sceneProxyRenderUrl?: string;
-  continuityMechanismUsed?: string;
-  styleScore?: number;
-  identityScore?: number;
-  qualityScore?: number;
-  retryCount?: number;
-  status: 'draft' | 'generating-keyframe' | 'generating-video' | 'completed' | 'failed';
-  error?: string;
-  createdAt: string;
-  generatedAt?: string;
-}
-
-export interface ContinuitySessionSettings {
-  generationMode: GenerationMode;
-  defaultContinuityMode: ContinuityMode;
-  defaultStyleStrength: number;
-  defaultModel: string;
-  autoExtractFrameBridge: boolean;
-  useCharacterConsistency: boolean;
-  useSceneProxy?: boolean;
-  autoRetryOnFailure?: boolean;
-  maxRetries?: number;
-  qualityThresholds?: {
-    style: number;
-    identity: number;
-  };
-}
-
-export interface ContinuitySession {
+export type GenerationMode = SessionGenerationMode;
+export type ContinuityMode = SessionContinuityMode;
+export type StyleReference = SessionStyleReference;
+export type FrameBridge = SessionFrameBridge;
+export type SeedInfo = SessionSeedInfo;
+export type ContinuityShot = SessionContinuityShot;
+export type ContinuitySessionSettings = SessionContinuitySettings;
+export type ContinuitySession = {
   id: string;
   userId: string;
   name: string;
   description?: string;
   primaryStyleReference: StyleReference;
-  sceneProxy?: {
-    id: string;
-    proxyType: string;
-    referenceFrameUrl: string;
-    depthMapUrl?: string;
-    status: 'ready' | 'failed' | 'building';
-    createdAt?: string;
-    error?: string;
-  };
+  sceneProxy?: SessionSceneProxy;
   shots: ContinuityShot[];
   defaultSettings: ContinuitySessionSettings;
   status: 'active' | 'completed' | 'archived';
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export interface CreateSessionInput {
   name: string;
@@ -138,3 +56,5 @@ export interface CreateShotInput {
     dolly?: number;
   };
 }
+
+export type ContinuitySessionPayload = SessionContinuity;

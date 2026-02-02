@@ -121,7 +121,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     user: user ? 'authenticated' : 'anonymous' 
   });
   const navigate = useNavigate();
-  const { uuid } = useParams<{ uuid?: string }>();
+  const { sessionId } = useParams<{ sessionId?: string }>();
 
   // Mode configuration (video-only)
   const modes: Mode[] = useMemo(() => [
@@ -389,8 +389,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   const navigationValue = useMemo<PromptNavigationState>(() => ({
     navigate,
-    uuid,
-  }), [navigate, uuid]);
+    sessionId,
+  }), [navigate, sessionId]);
 
   const combinedValue = useMemo<PromptStateContextValue>(() => ({
     ...configValue,

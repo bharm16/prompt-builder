@@ -15,7 +15,7 @@ import type { ConvergenceHandoff } from '@features/convergence/types';
 /**
  * Active tool type - determines which tool is displayed in the main workspace
  */
-export type ActiveTool = 'create' | 'studio';
+export type ActiveTool = 'create' | 'studio' | 'continuity';
 
 const ACTIVE_TOOL_STORAGE_KEY = 'app-shell:activeTool';
 
@@ -23,7 +23,7 @@ const loadActiveTool = (fallback: ActiveTool): ActiveTool => {
   if (typeof window === 'undefined') return fallback;
   try {
     const value = window.localStorage.getItem(ACTIVE_TOOL_STORAGE_KEY);
-    if (value === 'create' || value === 'studio') return value;
+    if (value === 'create' || value === 'studio' || value === 'continuity') return value;
     return fallback;
   } catch {
     return fallback;

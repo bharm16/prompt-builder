@@ -186,6 +186,19 @@ export class LocalStoragePromptRepository {
   }
 
   /**
+   * Get prompt by ID from localStorage
+   */
+  async getById(id: string): Promise<PromptHistoryEntry | null> {
+    try {
+      const history = this._getHistory();
+      return history.find((entry) => entry.id === id) || null;
+    } catch (error) {
+      log.error('Error fetching from localStorage by id', error as Error);
+      return null;
+    }
+  }
+
+  /**
    * Update prompt details in localStorage
    */
   async updatePrompt(uuid: string, updates: UpdatePromptOptions): Promise<void> {

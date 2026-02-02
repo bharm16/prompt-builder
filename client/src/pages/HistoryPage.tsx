@@ -154,6 +154,7 @@ export function HistoryPage(): React.ReactElement {
             {filteredOutputs.map((entry, index) => {
               const title = deriveTitle(entry);
               const uuid = typeof entry.uuid === 'string' ? entry.uuid : null;
+              const sessionId = typeof entry.id === 'string' ? entry.id : null;
               const when = formatRelativeOrDate(entry.timestamp);
               const mode = typeof entry.mode === 'string' && entry.mode.trim() ? entry.mode.trim() : null;
               const model =
@@ -192,9 +193,9 @@ export function HistoryPage(): React.ReactElement {
                         </div>
                       </div>
 
-                      {uuid ? (
+                      {sessionId ? (
                         <Link
-                          to={`/prompt/${uuid}`}
+                          to={`/session/${sessionId}/studio`}
                           className="shrink-0 text-sm font-medium text-foreground hover:underline"
                           aria-label="Open prompt"
                         >

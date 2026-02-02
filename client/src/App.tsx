@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import { ToastProvider } from './components/Toast';
@@ -7,6 +7,7 @@ import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppSh
 import { MainWorkspace } from './components/layout/MainWorkspace';
 import { LoadingDots } from './components/LoadingDots';
 import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
+import { apiClient } from './services/ApiClient';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
@@ -25,7 +26,6 @@ const BillingPage = lazy(() => import('./pages/BillingPage').then((module) => ({
 const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').then((module) => ({ default: module.BillingInvoicesPage })));
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
 const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
-const ContinuityPage = lazy(() => import('./pages/ContinuityPage').then((module) => ({ default: module.ContinuityPage })));
 const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
 
 function RouteFallback(): React.ReactElement {
@@ -58,6 +58,40 @@ function WorkspaceRoute({ tool }: { tool: ActiveTool }): React.ReactElement {
       <MainWorkspace />
     </FeatureErrorBoundary>
   );
+}
+
+function PromptRedirect(): React.ReactElement {
+  const { uuid } = useParams<{ uuid: string }>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!uuid) {
+        navigate('/', { replace: true });
+        return;
+      }
+      try {
+        const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`);
+        const data = (response as { data?: { id: string } }).data;
+        if (!cancelled && data?.id) {
+          navigate(`/session/${data.id}/studio`, { replace: true });
+          return;
+        }
+      } catch {
+        // fall through
+      }
+      if (!cancelled) {
+        navigate('/', { replace: true });
+      }
+    };
+    void resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, uuid]);
+
+  return <RouteFallback />;
 }
 
 function AppRoutes(): React.ReactElement {
@@ -105,6 +139,26 @@ function AppRoutes(): React.ReactElement {
         element={<WorkspaceRoute tool="create" />}
       />
       <Route
+        path="/session/:sessionId"
+        element={<Navigate to="studio" replace />}
+      />
+      <Route
+        path="/session/:sessionId/studio"
+        element={<WorkspaceRoute tool="studio" />}
+      />
+      <Route
+        path="/session/:sessionId/create"
+        element={<WorkspaceRoute tool="create" />}
+      />
+      <Route
+        path="/session/:sessionId/continuity"
+        element={<WorkspaceRoute tool="continuity" />}
+      />
+      <Route
+        path="/session/new/continuity"
+        element={<WorkspaceRoute tool="continuity" />}
+      />
+      <Route
         path="/assets"
         element={
           <FeatureErrorBoundary featureName="Asset Library">
@@ -114,19 +168,11 @@ function AppRoutes(): React.ReactElement {
       />
       <Route
         path="/continuity"
-        element={
-          <FeatureErrorBoundary featureName="Continuity Sessions">
-            <ContinuityPage />
-          </FeatureErrorBoundary>
-        }
+        element={<Navigate to="/session/new/continuity" replace />}
       />
       <Route
         path="/continuity/:sessionId"
-        element={
-          <FeatureErrorBoundary featureName="Continuity Session">
-            <ContinuityPage />
-          </FeatureErrorBoundary>
-        }
+        element={<Navigate to="/session/:sessionId/continuity" replace />}
       />
       <Route
         path="/consistent"
@@ -134,7 +180,7 @@ function AppRoutes(): React.ReactElement {
       />
       <Route
         path="/prompt/:uuid"
-        element={<WorkspaceRoute tool="studio" />}
+        element={<PromptRedirect />}
       />
     </Routes>
   );

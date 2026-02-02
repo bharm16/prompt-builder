@@ -26,7 +26,7 @@ export const AUTH_ROUTES = [
 ] as const;
 
 /** Route prefixes that trigger sidebar variant */
-export const WORKSPACE_ROUTE_PREFIXES = ['/prompt/'] as const;
+export const WORKSPACE_ROUTE_PREFIXES = ['/prompt/', '/session/'] as const;
 
 /** Exact routes that trigger sidebar variant */
 export const WORKSPACE_ROUTES_EXACT = ['/', '/create', '/assets', '/consistent'] as const;

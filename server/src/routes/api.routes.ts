@@ -21,6 +21,7 @@ import { createConsistentGenerationRoutes } from './consistentGeneration.routes'
 import { createReferenceImagesRoutes } from './reference-images.routes';
 import { createImageObservationRoutes } from './image-observation.routes';
 import { createContinuityRoutes } from './continuity.routes';
+import { createSessionRoutes } from './sessions.routes';
 import { createModelIntelligenceRoutes } from './model-intelligence.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
@@ -31,6 +32,7 @@ import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ImageObservationService } from '@services/image-observation';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import type { SessionService } from '@services/sessions/SessionService';
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
   videoConceptService?: VideoServices['videoConceptService'] | null;
@@ -41,6 +43,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;
+  sessionService?: SessionService | null;
 }
 
 /**
@@ -65,6 +68,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     imageObservationService,
     continuitySessionService,
     modelIntelligenceService,
+    sessionService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -116,6 +120,10 @@ export function createAPIRoutes(services: ApiServices): Router {
 
   if (continuitySessionService) {
     router.use('/continuity', createContinuityRoutes(continuitySessionService, userCreditService));
+  }
+
+  if (sessionService && continuitySessionService) {
+    router.use('/v2/sessions', createSessionRoutes(sessionService, continuitySessionService, userCreditService));
   }
 
   if (modelIntelligenceService) {

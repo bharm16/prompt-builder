@@ -107,7 +107,11 @@ export const usePromptHistoryActions = ({
     applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
     persistedSignatureRef.current = null;
     resetEditStacks();
-    navigate(`/prompt/${draft.uuid}`, { replace: true });
+    if (draft.id) {
+      navigate(`/session/${draft.id}/studio`, { replace: true });
+    } else {
+      navigate('/create', { replace: true });
+    }
     // Allow future URL-based loads after the draft navigation settles.
     // Mirror the `loadFromHistory` behavior to avoid leaving this ref stuck `true`.
     requestAnimationFrame(() => {
@@ -205,8 +209,10 @@ export const usePromptHistoryActions = ({
         setPromptContext(null);
       }
 
-      if (entry.uuid) {
-        navigate(`/prompt/${entry.uuid}`, { replace: true });
+      if (entry.id) {
+        navigate(`/session/${entry.id}/studio`, { replace: true });
+      } else if (entry.uuid) {
+        navigate('/create', { replace: true });
       } else {
         navigate('/', { replace: true });
       }

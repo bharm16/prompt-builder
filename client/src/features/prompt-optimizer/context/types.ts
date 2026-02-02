@@ -209,7 +209,7 @@ export interface PromptActionsState {
 export interface PromptNavigationState {
   // Navigation
   navigate: NavigateFunction;
-  uuid: string | undefined;
+  sessionId: string | undefined;
 }
 
 export type PromptStateContextValue =

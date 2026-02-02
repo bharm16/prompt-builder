@@ -1,33 +1,12 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { z } from 'zod';
-import type { ContinuitySession, ContinuityShot } from './types';
-
-const StoredShotSchema = z.object({
-  id: z.string(),
-  sessionId: z.string(),
-  sequenceIndex: z.number(),
-  userPrompt: z.string(),
-  continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']),
-  styleStrength: z.number(),
-  styleReferenceId: z.string().nullable(),
-  modelId: z.string(),
-  status: z.enum(['draft', 'generating-keyframe', 'generating-video', 'completed', 'failed']),
-  createdAt: z.number(),
-}).passthrough();
-
-interface StoredSession {
-  userId: string;
-  name: string;
-  description?: string;
-  primaryStyleReference: Record<string, unknown>;
-  sceneProxy?: Record<string, unknown>;
-  shots: Array<Record<string, unknown>>;
-  defaultSettings: ContinuitySession['defaultSettings'];
-  status: ContinuitySession['status'];
-  createdAtMs: number;
-  updatedAtMs: number;
-  version?: number;
-}
+import type { ContinuitySession } from './types';
+import {
+  deserializeContinuitySession,
+  serializeContinuitySession,
+  type StoredContinuitySession,
+} from './continuitySerialization';
+import { SessionStore } from '@services/sessions/SessionStore';
+import type { SessionRecord } from '@services/sessions/types';
 
 export class ContinuitySessionVersionMismatchError extends Error {
   constructor(
@@ -44,7 +23,8 @@ export class ContinuitySessionVersionMismatchError extends Error {
 
 export class ContinuitySessionStore {
   private readonly db = getFirestore();
-  private readonly collection = this.db.collection('continuity_sessions');
+  private readonly legacyCollection = this.db.collection('continuity_sessions');
+  private readonly sessionStore = new SessionStore();
 
   async save(session: ContinuitySession): Promise<void> {
     await this.saveInternal(session);
@@ -55,21 +35,27 @@ export class ContinuitySessionStore {
   }
 
   private async saveInternal(session: ContinuitySession, expectedVersion?: number): Promise<number> {
-    const docRef = this.collection.doc(session.id);
+    const docRef = this.legacyCollection.doc(session.id);
     const now = Date.now();
 
-    const payload: StoredSession = {
-      userId: session.userId,
-      name: session.name,
-      ...(typeof session.description === 'string' ? { description: session.description } : {}),
-      primaryStyleReference: this.serializeStyleReference(session.primaryStyleReference),
-      ...(session.sceneProxy ? { sceneProxy: this.serializeSceneProxy(session.sceneProxy) } : {}),
-      shots: session.shots.map((shot) => this.serializeShot(shot)),
-      defaultSettings: session.defaultSettings,
-      status: session.status,
-      createdAtMs: session.createdAt.getTime(),
+    const payload: StoredContinuitySession = {
+      ...serializeContinuitySession(session),
       updatedAtMs: now,
     };
+
+    const unifiedSession: SessionRecord = {
+      id: session.id,
+      userId: session.userId,
+      name: session.name,
+      ...(session.description ? { description: session.description } : {}),
+      status: session.status,
+      createdAt: session.createdAt,
+      updatedAt: new Date(now),
+      continuity: session,
+      hasContinuity: true,
+    };
+
+    await this.sessionStore.save(unifiedSession);
 
     if (typeof expectedVersion === 'number') {
       const newVersion = expectedVersion + 1;
@@ -78,7 +64,7 @@ export class ContinuitySessionStore {
         if (!docSnapshot.exists) {
           throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, undefined);
         }
-        const stored = docSnapshot.data() as StoredSession | undefined;
+        const stored = docSnapshot.data() as StoredContinuitySession | undefined;
         const actualVersion = stored?.version;
         if (typeof actualVersion === 'number' && actualVersion !== expectedVersion) {
           throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, actualVersion);
@@ -106,7 +92,7 @@ export class ContinuitySessionStore {
         },
         { merge: true }
       );
-      const stored = docSnapshot.data() as StoredSession | undefined;
+      const stored = docSnapshot.data() as StoredContinuitySession | undefined;
       return typeof stored?.version === 'number' ? stored.version + 1 : 1;
     }
 
@@ -120,146 +106,66 @@ export class ContinuitySessionStore {
   }
 
   async get(sessionId: string): Promise<ContinuitySession | null> {
-    const snapshot = await this.collection.doc(sessionId).get();
+    const unified = await this.sessionStore.get(sessionId);
+    if (unified?.continuity) {
+      return unified.continuity;
+    }
+
+    const snapshot = await this.legacyCollection.doc(sessionId).get();
     if (!snapshot.exists) {
       return null;
     }
 
-    return this.fromStored(sessionId, snapshot.data() as StoredSession);
+    const legacy = deserializeContinuitySession(
+      sessionId,
+      snapshot.data() as StoredContinuitySession
+    );
+    await this.sessionStore.save({
+      id: legacy.id,
+      userId: legacy.userId,
+      name: legacy.name,
+      ...(legacy.description ? { description: legacy.description } : {}),
+      status: legacy.status,
+      createdAt: legacy.createdAt,
+      updatedAt: legacy.updatedAt,
+      continuity: legacy,
+      hasContinuity: true,
+    });
+    return legacy;
   }
 
   async findByUser(userId: string): Promise<ContinuitySession[]> {
-    const snapshot = await this.collection.where('userId', '==', userId).orderBy('updatedAtMs', 'desc').get();
+    const unifiedSessions = await this.sessionStore.findContinuityByUser(userId);
+    if (unifiedSessions.length > 0) {
+      return unifiedSessions
+        .map((session) => session.continuity)
+        .filter((session): session is ContinuitySession => Boolean(session));
+    }
+
+    const snapshot = await this.legacyCollection.where('userId', '==', userId).orderBy('updatedAtMs', 'desc').get();
     if (snapshot.empty) return [];
 
-    return snapshot.docs.map(doc => this.fromStored(doc.id, doc.data() as StoredSession));
+    const legacySessions = snapshot.docs.map(doc =>
+      deserializeContinuitySession(doc.id, doc.data() as StoredContinuitySession)
+    );
+    for (const legacy of legacySessions) {
+      await this.sessionStore.save({
+        id: legacy.id,
+        userId: legacy.userId,
+        name: legacy.name,
+        ...(legacy.description ? { description: legacy.description } : {}),
+        status: legacy.status,
+        createdAt: legacy.createdAt,
+        updatedAt: legacy.updatedAt,
+        continuity: legacy,
+        hasContinuity: true,
+      });
+    }
+    return legacySessions;
   }
 
   async delete(sessionId: string): Promise<void> {
-    await this.collection.doc(sessionId).delete();
-  }
-
-  private fromStored(sessionId: string, stored: StoredSession): ContinuitySession {
-    const sceneProxy = stored.sceneProxy ? this.deserializeSceneProxy(stored.sceneProxy) : undefined;
-    const storedRecord = stored as unknown as Record<string, unknown>;
-    const version = typeof storedRecord.version === 'number'
-      ? storedRecord.version
-      : undefined;
-    return {
-      id: sessionId,
-      userId: stored.userId,
-      name: stored.name,
-      ...(typeof stored.description === 'string' ? { description: stored.description } : {}),
-      primaryStyleReference: this.deserializeStyleReference(stored.primaryStyleReference),
-      ...(sceneProxy ? { sceneProxy } : {}),
-      shots: stored.shots.map((shot) => this.deserializeShot(shot)),
-      defaultSettings: stored.defaultSettings,
-      status: stored.status,
-      ...(version !== undefined ? { version } : {}),
-      createdAt: new Date(stored.createdAtMs),
-      updatedAt: new Date(stored.updatedAtMs),
-    };
-  }
-
-  private serializeShot(shot: ContinuityShot): Record<string, unknown> {
-    return {
-      ...shot,
-      createdAt: shot.createdAt.getTime(),
-      generatedAt: shot.generatedAt ? shot.generatedAt.getTime() : undefined,
-      frameBridge: shot.frameBridge
-        ? {
-            ...shot.frameBridge,
-            extractedAt: shot.frameBridge.extractedAt.getTime(),
-          }
-        : undefined,
-      styleReference: shot.styleReference ? this.serializeStyleReference(shot.styleReference) : undefined,
-      seedInfo: shot.seedInfo
-        ? {
-            ...shot.seedInfo,
-            extractedAt: shot.seedInfo.extractedAt.getTime(),
-          }
-        : undefined,
-    };
-  }
-
-  private deserializeShot(raw: Record<string, unknown>): ContinuityShot {
-    const parsed = StoredShotSchema.safeParse(raw);
-    if (!parsed.success) {
-      throw new Error(`Invalid shot data in Firestore: ${parsed.error.message}`);
-    }
-
-    const data = parsed.data;
-    const createdAt = new Date(data.createdAt);
-    const generatedAt =
-      typeof raw.generatedAt === 'number' ? new Date(raw.generatedAt) : undefined;
-    const seedInfoRaw = raw.seedInfo as Record<string, unknown> | undefined;
-    const frameBridgeRaw = raw.frameBridge as Record<string, unknown> | undefined;
-    const seedInfo =
-      seedInfoRaw && typeof seedInfoRaw.seed === 'number'
-        ? {
-            seed: seedInfoRaw.seed as number,
-            provider: String(seedInfoRaw.provider || ''),
-            modelId: String(seedInfoRaw.modelId || ''),
-            extractedAt:
-              typeof seedInfoRaw.extractedAt === 'number'
-                ? new Date(seedInfoRaw.extractedAt)
-                : new Date(),
-          }
-        : undefined;
-
-    const styleReferenceRaw = raw.styleReference as Record<string, unknown> | undefined;
-
-    const shot = raw as unknown as ContinuityShot;
-    shot.createdAt = createdAt;
-    if (generatedAt) {
-      shot.generatedAt = generatedAt;
-    }
-    if (seedInfo) {
-      shot.seedInfo = seedInfo;
-    }
-    if (frameBridgeRaw) {
-      shot.frameBridge = {
-        ...(frameBridgeRaw as Record<string, unknown>),
-        extractedAt:
-          typeof frameBridgeRaw.extractedAt === 'number'
-            ? new Date(frameBridgeRaw.extractedAt)
-            : new Date(),
-      } as NonNullable<ContinuityShot['frameBridge']>;
-    }
-    if (styleReferenceRaw) {
-      shot.styleReference = this.deserializeStyleReference(styleReferenceRaw);
-    }
-
-    return shot;
-  }
-
-  private serializeStyleReference(ref: ContinuitySession['primaryStyleReference']): Record<string, unknown> {
-    return {
-      ...ref,
-      extractedAt: ref.extractedAt.getTime(),
-    };
-  }
-
-  private deserializeStyleReference(raw: Record<string, unknown>): ContinuitySession['primaryStyleReference'] {
-    const extractedAt = typeof raw.extractedAt === 'number' ? new Date(raw.extractedAt) : new Date();
-    const ref = raw as unknown as ContinuitySession['primaryStyleReference'];
-    ref.extractedAt = extractedAt;
-    return ref;
-  }
-
-  private serializeSceneProxy(proxy: ContinuitySession['sceneProxy']): Record<string, unknown> {
-    return {
-      ...proxy,
-      createdAt: proxy?.createdAt ? proxy.createdAt.getTime() : Date.now(),
-    };
-  }
-
-  private deserializeSceneProxy(raw: Record<string, unknown>): ContinuitySession['sceneProxy'] {
-    const createdAt = typeof raw.createdAt === 'number' ? new Date(raw.createdAt) : new Date();
-    const proxy = raw as unknown as ContinuitySession['sceneProxy'];
-    if (!proxy) {
-      return proxy;
-    }
-    return { ...proxy, createdAt };
+    await this.legacyCollection.doc(sessionId).delete();
+    await this.sessionStore.delete(sessionId);
   }
 }

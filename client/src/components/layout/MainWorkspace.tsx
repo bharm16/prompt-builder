@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAppShell } from '@/contexts/AppShellContext';
+import { AppShell } from '@components/navigation/AppShell';
+import { ContinuityPage } from '@/pages/ContinuityPage';
 import PromptOptimizerWorkspace from '@/features/prompt-optimizer/PromptOptimizerContainer';
 import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 
@@ -8,6 +10,14 @@ import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/
  */
 export function MainWorkspace(): React.ReactElement {
   const { activeTool, convergenceHandoff } = useAppShell();
+
+  if (activeTool === 'continuity') {
+    return (
+      <AppShell>
+        <ContinuityPage />
+      </AppShell>
+    );
+  }
 
   return (
     <GenerationControlsProvider>

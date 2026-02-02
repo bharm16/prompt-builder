@@ -250,9 +250,11 @@ export function usePromptOptimization({
           resetEditStacks();
           persistedSignatureRef.current = null;
           
-          // Navigate to the new prompt URL
-          if (saveResult.uuid) {
-            navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+          // Navigate to the new session URL
+          if (saveResult.id) {
+            navigate(`/session/${saveResult.id}/studio`, { replace: true });
+          } else if (saveResult.uuid) {
+            navigate('/create', { replace: true });
           }
         }
 

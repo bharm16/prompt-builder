@@ -112,7 +112,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
     // Navigation
     navigate,
-    uuid,
+    sessionId,
   } = usePromptState();
   const { domain } = useGenerationControlsStoreState();
   const { setKeyframes } = useGenerationControlsStoreActions();
@@ -137,10 +137,11 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
   // Load prompt from URL parameter
   const { isLoading } = usePromptLoader({
-    uuid,
+    sessionId,
     currentPromptUuid,
     navigate,
     toast,
+    user,
     promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,

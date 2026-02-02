@@ -330,8 +330,10 @@ export function useHistoryPersistence({
 
   const updateEntryHighlight = useCallback(
     (uuid: string, highlightCache: unknown) => {
-      updateHighlights(user?.uid, uuid, highlightCache)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist highlight update', error as Error, { uuid });
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      const docId = entry?.id ?? null;
+      updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.((error: unknown) => {
+        log.warn('Failed to persist highlight update', error as Error, { uuid, docId });
       });
       updateEntry(uuid, { highlightCache: highlightCache ?? null });
     },
