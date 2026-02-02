@@ -173,9 +173,9 @@ export function useConceptBrainstorm({
               resetEditStacks();
               persistedSignatureRef.current = null;
               if (saveResult.id) {
-                navigate(`/session/${saveResult.id}/studio`, { replace: true });
+                navigate(`/session/${saveResult.id}`, { replace: true });
               } else {
-                navigate('/create', { replace: true });
+                navigate('/', { replace: true });
               }
             }
           }

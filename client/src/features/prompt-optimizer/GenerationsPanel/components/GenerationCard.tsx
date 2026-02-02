@@ -27,6 +27,9 @@ interface GenerationCardProps {
   onDelete?: ((generation: Generation) => void) | undefined;
   onDownload?: ((generation: Generation) => void) | undefined;
   onCancel?: ((generation: Generation) => void) | undefined;
+  onContinueSequence?: ((generation: Generation) => void) | undefined;
+  isSequenceMode?: boolean | undefined;
+  isStartingSequence?: boolean | undefined;
   onSelectFrame?: ((url: string, index: number, generationId: string) => void) | undefined;
   onClearSelectedFrame?: (() => void) | undefined;
   selectedFrameUrl?: string | null | undefined;
@@ -47,6 +50,9 @@ export const GenerationCard = memo(function GenerationCard({
   onDelete,
   onDownload,
   onCancel,
+  onContinueSequence,
+  isSequenceMode = false,
+  isStartingSequence = false,
   onSelectFrame,
   onClearSelectedFrame,
   selectedFrameUrl = null,
@@ -62,6 +68,11 @@ export const GenerationCard = memo(function GenerationCard({
   const mediaUrl = generation.mediaUrls[0] ?? null;
   const continuitySourceId =
     generation.mediaAssetIds?.[0] ?? (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
+  const showContinueScene =
+    Boolean(onContinueSequence) &&
+    !isSequenceMode &&
+    generation.mediaType === 'video' &&
+    generation.status === 'completed';
   const showRetry = generation.status === 'failed' && Boolean(onRetry);
   const showDownload =
     generation.tier === 'render' &&
@@ -283,10 +294,15 @@ export const GenerationCard = memo(function GenerationCard({
             )}
           </div>
         )}
-        {generation.mediaType === 'video' && generation.status === 'completed' && (
+        {showContinueScene && (
           <ContinueSceneButton
-            sourceVideoId={continuitySourceId}
-            defaultName={`Scene Continuity - ${config?.label ?? 'Video'}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onContinueSequence?.(generation);
+            }}
+            disabled={!continuitySourceId || isStartingSequence}
+            isLoading={isStartingSequence}
+            label="Continue as Sequence"
             className={showRetry || showDownload ? '' : 'ml-auto'}
           />
         )}

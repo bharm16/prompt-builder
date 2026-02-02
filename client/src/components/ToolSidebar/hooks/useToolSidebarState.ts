@@ -4,12 +4,13 @@ import type { ToolPanelType } from '../types';
 const PANEL_STORAGE_KEY = 'tool-sidebar:activePanel';
 const COLLAPSED_STORAGE_KEY = 'tool-sidebar:isPanelCollapsed';
 
-const VALID_PANELS = new Set<string>(['sessions', 'create', 'studio', 'characters', 'styles']);
+const VALID_PANELS = new Set<string>(['sessions', 'studio', 'characters', 'styles']);
 
 const loadActivePanel = (fallback: ToolPanelType): ToolPanelType => {
   if (typeof window === 'undefined') return fallback;
   try {
     const value = window.localStorage.getItem(PANEL_STORAGE_KEY);
+    if (value === 'create' || value === 'continuity') return 'studio';
     if (value && VALID_PANELS.has(value)) return value as ToolPanelType;
     return fallback;
   } catch {

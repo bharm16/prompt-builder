@@ -1,54 +1,34 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { continuityApi } from '../../api/continuityApi';
+import React from 'react';
 
 interface ContinueSceneButtonProps {
-  sourceVideoId?: string | null;
-  defaultName?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  isLoading?: boolean;
   className?: string;
+  label?: string;
 }
 
 export function ContinueSceneButton({
-  sourceVideoId,
-  defaultName = 'Continuity Session',
+  onClick,
+  disabled = false,
+  isLoading = false,
   className,
+  label = 'Continue Scene',
 }: ContinueSceneButtonProps): React.ReactElement {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleClick = async () => {
-    if (!sourceVideoId || isLoading) return;
-    setError(null);
-    setIsLoading(true);
-    try {
-      const session = await continuityApi.createSession({
-        name: defaultName,
-        sourceVideoId,
-      });
-      navigate(`/session/${session.id}/continuity`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className={className}>
       <button
         type="button"
         className={`rounded-md px-2 py-1 text-xs font-medium ${
-          sourceVideoId
-            ? 'bg-accent text-white'
-            : 'bg-surface-3 text-muted cursor-not-allowed'
+          disabled || isLoading
+            ? 'bg-surface-3 text-muted cursor-not-allowed'
+            : 'bg-accent text-white'
         }`}
-        onClick={handleClick}
-        disabled={!sourceVideoId || isLoading}
+        onClick={onClick}
+        disabled={disabled || isLoading}
       >
-        {isLoading ? 'Starting...' : 'Continue Scene'}
+        {isLoading ? 'Starting...' : label}
       </button>
-      {error && <div className="mt-1 text-xs text-error">{error}</div>}
     </div>
   );
 }

@@ -13,6 +13,8 @@ import { VideoTabContent } from './components/VideoTabContent';
 import { useGenerationControlsPanel } from './hooks/useGenerationControlsPanel';
 import type { GenerationControlsPanelProps } from './types';
 import type { GenerationOverrides } from '@components/ToolSidebar/types';
+import { StyleReferenceControls } from '@/features/prompt-optimizer/components/StyleReferenceControls';
+import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
 
 export function GenerationControlsPanel(props: GenerationControlsPanelProps): ReactElement {
   const {
@@ -39,6 +41,14 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     actions,
   } = useGenerationControlsPanel(props);
   const {
+    isSequenceMode,
+    shots,
+    currentShot,
+    currentShotIndex,
+    updateShotStyleReference,
+    updateShot,
+  } = useWorkspaceSession();
+  const {
     aspectRatio,
     duration,
     selectedModel,
@@ -49,6 +59,43 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
   const showMotionControls = true;
   const isFaceSwapMode = faceSwap.mode === 'face-swap';
   const isFaceSwapFlow = isFaceSwapMode && state.activeTab === 'video';
+  const promptLabel =
+    isSequenceMode && currentShotIndex >= 0 ? `Shot ${currentShotIndex + 1} Prompt` : 'Prompt';
+
+  const handleStyleReferenceChange = useCallback(
+    (sourceShotId: string) => {
+      if (!currentShot) return;
+      void updateShotStyleReference(currentShot.id, sourceShotId);
+    },
+    [currentShot, updateShotStyleReference]
+  );
+
+  const handleStrengthChange = useCallback(
+    (strength: number) => {
+      if (!currentShot) return;
+      void updateShot(currentShot.id, { styleStrength: strength });
+    },
+    [currentShot, updateShot]
+  );
+
+  const handleModeChange = useCallback(
+    (mode: 'frame-bridge' | 'style-match') => {
+      if (!currentShot) return;
+      void updateShot(currentShot.id, { continuityMode: mode });
+    },
+    [currentShot, updateShot]
+  );
+
+  const styleReferenceControls =
+    isSequenceMode && currentShot ? (
+      <StyleReferenceControls
+        shots={shots}
+        currentShot={currentShot}
+        onStyleReferenceChange={handleStyleReferenceChange}
+        onStrengthChange={handleStrengthChange}
+        onModeChange={handleModeChange}
+      />
+    ) : null;
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
@@ -215,6 +262,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           onOpenCameraMotion={actions.handleCameraMotionButtonClick}
           prompt={prompt}
           onPromptChange={onPromptChange}
+          promptLabel={promptLabel}
           isInputLocked={derived.isInputLocked}
           isOptimizing={derived.isOptimizing}
           promptInputRef={refs.resolvedPromptInputRef}
@@ -222,6 +270,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           onPromptKeyDown={actions.handlePromptKeyDown}
           onCreateFromTrigger={onCreateFromTrigger}
           autocomplete={autocomplete}
+          afterPrompt={styleReferenceControls}
           imageSubTab={state.imageSubTab}
           onImageSubTabChange={actions.setImageSubTab}
           faceSwapMode={faceSwap.mode}
@@ -252,6 +301,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           onRemoveKeyframe={actions.handleRemoveKeyframe}
           prompt={prompt}
           onPromptChange={onPromptChange}
+          promptLabel={promptLabel}
           isInputLocked={derived.isInputLocked}
           isOptimizing={derived.isOptimizing}
           promptInputRef={refs.resolvedPromptInputRef}

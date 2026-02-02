@@ -136,6 +136,7 @@ export interface SessionContinuityShot {
   error?: string;
   createdAt: string;
   generatedAt?: string;
+  versions?: SessionPromptVersionEntry[];
 }
 
 export interface SessionContinuitySettings {

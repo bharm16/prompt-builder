@@ -195,7 +195,7 @@ export function HistoryPage(): React.ReactElement {
 
                       {sessionId ? (
                         <Link
-                          to={`/session/${sessionId}/studio`}
+                          to={`/session/${sessionId}`}
                           className="shrink-0 text-sm font-medium text-foreground hover:underline"
                           aria-label="Open prompt"
                         >

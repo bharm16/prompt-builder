@@ -17,6 +17,9 @@ import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
 import { logger } from '@/services/LoggingService';
+import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { useToast } from '@components/Toast';
+import { extractVideoContentAssetId } from '@/utils/storageUrl';
 
 const log = logger.child('GenerationsPanel');
 
@@ -69,6 +72,15 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   onRestoreVersion,
   onCreateVersionIfNeeded,
 }: GenerationsPanelProps): React.ReactElement {
+  const toast = useToast();
+  const {
+    isSequenceMode,
+    isStartingSequence,
+    startSequence,
+    currentShot,
+    generateShot,
+    updateShot,
+  } = useWorkspaceSession();
   const {
     generations,
     activeGenerationId,
@@ -205,9 +217,28 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     };
   }, [faceSwapPreview?.characterAssetId, faceSwapPreview?.url]);
 
+  const generateSequenceShot = useCallback(
+    async (modelId?: string) => {
+      if (!currentShot) return;
+      if (currentShot.status === 'generating-keyframe' || currentShot.status === 'generating-video') {
+        return;
+      }
+      if (modelId && currentShot.modelId !== modelId) {
+        await updateShot(currentShot.id, { modelId });
+      }
+      await generateShot(currentShot.id);
+    },
+    [currentShot, generateShot, updateShot]
+  );
+
   const handleDraft = useCallback(
     (model: DraftModel, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
+      if (isSequenceMode) {
+        onCreateVersionIfNeeded();
+        void generateSequenceShot(model);
+        return;
+      }
       const resolvedOverrides = overrides ?? faceSwapOverride ?? undefined;
       const versionId = onCreateVersionIfNeeded();
       const primaryKeyframe = keyframes[0];
@@ -231,7 +262,16 @@ export const GenerationsPanel = memo(function GenerationsPanel({
         ...(resolvedOverrides?.generationParams ? { generationParams: resolvedOverrides.generationParams } : {}),
       });
     },
-    [faceSwapOverride, generateDraft, keyframes, mergedGenerationParams, onCreateVersionIfNeeded, prompt]
+    [
+      faceSwapOverride,
+      generateDraft,
+      generateSequenceShot,
+      isSequenceMode,
+      keyframes,
+      mergedGenerationParams,
+      onCreateVersionIfNeeded,
+      prompt,
+    ]
   );
 
   const {
@@ -253,41 +293,54 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   const handleRenderWithFaceSwap = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
+      if (isSequenceMode) {
+        onCreateVersionIfNeeded();
+        void generateSequenceShot(model);
+        return;
+      }
       if (!overrides && faceSwapOverride) {
         handleRender(model, faceSwapOverride);
         return;
       }
       handleRender(model, overrides);
     },
-    [faceSwapOverride, handleRender]
+    [faceSwapOverride, generateSequenceShot, handleRender, isSequenceMode, onCreateVersionIfNeeded]
   );
 
   const handleStoryboard = useCallback(() => {
+    if (isSequenceMode) return;
     const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
     const versionId = onCreateVersionIfNeeded();
     const seedImageUrl = keyframes[0]?.url ?? null;
     generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
-  }, [generateStoryboard, keyframes, onCreateVersionIfNeeded, prompt]);
+  }, [generateStoryboard, isSequenceMode, keyframes, onCreateVersionIfNeeded, prompt]);
 
   const handleDelete = useCallback(
     (generation: Generation) => {
+      if (isSequenceMode) return;
       removeGeneration(generation.id);
     },
-    [removeGeneration]
+    [isSequenceMode, removeGeneration]
   );
 
   const handleRetry = useCallback(
     (generation: Generation) => {
+      if (isSequenceMode) {
+        onCreateVersionIfNeeded();
+        void generateSequenceShot(generation.model);
+        return;
+      }
       retryGeneration(generation.id);
     },
-    [retryGeneration]
+    [generateSequenceShot, isSequenceMode, onCreateVersionIfNeeded, retryGeneration]
   );
 
   const handleCancel = useCallback(
     (generation: Generation) => {
+      if (isSequenceMode) return;
       cancelGeneration(generation.id);
     },
-    [cancelGeneration]
+    [cancelGeneration, isSequenceMode]
   );
 
   const handleDownload = useCallback((generation: Generation) => {
@@ -296,6 +349,26 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, []);
+
+  const handleContinueSequence = useCallback(
+    async (generation: Generation) => {
+      if (isSequenceMode || isStartingSequence) return;
+      const mediaUrl = generation.mediaUrls[0] ?? null;
+      const sourceVideoId =
+        generation.mediaAssetIds?.[0] ?? (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
+      if (!sourceVideoId) {
+        toast.warning('Unable to start a sequence from this generation.');
+        return;
+      }
+      try {
+        await startSequence({ sourceVideoId, prompt: generation.prompt });
+        toast.success('Sequence mode enabled.');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to start sequence');
+      }
+    },
+    [isSequenceMode, isStartingSequence, startSequence, toast]
+  );
 
   const versionsForTimeline = useMemo(() => {
     if (!versions.length || !promptVersionId) return versions;
@@ -366,6 +439,9 @@ export const GenerationsPanel = memo(function GenerationsPanel({
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 onCancel={handleCancel}
+                onContinueSequence={handleContinueSequence}
+                isSequenceMode={isSequenceMode}
+                isStartingSequence={isStartingSequence}
                 onSelectFrame={handleSelectFrame}
                 onClearSelectedFrame={handleClearSelectedFrame}
                 selectedFrameUrl={selectedKeyframe?.url ?? null}

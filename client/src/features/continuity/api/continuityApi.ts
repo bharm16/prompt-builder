@@ -1,6 +1,6 @@
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput } from '../types';
+import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput, UpdateShotInput } from '../types';
 import { z } from 'zod';
 import {
   ContinuityApiResponseSchema,
@@ -101,6 +101,12 @@ export const continuityApi = {
     fetchWithAuth(`/v2/sessions/${sessionId}/shots`, ContinuityShotSchema, {
       method: 'POST',
       body: JSON.stringify(input),
+    }),
+
+  updateShot: (sessionId: string, shotId: string, updates: UpdateShotInput) =>
+    fetchWithAuth(`/v2/sessions/${sessionId}/shots/${shotId}`, ContinuityShotSchema, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
     }),
 
   generateShot: (sessionId: string, shotId: string) =>

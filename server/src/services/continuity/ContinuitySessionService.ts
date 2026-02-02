@@ -29,6 +29,13 @@ export class ContinuitySessionService {
   async createSession(userId: string, request: CreateSessionRequest): Promise<ContinuitySession> {
     this.log.info('Creating continuity session', { userId, name: request.name });
 
+    if (request.sessionId) {
+      const existing = await this.sessionStore.get(request.sessionId);
+      if (existing) {
+        return existing;
+      }
+    }
+
     let primaryStyleReference: StyleReference;
 
     if (request.sourceVideoId) {
@@ -50,8 +57,9 @@ export class ContinuitySessionService {
 
     primaryStyleReference = await this.mediaService.analyzeStyleReference(primaryStyleReference);
 
+    const sessionId = request.sessionId ?? this.generateSessionId();
     const session: ContinuitySession = {
-      id: this.generateSessionId(),
+      id: sessionId,
       userId,
       name: request.name,
       ...(typeof request.description === 'string' ? { description: request.description } : {}),
@@ -128,6 +136,7 @@ export class ContinuitySessionService {
       }
     }
 
+    const hasSourceVideo = Boolean(request.sourceVideoId);
     const shot: ContinuityShot = {
       id: this.generateShotId(),
       sessionId: session.id,
@@ -138,8 +147,10 @@ export class ContinuitySessionService {
       styleStrength: request.styleStrength ?? session.defaultSettings.defaultStyleStrength,
       styleReferenceId,
       modelId,
-      status: 'draft',
+      ...(hasSourceVideo ? { videoAssetId: request.sourceVideoId } : {}),
+      status: hasSourceVideo ? 'completed' : 'draft',
       createdAt: new Date(),
+      ...(hasSourceVideo ? { generatedAt: new Date() } : {}),
       ...(frameBridge ? { frameBridge } : {}),
       ...(request.characterAssetId ? { characterAssetId: request.characterAssetId } : {}),
       ...(request.faceStrength !== undefined ? { faceStrength: request.faceStrength } : {}),
@@ -155,6 +166,54 @@ export class ContinuitySessionService {
 
   async generateShot(sessionId: string, shotId: string): Promise<ContinuityShot> {
     return await this.shotGenerator.generateShot(sessionId, shotId);
+  }
+
+  async updateShot(
+    sessionId: string,
+    shotId: string,
+    updates: {
+      prompt?: string;
+      continuityMode?: ContinuityShot['continuityMode'];
+      generationMode?: ContinuityShot['generationMode'];
+      styleReferenceId?: ContinuityShot['styleReferenceId'];
+      styleStrength?: ContinuityShot['styleStrength'];
+      modelId?: ContinuityShot['modelId'];
+      characterAssetId?: ContinuityShot['characterAssetId'] | null;
+      faceStrength?: ContinuityShot['faceStrength'];
+      camera?: ContinuityShot['camera'];
+      versions?: Array<Record<string, unknown>>;
+    }
+  ): Promise<ContinuityShot> {
+    const session = await this.sessionStore.get(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
+    const shotIndex = session.shots.findIndex((s) => s.id === shotId);
+    if (shotIndex < 0) throw new Error(`Shot not found: ${shotId}`);
+
+    const shot = session.shots[shotIndex]!;
+    const next: ContinuityShot = {
+      ...shot,
+      ...(updates.prompt !== undefined ? { userPrompt: updates.prompt } : {}),
+      ...(updates.continuityMode ? { continuityMode: updates.continuityMode } : {}),
+      ...(updates.generationMode ? { generationMode: updates.generationMode } : {}),
+      ...(updates.styleReferenceId !== undefined ? { styleReferenceId: updates.styleReferenceId } : {}),
+      ...(updates.styleStrength !== undefined ? { styleStrength: updates.styleStrength } : {}),
+      ...(updates.modelId ? { modelId: updates.modelId } : {}),
+      ...(updates.characterAssetId !== undefined
+        ? updates.characterAssetId
+          ? { characterAssetId: updates.characterAssetId }
+          : { characterAssetId: undefined }
+        : {}),
+      ...(updates.faceStrength !== undefined ? { faceStrength: updates.faceStrength } : {}),
+      ...(updates.camera ? { camera: { ...(shot.camera ?? {}), ...updates.camera } } : {}),
+      ...(updates.versions !== undefined
+        ? { versions: updates.versions as ContinuityShot['versions'] }
+        : {}),
+    };
+
+    session.shots[shotIndex] = next;
+    session.updatedAt = new Date();
+    await this.sessionStore.save(session);
+    return next;
   }
 
   async updateShotStyleReference(sessionId: string, shotId: string, styleReferenceId: string | null): Promise<ContinuityShot> {

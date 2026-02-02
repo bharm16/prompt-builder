@@ -28,9 +28,33 @@ const CreateShotSchema = z
     generationMode: z.enum(['continuity', 'standard']).optional(),
     styleReferenceId: z.string().nullable().optional(),
     styleStrength: z.number().optional(),
+    sourceVideoId: z.string().optional(),
     modelId: z.string().optional(),
     characterAssetId: z.string().optional(),
     faceStrength: z.number().optional(),
+    camera: z
+      .object({
+        yaw: z.number().optional(),
+        pitch: z.number().optional(),
+        roll: z.number().optional(),
+        dolly: z.number().optional(),
+      })
+      .partial()
+      .optional(),
+  })
+  .strip();
+
+const UpdateShotSchema = z
+  .object({
+    prompt: z.string().optional(),
+    continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
+    generationMode: z.enum(['continuity', 'standard']).optional(),
+    styleReferenceId: z.string().nullable().optional(),
+    styleStrength: z.number().optional(),
+    modelId: z.string().optional(),
+    characterAssetId: z.string().nullable().optional(),
+    faceStrength: z.number().optional(),
+    versions: z.array(z.record(z.string(), z.unknown())).optional(),
     camera: z
       .object({
         yaw: z.number().optional(),
@@ -172,7 +196,7 @@ export function createContinuityRoutes(
         return;
       }
 
-      const { prompt, continuityMode, generationMode, styleReferenceId, styleStrength, modelId, characterAssetId, faceStrength, camera } =
+      const { prompt, continuityMode, generationMode, styleReferenceId, styleStrength, sourceVideoId, modelId, characterAssetId, faceStrength, camera } =
         parsed.data;
 
       const shot = await service.addShot({
@@ -182,6 +206,7 @@ export function createContinuityRoutes(
         ...(generationMode ? { generationMode } : {}),
         ...(styleReferenceId !== undefined ? { styleReferenceId } : {}),
         ...(styleStrength !== undefined ? { styleStrength } : {}),
+        ...(sourceVideoId ? { sourceVideoId } : {}),
         ...(modelId ? { modelId } : {}),
         ...(characterAssetId ? { characterAssetId } : {}),
         ...(faceStrength !== undefined ? { faceStrength } : {}),
@@ -196,6 +221,26 @@ export function createContinuityRoutes(
       });
 
       res.status(201).json({ success: true, data: shot });
+    })
+  );
+
+  router.patch(
+    '/sessions/:sessionId/shots/:shotId',
+    asyncHandler(async (req: Request, res: Response) => {
+      const session = await requireSessionForUser(service, req, res);
+      if (!session) return;
+      const parsed = UpdateShotSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
+        return;
+      }
+
+      const shot = await service.updateShot(session.id, req.params.shotId, parsed.data);
+      res.json({ success: true, data: shot });
     })
   );
 

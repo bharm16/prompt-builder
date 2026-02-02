@@ -8,8 +8,6 @@ export {
   AppShellContext,
   AppShellProvider,
   useAppShell,
-  type ActiveTool,
   type AppShellContextValue,
   type AppShellProviderProps,
-  type SetActiveToolOptions,
 } from './AppShellContext';

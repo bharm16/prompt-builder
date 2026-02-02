@@ -85,7 +85,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           />
         )}
 
-        {(activePanel === 'studio' || activePanel === 'create') && (
+        {activePanel === 'studio' && (
           <GenerationControlsPanel
             prompt={prompt}
             {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}

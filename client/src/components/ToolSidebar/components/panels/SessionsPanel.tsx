@@ -151,7 +151,7 @@ export function SessionsPanel({
         toast.warning('This session is not available in a new tab yet.');
         return;
       }
-      window.open(`/session/${entry.id}/studio`, '_blank', 'noopener,noreferrer');
+      window.open(`/session/${entry.id}`, '_blank', 'noopener,noreferrer');
     },
     [toast]
   );

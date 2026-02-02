@@ -15,6 +15,7 @@ const CreateSessionSchema = z.object({
 
 const CreateContinuitySessionSchema = z
   .object({
+    sessionId: z.string().optional(),
     name: z.string().min(1),
     description: z.string().optional(),
     sourceVideoId: z.string().optional().nullable(),
@@ -60,9 +61,32 @@ const CreateShotSchema = z.object({
   generationMode: z.enum(['continuity', 'standard']).optional(),
   styleReferenceId: z.string().nullable().optional(),
   styleStrength: z.number().optional(),
+  sourceVideoId: z.string().optional(),
   modelId: z.string().optional(),
   characterAssetId: z.string().optional(),
   faceStrength: z.number().optional(),
+  versions: z.array(z.record(z.string(), z.unknown())).optional(),
+  camera: z
+    .object({
+      yaw: z.number().optional(),
+      pitch: z.number().optional(),
+      roll: z.number().optional(),
+      dolly: z.number().optional(),
+    })
+    .partial()
+    .optional(),
+}).strip();
+
+const UpdateShotSchema = z.object({
+  prompt: z.string().optional(),
+  continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
+  generationMode: z.enum(['continuity', 'standard']).optional(),
+  styleReferenceId: z.string().nullable().optional(),
+  styleStrength: z.number().optional(),
+  modelId: z.string().optional(),
+  characterAssetId: z.string().nullable().optional(),
+  faceStrength: z.number().optional(),
+  versions: z.array(z.record(z.string(), z.unknown())).optional(),
   camera: z
     .object({
       yaw: z.number().optional(),
@@ -117,6 +141,17 @@ export function createSessionRoutes(
       if (!parsed.success) {
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
+      }
+      if (parsed.data.sessionId) {
+        const existing = await sessionService.getSession(parsed.data.sessionId);
+        if (!existing) {
+          res.status(404).json({ success: false, error: 'Session not found' });
+          return;
+        }
+        if (existing.userId !== userId) {
+          res.status(403).json({ success: false, error: 'Access denied' });
+          return;
+        }
       }
       const continuitySession = await continuityService.createSession(userId, parsed.data);
       const session = await sessionService.getSession(continuitySession.id);
@@ -322,6 +357,21 @@ export function createSessionRoutes(
         return;
       }
       const shot = await continuityService.addShot({ sessionId: req.params.sessionId, ...parsed.data });
+      res.json({ success: true, data: shot });
+    })
+  );
+
+  router.patch(
+    '/:sessionId/shots/:shotId',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = requireUserId(req as RequestWithUser, res);
+      if (!userId) return;
+      const parsed = UpdateShotSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
+        return;
+      }
+      const shot = await continuityService.updateShot(req.params.sessionId, req.params.shotId, parsed.data);
       res.json({ success: true, data: shot });
     })
   );

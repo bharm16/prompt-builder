@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { AppShellProps } from '@components/navigation/AppShell/types';
 import { AppShell } from '@components/navigation/AppShell';
+import { useToast } from '@components/Toast';
 import DebugButton from '@components/DebugButton';
 import AssetEditor from '@features/assets/components/AssetEditor';
 import type { PromptModalsProps } from '../../types';
@@ -11,6 +12,8 @@ import { PromptModals } from '../../components/PromptModals';
 import { QuickCharacterCreate } from '../../components/QuickCharacterCreate';
 import { DetectedAssets } from '../../components/DetectedAssets';
 import { PromptResultsLayout } from '../../layouts/PromptResultsLayout';
+import { WorkspaceShotTimeline } from '../../components/ShotTimeline';
+import { useWorkspaceSession } from '../../context/WorkspaceSessionContext';
 
 interface QuickCreateState {
   isOpen: boolean;
@@ -87,6 +90,18 @@ export function PromptOptimizerWorkspaceView({
   promptResultsLayoutProps,
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
+  const toast = useToast();
+  const { shots, isSequenceMode, currentShotId, setCurrentShotId, addShot } = useWorkspaceSession();
+
+  const handleAddShot = useCallback(async () => {
+    try {
+      const shot = await addShot({ prompt: ' ' });
+      setCurrentShotId(shot.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add shot');
+    }
+  }, [addShot, setCurrentShotId, toast]);
+
   return (
     <AppShell
       showHistory={showHistory}
@@ -139,7 +154,17 @@ export function PromptOptimizerWorkspaceView({
               </div>
             </main>
           ) : (
-            <PromptResultsLayout {...promptResultsLayoutProps} />
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <PromptResultsLayout {...promptResultsLayoutProps} />
+              {isSequenceMode && shots.length > 0 && (
+                <WorkspaceShotTimeline
+                  shots={shots}
+                  currentShotId={currentShotId}
+                  onShotSelect={setCurrentShotId}
+                  onAddShot={handleAddShot}
+                />
+              )}
+            </div>
           )}
         </div>
 

@@ -11,6 +11,7 @@ import { useDrawerState } from '@components/CollapsibleDrawer';
 import { useToast } from '@components/Toast';
 import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRequest';
 import { useDebugLogger } from '@hooks/useDebugLogger';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import {
   PERFORMANCE_CONFIG,
   DEFAULT_LABELING_POLICY,
@@ -62,6 +63,7 @@ import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
 import { useGenerationControlsStoreState } from './context/GenerationControlsStore';
+import { useWorkspaceSession } from './context/WorkspaceSessionContext';
 import {
   usePromptActions,
   usePromptConfig,
@@ -86,6 +88,13 @@ export const resolveVersionTimestamp = (
     if (!Number.isNaN(asNumber)) return asNumber;
   }
   return null;
+};
+
+const mapShotStatusToGenerationStatus = (status: string): Generation['status'] => {
+  if (status === 'completed') return 'completed';
+  if (status === 'failed') return 'failed';
+  if (status === 'generating-keyframe' || status === 'generating-video') return 'generating';
+  return 'pending';
 };
 
 export const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
@@ -170,6 +179,8 @@ export function PromptCanvas({
   const { promptOptimizer, promptHistory } = usePromptServices();
   const { domain } = useGenerationControlsStoreState();
   const keyframes = domain.keyframes;
+  const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
+  const hasShotContext = Boolean(isSequenceMode && currentShot);
   const {
     currentPromptUuid,
     currentPromptDocId,
@@ -218,6 +229,148 @@ export function PromptCanvas({
       ? fpsValue
       : null;
   }, [generationParams?.fps]);
+
+  const shotId = currentShot?.id ?? null;
+  const sequenceGenerationVersionId = useMemo(() => {
+    if (!currentShot) return null;
+    const versions = (currentShot.versions as PromptVersionEntry[] | undefined) ?? [];
+    const existing = versions.length ? versions[versions.length - 1]?.versionId : undefined;
+    return existing ?? `shot-${currentShot.id}`;
+  }, [currentShot]);
+
+  const sequenceVideoUrl = useMemo(() => {
+    if (!currentShot?.videoAssetId) return null;
+    return `/api/preview/video/content/${currentShot.videoAssetId}`;
+  }, [currentShot?.videoAssetId]);
+
+  const sequenceGenerations = useMemo<Generation[]>(() => {
+    if (!currentShot || !sequenceGenerationVersionId) return [];
+    const status = mapShotStatusToGenerationStatus(currentShot.status);
+    const hasOutput = Boolean(currentShot.videoAssetId || currentShot.generatedKeyframeUrl);
+    const shouldRender = hasOutput || status !== 'pending';
+    if (!shouldRender) return [];
+    const createdAtMs = resolveVersionTimestamp(currentShot.createdAt) ?? Date.now();
+    const completedAtMs =
+      resolveVersionTimestamp(currentShot.generatedAt) ??
+      (status === 'completed' ? createdAtMs : null);
+    return [
+      {
+        id: currentShot.id,
+        tier: 'render',
+        status,
+        model: currentShot.modelId,
+        prompt: currentShot.userPrompt ?? '',
+        promptVersionId: sequenceGenerationVersionId,
+        createdAt: createdAtMs,
+        completedAt: completedAtMs,
+        mediaType: 'video',
+        mediaUrls: sequenceVideoUrl ? [sequenceVideoUrl] : [],
+        ...(currentShot.videoAssetId ? { mediaAssetIds: [currentShot.videoAssetId] } : {}),
+        thumbnailUrl: currentShot.generatedKeyframeUrl ?? null,
+      },
+    ];
+  }, [currentShot, sequenceGenerationVersionId, sequenceVideoUrl]);
+
+  const sequenceVersions = useMemo<PromptVersionEntry[]>(() => {
+    if (!currentShot) return [];
+    const existing = (currentShot.versions ?? []) as PromptVersionEntry[];
+    if (existing.length > 0) {
+      if (
+        sequenceGenerations.length > 0 &&
+        !existing.some((version) => Array.isArray(version.generations) && version.generations.length > 0)
+      ) {
+        const patched = [...existing];
+        const targetIndex = patched.length - 1;
+        const target = patched[targetIndex];
+        if (target) {
+          patched[targetIndex] = { ...target, generations: sequenceGenerations };
+          return patched;
+        }
+      }
+      return existing;
+    }
+    if (!sequenceGenerations.length || !sequenceGenerationVersionId) return [];
+    const promptText = currentShot.userPrompt ?? '';
+    const signature = createHighlightSignature(promptText);
+    const rawTimestamp = currentShot.generatedAt ?? currentShot.createdAt ?? new Date().toISOString();
+    const timestamp = typeof rawTimestamp === 'string' && rawTimestamp.trim()
+      ? rawTimestamp
+      : new Date().toISOString();
+    return [
+      {
+        versionId: sequenceGenerationVersionId,
+        label: 'v1',
+        signature,
+        prompt: promptText,
+        timestamp,
+        ...(currentShot.generatedKeyframeUrl
+          ? {
+              preview: {
+                generatedAt: timestamp,
+                imageUrl: currentShot.generatedKeyframeUrl,
+                aspectRatio: null,
+              },
+            }
+          : {}),
+        ...(sequenceVideoUrl
+          ? {
+              video: {
+                generatedAt: timestamp,
+                videoUrl: sequenceVideoUrl,
+                model: currentShot.modelId ?? null,
+                generationParams: null,
+              },
+            }
+          : {}),
+        generations: sequenceGenerations,
+      },
+    ];
+  }, [currentShot, sequenceGenerationVersionId, sequenceGenerations, sequenceVideoUrl]);
+
+  const shotPromptEntry = useMemo<PromptHistoryEntry | null>(() => {
+    if (!hasShotContext || !currentShot) return null;
+    return {
+      uuid: currentShot.id,
+      input: currentShot.userPrompt ?? '',
+      output: '',
+      versions: sequenceVersions,
+    };
+  }, [hasShotContext, currentShot, sequenceVersions]);
+
+  const updateShotVersions = useCallback(
+    (versions: PromptVersionEntry[]) => {
+      if (!shotId) return;
+      void updateShot(shotId, { versions });
+    },
+    [shotId, updateShot]
+  );
+
+  const versionHistory = useMemo(
+    () => {
+      if (hasShotContext && shotPromptEntry) {
+        return {
+          history: [shotPromptEntry],
+          updateEntryVersions: (_uuid: string, _docId: string | null, versions: PromptVersionEntry[]) => {
+            updateShotVersions(versions);
+          },
+        };
+      }
+      return {
+        history: promptHistory.history,
+        updateEntryVersions: promptHistory.updateEntryVersions,
+      };
+    },
+    [
+      hasShotContext,
+      shotPromptEntry,
+      updateShotVersions,
+      promptHistory.history,
+      promptHistory.updateEntryVersions,
+    ]
+  );
+
+  const versioningPromptUuid = hasShotContext ? shotId : currentPromptUuid;
+  const versioningPromptDocId = hasShotContext ? null : currentPromptDocId;
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -302,13 +455,18 @@ export function PromptCanvas({
     selectedSpanId || (suggestionsData && suggestionsData.show !== false)
   );
   const currentPromptEntry = useMemo(() => {
-    if (!promptHistory.history.length) return null;
-    return (
-      promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
-      promptHistory.history.find((item) => item.id === currentPromptDocId) ||
-      null
-    );
-  }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
+    if (!versionHistory.history.length) return null;
+    if (versioningPromptUuid) {
+      return (
+        versionHistory.history.find((item) => item.uuid === versioningPromptUuid) ||
+        null
+      );
+    }
+    if (versioningPromptDocId) {
+      return versionHistory.history.find((item) => item.id === versioningPromptDocId) || null;
+    }
+    return versionHistory.history[0] ?? null;
+  }, [versionHistory.history, versioningPromptUuid, versioningPromptDocId]);
   const currentVersions = useMemo(
     () =>
       Array.isArray(currentPromptEntry?.versions)
@@ -348,22 +506,28 @@ export function PromptCanvas({
       })),
     [orderedVersions, hasEditsSinceLastVersion]
   );
-  const selectedVersionId =
-    activeVersionId ?? versionsForPanel[0]?.versionId ?? '';
+  const selectedVersionId = useMemo(() => {
+    if (activeVersionId && versionsForPanel.some((version) => version.versionId === activeVersionId)) {
+      return activeVersionId;
+    }
+    return versionsForPanel[0]?.versionId ?? '';
+  }, [activeVersionId, versionsForPanel]);
   const activeVersion = useMemo(() => {
-    if (activeVersionId) {
-      return currentVersions.find(
-        (version) => version.versionId === activeVersionId
-      ) ?? null;
+    if (selectedVersionId) {
+      return (
+        currentVersions.find((version) => version.versionId === selectedVersionId) ??
+        orderedVersions[0] ??
+        null
+      );
     }
     return orderedVersions[0] ?? null;
-  }, [activeVersionId, currentVersions, orderedVersions]);
+  }, [currentVersions, orderedVersions, selectedVersionId]);
   const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
   const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning(
     {
-      promptHistory,
-      currentPromptUuid,
-      currentPromptDocId,
+      promptHistory: versionHistory,
+      currentPromptUuid: versioningPromptUuid,
+      currentPromptDocId: versioningPromptDocId,
       activeVersionId,
       latestHighlightRef,
       versionEditCountRef,
@@ -412,6 +576,9 @@ export function PromptCanvas({
   );
 
   const ensureDraftEntry = useCallback((): { uuid: string; docId: string } => {
+    if (hasShotContext && currentShot) {
+      return { uuid: currentShot.id, docId: '' };
+    }
     if (currentPromptUuid) {
       return { uuid: currentPromptUuid, docId: currentPromptDocId ?? '' };
     }
@@ -425,6 +592,8 @@ export function PromptCanvas({
     setCurrentPromptDocId(draft.id);
     return { uuid: draft.uuid, docId: draft.id };
   }, [
+    hasShotContext,
+    currentShot,
     currentPromptDocId,
     currentPromptUuid,
     generationParams,
@@ -435,6 +604,18 @@ export function PromptCanvas({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
   ]);
+
+  const persistVersions = useCallback(
+    (versions: PromptVersionEntry[], identifiers?: { uuid: string; docId?: string }) => {
+      if (hasShotContext && shotId) {
+        updateShotVersions(versions);
+        return;
+      }
+      if (!identifiers?.uuid) return;
+      promptHistory.updateEntryVersions(identifiers.uuid, identifiers.docId ?? null, versions);
+    },
+    [hasShotContext, shotId, updateShotVersions, promptHistory.updateEntryVersions]
+  );
 
   const handleCreateVersion = useCallback((): void => {
     if (!currentVersions) return;
@@ -465,10 +646,7 @@ export function PromptCanvas({
       ...(edits.length ? { edits } : {}),
     };
 
-    promptHistory.updateEntryVersions(uuid, docId || null, [
-      ...currentVersions,
-      nextVersion,
-    ]);
+    persistVersions([...currentVersions, nextVersion], { uuid, docId });
     setActiveVersionId(nextVersion.versionId);
     resetVersionEdits();
   }, [
@@ -477,7 +655,7 @@ export function PromptCanvas({
     inputPrompt,
     latestHighlightRef,
     normalizedDisplayedPrompt,
-    promptHistory,
+    persistVersions,
     resetVersionEdits,
     setActiveVersionId,
     versionEditCountRef,
@@ -511,9 +689,7 @@ export function PromptCanvas({
         ...(edits.length ? { edits } : {}),
       };
 
-      promptHistory.updateEntryVersions(uuid, docId || null, [
-        newVersion,
-      ]);
+      persistVersions([newVersion], { uuid, docId });
       setActiveVersionId(newVersion.versionId);
       resetVersionEdits();
       return newVersion.versionId;
@@ -540,10 +716,7 @@ export function PromptCanvas({
       ...(edits.length ? { edits } : {}),
     };
 
-    promptHistory.updateEntryVersions(uuid, docId || null, [
-      ...currentVersions,
-      newVersion,
-    ]);
+    persistVersions([...currentVersions, newVersion], { uuid, docId });
     setActiveVersionId(newVersion.versionId);
     resetVersionEdits();
     return newVersion.versionId;
@@ -554,7 +727,7 @@ export function PromptCanvas({
     inputPrompt,
     latestHighlightRef,
     normalizedDisplayedPrompt,
-    promptHistory,
+    persistVersions,
     resetVersionEdits,
     setActiveVersionId,
     versionEditCountRef,
@@ -703,7 +876,7 @@ export function PromptCanvas({
           signature: result.signature,
           cacheId:
             result.cacheId ??
-            (currentPromptUuid ? String(currentPromptUuid) : null),
+            (versioningPromptUuid ? String(versioningPromptUuid) : null),
           updatedAt: new Date().toISOString(),
         };
         syncVersionHighlights(snapshot, normalizedDisplayedPrompt ?? '');
@@ -713,7 +886,7 @@ export function PromptCanvas({
       enableMLHighlighting,
       onHighlightsPersist,
       debug,
-      currentPromptUuid,
+      versioningPromptUuid,
       normalizedDisplayedPrompt,
       syncVersionHighlights,
     ]

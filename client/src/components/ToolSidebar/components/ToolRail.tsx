@@ -1,10 +1,9 @@
 import type { ReactElement } from 'react';
 import { Home } from '@promptstudio/system/components/ui';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
-import { useAppShell } from '@/contexts/AppShellContext';
 import { logger } from '@/services/LoggingService';
 
 const log = logger.child('ToolRail');
@@ -15,8 +14,6 @@ export function ToolRail({
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { activeTool, setActiveTool } = useAppShell();
   const headerItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
@@ -26,89 +23,30 @@ export function ToolRail({
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
   const userActionLabel = user ? 'Account' : 'Sign in';
-  const sessionIdMatch = location.pathname.match(/^\\/session\\/([^/]+)/);
-  const activeSessionId = sessionIdMatch?.[1] ?? null;
-
   /**
-   * Handle panel change with tool switching for Create/Studio
-   * Requirement 16.3-16.4: Tool switching via left panel
+   * Handle panel change for left-side panels
    */
   const handlePanelChange = (panelId: typeof activePanel): void => {
-    if (panelId === 'create') {
-      log.info('Create tool selected from rail', {
-        fromPath: location.pathname,
-        activeTool,
-      });
-      const result = setActiveTool('create');
-      if (result === 'blocked') {
-        log.warn('Create tool switch blocked by generation-in-progress guard', {
-          fromPath: location.pathname,
-          activeTool,
-        });
+    if (panelId === 'sessions') {
+      if (activePanel === 'sessions') {
+        log.debug('Toggling back to workspace panel', { fromPath: location.pathname });
+        onPanelChange('studio');
         return;
       }
-      log.info('Navigating to create route from rail', {
-        toPath: activeSessionId ? `/session/${activeSessionId}/create` : '/create',
-      });
-      navigate(activeSessionId ? `/session/${activeSessionId}/create` : '/create');
-      onPanelChange(panelId);
-    } else if (panelId === 'studio') {
-      log.info('Studio tool selected from rail', {
-        fromPath: location.pathname,
-        activeTool,
-      });
-      const result = setActiveTool('studio');
-      if (result === 'blocked') {
-        log.warn('Studio tool switch blocked by generation-in-progress guard', {
-          fromPath: location.pathname,
-          activeTool,
-        });
-        return;
-      }
-      log.info('Navigating to studio route from rail', {
-        toPath: activeSessionId ? `/session/${activeSessionId}/studio` : '/',
-      });
-      navigate(activeSessionId ? `/session/${activeSessionId}/studio` : '/');
-      onPanelChange(panelId);
-    } else if (panelId === 'continuity') {
-      log.info('Continuity tool selected from rail', {
-        fromPath: location.pathname,
-        activeTool,
-      });
-      const result = setActiveTool('continuity');
-      if (result === 'blocked') {
-        log.warn('Continuity tool switch blocked by generation-in-progress guard', {
-          fromPath: location.pathname,
-          activeTool,
-        });
-        return;
-      }
-      const target = activeSessionId ? `/session/${activeSessionId}/continuity` : '/session/new/continuity';
-      log.info('Navigating to continuity route from rail', { toPath: target });
-      navigate(target);
+      log.debug('Sessions panel selected from rail', { fromPath: location.pathname });
       onPanelChange('sessions');
-    } else {
-      log.debug('Non-tool panel selected from rail', {
-        panelId,
-        fromPath: location.pathname,
-        activeTool,
-      });
-      onPanelChange(panelId);
+      return;
     }
+    log.debug('Library panel selected from rail', { panelId, fromPath: location.pathname });
+    onPanelChange(panelId);
   };
 
   /**
    * Determine if a panel is active, considering both panel state and tool state
    */
   const isPanelActive = (panelId: typeof activePanel): boolean => {
-    if (panelId === 'create') {
-      return activeTool === 'create';
-    }
-    if (panelId === 'studio') {
-      return activeTool === 'studio';
-    }
-    if (panelId === 'continuity') {
-      return activeTool === 'continuity';
+    if (panelId === 'sessions') {
+      return activePanel === 'sessions' || activePanel === 'studio';
     }
     return activePanel === panelId;
   };

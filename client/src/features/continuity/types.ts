@@ -8,6 +8,7 @@ import type {
   SessionSeedInfo,
   SessionSceneProxy,
   SessionStyleReference,
+  SessionPromptVersionEntry,
 } from '@shared/types/session';
 
 export type GenerationMode = SessionGenerationMode;
@@ -32,6 +33,7 @@ export type ContinuitySession = {
 };
 
 export interface CreateSessionInput {
+  sessionId?: string;
   name: string;
   description?: string;
   sourceVideoId?: string;
@@ -46,9 +48,28 @@ export interface CreateShotInput {
   generationMode?: GenerationMode;
   styleReferenceId?: string | null;
   styleStrength?: number;
+  sourceVideoId?: string;
   modelId?: string;
   characterAssetId?: string;
   faceStrength?: number;
+  camera?: {
+    yaw?: number;
+    pitch?: number;
+    roll?: number;
+    dolly?: number;
+  };
+}
+
+export interface UpdateShotInput {
+  prompt?: string;
+  continuityMode?: ContinuityMode;
+  generationMode?: GenerationMode;
+  styleReferenceId?: string | null;
+  styleStrength?: number;
+  modelId?: string;
+  characterAssetId?: string | null;
+  faceStrength?: number;
+  versions?: SessionPromptVersionEntry[];
   camera?: {
     yaw?: number;
     pitch?: number;

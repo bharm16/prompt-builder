@@ -1,9 +1,9 @@
-import React, { lazy, Suspense, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import { ToastProvider } from './components/Toast';
-import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppShellContext';
+import { AppShellProvider } from './contexts/AppShellContext';
 import { MainWorkspace } from './components/layout/MainWorkspace';
 import { LoadingDots } from './components/LoadingDots';
 import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
@@ -44,15 +44,7 @@ function MarketingShell(): React.ReactElement {
   );
 }
 
-function WorkspaceRoute({ tool }: { tool: ActiveTool }): React.ReactElement {
-  const { setActiveTool } = useAppShell();
-  const setActiveToolRef = useRef(setActiveTool);
-  setActiveToolRef.current = setActiveTool;
-
-  useEffect(() => {
-    setActiveToolRef.current(tool, { skipWarning: true });
-  }, [tool]);
-
+function WorkspaceRoute(): React.ReactElement {
   return (
     <FeatureErrorBoundary featureName="Main Workspace">
       <MainWorkspace />
@@ -75,7 +67,7 @@ function PromptRedirect(): React.ReactElement {
         const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`);
         const data = (response as { data?: { id: string } }).data;
         if (!cancelled && data?.id) {
-          navigate(`/session/${data.id}/studio`, { replace: true });
+          navigate(`/session/${data.id}`, { replace: true });
           return;
         }
       } catch {
@@ -132,31 +124,31 @@ function AppRoutes(): React.ReactElement {
       {/* App routes */}
       <Route
         path="/"
-        element={<WorkspaceRoute tool="studio" />}
+        element={<WorkspaceRoute />}
       />
       <Route
         path="/create"
-        element={<WorkspaceRoute tool="create" />}
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/session/:sessionId"
-        element={<Navigate to="studio" replace />}
+        element={<WorkspaceRoute />}
       />
       <Route
         path="/session/:sessionId/studio"
-        element={<WorkspaceRoute tool="studio" />}
+        element={<Navigate to="/session/:sessionId" replace />}
       />
       <Route
         path="/session/:sessionId/create"
-        element={<WorkspaceRoute tool="create" />}
+        element={<Navigate to="/session/:sessionId" replace />}
       />
       <Route
         path="/session/:sessionId/continuity"
-        element={<WorkspaceRoute tool="continuity" />}
+        element={<Navigate to="/session/:sessionId" replace />}
       />
       <Route
         path="/session/new/continuity"
-        element={<WorkspaceRoute tool="continuity" />}
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/assets"
@@ -168,11 +160,11 @@ function AppRoutes(): React.ReactElement {
       />
       <Route
         path="/continuity"
-        element={<Navigate to="/session/new/continuity" replace />}
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/continuity/:sessionId"
-        element={<Navigate to="/session/:sessionId/continuity" replace />}
+        element={<Navigate to="/session/:sessionId" replace />}
       />
       <Route
         path="/consistent"

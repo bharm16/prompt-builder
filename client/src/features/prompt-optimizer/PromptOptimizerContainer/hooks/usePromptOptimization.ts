@@ -252,9 +252,9 @@ export function usePromptOptimization({
           
           // Navigate to the new session URL
           if (saveResult.id) {
-            navigate(`/session/${saveResult.id}/studio`, { replace: true });
+            navigate(`/session/${saveResult.id}`, { replace: true });
           } else if (saveResult.uuid) {
-            navigate('/create', { replace: true });
+            navigate('/', { replace: true });
           }
         }
 

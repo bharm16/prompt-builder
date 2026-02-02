@@ -4,7 +4,6 @@ export * from './context/ContinuitySessionContext';
 export * from './hooks/useContinuitySession';
 export * from './hooks/useStyleReference';
 export * from './hooks/useFrameBridge';
-export * from './components/ContinuitySession';
 export * from './components/StyleReferencePanel';
 export * from './components/ShotEditor';
 export * from './components/ContinueSceneButton';

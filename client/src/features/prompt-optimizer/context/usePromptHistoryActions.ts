@@ -108,9 +108,9 @@ export const usePromptHistoryActions = ({
     persistedSignatureRef.current = null;
     resetEditStacks();
     if (draft.id) {
-      navigate(`/session/${draft.id}/studio`, { replace: true });
+      navigate(`/session/${draft.id}`, { replace: true });
     } else {
-      navigate('/create', { replace: true });
+      navigate('/', { replace: true });
     }
     // Allow future URL-based loads after the draft navigation settles.
     // Mirror the `loadFromHistory` behavior to avoid leaving this ref stuck `true`.
@@ -210,9 +210,9 @@ export const usePromptHistoryActions = ({
       }
 
       if (entry.id) {
-        navigate(`/session/${entry.id}/studio`, { replace: true });
+        navigate(`/session/${entry.id}`, { replace: true });
       } else if (entry.uuid) {
-        navigate('/create', { replace: true });
+        navigate('/', { replace: true });
       } else {
         navigate('/', { replace: true });
       }

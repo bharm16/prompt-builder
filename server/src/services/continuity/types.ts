@@ -1,3 +1,4 @@
+import type { SessionPromptVersionEntry } from '@shared/types/session';
 import type { VideoModelId } from '@services/video-generation/types';
 
 export type GenerationMode = 'continuity' | 'standard';
@@ -164,6 +165,7 @@ export interface ContinuityShot {
 
   createdAt: Date;
   generatedAt?: Date;
+  versions?: SessionPromptVersionEntry[];
 }
 
 export interface ContinuitySessionSettings {
@@ -228,6 +230,7 @@ export interface CreateShotRequest {
   generationMode?: GenerationMode;
   styleReferenceId?: string | null;
   styleStrength?: number;
+  sourceVideoId?: string;
   modelId?: VideoModelId;
   characterAssetId?: string;
   faceStrength?: number;
@@ -240,6 +243,7 @@ export interface CreateShotRequest {
 }
 
 export interface CreateSessionRequest {
+  sessionId?: string;
   name: string;
   description?: string;
   sourceVideoId?: string;

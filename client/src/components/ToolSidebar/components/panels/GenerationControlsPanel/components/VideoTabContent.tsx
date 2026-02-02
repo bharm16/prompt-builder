@@ -25,6 +25,7 @@ interface VideoTabContentProps {
   onOpenCameraMotion: () => void;
   prompt: string;
   onPromptChange?: ((prompt: string) => void) | undefined;
+  promptLabel?: string;
   isInputLocked: boolean;
   isOptimizing: boolean;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -32,6 +33,7 @@ interface VideoTabContentProps {
   onPromptKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onCreateFromTrigger?: ((trigger: string) => void) | undefined;
   autocomplete: AutocompleteState;
+  afterPrompt?: React.ReactNode;
   imageSubTab: ImageSubTab;
   onImageSubTabChange: (tab: ImageSubTab) => void;
   faceSwapMode: 'direct' | 'face-swap';
@@ -63,6 +65,7 @@ export function VideoTabContent({
   onOpenCameraMotion,
   prompt,
   onPromptChange,
+  promptLabel,
   isInputLocked,
   isOptimizing,
   promptInputRef,
@@ -70,6 +73,7 @@ export function VideoTabContent({
   onPromptKeyDown,
   onCreateFromTrigger,
   autocomplete,
+  afterPrompt,
   imageSubTab,
   onImageSubTabChange,
   faceSwapMode,
@@ -197,6 +201,11 @@ export function VideoTabContent({
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3">
+        {promptLabel && (
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#A1AFC5]">
+            {promptLabel}
+          </div>
+        )}
         <div className="relative border border-[#29292D] rounded-lg">
           <PromptEditor
             prompt={prompt}
@@ -216,6 +225,7 @@ export function VideoTabContent({
             }
           />
         </div>
+        {afterPrompt && <div className="mt-3">{afterPrompt}</div>}
 
         <ImageSubTabToolbar className="mt-3" activeTab={imageSubTab} onSelect={onImageSubTabChange} />
 

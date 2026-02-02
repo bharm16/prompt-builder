@@ -4,7 +4,7 @@ import type { Asset, AssetType } from '@shared/types/asset';
 import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 import type { AppIcon } from '@/types';
 
-export type ToolPanelType = 'sessions' | 'create' | 'studio' | 'characters' | 'styles';
+export type ToolPanelType = 'sessions' | 'studio' | 'characters' | 'styles';
 
 export type DraftModel = 'flux-kontext' | 'wan-2.2' | 'wan-2.5';
 

@@ -16,6 +16,7 @@ interface ImageTabContentProps {
   onRemoveKeyframe: (id: string) => void;
   prompt: string;
   onPromptChange?: ((prompt: string) => void) | undefined;
+  promptLabel?: string;
   isInputLocked: boolean;
   isOptimizing: boolean;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -40,6 +41,7 @@ export function ImageTabContent({
   onRemoveKeyframe,
   prompt,
   onPromptChange,
+  promptLabel,
   isInputLocked,
   isOptimizing,
   promptInputRef,
@@ -62,6 +64,11 @@ export function ImageTabContent({
     <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden px-4 pt-3">
       <div className="flex flex-col overflow-hidden">
         <div className="flex flex-col flex-1 min-h-0 relative border border-[#29292D] rounded-lg overflow-auto">
+          {promptLabel && (
+            <div className="px-3 pt-3 text-[11px] font-semibold uppercase tracking-wide text-[#A1AFC5]">
+              {promptLabel}
+            </div>
+          )}
           <ImageReferenceSlotsRow
             keyframes={keyframes}
             isUploadDisabled={isUploadDisabled}

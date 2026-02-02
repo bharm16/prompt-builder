@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useRef, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
 import type { HighlightSnapshot } from '../types';
-import type { PromptHistory } from '../../context/types';
 
 interface UsePromptVersioningOptions {
-  promptHistory: PromptHistory;
+  promptHistory: PromptVersionStore;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
   activeVersionId?: string | null;
@@ -19,6 +18,11 @@ interface UsePromptVersioningOptions {
   effectiveAspectRatio: string | null;
   generationParams: CapabilityValues;
   selectedModel: string;
+}
+
+interface PromptVersionStore {
+  history: PromptHistoryEntry[];
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
 }
 
 interface UpsertVersionOutputParams {

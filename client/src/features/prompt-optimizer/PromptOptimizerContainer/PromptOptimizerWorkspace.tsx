@@ -10,7 +10,7 @@
  */
 
 import React, { useCallback, useMemo, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
 import { logger } from '@/services/LoggingService';
@@ -47,6 +47,8 @@ import {
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
+import { WorkspaceSessionProvider, useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { debounce } from '../utils/debounce';
 
 const log = logger.child('PromptOptimizerWorkspace');
 const buildDefaultCameraTransform = (): CameraPath['start'] => ({
@@ -96,13 +98,11 @@ interface PromptOptimizerContentProps {
   user: User | null;
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null | undefined;
-  mode: 'studio' | 'create';
 }
 
 function PromptOptimizerContent({
   user,
   convergenceHandoff,
-  mode,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
   const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
@@ -193,6 +193,12 @@ function PromptOptimizerContent({
   const cameraMotion = domain.cameraMotion;
   const subjectMotion = domain.subjectMotion;
   const i2vContext = useI2VContext();
+  const {
+    isSequenceMode,
+    currentShotId,
+    currentShot,
+    updateShot,
+  } = useWorkspaceSession();
 
   const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
     keyframes,
@@ -216,11 +222,10 @@ function PromptOptimizerContent({
   }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
 
   /**
-   * Handle convergence handoff - pre-fill prompt when coming from Create mode
+   * Handle convergence handoff - pre-fill prompt when provided
    * (Requirement 17.2: Switch to Studio mode with converged prompt pre-filled)
    */
   useEffect(() => {
-    if (mode !== 'studio') return;
     if (!convergenceHandoff) return;
     
     // Create a unique key for this handoff to prevent re-applying
@@ -260,13 +265,31 @@ function PromptOptimizerContent({
     });
   }, [
     convergenceHandoff,
-    mode,
     promptOptimizer,
     setCameraMotion,
     setSubjectMotion,
     setDisplayedPromptSilently,
     setShowResults,
     toast,
+  ]);
+
+  useEffect(() => {
+    if (!isSequenceMode || !currentShot) return;
+    const rawPrompt = currentShot.userPrompt ?? '';
+    const nextPrompt = rawPrompt.trim() ? rawPrompt : '';
+    if (promptOptimizer.inputPrompt !== nextPrompt) {
+      promptOptimizer.setInputPrompt(nextPrompt);
+      if (promptOptimizer.displayedPrompt?.trim()) {
+        setDisplayedPromptSilently('');
+        setShowResults(false);
+      }
+    }
+  }, [
+    isSequenceMode,
+    currentShot?.id,
+    promptOptimizer,
+    setDisplayedPromptSilently,
+    setShowResults,
   ]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
@@ -590,6 +613,16 @@ function PromptOptimizerContent({
   const isGenerating = generationControls?.isGenerating ?? false;
   const isGenerationReady = Boolean(generationControls);
 
+  const debouncedShotPromptUpdate = useMemo(
+    () =>
+      debounce((shotId: string, nextPrompt: string) => {
+        void updateShot(shotId, { prompt: nextPrompt });
+      }, 500),
+    [updateShot]
+  );
+
+  useEffect(() => () => debouncedShotPromptUpdate.cancel(), [debouncedShotPromptUpdate]);
+
   const handleSidebarPromptChange = useCallback(
     (nextPrompt: string): void => {
       promptOptimizer.setInputPrompt(nextPrompt);
@@ -597,8 +630,18 @@ function PromptOptimizerContent({
         setDisplayedPromptSilently('');
         setShowResults(false);
       }
+      if (isSequenceMode && currentShotId) {
+        debouncedShotPromptUpdate(currentShotId, nextPrompt);
+      }
     },
-    [promptOptimizer, setDisplayedPromptSilently, setShowResults]
+    [
+      promptOptimizer,
+      setDisplayedPromptSilently,
+      setShowResults,
+      isSequenceMode,
+      currentShotId,
+      debouncedShotPromptUpdate,
+    ]
   );
 
   const handleDraft = useCallback(
@@ -946,19 +989,20 @@ function PromptOptimizerContent({
 interface PromptOptimizerWorkspaceProps {
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null;
-  mode?: 'studio' | 'create';
 }
 
 function PromptOptimizerWorkspace({
   convergenceHandoff,
-  mode = 'studio',
 }: PromptOptimizerWorkspaceProps): React.ReactElement {
   const user = useAuthUser();
+  const { sessionId } = useParams<{ sessionId?: string }>();
 
   return (
-    <PromptStateProvider user={user}>
-      <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} mode={mode} />
-    </PromptStateProvider>
+    <WorkspaceSessionProvider sessionId={sessionId}>
+      <PromptStateProvider user={user}>
+        <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
+      </PromptStateProvider>
+    </WorkspaceSessionProvider>
   );
 }
 
