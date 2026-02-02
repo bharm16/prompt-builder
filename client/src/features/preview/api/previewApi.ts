@@ -22,6 +22,8 @@ import {
 
 const log = logger.child('previewApi');
 const VIDEO_OPERATION = 'generateVideoPreview';
+const PREVIEW_IMAGE_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -104,6 +106,20 @@ export interface UploadPreviewImageResponse {
   };
   error?: string;
   message?: string;
+}
+
+export type PreviewImageValidationResult =
+  | { valid: true }
+  | { valid: false; error: string };
+
+export function validatePreviewImageFile(file: File): PreviewImageValidationResult {
+  if (!PREVIEW_IMAGE_ALLOWED_TYPES.has(file.type)) {
+    return { valid: false, error: 'Only PNG, JPEG, and WebP files are supported.' };
+  }
+  if (file.size > PREVIEW_IMAGE_MAX_BYTES) {
+    return { valid: false, error: 'Image must be 10MB or smaller.' };
+  }
+  return { valid: true };
 }
 
 export interface GenerateStoryboardPreviewRequest {

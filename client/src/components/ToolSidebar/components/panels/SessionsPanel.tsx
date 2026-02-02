@@ -6,7 +6,7 @@ import React, {
   useState,
   type ReactElement,
 } from 'react';
-import { Search } from '@promptstudio/system/components/ui';
+import { ArrowLeft, Search } from '@promptstudio/system/components/ui';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
 import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
@@ -54,6 +54,7 @@ interface SessionsPanelProps {
   isLoading: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onBack?: (() => void) | undefined;
   onLoadFromHistory: (entry: PromptHistoryEntry) => void;
   onCreateNew: () => void;
   onDelete: (id: string) => void;
@@ -70,6 +71,7 @@ export function SessionsPanel({
   isLoading,
   searchQuery,
   onSearchChange,
+  onBack,
   onLoadFromHistory,
   onCreateNew,
   onDelete,
@@ -331,7 +333,17 @@ export function SessionsPanel({
     <>
       <div className="flex flex-col h-full">
         <div className="h-12 px-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">Sessions</h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="w-7 h-7 -ml-1 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+              onClick={onBack}
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <h2 className="text-sm font-semibold text-white">Sessions</h2>
+          </div>
           <TooltipProvider delayDuration={120}>
             <Tooltip>
               <TooltipTrigger asChild>

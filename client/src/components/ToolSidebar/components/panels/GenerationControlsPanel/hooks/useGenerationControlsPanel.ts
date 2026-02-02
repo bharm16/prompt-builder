@@ -14,32 +14,26 @@ import { useTriggerAutocomplete } from '@/features/prompt-optimizer/components/T
 import { sanitizeText } from '@/features/span-highlighting';
 import { logger } from '@/services/LoggingService';
 import { safeUrlHost } from '@/utils/url';
-import { useModelRecommendation } from '@/features/model-intelligence';
-import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '@/features/model-intelligence/constants';
-import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
-import { getModelConfig } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
-import { faceSwapPreview as requestFaceSwapPreview } from '@/features/preview/api/previewApi';
+import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from '../constants';
 import type { AutocompleteState } from '../components/PromptTriggerAutocomplete';
 import type { GenerationControlsPanelProps, GenerationControlsTab, ImageSubTab } from '../types';
 import { getFieldInfo, resolveNumberOptions, resolveStringOptions, type FieldInfo } from '../utils/capabilities';
 import type { CameraPath } from '@/features/convergence/types';
 import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
+import type { ModelRecommendation } from '@/features/model-intelligence/types';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
 } from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
 import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
-import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/types';
-import type { ModelRecommendation, ModelRecommendationSpan } from '@/features/model-intelligence/types';
+import { useEditingPersistence } from './useEditingPersistence';
+import { useModelSelectionRecommendation } from './useModelSelectionRecommendation';
+import { useFaceSwapState, type FaceSwapMode } from './useFaceSwapState';
 
 const log = logger.child('GenerationControlsPanel');
-const FACE_SWAP_CREDIT_COST = 2;
-
-type HighlightSpan = HighlightSnapshot['spans'][number];
-type FaceSwapMode = 'direct' | 'face-swap';
 
 export interface UseGenerationControlsPanelResult {
   refs: {
@@ -137,34 +131,6 @@ export interface UseGenerationControlsPanelResult {
   };
 }
 
-const buildRecommendationSpans = (
-  prompt: string,
-  spans: HighlightSpan[] | undefined
-): ModelRecommendationSpan[] | undefined => {
-  if (!spans?.length) return undefined;
-  if (!prompt.trim()) return undefined;
-
-  const maxIndex = prompt.length;
-  const normalizedSpans = spans
-    .map((span) => {
-      const start = Math.max(0, Math.min(maxIndex, Math.floor(span.start)));
-      const end = Math.max(0, Math.min(maxIndex, Math.floor(span.end)));
-      if (start >= end) return null;
-      const text = prompt.slice(start, end).trim();
-      if (!text) return null;
-      return {
-        text,
-        start,
-        end,
-        category: span.category,
-        confidence: span.confidence,
-      };
-    })
-    .filter((span): span is ModelRecommendationSpan => Boolean(span));
-
-  return normalizedSpans.length ? normalizedSpans : undefined;
-};
-
 export const useGenerationControlsPanel = (
   props: GenerationControlsPanelProps
 ): UseGenerationControlsPanelResult => {
@@ -188,14 +154,10 @@ export const useGenerationControlsPanel = (
   const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
-  const [faceSwapMode, setFaceSwapMode] = useState<FaceSwapMode>('direct');
-  const [selectedCharacterId, setSelectedCharacterId] = useState('');
-  const [faceSwapCreditsUsed, setFaceSwapCreditsUsed] = useState<number | null>(null);
-  const [faceSwapError, setFaceSwapError] = useState<string | null>(null);
-  const [isFaceSwapLoading, setIsFaceSwapLoading] = useState(false);
-  const [isFaceSwapModalOpen, setIsFaceSwapModalOpen] = useState(false);
   const { controls, faceSwapPreview: faceSwapPreviewState, setFaceSwapPreview } =
     useGenerationControlsContext();
+  const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
+  const previousShotIdRef = useRef<string | null>(null);
   const { domain, ui } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -230,7 +192,10 @@ export const useGenerationControlsPanel = (
 
   const handleModelChange = useCallback((model: string): void => {
     storeActions.setSelectedModel(model);
-  }, [storeActions]);
+    if (isSequenceMode && currentShot && currentShot.modelId !== model) {
+      void updateShot(currentShot.id, { modelId: model });
+    }
+  }, [currentShot, isSequenceMode, storeActions, updateShot]);
 
   const handleAspectRatioChange = useCallback((ratio: string): void => {
     if (generationParams?.aspect_ratio === ratio) return;
@@ -259,96 +224,41 @@ export const useGenerationControlsPanel = (
   }, [storeActions]);
 
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(() => {
-    try { return window.sessionStorage.getItem('generation-controls:isEditing') === 'true'; } catch { return false; }
-  });
-  const [originalInputPrompt, setOriginalInputPrompt] = useState(() => {
-    try { return window.sessionStorage.getItem('generation-controls:originalInputPrompt') ?? ''; } catch { return ''; }
-  });
-  const [originalSelectedModel, setOriginalSelectedModel] = useState<string | undefined>(() => {
-    try { return window.sessionStorage.getItem('generation-controls:originalSelectedModel') ?? undefined; } catch { return undefined; }
-  });
+  const {
+    isEditing,
+    setIsEditing,
+    originalInputPrompt,
+    setOriginalInputPrompt,
+    originalSelectedModel,
+    setOriginalSelectedModel,
+    resetEditingState,
+  } = useEditingPersistence();
 
-  useEffect(() => {
-    try {
-      window.sessionStorage.setItem('generation-controls:isEditing', String(isEditing));
-      if (isEditing) {
-        window.sessionStorage.setItem('generation-controls:originalInputPrompt', originalInputPrompt);
-        if (originalSelectedModel !== undefined) {
-          window.sessionStorage.setItem('generation-controls:originalSelectedModel', originalSelectedModel);
-        }
-      } else {
-        window.sessionStorage.removeItem('generation-controls:originalInputPrompt');
-        window.sessionStorage.removeItem('generation-controls:originalSelectedModel');
-      }
-    } catch {
-      // ignore
-    }
-  }, [isEditing, originalInputPrompt, originalSelectedModel]);
+  // Editing persistence handled in hook.
 
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const isKeyframeLimitReached = keyframes.length >= 3;
   const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
   const primaryKeyframeUrl = keyframes[0]?.url ?? null;
   const primaryKeyframeUrlHost = safeUrlHost(primaryKeyframeUrl);
-  const trimmedPrompt = prompt.trim();
-  const trimmedPromptLength = trimmedPrompt.length;
-
-  const recommendationSpans = useMemo(
-    () => buildRecommendationSpans(prompt, promptHighlights?.initialHighlights?.spans),
-    [prompt, promptHighlights?.initialHighlights?.spans]
-  );
-
-  const recommendationMode = useMemo(
-    () => (keyframes.length > 0 ? 'i2v' : 't2v'),
-    [keyframes.length]
-  );
-
-  const shouldLoadRecommendations = useMemo(
-    () => activeTab === 'video' && trimmedPromptLength >= MIN_PROMPT_LENGTH_FOR_RECOMMENDATION,
-    [activeTab, trimmedPromptLength]
-  );
-
   const {
-    recommendation: modelRecommendation,
-    isLoading: isRecommendationLoading,
-    error: recommendationError,
-  } = useModelRecommendation(prompt, {
-    mode: recommendationMode,
+    recommendationMode,
+    modelRecommendation,
+    isRecommendationLoading,
+    recommendationError,
+    recommendedModelId,
+    efficientModelId,
+    renderModelOptions,
+    renderModelId,
+    recommendationAgeMs,
+  } = useModelSelectionRecommendation({
+    prompt,
+    activeTab,
+    keyframesCount: keyframes.length,
     durationSeconds: duration,
-    spans: recommendationSpans,
-    enabled: shouldLoadRecommendations,
+    selectedModel,
+    promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
-
-  const recommendedModelId = useMemo(() => {
-    const modelId = modelRecommendation?.recommended?.modelId;
-    return modelId ? normalizeModelIdForSelection(modelId) : undefined;
-  }, [modelRecommendation?.recommended?.modelId]);
-
-  const efficientModelId = useMemo(() => {
-    const modelId = modelRecommendation?.alsoConsider?.modelId;
-    return modelId ? normalizeModelIdForSelection(modelId) : undefined;
-  }, [modelRecommendation?.alsoConsider?.modelId]);
-
-  const renderModelOptions = useMemo(
-    () => VIDEO_RENDER_MODELS.map((model) => ({ id: model.id, label: model.label })),
-    []
-  );
-
-  const renderModelId = useMemo(() => {
-    if (selectedModel && VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)) {
-      return selectedModel;
-    }
-    return VIDEO_RENDER_MODELS[0]?.id ?? '';
-  }, [selectedModel]);
-
-  const recommendationAgeMs = useMemo(() => {
-    const computedAt = modelRecommendation?.computedAt;
-    if (!computedAt || typeof computedAt !== 'string') return null;
-    const timestamp = Date.parse(computedAt);
-    if (!Number.isFinite(timestamp)) return null;
-    return Date.now() - timestamp;
-  }, [modelRecommendation?.computedAt]);
 
   const capabilitiesModelId = useMemo(() => {
     if (activeTab === 'video') {
@@ -391,58 +301,45 @@ export const useGenerationControlsPanel = (
     [durationInfo?.allowedValues]
   );
 
-  const characterOptions = useMemo(
-    () =>
-      assets
-        .filter((asset) => asset.type === 'character')
-        .map((asset) => ({
-          id: asset.id,
-          label: asset.name || asset.trigger || `Character ${asset.id.slice(0, 6)}`,
-        })),
-    [assets]
-  );
-
-  useEffect(() => {
-    if (!selectedCharacterId) return;
-    const stillExists = characterOptions.some((asset) => asset.id === selectedCharacterId);
-    if (!stillExists) {
-      setSelectedCharacterId('');
-    }
-  }, [characterOptions, selectedCharacterId]);
-
-  useEffect(() => {
-    if (faceSwapMode !== 'face-swap') return;
-    if (selectedCharacterId || characterOptions.length !== 1) return;
-    setSelectedCharacterId(characterOptions[0]?.id ?? '');
-  }, [characterOptions, faceSwapMode, selectedCharacterId]);
-
-  const resetFaceSwapPreview = useCallback(() => {
-    setFaceSwapPreview(null);
-    setFaceSwapCreditsUsed(null);
-    setFaceSwapError(null);
-    setIsFaceSwapLoading(false);
-    setIsFaceSwapModalOpen(false);
-  }, [setFaceSwapPreview]);
-
-  useEffect(() => {
-    if (!faceSwapPreviewState) return;
-    if (faceSwapMode !== 'face-swap') {
-      resetFaceSwapPreview();
-      return;
-    }
-    if (!selectedCharacterId || faceSwapPreviewState.characterAssetId !== selectedCharacterId) {
-      resetFaceSwapPreview();
-      return;
-    }
-    if (!primaryKeyframeUrl || faceSwapPreviewState.targetImageUrl !== primaryKeyframeUrl) {
-      resetFaceSwapPreview();
-    }
-  }, [
-    faceSwapMode,
-    faceSwapPreviewState,
-    selectedCharacterId,
+  const {
+    faceSwap,
+    derived: faceSwapDerived,
+    actions: {
+      setFaceSwapMode,
+      setFaceSwapCharacterId,
+      handleFaceSwapPreview,
+      handleOpenFaceSwapModal,
+      handleCloseFaceSwapModal,
+      handleFaceSwapTryDifferent,
+    },
+  } = useFaceSwapState({
+    assets,
     primaryKeyframeUrl,
-    resetFaceSwapPreview,
+    primaryKeyframeUrlHost,
+    aspectRatio,
+    draftModelId: VIDEO_DRAFT_MODEL.id,
+    renderModelId,
+    tier,
+    faceSwapPreviewState,
+    setFaceSwapPreview,
+  });
+
+  useEffect(() => {
+    const nextShotId = isSequenceMode ? currentShot?.id ?? null : null;
+    if (previousShotIdRef.current === nextShotId) return;
+    previousShotIdRef.current = nextShotId;
+
+    resetEditingState();
+    setFaceSwapMode('direct');
+    setFaceSwapCharacterId('');
+    handleFaceSwapTryDifferent();
+  }, [
+    currentShot?.id,
+    isSequenceMode,
+    resetEditingState,
+    setFaceSwapMode,
+    setFaceSwapCharacterId,
+    handleFaceSwapTryDifferent,
   ]);
 
   useEffect(() => {
@@ -610,10 +507,15 @@ export const useGenerationControlsPanel = (
     if (originalSelectedModel !== undefined) {
       handleModelChange(originalSelectedModel);
     }
-    setIsEditing(false);
-    setOriginalInputPrompt('');
-    setOriginalSelectedModel(undefined);
-  }, [canOptimize, handleModelChange, onPromptChange, originalInputPrompt, originalSelectedModel]);
+    resetEditingState();
+  }, [
+    canOptimize,
+    handleModelChange,
+    onPromptChange,
+    originalInputPrompt,
+    originalSelectedModel,
+    resetEditingState,
+  ]);
 
   const handleUpdate = useCallback((): void => {
     if (!canOptimize || isOptimizing || !onOptimize) {
@@ -639,9 +541,7 @@ export const useGenerationControlsPanel = (
       void onOptimize(prompt);
     }
 
-    setIsEditing(false);
-    setOriginalInputPrompt('');
-    setOriginalSelectedModel(undefined);
+    resetEditingState();
   }, [
     canOptimize,
     genericOptimizedPrompt,
@@ -651,6 +551,7 @@ export const useGenerationControlsPanel = (
     originalSelectedModel,
     prompt,
     selectedModel,
+    resetEditingState,
   ]);
 
   const handleReoptimize = useCallback((): void => {
@@ -703,6 +604,7 @@ export const useGenerationControlsPanel = (
     }
   }, [prompt]);
 
+  const trimmedPrompt = prompt.trim();
   const hasPrompt = Boolean(trimmedPrompt);
   const isImageGenerateDisabled = activeTab === 'image' && keyframes.length === 0;
   const isVideoGenerateDisabled = activeTab === 'video' && !hasPrompt && keyframes.length === 0;
@@ -715,74 +617,7 @@ export const useGenerationControlsPanel = (
     (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
     isVideoGenerateDisabled;
-  const canPreviewFaceSwap =
-    faceSwapMode === 'face-swap' && hasPrimaryKeyframe && Boolean(selectedCharacterId);
-  const isFaceSwapPreviewDisabled = !canPreviewFaceSwap || isFaceSwapLoading;
-  const videoCredits = useMemo(() => {
-    const modelId = tier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId;
-    return getModelConfig(modelId)?.credits ?? null;
-  }, [renderModelId, tier]);
-  const totalCredits =
-    videoCredits !== null ? videoCredits + FACE_SWAP_CREDIT_COST : null;
-
-  const handleFaceSwapPreview = useCallback(async () => {
-    if (!canPreviewFaceSwap || !primaryKeyframeUrl) return;
-    setIsFaceSwapModalOpen(true);
-    setIsFaceSwapLoading(true);
-    setFaceSwapError(null);
-    setFaceSwapPreview(null);
-    setFaceSwapCreditsUsed(null);
-    try {
-      const response = await requestFaceSwapPreview({
-        characterAssetId: selectedCharacterId,
-        targetImageUrl: primaryKeyframeUrl,
-        ...(aspectRatio ? { aspectRatio } : {}),
-      });
-      if (!response.success || !response.data?.faceSwapUrl) {
-        throw new Error(response.error || response.message || 'Failed to preview face swap');
-      }
-      setFaceSwapPreview({
-        url: response.data.faceSwapUrl,
-        characterAssetId: selectedCharacterId,
-        targetImageUrl: primaryKeyframeUrl,
-        createdAt: Date.now(),
-      });
-      setFaceSwapCreditsUsed(response.data.creditsDeducted ?? FACE_SWAP_CREDIT_COST);
-      log.info('Face swap preview completed', {
-        characterAssetId: selectedCharacterId,
-        targetImageUrlHost: primaryKeyframeUrlHost,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setFaceSwapError(message);
-      log.error('Face swap preview failed', error as Error, {
-        characterAssetId: selectedCharacterId,
-        targetImageUrlHost: primaryKeyframeUrlHost,
-      });
-    } finally {
-      setIsFaceSwapLoading(false);
-    }
-  }, [
-    aspectRatio,
-    canPreviewFaceSwap,
-    primaryKeyframeUrl,
-    primaryKeyframeUrlHost,
-    selectedCharacterId,
-    setFaceSwapPreview,
-  ]);
-
-  const handleOpenFaceSwapModal = useCallback(() => {
-    if (!faceSwapPreviewState?.url) return;
-    setIsFaceSwapModalOpen(true);
-  }, [faceSwapPreviewState?.url]);
-
-  const handleCloseFaceSwapModal = useCallback(() => {
-    setIsFaceSwapModalOpen(false);
-  }, []);
-
-  const handleFaceSwapTryDifferent = useCallback(() => {
-    resetFaceSwapPreview();
-  }, [resetFaceSwapPreview]);
+  const { canPreviewFaceSwap, isFaceSwapPreviewDisabled } = faceSwapDerived;
 
   return {
     refs: {
@@ -820,19 +655,7 @@ export const useGenerationControlsPanel = (
       canPreviewFaceSwap,
       isFaceSwapPreviewDisabled,
     },
-    faceSwap: {
-      mode: faceSwapMode,
-      selectedCharacterId,
-      characterOptions,
-      previewUrl: faceSwapPreviewState?.url ?? null,
-      isPreviewReady: Boolean(faceSwapPreviewState?.url),
-      isLoading: isFaceSwapLoading,
-      error: faceSwapError,
-      isModalOpen: isFaceSwapModalOpen,
-      faceSwapCredits: faceSwapCreditsUsed ?? FACE_SWAP_CREDIT_COST,
-      videoCredits,
-      totalCredits,
-    },
+    faceSwap,
     recommendation: {
       recommendationMode,
       modelRecommendation,
@@ -882,7 +705,7 @@ export const useGenerationControlsPanel = (
       handlePromptKeyDown,
       handleCopy,
       setFaceSwapMode,
-      setFaceSwapCharacterId: setSelectedCharacterId,
+      setFaceSwapCharacterId,
       handleFaceSwapPreview,
       handleOpenFaceSwapModal,
       handleCloseFaceSwapModal,

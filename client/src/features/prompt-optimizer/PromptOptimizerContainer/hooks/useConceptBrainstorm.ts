@@ -6,6 +6,7 @@ import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types
 import type { CapabilityValues } from '@shared/capabilities';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { applyOptimizationResult } from '../utils/persistOptimizationResult';
 
 const log = logger.child('useConceptBrainstorm');
 
@@ -158,25 +159,20 @@ export function useConceptBrainstorm({
             );
 
             if (saveResult?.uuid) {
-              setDisplayedPromptSilently(result.optimized);
-
-              skipLoadFromUrlRef.current = true;
-              setCurrentPromptUuid(saveResult.uuid);
-              setCurrentPromptDocId(saveResult.id ?? null);
-              setShowResults(true);
-              toast.success('Video prompt generated successfully!');
-
-              applyInitialHighlightSnapshot(null, {
-                bumpVersion: true,
-                markPersisted: false,
+              applyOptimizationResult({
+                optimizedPrompt: result.optimized,
+                saveResult,
+                setCurrentPromptUuid,
+                setCurrentPromptDocId,
+                setDisplayedPromptSilently,
+                setShowResults,
+                applyInitialHighlightSnapshot,
+                resetEditStacks,
+                persistedSignatureRef,
+                skipLoadFromUrlRef,
+                navigate,
               });
-              resetEditStacks();
-              persistedSignatureRef.current = null;
-              if (saveResult.id) {
-                navigate(`/session/${saveResult.id}`, { replace: true });
-              } else {
-                navigate('/', { replace: true });
-              }
+              toast.success('Video prompt generated successfully!');
             }
           }
         } catch (error) {

@@ -5,38 +5,26 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import debounce from 'lodash/debounce';
-
 import { useDrawerState } from '@components/CollapsibleDrawer';
 import { useToast } from '@components/Toast';
-import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRequest';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import {
   PERFORMANCE_CONFIG,
   DEFAULT_LABELING_POLICY,
   TEMPLATE_VERSIONS,
 } from '@config/performance.config';
-import { logger } from '@/services/LoggingService';
-import {
-  createHighlightSignature,
-  sanitizeText,
-  useSpanLabeling,
-} from '@/features/span-highlighting';
+import { sanitizeText, useSpanLabeling } from '@/features/span-highlighting';
 import { useHighlightRendering } from '@/features/span-highlighting';
 import { useHighlightFingerprint } from '@/features/span-highlighting';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
-import { assetApi } from '@features/assets/api/assetApi';
 import { useTriggerAutocomplete } from '@features/assets/hooks/useTriggerAutocomplete';
 import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
 
 import type {
-  HighlightSnapshot,
-  InlineSuggestion,
   PromptCanvasProps,
-  SuggestionItem,
+  HighlightSnapshot,
 } from './PromptCanvas/types';
-import type { Generation, GenerationsPanelProps } from './GenerationsPanel/types';
+import type { GenerationsPanelProps } from './GenerationsPanel/types';
 
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
@@ -44,7 +32,6 @@ import {
   escapeHTMLForMLHighlighting,
   formatTextToHTML,
 } from './utils/textFormatting';
-import { buildSuggestionContext } from './utils/enhancementSuggestionContext';
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
 import { useParseResult } from './PromptCanvas/hooks/useParseResult';
@@ -52,14 +39,16 @@ import { usePromptCanvasState } from './PromptCanvas/hooks/usePromptCanvasState'
 import { usePromptStatus } from './PromptCanvas/hooks/usePromptStatus';
 import { useSpanSelectionEffects } from './PromptCanvas/hooks/useSpanSelectionEffects';
 import { useCoherenceSpanMarkers } from './PromptCanvas/hooks/useCoherenceSpanMarkers';
-import { useSuggestionFeedback } from './PromptCanvas/hooks/useSuggestionFeedback';
 import { useSuggestionSelection } from './PromptCanvas/hooks/useSuggestionSelection';
 import { useTextSelection } from './PromptCanvas/hooks/useTextSelection';
 import { useEditorContent } from './PromptCanvas/hooks/useEditorContent';
 import { useKeyboardShortcuts } from './PromptCanvas/hooks/useKeyboardShortcuts';
 import { usePromptExport } from './PromptCanvas/hooks/usePromptExport';
 import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInteractions';
-import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
+import { useShotGenerations } from './PromptCanvas/hooks/useShotGenerations';
+import { useTriggerValidation } from './PromptCanvas/hooks/useTriggerValidation';
+import { useInlineSuggestionState } from './PromptCanvas/hooks/useInlineSuggestionState';
+import { useVersionManagement } from './PromptCanvas/hooks/useVersionManagement';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
 import { useGenerationControlsStoreState } from './context/GenerationControlsStore';
@@ -72,35 +61,6 @@ import {
   usePromptSession,
 } from './context/PromptStateContext';
 import { serializeKeyframes } from './utils/keyframeTransforms';
-
-const log = logger.child('PromptCanvas');
-
-export const resolveVersionTimestamp = (
-  value: string | number | undefined
-): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Date.parse(value);
-    if (!Number.isNaN(parsed)) return parsed;
-    const asNumber = Number(value);
-    if (!Number.isNaN(asNumber)) return asNumber;
-  }
-  return null;
-};
-
-const mapShotStatusToGenerationStatus = (status: string): Generation['status'] => {
-  if (status === 'completed') return 'completed';
-  if (status === 'failed') return 'failed';
-  if (status === 'generating-keyframe' || status === 'generating-video') return 'generating';
-  return 'pending';
-};
-
-export const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
-  !!value &&
-  typeof value === 'object' &&
-  Array.isArray((value as HighlightSnapshot).spans);
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -154,13 +114,9 @@ export function PromptCanvas({
   const editorColumnRef = useRef<HTMLDivElement>(null);
   const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
-  const suggestionsListRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
-  const [customRequestError, setCustomRequestError] = useState('');
   const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
-  const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [showDiff, setShowDiff] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const versionsDrawer = useDrawerState({
@@ -169,10 +125,6 @@ export function PromptCanvas({
     position: 'bottom',
     desktopMode: 'push',
   });
-
-  // Refs for tracking previous state to prevent loops
-  const previousSelectedSpanIdRef = useRef<string | null>(null);
-  const previousSuggestionCountRef = useRef(0);
 
   // Get model + layout state from context
   const { selectedModel, generationParams } = usePromptConfig();
@@ -230,147 +182,10 @@ export function PromptCanvas({
       : null;
   }, [generationParams?.fps]);
 
-  const shotId = currentShot?.id ?? null;
-  const sequenceGenerationVersionId = useMemo(() => {
-    if (!currentShot) return null;
-    const versions = (currentShot.versions as PromptVersionEntry[] | undefined) ?? [];
-    const existing = versions.length ? versions[versions.length - 1]?.versionId : undefined;
-    return existing ?? `shot-${currentShot.id}`;
-  }, [currentShot]);
-
-  const sequenceVideoUrl = useMemo(() => {
-    if (!currentShot?.videoAssetId) return null;
-    return `/api/preview/video/content/${currentShot.videoAssetId}`;
-  }, [currentShot?.videoAssetId]);
-
-  const sequenceGenerations = useMemo<Generation[]>(() => {
-    if (!currentShot || !sequenceGenerationVersionId) return [];
-    const status = mapShotStatusToGenerationStatus(currentShot.status);
-    const hasOutput = Boolean(currentShot.videoAssetId || currentShot.generatedKeyframeUrl);
-    const shouldRender = hasOutput || status !== 'pending';
-    if (!shouldRender) return [];
-    const createdAtMs = resolveVersionTimestamp(currentShot.createdAt) ?? Date.now();
-    const completedAtMs =
-      resolveVersionTimestamp(currentShot.generatedAt) ??
-      (status === 'completed' ? createdAtMs : null);
-    return [
-      {
-        id: currentShot.id,
-        tier: 'render',
-        status,
-        model: currentShot.modelId,
-        prompt: currentShot.userPrompt ?? '',
-        promptVersionId: sequenceGenerationVersionId,
-        createdAt: createdAtMs,
-        completedAt: completedAtMs,
-        mediaType: 'video',
-        mediaUrls: sequenceVideoUrl ? [sequenceVideoUrl] : [],
-        ...(currentShot.videoAssetId ? { mediaAssetIds: [currentShot.videoAssetId] } : {}),
-        thumbnailUrl: currentShot.generatedKeyframeUrl ?? null,
-      },
-    ];
-  }, [currentShot, sequenceGenerationVersionId, sequenceVideoUrl]);
-
-  const sequenceVersions = useMemo<PromptVersionEntry[]>(() => {
-    if (!currentShot) return [];
-    const existing = (currentShot.versions ?? []) as PromptVersionEntry[];
-    if (existing.length > 0) {
-      if (
-        sequenceGenerations.length > 0 &&
-        !existing.some((version) => Array.isArray(version.generations) && version.generations.length > 0)
-      ) {
-        const patched = [...existing];
-        const targetIndex = patched.length - 1;
-        const target = patched[targetIndex];
-        if (target) {
-          patched[targetIndex] = { ...target, generations: sequenceGenerations };
-          return patched;
-        }
-      }
-      return existing;
-    }
-    if (!sequenceGenerations.length || !sequenceGenerationVersionId) return [];
-    const promptText = currentShot.userPrompt ?? '';
-    const signature = createHighlightSignature(promptText);
-    const rawTimestamp = currentShot.generatedAt ?? currentShot.createdAt ?? new Date().toISOString();
-    const timestamp = typeof rawTimestamp === 'string' && rawTimestamp.trim()
-      ? rawTimestamp
-      : new Date().toISOString();
-    return [
-      {
-        versionId: sequenceGenerationVersionId,
-        label: 'v1',
-        signature,
-        prompt: promptText,
-        timestamp,
-        ...(currentShot.generatedKeyframeUrl
-          ? {
-              preview: {
-                generatedAt: timestamp,
-                imageUrl: currentShot.generatedKeyframeUrl,
-                aspectRatio: null,
-              },
-            }
-          : {}),
-        ...(sequenceVideoUrl
-          ? {
-              video: {
-                generatedAt: timestamp,
-                videoUrl: sequenceVideoUrl,
-                model: currentShot.modelId ?? null,
-                generationParams: null,
-              },
-            }
-          : {}),
-        generations: sequenceGenerations,
-      },
-    ];
-  }, [currentShot, sequenceGenerationVersionId, sequenceGenerations, sequenceVideoUrl]);
-
-  const shotPromptEntry = useMemo<PromptHistoryEntry | null>(() => {
-    if (!hasShotContext || !currentShot) return null;
-    return {
-      uuid: currentShot.id,
-      input: currentShot.userPrompt ?? '',
-      output: '',
-      versions: sequenceVersions,
-    };
-  }, [hasShotContext, currentShot, sequenceVersions]);
-
-  const updateShotVersions = useCallback(
-    (versions: PromptVersionEntry[]) => {
-      if (!shotId) return;
-      void updateShot(shotId, { versions });
-    },
-    [shotId, updateShot]
-  );
-
-  const versionHistory = useMemo(
-    () => {
-      if (hasShotContext && shotPromptEntry) {
-        return {
-          history: [shotPromptEntry],
-          updateEntryVersions: (_uuid: string, _docId: string | null, versions: PromptVersionEntry[]) => {
-            updateShotVersions(versions);
-          },
-        };
-      }
-      return {
-        history: promptHistory.history,
-        updateEntryVersions: promptHistory.updateEntryVersions,
-      };
-    },
-    [
-      hasShotContext,
-      shotPromptEntry,
-      updateShotVersions,
-      promptHistory.history,
-      promptHistory.updateEntryVersions,
-    ]
-  );
-
-  const versioningPromptUuid = hasShotContext ? shotId : currentPromptUuid;
-  const versioningPromptDocId = hasShotContext ? null : currentPromptDocId;
+  const { shotId, shotPromptEntry, updateShotVersions } = useShotGenerations({
+    currentShot,
+    updateShot,
+  });
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -413,32 +228,7 @@ export function PromptCanvas({
     close: closeAutocomplete,
   } = useTriggerAutocomplete();
 
-  const debouncedValidateTriggers = useMemo(
-    () =>
-      debounce(async (text: string) => {
-        if (!text.trim() || !text.includes('@')) {
-          return;
-        }
-        try {
-          const validation = await assetApi.validate(text);
-          if (!validation.isValid) {
-            log.warn('Missing triggers', {
-              missingTriggers: validation.missingTriggers,
-            });
-          }
-        } catch (error) {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
-          log.error('Trigger validation failed', errorObj);
-        }
-      }, 500),
-    []
-  );
-
-  useEffect(() => {
-    return () => {
-      debouncedValidateTriggers.cancel();
-    };
-  }, [debouncedValidateTriggers]);
+  const validateTriggers = useTriggerValidation(500);
   const hasCanvasContent = showResults || Boolean(normalizedDisplayedPrompt);
 
   useEffect(() => {
@@ -454,292 +244,47 @@ export function PromptCanvas({
   const isSuggestionsOpen = Boolean(
     selectedSpanId || (suggestionsData && suggestionsData.show !== false)
   );
-  const currentPromptEntry = useMemo(() => {
-    if (!versionHistory.history.length) return null;
-    if (versioningPromptUuid) {
-      return (
-        versionHistory.history.find((item) => item.uuid === versioningPromptUuid) ||
-        null
-      );
-    }
-    if (versioningPromptDocId) {
-      return versionHistory.history.find((item) => item.id === versioningPromptDocId) || null;
-    }
-    return versionHistory.history[0] ?? null;
-  }, [versionHistory.history, versioningPromptUuid, versioningPromptDocId]);
-  const currentVersions = useMemo(
-    () =>
-      Array.isArray(currentPromptEntry?.versions)
-        ? currentPromptEntry.versions
-        : [],
-    [currentPromptEntry]
-  );
-  const orderedVersions = useMemo(() => {
-    if (currentVersions.length <= 1) return currentVersions;
-    return [...currentVersions].sort((left, right) => {
-      const leftTime = resolveVersionTimestamp(left.timestamp);
-      const rightTime = resolveVersionTimestamp(right.timestamp);
-      if (leftTime === null && rightTime === null) return 0;
-      if (leftTime === null) return 1;
-      if (rightTime === null) return -1;
-      return rightTime - leftTime;
-    });
-  }, [currentVersions]);
-  const currentSignature = useMemo(() => {
-    if (!normalizedDisplayedPrompt) return '';
-    return createHighlightSignature(normalizedDisplayedPrompt);
-  }, [normalizedDisplayedPrompt]);
-  const latestVersionSignature = orderedVersions[0]?.signature ?? null;
-  const hasEditsSinceLastVersion = Boolean(
-    latestVersionSignature &&
-      currentSignature &&
-      latestVersionSignature !== currentSignature
-  );
-  const versionsForPanel = useMemo(
-    () =>
-      orderedVersions.map((entry, index) => ({
-        ...entry,
-        isDirty:
-          index === 0 && hasEditsSinceLastVersion
-            ? true
-            : Boolean(entry.isDirty ?? (entry as { dirty?: boolean }).dirty),
-      })),
-    [orderedVersions, hasEditsSinceLastVersion]
-  );
-  const selectedVersionId = useMemo(() => {
-    if (activeVersionId && versionsForPanel.some((version) => version.versionId === activeVersionId)) {
-      return activeVersionId;
-    }
-    return versionsForPanel[0]?.versionId ?? '';
-  }, [activeVersionId, versionsForPanel]);
-  const activeVersion = useMemo(() => {
-    if (selectedVersionId) {
-      return (
-        currentVersions.find((version) => version.versionId === selectedVersionId) ??
-        orderedVersions[0] ??
-        null
-      );
-    }
-    return orderedVersions[0] ?? null;
-  }, [currentVersions, orderedVersions, selectedVersionId]);
-  const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
-  const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning(
-    {
-      promptHistory: versionHistory,
-      currentPromptUuid: versioningPromptUuid,
-      currentPromptDocId: versioningPromptDocId,
-      activeVersionId,
-      latestHighlightRef,
-      versionEditCountRef,
-      versionEditsRef,
-      resetVersionEdits,
-      effectiveAspectRatio,
-      generationParams,
-      selectedModel,
-    }
-  );
-
-  const handleSelectVersion = useCallback(
-    (versionId: string): void => {
-      const target =
-        currentVersions.find((version) => version.versionId === versionId) ||
-        orderedVersions.find((version) => version.versionId === versionId) ||
-        null;
-      if (!target) return;
-      const promptText = typeof target.prompt === 'string' ? target.prompt : '';
-      if (!promptText.trim()) return;
-
-      setActiveVersionId(versionId);
-      promptOptimizer.setOptimizedPrompt(promptText);
-      setDisplayedPromptSilently(promptText);
-
-      const highlights = isHighlightSnapshot(target.highlights)
-        ? target.highlights
-        : null;
-      applyInitialHighlightSnapshot(highlights, {
-        bumpVersion: true,
-        markPersisted: false,
-      });
-      resetEditStacks();
-      resetVersionEdits();
-    },
-    [
-      applyInitialHighlightSnapshot,
-      currentVersions,
-      orderedVersions,
-      promptOptimizer,
-      resetEditStacks,
-      resetVersionEdits,
-      setActiveVersionId,
-      setDisplayedPromptSilently,
-    ]
-  );
-
-  const ensureDraftEntry = useCallback((): { uuid: string; docId: string } => {
-    if (hasShotContext && currentShot) {
-      return { uuid: currentShot.id, docId: '' };
-    }
-    if (currentPromptUuid) {
-      return { uuid: currentPromptUuid, docId: currentPromptDocId ?? '' };
-    }
-    const draft = promptHistory.createDraft({
-      mode: selectedMode,
-      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
-      keyframes: serializedKeyframes,
-    });
-    setCurrentPromptUuid(draft.uuid);
-    setCurrentPromptDocId(draft.id);
-    return { uuid: draft.uuid, docId: draft.id };
-  }, [
+  const {
+    currentVersions,
+    orderedVersions,
+    versionsForPanel,
+    selectedVersionId,
+    activeVersion,
+    promptVersionId,
+    handleSelectVersion,
+    handleCreateVersion,
+    createVersionIfNeeded,
+    handleGenerationsChange,
+    syncVersionHighlights,
+    versioningPromptUuid,
+  } = useVersionManagement({
     hasShotContext,
-    currentShot,
-    currentPromptDocId,
-    currentPromptUuid,
-    generationParams,
+    shotId,
+    shotPromptEntry,
+    updateShotVersions,
     promptHistory,
+    currentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
+    inputPrompt,
+    normalizedDisplayedPrompt,
     selectedMode,
     selectedModel,
+    generationParams,
     serializedKeyframes,
-    setCurrentPromptDocId,
-    setCurrentPromptUuid,
-  ]);
-
-  const persistVersions = useCallback(
-    (versions: PromptVersionEntry[], identifiers?: { uuid: string; docId?: string }) => {
-      if (hasShotContext && shotId) {
-        updateShotVersions(versions);
-        return;
-      }
-      if (!identifiers?.uuid) return;
-      promptHistory.updateEntryVersions(identifiers.uuid, identifiers.docId ?? null, versions);
-    },
-    [hasShotContext, shotId, updateShotVersions, promptHistory.updateEntryVersions]
-  );
-
-  const handleCreateVersion = useCallback((): void => {
-    if (!currentVersions) return;
-    const promptText =
-      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
-    if (!promptText) return;
-    const { uuid, docId } = ensureDraftEntry();
-
-    const signature = createHighlightSignature(promptText);
-    const lastSignature =
-      currentVersions[currentVersions.length - 1]?.signature ?? null;
-    if (lastSignature && lastSignature === signature) {
-      return;
-    }
-
-    const editCount = versionEditCountRef.current;
-    const edits = versionEditsRef.current.length
-      ? [...versionEditsRef.current]
-      : [];
-    const nextVersion = {
-      versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      label: `v${currentVersions.length + 1}`,
-      signature,
-      prompt: promptText,
-      timestamp: new Date().toISOString(),
-      ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
-      ...(editCount > 0 ? { editCount } : {}),
-      ...(edits.length ? { edits } : {}),
-    };
-
-    persistVersions([...currentVersions, nextVersion], { uuid, docId });
-    setActiveVersionId(nextVersion.versionId);
-    resetVersionEdits();
-  }, [
-    ensureDraftEntry,
-    currentVersions,
-    inputPrompt,
+    promptOptimizer,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    setDisplayedPromptSilently,
     latestHighlightRef,
-    normalizedDisplayedPrompt,
-    persistVersions,
-    resetVersionEdits,
-    setActiveVersionId,
     versionEditCountRef,
     versionEditsRef,
-  ]);
-
-  const createVersionIfNeeded = useCallback((): string => {
-    const promptText =
-      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
-    if (!promptText) {
-      return activeVersion?.versionId ?? '';
-    }
-    const { uuid, docId } = ensureDraftEntry();
-
-    const signature = createHighlightSignature(promptText);
-
-    if (!currentVersions.length) {
-      const editCount = versionEditCountRef.current;
-      const edits = versionEditsRef.current.length
-        ? [...versionEditsRef.current]
-        : [];
-      const newVersion = {
-        versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        label: 'v1',
-        signature,
-        prompt: promptText,
-        timestamp: new Date().toISOString(),
-        ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
-        generations: [],
-        ...(editCount > 0 ? { editCount } : {}),
-        ...(edits.length ? { edits } : {}),
-      };
-
-      persistVersions([newVersion], { uuid, docId });
-      setActiveVersionId(newVersion.versionId);
-      resetVersionEdits();
-      return newVersion.versionId;
-    }
-
-    const lastVersion = currentVersions[currentVersions.length - 1];
-    if (lastVersion && lastVersion.signature === signature) {
-      return lastVersion.versionId;
-    }
-
-    const editCount = versionEditCountRef.current;
-    const edits = versionEditsRef.current.length
-      ? [...versionEditsRef.current]
-      : [];
-    const newVersion = {
-      versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      label: `v${currentVersions.length + 1}`,
-      signature,
-      prompt: promptText,
-      timestamp: new Date().toISOString(),
-      ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
-      generations: [],
-      ...(editCount > 0 ? { editCount } : {}),
-      ...(edits.length ? { edits } : {}),
-    };
-
-    persistVersions([...currentVersions, newVersion], { uuid, docId });
-    setActiveVersionId(newVersion.versionId);
-    resetVersionEdits();
-    return newVersion.versionId;
-  }, [
-    activeVersion?.versionId,
-    currentVersions,
-    ensureDraftEntry,
-    inputPrompt,
-    latestHighlightRef,
-    normalizedDisplayedPrompt,
-    persistVersions,
     resetVersionEdits,
-    setActiveVersionId,
-    versionEditCountRef,
-    versionEditsRef,
-  ]);
-
-  const handleGenerationsChange = useCallback(
-    (nextGenerations: Generation[]) => {
-      syncVersionGenerations(nextGenerations);
-    },
-    [syncVersionGenerations]
-  );
+    effectiveAspectRatio,
+  });
 
   const setShowExportMenu = useCallback(
     (value: boolean) => setState({ showExportMenu: value }),
@@ -1261,9 +806,9 @@ export function PromptCanvas({
       }
 
       handleAutocomplete(normalizedText, cursorPosition, editorRef.current || undefined, caretRect);
-      debouncedValidateTriggers(normalizedText);
+      validateTriggers(normalizedText);
     },
-    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, handleAutocomplete, debouncedValidateTriggers]
+    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, handleAutocomplete, validateTriggers]
   );
 
   const insertTrigger = useCallback(
@@ -1313,309 +858,42 @@ export function PromptCanvas({
     [handleAutocompleteKeyDown, insertTrigger]
   );
 
-  const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
-    suggestionsData,
-    selectedSpanId,
-    ...(onSuggestionClick ? { onSuggestionClick } : {}),
-    setState,
-  });
-
-  const selectedSpan = useMemo(() => {
-    if (!selectedSpanId || !Array.isArray(parseResult?.spans)) {
-      return null;
-    }
-    return (
-      parseResult.spans.find((span) => {
-        const candidateId =
-          typeof span?.id === 'string' && span.id.length > 0
-            ? span.id
-            : `span_${span.start}_${span.end}`;
-        return candidateId === selectedSpanId;
-      }) ?? null
-    );
-  }, [parseResult?.spans, selectedSpanId]);
-
-  const selectedSpanText = useMemo(() => {
-    if (!selectedSpan) return '';
-    const displayQuote =
-      typeof selectedSpan.displayQuote === 'string' &&
-      selectedSpan.displayQuote.trim()
-        ? selectedSpan.displayQuote
-        : '';
-    const quote =
-      typeof selectedSpan.quote === 'string' && selectedSpan.quote.trim()
-        ? selectedSpan.quote
-        : '';
-    const text =
-      typeof selectedSpan.text === 'string' && selectedSpan.text.trim()
-        ? selectedSpan.text
-        : '';
-    return (displayQuote || quote || text).trim();
-  }, [selectedSpan]);
-
-  const inlineSuggestions = useMemo<InlineSuggestion[]>(() => {
-    const rawSuggestions = (suggestionsData?.suggestions ?? []) as Array<
-      SuggestionItem | string
-    >;
-    return rawSuggestions
-      .map((item, index) => {
-        const rawText =
-          typeof item === 'string'
-            ? item
-            : typeof item?.text === 'string'
-              ? item.text
-              : typeof (item as { label?: string } | null)?.label === 'string'
-                ? (item as { label?: string }).label
-                : '';
-        const text = (rawText ?? '').trim();
-
-        if (!text) {
-          return null;
-        }
-
-        const meta =
-          typeof item === 'object' && item
-            ? typeof item.compatibility === 'number'
-              ? `${Math.round(item.compatibility * 100)}% match`
-              : typeof item.category === 'string'
-                ? item.category
-                : typeof item.explanation === 'string'
-                  ? item.explanation
-                  : null
-            : null;
-
-        return {
-          key: (item as { id?: string } | null)?.id ?? `${text}_${index}`,
-          text,
-          meta,
-          item,
-        };
-      })
-      .filter((item): item is InlineSuggestion => item !== null);
-  }, [suggestionsData?.suggestions]);
-
-  const suggestionCount = inlineSuggestions.length;
-  const i2vResponseMeta = useMemo(() => {
-    const meta = suggestionsData?.responseMetadata;
-    if (!meta || typeof meta !== 'object') {
-      return null;
-    }
-    const maybeI2v = (meta as { i2v?: unknown }).i2v;
-    if (!maybeI2v || typeof maybeI2v !== 'object') {
-      return null;
-    }
-    return maybeI2v as {
-      locked?: boolean;
-      reason?: string;
-      motionAlternatives?: SuggestionItem[];
-    };
-  }, [suggestionsData?.responseMetadata]);
-
-  const i2vLockReason =
-    typeof i2vResponseMeta?.reason === 'string' && i2vResponseMeta.reason.trim()
-      ? i2vResponseMeta.reason.trim()
-      : null;
-  const resolvedI2VReason =
-    i2vLockReason || (i2vResponseMeta?.locked ? 'This category is locked by the image.' : null);
-  const i2vMotionAlternatives = Array.isArray(i2vResponseMeta?.motionAlternatives)
-    ? i2vResponseMeta?.motionAlternatives
-    : [];
-  const hasI2VLockNotice = Boolean(resolvedI2VReason);
-  const selectionMatches = useMemo(() => {
-    if (!selectedSpanText || !suggestionsData?.selectedText) {
-      return true;
-    }
-    return suggestionsData.selectedText.trim() === selectedSpanText.trim();
-  }, [selectedSpanText, suggestionsData?.selectedText]);
-
-  const isInlineLoading = Boolean(
-    selectedSpanId &&
-      (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
-  );
-  const isInlineError = Boolean(suggestionsData?.isError);
-  const inlineErrorMessage =
-    typeof suggestionsData?.errorMessage === 'string' &&
-    suggestionsData.errorMessage.trim()
-      ? suggestionsData.errorMessage.trim()
-      : 'Failed to load suggestions.';
-  const isInlineEmpty = Boolean(
-    selectedSpanId &&
-      !isInlineLoading &&
-      !isInlineError &&
-      suggestionCount === 0 &&
-      !hasI2VLockNotice
-  );
-  const showI2VLockIndicator = Boolean(i2vContext?.isI2VMode && hasI2VLockNotice);
-  const selectionLabel =
-    selectedSpanText || suggestionsData?.selectedText || '';
-  const customRequestSelection = selectionLabel.trim();
-  const customRequestPrompt = (
-    suggestionsData?.fullPrompt ||
-    normalizedDisplayedPrompt ||
-    ''
-  ).trim();
-
-  const customRequestPreferIndex = useMemo(() => {
-    const preferIndexRaw =
-      suggestionsData?.metadata?.span?.start ??
-      suggestionsData?.metadata?.start ??
-      suggestionsData?.offsets?.start ??
-      null;
-    return typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
-      ? preferIndexRaw
-      : null;
-  }, [suggestionsData?.metadata, suggestionsData?.offsets]);
-
-  const customRequestContext = useMemo(() => {
-    if (!customRequestSelection || !customRequestPrompt) {
-      return null;
-    }
-    const normalizedPrompt = customRequestPrompt.normalize('NFC');
-    const normalizedHighlight = customRequestSelection.normalize('NFC');
-    return buildSuggestionContext(
-      normalizedPrompt,
-      normalizedHighlight,
-      customRequestPreferIndex,
-      1000
-    );
-  }, [customRequestSelection, customRequestPrompt, customRequestPreferIndex]);
-
   const {
+    suggestionCount,
+    inlineSuggestions,
+    activeSuggestionIndex,
+    setActiveSuggestionIndex,
+    suggestionsListRef,
+    interactionSourceRef,
+    handleSuggestionClickWithFeedback,
+    closeInlinePopover,
+    selectionLabel,
     customRequest,
     setCustomRequest,
-    handleCustomRequest,
+    customRequestError,
+    setCustomRequestError,
+    handleCustomRequestSubmit,
+    isCustomRequestDisabled,
     isCustomLoading,
-  } = useCustomRequest({
-    selectedText: customRequestSelection,
-    fullPrompt: customRequestPrompt,
-    contextBefore: customRequestContext?.contextBefore ?? '',
-    contextAfter: customRequestContext?.contextAfter ?? '',
-    metadata: suggestionsData?.metadata ?? null,
-    setSuggestions: suggestionsData?.setSuggestions ?? (() => {}),
-    setError: setCustomRequestError,
-  });
-
-  const isCustomRequestReady =
-    Boolean(customRequestSelection && customRequestPrompt) && !isInlineLoading;
-  const isCustomRequestDisabled =
-    !isCustomRequestReady || !customRequest.trim() || isCustomLoading;
-
-  const handleCustomRequestSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>): void => {
-      event.preventDefault();
-      if (isCustomRequestDisabled) return;
-      void handleCustomRequest();
-    },
-    [handleCustomRequest, isCustomRequestDisabled]
-  );
-
-  useEffect(() => {
-    setCustomRequest('');
-    setCustomRequestError('');
-    // Note: setCustomRequest is stable (from useState) so not needed in deps
-  }, [selectedSpanId]);
-
-  useEffect(() => {
-    const justOpened =
-      previousSelectedSpanIdRef.current !== selectedSpanId && selectedSpanId;
-    const countChanged = suggestionCount !== previousSuggestionCountRef.current;
-
-    if (selectedSpanId && (justOpened || countChanged)) {
-      interactionSourceRef.current = 'auto';
-      setActiveSuggestionIndex(0);
-    }
-
-    previousSelectedSpanIdRef.current = selectedSpanId;
-    previousSuggestionCountRef.current = suggestionCount;
-  }, [selectedSpanId, suggestionCount]);
-
-  useEffect(() => {
-    if (!selectedSpanId || !suggestionsListRef.current) return;
-
-    // Skip scrolling if the change came from mouse hover to prevent fighting/looping
-    if (interactionSourceRef.current === 'mouse') return;
-
-    const list = suggestionsListRef.current;
-    const activeItem = list.querySelector(
-      `[data-index="${activeSuggestionIndex}"]`
-    ) as HTMLElement | null;
-    if (activeItem) {
-      activeItem.scrollIntoView({ block: 'nearest' });
-    }
-  }, [selectedSpanId, activeSuggestionIndex]);
-
-  const handleApplyActiveSuggestion = useCallback((): void => {
-    const active = inlineSuggestions[activeSuggestionIndex];
-    if (!active) return;
-    handleSuggestionClickWithFeedback(active.item);
-  }, [
-    activeSuggestionIndex,
-    inlineSuggestions,
-    handleSuggestionClickWithFeedback,
-  ]);
-
-  const handleLockedAlternativeClick = useCallback(
-    (suggestion: SuggestionItem): void => {
-      handleSuggestionClickWithFeedback(suggestion);
-      closeInlinePopover();
-    },
-    [closeInlinePopover, handleSuggestionClickWithFeedback]
-  );
-
-  useEffect(() => {
-    if (!selectedSpanId) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target as HTMLElement | null;
-      const isTextInput =
-        !!target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
-      const isCustomRequestTarget =
-        !!target && Boolean(target.closest?.('[data-suggest-custom]'));
-
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeInlinePopover();
-        return;
-      }
-
-      // Don't hijack navigation while typing into inputs (including the custom request box).
-      if (isTextInput || isCustomRequestTarget) {
-        return;
-      }
-
-      if (!suggestionCount) return;
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        interactionSourceRef.current = 'keyboard';
-        setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCount);
-        return;
-      }
-
-      if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        interactionSourceRef.current = 'keyboard';
-        setActiveSuggestionIndex((prev) =>
-          prev - 1 < 0 ? suggestionCount - 1 : prev - 1
-        );
-        return;
-      }
-
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        handleApplyActiveSuggestion();
-        closeInlinePopover();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [
-    selectedSpanId,
-    suggestionCount,
-    closeInlinePopover,
+    isInlineLoading,
+    isInlineError,
+    inlineErrorMessage,
+    isInlineEmpty,
+    showI2VLockIndicator,
+    resolvedI2VReason,
+    i2vMotionAlternatives,
+    handleLockedAlternativeClick,
     handleApplyActiveSuggestion,
-  ]);
+  } = useInlineSuggestionState({
+    suggestionsData,
+    selectedSpanId,
+    setSelectedSpanId,
+    parseResultSpans: parseResult.spans,
+    normalizedDisplayedPrompt,
+    i2vContext,
+    onSuggestionClick,
+    setState,
+  });
 
   const focusSpan = useCallback(
     (spanId: string | null): void => {

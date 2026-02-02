@@ -73,6 +73,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
             isLoading={isLoadingHistory}
             searchQuery={searchQuery}
             onSearchChange={onSearchChange}
+            onBack={() => setActivePanel('studio')}
             onLoadFromHistory={onLoadFromHistory}
             onCreateNew={onCreateNew}
             onDelete={onDelete}

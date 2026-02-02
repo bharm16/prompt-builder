@@ -107,7 +107,11 @@ export class PromptRepository {
   async updatePrompt(docId: string, updates: UpdatePromptOptions): Promise<void> {
     try {
       if (!docId) return;
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(docId)}/prompt`, {
+      const normalizedId = docId.trim();
+      const sessionId = normalizedId.startsWith('session_')
+        ? normalizedId
+        : await this.resolveSessionId(normalizedId);
+      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/prompt`, {
         ...(updates.input !== undefined ? { input: updates.input } : {}),
         ...(updates.title !== undefined ? { title: updates.title } : {}),
         ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
@@ -127,7 +131,10 @@ export class PromptRepository {
   async updateHighlights(docId: string, { highlightCache, versionEntry }: UpdateHighlightsOptions): Promise<void> {
     try {
       if (!docId) return;
-      const sessionId = await this.resolveSessionId(docId);
+      const normalizedId = docId.trim();
+      const sessionId = normalizedId.startsWith('session_')
+        ? normalizedId
+        : await this.resolveSessionId(normalizedId);
       await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/highlights`, {
         ...(highlightCache !== undefined ? { highlightCache } : {}),
         ...(versionEntry ? { versionEntry } : {}),
@@ -144,7 +151,11 @@ export class PromptRepository {
   async updateOutput(docId: string, output: string): Promise<void> {
     try {
       if (!docId) return;
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(docId)}/output`, { output });
+      const normalizedId = docId.trim();
+      const sessionId = normalizedId.startsWith('session_')
+        ? normalizedId
+        : await this.resolveSessionId(normalizedId);
+      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/output`, { output });
     } catch (error) {
       log.error('Error updating prompt output', error as Error);
       throw new PromptRepositoryError('Failed to update output', error);
@@ -157,7 +168,11 @@ export class PromptRepository {
   async updateVersions(docId: string, versions: PromptVersionEntry[]): Promise<void> {
     try {
       if (!docId) return;
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(docId)}/versions`, { versions });
+      const normalizedId = docId.trim();
+      const sessionId = normalizedId.startsWith('session_')
+        ? normalizedId
+        : await this.resolveSessionId(normalizedId);
+      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/versions`, { versions });
     } catch (error) {
       log.error('Error updating prompt versions', error as Error);
       throw new PromptRepositoryError('Failed to update versions', error);
@@ -212,7 +227,7 @@ export class PromptRepository {
     const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(sessionIdOrUuid)}`);
     const data = (response as { data?: { id: string } }).data;
     if (!data?.id) {
-      throw new Error('Session not found for highlight update');
+      throw new Error('Session not found');
     }
     return data.id;
   }

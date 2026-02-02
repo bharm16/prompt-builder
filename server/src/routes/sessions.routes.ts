@@ -4,26 +4,28 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import type { SessionService } from '@services/sessions/SessionService';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
-import { getVideoCost } from '@config/modelCosts';
-
-type RequestWithUser = Request & { user?: { uid?: string } };
+import {
+  ContinuitySessionInputSchema,
+  RequestWithUser,
+  handleCreateSceneProxy,
+  handleCreateShot,
+  handleGenerateShot,
+  handleUpdatePrimaryStyleReference,
+  handleUpdateSessionSettings,
+  handleUpdateShot,
+  handleUpdateStyleReference,
+  requireSessionForUser,
+  requireUserId,
+} from './continuity/continuityRouteShared';
 
 const CreateSessionSchema = z.object({
   name: z.string().optional(),
   prompt: z.record(z.string(), z.unknown()).optional(),
 }).strip();
 
-const CreateContinuitySessionSchema = z
-  .object({
-    sessionId: z.string().optional(),
-    name: z.string().min(1),
-    description: z.string().optional(),
-    sourceVideoId: z.string().optional().nullable(),
-    sourceImageUrl: z.string().optional().nullable(),
-    initialPrompt: z.string().optional(),
-    settings: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strip();
+const CreateContinuitySessionSchema = ContinuitySessionInputSchema.extend({
+  sessionId: z.string().optional(),
+}).strip();
 
 const UpdateSessionSchema = z.object({
   name: z.string().optional(),
@@ -55,75 +57,6 @@ const UpdateVersionsSchema = z.object({
   versions: z.array(z.record(z.string(), z.unknown())).optional(),
 }).strip();
 
-const CreateShotSchema = z.object({
-  prompt: z.string().min(1),
-  continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
-  generationMode: z.enum(['continuity', 'standard']).optional(),
-  styleReferenceId: z.string().nullable().optional(),
-  styleStrength: z.number().optional(),
-  sourceVideoId: z.string().optional(),
-  modelId: z.string().optional(),
-  characterAssetId: z.string().optional(),
-  faceStrength: z.number().optional(),
-  versions: z.array(z.record(z.string(), z.unknown())).optional(),
-  camera: z
-    .object({
-      yaw: z.number().optional(),
-      pitch: z.number().optional(),
-      roll: z.number().optional(),
-      dolly: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-}).strip();
-
-const UpdateShotSchema = z.object({
-  prompt: z.string().optional(),
-  continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
-  generationMode: z.enum(['continuity', 'standard']).optional(),
-  styleReferenceId: z.string().nullable().optional(),
-  styleStrength: z.number().optional(),
-  modelId: z.string().optional(),
-  characterAssetId: z.string().nullable().optional(),
-  faceStrength: z.number().optional(),
-  versions: z.array(z.record(z.string(), z.unknown())).optional(),
-  camera: z
-    .object({
-      yaw: z.number().optional(),
-      pitch: z.number().optional(),
-      roll: z.number().optional(),
-      dolly: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-}).strip();
-
-const UpdateStyleReferenceSchema = z.object({
-  styleReferenceId: z.string().nullable(),
-}).strip();
-
-const UpdateSessionSettingsSchema = z.object({
-  settings: z.record(z.string(), z.unknown()),
-}).strip();
-
-const UpdatePrimaryStyleReferenceSchema = z.object({
-  sourceVideoId: z.string().optional(),
-  sourceImageUrl: z.string().optional(),
-}).strip();
-
-const CreateSceneProxySchema = z.object({
-  sourceShotId: z.string().optional(),
-  sourceVideoId: z.string().optional(),
-}).strip();
-
-function requireUserId(req: RequestWithUser, res: Response): string | null {
-  const userId = req.user?.uid;
-  if (!userId) {
-    res.status(401).json({ success: false, error: 'Authentication required' });
-    return null;
-  }
-  return userId;
-}
 
 export function createSessionRoutes(
   sessionService: SessionService,
@@ -349,124 +282,77 @@ export function createSessionRoutes(
   router.post(
     '/:sessionId/shots',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = CreateShotSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const shot = await continuityService.addShot({ sessionId: req.params.sessionId, ...parsed.data });
-      res.json({ success: true, data: shot });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleCreateShot(continuityService, req, res, {
+        sessionId: session.id,
+        status: 200,
+      });
     })
   );
 
   router.patch(
     '/:sessionId/shots/:shotId',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = UpdateShotSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const shot = await continuityService.updateShot(req.params.sessionId, req.params.shotId, parsed.data);
-      res.json({ success: true, data: shot });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleUpdateShot(continuityService, req, res, {
+        sessionId: session.id,
+        shotId: req.params.shotId,
+      });
     })
   );
 
   router.post(
     '/:sessionId/shots/:shotId/generate',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-
-      const shot = await continuityService.generateShot(req.params.sessionId, req.params.shotId);
-
-      if (userCreditService) {
-        const cost = getVideoCost(shot.modelId, 'render');
-        await userCreditService.chargeCredits(userId, cost, {
-          type: 'continuity-video',
-          sessionId: req.params.sessionId,
-          shotId: req.params.shotId,
-          modelId: shot.modelId,
-        });
-      }
-
-      res.json({ success: true, data: shot });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleGenerateShot(continuityService, session, req, res, userCreditService);
     })
   );
 
   router.put(
     '/:sessionId/shots/:shotId/style-reference',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = UpdateStyleReferenceSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const shot = await continuityService.updateShotStyleReference(
-        req.params.sessionId,
-        req.params.shotId,
-        parsed.data.styleReferenceId
-      );
-      res.json({ success: true, data: shot });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleUpdateStyleReference(continuityService, req, res, {
+        sessionId: session.id,
+        shotId: req.params.shotId,
+      });
     })
   );
 
   router.put(
     '/:sessionId/settings',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = UpdateSessionSettingsSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const session = await continuityService.updateSessionSettings(req.params.sessionId, parsed.data.settings);
-      res.json({ success: true, data: session });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleUpdateSessionSettings(continuityService, req, res, { sessionId: session.id });
     })
   );
 
   router.put(
     '/:sessionId/style-reference',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = UpdatePrimaryStyleReferenceSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const session = await continuityService.updatePrimaryStyleReference(
-        req.params.sessionId,
-        parsed.data.sourceVideoId,
-        parsed.data.sourceImageUrl
-      );
-      res.json({ success: true, data: session });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleUpdatePrimaryStyleReference(continuityService, req, res, {
+        sessionId: session.id,
+      });
     })
   );
 
   router.post(
     '/:sessionId/scene-proxy',
     asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = CreateSceneProxySchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      const session = await continuityService.createSceneProxy(
-        req.params.sessionId,
-        parsed.data.sourceShotId,
-        parsed.data.sourceVideoId
-      );
-      res.json({ success: true, data: session });
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleCreateSceneProxy(continuityService, req, res, {
+        sessionId: session.id,
+        status: 200,
+      });
     })
   );
 

@@ -14,3 +14,5 @@ export { usePromptKeyframesSync } from './usePromptKeyframesSync';
 export { usePromptHistoryActions } from './usePromptHistoryActions';
 export { useStablePromptContext } from './useStablePromptContext';
 export { usePromptCoherence } from './usePromptCoherence';
+export { useAutoSave } from './useAutoSave';
+export { useAssetManagement } from './useAssetManagement';

@@ -7,6 +7,7 @@ import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { storageApi } from '@/api/storageApi';
+import { applyOptimizationResult } from '../utils/persistOptimizationResult';
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
@@ -238,24 +239,19 @@ export function usePromptOptimization({
         );
 
         if (saveResult?.uuid) {
-          // Update state
-          skipLoadFromUrlRef.current = true;
-          setCurrentPromptUuid(saveResult.uuid);
-          setCurrentPromptDocId(saveResult.id ?? null);
-          setDisplayedPromptSilently(result.optimized);
-          setShowResults(true);
-          
-          // Reset highlights and stacks
-          applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-          resetEditStacks();
-          persistedSignatureRef.current = null;
-          
-          // Navigate to the new session URL
-          if (saveResult.id) {
-            navigate(`/session/${saveResult.id}`, { replace: true });
-          } else if (saveResult.uuid) {
-            navigate('/', { replace: true });
-          }
+          applyOptimizationResult({
+            optimizedPrompt: result.optimized,
+            saveResult,
+            setCurrentPromptUuid,
+            setCurrentPromptDocId,
+            setDisplayedPromptSilently,
+            setShowResults,
+            applyInitialHighlightSnapshot,
+            resetEditStacks,
+            persistedSignatureRef,
+            skipLoadFromUrlRef,
+            navigate,
+          });
         }
 
         if (saveResult?.uuid && options?.createVersion) {

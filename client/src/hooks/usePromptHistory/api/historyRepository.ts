@@ -140,13 +140,29 @@ export async function updatePrompt(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
+    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    let attemptedUuid = false;
     try {
-      if (userId && isValidSessionId(docId)) {
+      if (shouldUseDocId) {
         await repository.updatePrompt(docId, updates);
         return;
       }
+      attemptedUuid = true;
       await repository.updatePrompt(uuid, updates);
     } catch (error) {
+      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updatePrompt(uuid, updates);
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated prompt (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated prompt', {
         uuid,
         docId,
@@ -168,13 +184,29 @@ export async function updateHighlights(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
+    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    let attemptedUuid = false;
     try {
-      if (userId && isValidSessionId(docId)) {
+      if (shouldUseDocId) {
         await repository.updateHighlights(docId, { highlightCache });
         return;
       }
+      attemptedUuid = true;
       await repository.updateHighlights(uuid, { highlightCache });
     } catch (error) {
+      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updateHighlights(uuid, { highlightCache });
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated highlights (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated highlights', {
         uuid,
         docId,
@@ -196,13 +228,29 @@ export async function updateOutput(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
+    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    let attemptedUuid = false;
     try {
-      if (userId && isValidSessionId(docId)) {
+      if (shouldUseDocId) {
         await repository.updateOutput(docId, output);
         return;
       }
+      attemptedUuid = true;
       await repository.updateOutput(uuid, output);
     } catch (error) {
+      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updateOutput(uuid, output);
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated output (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated output', {
         uuid,
         docId,
@@ -230,14 +278,33 @@ export async function updateVersions(
     );
 
     try {
-      if (userId && isValidSessionId(docId)) {
+      const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+      if (shouldUseDocId) {
         await repository.updateVersions(docId, versions);
         log.debug('Versions persisted to session store', { uuid, docId, versionCount: versions.length, generationCount });
         return;
       }
       await repository.updateVersions(uuid, versions);
-      log.debug('Versions persisted to localStorage', { uuid, versionCount: versions.length });
+      log.debug(
+        userId ? 'Versions persisted to session store via uuid' : 'Versions persisted to localStorage',
+        { uuid, versionCount: versions.length }
+      );
     } catch (error) {
+      if (userId && isValidSessionId(docId) && uuid && uuid !== docId) {
+        try {
+          await repository.updateVersions(uuid, versions);
+          log.debug('Versions persisted to session store via uuid fallback', {
+            uuid,
+            docId,
+            versionCount: versions.length,
+            generationCount,
+          });
+          return;
+        } catch (fallbackError) {
+          log.error('Failed to persist versions (fallback)', fallbackError as Error, { uuid, docId });
+          return;
+        }
+      }
       log.error('Failed to persist versions', error as Error, { uuid, docId });
     }
   }

@@ -1,8 +1,19 @@
-import type { SessionPromptVersionEntry } from '@shared/types/session';
+import type {
+  SessionContinuityMode,
+  SessionContinuitySettings,
+  SessionContinuityShot,
+  SessionFrameBridge,
+  SessionGenerationMode,
+  SessionPromptVersionEntry,
+  SessionSceneProxy,
+  SessionSeedInfo,
+  SessionStatus,
+  SessionStyleReference,
+} from '@shared/types/session';
 import type { VideoModelId } from '@services/video-generation/types';
 
-export type GenerationMode = 'continuity' | 'standard';
-export type ContinuityMode = 'frame-bridge' | 'style-match' | 'native' | 'none';
+export type GenerationMode = SessionGenerationMode;
+export type ContinuityMode = SessionContinuityMode;
 export type ContinuityMechanismUsed =
   | 'native-style-ref'
   | 'frame-bridge'
@@ -15,24 +26,16 @@ export type ContinuityMechanismUsed =
 /**
  * A frame extracted from a video for style reference or i2v input
  */
-export interface StyleReference {
-  id: string;
+export interface StyleReference
+  extends Omit<
+    SessionStyleReference,
+    'sourceVideoId' | 'sourceFrameIndex' | 'extractedAt' | 'analysisMetadata'
+  > {
   sourceVideoId: string;
   sourceFrameIndex: number;
-
-  frameUrl: string;
-  frameTimestamp: number;
-
-  resolution: {
-    width: number;
-    height: number;
-  };
-  aspectRatio: string;
-
-  clipEmbedding?: string;
   analysisMetadata?: StyleAnalysisMetadata;
-
   extractedAt: Date;
+  clipEmbedding?: string;
 }
 
 export interface StyleAnalysisMetadata {
@@ -52,40 +55,20 @@ export interface ProviderContinuityCapabilities {
   maxStyleReferenceImages?: number;
 }
 
-export interface SeedInfo {
-  seed: number;
-  provider: string;
-  modelId: string;
+export interface SeedInfo extends Omit<SessionSeedInfo, 'modelId' | 'extractedAt'> {
+  modelId: VideoModelId;
   extractedAt: Date;
 }
 
-export interface FrameBridge {
-  id: string;
-  sourceVideoId: string;
-  sourceShotId: string;
-
-  frameUrl: string;
-  framePosition: 'first' | 'last' | 'representative';
-  frameTimestamp: number;
-
-  resolution: {
-    width: number;
-    height: number;
-  };
-  aspectRatio: string;
-
+export interface FrameBridge extends Omit<SessionFrameBridge, 'extractedAt'> {
   extractedAt: Date;
 }
 
-export interface SceneProxy {
-  id: string;
+export interface SceneProxy
+  extends Omit<SessionSceneProxy, 'proxyType' | 'createdAt'> {
   sourceVideoId: string;
   proxyType: 'depth-parallax' | 'gaussian-splat' | 'nerf';
-  referenceFrameUrl: string;
-  depthMapUrl?: string;
   createdAt: Date;
-  status: 'ready' | 'failed' | 'building';
-  error?: string;
 }
 
 export interface SceneProxyRender {
@@ -102,86 +85,39 @@ export interface SceneProxyRender {
   createdAt: Date;
 }
 
-export interface ContinuityShot {
-  id: string;
-  sessionId: string;
-  sequenceIndex: number;
-
-  // User input
-  userPrompt: string;
+export interface ContinuityShot
+  extends Omit<
+    SessionContinuityShot,
+    | 'generationMode'
+    | 'continuityMode'
+    | 'styleReference'
+    | 'frameBridge'
+    | 'seedInfo'
+    | 'modelId'
+    | 'createdAt'
+    | 'generatedAt'
+    | 'continuityMechanismUsed'
+  > {
   generationMode?: GenerationMode;
-
-  // Continuity settings
   continuityMode: ContinuityMode;
-  styleStrength: number;
-
-  // Style linkage — which shot provides the style reference
-  styleReferenceId: string | null;
   styleReference?: StyleReference;
-
-  // Frame bridge
   frameBridge?: FrameBridge;
-
-  // Character reference
-  characterAssetId?: string;
-  faceStrength?: number;
-
-  // Camera hints (optional)
-  camera?: {
-    yaw?: number;
-    pitch?: number;
-    roll?: number;
-    dolly?: number;
-  };
-
-  // Generation details
   modelId: VideoModelId;
-
-  // Seed persistence
   seedInfo?: SeedInfo;
-  inheritedSeed?: number;
-
-  // Outputs
-  videoAssetId?: string;
-  previewAssetId?: string;
-  generatedKeyframeUrl?: string;
-  styleTransferApplied?: boolean;
-  styleDegraded?: boolean;
-  styleDegradedReason?: string;
-  sceneProxyRenderUrl?: string;
-
-  // Which continuity mechanism was actually used
   continuityMechanismUsed?: ContinuityMechanismUsed;
-
-  // Quality scores
-  styleScore?: number;
-  identityScore?: number;
-  qualityScore?: number;
-  retryCount?: number;
-
-  // State
-  status: 'draft' | 'generating-keyframe' | 'generating-video' | 'completed' | 'failed';
-  error?: string;
-
   createdAt: Date;
   generatedAt?: Date;
   versions?: SessionPromptVersionEntry[];
 }
 
-export interface ContinuitySessionSettings {
+export interface ContinuitySessionSettings
+  extends Omit<
+    SessionContinuitySettings,
+    'generationMode' | 'defaultContinuityMode' | 'defaultModel'
+  > {
   generationMode: GenerationMode;
   defaultContinuityMode: ContinuityMode;
-  defaultStyleStrength: number;
   defaultModel: VideoModelId;
-  autoExtractFrameBridge: boolean;
-  useCharacterConsistency: boolean;
-  useSceneProxy?: boolean;
-  autoRetryOnFailure?: boolean;
-  maxRetries?: number;
-  qualityThresholds?: {
-    style: number;
-    identity: number;
-  };
 }
 
 export interface ContinuitySession {
@@ -198,7 +134,7 @@ export interface ContinuitySession {
 
   defaultSettings: ContinuitySessionSettings;
 
-  status: 'active' | 'completed' | 'archived';
+  status: SessionStatus;
 
   version?: number;
 
