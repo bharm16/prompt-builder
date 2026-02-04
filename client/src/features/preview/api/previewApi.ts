@@ -146,6 +146,10 @@ export interface MediaViewUrlResponse {
   success: boolean;
   data?: {
     viewUrl: string;
+    expiresAt?: string;
+    storagePath?: string;
+    assetId?: string;
+    source?: string;
   };
   error?: string;
   message?: string;
@@ -326,6 +330,7 @@ export async function uploadPreviewImage(
 export interface GenerateVideoResponse {
   success: boolean;
   videoUrl?: string;
+  assetId?: string;
   storagePath?: string;
   viewUrl?: string;
   viewUrlExpiresAt?: string;

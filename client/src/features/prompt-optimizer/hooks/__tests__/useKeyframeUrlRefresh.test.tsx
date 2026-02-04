@@ -10,12 +10,10 @@ import {
   useGenerationControlsStoreState,
 } from '@/features/prompt-optimizer/context/GenerationControlsStore';
 import { useKeyframeUrlRefresh } from '../useKeyframeUrlRefresh';
-import { storageApi } from '@/api/storageApi';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 
-vi.mock('@/api/storageApi', () => ({
-  storageApi: {
-    getViewUrl: vi.fn(),
-  },
+vi.mock('@/services/media/MediaUrlResolver', () => ({
+  resolveMediaUrl: vi.fn(),
 }));
 
 const buildInitialState = (overrides: Partial<GenerationControlsState> = {}): GenerationControlsState => ({
@@ -48,9 +46,11 @@ describe('useKeyframeUrlRefresh', () => {
   });
 
   it('refreshes stale keyframes and updates store', async () => {
-    (storageApi.getViewUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
-      viewUrl: 'https://storage.example.com/updated.png',
+    (resolveMediaUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
+      url: 'https://storage.example.com/updated.png',
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      storagePath: 'uploads/frame1.png',
+      source: 'storage',
     });
 
     const initialState = buildInitialState({
@@ -73,7 +73,12 @@ describe('useKeyframeUrlRefresh', () => {
     }, { wrapper: buildWrapper(initialState) });
 
     await waitFor(() => {
-      expect(storageApi.getViewUrl).toHaveBeenCalledWith('uploads/frame1.png');
+      expect(resolveMediaUrl).toHaveBeenCalledWith({
+        kind: 'image',
+        url: 'https://storage.example.com/original.png',
+        storagePath: 'uploads/frame1.png',
+        preferFresh: true,
+      });
     });
 
     await waitFor(() => {
@@ -83,7 +88,7 @@ describe('useKeyframeUrlRefresh', () => {
   });
 
   it('handles refresh failures gracefully', async () => {
-    (storageApi.getViewUrl as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('nope'));
+    (resolveMediaUrl as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('nope'));
 
     const initialState = buildInitialState({
       domain: {
@@ -105,7 +110,7 @@ describe('useKeyframeUrlRefresh', () => {
     }, { wrapper: buildWrapper(initialState) });
 
     await waitFor(() => {
-      expect(storageApi.getViewUrl).toHaveBeenCalled();
+      expect(resolveMediaUrl).toHaveBeenCalled();
     });
 
     expect(result.current.domain.keyframes[0]?.url).toBe('https://storage.example.com/original.png');

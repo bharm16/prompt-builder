@@ -30,6 +30,8 @@ const UploadResultSchema: z.ZodType<UploadResult> = z.object({
 
 const ViewUrlResultSchema = z.object({
   viewUrl: z.string(),
+  expiresAt: z.string().optional(),
+  storagePath: z.string().optional(),
 });
 
 interface UseMediaStorageResult {

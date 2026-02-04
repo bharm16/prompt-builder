@@ -74,6 +74,10 @@ export const MediaViewUrlResponseSchema: z.ZodType<MediaViewUrlResponse> = z
     data: z
       .object({
         viewUrl: z.string(),
+        expiresAt: z.string().optional(),
+        storagePath: z.string().optional(),
+        assetId: z.string().optional(),
+        source: z.string().optional(),
       })
       .optional(),
     error: z.string().optional(),
@@ -99,6 +103,7 @@ export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
   .object({
     success: z.boolean(),
     videoUrl: z.string().optional(),
+    assetId: z.string().optional(),
     storagePath: z.string().optional(),
     viewUrl: z.string().optional(),
     viewUrlExpiresAt: z.string().optional(),

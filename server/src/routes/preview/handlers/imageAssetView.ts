@@ -52,7 +52,8 @@ export const createImageAssetViewHandler = ({
       success: true,
       data: {
         viewUrl,
+        assetId,
+        source: 'preview',
       },
     });
   };
-

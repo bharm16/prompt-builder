@@ -234,6 +234,8 @@ export function SessionsPanel({
       const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
       const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ''}-${title}`;
 
+      const thumbnail = resolveHistoryThumbnail(entry);
+
       return {
         entry,
         stage,
@@ -242,7 +244,9 @@ export function SessionsPanel({
         isSelected,
         processingLabel: effectiveProcessingLabel,
         key,
-        thumbnailUrl: resolveHistoryThumbnail(entry),
+        thumbnailUrl: thumbnail.url,
+        thumbnailStoragePath: thumbnail.storagePath ?? null,
+        thumbnailAssetId: thumbnail.assetId ?? null,
       };
     });
   }, [
@@ -460,6 +464,8 @@ export function SessionsPanel({
                         processingLabel,
                         key,
                         thumbnailUrl,
+                        thumbnailStoragePath,
+                        thumbnailAssetId,
                       },
                       index
                     ) => {
@@ -481,6 +487,8 @@ export function SessionsPanel({
                           stage={stage}
                           processingLabel={processingLabel}
                           thumbnailUrl={thumbnailUrl}
+                          thumbnailStoragePath={thumbnailStoragePath}
+                          thumbnailAssetId={thumbnailAssetId}
                           onCopyPrompt={handleCopyPrompt}
                           onOpenInNewTab={handleOpenInNewTab}
                           dataIndex={index}

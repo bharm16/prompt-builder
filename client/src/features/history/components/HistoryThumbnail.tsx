@@ -1,13 +1,15 @@
 import React from 'react';
 import { Image } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 type HistoryThumbnailSize = 'sm' | 'md' | 'lg';
 type HistoryThumbnailVariant = 'default' | 'muted';
 
 interface HistoryThumbnailProps {
   src?: string | null;
+  storagePath?: string | null;
+  assetId?: string | null;
   label?: string;
   size?: HistoryThumbnailSize;
   variant?: HistoryThumbnailVariant;
@@ -23,6 +25,8 @@ const SIZE_CLASSES: Record<HistoryThumbnailSize, string> = {
 
 export function HistoryThumbnail({
   src,
+  storagePath,
+  assetId,
   label = 'Prompt thumbnail',
   size = 'sm',
   variant = 'default',
@@ -30,17 +34,20 @@ export function HistoryThumbnail({
   className,
 }: HistoryThumbnailProps): React.ReactElement {
   const [didError, setDidError] = React.useState<boolean>(false);
-  const [resolvedSrc, setResolvedSrc] = React.useState<string>('');
   const refreshAttemptedRef = React.useRef(false);
+  const { url: resolvedUrl, refresh } = useResolvedMediaUrl({
+    kind: 'image',
+    url: src ?? null,
+    storagePath: storagePath ?? null,
+    assetId: assetId ?? null,
+  });
 
   React.useEffect(() => {
     setDidError(false);
     refreshAttemptedRef.current = false;
-    const nextSrc = typeof src === 'string' ? src.trim() : '';
-    setResolvedSrc(nextSrc);
   }, [src]);
 
-  const normalizedSrc = resolvedSrc;
+  const normalizedSrc = resolvedUrl?.trim?.() ?? '';
   const hasSrc = normalizedSrc.length > 0;
   const showFallback = !hasSrc || didError;
 
@@ -90,12 +97,10 @@ export function HistoryThumbnail({
               return;
             }
             refreshAttemptedRef.current = true;
-            const refreshed = await refreshSignedUrl(normalizedSrc, 'image');
-            if (refreshed && refreshed !== normalizedSrc) {
-              setResolvedSrc(refreshed);
-              return;
+            const refreshed = await refresh('error');
+            if (!refreshed.url || refreshed.url === normalizedSrc) {
+              setDidError(true);
             }
-            setDidError(true);
           }}
         />
       )}

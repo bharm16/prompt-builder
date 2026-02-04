@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { logger } from '@/services/LoggingService';
-import { storageApi } from '@/api/storageApi';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
@@ -107,14 +107,15 @@ export function useKeyframeUrlRefresh(): void {
         refreshInFlightRef.current.add(refreshKey);
 
         try {
-          const response = (await storageApi.getViewUrl(storagePath)) as {
-            viewUrl: string;
-            expiresAt?: string;
-          };
-          const nextUrl = response?.viewUrl;
+          const result = await resolveMediaUrl({
+            kind: 'image',
+            url: frame.url ?? null,
+            storagePath,
+            preferFresh: true,
+          });
+          const nextUrl = result.url;
           if (!nextUrl) return;
-
-          updateKeyframe(frame, nextUrl, storagePath, response?.expiresAt);
+          updateKeyframe(frame, nextUrl, storagePath, result.expiresAt ?? undefined);
           lastRefreshSignatureRef.current.set(refreshKey, nextUrl);
         } catch (error) {
           log.debug('Failed to refresh keyframe view URL', {

@@ -107,6 +107,9 @@ export interface PromptVersionPreview {
   generatedAt: string;
   imageUrl?: string | null;
   aspectRatio?: string | null;
+  storagePath?: string | null;
+  assetId?: string | null;
+  viewUrlExpiresAt?: string | null;
 }
 
 export interface PromptVersionVideo {
@@ -114,6 +117,9 @@ export interface PromptVersionVideo {
   videoUrl?: string | null;
   model?: string | null;
   generationParams?: Record<string, unknown> | null;
+  storagePath?: string | null;
+  assetId?: string | null;
+  viewUrlExpiresAt?: string | null;
 }
 
 export interface PromptVersionEntry {

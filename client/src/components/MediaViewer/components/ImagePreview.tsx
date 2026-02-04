@@ -1,24 +1,37 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 interface ImagePreviewProps {
   src: string | null;
+  storagePath?: string | null;
+  assetId?: string | null;
   alt?: string | undefined;
   className?: string | undefined;
   onError?: () => void;
 }
 
-export function ImagePreview({ src, alt = 'Image preview', className, onError }: ImagePreviewProps) {
+export function ImagePreview({
+  src,
+  storagePath,
+  assetId,
+  alt = 'Image preview',
+  className,
+  onError,
+}: ImagePreviewProps) {
   const [didError, setDidError] = React.useState(false);
-  const [resolvedSrc, setResolvedSrc] = React.useState<string | null>(src);
   const refreshAttemptedRef = React.useRef(false);
+  const { url: resolvedSrc, refresh } = useResolvedMediaUrl({
+    kind: 'image',
+    url: src,
+    storagePath: storagePath ?? null,
+    assetId: assetId ?? null,
+  });
 
   React.useEffect(() => {
     setDidError(false);
     refreshAttemptedRef.current = false;
-    setResolvedSrc(src);
-  }, [src]);
+  }, [src, storagePath, assetId]);
 
   const showFallback = !resolvedSrc || didError;
 
@@ -48,11 +61,7 @@ export function ImagePreview({ src, alt = 'Image preview', className, onError }:
           return;
         }
         refreshAttemptedRef.current = true;
-        const refreshed = await refreshSignedUrl(resolvedSrc, 'image');
-        if (refreshed && refreshed !== resolvedSrc) {
-          setResolvedSrc(refreshed);
-          return;
-        }
+        await refresh('error');
         setDidError(true);
         onError?.();
       }}

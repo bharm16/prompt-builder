@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, WarningCircle } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 
 interface KontextFrameStripProps {
   frames: Array<string | null>;
@@ -88,11 +88,11 @@ export function KontextFrameStrip({
     refreshAttemptedRef.current.set(index, true);
     const currentUrl = resolvedSlots[index];
     if (currentUrl) {
-      const refreshed = await refreshSignedUrl(currentUrl, 'image');
-      if (refreshed && refreshed !== currentUrl) {
+      const refreshed = await resolveMediaUrl({ kind: 'image', url: currentUrl, preferFresh: true });
+      if (refreshed.url && refreshed.url !== currentUrl) {
         setResolvedSlots((prev) => {
           const next = [...prev];
-          next[index] = refreshed;
+          next[index] = refreshed.url;
           return next;
         });
         setFailedIndices((prev) => {

@@ -7,7 +7,7 @@ import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, wait
 import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
-import { storageApi } from '@/api/storageApi';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { safeUrlHost } from '@/utils/url';
 import {
   extractStorageObjectPath,
@@ -105,18 +105,19 @@ const resolveStartImageUrl = async (
     };
   }
 
-  try {
-    const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string; expiresAt?: string };
-    if (!response?.viewUrl) return { ...startImage, storagePath };
-    return {
-      ...startImage,
-      url: response.viewUrl,
-      storagePath,
-      ...(response.expiresAt ? { viewUrlExpiresAt: response.expiresAt } : {}),
-    };
-  } catch {
-    return { ...startImage, storagePath };
-  }
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url: startImage.url,
+    storagePath,
+    preferFresh: true,
+  });
+  if (!resolved.url) return { ...startImage, storagePath };
+  return {
+    ...startImage,
+    url: resolved.url,
+    storagePath,
+    ...(resolved.expiresAt ? { viewUrlExpiresAt: resolved.expiresAt } : {}),
+  };
 };
 
 const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Promise<string | null> => {
@@ -126,12 +127,13 @@ const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Pro
   const expiresAtMs = parseGcsSignedUrlExpiryMs(seedImageUrl);
   const needsRefresh = shouldRefreshStartImage(seedImageUrl, expiresAtMs);
   if (!needsRefresh) return seedImageUrl;
-  try {
-    const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string };
-    return response?.viewUrl || seedImageUrl;
-  } catch {
-    return seedImageUrl;
-  }
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url: seedImageUrl,
+    storagePath,
+    preferFresh: true,
+  });
+  return resolved.url ?? seedImageUrl;
 };
 
 export function useGenerationActions(
@@ -338,6 +340,8 @@ export function useGenerationActions(
           });
         }
         let videoUrl: string | null = null;
+        let videoStoragePath: string | null = response.storagePath ?? null;
+        let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
@@ -345,7 +349,10 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal);
+          videoUrl = jobResult?.videoUrl ?? null;
+          videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
+          videoAssetId = jobResult?.assetId ?? videoAssetId;
           log.debug('Video draft job completed', {
             generationId: generation.id,
             jobId: response.jobId,
@@ -374,6 +381,7 @@ export function useGenerationActions(
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
+          ...(videoStoragePath ? { mediaAssetIds: [videoStoragePath] } : videoAssetId ? { mediaAssetIds: [videoAssetId] } : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -568,6 +576,8 @@ export function useGenerationActions(
           });
         }
         let videoUrl: string | null = null;
+        let videoStoragePath: string | null = response.storagePath ?? null;
+        let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
@@ -575,7 +585,10 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal);
+          videoUrl = jobResult?.videoUrl ?? null;
+          videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
+          videoAssetId = jobResult?.assetId ?? videoAssetId;
           log.debug('Render job completed', {
             generationId: generation.id,
             jobId: response.jobId,
@@ -604,6 +617,7 @@ export function useGenerationActions(
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
+          ...(videoStoragePath ? { mediaAssetIds: [videoStoragePath] } : videoAssetId ? { mediaAssetIds: [videoAssetId] } : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;

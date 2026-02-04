@@ -1,203 +1,30 @@
 import { useEffect, useRef } from 'react';
-import { storageApi } from '@/api/storageApi';
-import {
-  getImageAssetViewUrl,
-  getVideoAssetViewUrl,
-} from '@/features/preview/api/previewApi';
-import {
-  extractStorageObjectPath,
-  extractVideoContentAssetId,
-  hasGcsSignedUrlParams,
-  parseGcsSignedUrlExpiryMs,
-} from '@/utils/storageUrl';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { logger } from '@/services/LoggingService';
 import type { Generation } from '../types';
 import type { GenerationsAction } from './useGenerationsState';
 
 const log = logger.child('MediaRefresh');
-const SIGNED_URL_REFRESH_BUFFER_MS = 2 * 60 * 1000;
-const VIEW_URL_MIN_INTERVAL_MS = 250;
-const VIEW_URL_MAX_CONCURRENCY = 2;
-
-type AssetKind = 'image' | 'video';
-
-// Bug 16 fix: use JSON to avoid delimiter collision with URLs containing '|'
 const buildSignature = (generation: Generation): string =>
   JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? '']);
 
-let nextViewUrlAt = 0;
-let activeViewUrlCount = 0;
-const viewUrlQueue: Array<() => void> = [];
-
-const scheduleViewUrlRequest = async <T,>(task: () => Promise<T>): Promise<T> =>
-  await new Promise<T>((resolve, reject) => {
-    const run = async () => {
-      activeViewUrlCount += 1;
-      try {
-        const waitMs = Math.max(0, nextViewUrlAt - Date.now());
-        if (waitMs > 0) {
-          await new Promise((r) => setTimeout(r, waitMs));
-        }
-        nextViewUrlAt = Date.now() + VIEW_URL_MIN_INTERVAL_MS;
-        const result = await task();
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      } finally {
-        activeViewUrlCount -= 1;
-        const next = viewUrlQueue.shift();
-        if (next) {
-          next();
-        }
-      }
-    };
-
-    if (activeViewUrlCount < VIEW_URL_MAX_CONCURRENCY) {
-      void run();
-      return;
-    }
-
-    viewUrlQueue.push(() => void run());
-  });
-
-const getAssetIdFromPath = (path: string): string | null => {
-  const parts = path.split('/').filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : null;
-};
-
-const resolveViaStoragePath = async (path: string): Promise<string | null> => {
-  try {
-    const { viewUrl } = (await scheduleViewUrlRequest(
-      async () => (await storageApi.getViewUrl(path)) as { viewUrl: string }
-    )) as { viewUrl: string };
-    return viewUrl || null;
-  } catch {
-    return null;
-  }
-};
-
-const resolveViaAssetId = async (
-  assetId: string,
-  kind: AssetKind
-): Promise<string | null> => {
-  try {
-    const response = await scheduleViewUrlRequest(async () =>
-      kind === 'video' ? await getVideoAssetViewUrl(assetId) : await getImageAssetViewUrl(assetId)
-    );
-    if (!response.success) {
-      log.warn('Asset view URL request failed', { assetId, kind, error: response.error });
-      return null;
-    }
-    return response.data?.viewUrl ?? null;
-  } catch (error) {
-    log.warn('Failed to resolve asset view URL', {
-      assetId,
-      kind,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return null;
-  }
-};
-
-const shouldRefreshUrl = (rawUrl: string | null | undefined, storagePath?: string): boolean => {
-  if (!rawUrl || typeof rawUrl !== 'string') {
-    return Boolean(storagePath);
-  }
-
-  // Force refresh for legacy V2 signed URLs (GoogleAccessId/Signature/Expires)
-  if (hasGcsSignedUrlParams(rawUrl)) {
-    const url = rawUrl.trim();
-    const hasV4 =
-      url.includes('X-Goog-Algorithm=') ||
-      url.includes('X-Goog-Credential=') ||
-      url.includes('X-Goog-Signature=');
-    const hasV2 = url.includes('GoogleAccessId=') || url.includes('Signature=');
-    if (hasV2 && !hasV4) {
-      return true;
-    }
-  }
-
-  if (storagePath) {
-    const hasKnownStorageUrl =
-      Boolean(extractStorageObjectPath(rawUrl)) || Boolean(extractVideoContentAssetId(rawUrl));
-    if (!hasKnownStorageUrl) {
-      return true;
-    }
-  }
-
-  if (!hasGcsSignedUrlParams(rawUrl)) {
-    return false;
-  }
-  const expiresAtMs = parseGcsSignedUrlExpiryMs(rawUrl);
-  if (!expiresAtMs) {
-    return false;
-  }
-  return Date.now() >= expiresAtMs - SIGNED_URL_REFRESH_BUFFER_MS;
-};
-
-const hasRefreshableMedia = (generation: Generation): boolean => {
-  const assetIds = generation.mediaAssetIds;
-  if (
-    generation.mediaUrls.some((url, index) =>
-      shouldRefreshUrl(url, assetIds?.[index] || undefined)
-    )
-  ) {
-    return true;
-  }
-  if (generation.thumbnailUrl && shouldRefreshUrl(generation.thumbnailUrl)) {
-    return true;
-  }
-  return false;
-};
-
-const resolveMediaUrl = async (
-  rawUrl: string,
-  kind: AssetKind,
-  storagePath?: string
-): Promise<string> => {
-  if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
-
-  // Prefer explicit storage path when available (reliable refresh)
-  if (storagePath) {
-    if (storagePath.startsWith('users/')) {
-      const refreshed = await resolveViaStoragePath(storagePath);
-      if (refreshed) return refreshed;
-    }
-
-    const assetId = getAssetIdFromPath(storagePath);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, kind);
-      if (refreshed) return refreshed;
-    }
-  }
-
-  // Fall back to parsing storage path from URL (legacy generations)
-  const objectPath = extractStorageObjectPath(rawUrl);
-  if (objectPath) {
-    if (objectPath.startsWith('users/')) {
-      const refreshed = await resolveViaStoragePath(objectPath);
-      return refreshed || rawUrl;
-    }
-
-    const assetId = getAssetIdFromPath(objectPath);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, kind);
-      if (!refreshed) {
-        log.warn('Failed to refresh URL, using original', { assetId, kind, objectPath });
-      }
-      return refreshed || rawUrl;
-    }
-  }
-
-  if (kind === 'video') {
-    const assetId = extractVideoContentAssetId(rawUrl);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, 'video');
-      return refreshed || rawUrl;
-    }
-  }
-
-  return rawUrl;
+const resolveAssetHints = (
+  url: string | null | undefined,
+  ref: string | null | undefined
+): { storagePath?: string | null; assetId?: string | null } => {
+  const normalizedRef = typeof ref === 'string' ? ref.trim() : '';
+  const storagePath =
+    normalizedRef && normalizedRef.startsWith('users/')
+      ? normalizedRef
+      : (url ? extractStorageObjectPath(url) : null);
+  const assetId =
+    storagePath
+      ? null
+      : normalizedRef
+        ? normalizedRef
+        : null;
+  return { storagePath, assetId };
 };
 
 const resolveGenerationMedia = async (
@@ -210,31 +37,34 @@ const resolveGenerationMedia = async (
     return null;
   }
 
-  const mediaKind: AssetKind = generation.mediaType === 'video' ? 'video' : 'image';
-  const assetIds = generation.mediaAssetIds;
-  const mediaRefreshFlags = generation.mediaUrls.map((url, index) =>
-    shouldRefreshUrl(url, assetIds?.[index] || undefined)
-  );
-  const shouldRefreshThumb = shouldRefreshUrl(generation.thumbnailUrl ?? null);
-
-  if (!mediaRefreshFlags.some(Boolean) && !shouldRefreshThumb) {
-    return null;
-  }
+  const mediaKind = generation.mediaType === 'video' ? 'video' : 'image';
+  const assetRefs = generation.mediaAssetIds;
 
   const resolvedMediaUrls = hasMedia
     ? await Promise.all(
-        generation.mediaUrls.map((url, index) =>
-          mediaRefreshFlags[index]
-            ? resolveMediaUrl(url, mediaKind, assetIds?.[index] || undefined)
-            : url
-        )
+        generation.mediaUrls.map(async (url, index) => {
+          const { storagePath, assetId } = resolveAssetHints(url, assetRefs?.[index] || null);
+          const result = await resolveMediaUrl({
+            kind: mediaKind,
+            url,
+            storagePath,
+            assetId,
+            preferFresh: true,
+          });
+          return result.url ?? url;
+        })
       )
     : generation.mediaUrls;
 
   const resolvedThumbnail = generation.thumbnailUrl
-    ? shouldRefreshThumb
-      ? await resolveMediaUrl(generation.thumbnailUrl, 'image')
-      : generation.thumbnailUrl
+    ? (
+        await resolveMediaUrl({
+          kind: 'image',
+          url: generation.thumbnailUrl,
+          storagePath: extractStorageObjectPath(generation.thumbnailUrl) ?? null,
+          preferFresh: true,
+        })
+      ).url ?? generation.thumbnailUrl
     : generation.thumbnailUrl;
 
   const mediaChanged = resolvedMediaUrls.some(
@@ -287,8 +117,7 @@ export function useGenerationMediaRefresh(
 
       const signature = buildSignature(generation);
       const alreadyProcessed = processedRef.current.get(generation.id) === signature;
-      const needsRefresh = hasRefreshableMedia(generation);
-      if (alreadyProcessed && !needsRefresh) return;
+      if (alreadyProcessed) return;
       if (inFlightRef.current.has(generation.id)) return;
 
       inFlightRef.current.add(generation.id);

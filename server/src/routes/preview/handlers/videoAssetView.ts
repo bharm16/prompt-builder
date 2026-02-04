@@ -58,11 +58,18 @@ export const createVideoAssetViewHandler = ({
 
         try {
           const storage = getStorageService();
-          const { viewUrl } = await storage.getViewUrl(userId, job.result.storagePath);
+          const { viewUrl, expiresAt, storagePath } = await storage.getViewUrl(
+            userId,
+            job.result.storagePath
+          );
           return res.json({
             success: true,
             data: {
               viewUrl,
+              expiresAt,
+              storagePath,
+              assetId,
+              source: 'storage',
             },
           });
         } catch {
@@ -83,6 +90,8 @@ export const createVideoAssetViewHandler = ({
       success: true,
       data: {
         viewUrl,
+        assetId,
+        source: 'preview',
       },
     });
   };

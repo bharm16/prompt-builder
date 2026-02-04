@@ -11,7 +11,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 
 import { cn } from '@/utils/cn';
 import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
-import { extractVideoContentAssetId } from '@/utils/storageUrl';
+import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
 import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
 
 import type { Generation } from '../types';
@@ -66,8 +66,18 @@ export const GenerationCard = memo(function GenerationCard({
   const { progressPercent, isGenerating, isCompleted, isFailed } =
     useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
-  const continuitySourceId =
-    generation.mediaAssetIds?.[0] ?? (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
+  const primaryMediaRef = generation.mediaAssetIds?.[0] ?? null;
+  const mediaStoragePath =
+    primaryMediaRef?.startsWith?.('users/')
+      ? primaryMediaRef
+      : (mediaUrl ? extractStorageObjectPath(mediaUrl) : null);
+  const primaryVideoAssetId =
+    (!mediaStoragePath ? primaryMediaRef : null) ??
+    (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
+  const continuitySourceId = primaryVideoAssetId;
+  const thumbnailStoragePath = generation.thumbnailUrl
+    ? extractStorageObjectPath(generation.thumbnailUrl)
+    : null;
   const showContinueScene =
     Boolean(onContinueSequence) &&
     !isSequenceMode &&
@@ -217,7 +227,10 @@ export const GenerationCard = memo(function GenerationCard({
         ) : (
           <VideoThumbnail
             videoUrl={mediaUrl}
+            videoStoragePath={mediaStoragePath}
+            videoAssetId={primaryVideoAssetId}
             thumbnailUrl={generation.thumbnailUrl ?? undefined}
+            thumbnailStoragePath={thumbnailStoragePath}
             isGenerating={isGenerating}
           />
         )}

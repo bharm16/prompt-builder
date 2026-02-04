@@ -357,7 +357,7 @@ export class StorageService {
   async getViewUrl(
     userId: string,
     storagePath: string
-  ): Promise<{ viewUrl: string; expiresAt: string }> {
+  ): Promise<{ viewUrl: string; expiresAt: string; storagePath: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
       const allowCrossUser =
         process.env.NODE_ENV !== 'production' &&
@@ -374,7 +374,13 @@ export class StorageService {
     return this.withTiming(
       'getViewUrl',
       { userId, storagePath },
-      async () => this.signedUrlService.getViewUrl(storagePath),
+      async () => {
+        const result = await this.signedUrlService.getViewUrl(storagePath);
+        return {
+          ...result,
+          storagePath,
+        };
+      },
       'debug'
     );
   }

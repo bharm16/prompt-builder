@@ -6,7 +6,7 @@ import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
-import { storageApi } from '@/api/storageApi';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { applyOptimizationResult } from '../utils/persistOptimizationResult';
 import {
   extractStorageObjectPath,
@@ -41,12 +41,13 @@ const resolveOptimizationStartImageUrl = async (
   const expiresAtMs = parseExpiresAtMs(viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
   const needsRefresh = shouldRefreshStartImage(url, expiresAtMs);
   if (!needsRefresh) return url;
-  try {
-    const response = (await storageApi.getViewUrl(resolvedStoragePath)) as { viewUrl: string };
-    return response?.viewUrl || url;
-  } catch {
-    return url;
-  }
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url,
+    storagePath: resolvedStoragePath,
+    preferFresh: true,
+  });
+  return resolved.url ?? url;
 };
 
 interface PromptOptimizer {

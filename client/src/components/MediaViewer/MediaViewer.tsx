@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { useMediaStorage } from '@/hooks/useMediaStorage';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 import { ImagePreview } from './components/ImagePreview';
 import { VideoPlayer } from './components/VideoPlayer';
 
@@ -35,47 +35,13 @@ export function MediaViewer({
   muted,
   poster,
 }: MediaViewerProps) {
-  const { getViewUrl } = useMediaStorage();
-  const [viewUrl, setViewUrl] = React.useState<string | null>(initialUrl || null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    let isActive = true;
-    setError(null);
-
-    if (!storagePath) {
-      setViewUrl(initialUrl || null);
-      setLoading(false);
-      return () => {
-        isActive = false;
-      };
-    }
-
-    setLoading(true);
-    void getViewUrl(storagePath)
-      .then((url) => {
-        if (isActive) {
-          setViewUrl(url);
-        }
-      })
-      .catch((err) => {
-        if (isActive) {
-          setError(err instanceof Error ? err.message : 'Failed to load media');
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [storagePath, initialUrl, getViewUrl]);
-
   const isVideo = isVideoSource(storagePath, contentType);
+  const { url: viewUrl, loading, error } = useResolvedMediaUrl({
+    kind: isVideo ? 'video' : 'image',
+    url: initialUrl ?? null,
+    storagePath: storagePath ?? null,
+    enabled: Boolean(storagePath || initialUrl),
+  });
 
   if (loading) {
     return (

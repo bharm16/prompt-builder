@@ -10,7 +10,7 @@ import {
   type I2VContext,
   type ImageObservation,
 } from '../types/i2v';
-import { storageApi } from '@/api/storageApi';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
@@ -67,19 +67,18 @@ export function useI2VContext(): I2VContext {
     async (url: string | null): Promise<string | null> => {
       if (!url || typeof url !== 'string') return url;
       const storagePath = extractStorageObjectPath(url);
-      if (!storagePath) return url;
-
       const expiresAtMs =
         parseExpiresAtMs(startImageViewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
       const needsRefresh = shouldRefreshObservationUrl(url, expiresAtMs);
       if (!needsRefresh) return url;
 
-      try {
-        const response = (await storageApi.getViewUrl(storagePath)) as { viewUrl: string };
-        return response?.viewUrl || url;
-      } catch {
-        return url;
-      }
+      const resolved = await resolveMediaUrl({
+        kind: 'image',
+        url,
+        storagePath: storagePath ?? null,
+        preferFresh: true,
+      });
+      return resolved.url ?? url;
     },
     [startImageViewUrlExpiresAt]
   );

@@ -3,10 +3,18 @@ import { getVideoPreviewStatus } from '@/features/preview/api/previewApi';
 const POLL_INTERVAL_MS = 2000;
 const MAX_WAIT_MS = 6 * 60 * 1000;
 
+export interface VideoJobResult {
+  videoUrl: string;
+  storagePath?: string;
+  viewUrl?: string;
+  viewUrlExpiresAt?: string;
+  assetId?: string;
+}
+
 export async function waitForVideoJob(
   jobId: string,
   signal: AbortSignal
-): Promise<string | null> {
+): Promise<VideoJobResult | null> {
   const startTime = Date.now();
   while (true) {
     if (signal.aborted) return null;
@@ -16,7 +24,13 @@ export async function waitForVideoJob(
       throw new Error(status.error || status.message || 'Failed to fetch video status');
     }
     if (status.status === 'completed' && status.videoUrl) {
-      return status.videoUrl;
+      return {
+        videoUrl: status.videoUrl,
+        storagePath: status.storagePath,
+        viewUrl: status.viewUrl,
+        viewUrlExpiresAt: status.viewUrlExpiresAt,
+        assetId: status.assetId,
+      };
     }
     if (status.status === 'completed') {
       throw new Error('Video generation completed but no URL was returned');

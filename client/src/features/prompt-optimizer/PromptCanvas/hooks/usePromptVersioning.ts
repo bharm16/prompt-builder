@@ -4,6 +4,11 @@ import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
+import {
+  extractStorageObjectPath,
+  extractVideoContentAssetId,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
 import type { HighlightSnapshot } from '../types';
 
 interface UsePromptVersioningOptions {
@@ -52,6 +57,18 @@ const toIsoString = (value: number | string): string => {
     return value;
   }
   return new Date().toISOString();
+};
+
+const toExpiresAtIso = (url?: string | null): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  const expiresAtMs = parseGcsSignedUrlExpiryMs(url);
+  return expiresAtMs ? new Date(expiresAtMs).toISOString() : null;
+};
+
+const extractAssetIdFromPath = (path?: string | null): string | null => {
+  if (!path) return null;
+  const parts = path.split('/').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : null;
 };
 
 /**
@@ -260,6 +277,14 @@ export function usePromptVersioning({
               generatedAt: toIsoString(params.generatedAt),
               imageUrl: params.imageUrl ?? null,
               aspectRatio: params.aspectRatio ?? effectiveAspectRatio ?? null,
+              storagePath: params.imageUrl ? extractStorageObjectPath(params.imageUrl) : null,
+              assetId: params.imageUrl
+                ? (() => {
+                    const path = extractStorageObjectPath(params.imageUrl);
+                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+                  })()
+                : null,
+              viewUrlExpiresAt: toExpiresAtIso(params.imageUrl),
             }
           : undefined;
 
@@ -270,6 +295,15 @@ export function usePromptVersioning({
               videoUrl: params.videoUrl ?? null,
               model: selectedModel?.trim() ? selectedModel.trim() : null,
               generationParams: generationParams ?? null,
+              storagePath: params.videoUrl ? extractStorageObjectPath(params.videoUrl) : null,
+              assetId: params.videoUrl
+                ? extractVideoContentAssetId(params.videoUrl) ??
+                  (() => {
+                    const path = extractStorageObjectPath(params.videoUrl);
+                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+                  })()
+                : null,
+              viewUrlExpiresAt: toExpiresAtIso(params.videoUrl),
             }
           : undefined;
 
@@ -397,6 +431,12 @@ export function usePromptVersioning({
           generatedAt: new Date().toISOString(),
           imageUrl: thumbnailUrl,
           aspectRatio: target.preview?.aspectRatio ?? null,
+          storagePath: extractStorageObjectPath(thumbnailUrl),
+          assetId: (() => {
+            const path = extractStorageObjectPath(thumbnailUrl);
+            return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+          })(),
+          viewUrlExpiresAt: toExpiresAtIso(thumbnailUrl),
         };
         lastPersistedThumbnailRef.current = thumbnailUrl;
       }

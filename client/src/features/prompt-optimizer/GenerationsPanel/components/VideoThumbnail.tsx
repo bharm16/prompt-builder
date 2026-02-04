@@ -1,34 +1,48 @@
 import React from 'react';
 import { Play } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 interface VideoThumbnailProps {
   videoUrl: string | null;
+  videoStoragePath?: string | null;
+  videoAssetId?: string | null;
   thumbnailUrl?: string | null | undefined;
+  thumbnailStoragePath?: string | null;
+  thumbnailAssetId?: string | null;
   isGenerating: boolean;
   onPlay?: (() => void) | undefined;
 }
 
 export function VideoThumbnail({
   videoUrl,
+  videoStoragePath,
+  videoAssetId,
   thumbnailUrl,
+  thumbnailStoragePath,
+  thumbnailAssetId,
   isGenerating,
   onPlay,
 }: VideoThumbnailProps): React.ReactElement {
-  const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | null>(videoUrl);
-  const [resolvedThumbnailUrl, setResolvedThumbnailUrl] = React.useState<string | null | undefined>(
-    thumbnailUrl
-  );
   const videoRefreshAttemptedRef = React.useRef(false);
   const thumbnailRefreshAttemptedRef = React.useRef(false);
+  const { url: resolvedVideoUrl, refresh: refreshVideo } = useResolvedMediaUrl({
+    kind: 'video',
+    url: videoUrl,
+    storagePath: videoStoragePath ?? null,
+    assetId: videoAssetId ?? null,
+  });
+  const { url: resolvedThumbnailUrl, refresh: refreshThumbnail } = useResolvedMediaUrl({
+    kind: 'image',
+    url: thumbnailUrl ?? null,
+    storagePath: thumbnailStoragePath ?? null,
+    assetId: thumbnailAssetId ?? null,
+  });
 
   React.useEffect(() => {
-    setResolvedVideoUrl(videoUrl);
-    setResolvedThumbnailUrl(thumbnailUrl);
     videoRefreshAttemptedRef.current = false;
     thumbnailRefreshAttemptedRef.current = false;
-  }, [thumbnailUrl, videoUrl]);
+  }, [thumbnailUrl, videoUrl, videoStoragePath, videoAssetId, thumbnailStoragePath, thumbnailAssetId]);
 
   if (isGenerating) {
     return (
@@ -49,16 +63,10 @@ export function VideoThumbnail({
           onPlay={onPlay}
           onError={async () => {
             if (videoRefreshAttemptedRef.current || !resolvedVideoUrl) {
-              setResolvedVideoUrl(null);
               return;
             }
             videoRefreshAttemptedRef.current = true;
-            const refreshed = await refreshSignedUrl(resolvedVideoUrl, 'video');
-            if (refreshed && refreshed !== resolvedVideoUrl) {
-              setResolvedVideoUrl(refreshed);
-              return;
-            }
-            setResolvedVideoUrl(null);
+            await refreshVideo('error');
           }}
         />
       ) : resolvedThumbnailUrl ? (
@@ -68,16 +76,10 @@ export function VideoThumbnail({
           className="h-full w-full object-cover"
           onError={async () => {
             if (thumbnailRefreshAttemptedRef.current || !resolvedThumbnailUrl) {
-              setResolvedThumbnailUrl(null);
               return;
             }
             thumbnailRefreshAttemptedRef.current = true;
-            const refreshed = await refreshSignedUrl(resolvedThumbnailUrl, 'image');
-            if (refreshed && refreshed !== resolvedThumbnailUrl) {
-              setResolvedThumbnailUrl(refreshed);
-              return;
-            }
-            setResolvedThumbnailUrl(null);
+            await refreshThumbnail('error');
           }}
         />
       ) : (
