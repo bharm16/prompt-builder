@@ -359,7 +359,16 @@ export class StorageService {
     storagePath: string
   ): Promise<{ viewUrl: string; expiresAt: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized - cannot access files belonging to other users');
+      const allowCrossUser =
+        process.env.NODE_ENV !== 'production' &&
+        process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
+      if (!allowCrossUser) {
+        throw new Error('Unauthorized - cannot access files belonging to other users');
+      }
+      this.log.warn('Bypassing storage ownership check in development', {
+        userId,
+        storagePath,
+      });
     }
 
     return this.withTiming(
@@ -376,7 +385,16 @@ export class StorageService {
     filename?: string | null
   ): Promise<{ downloadUrl: string; expiresAt: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized - cannot access files belonging to other users');
+      const allowCrossUser =
+        process.env.NODE_ENV !== 'production' &&
+        process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
+      if (!allowCrossUser) {
+        throw new Error('Unauthorized - cannot access files belonging to other users');
+      }
+      this.log.warn('Bypassing storage ownership check in development', {
+        userId,
+        storagePath,
+      });
     }
 
     return this.withTiming(

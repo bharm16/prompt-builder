@@ -153,6 +153,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private async getSignedUrl(file: File): Promise<string> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
+      version: 'v4',
       action: 'read',
       expires: expiresAt,
     });

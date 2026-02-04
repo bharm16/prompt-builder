@@ -4,6 +4,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import type { SessionService } from '@services/sessions/SessionService';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import { logger } from '@infrastructure/Logger';
 import {
   ContinuitySessionInputSchema,
   RequestWithUser,
@@ -142,8 +143,18 @@ export function createSessionRoutes(
         return;
       }
       if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+        const allowCrossUser =
+          process.env.NODE_ENV !== 'production' &&
+          process.env.ALLOW_DEV_CROSS_USER_SESSIONS === 'true';
+        if (!allowCrossUser) {
+          res.status(403).json({ success: false, error: 'Access denied' });
+          return;
+        }
+        logger.warn('Bypassing session ownership check in development', {
+          sessionId: session.id,
+          sessionUserId: session.userId,
+          requestUserId: userId,
+        });
       }
       res.json({ success: true, data: sessionService.toDto(session) });
     })

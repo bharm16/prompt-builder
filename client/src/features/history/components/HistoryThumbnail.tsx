@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
+import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
 
 type HistoryThumbnailSize = 'sm' | 'md' | 'lg';
 type HistoryThumbnailVariant = 'default' | 'muted';
@@ -29,12 +30,17 @@ export function HistoryThumbnail({
   className,
 }: HistoryThumbnailProps): React.ReactElement {
   const [didError, setDidError] = React.useState<boolean>(false);
+  const [resolvedSrc, setResolvedSrc] = React.useState<string>('');
+  const refreshAttemptedRef = React.useRef(false);
 
   React.useEffect(() => {
     setDidError(false);
+    refreshAttemptedRef.current = false;
+    const nextSrc = typeof src === 'string' ? src.trim() : '';
+    setResolvedSrc(nextSrc);
   }, [src]);
 
-  const normalizedSrc = typeof src === 'string' ? src.trim() : '';
+  const normalizedSrc = resolvedSrc;
   const hasSrc = normalizedSrc.length > 0;
   const showFallback = !hasSrc || didError;
 
@@ -78,7 +84,19 @@ export function HistoryThumbnail({
           alt={label}
           className="h-full w-full object-cover"
           loading="lazy"
-          onError={() => setDidError(true)}
+          onError={async () => {
+            if (refreshAttemptedRef.current) {
+              setDidError(true);
+              return;
+            }
+            refreshAttemptedRef.current = true;
+            const refreshed = await refreshSignedUrl(normalizedSrc, 'image');
+            if (refreshed && refreshed !== normalizedSrc) {
+              setResolvedSrc(refreshed);
+              return;
+            }
+            setDidError(true);
+          }}
         />
       )}
     </div>

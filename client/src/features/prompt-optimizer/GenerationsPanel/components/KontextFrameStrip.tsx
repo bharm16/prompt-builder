@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, WarningCircle } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
+import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
 
 interface KontextFrameStripProps {
   frames: Array<string | null>;
@@ -26,6 +27,8 @@ export function KontextFrameStrip({
     normalizedFrames.length >= 4
       ? normalizedFrames
       : [...normalizedFrames, ...Array.from({ length: 4 - normalizedFrames.length }, () => null)];
+  const [resolvedSlots, setResolvedSlots] = useState<Array<string | null>>(slots);
+  const refreshAttemptedRef = useRef<Map<number, boolean>>(new Map());
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 5;
   const labels = useMemo(() => {
     const step = slots.length > 1 ? safeDuration / (slots.length - 1) : safeDuration;
@@ -37,6 +40,7 @@ export function KontextFrameStrip({
     const prevSlots = prevSlotsRef.current;
     if (!prevSlots) {
       prevSlotsRef.current = slots;
+      setResolvedSlots(slots);
       return;
     }
 
@@ -54,16 +58,52 @@ export function KontextFrameStrip({
         changedIndices.forEach((index) => next.delete(index));
         return next;
       });
+      setResolvedSlots((prev) => {
+        const next = [...prev];
+        changedIndices.forEach((index) => {
+          next[index] = slots[index];
+          refreshAttemptedRef.current.delete(index);
+        });
+        return next;
+      });
     }
 
     prevSlotsRef.current = slots;
   }, [slots]);
 
-  const handleImageError = (index: number) => {
+  const handleImageError = async (index: number) => {
     console.warn('[KontextFrameStrip] Image failed to load:', {
       index,
-      url: slots[index]?.slice(0, 100),
+      url: resolvedSlots[index]?.slice(0, 100),
     });
+    if (refreshAttemptedRef.current.get(index)) {
+      setFailedIndices((prev) => {
+        const next = new Set(prev);
+        next.add(index);
+        return next;
+      });
+      return;
+    }
+
+    refreshAttemptedRef.current.set(index, true);
+    const currentUrl = resolvedSlots[index];
+    if (currentUrl) {
+      const refreshed = await refreshSignedUrl(currentUrl, 'image');
+      if (refreshed && refreshed !== currentUrl) {
+        setResolvedSlots((prev) => {
+          const next = [...prev];
+          next[index] = refreshed;
+          return next;
+        });
+        setFailedIndices((prev) => {
+          const next = new Set(prev);
+          next.delete(index);
+          return next;
+        });
+        return;
+      }
+    }
+
     setFailedIndices((prev) => {
       const next = new Set(prev);
       next.add(index);
@@ -73,7 +113,7 @@ export function KontextFrameStrip({
 
   return (
     <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-      {slots.map((frame, index) => {
+      {resolvedSlots.map((frame, index) => {
         const isSelected = Boolean(frame && selectedFrameUrl && frame === selectedFrameUrl);
         const canSelect = Boolean(frame && onFrameClick);
         const hasFailed = failedIndices.has(index);

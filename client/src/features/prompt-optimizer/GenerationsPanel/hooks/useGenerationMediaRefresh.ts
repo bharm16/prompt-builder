@@ -104,6 +104,19 @@ const shouldRefreshUrl = (rawUrl: string | null | undefined, storagePath?: strin
     return Boolean(storagePath);
   }
 
+  // Force refresh for legacy V2 signed URLs (GoogleAccessId/Signature/Expires)
+  if (hasGcsSignedUrlParams(rawUrl)) {
+    const url = rawUrl.trim();
+    const hasV4 =
+      url.includes('X-Goog-Algorithm=') ||
+      url.includes('X-Goog-Credential=') ||
+      url.includes('X-Goog-Signature=');
+    const hasV2 = url.includes('GoogleAccessId=') || url.includes('Signature=');
+    if (hasV2 && !hasV4) {
+      return true;
+    }
+  }
+
   if (storagePath) {
     const hasKnownStorageUrl =
       Boolean(extractStorageObjectPath(rawUrl)) || Boolean(extractVideoContentAssetId(rawUrl));

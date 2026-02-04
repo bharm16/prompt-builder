@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
+import { refreshSignedUrl } from '@/utils/refreshSignedUrl';
 
 interface VideoThumbnailProps {
   videoUrl: string | null;
@@ -15,6 +16,20 @@ export function VideoThumbnail({
   isGenerating,
   onPlay,
 }: VideoThumbnailProps): React.ReactElement {
+  const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | null>(videoUrl);
+  const [resolvedThumbnailUrl, setResolvedThumbnailUrl] = React.useState<string | null | undefined>(
+    thumbnailUrl
+  );
+  const videoRefreshAttemptedRef = React.useRef(false);
+  const thumbnailRefreshAttemptedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    setResolvedVideoUrl(videoUrl);
+    setResolvedThumbnailUrl(thumbnailUrl);
+    videoRefreshAttemptedRef.current = false;
+    thumbnailRefreshAttemptedRef.current = false;
+  }, [thumbnailUrl, videoUrl]);
+
   if (isGenerating) {
     return (
       <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-surface-3">
@@ -25,21 +40,52 @@ export function VideoThumbnail({
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-surface-2">
-      {videoUrl ? (
+      {resolvedVideoUrl ? (
         <video
-          src={videoUrl}
+          key={resolvedVideoUrl}
+          src={resolvedVideoUrl}
           className="h-full w-full object-cover"
           controls
           onPlay={onPlay}
+          onError={async () => {
+            if (videoRefreshAttemptedRef.current || !resolvedVideoUrl) {
+              setResolvedVideoUrl(null);
+              return;
+            }
+            videoRefreshAttemptedRef.current = true;
+            const refreshed = await refreshSignedUrl(resolvedVideoUrl, 'video');
+            if (refreshed && refreshed !== resolvedVideoUrl) {
+              setResolvedVideoUrl(refreshed);
+              return;
+            }
+            setResolvedVideoUrl(null);
+          }}
         />
-      ) : thumbnailUrl ? (
-        <img src={thumbnailUrl} alt="Video thumbnail" className="h-full w-full object-cover" />
+      ) : resolvedThumbnailUrl ? (
+        <img
+          src={resolvedThumbnailUrl}
+          alt="Video thumbnail"
+          className="h-full w-full object-cover"
+          onError={async () => {
+            if (thumbnailRefreshAttemptedRef.current || !resolvedThumbnailUrl) {
+              setResolvedThumbnailUrl(null);
+              return;
+            }
+            thumbnailRefreshAttemptedRef.current = true;
+            const refreshed = await refreshSignedUrl(resolvedThumbnailUrl, 'image');
+            if (refreshed && refreshed !== resolvedThumbnailUrl) {
+              setResolvedThumbnailUrl(refreshed);
+              return;
+            }
+            setResolvedThumbnailUrl(null);
+          }}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-label-sm text-muted">
           No preview available
         </div>
       )}
-      {!videoUrl && (
+      {!resolvedVideoUrl && (
         <button
           type="button"
           onClick={onPlay}

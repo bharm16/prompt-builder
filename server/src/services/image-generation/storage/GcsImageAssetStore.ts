@@ -200,6 +200,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
   private async getSignedUrl(file: File): Promise<{ url: string; expiresAt: number }> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
+      version: 'v4',
       action: 'read',
       expires: expiresAt,
     });

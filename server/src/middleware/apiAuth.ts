@@ -53,6 +53,33 @@ export async function apiAuthMiddleware(
   const queryApiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : null;
   const apiKeyCandidate = headerApiKey || queryApiKey || authBearer;
 
+  const firebaseTokenHeader = normalizeHeaderValue(req.headers['x-firebase-token']);
+  const firebaseToken = firebaseTokenHeader || authBearer;
+
+  if (firebaseToken) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(firebaseToken);
+      req.user = { uid: decoded.uid };
+      logger.info('API request authenticated via Firebase token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+        requestId: req.id,
+        userId: decoded.uid,
+      });
+      next();
+      return;
+    } catch (error) {
+      logger.warn('Invalid Firebase token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+        requestId: req.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   // Get allowed API keys from environment
   const envKeys = process.env.ALLOWED_API_KEYS?.split(',')
     .map((k) => k.trim())
@@ -82,33 +109,6 @@ export async function apiAuthMiddleware(
     req.user = { uid: `api-key:${apiKeyCandidate}` };
     next();
     return;
-  }
-
-  const firebaseTokenHeader = normalizeHeaderValue(req.headers['x-firebase-token']);
-  const firebaseToken = firebaseTokenHeader || authBearer;
-
-  if (firebaseToken) {
-    try {
-      const decoded = await admin.auth().verifyIdToken(firebaseToken);
-      req.user = { uid: decoded.uid };
-      logger.info('API request authenticated via Firebase token', {
-        ip: req.ip,
-        path: req.path,
-        method: req.method,
-        requestId: req.id,
-        userId: decoded.uid,
-      });
-      next();
-      return;
-    } catch (error) {
-      logger.warn('Invalid Firebase token', {
-        ip: req.ip,
-        path: req.path,
-        method: req.method,
-        requestId: req.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
   }
 
   if (!apiKeyCandidate && !firebaseToken) {

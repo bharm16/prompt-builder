@@ -92,7 +92,7 @@ export function usePromptLoader({
     if (!sessionId) return false;
     return true;
   });
-  const lastLoadedSessionIdRef = useRef<string | null>(null);
+  const lastLoadedSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +108,8 @@ export function usePromptLoader({
         return;
       }
 
-      if (lastLoadedSessionIdRef.current === sessionId) {
+      const sessionKey = `${sessionId}::${user?.uid ?? 'anonymous'}`;
+      if (lastLoadedSessionKeyRef.current === sessionKey) {
         setIsLoading(false);
         return;
       }
@@ -184,7 +185,7 @@ export function usePromptLoader({
           log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId });
           navigate('/', { replace: true });
         }
-        lastLoadedSessionIdRef.current = sessionId;
+        lastLoadedSessionKeyRef.current = sessionKey;
       } catch (error) {
         if (cancelled) return;
         const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
@@ -207,6 +208,7 @@ export function usePromptLoader({
     sessionId,
     navigate,
     toast,
+    user?.uid,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
