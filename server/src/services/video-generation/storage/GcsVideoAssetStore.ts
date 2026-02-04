@@ -100,6 +100,11 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
     try {
+      const [exists] = await file.exists();
+      if (!exists) {
+        this.log.warn('Video asset missing in GCS', { assetId });
+        return null;
+      }
       return await this.getSignedUrl(file);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
+import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 import { buildVideoContentUrl } from '../content';
 
@@ -69,8 +70,27 @@ export const createVideoJobsHandler = ({
     };
 
     if (job.status === 'completed' && job.result) {
-      const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
-      const rawUrl = freshUrl || job.result.videoUrl;
+      let rawUrl: string | null | undefined = null;
+      let viewUrl: string | undefined;
+
+      if (job.result.storagePath) {
+        try {
+          const storage = getStorageService();
+          const signed = await storage.getViewUrl(userId, job.result.storagePath);
+          viewUrl = signed.viewUrl;
+          rawUrl = signed.viewUrl;
+          response.storagePath = job.result.storagePath;
+          response.viewUrlExpiresAt = signed.expiresAt;
+        } catch {
+          // Ignore and fall back to preview bucket URL.
+        }
+      }
+
+      if (!rawUrl) {
+        const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
+        rawUrl = freshUrl || job.result.videoUrl;
+      }
+
       const secureUrl = buildVideoContentUrl(
         videoContentAccessService,
         rawUrl,
@@ -82,14 +102,8 @@ export const createVideoJobsHandler = ({
       }
       response.assetId = job.result.assetId;
       response.contentType = job.result.contentType;
-      if (job.result.storagePath) {
-        response.storagePath = job.result.storagePath;
-      }
       if (job.result.viewUrl) {
         response.viewUrl = job.result.viewUrl;
-      }
-      if (job.result.viewUrlExpiresAt) {
-        response.viewUrlExpiresAt = job.result.viewUrlExpiresAt;
       }
       if (typeof job.result.sizeBytes === 'number') {
         response.sizeBytes = job.result.sizeBytes;

@@ -1,11 +1,16 @@
 import type { Request, Response } from 'express';
 import type { PreviewRoutesServices } from '@routes/types';
+import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 
-type VideoAssetViewServices = Pick<PreviewRoutesServices, 'videoGenerationService'>;
+type VideoAssetViewServices = Pick<
+  PreviewRoutesServices,
+  'videoGenerationService' | 'videoJobStore'
+>;
 
 export const createVideoAssetViewHandler = ({
   videoGenerationService,
+  videoJobStore,
 }: VideoAssetViewServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService) {
@@ -40,6 +45,32 @@ export const createVideoAssetViewHandler = ({
       });
     }
 
+    if (videoJobStore) {
+      const job = await videoJobStore.findJobByAssetId(assetId);
+      if (job?.result?.storagePath) {
+        if (job.userId !== userId) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied',
+            message: 'This video does not belong to the authenticated user.',
+          });
+        }
+
+        try {
+          const storage = getStorageService();
+          const { viewUrl } = await storage.getViewUrl(userId, job.result.storagePath);
+          return res.json({
+            success: true,
+            data: {
+              viewUrl,
+            },
+          });
+        } catch {
+          // Fall through to video preview bucket when storage view fails.
+        }
+      }
+    }
+
     const viewUrl = await videoGenerationService.getVideoUrl(assetId);
     if (!viewUrl) {
       return res.status(404).json({
@@ -55,4 +86,3 @@ export const createVideoAssetViewHandler = ({
       },
     });
   };
-
