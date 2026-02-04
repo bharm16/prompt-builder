@@ -16,6 +16,7 @@ interface SelectedKeyframe {
   generationId: string;
   frameIndex: number;
   source: 'generation';
+  storagePath?: string;
 }
 
 interface KeyframeStepState {
@@ -55,6 +56,20 @@ export function useKeyframeWorkflow({
       pendingModel: null,
     });
   }, [prompt]);
+
+  useEffect(() => {
+    if (!selectedKeyframe) return;
+    const matches = keyframes.some((frame) => {
+      if (frame.url === selectedKeyframe.url) return true;
+      if (selectedKeyframe.storagePath && frame.storagePath === selectedKeyframe.storagePath) {
+        return true;
+      }
+      return false;
+    });
+    if (!matches) {
+      setSelectedKeyframe(null);
+    }
+  }, [keyframes, selectedKeyframe]);
 
   const runRender = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
@@ -157,8 +172,14 @@ export function useKeyframeWorkflow({
   }, [keyframeStep.pendingModel, runRender]);
 
   const handleSelectFrame = useCallback(
-    (url: string, frameIndex: number, generationId: string) => {
-      setSelectedKeyframe({ url, generationId, frameIndex, source: 'generation' });
+    (url: string, frameIndex: number, generationId: string, storagePath?: string) => {
+      setSelectedKeyframe({
+        url,
+        generationId,
+        frameIndex,
+        source: 'generation',
+        ...(storagePath ? { storagePath } : {}),
+      });
     },
     []
   );

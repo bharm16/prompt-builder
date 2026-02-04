@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
 import type { Generation, GenerationsPanelProps } from './types';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
+import type { DraftModel, GenerationOverrides, KeyframeTile } from '@components/ToolSidebar/types';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
@@ -15,13 +15,24 @@ import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
 import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
 import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
 import { useGenerationControlsContext } from '../context/GenerationControlsContext';
-import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../context/GenerationControlsStore';
 import { logger } from '@/services/LoggingService';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
 import { useToast } from '@components/Toast';
 import { extractVideoContentAssetId } from '@/utils/storageUrl';
 
 const log = logger.child('GenerationsPanel');
+const MAX_KEYFRAMES = 3;
+
+const createKeyframeId = (): string => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `keyframe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+};
 
 const EmptyState = ({
   onRunDraft,
@@ -98,9 +109,40 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   const { setControls, faceSwapPreview } = useGenerationControlsContext();
   const { domain } = useGenerationControlsStoreState();
+  const { setKeyframes } = useGenerationControlsStoreActions();
   const keyframes = domain.keyframes;
   const cameraMotion = domain.cameraMotion;
   const subjectMotion = domain.subjectMotion;
+
+  const upsertPrimaryKeyframe = useCallback(
+    (input: {
+      url: string;
+      source: KeyframeTile['source'];
+      sourcePrompt?: string | null;
+      storagePath?: string;
+      viewUrlExpiresAt?: string;
+      assetId?: string;
+    }): void => {
+      if (!input.url?.trim()) return;
+      const trimmedPrompt = input.sourcePrompt?.trim();
+      const existing = keyframes.find((frame) => frame.url === input.url);
+      const nextFrame: KeyframeTile = {
+        ...(existing ?? { id: createKeyframeId(), url: input.url, source: input.source }),
+        url: input.url,
+        source: input.source,
+        ...(input.assetId ? { assetId: input.assetId } : {}),
+        ...(input.storagePath ? { storagePath: input.storagePath } : {}),
+        ...(input.viewUrlExpiresAt ? { viewUrlExpiresAt: input.viewUrlExpiresAt } : {}),
+        ...(trimmedPrompt ? { sourcePrompt: trimmedPrompt } : {}),
+      };
+      const nextKeyframes = [
+        nextFrame,
+        ...keyframes.filter((frame) => frame.id !== nextFrame.id && frame.url !== input.url),
+      ].slice(0, MAX_KEYFRAMES);
+      setKeyframes(nextKeyframes);
+    },
+    [keyframes, setKeyframes]
+  );
 
   const mergedGenerationParams = useMemo(() => {
     const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;
@@ -278,10 +320,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     keyframeStep,
     selectedKeyframe,
     handleRender,
-    handleApproveKeyframe,
+    handleApproveKeyframe: approveKeyframeFromWorkflow,
     handleSkipKeyframe,
-    handleSelectFrame,
-    handleClearSelectedFrame,
+    handleSelectFrame: selectFrameInWorkflow,
+    handleClearSelectedFrame: clearSelectedFrameInWorkflow,
   } = useKeyframeWorkflow({
     prompt,
     keyframes,
@@ -290,6 +332,49 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     onCreateVersionIfNeeded,
     generateRender,
   });
+
+  const handleApproveKeyframe = useCallback(
+    (keyframeUrl: string) => {
+      upsertPrimaryKeyframe({
+        url: keyframeUrl,
+        source: 'generation',
+        sourcePrompt: prompt,
+      });
+      approveKeyframeFromWorkflow(keyframeUrl);
+    },
+    [approveKeyframeFromWorkflow, prompt, upsertPrimaryKeyframe]
+  );
+
+  const handleSelectFrame = useCallback(
+    (url: string, frameIndex: number, generationId: string) => {
+      const generation = generations.find((item) => item.id === generationId);
+      const storagePath = generation?.mediaAssetIds?.[frameIndex];
+      upsertPrimaryKeyframe({
+        url,
+        source: 'generation',
+        sourcePrompt: generation?.prompt ?? prompt,
+        ...(storagePath ? { storagePath } : {}),
+      });
+      selectFrameInWorkflow(url, frameIndex, generationId, storagePath);
+    },
+    [generations, prompt, selectFrameInWorkflow, upsertPrimaryKeyframe]
+  );
+
+  const handleClearSelectedFrame = useCallback(() => {
+    if (selectedKeyframe) {
+      const generation = generations.find((item) => item.id === selectedKeyframe.generationId);
+      const storagePath = generation?.mediaAssetIds?.[selectedKeyframe.frameIndex];
+      const nextKeyframes = keyframes.filter((frame) => {
+        if (frame.url === selectedKeyframe.url) return false;
+        if (storagePath && frame.storagePath === storagePath) return false;
+        return true;
+      });
+      if (nextKeyframes.length !== keyframes.length) {
+        setKeyframes(nextKeyframes);
+      }
+    }
+    clearSelectedFrameInWorkflow();
+  }, [clearSelectedFrameInWorkflow, generations, keyframes, selectedKeyframe, setKeyframes]);
 
   const handleRenderWithFaceSwap = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
