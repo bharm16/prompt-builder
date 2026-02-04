@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import process from 'node:process';
 
 const HEALTH_URL = process.env.DEV_SERVER_HEALTH_URL || 'http://localhost:3001/health';
-const HEALTH_TIMEOUT_MS = Number(process.env.DEV_SERVER_HEALTH_TIMEOUT_MS || 30000);
+const HEALTH_TIMEOUT_MS = Number(process.env.DEV_SERVER_HEALTH_TIMEOUT_MS || 60000);
 const HEALTH_POLL_INTERVAL_MS = Number(process.env.DEV_SERVER_HEALTH_POLL_INTERVAL_MS || 200);
 
 const isWindows = process.platform === 'win32';
@@ -57,7 +57,7 @@ async function waitForHealth({
 
   throw new Error(
     `Timed out waiting for backend health check at ${url} after ${timeoutMs}ms` +
-      (lastError ? ` (last error: ${String(lastError)})` : '')
+    (lastError ? ` (last error: ${String(lastError)})` : '')
   );
 }
 

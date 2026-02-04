@@ -80,8 +80,8 @@ export function PromptCanvas({
   initialHighlights = null,
   initialHighlightsVersion = 0,
   onHighlightsPersist,
-  onUndo = () => {},
-  onRedo = () => {},
+  onUndo = () => { },
+  onRedo = () => { },
   canUndo = false,
   canRedo = false,
   isDraftReady = false,
@@ -591,11 +591,7 @@ export function PromptCanvas({
     outlineOverlayActive,
   ]);
 
-  const closeInlinePopover = useCallback((): void => {
-    setSelectedSpanId(null);
-    setActiveSuggestionIndex(0);
-    suggestionsData?.onClose?.();
-  }, [setSelectedSpanId, suggestionsData]);
+
 
   // Ambient motion: every ~6s, momentarily fade a random token
   useEffect(() => {
@@ -903,12 +899,12 @@ export function PromptCanvas({
 
       const span = Array.isArray(parseResult?.spans)
         ? parseResult.spans.find((candidate) => {
-            const candidateId =
-              typeof candidate?.id === 'string' && candidate.id.length > 0
-                ? candidate.id
-                : `span_${candidate.start}_${candidate.end}`;
-            return candidateId === spanId;
-          })
+          const candidateId =
+            typeof candidate?.id === 'string' && candidate.id.length > 0
+              ? candidate.id
+              : `span_${candidate.start}_${candidate.end}`;
+          return candidateId === spanId;
+        })
         : null;
 
       if (span) {

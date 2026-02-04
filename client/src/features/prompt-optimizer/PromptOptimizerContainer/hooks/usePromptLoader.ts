@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPromptRepositoryForUser } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
@@ -64,7 +64,6 @@ interface UsePromptLoaderParams {
  */
 export function usePromptLoader({
   sessionId,
-  currentPromptUuid,
   navigate,
   toast,
   user,
@@ -93,6 +92,7 @@ export function usePromptLoader({
     if (!sessionId) return false;
     return true;
   });
+  const lastLoadedSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +104,11 @@ export function usePromptLoader({
       }
 
       if (skipLoadFromUrlRef.current) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (lastLoadedSessionIdRef.current === sessionId) {
         setIsLoading(false);
         return;
       }
@@ -179,6 +184,7 @@ export function usePromptLoader({
           log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId });
           navigate('/', { replace: true });
         }
+        lastLoadedSessionIdRef.current = sessionId;
       } catch (error) {
         if (cancelled) return;
         const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
@@ -199,7 +205,6 @@ export function usePromptLoader({
     };
   }, [
     sessionId,
-    currentPromptUuid,
     navigate,
     toast,
     setDisplayedPromptSilently,

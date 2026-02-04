@@ -8,7 +8,7 @@ import type {
   SuggestionItem,
   SuggestionsData,
 } from '../types';
-import { buildSuggestionContext } from '../utils/enhancementSuggestionContext';
+import { buildSuggestionContext } from '../../utils/enhancementSuggestionContext';
 import { useSuggestionFeedback } from './useSuggestionFeedback';
 
 interface UseInlineSuggestionStateOptions {
@@ -94,7 +94,7 @@ export function useInlineSuggestionState({
     if (!selectedSpan) return '';
     const displayQuote =
       typeof selectedSpan.displayQuote === 'string' &&
-      selectedSpan.displayQuote.trim()
+        selectedSpan.displayQuote.trim()
         ? selectedSpan.displayQuote
         : '';
     const quote =
@@ -187,20 +187,20 @@ export function useInlineSuggestionState({
 
   const isInlineLoading = Boolean(
     selectedSpanId &&
-      (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
+    (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
   );
   const isInlineError = Boolean(suggestionsData?.isError);
   const inlineErrorMessage =
     typeof suggestionsData?.errorMessage === 'string' &&
-    suggestionsData.errorMessage.trim()
+      suggestionsData.errorMessage.trim()
       ? suggestionsData.errorMessage.trim()
       : 'Failed to load suggestions.';
   const isInlineEmpty = Boolean(
     selectedSpanId &&
-      !isInlineLoading &&
-      !isInlineError &&
-      suggestionCount === 0 &&
-      !hasI2VLockNotice
+    !isInlineLoading &&
+    !isInlineError &&
+    suggestionCount === 0 &&
+    !hasI2VLockNotice
   );
   const showI2VLockIndicator = Boolean(i2vContext?.isI2VMode && hasI2VLockNotice);
 
@@ -248,7 +248,7 @@ export function useInlineSuggestionState({
     contextBefore: customRequestContext?.contextBefore ?? '',
     contextAfter: customRequestContext?.contextAfter ?? '',
     metadata: suggestionsData?.metadata ?? null,
-    setSuggestions: suggestionsData?.setSuggestions ?? (() => {}),
+    setSuggestions: suggestionsData?.setSuggestions ?? (() => { }),
     setError: setCustomRequestError,
   });
 

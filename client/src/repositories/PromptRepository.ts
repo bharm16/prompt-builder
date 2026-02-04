@@ -12,11 +12,16 @@ import type { PromptData, SavedPromptResult, UpdateHighlightsOptions, UpdateProm
 import { PromptRepositoryError } from './promptRepositoryTypes';
 
 const log = logger.child('PromptRepository');
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Repository for managing prompt data
  */
 export class PromptRepository {
+  private readonly resolvedSessionIdCache = new Map<string, string>();
+  private readonly resolveSessionIdInFlight = new Map<string, Promise<string>>();
+
   /**
    * Save a new prompt
    */
@@ -45,6 +50,9 @@ export class PromptRepository {
         throw new Error('Invalid session response');
       }
       const uuid = data.prompt?.uuid ?? promptData.uuid ?? '';
+      if (uuid && data.id) {
+        this.rememberSessionId(uuid, data.id);
+      }
       return { id: data.id, uuid };
     } catch (error) {
       log.error('Error saving prompt', error as Error);
@@ -91,7 +99,12 @@ export class PromptRepository {
    */
   async getById(sessionId: string): Promise<PromptHistoryEntry | null> {
     try {
-      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(sessionId)}`);
+      const normalizedId = sessionId.trim();
+      if (!normalizedId) return null;
+      if (this.isUuid(normalizedId)) {
+        return await this.getByUuid(normalizedId);
+      }
+      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(normalizedId)}`);
       const data = (response as { data?: SessionDto }).data;
       if (!data) return null;
       return this._mapSessionToPrompt(data);
@@ -108,7 +121,7 @@ export class PromptRepository {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
-      const sessionId = normalizedId.startsWith('session_')
+      const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
       await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/prompt`, {
@@ -132,7 +145,7 @@ export class PromptRepository {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
-      const sessionId = normalizedId.startsWith('session_')
+      const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
       await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/highlights`, {
@@ -152,7 +165,7 @@ export class PromptRepository {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
-      const sessionId = normalizedId.startsWith('session_')
+      const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
       await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/output`, { output });
@@ -169,7 +182,7 @@ export class PromptRepository {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
-      const sessionId = normalizedId.startsWith('session_')
+      const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
       await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/versions`, { versions });
@@ -196,6 +209,7 @@ export class PromptRepository {
 
   private _mapSessionToPrompt(session: SessionDto | null | undefined): PromptHistoryEntry | null {
     if (!session?.prompt) return null;
+    this.rememberSessionId(session.prompt.uuid ?? undefined, session.id);
     const prompt = session.prompt;
     return {
       id: session.id,
@@ -216,19 +230,57 @@ export class PromptRepository {
   }
 
   private async resolveSessionId(sessionIdOrUuid: string): Promise<string> {
-    try {
-      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(sessionIdOrUuid)}`);
-      const data = (response as { data?: { id: string } }).data;
-      if (data?.id) return data.id;
-    } catch {
-      // fall through
+    const normalized = sessionIdOrUuid.trim();
+    if (!normalized) {
+      throw new Error('Session id is required');
     }
 
-    const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(sessionIdOrUuid)}`);
-    const data = (response as { data?: { id: string } }).data;
-    if (!data?.id) {
-      throw new Error('Session not found');
+    if (this.isLikelySessionId(normalized)) {
+      return normalized;
     }
-    return data.id;
+
+    const cached = this.resolvedSessionIdCache.get(normalized);
+    if (cached) {
+      return cached;
+    }
+
+    const inflight = this.resolveSessionIdInFlight.get(normalized);
+    if (inflight) {
+      return await inflight;
+    }
+
+    const resolvePromise = (async () => {
+      const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(normalized)}`);
+      const data = (response as { data?: { id: string } }).data;
+      if (!data?.id) {
+        throw new Error('Session not found');
+      }
+      this.resolvedSessionIdCache.set(normalized, data.id);
+      return data.id;
+    })();
+
+    this.resolveSessionIdInFlight.set(normalized, resolvePromise);
+    try {
+      return await resolvePromise;
+    } finally {
+      this.resolveSessionIdInFlight.delete(normalized);
+    }
+  }
+
+  private rememberSessionId(uuid: string | null | undefined, sessionId: string): void {
+    if (!uuid || !sessionId) return;
+    this.resolvedSessionIdCache.set(uuid, sessionId);
+  }
+
+  private isUuid(value: string): boolean {
+    return UUID_REGEX.test(value);
+  }
+
+  private isLikelySessionId(value: string): boolean {
+    const normalized = value.trim();
+    if (!normalized) return false;
+    if (normalized.startsWith('draft-')) return false;
+    if (normalized.startsWith('session_')) return true;
+    return !this.isUuid(normalized);
   }
 }

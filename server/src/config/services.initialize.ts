@@ -206,7 +206,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   logger.info('All services initialized and validated successfully');
   const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
-  
+
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
   const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');
   const shouldWarmGliner = !promptOutputOnly &&
@@ -253,13 +253,16 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   };
 
   if (!isTestEnv && !promptOutputOnly) {
-    try {
-      const depthWarmup = await warmupDepthEstimationOnStartup();
-      logDepthWarmupResult(depthWarmup);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
-    }
+    // Start depth warmup in background - do not await
+    // This allows server to become healthy/ready while fal.ai spins up
+    warmupDepthEstimationOnStartup()
+      .then(depthWarmup => {
+        logDepthWarmupResult(depthWarmup);
+      })
+      .catch((error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
+      });
   } else {
     const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'test environment';
     logger.info('ℹ️ Depth warmup skipped', { reason });

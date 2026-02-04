@@ -467,7 +467,7 @@ export function useHistoryPersistence({
           });
           updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
         }
-      }, 150);
+      }, 500);
     },
     [user, updateEntry]
   );
