@@ -38,6 +38,8 @@ export interface OptimizationOptions {
   generationParams?: CapabilityValues;
   compileOnly?: boolean;
   compilePrompt?: string;
+  targetModel?: string;
+  forceGenericTarget?: boolean;
   createVersion?: boolean;
   startImage?: string;
   sourcePrompt?: string;

@@ -109,7 +109,11 @@ export const useModelRegistry = (): UseModelRegistryResult => {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Unable to load models';
         const errObj = err instanceof Error ? err : new Error(sanitizeError(err).message);
-        log.error('Failed to load models', errObj, { operation: 'fetchModels' });
+        log.warn('Failed to load models; using fallback list', {
+          operation: 'fetchModels',
+          error: errObj.message,
+          errorName: errObj.name,
+        });
         setError(message);
         // Ensure the UI still has a usable model list even if the registry endpoint is unavailable.
         setModels(fallbackModels());

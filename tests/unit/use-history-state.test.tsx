@@ -42,6 +42,55 @@ describe('useHistoryState', () => {
       expect(result.current.state.history[1].uuid).toBe('first');
     });
 
+    it('addEntry replaces an existing entry with the same uuid', () => {
+      const { result } = renderHook(() => useHistoryState());
+
+      act(() => {
+        result.current.addEntry(makeEntry({ id: 'first-id', uuid: 'same', output: 'first output' }));
+      });
+      act(() => {
+        result.current.addEntry(makeEntry({ id: 'second-id', uuid: 'same', output: 'second output' }));
+      });
+
+      expect(result.current.state.history).toHaveLength(1);
+      expect(result.current.state.history[0].id).toBe('second-id');
+      expect(result.current.state.history[0].output).toBe('second output');
+    });
+
+    it('addEntry replaces an existing entry with the same id even if uuid differs', () => {
+      const { result } = renderHook(() => useHistoryState());
+
+      act(() => {
+        result.current.addEntry(makeEntry({ id: 'shared-id', uuid: 'first-uuid', output: 'first output' }));
+      });
+      act(() => {
+        result.current.addEntry(makeEntry({ id: 'shared-id', uuid: 'second-uuid', output: 'second output' }));
+      });
+
+      expect(result.current.state.history).toHaveLength(1);
+      expect(result.current.state.history[0].uuid).toBe('second-uuid');
+      expect(result.current.state.history[0].output).toBe('second output');
+    });
+
+    it('setHistory removes duplicate entries by id/uuid', () => {
+      const { result } = renderHook(() => useHistoryState());
+
+      act(() => {
+        result.current.setHistory([
+          makeEntry({ id: 'dup-id', uuid: 'uuid-a', output: 'newest' }),
+          makeEntry({ id: 'dup-id', uuid: 'uuid-b', output: 'duplicate-by-id' }),
+          makeEntry({ id: 'id-c', uuid: 'dup-uuid', output: 'uuid-source' }),
+          makeEntry({ id: 'id-d', uuid: 'dup-uuid', output: 'duplicate-by-uuid' }),
+          makeEntry({ id: 'id-e', uuid: 'uuid-e', output: 'unique' }),
+        ]);
+      });
+
+      expect(result.current.state.history).toHaveLength(3);
+      expect(result.current.state.history[0].output).toBe('newest');
+      expect(result.current.state.history[1].output).toBe('uuid-source');
+      expect(result.current.state.history[2].output).toBe('unique');
+    });
+
     it('updateEntry with non-existent uuid leaves all entries unchanged', () => {
       const { result } = renderHook(() => useHistoryState());
       const entry = makeEntry({ uuid: 'existing' });

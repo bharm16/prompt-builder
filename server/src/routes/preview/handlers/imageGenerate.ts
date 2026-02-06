@@ -9,9 +9,13 @@ import type {
 import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 
-type ImageGenerateServices = Pick<PreviewRoutesServices, 'imageGenerationService' | 'userCreditService'>;
+type ImageGenerateServices = Pick<
+  PreviewRoutesServices,
+  'imageGenerationService' | 'userCreditService' | 'assetService'
+>;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
   'Lightly Juiced',
@@ -20,9 +24,13 @@ const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
   'Real Time',
 ]);
 
+const hasPromptTriggers = (prompt: string): boolean =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).length > 0;
+
 export const createImageGenerateHandler = ({
   imageGenerationService,
   userCreditService,
+  assetService,
 }: ImageGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!imageGenerationService) {
@@ -143,6 +151,45 @@ export const createImageGenerateHandler = ({
       });
     }
 
+    let resolvedPrompt = prompt.trim();
+    const shouldResolvePrompt = hasPromptTriggers(resolvedPrompt);
+    let resolvedAssetCount = 0;
+    let resolvedCharacterCount = 0;
+
+    if (shouldResolvePrompt) {
+      if (!assetService) {
+        logger.warn('Asset service unavailable for image prompt resolution', {
+          userId,
+          path: req.path,
+        });
+      } else {
+        try {
+          const resolved = await assetService.resolvePrompt(userId, resolvedPrompt);
+          const expandedPrompt = resolved.expandedText.trim();
+          if (expandedPrompt.length > 0) {
+            resolvedPrompt = expandedPrompt;
+          }
+          resolvedAssetCount = resolved.assets.length;
+          resolvedCharacterCount = resolved.characters.length;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error(
+            'Image prompt resolution failed',
+            error instanceof Error ? error : new Error(errorMessage),
+            {
+              userId,
+              path: req.path,
+            }
+          );
+          return res.status(500).json({
+            success: false,
+            error: 'Image prompt resolution failed',
+            message: errorMessage,
+          });
+        }
+      }
+    }
+
     if (!userCreditService) {
       logger.error('User credit service is not available - blocking preview access', undefined, {
         path: req.path,
@@ -165,7 +212,7 @@ export const createImageGenerateHandler = ({
     }
 
     try {
-      const result = await imageGenerationService.generatePreview(prompt, {
+      const result = await imageGenerationService.generatePreview(resolvedPrompt, {
         ...(aspectRatio ? { aspectRatio } : {}),
         ...(userId ? { userId } : {}),
         ...(resolvedProvider ? { provider: resolvedProvider } : {}),
@@ -196,6 +243,9 @@ export const createImageGenerateHandler = ({
         logger.warn('Failed to persist preview image to storage', {
           userId,
           error: errorMessage,
+          shouldResolvePrompt,
+          resolvedAssetCount,
+          resolvedCharacterCount,
         });
       }
 
@@ -224,6 +274,9 @@ export const createImageGenerateHandler = ({
         statusCode,
         userId,
         aspectRatio,
+        shouldResolvePrompt,
+        resolvedAssetCount,
+        resolvedCharacterCount,
       });
 
       return res.status(statusCode).json({

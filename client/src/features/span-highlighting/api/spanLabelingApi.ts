@@ -18,6 +18,9 @@ import { readSpanLabelStream } from './spanLabelingStream';
  */
 export class SpanLabelingApi {
   private static log = logger.child('SpanLabelingApi');
+  private static shouldFallbackToBlocking(status: number): boolean {
+    return status === 404 || (status >= 500 && status < 600);
+  }
 
   /**
    * Labels spans in the provided text
@@ -68,19 +71,39 @@ export class SpanLabelingApi {
     });
 
     const authHeaders = await buildFirebaseAuthHeaders();
-    const res = await fetch('/llm/label-spans/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-      },
-      body: buildLabelSpansBody(payload),
-      ...(signal && { signal }),
-    });
+    let res: Response;
+    try {
+      res = await fetch('/llm/label-spans/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: buildLabelSpansBody(payload),
+        ...(signal && { signal }),
+      });
+    } catch (error) {
+      const shouldSkipFallback =
+        signal?.aborted ||
+        (error instanceof DOMException && error.name === 'AbortError');
+
+      if (shouldSkipFallback) {
+        throw error;
+      }
+
+      this.log.warn('Stream request transport failed, falling back to blocking', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const blocking = await this.labelSpans(payload, signal);
+      blocking.spans.forEach(onChunk);
+      return blocking;
+    }
 
     if (!res.ok) {
-      if (res.status === 404) {
-        this.log.warn('Stream endpoint not found, falling back to blocking', { status: 404 });
+      if (this.shouldFallbackToBlocking(res.status)) {
+        this.log.warn('Stream request failed, falling back to blocking', {
+          status: res.status,
+        });
         const blocking = await this.labelSpans(payload, signal);
         blocking.spans.forEach(onChunk);
         return blocking;

@@ -50,6 +50,25 @@ const resolveOptimizationStartImageUrl = async (
   return resolved.url ?? url;
 };
 
+const OPTIMIZATION_OPTION_KEYS: ReadonlyArray<keyof OptimizationOptions> = [
+  'compileOnly',
+  'compilePrompt',
+  'targetModel',
+  'forceGenericTarget',
+  'createVersion',
+];
+
+const extractOptimizationOptions = (value: unknown): OptimizationOptions | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  const hasOptionKey = OPTIMIZATION_OPTION_KEYS.some((key) =>
+    Object.prototype.hasOwnProperty.call(candidate, key)
+  );
+  return hasOptionKey ? (candidate as OptimizationOptions) : null;
+};
+
 interface PromptOptimizer {
   inputPrompt: string;
   genericOptimizedPrompt?: string | null;
@@ -158,8 +177,20 @@ export function usePromptOptimization({
       context?: unknown,
       options?: OptimizationOptions
     ): Promise<void> => {
+      let normalizedOptions = options;
+      let normalizedContext = context;
+      if (!normalizedOptions) {
+        const extractedOptions = extractOptimizationOptions(normalizedContext);
+        if (extractedOptions) {
+          normalizedOptions = extractedOptions;
+          normalizedContext = undefined;
+        }
+      }
+
       const prompt = promptToOptimize || promptOptimizer.inputPrompt;
-      const ctx = (context as Record<string, unknown> | null | undefined) || promptOptimizer.improvementContext;
+      const ctx =
+        (normalizedContext as Record<string, unknown> | null | undefined) ||
+        promptOptimizer.improvementContext;
 
       // Serialize prompt context
       const serializedContext = promptContext
@@ -178,22 +209,42 @@ export function usePromptOptimization({
           }
         : null;
 
-      const isCompileOnly = options?.compileOnly === true;
+      const isCompileOnly = normalizedOptions?.compileOnly === true;
       const compilePrompt =
-        options?.compilePrompt ||
+        normalizedOptions?.compilePrompt ||
         (typeof promptOptimizer.genericOptimizedPrompt === 'string'
           ? promptOptimizer.genericOptimizedPrompt
           : null);
+      const overrideTargetModel =
+        typeof normalizedOptions?.targetModel === 'string' && normalizedOptions.targetModel.trim()
+          ? normalizedOptions.targetModel.trim()
+          : undefined;
+      const forceGenericTarget = normalizedOptions?.forceGenericTarget === true;
+      const effectiveTargetModel =
+        selectedMode === 'video'
+          ? isCompileOnly
+            ? overrideTargetModel
+            : forceGenericTarget
+              ? undefined
+              : overrideTargetModel ?? selectedModel
+          : undefined;
+      const resolvedCompilePrompt =
+        (compilePrompt || prompt).trim();
 
       const optimizationInput = isCompileOnly ? compilePrompt || prompt : prompt;
-      if (typeof optimizationInput === 'string' && optimizationInput.trim()) {
+      const shouldClearBeforeOptimization =
+        typeof optimizationInput === 'string' &&
+        optimizationInput.trim() &&
+        !(isCompileOnly && !effectiveTargetModel);
+
+      if (shouldClearBeforeOptimization) {
         setShowResults(true);
         setDisplayedPromptSilently('');
       }
 
       const primaryKeyframe = Array.isArray(keyframes) ? keyframes[0] : null;
-      const resolvedStartImageUrl = options?.startImage
-        ? options.startImage
+      const resolvedStartImageUrl = normalizedOptions?.startImage
+        ? normalizedOptions.startImage
         : await resolveOptimizationStartImageUrl(
             startImageUrl ?? null,
             primaryKeyframe?.storagePath ?? null,
@@ -201,23 +252,27 @@ export function usePromptOptimization({
           );
 
       const effectiveOptions: OptimizationOptions = {
-        ...(options ?? {}),
-        ...(options?.startImage ? {} : resolvedStartImageUrl ? { startImage: resolvedStartImageUrl } : {}),
-        ...(options?.sourcePrompt ? {} : sourcePrompt ? { sourcePrompt } : {}),
-        ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
+        ...(normalizedOptions ?? {}),
+        ...(normalizedOptions?.startImage ? {} : resolvedStartImageUrl ? { startImage: resolvedStartImageUrl } : {}),
+        ...(normalizedOptions?.sourcePrompt ? {} : sourcePrompt ? { sourcePrompt } : {}),
+        ...(normalizedOptions?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
       };
 
       const result = isCompileOnly
-        ? await promptOptimizer.compile(
-            compilePrompt || prompt,
-            selectedMode === 'video' ? selectedModel : undefined,
-            ctx
-          )
+        ? effectiveTargetModel
+          ? await promptOptimizer.compile(
+              resolvedCompilePrompt,
+              effectiveTargetModel,
+              ctx
+            )
+          : resolvedCompilePrompt
+            ? { optimized: resolvedCompilePrompt, score: promptOptimizer.qualityScore }
+            : null
         : await promptOptimizer.optimize(
             prompt,
             ctx,
             brainstormContextData,
-            selectedMode === 'video' ? selectedModel : undefined,
+            effectiveTargetModel,
             {
               ...effectiveOptions,
               ...(generationParams ? { generationParams } : {}),
@@ -225,13 +280,18 @@ export function usePromptOptimization({
           );
 
       if (result) {
+        if (isCompileOnly && !effectiveTargetModel) {
+          setShowResults(true);
+          setDisplayedPromptSilently(result.optimized);
+        }
+
         // Save to history
         const saveResult = await promptHistory.saveToHistory(
           prompt,
           result.optimized,
           result.score,
           selectedMode,
-          selectedMode === 'video' ? selectedModel ?? null : null,
+          selectedMode === 'video' ? effectiveTargetModel ?? null : null,
           (generationParams as unknown as Record<string, unknown>) ?? null,
           keyframes ?? null,
           serializedContext as unknown as Record<string, unknown> | null,
@@ -255,7 +315,7 @@ export function usePromptOptimization({
           });
         }
 
-        if (saveResult?.uuid && options?.createVersion) {
+        if (saveResult?.uuid && normalizedOptions?.createVersion) {
           const promptText = result.optimized.trim();
           if (promptText) {
             const uuidForVersions = saveResult.uuid;

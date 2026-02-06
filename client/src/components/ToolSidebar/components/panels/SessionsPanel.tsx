@@ -125,6 +125,32 @@ export function SessionsPanel({
     ? filteredByChips
     : filteredByChips.slice(0, INITIAL_HISTORY_LIMIT);
   const hasActiveFilters = filterState.videosOnly || filterState.recentOnly;
+  const uniqueDisplayedHistory = useMemo(() => {
+    const seenIds = new Set<string>();
+    const seenUuids = new Set<string>();
+
+    return displayedHistory.filter((entry) => {
+      const normalizedId =
+        typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : null;
+      const normalizedUuid =
+        typeof entry.uuid === 'string' && entry.uuid.trim() ? entry.uuid.trim() : null;
+
+      if (
+        (normalizedId && seenIds.has(normalizedId)) ||
+        (normalizedUuid && seenUuids.has(normalizedUuid))
+      ) {
+        return false;
+      }
+
+      if (normalizedId) {
+        seenIds.add(normalizedId);
+      }
+      if (normalizedUuid) {
+        seenUuids.add(normalizedUuid);
+      }
+      return true;
+    });
+  }, [displayedHistory]);
 
   const handleCopyPrompt = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
@@ -174,14 +200,14 @@ export function SessionsPanel({
   }, [renameEntry, renameValue, onRename, toast]);
 
   const promptRows = useMemo(() => {
-    const baseTitles = displayedHistory.map((entry) =>
+    const baseTitles = uniqueDisplayedHistory.map((entry) =>
       normalizeTitle(resolveEntryTitle(entry))
     );
     const counts = new Map<string, number>();
     baseTitles.forEach((title) => counts.set(title, (counts.get(title) ?? 0) + 1));
     const seen = new Map<string, number>();
 
-    return displayedHistory.map((entry, index) => {
+    return uniqueDisplayedHistory.map((entry, index) => {
       const stage = resolveEntryStage(entry);
       const baseTitle = baseTitles[index] ?? 'Untitled';
       const hasDupes = (counts.get(baseTitle) ?? 0) > 1;
@@ -250,7 +276,7 @@ export function SessionsPanel({
       };
     });
   }, [
-    displayedHistory,
+    uniqueDisplayedHistory,
     currentPromptUuid,
     currentPromptDocId,
     activeStatusLabel,

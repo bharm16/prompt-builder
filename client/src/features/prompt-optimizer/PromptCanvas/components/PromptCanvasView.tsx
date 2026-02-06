@@ -9,10 +9,17 @@ import {
   Icon,
   Lock,
   LockOpen,
+  VideoCamera,
   X,
 } from '@promptstudio/system/components/ui';
 import { Button, type ButtonProps } from '@promptstudio/system/components/ui/button';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@promptstudio/system/components/ui/select';
 import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { CollapsibleDrawer, type DrawerDisplayMode } from '@components/CollapsibleDrawer';
@@ -162,6 +169,11 @@ export interface PromptCanvasViewProps {
   openOutlineOverlay: () => void;
   copied: boolean;
   onCopy: () => void;
+  modelFormatValue: string;
+  modelFormatLabel: string;
+  modelFormatOptions: Array<{ id: string; label: string }>;
+  modelFormatDisabled: boolean;
+  onModelFormatChange: (nextModel: string) => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -262,6 +274,11 @@ export function PromptCanvasView({
   openOutlineOverlay,
   copied,
   onCopy,
+  modelFormatValue,
+  modelFormatLabel,
+  modelFormatOptions,
+  modelFormatDisabled,
+  onModelFormatChange,
   onUndo,
   onRedo,
   canUndo,
@@ -399,6 +416,41 @@ export function PromptCanvasView({
                               />
                             </CanvasButton>
                           )}
+                          <Select
+                            value={modelFormatValue}
+                            onValueChange={onModelFormatChange}
+                            disabled={modelFormatDisabled}
+                          >
+                            <SelectTrigger
+                              size="xs"
+                              variant="ghost"
+                              className="h-ps-10 min-w-28 max-w-44 text-muted hover:bg-surface-2 hover:text-foreground justify-start rounded-lg px-2 transition-colors"
+                              aria-label={`Transform model: ${modelFormatLabel}`}
+                              title={`Transform model: ${modelFormatLabel}`}
+                            >
+                              <span className="flex min-w-0 items-center gap-2">
+                                <Icon
+                                  icon={VideoCamera}
+                                  size="sm"
+                                  weight="bold"
+                                  aria-hidden="true"
+                                />
+                                <span className="text-label-sm truncate">
+                                  {modelFormatLabel}
+                                </span>
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent align="end" className="max-h-72">
+                              <SelectItem value="auto">
+                                Auto (Generic)
+                              </SelectItem>
+                              {modelFormatOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <CanvasButton
                             type="button"
                             size="icon-sm"

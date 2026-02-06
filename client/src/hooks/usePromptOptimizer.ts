@@ -311,6 +311,9 @@ export const usePromptOptimizer = (
 
       setIsProcessing(true);
       setIsRefining(false);
+      setIsDraftReady(false);
+      setDraftSpans(null);
+      setRefinedSpans(null);
 
       try {
         const result = await compilePrompt({
@@ -366,6 +369,9 @@ export const usePromptOptimizer = (
       selectedModel,
       setIsProcessing,
       setIsRefining,
+      setIsDraftReady,
+      setDraftSpans,
+      setRefinedSpans,
       setOptimizedPrompt,
       setDisplayedPrompt,
       setGenericOptimizedPrompt,

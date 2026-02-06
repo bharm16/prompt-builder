@@ -9,6 +9,7 @@ import {
   generateVideoPreview,
   waitForVideoJob,
 } from '@features/prompt-optimizer/GenerationsPanel/api';
+import { assetApi } from '@features/assets/api/assetApi';
 import {
   buildGeneration,
   resolveGenerationOptions,
@@ -26,12 +27,19 @@ vi.mock('@features/prompt-optimizer/GenerationsPanel/utils/generationUtils', () 
   resolveGenerationOptions: vi.fn(),
 }));
 
+vi.mock('@features/assets/api/assetApi', () => ({
+  assetApi: {
+    resolve: vi.fn(),
+  },
+}));
+
 const mockCompileWanPrompt = vi.mocked(compileWanPrompt);
 const mockGenerateStoryboardPreview = vi.mocked(generateStoryboardPreview);
 const mockGenerateVideoPreview = vi.mocked(generateVideoPreview);
 const mockWaitForVideoJob = vi.mocked(waitForVideoJob);
 const mockBuildGeneration = vi.mocked(buildGeneration);
 const mockResolveGenerationOptions = vi.mocked(resolveGenerationOptions);
+const mockResolveAssetPrompt = vi.mocked(assetApi.resolve);
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-1',
@@ -73,6 +81,18 @@ describe('useGenerationActions', () => {
       startImage: null,
     });
     mockCompileWanPrompt.mockResolvedValue('compiled');
+    mockResolveAssetPrompt.mockResolvedValue({
+      originalText: 'Prompt',
+      expandedText: 'Prompt',
+      assets: [],
+      characters: [],
+      styles: [],
+      locations: [],
+      objects: [],
+      requiresKeyframe: false,
+      negativePrompts: [],
+      referenceImages: [],
+    });
   });
 
   describe('error handling', () => {
@@ -189,6 +209,52 @@ describe('useGenerationActions', () => {
   });
 
   describe('core behavior', () => {
+    it('resolves trigger prompts before WAN compile and forwards characterAssetId', async () => {
+      const dispatch = vi.fn();
+      mockResolveAssetPrompt.mockResolvedValue({
+        originalText: '@matt walks through a neon alley',
+        expandedText: 'Matt Harmon walks through a neon alley',
+        assets: [{ id: 'char-1' } as unknown as { id: string }],
+        characters: [{ id: 'char-1' } as unknown as { id: string }],
+        styles: [],
+        locations: [],
+        objects: [],
+        requiresKeyframe: true,
+        negativePrompts: [],
+        referenceImages: [],
+      } as Awaited<ReturnType<typeof assetApi.resolve>>);
+      mockCompileWanPrompt.mockResolvedValue('compiled expanded prompt');
+      mockGenerateVideoPreview.mockResolvedValue({
+        success: true,
+        videoUrl: 'https://cdn/video.mp4',
+      });
+
+      const { result } = renderHook(() =>
+        useGenerationActions(dispatch, { promptVersionId: 'version-1' })
+      );
+
+      await act(async () => {
+        await result.current.generateDraft('wan-2.2', '@matt walks through a neon alley', {
+          promptVersionId: 'version-1',
+        });
+      });
+
+      expect(mockResolveAssetPrompt).toHaveBeenCalledWith('@matt walks through a neon alley');
+      expect(mockCompileWanPrompt).toHaveBeenCalledWith(
+        'Matt Harmon walks through a neon alley',
+        expect.any(Object)
+      );
+      expect(mockGenerateVideoPreview).toHaveBeenCalledWith(
+        'compiled expanded prompt',
+        '16:9',
+        'wan-2.2',
+        expect.objectContaining({
+          characterAssetId: 'char-1',
+          generationParams: { seed: 1 },
+        })
+      );
+    });
+
     it('finalizes storyboard generations with media urls', async () => {
       const dispatch = vi.fn();
       mockGenerateStoryboardPreview.mockResolvedValue({

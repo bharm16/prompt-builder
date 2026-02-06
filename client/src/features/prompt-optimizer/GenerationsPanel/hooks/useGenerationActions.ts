@@ -8,6 +8,7 @@ import { buildGeneration, resolveGenerationOptions } from '../utils/generationUt
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { assetApi } from '@/features/assets/api/assetApi';
 import { safeUrlHost } from '@/utils/url';
 import {
   extractStorageObjectPath,
@@ -29,6 +30,7 @@ interface StoryboardParams extends GenerationParams {
 }
 
 const log = logger.child('useGenerationActions');
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -66,6 +68,9 @@ const extractFaceSwapMeta = (params?: GenerationParams) => {
     characterAssetId: params?.characterAssetId ?? null,
   } as const;
 };
+
+const hasPromptTriggers = (prompt: string): boolean =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).length > 0;
 
 const START_IMAGE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
@@ -273,9 +278,33 @@ export function useGenerationActions(
           return;
         }
 
-        let wanPrompt = prompt.trim();
+        let promptForCompilation = prompt.trim();
+        let resolvedCharacterAssetId = resolved.characterAssetId?.trim() || null;
+
+        if (hasPromptTriggers(promptForCompilation)) {
+          try {
+            const resolvedPrompt = await assetApi.resolve(promptForCompilation);
+            const expandedPrompt = resolvedPrompt.expandedText.trim();
+            if (expandedPrompt.length > 0) {
+              promptForCompilation = expandedPrompt;
+            }
+            if (!resolvedCharacterAssetId) {
+              resolvedCharacterAssetId = resolvedPrompt.characters[0]?.id ?? null;
+            }
+          } catch (error) {
+            const info = sanitizeError(error);
+            log.warn('Prompt trigger resolution failed; falling back to raw prompt', {
+              generationId: generation.id,
+              error: info.message,
+              errorName: info.name,
+            });
+          }
+        }
+        if (controller.signal.aborted) return;
+
+        let wanPrompt = promptForCompilation;
         try {
-          wanPrompt = await compileWanPrompt(prompt, controller.signal);
+          wanPrompt = await compileWanPrompt(promptForCompilation, controller.signal);
         } catch (error) {
           const info = sanitizeError(error);
           log.warn('WAN prompt compilation failed; using raw prompt', {
@@ -283,7 +312,7 @@ export function useGenerationActions(
             error: info.message,
             errorName: info.name,
           });
-          wanPrompt = prompt.trim();
+          wanPrompt = promptForCompilation;
         }
         if (controller.signal.aborted) return;
         const motionPromptInjected = false;
@@ -306,13 +335,13 @@ export function useGenerationActions(
           motionPromptInjected,
           faceSwapApplied: faceSwapMeta.faceSwapApplied,
           faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
-          characterAssetId: faceSwapMeta.characterAssetId,
+          characterAssetId: resolvedCharacterAssetId,
           ...motionMeta,
         });
         const response = await generateVideoPreview(wanPrompt, resolved.aspectRatio ?? undefined, model, {
           ...(resolvedStartImage?.url ? { startImage: resolvedStartImage.url } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
-          ...(resolved.characterAssetId ? { characterAssetId: resolved.characterAssetId } : {}),
+          ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
           ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         });
         if (controller.signal.aborted) return;

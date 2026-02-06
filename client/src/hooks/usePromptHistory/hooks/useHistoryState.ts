@@ -25,6 +25,38 @@ export interface UseHistoryStateReturn {
 
 const MAX_HISTORY_ENTRIES = 100;
 
+const normalizeIdentifier = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const dedupeEntries = (entries: PromptHistoryEntry[]): PromptHistoryEntry[] => {
+  const seenIds = new Set<string>();
+  const seenUuids = new Set<string>();
+  const result: PromptHistoryEntry[] = [];
+
+  for (const entry of entries) {
+    const uuid = normalizeIdentifier(entry.uuid);
+    const id = normalizeIdentifier(entry.id);
+
+    if ((uuid && seenUuids.has(uuid)) || (id && seenIds.has(id))) {
+      continue;
+    }
+
+    if (uuid) {
+      seenUuids.add(uuid);
+    }
+    if (id) {
+      seenIds.add(id);
+    }
+
+    result.push(entry);
+  }
+
+  return result;
+};
+
 /**
  * Hook for managing history state
  */
@@ -38,11 +70,25 @@ export function useHistoryState(): UseHistoryStateReturn {
   }, []);
 
   const setHistory = useCallback((newHistory: PromptHistoryEntry[]) => {
-    setHistoryInternal(newHistory);
+    const deduped = dedupeEntries(newHistory);
+    setHistoryInternal(deduped.slice(0, MAX_HISTORY_ENTRIES));
   }, []);
 
   const addEntry = useCallback((entry: PromptHistoryEntry) => {
-    setHistoryInternal((prev) => [entry, ...prev].slice(0, MAX_HISTORY_ENTRIES));
+    setHistoryInternal((prev) => {
+      const filtered = prev.filter((existing) => {
+        const sameUuid =
+          normalizeIdentifier(entry.uuid) !== null &&
+          normalizeIdentifier(existing.uuid) !== null &&
+          normalizeIdentifier(entry.uuid) === normalizeIdentifier(existing.uuid);
+        const sameId =
+          normalizeIdentifier(entry.id) !== null &&
+          normalizeIdentifier(existing.id) !== null &&
+          normalizeIdentifier(entry.id) === normalizeIdentifier(existing.id);
+        return !sameUuid && !sameId;
+      });
+      return dedupeEntries([entry, ...filtered]).slice(0, MAX_HISTORY_ENTRIES);
+    });
   }, []);
 
   const updateEntry = useCallback((uuid: string, updates: Partial<PromptHistoryEntry>) => {

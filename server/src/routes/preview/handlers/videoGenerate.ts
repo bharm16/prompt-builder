@@ -21,6 +21,7 @@ const KEYFRAME_CREDIT_COST = 2;
 const FACE_SWAP_CREDIT_COST = 2;
 const CAMERA_MOTION_KEY = 'camera_motion_id';
 const SUBJECT_MOTION_KEY = 'subject_motion';
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 const log = logger.child({ route: 'preview.videoGenerate' });
 
 type VideoGenerateServices = Pick<
@@ -120,6 +121,9 @@ const extractMotionMeta = (params: unknown) => {
   } as const;
 };
 
+const extractPromptTriggers = (prompt: string): string[] =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).map((match) => match[1].toLowerCase());
+
 export const createVideoGenerateHandler = ({
   videoGenerationService,
   videoJobStore,
@@ -152,10 +156,11 @@ export const createVideoGenerateHandler = ({
       startImage,
       inputReference,
       generationParams,
-      characterAssetId,
+      characterAssetId: requestedCharacterAssetId,
       autoKeyframe = true,
       faceSwapAlreadyApplied = false,
     } = parsed.payload;
+    let characterAssetId = requestedCharacterAssetId;
 
     // Validate user-provided URLs to prevent SSRF
     if (startImage) {
@@ -181,11 +186,68 @@ export const createVideoGenerateHandler = ({
       }
     }
 
-    const { cleaned: cleanedPrompt, wasStripped: promptWasStripped } =
+    let { cleaned: cleanedPrompt, wasStripped: promptWasStripped } =
       stripVideoPreviewPrompt(prompt);
     const userId = await getAuthenticatedUserId(req);
     const requestId = (req as Request & { id?: string }).id;
     const rawMotionMeta = extractMotionMeta(generationParams);
+    const promptTriggers = extractPromptTriggers(cleanedPrompt);
+    const uniquePromptTriggerCount = new Set(promptTriggers).size;
+    const hasPromptTriggers = uniquePromptTriggerCount > 0;
+
+    if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        message: 'You must be logged in to generate videos.',
+      });
+    }
+
+    let resolvedAssetCount = 0;
+    let resolvedCharacterCount = 0;
+    let promptExpandedFromTrigger = false;
+
+    if (hasPromptTriggers) {
+      if (!assetService) {
+        log.warn('Asset service unavailable for video trigger resolution', {
+          requestId,
+          userId,
+          uniquePromptTriggerCount,
+        });
+      } else {
+        try {
+          const resolvedPrompt = await assetService.resolvePrompt(userId, cleanedPrompt);
+          const expandedPrompt = resolvedPrompt.expandedText.trim();
+          resolvedAssetCount = resolvedPrompt.assets.length;
+          resolvedCharacterCount = resolvedPrompt.characters.length;
+
+          if (expandedPrompt.length > 0 && expandedPrompt !== cleanedPrompt) {
+            cleanedPrompt = expandedPrompt;
+            promptExpandedFromTrigger = true;
+          }
+
+          if (!characterAssetId) {
+            characterAssetId = resolvedPrompt.characters[0]?.id;
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          log.error(
+            'Video prompt trigger resolution failed',
+            error instanceof Error ? error : new Error(errorMessage),
+            {
+              requestId,
+              userId,
+              uniquePromptTriggerCount,
+            }
+          );
+          return res.status(500).json({
+            success: false,
+            error: 'Prompt resolution failed',
+            message: errorMessage,
+          });
+        }
+      }
+    }
 
     log.info('Video preview request received', {
       operation: 'generateVideoPreview',
@@ -199,16 +261,13 @@ export const createVideoGenerateHandler = ({
       hasCharacterAssetId: Boolean(characterAssetId),
       autoKeyframe,
       faceSwapAlreadyApplied,
+      hasPromptTriggers,
+      uniquePromptTriggerCount,
+      promptExpandedFromTrigger,
+      resolvedAssetCount,
+      resolvedCharacterCount,
       ...rawMotionMeta,
     });
-
-    if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-        message: 'You must be logged in to generate videos.',
-      });
-    }
 
     if (!userCreditService) {
       log.error('User credit service is not available - blocking paid feature access', undefined, {

@@ -536,7 +536,6 @@ export class PromptOptimizationService {
       if (finalMode === 'video' && this.compilationService) {
         const compilation = await this.compilationService.compileOptimizedPrompt({
           operation,
-          originalPrompt: prompt,
           optimizedPrompt,
           targetModel,
           mode: finalMode,

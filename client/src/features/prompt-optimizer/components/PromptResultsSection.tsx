@@ -60,10 +60,10 @@ export const PromptResultsSection = ({
             </div>
             <div className="flex-1">
               <p className="text-body-sm font-semibold text-foreground">
-                Draft ready. Refining in background...
+                Optimizing prompt...
               </p>
               <p className="mt-0.5 text-label-sm text-muted">
-                Finalizing details for the selected model...
+                Running multi-stage refinement. Final output appears when complete.
               </p>
               </div>
             </div>

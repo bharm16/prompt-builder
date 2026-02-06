@@ -196,6 +196,87 @@ describe('videoGenerate face swap preprocessing', () => {
     expect(keyframeCall).toBeTruthy();
   });
 
+  it('resolves @triggers and auto-selects characterAssetId when not provided', async () => {
+    const createJobMock = vi.fn(async (payload: Record<string, unknown>) => ({
+      id: 'job-trigger',
+      status: 'queued',
+      ...payload,
+    }));
+    const generateKeyframeMock = vi.fn(async () => ({
+      imageUrl: 'https://images.example.com/keyframe-trigger.webp',
+      faceStrength: 0.7,
+    }));
+    const resolvePromptMock = vi.fn(async () => ({
+      originalText: '@matt walks through a neon alley',
+      expandedText: 'Matt Harmon walks through a neon alley',
+      assets: [{ id: 'char-999' }],
+      characters: [{ id: 'char-999' }],
+      styles: [],
+      locations: [],
+      objects: [],
+      requiresKeyframe: true,
+      negativePrompts: [],
+      referenceImages: [],
+    }));
+
+    const handler = createVideoGenerateHandler({
+      videoGenerationService: {
+        getModelAvailability: () => ({
+          available: true,
+          resolvedModelId: 'sora-2',
+        }),
+      } as never,
+      videoJobStore: {
+        createJob: createJobMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: vi.fn(async () => true),
+        refundCredits: vi.fn(async () => undefined),
+      } as never,
+      keyframeService: {
+        generateKeyframe: generateKeyframeMock,
+      } as never,
+      faceSwapService: null as never,
+      assetService: {
+        resolvePrompt: resolvePromptMock,
+        getAssetForGeneration: vi.fn(async () => ({
+          primaryImageUrl: 'https://images.example.com/face.webp',
+          negativePrompt: null,
+          faceEmbedding: null,
+        })),
+      } as never,
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.post('/preview/video/generate', handler);
+
+    const response = await request(app)
+      .post('/preview/video/generate')
+      .send({
+        prompt: '@matt walks through a neon alley',
+        model: 'sora-2',
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body.keyframeGenerated).toBe(true);
+    expect(resolvePromptMock).toHaveBeenCalledWith(
+      'user-123',
+      '@matt walks through a neon alley'
+    );
+    expect(generateKeyframeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'Matt Harmon walks through a neon alley',
+      })
+    );
+
+    const jobPayload = createJobMock.mock.calls[0]?.[0] as
+      | { request?: { prompt?: string; options?: { characterAssetId?: string } } }
+      | undefined;
+    expect(jobPayload?.request?.prompt).toBe('Matt Harmon walks through a neon alley');
+    expect(jobPayload?.request?.options?.characterAssetId).toBe('char-999');
+  });
+
   it('uses the provided startImage directly when no characterAssetId is set', async () => {
     const createJobMock = vi.fn(async (payload: Record<string, unknown>) => ({
       id: 'job-3',

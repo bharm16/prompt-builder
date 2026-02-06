@@ -543,6 +543,11 @@ function PromptOptimizerContent({
       handleOptimize(promptToOptimize, undefined, options),
     [handleOptimize]
   );
+  const handleCanvasReoptimize = useCallback(
+    (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>
+      handleOptimize(promptToOptimize, undefined, options),
+    [handleOptimize]
+  );
 
   // Improvement flow
   const { handleImproveFirst, handleImprovementComplete } = useImprovementFlow({
@@ -732,7 +737,7 @@ function PromptOptimizerContent({
   const promptResultsLayoutProps = useMemo(() => ({
     user,
     onDisplayedPromptChange: handleDisplayedPromptChangeWithAutosave,
-    onReoptimize: handleOptimize,
+    onReoptimize: handleCanvasReoptimize,
     onFetchSuggestions: fetchEnhancementSuggestions,
     onSuggestionClick: handleSuggestionClick,
     onHighlightsPersist: handleHighlightsPersist,
@@ -755,7 +760,7 @@ function PromptOptimizerContent({
   }), [
     user,
     handleDisplayedPromptChangeWithAutosave,
-    handleOptimize,
+    handleCanvasReoptimize,
     fetchEnhancementSuggestions,
     handleSuggestionClick,
     handleHighlightsPersist,

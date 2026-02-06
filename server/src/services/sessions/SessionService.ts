@@ -26,6 +26,19 @@ export class SessionService {
       if (!prompt.uuid) {
         prompt.uuid = uuidv4();
       }
+
+      const existingSession = await this.sessionStore.findByPromptUuid(userId, prompt.uuid);
+      if (existingSession) {
+        this.log.debug('Updating existing prompt session by prompt UUID', {
+          userId,
+          sessionId: existingSession.id,
+          promptUuid: prompt.uuid,
+        });
+        return this.updateSession(existingSession.id, {
+          ...(request.name !== undefined ? { name: request.name } : {}),
+          prompt,
+        });
+      }
     }
 
     const session: SessionRecord = {

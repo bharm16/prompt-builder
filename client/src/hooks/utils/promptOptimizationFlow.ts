@@ -141,6 +141,9 @@ export async function runTwoStageOptimization({
     stage: 'two-stage',
   });
 
+  // Keep the UI in a single "refining" state and only reveal text on final refinement.
+  actions.setIsRefining(true);
+
   let draftNotified = false;
   let refinementComplete = false;
 
@@ -159,10 +162,6 @@ export async function runTwoStageOptimization({
         return;
       }
       actions.setDraftPrompt(draft);
-      actions.setOptimizedPrompt(draft);
-
-      const draftScore = calculateQualityScore(promptToOptimize, draft);
-      actions.setQualityScore(draftScore);
 
       if (draftNotified) {
         return;
@@ -182,19 +181,12 @@ export async function runTwoStageOptimization({
         duration: draftDuration,
       });
 
-      actions.setIsDraftReady(true);
-      actions.setIsRefining(true);
-      actions.setIsProcessing(false);
-
       log.info('Draft ready', {
         operation: 'optimize',
         stage: 'draft',
         duration: draftDuration,
-        score: draftScore,
         outputLength: draft.length,
       });
-
-      toast.info('Draft ready! Refining in background...');
     },
     onSpans: (spans: unknown[], source: string, meta?: unknown) => {
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
@@ -239,10 +231,6 @@ export async function runTwoStageOptimization({
         return;
       }
 
-      actions.setOptimizedPrompt(refined);
-      if (!refinedSpans) {
-        actions.setDisplayedPrompt(refined);
-      }
       if (metadata?.streaming === true) {
         return;
       }
@@ -250,6 +238,11 @@ export async function runTwoStageOptimization({
         return;
       }
       refinementComplete = true;
+
+      actions.setOptimizedPrompt(refined);
+      if (!refinedSpans) {
+        actions.setDisplayedPrompt(refined);
+      }
 
       const refinementDuration = logger.endTimer('optimize');
 
@@ -277,6 +270,7 @@ export async function runTwoStageOptimization({
       }
 
       actions.setQualityScore(refinedScore);
+      actions.setIsDraftReady(true);
       actions.setIsRefining(false);
 
       log.info('Refinement complete', {

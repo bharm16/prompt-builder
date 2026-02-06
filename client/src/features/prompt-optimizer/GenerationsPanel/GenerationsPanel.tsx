@@ -293,11 +293,14 @@ export const GenerationsPanel = memo(function GenerationsPanel({
             ...(primaryKeyframe.viewUrlExpiresAt ? { viewUrlExpiresAt: primaryKeyframe.viewUrlExpiresAt } : {}),
           }
         : null);
+      const autoCharacterAssetId =
+        resolvedOverrides?.characterAssetId ??
+        (!startImage ? detectedCharacter?.id : undefined);
 
       generateDraft(model, prompt, {
         promptVersionId: versionId,
         ...(startImage ? { startImage } : {}),
-        ...(resolvedOverrides?.characterAssetId ? { characterAssetId: resolvedOverrides.characterAssetId } : {}),
+        ...(autoCharacterAssetId ? { characterAssetId: autoCharacterAssetId } : {}),
         ...(resolvedOverrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         ...(resolvedOverrides?.faceSwapUrl ? { faceSwapUrl: resolvedOverrides.faceSwapUrl } : {}),
         ...(mergedGenerationParams ? { generationParams: mergedGenerationParams } : {}),
@@ -311,6 +314,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       isSequenceMode,
       keyframes,
       mergedGenerationParams,
+      detectedCharacter?.id,
       onCreateVersionIfNeeded,
       prompt,
     ]

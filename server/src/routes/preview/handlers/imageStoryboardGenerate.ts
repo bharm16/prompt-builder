@@ -12,6 +12,7 @@ type ImageStoryboardGenerateServices = Pick<
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const hasStatusCode = (value: unknown): value is { statusCode: number } => {
   if (!value || typeof value !== 'object') {
@@ -50,6 +51,9 @@ const selectCharacterReferenceImage = (
   }
   return candidates[0];
 };
+
+const hasPromptTriggers = (prompt: string): boolean =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).length > 0;
 
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
@@ -106,11 +110,15 @@ export const createImageStoryboardGenerateHandler = ({
     let resolvedAssetCount = 0;
     let resolvedCharacterCount = 0;
     let referenceImageUrl: string | undefined;
+    const shouldResolvePrompt = hasPromptTriggers(prompt);
 
-    if (assetService) {
+    if (shouldResolvePrompt && assetService) {
       try {
         const resolved = await assetService.resolvePrompt(userId, prompt);
-        resolvedPrompt = resolved.expandedText;
+        const expandedPrompt = resolved.expandedText.trim();
+        if (expandedPrompt.length > 0) {
+          resolvedPrompt = expandedPrompt;
+        }
         resolvedAssetCount = resolved.assets.length;
         resolvedCharacterCount = resolved.characters.length;
         if (!seedImageUrl) {
@@ -132,7 +140,7 @@ export const createImageStoryboardGenerateHandler = ({
           message: errorMessage,
         });
       }
-    } else {
+    } else if (shouldResolvePrompt && !assetService) {
       logger.warn('Asset service unavailable for storyboard prompt resolution', {
         userId,
         path: req.path,
@@ -157,6 +165,7 @@ export const createImageStoryboardGenerateHandler = ({
       storyboardFrames,
       resolvedAssetCount,
       resolvedCharacterCount,
+      shouldResolvePrompt,
     });
 
     const hasCredits = await userCreditService.reserveCredits(userId, previewCost);

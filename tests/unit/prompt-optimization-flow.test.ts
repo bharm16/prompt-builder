@@ -380,5 +380,51 @@ describe('runTwoStageOptimization', () => {
       expect(actions.setPreviewPrompt).toHaveBeenCalledWith('preview text');
       expect(actions.setPreviewAspectRatio).toHaveBeenCalledWith('16:9');
     });
+
+    it('only applies final refined text to visible prompt when streaming callbacks fire', async () => {
+      const actions = createMockActions();
+      const toast = createMockToast();
+      const optimizeWithFallback = vi.fn().mockImplementation(async (options) => {
+        options.onDraft?.('draft text');
+        options.onRefined?.('partial refined', { streaming: true });
+        options.onRefined?.('final refined', { genericPrompt: 'generic refined' });
+        return {
+          refined: 'final refined',
+          usedFallback: false,
+          metadata: { genericPrompt: 'generic refined' },
+        };
+      });
+
+      const calculateQualityScore = vi.fn().mockReturnValue(84);
+
+      const result = await runTwoStageOptimization({
+        promptToOptimize: 'source prompt',
+        selectedMode: 'video',
+        context: null,
+        brainstormContext: null,
+        abortController: new AbortController(),
+        requestId: 1,
+        requestIdRef: { current: 1 },
+        refinedSpans: null,
+        actions,
+        toast,
+        log: createMockLog() as any,
+        optimizeWithFallback,
+        calculateQualityScore,
+      });
+
+      expect(result).toEqual({ optimized: 'final refined', score: 84 });
+      expect(actions.setDraftPrompt).toHaveBeenCalledWith('draft text');
+      expect(actions.setOptimizedPrompt).toHaveBeenCalledTimes(1);
+      expect(actions.setOptimizedPrompt).toHaveBeenCalledWith('final refined');
+      expect(actions.setDisplayedPrompt).toHaveBeenCalledTimes(1);
+      expect(actions.setDisplayedPrompt).toHaveBeenCalledWith('final refined');
+      expect(actions.setQualityScore).toHaveBeenCalledTimes(1);
+      expect(actions.setQualityScore).toHaveBeenCalledWith(84);
+      expect(actions.setIsRefining).toHaveBeenCalledWith(true);
+      expect(actions.setIsRefining).toHaveBeenCalledWith(false);
+      expect(actions.setIsDraftReady).toHaveBeenCalledWith(true);
+      expect(toast.info).not.toHaveBeenCalledWith('Draft ready! Refining in background...');
+    });
   });
 });

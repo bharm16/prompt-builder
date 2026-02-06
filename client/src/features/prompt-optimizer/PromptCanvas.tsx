@@ -53,6 +53,7 @@ import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
 import { useGenerationControlsStoreState } from './context/GenerationControlsStore';
 import { useWorkspaceSession } from './context/WorkspaceSessionContext';
+import { AI_MODEL_IDS, AI_MODEL_LABELS } from './components/constants';
 import {
   usePromptActions,
   usePromptConfig,
@@ -67,6 +68,7 @@ export function PromptCanvas({
   user = null,
   showResults = false,
   inputPrompt,
+  onReoptimize,
   displayedPrompt,
   previewAspectRatio = null,
   qualityScore,
@@ -181,6 +183,26 @@ export function PromptCanvas({
       ? fpsValue
       : null;
   }, [generationParams?.fps]);
+
+  const modelFormatOptions = useMemo(
+    () =>
+      [...AI_MODEL_IDS]
+        .map((id) => ({ id, label: AI_MODEL_LABELS[id] }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    []
+  );
+
+  const [modelFormatValue, setModelFormatValue] = useState<string>('auto');
+
+  const modelFormatLabel = useMemo(() => {
+    if (modelFormatValue === 'auto') {
+      return 'Auto';
+    }
+    return (
+      modelFormatOptions.find((option) => option.id === modelFormatValue)?.label ??
+      modelFormatValue
+    );
+  }, [modelFormatOptions, modelFormatValue]);
 
   const { shotId, shotPromptEntry, updateShotVersions } = useShotGenerations({
     currentShot,
@@ -768,6 +790,75 @@ export function PromptCanvas({
     [normalizedDisplayedPrompt]
   );
 
+  const handleModelFormatChange = useCallback(
+    (nextValue: string): void => {
+      if (isOptimizing) {
+        return;
+      }
+
+      const nextModel = nextValue === 'auto' ? '' : nextValue.trim();
+      const previousModel = modelFormatValue === 'auto' ? '' : modelFormatValue.trim();
+      if (nextModel === previousModel) {
+        return;
+      }
+
+      setModelFormatValue(nextValue === 'auto' ? 'auto' : nextModel);
+
+      const genericPrompt =
+        typeof promptOptimizer.genericOptimizedPrompt === 'string' &&
+        promptOptimizer.genericOptimizedPrompt.trim()
+          ? promptOptimizer.genericOptimizedPrompt
+          : null;
+      const hasGenericPrompt = Boolean(genericPrompt && genericPrompt.trim());
+
+      debug.logAction('compileForModel', {
+        targetModel: nextModel || 'generic-auto',
+        source: nextValue === 'auto' ? 'auto' : 'manual',
+        genericPromptAvailable: hasGenericPrompt,
+      });
+
+      if (!nextModel) {
+        if (!hasGenericPrompt) {
+          // Re-run optimization in model-agnostic mode so Auto remains truly generic.
+          void onReoptimize(inputPrompt, { forceGenericTarget: true });
+          return;
+        }
+
+        void onReoptimize(inputPrompt, {
+          compileOnly: true,
+          compilePrompt: genericPrompt,
+          createVersion: true,
+        });
+        return;
+      }
+
+      if (hasGenericPrompt && genericPrompt) {
+        void onReoptimize(inputPrompt, {
+          compileOnly: true,
+          compilePrompt: genericPrompt,
+          createVersion: true,
+          targetModel: nextModel,
+        });
+        return;
+      }
+
+      // Older sessions may not have a generic baseline yet; regenerate directly for this model.
+      void onReoptimize(inputPrompt, {
+        createVersion: true,
+        targetModel: nextModel,
+      });
+    },
+    [
+      debug,
+      inputPrompt,
+      isOptimizing,
+      onReoptimize,
+      modelFormatValue,
+      promptOptimizer.genericOptimizedPrompt,
+      setModelFormatValue,
+    ]
+  );
+
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
       const newText =
@@ -1088,6 +1179,11 @@ export function PromptCanvas({
       openOutlineOverlay={openOutlineOverlay}
       copied={copied}
       onCopy={handleCopy}
+      modelFormatValue={modelFormatValue}
+      modelFormatLabel={modelFormatLabel}
+      modelFormatOptions={modelFormatOptions}
+      modelFormatDisabled={isOptimizing || modelFormatOptions.length === 0}
+      onModelFormatChange={handleModelFormatChange}
       onUndo={onUndo}
       onRedo={onRedo}
       canUndo={canUndo}

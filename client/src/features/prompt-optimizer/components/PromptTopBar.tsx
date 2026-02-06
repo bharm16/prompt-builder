@@ -206,10 +206,15 @@ export const PromptTopBar = ({
         : null;
 
     if (modelChanged && !promptChanged && genericPrompt) {
+      const explicitTargetModel =
+        typeof selectedModel === 'string' && selectedModel.trim()
+          ? selectedModel.trim()
+          : undefined;
       void onOptimize(inputPrompt, {
         compileOnly: true,
         compilePrompt: genericPrompt,
         createVersion: true,
+        targetModel: explicitTargetModel,
       });
     } else {
       void onOptimize(inputPrompt);

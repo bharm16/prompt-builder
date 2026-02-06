@@ -59,6 +59,7 @@ export function useKeyframeWorkflow({
 
   useEffect(() => {
     if (!selectedKeyframe) return;
+    if (keyframes.length === 0) return;
     const matches = keyframes.some((frame) => {
       if (frame.url === selectedKeyframe.url) return true;
       if (selectedKeyframe.storagePath && frame.storagePath === selectedKeyframe.storagePath) {
@@ -101,11 +102,14 @@ export function useKeyframeWorkflow({
           };
         }
       }
+      const resolvedCharacterAssetId =
+        overrides?.characterAssetId ??
+        (startImage?.source === 'asset' ? startImage.assetId : detectedCharacter?.id);
 
       generateRender(model, prompt, {
         promptVersionId: versionId,
         startImage,
-        ...(overrides?.characterAssetId ? { characterAssetId: overrides.characterAssetId } : {}),
+        ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
         ...(overrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         ...(overrides?.faceSwapUrl ? { faceSwapUrl: overrides.faceSwapUrl } : {}),
         ...(overrides?.generationParams ? { generationParams: overrides.generationParams } : {}),
@@ -117,7 +121,14 @@ export function useKeyframeWorkflow({
         pendingModel: null,
       });
     },
-    [assetReferenceImages, generateRender, onCreateVersionIfNeeded, prompt, selectedKeyframe]
+    [
+      assetReferenceImages,
+      detectedCharacter?.id,
+      generateRender,
+      onCreateVersionIfNeeded,
+      prompt,
+      selectedKeyframe,
+    ]
   );
 
   const handleRender = useCallback(

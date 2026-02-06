@@ -424,7 +424,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           <PromptResultsSection
             user={user}
             onDisplayedPromptChange={handleDisplayedPromptChange}
-            onReoptimize={handleOptimize}
+            onReoptimize={(promptToOptimize, options) =>
+              handleOptimize(promptToOptimize, undefined, options)
+            }
             onFetchSuggestions={fetchEnhancementSuggestions}
             onSuggestionClick={handleSuggestionClick}
             onHighlightsPersist={handleHighlightsPersist}

@@ -99,7 +99,7 @@ describe('PromptResultsSection', () => {
         />
       );
 
-      expect(screen.getByText('Draft ready. Refining in background...')).toBeInTheDocument();
+      expect(screen.getByText('Optimizing prompt...')).toBeInTheDocument();
     });
   });
 

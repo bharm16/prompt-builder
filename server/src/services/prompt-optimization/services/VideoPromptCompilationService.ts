@@ -8,7 +8,6 @@ import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 
 interface CompileOptimizedPromptParams {
   operation: string;
-  originalPrompt: string;
   optimizedPrompt: string;
   targetModel?: string;
   mode: OptimizationMode;
@@ -27,30 +26,18 @@ export class VideoPromptCompilationService {
   }
 
   private resolveTargetModel(
-    targetModel: string | undefined,
-    originalPrompt: string,
-    optimizedPrompt: string
+    targetModel: string | undefined
   ): string | null {
     const explicitModel = targetModel && targetModel.trim() !== '' ? targetModel : undefined;
-    let resolvedTargetModel = explicitModel;
-
-    if (resolvedTargetModel) {
-      resolvedTargetModel = resolvePromptModelId(resolvedTargetModel) ?? resolvedTargetModel;
+    if (!explicitModel) {
+      // Auto/default optimization must remain model-agnostic.
+      return null;
     }
-
-    if (!resolvedTargetModel) {
-      resolvedTargetModel =
-        this.videoPromptService.detectTargetModel(originalPrompt) ||
-        this.videoPromptService.detectTargetModel(optimizedPrompt) ||
-        undefined;
-    }
-
-    return resolvedTargetModel ?? null;
+    return resolvePromptModelId(explicitModel) ?? explicitModel;
   }
 
   async compileOptimizedPrompt({
     operation,
-    originalPrompt,
     optimizedPrompt,
     targetModel,
     mode,
@@ -60,7 +47,7 @@ export class VideoPromptCompilationService {
       return { prompt: optimizedPrompt, metadata: null };
     }
 
-    const resolvedTargetModel = this.resolveTargetModel(targetModel, originalPrompt, optimizedPrompt);
+    const resolvedTargetModel = this.resolveTargetModel(targetModel);
     if (!resolvedTargetModel) {
       return { prompt: optimizedPrompt, metadata: null };
     }

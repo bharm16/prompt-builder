@@ -102,6 +102,47 @@ describe('SpanLabelingApi', () => {
     expect(result).toEqual(blockingResult);
   });
 
+  it('falls back to blocking endpoint for 5xx stream errors', async () => {
+    const response = { ok: false, status: 500 } as Response;
+    const fetchMock = vi.fn().mockResolvedValue(response);
+    global.fetch = fetchMock as typeof fetch;
+
+    const onChunk = vi.fn();
+    const blockingResult = {
+      spans: [{ start: 0, end: 5, category: 'subject', confidence: 0.9 }],
+      meta: { streaming: false },
+    };
+    vi.spyOn(SpanLabelingApi, 'labelSpans').mockResolvedValue(blockingResult);
+
+    const result = await SpanLabelingApi.labelSpansStream(payload, onChunk);
+
+    expect(result).toEqual(blockingResult);
+    expect(onChunk).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to blocking endpoint for stream transport failures', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
+    global.fetch = fetchMock as typeof fetch;
+
+    const blockingResult = { spans: [], meta: { streaming: false } };
+    vi.spyOn(SpanLabelingApi, 'labelSpans').mockResolvedValue(blockingResult);
+
+    const result = await SpanLabelingApi.labelSpansStream(payload, vi.fn());
+    expect(result).toEqual(blockingResult);
+  });
+
+  it('throws request error for non-fallback stream status', async () => {
+    const response = { ok: false, status: 400 } as Response;
+    const fetchMock = vi.fn().mockResolvedValue(response);
+    global.fetch = fetchMock as typeof fetch;
+
+    mockBuildRequestError.mockResolvedValue(new Error('bad request'));
+
+    await expect(SpanLabelingApi.labelSpansStream(payload, vi.fn())).rejects.toThrow(
+      'bad request'
+    );
+  });
+
   it('streams spans when reader is available', async () => {
     const reader = { read: vi.fn(), releaseLock: vi.fn() } as ReadableStreamDefaultReader<Uint8Array>;
     const response = {
