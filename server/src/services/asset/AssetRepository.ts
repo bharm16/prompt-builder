@@ -475,6 +475,7 @@ export class AssetRepository {
             firebaseStorageDownloadTokens: imageToken,
           },
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       });
 
       await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
@@ -486,6 +487,7 @@ export class AssetRepository {
             firebaseStorageDownloadTokens: thumbnailToken,
           },
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       });
 
     const referenceImage: AssetReferenceImage = {

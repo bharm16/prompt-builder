@@ -178,6 +178,7 @@ export class ReferenceImageService {
             firebaseStorageDownloadTokens: imageToken,
           },
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       });
 
       await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
@@ -189,6 +190,7 @@ export class ReferenceImageService {
             firebaseStorageDownloadTokens: thumbnailToken,
           },
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       });
 
       const now = new Date().toISOString();

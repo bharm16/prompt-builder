@@ -14,6 +14,7 @@ import { ContinuityProviderService } from './ContinuityProviderService';
 import { ContinuityMediaService } from './ContinuityMediaService';
 import { ContinuityPostProcessingService } from './ContinuityPostProcessingService';
 import { ContinuityShotGenerator } from './ContinuityShotGenerator';
+import { enforceImmutableVersions } from '@services/sessions/utils/immutableMedia';
 
 export class ContinuitySessionService {
   private readonly log = logger.child({ service: 'ContinuitySessionService' });
@@ -190,6 +191,22 @@ export class ContinuitySessionService {
     if (shotIndex < 0) throw new Error(`Shot not found: ${shotId}`);
 
     const shot = session.shots[shotIndex]!;
+    let nextVersions = updates.versions;
+    if (updates.versions !== undefined) {
+      const enforced = enforceImmutableVersions(
+        shot.versions ?? null,
+        updates.versions as ContinuityShot['versions']
+      );
+      nextVersions = enforced.versions as ContinuityShot['versions'] | null | undefined;
+      if (enforced.warnings.length) {
+        this.log.warn('Preserved immutable media references during continuity shot update', {
+          sessionId,
+          shotId,
+          warningCount: enforced.warnings.length,
+        });
+      }
+    }
+
     const next: ContinuityShot = {
       ...shot,
       ...(updates.prompt !== undefined ? { userPrompt: updates.prompt } : {}),
@@ -205,9 +222,7 @@ export class ContinuitySessionService {
         : {}),
       ...(updates.faceStrength !== undefined ? { faceStrength: updates.faceStrength } : {}),
       ...(updates.camera ? { camera: { ...(shot.camera ?? {}), ...updates.camera } } : {}),
-      ...(updates.versions !== undefined
-        ? { versions: updates.versions as ContinuityShot['versions'] }
-        : {}),
+      ...(nextVersions !== undefined ? { versions: nextVersions as ContinuityShot['versions'] } : {}),
     };
 
     session.shots[shotIndex] = next;

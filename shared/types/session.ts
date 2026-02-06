@@ -21,6 +21,9 @@ export interface SessionPromptVersionPreview {
   generatedAt: string;
   imageUrl?: string | null;
   aspectRatio?: string | null;
+  storagePath?: string | null;
+  assetId?: string | null;
+  viewUrlExpiresAt?: string | null;
 }
 
 export interface SessionPromptVersionVideo {
@@ -28,6 +31,9 @@ export interface SessionPromptVersionVideo {
   videoUrl?: string | null;
   model?: string | null;
   generationParams?: Record<string, unknown> | null;
+  storagePath?: string | null;
+  assetId?: string | null;
+  viewUrlExpiresAt?: string | null;
 }
 
 export interface SessionPromptVersionEntry {

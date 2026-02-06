@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { buildReplicateInput } from '../replicateProvider';
+import { Blob } from 'buffer';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { buildReplicateInput, generateReplicateVideo } from '../replicateProvider';
 import type { VideoModelId } from '../../types';
 
 describe('buildReplicateInput', () => {
@@ -51,5 +52,40 @@ describe('buildReplicateInput', () => {
     expect(input.duration).toBe(8);
     expect(input.image).toBe('https://example.com/image.png');
     expect(input.prompt_extend).toBeUndefined();
+  });
+});
+
+describe('generateReplicateVideo', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it('wraps extensionless startImage in a Blob for Replicate', async () => {
+    const run = vi.fn().mockResolvedValue('https://example.com/video.mp4');
+    const replicate = { run } as unknown as import('replicate').default;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'image/png' },
+      arrayBuffer: async () => new ArrayBuffer(4),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const log = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await generateReplicateVideo(
+      replicate,
+      'prompt',
+      'wan-video/wan-2.2-t2v-fast' as VideoModelId,
+      { startImage: 'https://example.com/image' },
+      log
+    );
+
+    const input = (run.mock.calls[0]?.[1] as { input: Record<string, unknown> }).input;
+    expect(input.image).toBeInstanceOf(Blob);
   });
 });

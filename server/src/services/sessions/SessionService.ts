@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '@infrastructure/Logger';
 import type { SessionDto, SessionContinuity, SessionContinuityShot, SessionStyleReference, SessionFrameBridge, SessionSeedInfo, SessionSceneProxy } from '@shared/types/session';
 import type { ContinuitySession, ContinuityShot, StyleReference, FrameBridge, SeedInfo, SceneProxy } from '@services/continuity/types';
 import type {
@@ -12,8 +13,10 @@ import type {
   SessionVersionsUpdate,
 } from './types';
 import { SessionStore } from './SessionStore';
+import { enforceImmutableKeyframes, enforceImmutableVersions } from './utils/immutableMedia';
 
 export class SessionService {
+  private readonly log = logger.child({ service: 'SessionService' });
   constructor(private sessionStore: SessionStore) {}
 
   async createPromptSession(userId: string, request: SessionCreateRequest): Promise<SessionRecord> {
@@ -67,12 +70,47 @@ export class SessionService {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
-    const mergedPrompt = updates.prompt
+    let mergedPrompt = updates.prompt
       ? {
           ...(current.prompt ?? { input: '', output: '' }),
           ...updates.prompt,
         }
       : current.prompt;
+
+    if (updates.prompt && mergedPrompt) {
+      if (updates.prompt.keyframes !== undefined) {
+        const enforcedKeyframes = enforceImmutableKeyframes(
+          current.prompt?.keyframes ?? null,
+          mergedPrompt.keyframes ?? null
+        );
+        if (enforcedKeyframes.warnings.length) {
+          this.log.warn('Preserved immutable keyframe references during session update', {
+            sessionId,
+            warningCount: enforcedKeyframes.warnings.length,
+          });
+        }
+        mergedPrompt = {
+          ...mergedPrompt,
+          keyframes: enforcedKeyframes.keyframes ?? null,
+        };
+      }
+      if (updates.prompt.versions !== undefined) {
+        const enforcedVersions = enforceImmutableVersions(
+          current.prompt?.versions ?? null,
+          mergedPrompt.versions ?? null
+        );
+        if (enforcedVersions.warnings.length) {
+          this.log.warn('Preserved immutable media references during session update', {
+            sessionId,
+            warningCount: enforcedVersions.warnings.length,
+          });
+        }
+        mergedPrompt = {
+          ...mergedPrompt,
+          versions: enforcedVersions.versions ?? null,
+        };
+      }
+    }
 
     const next: SessionRecord = {
       ...current,
@@ -124,11 +162,22 @@ export class SessionService {
     const current = await this.sessionStore.get(sessionId);
     if (!current) throw new Error(`Session not found: ${sessionId}`);
     const prompt = current.prompt ?? { input: '', output: '' };
+    let nextVersions = updates.versions;
+    if (updates.versions !== undefined) {
+      const enforced = enforceImmutableVersions(prompt.versions ?? null, updates.versions ?? null);
+      nextVersions = enforced.versions ?? null;
+      if (enforced.warnings.length) {
+        this.log.warn('Preserved immutable media references during session version update', {
+          sessionId,
+          warningCount: enforced.warnings.length,
+        });
+      }
+    }
     const next = {
       ...current,
       prompt: {
         ...prompt,
-        ...(updates.versions ? { versions: updates.versions } : {}),
+        ...(nextVersions ? { versions: nextVersions } : {}),
       },
       updatedAt: new Date(),
     };

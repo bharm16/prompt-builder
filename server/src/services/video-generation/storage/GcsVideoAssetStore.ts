@@ -36,6 +36,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
       metadata: {
         cacheControl: this.cacheControl,
       },
+      preconditionOpts: { ifGenerationMatch: 0 },
     });
 
     const [metadata] = await file.getMetadata();
@@ -62,6 +63,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
           contentType,
           cacheControl: this.cacheControl,
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       })
     );
 

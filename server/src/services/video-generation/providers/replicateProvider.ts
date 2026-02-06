@@ -1,3 +1,4 @@
+import { Blob } from 'buffer';
 import type Replicate from 'replicate';
 import type { VideoGenerationOptions, VideoModelId } from '../types';
 
@@ -9,6 +10,14 @@ type LogSink = {
 
 const DEFAULT_WAN_NEGATIVE_PROMPT =
   'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
+
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const SUPPORTED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
 
 const WAN_ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
   '16:9': '1280*720',
@@ -29,6 +38,90 @@ const isWan25Model = (modelId: string): boolean => modelId.includes('wan-2.5');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+const normalizeContentType = (value: string | null): string =>
+  value?.split(';')[0]?.trim().toLowerCase() ?? '';
+
+function getUrlExtension(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const pathname = url.pathname.toLowerCase();
+    const lastDot = pathname.lastIndexOf('.');
+    if (lastDot < 0) {
+      return null;
+    }
+    return pathname.slice(lastDot);
+  } catch {
+    return null;
+  }
+}
+
+function summarizeInputForLog(input: Record<string, unknown>): Record<string, unknown> {
+  const summary: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value instanceof Blob) {
+      summary[key] = {
+        type: 'Blob',
+        size: value.size,
+        mime: value.type,
+      };
+      continue;
+    }
+    if (Buffer.isBuffer(value)) {
+      summary[key] = {
+        type: 'Buffer',
+        size: value.length,
+      };
+      continue;
+    }
+    if (typeof value === 'string' && value.startsWith('data:')) {
+      const mime = value.slice(5, value.indexOf(';')) || 'unknown';
+      summary[key] = {
+        type: 'data-uri',
+        length: value.length,
+        mime,
+      };
+      continue;
+    }
+    summary[key] = value;
+  }
+  return summary;
+}
+
+async function resolveReplicateImageInput(
+  imageUrl: string,
+  log: LogSink,
+  fieldName: 'startImage' | 'style_reference'
+): Promise<string | Blob> {
+  if (imageUrl.startsWith('data:')) {
+    return imageUrl;
+  }
+
+  const extension = getUrlExtension(imageUrl);
+  if (extension && SUPPORTED_IMAGE_EXTENSIONS.has(extension)) {
+    return imageUrl;
+  }
+
+  log.info('Fetching image for Replicate input', {
+    field: fieldName,
+    hasExtension: Boolean(extension),
+  });
+
+  const response = await fetch(imageUrl, { redirect: 'follow' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${fieldName} (${response.status})`);
+  }
+
+  const contentType = normalizeContentType(response.headers.get('content-type'));
+  if (!SUPPORTED_IMAGE_MIME_TYPES.has(contentType)) {
+    throw new Error(
+      `Unsupported ${fieldName} format '${contentType || 'unknown'}'. Supported formats: .jpg, .jpeg, .png, .webp`
+    );
+  }
+
+  const buffer = await response.arrayBuffer();
+  return new Blob([buffer], { type: contentType });
+}
 
 function normalizeWanSize(rawSize: string): string | null {
   const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
@@ -205,11 +298,21 @@ export async function generateReplicateVideo(
 ): Promise<{ url: string; seed?: number }> {
   const resolvedModelId = resolveWanModelForI2V(modelId, Boolean(options.startImage));
   const input = buildReplicateInput(resolvedModelId as VideoModelId, prompt, options);
+  if (typeof input.image === 'string') {
+    input.image = await resolveReplicateImageInput(input.image, log, 'startImage');
+  }
+  if (typeof input.style_reference === 'string') {
+    input.style_reference = await resolveReplicateImageInput(
+      input.style_reference,
+      log,
+      'style_reference'
+    );
+  }
 
   log.info('Calling replicate.run', {
     originalModelId: modelId,
     resolvedModelId,
-    input,
+    input: summarizeInputForLog(input),
     isI2V: Boolean(options.startImage),
   });
 

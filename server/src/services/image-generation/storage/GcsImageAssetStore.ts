@@ -181,6 +181,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
             cacheControl: this.cacheControl,
             ...(sourceUrl ? { metadata: { sourceUrl } } : {}),
           },
+          preconditionOpts: { ifGenerationMatch: 0 },
         });
         return;
       } catch (error) {

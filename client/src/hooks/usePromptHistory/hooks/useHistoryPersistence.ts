@@ -20,6 +20,7 @@ import {
   clearAll,
 } from '../api';
 import type { User, PromptHistoryEntry, PromptVersionEntry, Toast, SaveResult } from '../types';
+import { enforceImmutableKeyframes, enforceImmutableVersions } from '../utils/immutableMedia';
 import type { UpdatePromptOptions } from '../../../repositories/promptRepositoryTypes';
 
 interface UseHistoryPersistenceOptions {
@@ -311,17 +312,34 @@ export function useHistoryPersistence({
   // Bug 3 fix: add .catch() to fire-and-forget persistence calls
   const updateEntryPersisted = useCallback(
     (uuid: string, docId: string | null, updates: UpdatePromptOptions) => {
-      updatePrompt(user?.uid, uuid, docId, updates)?.catch?.((error: unknown) => {
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      let effectiveUpdates = updates;
+      if (updates.keyframes !== undefined) {
+        const mergedKeyframes = enforceImmutableKeyframes(entry?.keyframes ?? null, updates.keyframes ?? null);
+        if (mergedKeyframes.warnings.length) {
+          log.warn('Preserved immutable keyframe references during persist', {
+            uuid,
+            docId,
+            warningCount: mergedKeyframes.warnings.length,
+          });
+        }
+        effectiveUpdates = {
+          ...updates,
+          keyframes: mergedKeyframes.keyframes ?? null,
+        };
+      }
+
+      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
         log.warn('Failed to persist prompt update', error as Error, { uuid, docId });
       });
 
       const localUpdates: Partial<PromptHistoryEntry> = {};
-      if (updates.input !== undefined) localUpdates.input = updates.input;
-      if (updates.title !== undefined) localUpdates.title = updates.title;
-      if (updates.mode !== undefined) localUpdates.mode = updates.mode;
-      if (updates.targetModel !== undefined) localUpdates.targetModel = updates.targetModel;
-      if (updates.generationParams !== undefined) localUpdates.generationParams = updates.generationParams;
-      if (updates.keyframes !== undefined) localUpdates.keyframes = updates.keyframes;
+      if (effectiveUpdates.input !== undefined) localUpdates.input = effectiveUpdates.input;
+      if (effectiveUpdates.title !== undefined) localUpdates.title = effectiveUpdates.title;
+      if (effectiveUpdates.mode !== undefined) localUpdates.mode = effectiveUpdates.mode;
+      if (effectiveUpdates.targetModel !== undefined) localUpdates.targetModel = effectiveUpdates.targetModel;
+      if (effectiveUpdates.generationParams !== undefined) localUpdates.generationParams = effectiveUpdates.generationParams;
+      if (effectiveUpdates.keyframes !== undefined) localUpdates.keyframes = effectiveUpdates.keyframes;
 
       updateEntry(uuid, localUpdates);
     },
@@ -352,23 +370,33 @@ export function useHistoryPersistence({
 
   const updateEntryVersions = useCallback(
     (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => {
-      const generationCount = versions.reduce(
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      const enforced = enforceImmutableVersions(entry ?? null, versions);
+      if (enforced.warnings.length) {
+        log.warn('Preserved immutable media references during version persist', {
+          uuid,
+          docId,
+          warningCount: enforced.warnings.length,
+        });
+      }
+      const nextVersions = enforced.versions;
+      const generationCount = nextVersions.reduce(
         (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
         0
       );
       log.debug('updateEntryVersions called', {
         uuid,
         docId,
-        versionCount: versions.length,
+        versionCount: nextVersions.length,
         generationCount,
       });
 
-      updateEntry(uuid, { versions });
+      updateEntry(uuid, { versions: nextVersions });
 
       const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
       if (isDraftId && user?.uid) {
         if (promotingDraftsRef.current.has(uuid)) {
-          pendingVersionsRef.current.set(uuid, versions);
+          pendingVersionsRef.current.set(uuid, nextVersions);
           log.debug('Draft promotion in progress, queuing version update', { uuid });
           return;
         }
@@ -398,7 +426,7 @@ export function useHistoryPersistence({
           ...(entry.generationParams ? { generationParams: entry.generationParams } : {}),
           brainstormContext: entry.brainstormContext ?? null,
           highlightCache: entry.highlightCache ?? null,
-          versions,
+          versions: nextVersions,
         })
           .then((result) => {
             promotingDraftsRef.current.delete(uuid);
@@ -433,7 +461,7 @@ export function useHistoryPersistence({
       if (versionWriteTimerRef.current !== null) {
         clearTimeout(versionWriteTimerRef.current);
       }
-      pendingVersionWriteRef.current = { uuid, docId, versions };
+      pendingVersionWriteRef.current = { uuid, docId, versions: nextVersions };
       versionWriteTimerRef.current = setTimeout(() => {
         versionWriteTimerRef.current = null;
         const pending = pendingVersionWriteRef.current;

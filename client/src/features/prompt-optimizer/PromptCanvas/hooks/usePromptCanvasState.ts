@@ -36,8 +36,17 @@ function promptCanvasReducer(
   action: PromptCanvasAction
 ): PromptCanvasState {
   switch (action.type) {
-    case 'MERGE_STATE':
-      return { ...state, ...action.payload };
+    case 'MERGE_STATE': {
+      const keys = Object.keys(action.payload) as Array<keyof PromptCanvasState>;
+      let changed = false;
+      for (const key of keys) {
+        if (!Object.is(state[key], action.payload[key])) {
+          changed = true;
+          break;
+        }
+      }
+      return changed ? { ...state, ...action.payload } : state;
+    }
     case 'INCREMENT_VISUAL_REQUEST_ID':
       return { ...state, visualGenerateRequestId: state.visualGenerateRequestId + 1 };
     case 'INCREMENT_VIDEO_REQUEST_ID':

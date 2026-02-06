@@ -87,6 +87,7 @@ export function useMediaStorage(): UseMediaStorageResult {
 
           xhr.open('PUT', uploadUrl);
           xhr.setRequestHeader('Content-Type', file.type);
+          xhr.setRequestHeader('x-goog-if-generation-match', '0');
           xhr.send(file);
         });
 

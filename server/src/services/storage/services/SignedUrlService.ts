@@ -57,6 +57,9 @@ export class SignedUrlService {
         const file = this.bucket.file(path);
         const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.upload;
 
+        const extensionHeaders: Record<string, string> = {
+          'x-goog-if-generation-match': '0',
+        };
         const options: Record<string, unknown> = {
           version: 'v4',
           action: 'write',
@@ -65,10 +68,9 @@ export class SignedUrlService {
         };
 
         if (maxSize) {
-          options.extensionHeaders = {
-            'x-goog-content-length-range': `0,${maxSize}`,
-          };
+          extensionHeaders['x-goog-content-length-range'] = `0,${maxSize}`;
         }
+        options.extensionHeaders = extensionHeaders;
 
         const [url] = await file.getSignedUrl(options);
         return {

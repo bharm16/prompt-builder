@@ -12,6 +12,7 @@ import { generateStoragePath, validatePathOwnership } from '../utils/pathUtils';
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 const RESUMABLE_THRESHOLD_BYTES = 5 * 1024 * 1024;
+const PRECONDITION_OPTS = { ifGenerationMatch: 0 };
 
 function normalizeContentType(value: string): string {
   return value.split(';')[0]?.trim().toLowerCase();
@@ -115,6 +116,7 @@ export class UploadService {
             },
           },
           resumable: contentLength ? contentLength > RESUMABLE_THRESHOLD_BYTES : true,
+          preconditionOpts: PRECONDITION_OPTS,
         })
       );
 
@@ -177,6 +179,7 @@ export class UploadService {
           createdAt: new Date().toISOString(),
         },
       },
+      preconditionOpts: PRECONDITION_OPTS,
     });
 
     return {
@@ -227,6 +230,7 @@ export class UploadService {
           createdAt: new Date().toISOString(),
         },
       },
+      preconditionOpts: PRECONDITION_OPTS,
     });
 
     return {
@@ -278,6 +282,7 @@ export class UploadService {
             createdAt: new Date().toISOString(),
           },
         },
+        preconditionOpts: PRECONDITION_OPTS,
       });
 
       stream.on('error', reject);
