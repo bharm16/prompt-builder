@@ -1,6 +1,8 @@
 import React from 'react';
-import { ChevronDown, Sparkles } from '@promptstudio/system/components/ui';
+import { Sparkles } from '@promptstudio/system/components/ui';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
+import { ModelRecommendationDropdown } from './ModelRecommendationDropdown';
+import type { ModelRecommendation } from '@/features/model-intelligence/types';
 
 interface ModelOption {
   id: string;
@@ -13,15 +15,19 @@ interface GenerationFooterProps {
   onModelChange: (model: string) => void;
   onGenerate: () => void;
   isGenerateDisabled: boolean;
-  generateLabel?: string;
+  generateLabel?: string | undefined;
+  /** Model recommendation data — enables the rich dropdown with match %, capabilities, etc. */
+  modelRecommendation?: ModelRecommendation | null | undefined;
+  recommendedModelId?: string | undefined;
+  efficientModelId?: string | undefined;
 }
 
 /**
  * Footer matching v5 mockup (64px):
  * [Sora 2 ▾] · 80 cr ——————— [✨ Generate]
  *
- * Tier is derived from the selected model — if it matches the draft model ID
- * the cost shown is the draft cost, otherwise the render model cost.
+ * Model selector uses the recommendation-aware dropdown when recommendation
+ * data is available, falling back to a simpler version otherwise.
  */
 export function GenerationFooter({
   renderModelOptions,
@@ -30,6 +36,9 @@ export function GenerationFooter({
   onGenerate,
   isGenerateDisabled,
   generateLabel = 'Generate',
+  modelRecommendation,
+  recommendedModelId,
+  efficientModelId,
 }: GenerationFooterProps): React.ReactElement {
   const isDraft = renderModelId === VIDEO_DRAFT_MODEL.id;
   const currentModel = isDraft
@@ -39,26 +48,20 @@ export function GenerationFooter({
   const creditCost = currentModel?.cost ?? null;
 
   return (
-    <footer className="h-16 px-3.5 flex items-center gap-2.5 border-t border-[#1A1C22] bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)]">
-      {/* ── Model selector ── */}
-      <div className="relative inline-block">
-        <select
-          value={renderModelId}
-          onChange={(event) => onModelChange(event.target.value)}
-          className="h-9 pl-3 pr-7 rounded-lg bg-[#16181E] border border-[#22252C] text-[#E2E6EF] text-xs font-semibold appearance-none cursor-pointer hover:border-[#3A3D46] transition-colors focus:outline-none focus:border-[#6C5CE7]"
-          aria-label="Video model"
-        >
-          {renderModelOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="w-2.5 h-2.5 text-[#8B92A5] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-      </div>
+    <footer className="flex h-16 items-center gap-2.5 border-t border-[#1A1C22] bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
+      {/* ── Model selector (recommendation-aware dropdown) ── */}
+      <ModelRecommendationDropdown
+        renderModelOptions={renderModelOptions}
+        renderModelId={renderModelId}
+        onModelChange={onModelChange}
+        modelRecommendation={modelRecommendation}
+        recommendedModelId={recommendedModelId}
+        efficientModelId={efficientModelId}
+        filteredOut={modelRecommendation?.filteredOut}
+      />
 
       {/* ── Credit cost ── */}
-      <span className="text-[11px] text-[#555B6E] tabular-nums whitespace-nowrap">
+      <span className="whitespace-nowrap text-[11px] tabular-nums text-[#555B6E]">
         {creditCost !== null ? `· ${creditCost} cr` : ''}
       </span>
 
@@ -67,11 +70,11 @@ export function GenerationFooter({
       {/* ── Generate button ── */}
       <button
         type="button"
-        className="h-[38px] px-5 rounded-[10px] bg-[linear-gradient(135deg,#6C5CE7_0%,#8B5CF6_100%)] text-white text-[13px] font-bold tracking-[0.02em] shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)] hover:shadow-[0_4px_20px_rgba(108,92,231,0.47),0_0_0_1px_rgba(108,92,231,0.33)] hover:-translate-y-px active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)] transition-all flex items-center gap-[7px]"
+        className="flex h-[38px] items-center gap-[7px] rounded-[10px] bg-[linear-gradient(135deg,#6C5CE7_0%,#8B5CF6_100%)] px-5 text-[13px] font-bold tracking-[0.02em] text-white shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_rgba(108,92,231,0.47),0_0_0_1px_rgba(108,92,231,0.33)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)]"
         onClick={onGenerate}
         disabled={isGenerateDisabled}
       >
-        <Sparkles className="w-3.5 h-3.5" />
+        <Sparkles className="h-3.5 w-3.5" />
         {generateLabel}
       </button>
     </footer>

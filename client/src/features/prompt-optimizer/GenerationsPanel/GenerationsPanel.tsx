@@ -41,31 +41,21 @@ const EmptyState = ({
   onRunDraft: () => void;
   isRunDraftDisabled: boolean;
 }): React.ReactElement => (
-  <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-    <div className="border-border aspect-video flex w-full max-w-sm flex-col items-center justify-center rounded-lg border border-dashed p-6">
-      <Icon
-        icon={Play}
-        size="xl"
-        className="text-muted mb-4"
-        aria-hidden="true"
-      />
-      <div className="text-base font-medium text-foreground mb-3">
-        No outputs yet
-      </div>
-      <div className="text-sm text-muted">
-        Run a draft or render to see your outputs here.
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-4 h-8 px-3 rounded-md text-sm font-semibold tracking-[0.14px] border-[#2C3037] text-[#A1AFC5] shadow-none"
-        onClick={onRunDraft}
-        disabled={isRunDraftDisabled}
-      >
-        Run Draft
-      </Button>
+  <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
+    <Icon icon={Play} size="xl" className="mb-3.5 text-[#3A3E4C] opacity-40" aria-hidden="true" />
+    <div className="mb-1 text-[13px] font-semibold text-[#8B92A5]">No outputs yet</div>
+    <div className="text-[12px] leading-relaxed text-[#555B6E]">
+      Run a draft or render to see outputs here.
     </div>
+    <Button
+      type="button"
+      variant="outline"
+      className="mt-5 h-8 rounded-lg border border-[#22252C] bg-transparent px-3 text-[12px] font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF]"
+      onClick={onRunDraft}
+      disabled={isRunDraftDisabled}
+    >
+      Run Draft
+    </Button>
   </div>
 );
 
@@ -473,6 +463,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   }, [generations, promptVersionId, versions]);
 
   const timeline = useGenerationsTimeline({ versions: versionsForTimeline });
+  const totalVisibleGenerations = useMemo(
+    () => timeline.filter((item) => item.type === 'generation').length,
+    [timeline]
+  );
 
   const controlsPayload = useMemo(
     () => ({
@@ -491,7 +485,16 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   }, [controlsPayload, setControls]);
 
   return (
-    <div className={cn('flex h-full flex-col overflow-hidden', className)}>
+    <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
+      <div className="flex items-center justify-between border-b border-[#1A1C22] px-4 py-3.5">
+        <span className="text-[13px] font-semibold text-[#E2E6EF]">Generations</span>
+        <span className="text-[10px] text-[#3A3E4C]">
+          {totalVisibleGenerations > 0
+            ? `${totalVisibleGenerations} output${totalVisibleGenerations !== 1 ? 's' : ''}`
+            : ''}
+        </span>
+      </div>
+
       {keyframeStep.isActive && keyframeStep.character ? (
         <KeyframeStep
           prompt={prompt}
@@ -501,7 +504,8 @@ export const GenerationsPanel = memo(function GenerationsPanel({
           onSkip={handleSkipKeyframe}
         />
       ) : null}
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
+
+      <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-3 py-2.5">
         {timeline.length === 0 ? (
           <EmptyState
             onRunDraft={() => handleDraft(defaultDraftModel)}

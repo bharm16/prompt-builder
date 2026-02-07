@@ -7,33 +7,42 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
   type RefObject,
-} from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
-import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
-import { useTriggerAutocomplete } from '@/features/prompt-optimizer/components/TriggerAutocomplete';
-import { sanitizeText } from '@/features/span-highlighting';
-import { logger } from '@/services/LoggingService';
-import { safeUrlHost } from '@/utils/url';
-import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
-import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from '../constants';
-import type { AutocompleteState } from '../components/PromptTriggerAutocomplete';
-import type { GenerationControlsPanelProps, GenerationControlsTab, ImageSubTab } from '../types';
-import { getFieldInfo, resolveNumberOptions, resolveStringOptions, type FieldInfo } from '../utils/capabilities';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
-import type { ModelRecommendation } from '@/features/model-intelligence/types';
-import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+} from "react";
+import type { CapabilityValues } from "@shared/capabilities";
+import { useCapabilities } from "@features/prompt-optimizer/hooks/useCapabilities";
+import { useTriggerAutocomplete } from "@/features/prompt-optimizer/components/TriggerAutocomplete";
+import { sanitizeText } from "@/features/span-highlighting";
+import { logger } from "@/services/LoggingService";
+import { safeUrlHost } from "@/utils/url";
+import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
+import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from "../constants";
+import type { AutocompleteState } from "../components/PromptTriggerAutocomplete";
+import type {
+  GenerationControlsPanelProps,
+  GenerationControlsTab,
+  ImageSubTab,
+} from "../types";
+import {
+  getFieldInfo,
+  resolveNumberOptions,
+  resolveStringOptions,
+  type FieldInfo,
+} from "../utils/capabilities";
+import type { CameraPath } from "@/features/convergence/types";
+import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
+import type { ModelRecommendation } from "@/features/model-intelligence/types";
+import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '@/features/prompt-optimizer/context/GenerationControlsStore';
-import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
-import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
-import { useEditingPersistence } from './useEditingPersistence';
-import { useModelSelectionRecommendation } from './useModelSelectionRecommendation';
-import { useFaceSwapState, type FaceSwapMode } from './useFaceSwapState';
+} from "@/features/prompt-optimizer/context/GenerationControlsStore";
+import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
+import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
+import { useEditingPersistence } from "./useEditingPersistence";
+import { useModelSelectionRecommendation } from "./useModelSelectionRecommendation";
+import { useFaceSwapState, type FaceSwapMode } from "./useFaceSwapState";
 
-const log = logger.child('GenerationControlsPanel');
+const log = logger.child("GenerationControlsPanel");
 
 export interface UseGenerationControlsPanelResult {
   refs: {
@@ -85,7 +94,7 @@ export interface UseGenerationControlsPanelResult {
     totalCredits: number | null;
   };
   recommendation: {
-    recommendationMode: 'i2v' | 't2v';
+    recommendationMode: "i2v" | "t2v";
     modelRecommendation: ModelRecommendation | null;
     isRecommendationLoading: boolean;
     recommendationError: string | null;
@@ -132,7 +141,7 @@ export interface UseGenerationControlsPanelResult {
 }
 
 export const useGenerationControlsPanel = (
-  props: GenerationControlsPanelProps
+  props: GenerationControlsPanelProps,
 ): UseGenerationControlsPanelResult => {
   const {
     prompt,
@@ -154,8 +163,11 @@ export const useGenerationControlsPanel = (
   const promptHighlights = useOptionalPromptHighlights();
 
   const [isUploading, setIsUploading] = useState(false);
-  const { controls, faceSwapPreview: faceSwapPreviewState, setFaceSwapPreview } =
-    useGenerationControlsContext();
+  const {
+    controls,
+    faceSwapPreview: faceSwapPreviewState,
+    setFaceSwapPreview,
+  } = useGenerationControlsContext();
   const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
   const previousShotIdRef = useRef<string | null>(null);
   const { domain, ui } = useGenerationControlsStoreState();
@@ -172,56 +184,84 @@ export const useGenerationControlsPanel = (
 
   const aspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
-    if (typeof fromParams === 'string' && fromParams.trim()) {
+    if (typeof fromParams === "string" && fromParams.trim()) {
       return fromParams.trim();
     }
-    return '16:9';
+    return "16:9";
   }, [generationParams?.aspect_ratio]);
 
   const duration = useMemo(() => {
     const durationValue = generationParams?.duration_s;
-    if (typeof durationValue === 'number') {
+    if (typeof durationValue === "number") {
       return Number.isFinite(durationValue) ? durationValue : 5;
     }
-    if (typeof durationValue === 'string') {
+    if (typeof durationValue === "string") {
       const parsed = Number.parseFloat(durationValue);
       return Number.isFinite(parsed) ? parsed : 5;
     }
     return 5;
   }, [generationParams?.duration_s]);
 
-  const handleModelChange = useCallback((model: string): void => {
-    storeActions.setSelectedModel(model);
-    if (isSequenceMode && currentShot && currentShot.modelId !== model) {
-      void updateShot(currentShot.id, { modelId: model });
-    }
-  }, [currentShot, isSequenceMode, storeActions, updateShot]);
+  const handleModelChange = useCallback(
+    (model: string): void => {
+      const nextTier: VideoTier =
+        model === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
 
-  const handleAspectRatioChange = useCallback((ratio: string): void => {
-    if (generationParams?.aspect_ratio === ratio) return;
-    storeActions.mergeGenerationParams({ aspect_ratio: ratio });
-  }, [generationParams?.aspect_ratio, storeActions]);
+      storeActions.setSelectedModel(model);
+      if (tier !== nextTier) {
+        storeActions.setVideoTier(nextTier);
+      }
 
-  const handleDurationChange = useCallback((nextDuration: number): void => {
-    if (generationParams?.duration_s === nextDuration) return;
-    storeActions.mergeGenerationParams({ duration_s: nextDuration });
-  }, [generationParams?.duration_s, storeActions]);
+      if (isSequenceMode && currentShot && currentShot.modelId !== model) {
+        void updateShot(currentShot.id, { modelId: model });
+      }
+    },
+    [currentShot, isSequenceMode, storeActions, tier, updateShot],
+  );
 
-  const handleTierChange = useCallback((nextTier: VideoTier): void => {
-    storeActions.setVideoTier(nextTier);
-  }, [storeActions]);
+  const handleAspectRatioChange = useCallback(
+    (ratio: string): void => {
+      if (generationParams?.aspect_ratio === ratio) return;
+      storeActions.mergeGenerationParams({ aspect_ratio: ratio });
+    },
+    [generationParams?.aspect_ratio, storeActions],
+  );
 
-  const handleRemoveKeyframe = useCallback((id: string): void => {
-    storeActions.removeKeyframe(id);
-  }, [storeActions]);
+  const handleDurationChange = useCallback(
+    (nextDuration: number): void => {
+      if (generationParams?.duration_s === nextDuration) return;
+      storeActions.mergeGenerationParams({ duration_s: nextDuration });
+    },
+    [generationParams?.duration_s, storeActions],
+  );
 
-  const setActiveTab = useCallback((tab: GenerationControlsTab) => {
-    storeActions.setActiveTab(tab);
-  }, [storeActions]);
+  const handleTierChange = useCallback(
+    (nextTier: VideoTier): void => {
+      storeActions.setVideoTier(nextTier);
+    },
+    [storeActions],
+  );
 
-  const setImageSubTab = useCallback((tab: ImageSubTab) => {
-    storeActions.setImageSubTab(tab);
-  }, [storeActions]);
+  const handleRemoveKeyframe = useCallback(
+    (id: string): void => {
+      storeActions.removeKeyframe(id);
+    },
+    [storeActions],
+  );
+
+  const setActiveTab = useCallback(
+    (tab: GenerationControlsTab) => {
+      storeActions.setActiveTab(tab);
+    },
+    [storeActions],
+  );
+
+  const setImageSubTab = useCallback(
+    (tab: ImageSubTab) => {
+      storeActions.setImageSubTab(tab);
+    },
+    [storeActions],
+  );
 
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const {
@@ -238,7 +278,8 @@ export const useGenerationControlsPanel = (
 
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const isKeyframeLimitReached = keyframes.length >= 3;
-  const isUploadDisabled = !onImageUpload || isUploading || isKeyframeLimitReached;
+  const isUploadDisabled =
+    !onImageUpload || isUploading || isKeyframeLimitReached;
   const primaryKeyframeUrl = keyframes[0]?.url ?? null;
   const primaryKeyframeUrlHost = safeUrlHost(primaryKeyframeUrl);
   const {
@@ -257,18 +298,27 @@ export const useGenerationControlsPanel = (
     keyframesCount: keyframes.length,
     durationSeconds: duration,
     selectedModel,
+    videoTier: tier,
     promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
 
+  useEffect(() => {
+    if (!selectedModel.trim()) return;
+    const expectedTier: VideoTier =
+      selectedModel === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
+    if (tier === expectedTier) return;
+    storeActions.setVideoTier(expectedTier);
+  }, [selectedModel, storeActions, tier]);
+
   const capabilitiesModelId = useMemo(() => {
-    if (activeTab === 'video') {
-      return tier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId;
+    if (activeTab === "video") {
+      return tier === "draft" ? VIDEO_DRAFT_MODEL.id : renderModelId;
     }
     return renderModelId;
   }, [activeTab, renderModelId, tier]);
 
   const { schema } = useCapabilities(capabilitiesModelId);
-  const canOptimize = typeof onOptimize === 'function';
+  const canOptimize = typeof onOptimize === "function";
   const isOptimizing = Boolean(isProcessing || isRefining);
   const isGenerating = controls?.isGenerating ?? false;
   const isGenerationReady = Boolean(controls);
@@ -278,27 +328,31 @@ export const useGenerationControlsPanel = (
       aspect_ratio: aspectRatio,
       duration_s: duration,
     }),
-    [aspectRatio, duration]
+    [aspectRatio, duration],
   );
 
   const aspectRatioInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, 'aspect_ratio'),
-    [schema, currentParams]
+    () => getFieldInfo(schema, currentParams, "aspect_ratio"),
+    [schema, currentParams],
   );
 
   const durationInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, 'duration_s'),
-    [schema, currentParams]
+    () => getFieldInfo(schema, currentParams, "duration_s"),
+    [schema, currentParams],
   );
 
   const aspectRatioOptions = useMemo(
-    () => resolveStringOptions(aspectRatioInfo?.allowedValues, DEFAULT_ASPECT_RATIOS),
-    [aspectRatioInfo?.allowedValues]
+    () =>
+      resolveStringOptions(
+        aspectRatioInfo?.allowedValues,
+        DEFAULT_ASPECT_RATIOS,
+      ),
+    [aspectRatioInfo?.allowedValues],
   );
 
   const durationOptions = useMemo(
     () => resolveNumberOptions(durationInfo?.allowedValues, DEFAULT_DURATIONS),
-    [durationInfo?.allowedValues]
+    [durationInfo?.allowedValues],
   );
 
   const {
@@ -325,13 +379,13 @@ export const useGenerationControlsPanel = (
   });
 
   useEffect(() => {
-    const nextShotId = isSequenceMode ? currentShot?.id ?? null : null;
+    const nextShotId = isSequenceMode ? (currentShot?.id ?? null) : null;
     if (previousShotIdRef.current === nextShotId) return;
     previousShotIdRef.current = nextShotId;
 
     resetEditingState();
-    setFaceSwapMode('direct');
-    setFaceSwapCharacterId('');
+    setFaceSwapMode("direct");
+    setFaceSwapCharacterId("");
     handleFaceSwapTryDifferent();
   }, [
     currentShot?.id,
@@ -346,7 +400,7 @@ export const useGenerationControlsPanel = (
     if (!aspectRatioOptions.length) return;
     if (aspectRatioOptions.includes(aspectRatio)) return;
     const nextRatio = aspectRatioOptions[0];
-    log.info('Clamping aspect ratio to supported option', {
+    log.info("Clamping aspect ratio to supported option", {
       previousAspectRatio: aspectRatio,
       nextAspectRatio: nextRatio,
       allowedAspectRatios: aspectRatioOptions,
@@ -358,9 +412,9 @@ export const useGenerationControlsPanel = (
     if (!durationOptions.length) return;
     if (durationOptions.includes(duration)) return;
     const closest = durationOptions.reduce((best, value) =>
-      Math.abs(value - duration) < Math.abs(best - duration) ? value : best
+      Math.abs(value - duration) < Math.abs(best - duration) ? value : best,
     );
-    log.info('Clamping duration to supported option', {
+    log.info("Clamping duration to supported option", {
       previousDuration: duration,
       nextDuration: closest,
       allowedDurations: durationOptions,
@@ -370,20 +424,23 @@ export const useGenerationControlsPanel = (
 
   useEffect(() => {
     if (!showMotionControls) return;
-    if (activeTab === 'video') return;
-    log.debug('Forcing video tab because motion controls are enabled', {
+    if (activeTab === "video") return;
+    log.debug("Forcing video tab because motion controls are enabled", {
       previousTab: activeTab,
       primaryKeyframeUrlHost,
     });
-    setActiveTab('video');
+    setActiveTab("video");
   }, [showMotionControls, activeTab, primaryKeyframeUrlHost]);
 
   useEffect(() => {
     if (keyframes[0]) return;
     if (!showCameraMotionModal) return;
-    log.info('Closing camera motion modal because primary keyframe is missing', {
-      keyframesCount: keyframes.length,
-    });
+    log.info(
+      "Closing camera motion modal because primary keyframe is missing",
+      {
+        keyframesCount: keyframes.length,
+      },
+    );
     setShowCameraMotionModal(false);
   }, [keyframes, showCameraMotionModal]);
 
@@ -409,7 +466,8 @@ export const useGenerationControlsPanel = (
     inputRef: resolvedPromptInputRef,
     prompt,
     assets,
-    isEnabled: Boolean(onPromptChange) && !isOptimizing && (!showResults || isEditing),
+    isEnabled:
+      Boolean(onPromptChange) && !isOptimizing && (!showResults || isEditing),
     onSelect: (asset, range) => {
       onInsertTrigger?.(asset.trigger, range);
     },
@@ -419,7 +477,7 @@ export const useGenerationControlsPanel = (
     async (file: File) => {
       if (isUploadDisabled || !onImageUpload) return;
       const result = onImageUpload(file);
-      if (result && typeof (result as Promise<void>).then === 'function') {
+      if (result && typeof (result as Promise<void>).then === "function") {
         setIsUploading(true);
         try {
           await result;
@@ -428,7 +486,7 @@ export const useGenerationControlsPanel = (
         }
       }
     },
-    [isUploadDisabled, onImageUpload]
+    [isUploadDisabled, onImageUpload],
   );
 
   const handleUploadRequest = useCallback(() => {
@@ -438,14 +496,14 @@ export const useGenerationControlsPanel = (
 
   const handleCameraMotionButtonClick = useCallback(() => {
     if (!hasPrimaryKeyframe) {
-      log.warn('Camera motion modal requested without a primary keyframe', {
+      log.warn("Camera motion modal requested without a primary keyframe", {
         showMotionControls,
         keyframesCount: keyframes.length,
       });
       return;
     }
 
-    log.info('Opening camera motion modal from generation controls panel', {
+    log.info("Opening camera motion modal from generation controls panel", {
       keyframesCount: keyframes.length,
       primaryKeyframeUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
@@ -460,7 +518,7 @@ export const useGenerationControlsPanel = (
   ]);
 
   const handleCloseCameraMotionModal = useCallback(() => {
-    log.info('Camera motion modal closed from generation controls panel', {
+    log.info("Camera motion modal closed from generation controls panel", {
       primaryKeyframeUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
     });
@@ -469,15 +527,18 @@ export const useGenerationControlsPanel = (
 
   const handleSelectCameraMotion = useCallback(
     (path: CameraPath) => {
-      log.info('Camera motion selected from modal in generation controls panel', {
-        cameraMotionId: path.id,
-        cameraMotionLabel: path.label,
-        primaryKeyframeUrlHost,
-      });
+      log.info(
+        "Camera motion selected from modal in generation controls panel",
+        {
+          cameraMotionId: path.id,
+          cameraMotionLabel: path.label,
+          primaryKeyframeUrlHost,
+        },
+      );
       storeActions.setCameraMotion(path);
       setShowCameraMotionModal(false);
     },
-    [primaryKeyframeUrlHost, storeActions]
+    [primaryKeyframeUrlHost, storeActions],
   );
 
   const handleInputPromptChange = useCallback(
@@ -486,7 +547,7 @@ export const useGenerationControlsPanel = (
       const updatedPrompt = sanitizeText(event.target.value);
       onPromptChange(updatedPrompt);
     },
-    [onPromptChange]
+    [onPromptChange],
   );
 
   const handleEditClick = useCallback((): void => {
@@ -499,7 +560,13 @@ export const useGenerationControlsPanel = (
     setTimeout(() => {
       resolvedPromptInputRef.current?.focus();
     }, 0);
-  }, [canOptimize, isOptimizing, prompt, resolvedPromptInputRef, selectedModel]);
+  }, [
+    canOptimize,
+    isOptimizing,
+    prompt,
+    resolvedPromptInputRef,
+    selectedModel,
+  ]);
 
   const handleCancelEdit = useCallback((): void => {
     if (!canOptimize) return;
@@ -523,10 +590,10 @@ export const useGenerationControlsPanel = (
     }
     const promptChanged = prompt !== originalInputPrompt;
     const modelChanged =
-      typeof originalSelectedModel === 'string' &&
+      typeof originalSelectedModel === "string" &&
       originalSelectedModel !== selectedModel;
     const genericPrompt =
-      typeof genericOptimizedPrompt === 'string' &&
+      typeof genericOptimizedPrompt === "string" &&
       genericOptimizedPrompt.trim()
         ? genericOptimizedPrompt
         : null;
@@ -569,7 +636,7 @@ export const useGenerationControlsPanel = (
       if (!canOptimize || isOptimizing || !onOptimize) {
         return;
       }
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         if (!showResults) {
           if (prompt.trim()) {
@@ -592,7 +659,7 @@ export const useGenerationControlsPanel = (
       onOptimize,
       prompt,
       showResults,
-    ]
+    ],
   );
 
   const handleCopy = useCallback(async () => {
@@ -606,15 +673,18 @@ export const useGenerationControlsPanel = (
 
   const trimmedPrompt = prompt.trim();
   const hasPrompt = Boolean(trimmedPrompt);
-  const isImageGenerateDisabled = activeTab === 'image' && keyframes.length === 0;
-  const isVideoGenerateDisabled = activeTab === 'video' && !hasPrompt && keyframes.length === 0;
+  const isImageGenerateDisabled =
+    activeTab === "image" && keyframes.length === 0;
+  const isVideoGenerateDisabled =
+    activeTab === "video" && !hasPrompt && keyframes.length === 0;
   const isStoryboardDisabled = !hasPrompt && keyframes.length === 0;
-  const isInputLocked = (canOptimize && showResults && !isEditing) || isOptimizing;
+  const isInputLocked =
+    (canOptimize && showResults && !isEditing) || isOptimizing;
   const isOptimizeDisabled = !hasPrompt || isOptimizing;
   const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerating;
   const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerating;
   const isGenerateDisabled =
-    (tier === 'draft' ? isDraftDisabled : isRenderDisabled) ||
+    (tier === "draft" ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
     isVideoGenerateDisabled;
   const { canPreviewFaceSwap, isFaceSwapPreviewDisabled } = faceSwapDerived;

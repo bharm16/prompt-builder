@@ -1,22 +1,30 @@
-import { useMemo } from 'react';
-import { useModelRecommendation } from '@/features/model-intelligence';
-import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from '@/features/model-intelligence/constants';
-import { normalizeModelIdForSelection } from '@/features/model-intelligence/utils/modelLabels';
-import { VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
-import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/types';
-import type { ModelRecommendation, ModelRecommendationSpan } from '@/features/model-intelligence/types';
+import { useMemo } from "react";
+import { useModelRecommendation } from "@/features/model-intelligence";
+import { MIN_PROMPT_LENGTH_FOR_RECOMMENDATION } from "@/features/model-intelligence/constants";
+import { normalizeModelIdForSelection } from "@/features/model-intelligence/utils/modelLabels";
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_RENDER_MODELS,
+} from "@components/ToolSidebar/config/modelConfig";
+import type { VideoTier } from "@components/ToolSidebar/types";
+import type { HighlightSnapshot } from "@/features/prompt-optimizer/context/types";
+import type {
+  ModelRecommendation,
+  ModelRecommendationSpan,
+} from "@/features/model-intelligence/types";
 
 interface UseModelSelectionRecommendationOptions {
   prompt: string;
-  activeTab: 'image' | 'video';
+  activeTab: "image" | "video";
   keyframesCount: number;
   durationSeconds: number;
   selectedModel: string;
+  videoTier: VideoTier;
   promptHighlights?: HighlightSnapshot | null;
 }
 
 interface UseModelSelectionRecommendationResult {
-  recommendationMode: 'i2v' | 't2v';
+  recommendationMode: "i2v" | "t2v";
   modelRecommendation: ModelRecommendation | null;
   isRecommendationLoading: boolean;
   recommendationError: string | null;
@@ -29,7 +37,7 @@ interface UseModelSelectionRecommendationResult {
 
 const buildRecommendationSpans = (
   prompt: string,
-  spans: HighlightSnapshot['spans'] | undefined
+  spans: HighlightSnapshot["spans"] | undefined,
 ): ModelRecommendationSpan[] | undefined => {
   if (!spans?.length) return undefined;
   if (!prompt.trim()) return undefined;
@@ -61,6 +69,7 @@ export function useModelSelectionRecommendation({
   keyframesCount,
   durationSeconds,
   selectedModel,
+  videoTier,
   promptHighlights,
 }: UseModelSelectionRecommendationOptions): UseModelSelectionRecommendationResult {
   const trimmedPrompt = prompt.trim();
@@ -68,17 +77,19 @@ export function useModelSelectionRecommendation({
 
   const recommendationSpans = useMemo(
     () => buildRecommendationSpans(prompt, promptHighlights?.spans),
-    [prompt, promptHighlights?.spans]
+    [prompt, promptHighlights?.spans],
   );
 
   const recommendationMode = useMemo(
-    () => (keyframesCount > 0 ? 'i2v' : 't2v'),
-    [keyframesCount]
+    () => (keyframesCount > 0 ? "i2v" : "t2v"),
+    [keyframesCount],
   );
 
   const shouldLoadRecommendations = useMemo(
-    () => activeTab === 'video' && trimmedPromptLength >= MIN_PROMPT_LENGTH_FOR_RECOMMENDATION,
-    [activeTab, trimmedPromptLength]
+    () =>
+      activeTab === "video" &&
+      trimmedPromptLength >= MIN_PROMPT_LENGTH_FOR_RECOMMENDATION,
+    [activeTab, trimmedPromptLength],
   );
 
   const {
@@ -103,20 +114,36 @@ export function useModelSelectionRecommendation({
   }, [modelRecommendation?.alsoConsider?.modelId]);
 
   const renderModelOptions = useMemo(
-    () => VIDEO_RENDER_MODELS.map((model) => ({ id: model.id, label: model.label })),
-    []
+    () =>
+      VIDEO_RENDER_MODELS.map((model) => ({
+        id: model.id,
+        label: model.label,
+      })),
+    [],
   );
 
   const renderModelId = useMemo(() => {
-    if (selectedModel && VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)) {
+    if (selectedModel === VIDEO_DRAFT_MODEL.id) {
+      return VIDEO_DRAFT_MODEL.id;
+    }
+
+    if (
+      selectedModel &&
+      VIDEO_RENDER_MODELS.some((model) => model.id === selectedModel)
+    ) {
       return selectedModel;
     }
-    return VIDEO_RENDER_MODELS[0]?.id ?? '';
-  }, [selectedModel]);
+
+    if (videoTier === "draft") {
+      return VIDEO_DRAFT_MODEL.id;
+    }
+
+    return VIDEO_RENDER_MODELS[0]?.id ?? "";
+  }, [selectedModel, videoTier]);
 
   const recommendationAgeMs = useMemo(() => {
     const computedAt = modelRecommendation?.computedAt;
-    if (!computedAt || typeof computedAt !== 'string') return null;
+    if (!computedAt || typeof computedAt !== "string") return null;
     const timestamp = Date.parse(computedAt);
     if (!Number.isFinite(timestamp)) return null;
     return Date.now() - timestamp;

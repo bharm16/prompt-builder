@@ -1,17 +1,29 @@
 import type { ReactElement } from 'react';
-import type { AppIcon } from '@/types';
+import type { IconProps as PhosphorIconProps } from '@phosphor-icons/react';
+import type { ComponentType } from 'react';
 import { cn } from '@utils/cn';
 
+/** Phosphor icon component (not the wrapped Icon from our design system). */
+type PhosphorIcon = ComponentType<PhosphorIconProps>;
+
 interface ToolNavButtonProps {
-  icon: AppIcon;
+  icon: PhosphorIcon;
   label: string;
   isActive: boolean;
   onClick: () => void;
   variant?: 'header' | 'default';
 }
 
+/**
+ * Rail navigation button matching v5 mockup.
+ *
+ * - Header variant: 36×36 icon-only button (hamburger menu)
+ * - Default variant: 44px wide, icon + 9px label, rounded-lg
+ * - Active: white text + subtle bg (#1C1E26)
+ * - Inactive: muted text (#555B6E), hover bg (#151720)
+ */
 export function ToolNavButton({
-  icon: Icon,
+  icon: IconComponent,
   label,
   isActive,
   onClick,
@@ -22,16 +34,15 @@ export function ToolNavButton({
       <button
         type="button"
         className={cn(
-          'w-11 h-[34px] px-1.5 py-px flex flex-col items-center justify-center gap-1',
-          'cursor-pointer'
+          'flex h-9 w-9 items-center justify-center rounded-lg border transition-colors',
+          isActive
+            ? 'border-[#22252C] bg-[#1C1E26] text-[#E2E6EF]'
+            : 'border-[#1A1C22] bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
         )}
         onClick={onClick}
         aria-label={label}
       >
-        <Icon className="w-4 h-4 text-[#A1AFC5]" />
-        <span className="text-[11px] leading-none font-medium text-[#A1AFC5]">
-          {label}
-        </span>
+        <IconComponent className="h-4 w-4" />
       </button>
     );
   }
@@ -40,27 +51,17 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        'w-11 h-[34px] px-1.5 py-px flex flex-col items-center justify-center gap-1',
-        'cursor-pointer'
+        'flex w-11 flex-col items-center gap-[3px] rounded-lg py-[7px] transition-all',
+        isActive
+          ? 'bg-[#1C1E26] text-[#E2E6EF]'
+          : 'bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
       )}
       onClick={onClick}
       aria-label={label}
       aria-pressed={isActive}
     >
-      <Icon
-        className={cn(
-          'w-4 h-4 stroke-[1.2px]',
-          isActive ? 'text-white' : 'text-[#A1AFC5]'
-        )}
-      />
-      <span
-        className={cn(
-          'text-[11px] leading-none font-medium',
-          isActive ? 'text-white' : 'text-[#A1AFC5]'
-        )}
-      >
-        {label}
-      </span>
+      <IconComponent className="h-4 w-4" />
+      <span className="text-[9px] font-medium tracking-[0.03em]">{label}</span>
     </button>
   );
 }

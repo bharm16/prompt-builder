@@ -21,8 +21,8 @@ export function ContinueSceneButton({
         type="button"
         className={`rounded-md px-2 py-1 text-xs font-medium ${
           disabled || isLoading
-            ? 'bg-surface-3 text-muted cursor-not-allowed'
-            : 'bg-accent text-white'
+            ? 'border border-[#22252C] bg-transparent text-[#3A3E4C] cursor-not-allowed'
+            : 'border border-[#22252C] bg-transparent text-[#555B6E] hover:border-[#3A3D46] hover:text-[#8B92A5]'
         }`}
         onClick={onClick}
         disabled={disabled || isLoading}

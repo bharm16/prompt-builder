@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel/GenerationsPanel';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 
 const mockUseGenerationsState = vi.fn();
 const mockUseGenerationActions = vi.fn();
@@ -10,6 +11,9 @@ const mockUseGenerationsTimeline = vi.fn();
 const mockUseAssetReferenceImages = vi.fn();
 const mockUseKeyframeWorkflow = vi.fn();
 const mockUseGenerationControlsContext = vi.fn();
+const mockUseWorkspaceSession = vi.fn();
+const mockUseGenerationControlsStoreState = vi.fn();
+const mockUseGenerationControlsStoreActions = vi.fn();
 
 const generationCardSpy = vi.fn();
 const versionDividerSpy = vi.fn();
@@ -42,6 +46,15 @@ vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow',
 
 vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
   useGenerationControlsContext: () => mockUseGenerationControlsContext(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+  useWorkspaceSession: () => mockUseWorkspaceSession(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/GenerationControlsStore', () => ({
+  useGenerationControlsStoreState: () => mockUseGenerationControlsStoreState(),
+  useGenerationControlsStoreActions: () => mockUseGenerationControlsStoreActions(),
 }));
 
 vi.mock('@features/prompt-optimizer/GenerationsPanel/components/GenerationCard', () => ({
@@ -116,6 +129,24 @@ describe('GenerationsPanel', () => {
       cameraMotion: null,
       subjectMotion: '',
     });
+    mockUseWorkspaceSession.mockReturnValue({
+      isSequenceMode: false,
+      isStartingSequence: false,
+      startSequence: vi.fn(),
+      currentShot: null,
+      generateShot: vi.fn(),
+      updateShot: vi.fn(),
+    });
+    mockUseGenerationControlsStoreState.mockReturnValue({
+      domain: {
+        keyframes: [],
+        cameraMotion: null,
+        subjectMotion: '',
+      },
+    });
+    mockUseGenerationControlsStoreActions.mockReturnValue({
+      setKeyframes: vi.fn(),
+    });
   });
 
   describe('error handling', () => {
@@ -161,7 +192,7 @@ describe('GenerationsPanel', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /run draft/i }));
-      expect(generateDraft).toHaveBeenCalledWith('wan-2.2', 'New prompt', {
+      expect(generateDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id, 'New prompt', {
         promptVersionId: 'version-2',
       });
     });

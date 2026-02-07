@@ -14,22 +14,19 @@ export function VersionDivider({
 }: VersionDividerProps): React.ReactElement {
   return (
     <div
-      className={cn('flex items-center gap-3 py-2', className)}
+      className={cn('flex items-center gap-1.5 px-1 py-0.5', className)}
       role="separator"
-      aria-label={`Version ${versionLabel}${promptChanged ? ', prompt changed' : ''}`}
+      aria-label={`Version ${versionLabel}${promptChanged ? ', prompt edited' : ''}`}
     >
-      <div className="h-px flex-1 bg-[rgb(41,44,50)]" aria-hidden="true" />
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] font-medium text-[rgb(107,114,128)] uppercase tracking-wide">
-          {versionLabel}
-        </span>
-        {promptChanged && (
-          <span className="text-[10px] font-medium text-[rgb(147,130,100)] bg-[rgb(147,130,100)]/10 px-1.5 py-0.5 rounded">
-            prompt changed
-          </span>
-        )}
-      </div>
-      <div className="h-px flex-1 bg-[rgb(41,44,50)]" aria-hidden="true" />
+      <span className="text-[10px] font-medium text-[#3A3E4C]">
+        {versionLabel}
+      </span>
+      {promptChanged && (
+        <span
+          className="h-[3px] w-[3px] rounded-sm bg-[#FBBF24]/40"
+          aria-label="Prompt edited"
+        />
+      )}
     </div>
   );
 }

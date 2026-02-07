@@ -41,6 +41,9 @@ interface VideoTabContentProps {
   canClear: boolean;
   onCopy: () => void;
   onClear: () => void;
+  canGeneratePreviews: boolean;
+  onGenerateSinglePreview: () => void;
+  onGenerateFourPreviews: () => void;
 }
 
 export function VideoTabContent({
@@ -76,6 +79,9 @@ export function VideoTabContent({
   canClear,
   onCopy,
   onClear,
+  canGeneratePreviews,
+  onGenerateSinglePreview,
+  onGenerateFourPreviews,
 }: VideoTabContentProps): React.ReactElement {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-3 flex flex-col gap-2.5">
@@ -121,8 +127,11 @@ export function VideoTabContent({
         <VideoPromptToolbar
           canCopy={canCopy}
           canClear={canClear}
+          canGeneratePreviews={canGeneratePreviews}
           onCopy={onCopy}
           onClear={onClear}
+          onGenerateSinglePreview={onGenerateSinglePreview}
+          onGenerateFourPreviews={onGenerateFourPreviews}
           promptLength={prompt.length}
         />
       </div>

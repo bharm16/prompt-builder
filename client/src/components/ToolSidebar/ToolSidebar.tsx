@@ -118,6 +118,13 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           />
         )}
 
+        {activePanel === 'apps' && (
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <div className="text-sm font-semibold text-[#8B92A5]">Apps</div>
+            <div className="mt-2 text-xs text-[#555B6E]">Third-party integrations coming soon.</div>
+          </div>
+        )}
+
         {activePanel === 'styles' && <StylesPanel />}
       </ToolPanel>
     </div>

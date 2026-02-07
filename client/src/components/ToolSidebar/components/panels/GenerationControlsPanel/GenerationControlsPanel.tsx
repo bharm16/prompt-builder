@@ -1,25 +1,31 @@
-import React, { type ReactElement, useCallback } from 'react';
-import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
-import { FaceSwapPreviewModal } from '@/components/modals/FaceSwapPreviewModal';
-import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
-import { GenerationFooter } from './components/GenerationFooter';
-import { PanelHeader } from './components/PanelHeader';
-import { VideoSettingsRow } from './components/VideoSettingsRow';
-import { ImageTabContent } from './components/ImageTabContent';
-import { VideoTabContent } from './components/VideoTabContent';
-import { useGenerationControlsPanel } from './hooks/useGenerationControlsPanel';
-import type { GenerationControlsPanelProps } from './types';
-import type { GenerationOverrides } from '@components/ToolSidebar/types';
-import { StyleReferenceControls } from '@/features/prompt-optimizer/components/StyleReferenceControls';
-import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
+import React, { type ReactElement, useCallback } from "react";
+import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
+import { FaceSwapPreviewModal } from "@/components/modals/FaceSwapPreviewModal";
+import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_RENDER_MODELS,
+} from "@components/ToolSidebar/config/modelConfig";
+import { GenerationFooter } from "./components/GenerationFooter";
+import { PanelHeader } from "./components/PanelHeader";
+import { VideoSettingsRow } from "./components/VideoSettingsRow";
+import { ImageTabContent } from "./components/ImageTabContent";
+import { VideoTabContent } from "./components/VideoTabContent";
+import { useGenerationControlsPanel } from "./hooks/useGenerationControlsPanel";
+import type { GenerationControlsPanelProps } from "./types";
+import type { GenerationOverrides } from "@components/ToolSidebar/types";
+import { StyleReferenceControls } from "@/features/prompt-optimizer/components/StyleReferenceControls";
+import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 
-export function GenerationControlsPanel(props: GenerationControlsPanelProps): ReactElement {
+export function GenerationControlsPanel(
+  props: GenerationControlsPanelProps,
+): ReactElement {
   const {
     prompt,
     onPromptChange,
     onDraft,
     onRender,
+    onStoryboard,
     onBack,
     onCreateFromTrigger,
   } = props;
@@ -52,17 +58,19 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     cameraMotion,
   } = store;
   const showMotionControls = true;
-  const isFaceSwapMode = faceSwap.mode === 'face-swap';
-  const isFaceSwapFlow = isFaceSwapMode && state.activeTab === 'video';
+  const isFaceSwapMode = faceSwap.mode === "face-swap";
+  const isFaceSwapFlow = isFaceSwapMode && state.activeTab === "video";
   const promptLabel =
-    isSequenceMode && currentShotIndex >= 0 ? `Shot ${currentShotIndex + 1} Prompt` : 'Prompt';
+    isSequenceMode && currentShotIndex >= 0
+      ? `Shot ${currentShotIndex + 1} Prompt`
+      : "Prompt";
 
   const handleStyleReferenceChange = useCallback(
     (sourceShotId: string) => {
       if (!currentShot) return;
       void updateShotStyleReference(currentShot.id, sourceShotId);
     },
-    [currentShot, updateShotStyleReference]
+    [currentShot, updateShotStyleReference],
   );
 
   const handleStrengthChange = useCallback(
@@ -70,15 +78,15 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       if (!currentShot) return;
       void updateShot(currentShot.id, { styleStrength: strength });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const handleModeChange = useCallback(
-    (mode: 'frame-bridge' | 'style-match') => {
+    (mode: "frame-bridge" | "style-match") => {
       if (!currentShot) return;
       void updateShot(currentShot.id, { continuityMode: mode });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const styleReferenceControls =
@@ -94,44 +102,95 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
-      const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? '';
+      const fallbackRenderModelId =
+        VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? "";
+      const selectedModelIdForGeneration =
+        tier === "draft"
+          ? VIDEO_DRAFT_MODEL.id
+          : recommendation.renderModelId ||
+            selectedModel ||
+            fallbackRenderModelId;
+
       void trackModelRecommendationEvent({
-        event: 'generation_started',
+        event: "generation_started",
         recommendationId: recommendation.modelRecommendation?.promptId,
         promptId: recommendation.modelRecommendation?.promptId,
-        recommendedModelId: recommendation.modelRecommendation?.recommended?.modelId,
-        selectedModelId: tier === 'draft' ? VIDEO_DRAFT_MODEL.id : recommendation.renderModelId,
+        recommendedModelId: recommendation.recommendedModelId,
+        selectedModelId: selectedModelIdForGeneration,
         mode: recommendation.recommendationMode,
         durationSeconds: duration,
-        ...(typeof recommendation.recommendationAgeMs === 'number'
-          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendation.recommendationAgeMs)) }
+        ...(typeof recommendation.recommendationAgeMs === "number"
+          ? {
+              timeSinceRecommendationMs: Math.max(
+                0,
+                Math.round(recommendation.recommendationAgeMs),
+              ),
+            }
           : {}),
       });
-      if (tier === 'draft') {
+      if (tier === "draft") {
         onDraft(VIDEO_DRAFT_MODEL.id, overrides);
         return;
       }
-      onRender(recommendation.renderModelId || selectedModel || fallbackRenderModelId, overrides);
+      onRender(selectedModelIdForGeneration, overrides);
     },
     [
       duration,
       onDraft,
       onRender,
       recommendation.modelRecommendation?.promptId,
-      recommendation.modelRecommendation?.recommended?.modelId,
       recommendation.recommendationAgeMs,
       recommendation.recommendationMode,
+      recommendation.recommendedModelId,
       recommendation.renderModelId,
       selectedModel,
       tier,
-    ]
+    ],
+  );
+
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      if (modelId === selectedModel) return;
+
+      void trackModelRecommendationEvent({
+        event: "model_selected",
+        recommendationId: recommendation.modelRecommendation?.promptId,
+        promptId: recommendation.modelRecommendation?.promptId,
+        recommendedModelId: recommendation.recommendedModelId,
+        selectedModelId: modelId,
+        mode: recommendation.recommendationMode,
+        durationSeconds: duration,
+        ...(typeof recommendation.recommendationAgeMs === "number"
+          ? {
+              timeSinceRecommendationMs: Math.max(
+                0,
+                Math.round(recommendation.recommendationAgeMs),
+              ),
+            }
+          : {}),
+      });
+
+      actions.handleModelChange(modelId);
+    },
+    [
+      actions,
+      duration,
+      recommendation.modelRecommendation?.promptId,
+      recommendation.recommendationAgeMs,
+      recommendation.recommendationMode,
+      recommendation.recommendedModelId,
+      selectedModel,
+    ],
   );
 
   const generationFooter = (
     <GenerationFooter
       renderModelOptions={recommendation.renderModelOptions}
       renderModelId={recommendation.renderModelId}
-      onModelChange={actions.handleModelChange}
+      onModelChange={handleModelChange}
+      modelRecommendation={recommendation.modelRecommendation}
+      recommendedModelId={recommendation.recommendedModelId}
+      efficientModelId={recommendation.efficientModelId}
       onGenerate={() => {
         if (!isFaceSwapFlow) {
           handleGenerate();
@@ -151,9 +210,9 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
       generateLabel={
         isFaceSwapFlow
           ? faceSwap.previewUrl
-            ? 'Proceed to Video'
-            : 'Preview Face Swap'
-          : 'Generate'
+            ? "Proceed to Video"
+            : "Preview Face Swap"
+          : "Generate"
       }
     />
   );
@@ -176,12 +235,12 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           if (file) {
             void actions.handleFile(file);
           }
-          event.target.value = '';
+          event.target.value = "";
         }}
         disabled={derived.isUploadDisabled}
       />
 
-      {state.activeTab === 'video' ? (
+      {state.activeTab === "video" ? (
         <VideoTabContent
           keyframes={keyframes}
           isUploadDisabled={derived.isUploadDisabled}
@@ -220,7 +279,10 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           canCopy={Boolean(prompt.trim())}
           canClear={Boolean(onPromptChange && prompt.trim())}
           onCopy={() => void actions.handleCopy()}
-          onClear={() => onPromptChange?.('')}
+          onClear={() => onPromptChange?.("")}
+          canGeneratePreviews={!derived.isStoryboardDisabled}
+          onGenerateSinglePreview={onStoryboard}
+          onGenerateFourPreviews={onStoryboard}
         />
       ) : (
         <ImageTabContent
@@ -242,14 +304,14 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           onImageSubTabChange={actions.setImageSubTab}
           onBack={onBack}
           onCopy={() => void actions.handleCopy()}
-          onClear={() => onPromptChange?.('')}
+          onClear={() => onPromptChange?.("")}
           canCopy={Boolean(prompt.trim())}
           canClear={Boolean(onPromptChange && prompt.trim())}
           footer={generationFooter}
         />
       )}
 
-      {state.activeTab === 'video' && (
+      {state.activeTab === "video" && (
         <>
           <VideoSettingsRow
             aspectRatio={aspectRatio}
@@ -261,7 +323,9 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
             isAspectRatioDisabled={capabilities.aspectRatioInfo?.state.disabled}
             isDurationDisabled={capabilities.durationInfo?.state.disabled}
             onOpenMotion={actions.handleCameraMotionButtonClick}
-            isMotionDisabled={!showMotionControls || !derived.hasPrimaryKeyframe}
+            isMotionDisabled={
+              !showMotionControls || !derived.hasPrimaryKeyframe
+            }
           />
 
           {generationFooter}
@@ -294,7 +358,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           handleGenerate({
             startImage: {
               url: faceSwap.previewUrl,
-              source: 'face-swap',
+              source: "face-swap",
             },
             characterAssetId: faceSwap.selectedCharacterId || null,
             faceSwapAlreadyApplied: true,

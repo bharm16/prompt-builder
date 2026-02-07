@@ -4,8 +4,11 @@ import { Copy, Trash2, Wand2 } from '@promptstudio/system/components/ui';
 interface VideoPromptToolbarProps {
   canCopy: boolean;
   canClear: boolean;
+  canGeneratePreviews: boolean;
   onCopy: () => void;
   onClear: () => void;
+  onGenerateSinglePreview: () => void;
+  onGenerateFourPreviews: () => void;
   promptLength?: number;
 }
 
@@ -20,8 +23,11 @@ interface VideoPromptToolbarProps {
 export function VideoPromptToolbar({
   canCopy,
   canClear,
+  canGeneratePreviews,
   onCopy,
   onClear,
+  onGenerateSinglePreview,
+  onGenerateFourPreviews,
   promptLength = 0,
 }: VideoPromptToolbarProps): React.ReactElement {
   return (
@@ -58,7 +64,9 @@ export function VideoPromptToolbar({
           type="button"
           aria-label="Generate 1 preview · 1 cr"
           title="Generate 1 preview · 1 cr"
-          className="h-full px-[7px] flex items-center justify-center text-[#555B6E] hover:bg-[#22252C]/50 hover:text-[#E2E6EF] transition-colors relative"
+          className="h-full px-[7px] flex items-center justify-center text-[#555B6E] hover:bg-[#22252C]/50 hover:text-[#E2E6EF] transition-colors relative disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onGenerateSinglePreview}
+          disabled={!canGeneratePreviews}
         >
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="8" height="8" rx="1.5" />
@@ -70,7 +78,9 @@ export function VideoPromptToolbar({
           type="button"
           aria-label="Generate 4 previews · ~4 cr"
           title="Generate 4 previews · ~4 cr"
-          className="h-full px-[7px] flex items-center justify-center text-[#3A3E4C] hover:bg-[#22252C]/50 hover:text-[#E2E6EF] transition-colors"
+          className="h-full px-[7px] flex items-center justify-center text-[#3A3E4C] hover:bg-[#22252C]/50 hover:text-[#E2E6EF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onGenerateFourPreviews}
+          disabled={!canGeneratePreviews}
         >
           <svg width="22" height="13" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
             <rect x="1" y="3.5" width="4" height="7" rx="0.8" />

@@ -340,7 +340,7 @@ export function PromptCanvasView({
       {/* Main Content Container */}
       <div
         className={cn(
-          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col',
+          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-[#111318]',
           outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
@@ -386,216 +386,277 @@ export function PromptCanvasView({
                         isOutputLoading && 'opacity-80'
                       )}
                     >
-                      <div className="gap-ps-3 px-ps-6 flex h-ps-9 items-center justify-between">
-                        <span className="text-label-sm text-muted">
-                          Optimized Editor
-                        </span>
-                        <div className="flex flex-wrap items-center gap-ps-2">
-                          {i2vContext?.isI2VMode && (
-                            <ConstraintModeSelector
-                              mode={i2vContext.constraintMode}
-                              onChange={i2vContext.setConstraintMode}
-                              disabled={isOutputLoading}
-                              isAnalyzing={i2vContext.isAnalyzing}
-                              className="mr-1"
-                            />
-                          )}
-                          {!outlineOverlayActive && (
-                            <CanvasButton
-                              type="button"
-                              size="icon-sm"
-                              onClick={openOutlineOverlay}
-                              aria-label="Open outline"
-                              title="Open outline"
-                            >
+                      <div className="flex h-11 items-center border-b border-[#1A1C22] px-3">
+                        {/* Left: Model format selector */}
+                        <Select
+                          value={modelFormatValue}
+                          onValueChange={onModelFormatChange}
+                          disabled={modelFormatDisabled}
+                        >
+                          <SelectTrigger
+                            size="xs"
+                            variant="ghost"
+                            className="h-7 min-w-24 max-w-40 justify-start rounded-md px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground [&>span]:!flex [&>span]:overflow-visible"
+                            aria-label={`Model format: ${modelFormatLabel}`}
+                            title={`Model format: ${modelFormatLabel}`}
+                          >
+                            <span className="flex min-w-0 items-center gap-1.5">
                               <Icon
-                                icon={GridFour}
-                                size="sm"
+                                icon={VideoCamera}
+                                size="xs"
                                 weight="bold"
                                 aria-hidden="true"
                               />
-                            </CanvasButton>
-                          )}
-                          <Select
-                            value={modelFormatValue}
-                            onValueChange={onModelFormatChange}
-                            disabled={modelFormatDisabled}
-                          >
-                            <SelectTrigger
-                              size="xs"
-                              variant="ghost"
-                              className="h-ps-10 min-w-28 max-w-44 text-muted hover:bg-surface-2 hover:text-foreground justify-start rounded-lg px-2 transition-colors"
-                              aria-label={`Transform model: ${modelFormatLabel}`}
-                              title={`Transform model: ${modelFormatLabel}`}
-                            >
-                              <span className="flex min-w-0 items-center gap-2">
-                                <Icon
-                                  icon={VideoCamera}
-                                  size="sm"
-                                  weight="bold"
-                                  aria-hidden="true"
-                                />
-                                <span className="text-label-sm truncate">
-                                  {modelFormatLabel}
-                                </span>
+                              <span className="truncate text-[11px]">
+                                {modelFormatLabel}
                               </span>
-                            </SelectTrigger>
-                            <SelectContent align="end" className="max-h-72">
-                              <SelectItem value="auto">
-                                Auto (Generic)
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent align="start" className="max-h-72">
+                            <SelectItem value="auto">
+                              Auto (Generic)
+                            </SelectItem>
+                            {modelFormatOptions.map((option) => (
+                              <SelectItem key={option.id} value={option.id}>
+                                {option.label}
                               </SelectItem>
-                              {modelFormatOptions.map((option) => (
-                                <SelectItem key={option.id} value={option.id}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* I2V mode badge — compact indicator when active */}
+                        {i2vContext?.isI2VMode && (
+                          <span className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-faint">
+                            I2V{' '}
+                            {i2vContext.constraintMode}
+                          </span>
+                        )}
+
+                        <div className="flex-1" />
+
+                        {/* Right group: Outline | divider | edit actions */}
+                        {!outlineOverlayActive && (
                           <CanvasButton
                             type="button"
                             size="icon-sm"
-                            onClick={onCopy}
-                            aria-label={
-                              copied
-                                ? 'Copied to clipboard'
-                                : 'Copy to clipboard'
+                            className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                            onClick={openOutlineOverlay}
+                            aria-label="Prompt structure"
+                            title="Prompt structure"
+                          >
+                            <Icon
+                              icon={GridFour}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          </CanvasButton>
+                        )}
+
+                        {/* Divider */}
+                        <div
+                          className="mx-1 h-3.5 w-px bg-[#22252C]"
+                          aria-hidden="true"
+                        />
+
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                          onClick={onCopy}
+                          aria-label={
+                            copied
+                              ? 'Copied to clipboard'
+                              : 'Copy to clipboard'
+                          }
+                          title={copied ? 'Copied' : 'Copy'}
+                        >
+                          {copied ? (
+                            <Icon
+                              icon={Check}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Icon
+                              icon={Copy}
+                              size="sm"
+                              weight="bold"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </CanvasButton>
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                          onClick={onUndo}
+                          disabled={!canUndo}
+                          aria-label="Undo"
+                        >
+                          <Icon
+                            icon={ArrowCounterClockwise}
+                            size="sm"
+                            weight="bold"
+                            aria-hidden="true"
+                          />
+                        </CanvasButton>
+                        <CanvasButton
+                          type="button"
+                          size="icon-sm"
+                          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                          onClick={onRedo}
+                          disabled={!canRedo}
+                          aria-label="Redo"
+                        >
+                          <Icon
+                            icon={ArrowClockwise}
+                            size="sm"
+                            weight="bold"
+                            aria-hidden="true"
+                          />
+                        </CanvasButton>
+                        <div className="relative" ref={exportMenuRef}>
+                          <CanvasButton
+                            type="button"
+                            size="icon-sm"
+                            className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                            onClick={() =>
+                              onToggleExportMenu(!showExportMenu)
                             }
-                            title={copied ? 'Copied' : 'Copy'}
-                          >
-                            {copied ? (
-                              <Icon
-                                icon={Check}
-                                size="sm"
-                                weight="bold"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              <Icon
-                                icon={Copy}
-                                size="sm"
-                                weight="bold"
-                                aria-hidden="true"
-                              />
-                            )}
-                          </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            size="icon-sm"
-                            onClick={onUndo}
-                            disabled={!canUndo}
-                            aria-label="Undo"
+                            aria-expanded={showExportMenu}
+                            aria-haspopup="menu"
+                            aria-label="More actions"
+                            title="More"
                           >
                             <Icon
-                              icon={ArrowCounterClockwise}
+                              icon={DotsThree}
                               size="sm"
                               weight="bold"
                               aria-hidden="true"
                             />
                           </CanvasButton>
-                          <CanvasButton
-                            type="button"
-                            size="icon-sm"
-                            onClick={onRedo}
-                            disabled={!canRedo}
-                            aria-label="Redo"
-                          >
-                            <Icon
-                              icon={ArrowClockwise}
-                              size="sm"
-                              weight="bold"
-                              aria-hidden="true"
-                            />
-                          </CanvasButton>
-                          <div className="relative" ref={exportMenuRef}>
-                            <CanvasButton
-                              type="button"
-                              size="icon-sm"
-                              onClick={() =>
-                                onToggleExportMenu(!showExportMenu)
-                              }
-                              aria-expanded={showExportMenu}
-                              aria-haspopup="menu"
-                              aria-label="More actions"
-                              title="More"
+                          {showExportMenu && (
+                            <div
+                              className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border border-[#22252C] bg-[#16181E] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+                              role="menu"
                             >
-                              <Icon
-                                icon={DotsThree}
-                                size="sm"
-                                weight="bold"
+                              {/* I2V constraint mode — only when active */}
+                              {i2vContext?.isI2VMode && (
+                                <>
+                                  <div className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-faint">
+                                    I2V Mode
+                                  </div>
+                                  {(
+                                    [
+                                      'strict',
+                                      'flexible',
+                                      'transform',
+                                    ] as const
+                                  ).map((mode) => (
+                                    <CanvasButton
+                                      key={mode}
+                                      type="button"
+                                      role="menuitem"
+                                      className={cn(
+                                        'w-full justify-start rounded-md px-2.5 py-1.5 text-[12px] transition-colors',
+                                        i2vContext.constraintMode === mode
+                                          ? 'font-semibold text-foreground'
+                                          : 'font-normal text-muted hover:bg-surface-2 hover:text-foreground'
+                                      )}
+                                      onClick={() => {
+                                        i2vContext.setConstraintMode(
+                                          mode
+                                        );
+                                        onToggleExportMenu(false);
+                                      }}
+                                    >
+                                      {mode.charAt(0).toUpperCase() +
+                                        mode.slice(1)}
+                                      {i2vContext.constraintMode ===
+                                        mode && (
+                                        <Icon
+                                          icon={Check}
+                                          size="sm"
+                                          weight="bold"
+                                          className="ml-auto"
+                                          aria-hidden="true"
+                                        />
+                                      )}
+                                    </CanvasButton>
+                                  ))}
+                                  <div
+                                    className="my-1 h-px bg-[#22252C]"
+                                    aria-hidden="true"
+                                  />
+                                </>
+                              )}
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  onShowDiffChange(true);
+                                  onToggleExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-2 hover:text-foreground w-full justify-start rounded-md px-2.5 py-1.5 transition-colors"
+                              >
+                                Compare versions
+                              </CanvasButton>
+                              <div
+                                className="my-1 h-px bg-[#22252C]"
                                 aria-hidden="true"
                               />
-                            </CanvasButton>
-                            {showExportMenu && (
-                              <div
-                                className="border-border bg-surface-3 absolute right-0 top-full z-20 mt-2 w-52 rounded-lg border p-2 shadow-md"
-                                role="menu"
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  onExport('text');
+                                  onToggleExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-2 hover:text-foreground w-full justify-start rounded-md px-2.5 py-1.5 transition-colors"
                               >
-                                <CanvasButton
-                                  type="button"
-                                  onClick={() => {
-                                    onShowDiffChange(true);
-                                    onToggleExportMenu(false);
-                                  }}
-                                  role="menuitem"
-                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                                >
-                                  Compare versions
-                                </CanvasButton>
-                                <div
-                                  className="bg-border my-1 h-px"
-                                  aria-hidden="true"
-                                />
-                                <CanvasButton
-                                  type="button"
-                                  onClick={() => {
-                                    onExport('text');
-                                    onToggleExportMenu(false);
-                                  }}
-                                  role="menuitem"
-                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                                >
-                                  Export .txt
-                                </CanvasButton>
-                                <CanvasButton
-                                  type="button"
-                                  onClick={() => {
-                                    onExport('markdown');
-                                    onToggleExportMenu(false);
-                                  }}
-                                  role="menuitem"
-                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                                >
-                                  Export .md
-                                </CanvasButton>
-                                <CanvasButton
-                                  type="button"
-                                  onClick={() => {
-                                    onExport('json');
-                                    onToggleExportMenu(false);
-                                  }}
-                                  role="menuitem"
-                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                                >
-                                  Export .json
-                                </CanvasButton>
-                                <div
-                                  className="bg-border my-1 h-px"
-                                  aria-hidden="true"
-                                />
-                                <CanvasButton
-                                  type="button"
-                                  onClick={() => {
-                                    onShare();
-                                    onToggleExportMenu(false);
-                                  }}
-                                  role="menuitem"
-                                  className="text-label-sm text-muted hover:bg-surface-3 hover:text-foreground w-full justify-start rounded-md px-3 py-2 transition-colors"
-                                >
-                                  Share
-                                </CanvasButton>
-                              </div>
-                            )}
-                          </div>
+                                Export .txt
+                              </CanvasButton>
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  onExport('markdown');
+                                  onToggleExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-2 hover:text-foreground w-full justify-start rounded-md px-2.5 py-1.5 transition-colors"
+                              >
+                                Export .md
+                              </CanvasButton>
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  onExport('json');
+                                  onToggleExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-2 hover:text-foreground w-full justify-start rounded-md px-2.5 py-1.5 transition-colors"
+                              >
+                                Export .json
+                              </CanvasButton>
+                              <div
+                                className="my-1 h-px bg-[#22252C]"
+                                aria-hidden="true"
+                              />
+                              <CanvasButton
+                                type="button"
+                                onClick={() => {
+                                  onShare();
+                                  onToggleExportMenu(false);
+                                }}
+                                role="menuitem"
+                                className="text-label-sm text-muted hover:bg-surface-2 hover:text-foreground w-full justify-start rounded-md px-2.5 py-1.5 transition-colors"
+                              >
+                                Share
+                              </CanvasButton>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="px-ps-3 pb-ps-card pt-ps-4 flex min-h-0 flex-1 flex-col">
@@ -924,8 +985,8 @@ export function PromptCanvasView({
             <CollapsibleDrawer
               isOpen={versionsDrawer.isOpen}
               onToggle={versionsDrawer.toggle}
-              height="180px"
-              collapsedHeight="44px"
+              height="132px"
+              collapsedHeight="36px"
               position="bottom"
               displayMode={versionsDrawer.displayMode}
               showToggle={false}
@@ -944,7 +1005,7 @@ export function PromptCanvasView({
           </div>
 
           <div
-            className="bg-border/10 hidden w-px self-stretch lg:block"
+            className="hidden w-px self-stretch bg-[#1A1C22] lg:block"
             aria-hidden="true"
           />
 
