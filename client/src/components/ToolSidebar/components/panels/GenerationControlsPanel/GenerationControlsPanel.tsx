@@ -5,9 +5,7 @@ import { trackModelRecommendationEvent } from '@/features/model-intelligence/api
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationFooter } from './components/GenerationFooter';
 import { PanelHeader } from './components/PanelHeader';
-import { VideoPromptToolbar } from './components/VideoPromptToolbar';
 import { VideoSettingsRow } from './components/VideoSettingsRow';
-import { VideoFooterSection } from './components/VideoFooterSection';
 import { ImageTabContent } from './components/ImageTabContent';
 import { VideoTabContent } from './components/VideoTabContent';
 import { useGenerationControlsPanel } from './hooks/useGenerationControlsPanel';
@@ -20,12 +18,9 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
   const {
     prompt,
     onPromptChange,
-    onOptimize,
-    showResults = false,
     onDraft,
     onRender,
     onBack,
-    onStoryboard,
     onCreateFromTrigger,
   } = props;
 
@@ -132,72 +127,11 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
     ]
   );
 
-  const renderOptimizationActions = (): ReactElement | null => {
-    if (!derived.canOptimize) return null;
-    if (!showResults) {
-      return (
-        <button
-          type="button"
-          className="h-8 px-3 rounded-lg bg-white text-[#1A1A1A] text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => {
-            if (!onOptimize) return;
-            if (!derived.isOptimizeDisabled) {
-              void onOptimize(prompt);
-            }
-          }}
-          disabled={derived.isOptimizeDisabled}
-        >
-          Optimize
-        </button>
-      );
-    }
-
-    if (!state.isEditing) {
-      return (
-        <button
-          type="button"
-          className="h-8 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={actions.handleEditClick}
-          disabled={derived.isOptimizing}
-        >
-          Edit
-        </button>
-      );
-    }
-
-    return (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="h-8 px-3 rounded-lg border border-[#29292D] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={actions.handleCancelEdit}
-          disabled={derived.isOptimizing}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="h-8 px-3 rounded-lg bg-white text-[#1A1A1A] text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={actions.handleUpdate}
-          disabled={derived.isOptimizeDisabled}
-        >
-          Update
-        </button>
-      </div>
-    );
-  };
-
   const generationFooter = (
     <GenerationFooter
-      tier={tier}
       renderModelOptions={recommendation.renderModelOptions}
       renderModelId={recommendation.renderModelId}
-      recommendedModelId={recommendation.recommendedModelId}
-      efficientModelId={recommendation.efficientModelId}
       onModelChange={actions.handleModelChange}
-      optimizationActions={renderOptimizationActions()}
-      onStoryboard={onStoryboard}
-      isStoryboardDisabled={derived.isStoryboardDisabled}
       onGenerate={() => {
         if (!isFaceSwapFlow) {
           handleGenerate();
@@ -249,17 +183,11 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
 
       {state.activeTab === 'video' ? (
         <VideoTabContent
-          tier={tier}
-          onTierChange={actions.handleTierChange}
           keyframes={keyframes}
           isUploadDisabled={derived.isUploadDisabled}
           onRequestUpload={actions.handleUploadRequest}
           onUploadFile={actions.handleFile}
           onRemoveKeyframe={actions.handleRemoveKeyframe}
-          showMotionControls={showMotionControls}
-          hasPrimaryKeyframe={derived.hasPrimaryKeyframe}
-          cameraMotion={cameraMotion}
-          onOpenCameraMotion={actions.handleCameraMotionButtonClick}
           prompt={prompt}
           onPromptChange={onPromptChange}
           promptLabel={promptLabel}
@@ -271,10 +199,7 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           onCreateFromTrigger={onCreateFromTrigger}
           autocomplete={autocomplete}
           afterPrompt={styleReferenceControls}
-          imageSubTab={state.imageSubTab}
-          onImageSubTabChange={actions.setImageSubTab}
           faceSwapMode={faceSwap.mode}
-          onFaceSwapModeChange={actions.setFaceSwapMode}
           faceSwapCharacterOptions={faceSwap.characterOptions}
           selectedCharacterId={faceSwap.selectedCharacterId}
           onFaceSwapCharacterChange={actions.setFaceSwapCharacterId}
@@ -292,6 +217,10 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
           faceSwapCredits={faceSwap.faceSwapCredits}
           videoCredits={faceSwap.videoCredits}
           totalCredits={faceSwap.totalCredits}
+          canCopy={Boolean(prompt.trim())}
+          canClear={Boolean(onPromptChange && prompt.trim())}
+          onCopy={() => void actions.handleCopy()}
+          onClear={() => onPromptChange?.('')}
         />
       ) : (
         <ImageTabContent
@@ -322,13 +251,6 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
 
       {state.activeTab === 'video' && (
         <>
-          <VideoPromptToolbar
-            canCopy={Boolean(prompt.trim())}
-            canClear={Boolean(onPromptChange && prompt.trim())}
-            onCopy={() => void actions.handleCopy()}
-            onClear={() => onPromptChange?.('')}
-          />
-
           <VideoSettingsRow
             aspectRatio={aspectRatio}
             duration={duration}
@@ -338,18 +260,11 @@ export function GenerationControlsPanel(props: GenerationControlsPanelProps): Re
             onDurationChange={actions.handleDurationChange}
             isAspectRatioDisabled={capabilities.aspectRatioInfo?.state.disabled}
             isDurationDisabled={capabilities.durationInfo?.state.disabled}
+            onOpenMotion={actions.handleCameraMotionButtonClick}
+            isMotionDisabled={!showMotionControls || !derived.hasPrimaryKeyframe}
           />
 
-          <VideoFooterSection
-            prompt={prompt}
-            duration={duration}
-            recommendationMode={recommendation.recommendationMode}
-            recommendation={recommendation.modelRecommendation}
-            isLoading={recommendation.isRecommendationLoading}
-            error={recommendation.recommendationError}
-            onSelectModel={actions.handleModelChange}
-            footer={generationFooter}
-          />
+          {generationFooter}
         </>
       )}
 

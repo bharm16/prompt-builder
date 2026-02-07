@@ -41,68 +41,72 @@ export function KeyframeSlotsRow({
   );
 
   return (
-    <>
-      <div className="h-[74px] px-3 pt-3 flex gap-1.5">
-        {keyframeSlots.map((tile, index) => {
-          const isEmpty = !tile;
-          const canUpload = isEmpty && !isUploadDisabled;
-          return (
-            <div key={tile?.id ?? `keyframe-slot-${index}`} className="relative w-[110px] h-[62px]">
-              <button
-                type="button"
-                className={cn(
-                  'w-full h-full rounded-lg bg-[#1B1E23] shadow-[inset_0_0_0_1px_#2C3037]',
-                  'flex items-center justify-center overflow-hidden',
-                  isEmpty && 'cursor-pointer',
-                  isEmpty && !canUpload && 'opacity-60 cursor-not-allowed',
-                  isDragging && canUpload && 'shadow-[inset_0_0_0_1px_#B3AFFD]'
-                )}
-                onClick={() => {
-                  if (!canUpload) return;
-                  onRequestUpload();
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (canUpload) {
-                    setIsDragging(true);
-                  }
-                }}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragging(false);
-                }}
-                onDrop={handleDrop}
-                aria-disabled={!canUpload}
-              >
-                {tile ? (
+    <div className="flex gap-1.5">
+      {keyframeSlots.map((tile, index) => {
+        const isEmpty = !tile;
+        const canUpload = isEmpty && !isUploadDisabled;
+        return (
+          <div key={tile?.id ?? `keyframe-slot-${index}`} className="relative w-[104px] h-[60px]">
+            <button
+              type="button"
+              className={cn(
+                'w-full h-full rounded-lg bg-[#16181E] border flex items-center justify-center overflow-hidden transition-colors',
+                tile ? 'border-[#3A3D46]' : 'border-dashed border-[#22252C]',
+                isEmpty && 'cursor-pointer',
+                isEmpty && !canUpload && 'opacity-60 cursor-not-allowed',
+                isDragging && canUpload && 'border-[#6C5CE7]'
+              )}
+              onClick={() => {
+                if (!canUpload) return;
+                onRequestUpload();
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (canUpload) {
+                  setIsDragging(true);
+                }
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDragging(false);
+              }}
+              onDrop={handleDrop}
+              aria-disabled={!canUpload}
+            >
+              {tile ? (
+                <>
                   <img
                     src={tile.url}
                     alt={`Keyframe ${index + 1}`}
                     className="w-full h-full object-cover rounded-lg"
                   />
-                ) : (
-                  <Plus className="w-4 h-4 text-white" />
-                )}
-              </button>
-
-              {tile && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onRemoveKeyframe(tile.id);
-                  }}
-                  className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
-                >
-                  Clear
-                </button>
+                  <div className="absolute inset-0 bg-black/15 pointer-events-none" />
+                  <span className="absolute left-1.5 bottom-1 text-[8px] font-semibold text-white/70 pointer-events-none">
+                    Frame {index + 1}
+                  </span>
+                </>
+              ) : (
+                <Plus className="w-3.5 h-3.5 text-[#555B6E]" />
               )}
-            </div>
-          );
-        })}
-      </div>
-    </>
+            </button>
+
+            {tile && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemoveKeyframe(tile.id);
+                }}
+                className="absolute right-1.5 top-1.5 h-5 px-1.5 rounded-md bg-[#0D0E12]/90 border border-[#22252C] text-[10px] text-[#8B92A5] hover:text-white transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }

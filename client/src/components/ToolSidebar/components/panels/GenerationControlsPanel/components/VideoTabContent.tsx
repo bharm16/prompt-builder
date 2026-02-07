@@ -1,28 +1,19 @@
 import React from 'react';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
-import type { ImageSubTab } from '../types';
+import { ChevronDown } from '@promptstudio/system/components/ui';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { KeyframeSlotsRow } from '@components/ToolSidebar/components/panels/KeyframeSlotsRow';
-import { CameraMotionSelector } from './CameraMotionSelector';
-import { ImageSubTabToolbar } from './ImageSubTabToolbar';
 import { PromptEditor } from './PromptEditor';
+import { VideoPromptToolbar } from './VideoPromptToolbar';
 import { type AutocompleteState } from './PromptTriggerAutocomplete';
 import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
-import { VideoTierToggle } from './VideoTierToggle';
 import { formatCredits } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 
 interface VideoTabContentProps {
-  tier: VideoTier;
-  onTierChange: (tier: VideoTier) => void;
   keyframes: KeyframeTile[];
   isUploadDisabled: boolean;
   onRequestUpload: () => void;
   onUploadFile: (file: File) => void | Promise<void>;
   onRemoveKeyframe: (id: string) => void;
-  showMotionControls: boolean;
-  hasPrimaryKeyframe: boolean;
-  cameraMotion: CameraPath | null;
-  onOpenCameraMotion: () => void;
   prompt: string;
   onPromptChange?: ((prompt: string) => void) | undefined;
   promptLabel?: string;
@@ -34,10 +25,7 @@ interface VideoTabContentProps {
   onCreateFromTrigger?: ((trigger: string) => void) | undefined;
   autocomplete: AutocompleteState;
   afterPrompt?: React.ReactNode;
-  imageSubTab: ImageSubTab;
-  onImageSubTabChange: (tab: ImageSubTab) => void;
   faceSwapMode: 'direct' | 'face-swap';
-  onFaceSwapModeChange: (mode: 'direct' | 'face-swap') => void;
   faceSwapCharacterOptions: Array<{ id: string; label: string }>;
   selectedCharacterId: string;
   onFaceSwapCharacterChange: (assetId: string) => void;
@@ -49,20 +37,18 @@ interface VideoTabContentProps {
   faceSwapCredits: number;
   videoCredits: number | null;
   totalCredits: number | null;
+  canCopy: boolean;
+  canClear: boolean;
+  onCopy: () => void;
+  onClear: () => void;
 }
 
 export function VideoTabContent({
-  tier,
-  onTierChange,
   keyframes,
   isUploadDisabled,
   onRequestUpload,
   onUploadFile,
   onRemoveKeyframe,
-  showMotionControls,
-  hasPrimaryKeyframe,
-  cameraMotion,
-  onOpenCameraMotion,
   prompt,
   onPromptChange,
   promptLabel,
@@ -74,10 +60,7 @@ export function VideoTabContent({
   onCreateFromTrigger,
   autocomplete,
   afterPrompt,
-  imageSubTab,
-  onImageSubTabChange,
   faceSwapMode,
-  onFaceSwapModeChange,
   faceSwapCharacterOptions,
   selectedCharacterId,
   onFaceSwapCharacterChange,
@@ -89,150 +72,127 @@ export function VideoTabContent({
   faceSwapCredits,
   videoCredits,
   totalCredits,
+  canCopy,
+  canClear,
+  onCopy,
+  onClear,
 }: VideoTabContentProps): React.ReactElement {
   return (
-    <>
-      <VideoTierToggle tier={tier} onChange={onTierChange} />
-
-      <KeyframeSlotsRow
-        keyframes={keyframes}
-        isUploadDisabled={isUploadDisabled}
-        onRequestUpload={onRequestUpload}
-        onUploadFile={onUploadFile}
-        onRemoveKeyframe={onRemoveKeyframe}
-      />
-
-      <div className="px-3">
-        <div className="rounded-lg border border-[#29292D] bg-[#151720] px-3 py-3 space-y-3">
-          <div className="text-[11px] uppercase tracking-wide text-[#A1AFC5]">
-            Image-to-Video Options
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-start gap-2 text-sm text-white">
-              <input
-                type="radio"
-                name="i2v-mode"
-                checked={faceSwapMode === 'direct'}
-                onChange={() => onFaceSwapModeChange('direct')}
-              />
-              <span>
-                Direct Animation
-                <span className="block text-xs text-[#A1AFC5]">
-                  Animate the image as-is.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2 text-sm text-white">
-              <input
-                type="radio"
-                name="i2v-mode"
-                checked={faceSwapMode === 'face-swap'}
-                onChange={() => onFaceSwapModeChange('face-swap')}
-              />
-              <span>
-                Character Face Swap + Animation
-                <span className="block text-xs text-[#A1AFC5]">
-                  Replace the face, then animate.
-                </span>
-              </span>
-            </label>
-          </div>
-
-          {faceSwapMode === 'face-swap' && (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-[#A1AFC5]">Character</label>
-                <select
-                  value={selectedCharacterId}
-                  onChange={(event) => onFaceSwapCharacterChange(event.target.value)}
-                  className="h-9 rounded-md bg-[#1E1F25] border border-[#29292D] px-2 text-sm text-white"
-                >
-                  <option value="">Select a character</option>
-                  {faceSwapCharacterOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {!faceSwapCharacterOptions.length && (
-                  <div className="text-xs text-[#A1AFC5]">
-                    No character assets available yet.
-                  </div>
-                )}
-              </div>
-
-              <div className="text-xs text-[#A1AFC5]">
-                Face swap: {formatCredits(faceSwapCredits)} · Video:{' '}
-                {videoCredits !== null ? formatCredits(videoCredits) : '—'} · Total:{' '}
-                {totalCredits !== null ? formatCredits(totalCredits) : '—'}
-              </div>
-
-              <button
-                type="button"
-                className="h-9 px-3 rounded-lg border border-[#2C3037] text-[#A1AFC5] text-sm font-semibold hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={onFaceSwapPreview}
-                disabled={isFaceSwapPreviewDisabled}
-              >
-                {faceSwapPreviewReady ? 'View Face Swap Preview' : 'Preview Face Swap'}
-              </button>
-
-              {faceSwapPreviewLoading && (
-                <div className="text-xs text-[#A1AFC5]">Composing face swap…</div>
-              )}
-              {!faceSwapPreviewLoading && faceSwapPreviewReady && (
-                <div className="text-xs text-[#65D6A6]">Preview ready.</div>
-              )}
-              {!faceSwapPreviewLoading && faceSwapError && (
-                <div className="text-xs text-[#F59E0B]">{faceSwapError}</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showMotionControls && (
-        <CameraMotionSelector
-          hasPrimaryKeyframe={hasPrimaryKeyframe}
-          cameraMotion={cameraMotion}
-          onOpen={onOpenCameraMotion}
-        />
-      )}
-
-      <div className="flex-1 min-h-0 overflow-y-auto px-3">
-        {promptLabel && (
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#A1AFC5]">
-            {promptLabel}
-          </div>
-        )}
-        <div className="relative border border-[#29292D] rounded-lg">
-          <PromptEditor
-            prompt={prompt}
-            onPromptChange={onPromptChange}
-            isInputLocked={isInputLocked}
-            isOptimizing={isOptimizing}
-            promptInputRef={promptInputRef}
-            onPromptInputChange={onPromptInputChange}
-            onPromptKeyDown={onPromptKeyDown}
-            onCreateFromTrigger={onCreateFromTrigger}
-            autocomplete={autocomplete}
-            placeholder="Describe your shot — what's happening, how subjects move, key details..."
-            rows={6}
-            containerClassName="relative"
-            textareaClassName={
-              'min-h-[180px] p-3 text-white text-sm leading-6 whitespace-pre-wrap outline-none resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0'
-            }
+    <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-3 flex flex-col gap-2.5">
+      {/* ── Prompt card ── */}
+      <div className="rounded-xl border border-[#22252C] bg-[#16181E] overflow-hidden transition-colors focus-within:border-[#6C5CE7]">
+        <div className="px-3 pt-3">
+          <KeyframeSlotsRow
+            keyframes={keyframes}
+            isUploadDisabled={isUploadDisabled}
+            onRequestUpload={onRequestUpload}
+            onUploadFile={onUploadFile}
+            onRemoveKeyframe={onRemoveKeyframe}
           />
         </div>
-        {afterPrompt && <div className="mt-3">{afterPrompt}</div>}
 
-        <ImageSubTabToolbar className="mt-3" activeTab={imageSubTab} onSelect={onImageSubTabChange} />
+        <div className="px-3 pt-2.5">
+          <div className="relative rounded-xl">
+            {promptLabel && (
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8B92A5]">
+                {promptLabel}
+              </div>
+            )}
+            <PromptEditor
+              prompt={prompt}
+              onPromptChange={onPromptChange}
+              isInputLocked={isInputLocked}
+              isOptimizing={isOptimizing}
+              promptInputRef={promptInputRef}
+              onPromptInputChange={onPromptInputChange}
+              onPromptKeyDown={onPromptKeyDown}
+              onCreateFromTrigger={onCreateFromTrigger}
+              autocomplete={autocomplete}
+              placeholder="Describe your shot..."
+              rows={6}
+              containerClassName="relative"
+              textareaClassName={
+                'min-h-[130px] p-0 text-[#E2E6EF] text-[13px] leading-[1.65] whitespace-pre-wrap outline-none resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0'
+              }
+            />
+          </div>
+        </div>
 
-        <div className="mt-3 rounded-md" role="tabpanel">
+        <VideoPromptToolbar
+          canCopy={canCopy}
+          canClear={canClear}
+          onCopy={onCopy}
+          onClear={onClear}
+          promptLength={prompt.length}
+        />
+      </div>
+
+      {/* ── Face swap card (conditional) ── */}
+      {faceSwapMode === 'face-swap' && (
+        <div className="rounded-xl border border-[#22252C] bg-[#16181E] px-3 py-3 space-y-3">
+          <div className="text-[11px] uppercase tracking-wide text-[#8B92A5]">Face Swap</div>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-[#8B92A5]">Character</label>
+            <select
+              value={selectedCharacterId}
+              onChange={(event) => onFaceSwapCharacterChange(event.target.value)}
+              className="h-9 rounded-md bg-[#0D0E12] border border-[#22252C] px-2 text-sm text-white"
+            >
+              <option value="">Select a character</option>
+              {faceSwapCharacterOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {!faceSwapCharacterOptions.length && (
+              <div className="text-xs text-[#8B92A5]">
+                No character assets available yet.
+              </div>
+            )}
+          </div>
+
+          <div className="text-xs text-[#8B92A5]">
+            Face swap: {formatCredits(faceSwapCredits)} · Video:{' '}
+            {videoCredits !== null ? formatCredits(videoCredits) : '—'} · Total:{' '}
+            {totalCredits !== null ? formatCredits(totalCredits) : '—'}
+          </div>
+
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg border border-[#22252C] text-[#8B92A5] text-sm font-semibold hover:bg-[#22252C] disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onFaceSwapPreview}
+            disabled={isFaceSwapPreviewDisabled}
+          >
+            {faceSwapPreviewReady ? 'View Face Swap Preview' : 'Preview Face Swap'}
+          </button>
+
+          {faceSwapPreviewLoading && (
+            <div className="text-xs text-[#8B92A5]">Composing face swap…</div>
+          )}
+          {!faceSwapPreviewLoading && faceSwapPreviewReady && (
+            <div className="text-xs text-[#4ADE80]">Preview ready.</div>
+          )}
+          {!faceSwapPreviewLoading && faceSwapError && (
+            <div className="text-xs text-[#FBBF24]">{faceSwapError}</div>
+          )}
+        </div>
+      )}
+
+      {afterPrompt && <div>{afterPrompt}</div>}
+
+      {/* ── References section ── */}
+      <div>
+        <div className="flex items-center gap-2 px-0.5">
+          <ChevronDown className="w-2.5 h-2.5 text-[#555B6E]" />
+          <span className="text-xs font-semibold text-[#8B92A5]">References</span>
+          <div className="flex-1 h-px bg-[#22252C] mx-2" />
+          <span className="text-[10px] text-[#3A3E4C]">0 images</span>
+        </div>
+        <div className="mt-1 rounded-md" role="tabpanel">
           <ReferencesOnboardingCard onUpload={onRequestUpload} isUploadDisabled={isUploadDisabled} />
         </div>
       </div>
-    </>
+    </div>
   );
 }
