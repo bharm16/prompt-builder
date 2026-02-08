@@ -285,7 +285,7 @@ export class SceneProxyService {
         const transformers = await import('@huggingface/transformers');
         const pipeline = await transformers.pipeline('depth-estimation', 'Xenova/dpt-hybrid-midas');
         return async (input: Buffer) => {
-          const output = await pipeline(input);
+          const output = await pipeline(input as unknown as Parameters<typeof pipeline>[0]);
           return output as { depth: { data: Uint8Array | Uint16Array | Float32Array; width: number; height: number } };
         };
       })();

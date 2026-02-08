@@ -111,9 +111,11 @@ export class FaceEmbeddingService {
     let norm2 = 0;
 
     for (let i = 0; i < embedding1.length; i += 1) {
-      dotProduct += embedding1[i] * embedding2[i];
-      norm1 += embedding1[i] * embedding1[i];
-      norm2 += embedding2[i] * embedding2[i];
+      const value1 = embedding1[i]!;
+      const value2 = embedding2[i]!;
+      dotProduct += value1 * value2;
+      norm1 += value1 * value1;
+      norm2 += value2 * value2;
     }
 
     return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
@@ -149,9 +151,11 @@ export class FaceEmbeddingService {
 
       for (let i = 0; i < embeddings.length; i += 1) {
         for (let j = i + 1; j < embeddings.length; j += 1) {
+          const sourceEmbedding = embeddings[i]!;
+          const targetEmbedding = embeddings[j]!;
           const similarity = this.computeSimilarity(
-            embeddings[i].embedding,
-            embeddings[j].embedding
+            sourceEmbedding.embedding,
+            targetEmbedding.embedding
           );
           if (similarity < threshold) {
             const result = {

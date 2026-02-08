@@ -11,6 +11,8 @@ import {
   type StoryboardDeltasParseResult,
 } from './planParser';
 
+type StoryboardPartialDeltas = Extract<StoryboardDeltasParseResult, { ok: false }>['partial'];
+
 export interface StoryboardFramePlannerOptions {
   llmClient: LLMClient;
   timeoutMs?: number;
@@ -141,9 +143,9 @@ export class StoryboardFramePlanner {
   }
 
   private pickBestPartial(
-    ...partials: Array<StoryboardDeltasParseResult['partial'] | undefined>
-  ): StoryboardDeltasParseResult['partial'] | undefined {
-    let best: StoryboardDeltasParseResult['partial'] | undefined;
+    ...partials: Array<StoryboardPartialDeltas | undefined>
+  ): StoryboardPartialDeltas | undefined {
+    let best: StoryboardPartialDeltas | undefined;
     for (const partial of partials) {
       if (!partial || partial.actualCount <= 0) {
         continue;

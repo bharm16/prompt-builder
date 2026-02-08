@@ -16,7 +16,8 @@ const RESUMABLE_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const PRECONDITION_OPTS = { ifGenerationMatch: 0 };
 
 function normalizeContentType(value: string): string {
-  return value.split(';')[0]?.trim().toLowerCase();
+  const [primary] = value.split(';');
+  return (primary ?? '').trim().toLowerCase();
 }
 
 function resolveExtension(contentType: string): string {
@@ -125,9 +126,9 @@ export class UploadService {
 
       return {
         storagePath: path,
-        sizeBytes: Number.parseInt(fileMetadata.size || '0', 10),
+        sizeBytes: Number.parseInt(String(fileMetadata.size ?? '0'), 10),
         contentType: fileMetadata.contentType || contentType,
-        createdAt: fileMetadata.timeCreated,
+        createdAt: fileMetadata.timeCreated ?? new Date().toISOString(),
       };
     } finally {
       clearTimeout(timeout);
@@ -322,9 +323,9 @@ export class UploadService {
 
     return {
       storagePath: path,
-      sizeBytes: Number.parseInt(metadata.size || '0', 10),
+      sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
       contentType: metadata.contentType,
-      createdAt: metadata.timeCreated,
+      createdAt: metadata.timeCreated ?? new Date().toISOString(),
     };
   }
 }

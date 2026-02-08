@@ -46,7 +46,7 @@ describe('OpenAiResponseParser', () => {
           enableBookending: true,
           seed: 42,
           logprobs: true,
-          prediction: { content: 'predict' },
+          prediction: { type: 'content', content: 'predict' },
         }
       );
 

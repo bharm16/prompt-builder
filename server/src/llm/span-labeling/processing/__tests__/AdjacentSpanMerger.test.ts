@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { mergeAdjacentSpans } from '../AdjacentSpanMerger';
 
-const buildSpan = (text: string, start: number, end: number, role: string, confidence?: number) => ({
+const buildSpan = (
+  text: string,
+  start: number,
+  end: number,
+  role: string,
+  confidence?: number
+) => ({
   text,
   start,
   end,
   role,
-  confidence,
+  ...(confidence === undefined ? {} : { confidence }),
 });
 
 describe('mergeAdjacentSpans', () => {

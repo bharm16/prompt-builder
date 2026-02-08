@@ -3,21 +3,27 @@ import { extractResponseText, cleanJSONResponse, extractAndParse } from '../Json
 import type { AIResponse } from '@interfaces/IAIClient';
 
 describe('extractResponseText', () => {
+  const makeResponse = (overrides: Partial<AIResponse>): AIResponse => ({
+    text: '',
+    metadata: {},
+    ...overrides,
+  });
+
   describe('error handling', () => {
     it('returns empty string when response has no text or content', () => {
-      const response = {} as AIResponse;
+      const response = makeResponse({});
 
       expect(extractResponseText(response)).toBe('');
     });
 
     it('returns empty string when content array is empty', () => {
-      const response = { content: [] } as AIResponse;
+      const response = makeResponse({ content: [] });
 
       expect(extractResponseText(response)).toBe('');
     });
 
     it('returns empty string when content item has no text', () => {
-      const response = { content: [{}] } as unknown as AIResponse;
+      const response = makeResponse({ content: [{}] });
 
       expect(extractResponseText(response)).toBe('');
     });
@@ -25,24 +31,24 @@ describe('extractResponseText', () => {
 
   describe('edge cases', () => {
     it('prefers text property over content array', () => {
-      const response = {
+      const response = makeResponse({
         text: 'direct text',
         content: [{ text: 'array text' }],
-      } as AIResponse;
+      });
 
       expect(extractResponseText(response)).toBe('direct text');
     });
 
     it('uses first content item text when text property is missing', () => {
-      const response = {
+      const response = makeResponse({
         content: [{ text: 'first' }, { text: 'second' }],
-      } as AIResponse;
+      });
 
       expect(extractResponseText(response)).toBe('first');
     });
 
     it('handles empty text property', () => {
-      const response = { text: '' } as AIResponse;
+      const response = makeResponse({ text: '' });
 
       // Empty string is falsy, so falls through to content check
       expect(extractResponseText(response)).toBe('');
@@ -51,13 +57,13 @@ describe('extractResponseText', () => {
 
   describe('core behavior', () => {
     it('extracts text from text property', () => {
-      const response = { text: 'Hello world' } as AIResponse;
+      const response = makeResponse({ text: 'Hello world' });
 
       expect(extractResponseText(response)).toBe('Hello world');
     });
 
     it('extracts text from content array', () => {
-      const response = { content: [{ text: 'Content text' }] } as AIResponse;
+      const response = makeResponse({ content: [{ text: 'Content text' }] });
 
       expect(extractResponseText(response)).toBe('Content text');
     });

@@ -2,11 +2,12 @@ import express, { type Request, type Router } from 'express';
 import { isIP } from 'node:net';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { getStorageService } from '@services/storage/StorageService';
+import { STORAGE_TYPES, type StorageType } from '@services/storage/config/storageConfig';
 import { getAuthenticatedUserId } from '@routes/preview/auth';
 
-interface RequestWithUser extends Request {
-  user?: { uid?: string };
-}
+type RequestWithUser = Request & { user?: { uid?: string } };
+
+const STORAGE_TYPE_SET = new Set<StorageType>(Object.values(STORAGE_TYPES));
 
 async function resolveUserId(req: RequestWithUser): Promise<string | null> {
   if (req.user?.uid) {
@@ -20,6 +21,14 @@ function rejectAnonymous(userId: string | null): string | null {
     return null;
   }
   return userId;
+}
+
+function normalizeStorageType(value: unknown): StorageType | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (!STORAGE_TYPE_SET.has(normalized as StorageType)) return null;
+  return normalized as StorageType;
 }
 
 function normalizeMetadata(value: unknown): Record<string, unknown> {
@@ -37,6 +46,7 @@ export function createStorageRoutes(): Router {
     asyncHandler(async (req, res) => {
       const { type, contentType, metadata } = req.body || {};
       const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const normalizedType = normalizeStorageType(type);
 
       if (!userId) {
         return res.status(401).json({
@@ -47,8 +57,7 @@ export function createStorageRoutes(): Router {
       }
 
       if (
-        typeof type !== 'string' ||
-        type.trim().length === 0 ||
+        !normalizedType ||
         typeof contentType !== 'string' ||
         contentType.trim().length === 0
       ) {
@@ -59,7 +68,6 @@ export function createStorageRoutes(): Router {
       }
 
       const storage = getStorageService();
-      const normalizedType = type.trim();
       const normalizedContentType = contentType.trim();
       const result = await storage.getUploadUrl(
         userId,
@@ -77,6 +85,7 @@ export function createStorageRoutes(): Router {
     asyncHandler(async (req, res) => {
       const { sourceUrl, type, metadata } = req.body || {};
       const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const normalizedType = normalizeStorageType(type);
 
       if (!userId) {
         return res.status(401).json({
@@ -89,8 +98,7 @@ export function createStorageRoutes(): Router {
       if (
         typeof sourceUrl !== 'string' ||
         sourceUrl.trim().length === 0 ||
-        typeof type !== 'string' ||
-        type.trim().length === 0
+        !normalizedType
       ) {
         return res.status(400).json({
           success: false,
@@ -99,7 +107,6 @@ export function createStorageRoutes(): Router {
       }
 
       const storage = getStorageService();
-      const normalizedType = type.trim();
       const normalizedSourceUrl = sourceUrl.trim();
       const result = await storage.saveFromUrl(
         userId,
@@ -200,7 +207,7 @@ export function createStorageRoutes(): Router {
   router.get(
     '/list',
     asyncHandler(async (req, res) => {
-      const type = typeof req.query.type === 'string' ? req.query.type.trim() : undefined;
+      const type = normalizeStorageType(req.query.type);
       const limitValue = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : NaN;
       const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
       const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
@@ -213,12 +220,20 @@ export function createStorageRoutes(): Router {
         });
       }
 
+      if (req.query.type !== undefined && !type) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid type. Expected one of: ${Object.values(STORAGE_TYPES).join(', ')}`,
+        });
+      }
+
       const storage = getStorageService();
-      const result = await storage.listFiles(userId, {
-        type,
+      const listOptions = {
         limit: Number.isFinite(limitValue) ? limitValue : 50,
-        pageToken: cursor,
-      });
+        ...(type ? { type } : {}),
+        ...(cursor ? { pageToken: cursor } : {}),
+      };
+      const result = await storage.listFiles(userId, listOptions);
 
       return res.json({ success: true, data: result });
     })

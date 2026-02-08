@@ -70,7 +70,7 @@ export const VideoPromptStructuredResponseSchema = VideoPromptSlotsSchema.extend
       })
     )
     .optional(),
-  shot_plan: z.record(z.unknown()).nullable().optional(),
+  shot_plan: z.record(z.string(), z.unknown()).nullable().optional(),
 }).passthrough();
 
 export function parseVideoPromptStructuredResponse(

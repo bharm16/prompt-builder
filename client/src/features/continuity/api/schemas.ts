@@ -1,17 +1,7 @@
 import { z } from 'zod';
-import type {
-  ContinuitySession,
-  ContinuitySessionSettings,
-  ContinuityShot,
-  ContinuityMode,
-  GenerationMode,
-  StyleReference,
-  FrameBridge,
-  SeedInfo,
-} from '../types';
 
-const GenerationModeSchema: z.ZodType<GenerationMode> = z.enum(['continuity', 'standard']);
-const ContinuityModeSchema: z.ZodType<ContinuityMode> = z.enum([
+const GenerationModeSchema = z.enum(['continuity', 'standard']);
+const ContinuityModeSchema = z.enum([
   'frame-bridge',
   'style-match',
   'native',
@@ -23,7 +13,7 @@ const ResolutionSchema = z.object({
   height: z.number(),
 });
 
-const StyleReferenceSchema: z.ZodType<StyleReference> = z
+const StyleReferenceSchema = z
   .object({
     id: z.string(),
     sourceVideoId: z.string().optional(),
@@ -43,7 +33,7 @@ const StyleReferenceSchema: z.ZodType<StyleReference> = z
   })
   .passthrough();
 
-const FrameBridgeSchema: z.ZodType<FrameBridge> = z
+const FrameBridgeSchema = z
   .object({
     id: z.string(),
     sourceVideoId: z.string(),
@@ -57,7 +47,7 @@ const FrameBridgeSchema: z.ZodType<FrameBridge> = z
   })
   .passthrough();
 
-const SeedInfoSchema: z.ZodType<SeedInfo> = z
+const SeedInfoSchema = z
   .object({
     seed: z.number(),
     provider: z.string(),
@@ -75,7 +65,7 @@ const CameraSchema = z
   })
   .partial();
 
-const ContinuityShotSchema: z.ZodType<ContinuityShot> = z
+const ContinuityShotSchema = z
   .object({
     id: z.string(),
     sessionId: z.string(),
@@ -117,7 +107,7 @@ const ContinuityShotSchema: z.ZodType<ContinuityShot> = z
   })
   .passthrough();
 
-const ContinuitySessionSettingsSchema: z.ZodType<ContinuitySessionSettings> = z
+const ContinuitySessionSettingsSchema = z
   .object({
     generationMode: GenerationModeSchema,
     defaultContinuityMode: ContinuityModeSchema,
@@ -149,14 +139,14 @@ const SceneProxySchema = z
   })
   .passthrough();
 
-const ContinuitySessionSchema: z.ZodType<ContinuitySession> = z
+const ContinuitySessionSchema = z
   .object({
     id: z.string(),
     userId: z.string(),
     name: z.string(),
     description: z.string().optional(),
-    primaryStyleReference: StyleReferenceSchema,
-    sceneProxy: SceneProxySchema.optional(),
+    primaryStyleReference: StyleReferenceSchema.nullable().optional(),
+    sceneProxy: SceneProxySchema.nullable().optional(),
     shots: z.array(ContinuityShotSchema),
     defaultSettings: ContinuitySessionSettingsSchema,
     status: z.enum(['active', 'completed', 'archived']),

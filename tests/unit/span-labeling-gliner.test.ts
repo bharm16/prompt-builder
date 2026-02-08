@@ -37,6 +37,29 @@ vi.mock('gliner/node', () => ({
 }));
 
 describe('gliner tier2 extraction', () => {
+  const setUseWorker = (
+    config: {
+      NEURO_SYMBOLIC: {
+        GLINER: { USE_WORKER: boolean; LABEL_THRESHOLDS: Record<string, number> };
+      };
+    },
+    enabled: boolean
+  ) => {
+    (config.NEURO_SYMBOLIC.GLINER as { USE_WORKER: boolean }).USE_WORKER = enabled;
+  };
+
+  const setLabelThresholds = (
+    config: {
+      NEURO_SYMBOLIC: {
+        GLINER: { USE_WORKER: boolean; LABEL_THRESHOLDS: Record<string, number> };
+      };
+    },
+    thresholds: Record<string, number>
+  ) => {
+    (config.NEURO_SYMBOLIC.GLINER as { LABEL_THRESHOLDS: Record<string, number> }).LABEL_THRESHOLDS =
+      thresholds;
+  };
+
   beforeEach(() => {
     mockExistsSync.mockReset();
     mockExistsSync.mockReturnValue(true);
@@ -45,8 +68,8 @@ describe('gliner tier2 extraction', () => {
 
   it('initializes and maps GLiNER entities to taxonomy spans', async () => {
     const { default: SpanLabelingConfig } = await import('@llm/span-labeling/config/SpanLabelingConfig');
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.USE_WORKER = false;
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.LABEL_THRESHOLDS = {};
+    setUseWorker(SpanLabelingConfig, false);
+    setLabelThresholds(SpanLabelingConfig, {});
 
     const { warmupGliner, extractOpenVocabulary } = await import('@llm/span-labeling/nlp/tier2/gliner');
 
@@ -61,8 +84,8 @@ describe('gliner tier2 extraction', () => {
 
   it('drops spans that do not meet per-label thresholds', async () => {
     const { default: SpanLabelingConfig } = await import('@llm/span-labeling/config/SpanLabelingConfig');
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.USE_WORKER = false;
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.LABEL_THRESHOLDS = { person: 0.9 };
+    setUseWorker(SpanLabelingConfig, false);
+    setLabelThresholds(SpanLabelingConfig, { person: 0.9 });
 
     const { warmupGliner, extractOpenVocabulary } = await import('@llm/span-labeling/nlp/tier2/gliner');
 

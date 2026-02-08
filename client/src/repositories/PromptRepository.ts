@@ -211,22 +211,23 @@ export class PromptRepository {
     if (!session?.prompt) return null;
     this.rememberSessionId(session.prompt.uuid ?? undefined, session.id);
     const prompt = session.prompt;
-    return {
+    const mapped: PromptHistoryEntry = {
       id: session.id,
-      uuid: prompt.uuid ?? undefined,
       timestamp: session.updatedAt,
       title: prompt.title ?? null,
       input: prompt.input,
       output: prompt.output,
       score: prompt.score ?? null,
-      mode: prompt.mode,
       targetModel: prompt.targetModel ?? null,
       generationParams: (prompt.generationParams as Record<string, unknown>) ?? null,
       keyframes: (prompt.keyframes as PromptKeyframe[]) ?? null,
       brainstormContext: (prompt.brainstormContext as Record<string, unknown>) ?? null,
       highlightCache: (prompt.highlightCache as Record<string, unknown>) ?? null,
-      versions: (prompt.versions as PromptVersionEntry[]) ?? [],
+      versions: ((prompt.versions as unknown as PromptVersionEntry[] | undefined) ?? []),
+      ...(prompt.uuid ? { uuid: prompt.uuid } : {}),
+      ...(prompt.mode ? { mode: prompt.mode } : {}),
     };
+    return mapped;
   }
 
   private async resolveSessionId(sessionIdOrUuid: string): Promise<string> {

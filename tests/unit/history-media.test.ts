@@ -5,7 +5,7 @@ import {
   hasVideoArtifact,
   isRecentEntry,
 } from '@features/history/utils/historyMedia';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 
 const createEntry = (overrides: Partial<PromptHistoryEntry> = {}): PromptHistoryEntry => ({
   input: 'input',
@@ -13,8 +13,19 @@ const createEntry = (overrides: Partial<PromptHistoryEntry> = {}): PromptHistory
   ...overrides,
 });
 
+const createVersionEntry = (overrides: Partial<PromptVersionEntry> = {}): PromptVersionEntry => {
+  const base: PromptVersionEntry = {
+    versionId: 'v1',
+    signature: 'sig',
+    prompt: 'prompt',
+    timestamp: '2024-05-01T00:00:00.000Z',
+  };
+  return { ...base, ...overrides };
+};
+
 describe('historyMedia', () => {
   const baseTime = new Date('2024-05-10T12:00:00Z');
+  const generatedAt = '2024-05-01T00:00:00.000Z';
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -29,8 +40,8 @@ describe('historyMedia', () => {
     it('returns null when no preview images are available', () => {
       const entry = createEntry({
         versions: [
-          { preview: { imageUrl: '   ' } },
-          { preview: { imageUrl: '' } },
+          createVersionEntry({ preview: { generatedAt, imageUrl: '   ' } }),
+          createVersionEntry({ versionId: 'v2', preview: { generatedAt, imageUrl: '' } }),
         ],
       });
 
@@ -38,7 +49,7 @@ describe('historyMedia', () => {
     });
 
     it('returns false when timestamps are missing or invalid', () => {
-      expect(isRecentEntry(createEntry({ timestamp: undefined }))).toBe(false);
+      expect(isRecentEntry(createEntry())).toBe(false);
       expect(isRecentEntry(createEntry({ timestamp: 'not-a-date' }))).toBe(false);
     });
   });
@@ -47,9 +58,9 @@ describe('historyMedia', () => {
     it('returns the most recent valid preview image', () => {
       const entry = createEntry({
         versions: [
-          { preview: { imageUrl: 'https://cdn.example.com/first.png' } },
-          { preview: { imageUrl: '  ' } },
-          { preview: { imageUrl: 'https://cdn.example.com/last.png' } },
+          createVersionEntry({ preview: { generatedAt, imageUrl: 'https://cdn.example.com/first.png' } }),
+          createVersionEntry({ versionId: 'v2', preview: { generatedAt, imageUrl: '  ' } }),
+          createVersionEntry({ versionId: 'v3', preview: { generatedAt, imageUrl: 'https://cdn.example.com/last.png' } }),
         ],
       });
 
@@ -67,8 +78,8 @@ describe('historyMedia', () => {
     it('detects video artifacts with trimmed URLs', () => {
       const entry = createEntry({
         versions: [
-          { video: { videoUrl: '   ' } },
-          { video: { videoUrl: ' https://cdn.example.com/video.mp4 ' } },
+          createVersionEntry({ video: { generatedAt, videoUrl: '   ' } }),
+          createVersionEntry({ versionId: 'v2', video: { generatedAt, videoUrl: ' https://cdn.example.com/video.mp4 ' } }),
         ],
       });
 

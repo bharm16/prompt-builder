@@ -9,6 +9,7 @@ import { SAMPLE_PROMPT, SAMPLE_SPANS } from './fixtures/testPrompts';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { VideoAvailabilitySnapshot, VideoAvailabilitySnapshotModel } from '@services/video-generation/types';
+import type { LLMSpan } from '@llm/span-labeling/types';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
 
 vi.mock('@llm/span-labeling/SpanLabelingService', () => ({
@@ -23,8 +24,12 @@ describe('ModelIntelligenceService (integration)', () => {
   });
 
   it('generates recommendations using labeled spans', async () => {
+    const spans: LLMSpan[] = SAMPLE_SPANS.map((span) => ({
+      ...span,
+      role: span.role ?? 'subject',
+    }));
     mockedLabelSpans.mockResolvedValue({
-      spans: SAMPLE_SPANS,
+      spans,
       meta: { version: 'test', notes: 'mocked' },
     });
 

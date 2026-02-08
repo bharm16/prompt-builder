@@ -47,8 +47,8 @@ interface UseHistoryPersistenceReturn {
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
     keyframes?: PromptHistoryEntry['keyframes'],
-    brainstormContext?: unknown,
-    highlightCache?: unknown,
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<SaveResult | null>;
@@ -61,7 +61,7 @@ interface UseHistoryPersistenceReturn {
   }) => SaveResult;
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
-  updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
+  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown> | null) => void;
   updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   clearHistory: () => Promise<void>;
@@ -201,8 +201,8 @@ export function useHistoryPersistence({
       targetModel: string | null = null,
       generationParams: Record<string, unknown> | null = null,
       keyframes: PromptHistoryEntry['keyframes'] = null,
-      brainstormContext: unknown = null,
-      highlightCache: unknown = null,
+      brainstormContext: Record<string, unknown> | null = null,
+      highlightCache: Record<string, unknown> | null = null,
       existingUuid: string | null = null,
       title: string | null = null
     ): Promise<SaveResult | null> => {
@@ -330,7 +330,11 @@ export function useHistoryPersistence({
       }
 
       updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist prompt update', error as Error, { uuid, docId });
+        log.warn('Failed to persist prompt update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
       });
 
       const localUpdates: Partial<PromptHistoryEntry> = {};
@@ -347,11 +351,15 @@ export function useHistoryPersistence({
   );
 
   const updateEntryHighlight = useCallback(
-    (uuid: string, highlightCache: unknown) => {
+    (uuid: string, highlightCache: Record<string, unknown> | null) => {
       const entry = historyRef.current.find((item) => item.uuid === uuid);
       const docId = entry?.id ?? null;
       updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist highlight update', error as Error, { uuid, docId });
+        log.warn('Failed to persist highlight update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
       });
       updateEntry(uuid, { highlightCache: highlightCache ?? null });
     },
@@ -361,7 +369,11 @@ export function useHistoryPersistence({
   const updateEntryOutput = useCallback(
     (uuid: string, docId: string | null, output: string) => {
       updateOutput(user?.uid, uuid, docId, output)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist output update', error as Error, { uuid, docId });
+        log.warn('Failed to persist output update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
       });
       updateEntry(uuid, { output });
     },

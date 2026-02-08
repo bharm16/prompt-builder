@@ -60,6 +60,9 @@ const buildCacheKey = (req: MediaUrlRequest): string => {
   return `${req.kind}|unknown`;
 };
 
+const withFallbackUrl = (result: MediaUrlResult, fallbackUrl: string | null): MediaUrlResult =>
+  result.url ? result : { ...result, url: fallbackUrl };
+
 const resolveViaStoragePath = async (storagePath: string): Promise<MediaUrlResult> => {
   const data = (await storageApi.getViewUrl(storagePath)) as {
     viewUrl?: string;
@@ -173,24 +176,24 @@ export async function resolveMediaUrl(req: MediaUrlRequest): Promise<MediaUrlRes
     return await existing;
   }
 
-  const task = (async () => {
+  const task: Promise<MediaUrlResult> = (async (): Promise<MediaUrlResult> => {
     try {
       if (resolvedReq.storagePath) {
         const normalizedPath = resolvedReq.storagePath;
         if (normalizedPath.startsWith('users/')) {
           const result = await resolveViaStoragePath(normalizedPath);
-          return result.url ? result : { ...result, url: resolvedReq.url ?? null };
+          return withFallbackUrl(result, resolvedReq.url ?? null);
         }
         const assetId = normalizedPath.split('/').filter(Boolean).pop();
         if (assetId) {
           const result = await resolveViaAssetId(assetId, resolvedReq.kind);
-          return result.url ? result : { ...result, url: resolvedReq.url ?? null };
+          return withFallbackUrl(result, resolvedReq.url ?? null);
         }
       }
 
       if (resolvedReq.assetId) {
         const result = await resolveViaAssetId(resolvedReq.assetId, resolvedReq.kind);
-        return result.url ? result : { ...result, url: resolvedReq.url ?? null };
+        return withFallbackUrl(result, resolvedReq.url ?? null);
       }
 
       if (resolvedReq.url) {

@@ -15,7 +15,8 @@ import { generateStoragePath, validatePathOwnership } from './utils/pathUtils';
 import { createForbiddenError } from './utils/httpError';
 
 function normalizeContentType(value: string): string {
-  return value.split(';')[0]?.trim().toLowerCase();
+  const [primary] = value.split(';');
+  return (primary ?? '').trim().toLowerCase();
 }
 
 function resolveExtension(contentType: string): string {
@@ -499,9 +500,9 @@ export class StorageService {
 
         return {
           storagePath,
-          sizeBytes: Number.parseInt(metadata.size || '0', 10),
+          sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
           contentType: metadata.contentType,
-          createdAt: metadata.timeCreated,
+          createdAt: metadata.timeCreated ?? new Date().toISOString(),
           updatedAt: metadata.updated,
           metadata: metadata.metadata || {},
         };

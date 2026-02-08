@@ -4,6 +4,7 @@ import { extractUserId } from '@utils/requestHelpers';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PromptOptimizationServiceContract } from '../types';
 import { promptSchema } from '@config/schemas/promptSchemas';
+import { normalizeContext, normalizeLockedSpans, normalizeTargetModel } from './requestNormalization';
 
 export const createOptimizeHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -33,10 +34,10 @@ export const createOptimizeHandler = (
       });
     }
 
-    const {
-      prompt,
-      mode,
-      targetModel,
+	    const {
+	      prompt,
+	      mode,
+	      targetModel,
       context,
       brainstormContext,
       generationParams,
@@ -44,16 +45,19 @@ export const createOptimizeHandler = (
       lockedSpans,
       startImage,
       constraintMode,
-      sourcePrompt,
-    } = parsed.data;
+	      sourcePrompt,
+	    } = parsed.data;
+	    const normalizedTargetModel = normalizeTargetModel(targetModel);
+	    const normalizedContext = normalizeContext(context);
+	    const normalizedLockedSpans = normalizeLockedSpans(lockedSpans);
 
-    const { normalizedGenerationParams, error } = normalizeGenerationParams({
-      generationParams,
-      targetModel,
-      operation,
-      requestId,
-      userId,
-    });
+	    const { normalizedGenerationParams, error } = normalizeGenerationParams({
+	      generationParams,
+	      operation,
+	      requestId,
+	      ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+	      ...(userId ? { userId } : {}),
+	    });
     if (error) {
       return res
         .status(error.status)
@@ -65,31 +69,34 @@ export const createOptimizeHandler = (
       requestId,
       userId,
       promptLength: prompt?.length || 0,
-      mode,
-      targetModel,
-      hasContext: !!context,
-      hasBrainstormContext: !!brainstormContext,
-      generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
-      skipCache: !!skipCache,
-      lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
-      hasStartImage: typeof startImage === 'string' && startImage.length > 0,
-      constraintMode,
-    });
+	      mode,
+	      targetModel: normalizedTargetModel,
+	      hasContext: !!normalizedContext,
+	      hasBrainstormContext: !!brainstormContext,
+	      generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
+	      skipCache: !!skipCache,
+	      lockedSpanCount: normalizedLockedSpans.length,
+	      hasStartImage: typeof startImage === 'string' && startImage.length > 0,
+	      constraintMode,
+	    });
 
-    try {
-      const result = await promptOptimizationService.optimize({
-        prompt,
-        mode,
-        targetModel,
-        context,
-        brainstormContext,
-        generationParams: normalizedGenerationParams,
-        skipCache,
-        lockedSpans,
-        startImage,
-        constraintMode,
-        sourcePrompt,
-      });
+	    try {
+	      const optimizeRequest = {
+	        prompt,
+	        mode,
+	        context: normalizedContext,
+	        brainstormContext: brainstormContext ?? null,
+	        generationParams: normalizedGenerationParams,
+	        skipCache,
+	        lockedSpans: normalizedLockedSpans,
+	        ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+	        ...(typeof startImage === 'string' && startImage.length > 0 ? { startImage } : {}),
+	        ...(constraintMode !== undefined ? { constraintMode } : {}),
+	        ...(typeof sourcePrompt === 'string' && sourcePrompt.length > 0
+	          ? { sourcePrompt }
+	          : {}),
+	      };
+	      const result = await promptOptimizationService.optimize(optimizeRequest);
 
       logger.info('Optimize request completed', {
         operation,

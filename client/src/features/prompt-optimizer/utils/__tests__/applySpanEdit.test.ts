@@ -52,7 +52,7 @@ describe('applySpanEditToPrompt', () => {
     });
 
     it('returns null when replacement produces identical prompt', () => {
-      mockedRelocate.mockReturnValue({ start: 0, end: 5 });
+      mockedRelocate.mockReturnValue({ start: 0, end: 5, exact: true });
       const result = applySpanEditToPrompt({
         prompt: 'hello world',
         edit: { type: 'replaceSpanText', replacementText: 'hello' },
@@ -64,7 +64,7 @@ describe('applySpanEditToPrompt', () => {
 
   describe('quote derivation priority', () => {
     it('uses span.quote when available', () => {
-      mockedRelocate.mockReturnValue({ start: 0, end: 5 });
+      mockedRelocate.mockReturnValue({ start: 0, end: 5, exact: true });
       applySpanEditToPrompt({
         prompt: 'hello world',
         edit: { type: 'replaceSpanText', replacementText: 'hi' },
@@ -76,7 +76,7 @@ describe('applySpanEditToPrompt', () => {
     });
 
     it('falls back to span.text when no quote', () => {
-      mockedRelocate.mockReturnValue({ start: 0, end: 5 });
+      mockedRelocate.mockReturnValue({ start: 0, end: 5, exact: true });
       applySpanEditToPrompt({
         prompt: 'hello world',
         edit: { type: 'replaceSpanText', replacementText: 'hi' },
@@ -88,7 +88,7 @@ describe('applySpanEditToPrompt', () => {
     });
 
     it('falls back to edit.anchorQuote when no span text', () => {
-      mockedRelocate.mockReturnValue({ start: 0, end: 5 });
+      mockedRelocate.mockReturnValue({ start: 0, end: 5, exact: true });
       applySpanEditToPrompt({
         prompt: 'hello world',
         edit: { type: 'replaceSpanText', replacementText: 'hi', anchorQuote: 'hello' },
@@ -101,7 +101,7 @@ describe('applySpanEditToPrompt', () => {
 
   describe('core behavior — replaceSpanText', () => {
     it('replaces matched text and returns new prompt with positions', () => {
-      mockedRelocate.mockReturnValue({ start: 6, end: 11 });
+      mockedRelocate.mockReturnValue({ start: 6, end: 11, exact: true });
       const result = applySpanEditToPrompt({
         prompt: 'hello world today',
         edit: { type: 'replaceSpanText', replacementText: 'earth' },
@@ -115,7 +115,7 @@ describe('applySpanEditToPrompt', () => {
 
   describe('core behavior — removeSpan', () => {
     it('removes the matched text (replaces with empty string)', () => {
-      mockedRelocate.mockReturnValue({ start: 5, end: 11 });
+      mockedRelocate.mockReturnValue({ start: 5, end: 11, exact: true });
       const result = applySpanEditToPrompt({
         prompt: 'hello world today',
         edit: { type: 'removeSpan' },

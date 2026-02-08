@@ -29,7 +29,7 @@ export function useShotGenerations({
 
   const sequenceGenerationVersionId = useMemo(() => {
     if (!currentShot) return null;
-    const versions = (currentShot.versions as PromptVersionEntry[] | undefined) ?? [];
+    const versions = (currentShot.versions as unknown as PromptVersionEntry[] | undefined) ?? [];
     const existing = versions.length ? versions[versions.length - 1]?.versionId : undefined;
     return existing ?? `shot-${currentShot.id}`;
   }, [currentShot]);
@@ -69,7 +69,7 @@ export function useShotGenerations({
 
   const sequenceVersions = useMemo<PromptVersionEntry[]>(() => {
     if (!currentShot) return [];
-    const existing = (currentShot.versions ?? []) as PromptVersionEntry[];
+    const existing = (currentShot.versions ?? []) as unknown as PromptVersionEntry[];
     if (existing.length > 0) {
       if (
         sequenceGenerations.length > 0 &&
@@ -138,7 +138,10 @@ export function useShotGenerations({
   const updateShotVersions = useCallback(
     (versions: PromptVersionEntry[]) => {
       if (!shotId) return;
-      void updateShot(shotId, { versions });
+      const normalizedVersions = versions as unknown as NonNullable<UpdateShotInput['versions']>;
+      void updateShot(shotId, {
+        versions: normalizedVersions,
+      });
     },
     [shotId, updateShot]
   );

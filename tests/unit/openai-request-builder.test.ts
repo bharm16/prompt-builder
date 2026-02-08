@@ -57,8 +57,9 @@ describe('OpenAiRequestBuilder', () => {
       const payload = builder.buildPayload(systemPrompt, {
         schema: { type: 'object' },
       });
+      const responseFormat = payload.response_format as { type?: string } | undefined;
 
-      expect(payload.response_format?.type).toBe('json_schema');
+      expect(responseFormat?.type).toBe('json_schema');
       expect(payload.frequency_penalty).toBe(0);
       expect(payload.temperature).toBe(0);
       expect(payload.top_p).toBe(1);

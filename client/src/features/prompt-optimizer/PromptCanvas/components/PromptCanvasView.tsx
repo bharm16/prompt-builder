@@ -145,7 +145,7 @@ export interface PromptCanvasViewProps {
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
   onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
-  i2vContext?: I2VContext | null;
+  i2vContext?: I2VContext | null | undefined;
   coherenceIssues?: CoherenceIssue[] | undefined;
   isCoherenceChecking?: boolean | undefined;
   isCoherencePanelExpanded?: boolean | undefined;

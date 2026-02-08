@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { ReactElement } from 'react';
 import {
   computeKeyboardHint,
   getCompatibilityStyles,
@@ -54,7 +55,8 @@ describe('suggestionHelpers', () => {
         throw new Error('Expected badge to render');
       }
 
-      const children = badge.props.children;
+      const badgeElement = badge as ReactElement<{ children?: unknown }>;
+      const children = badgeElement.props.children;
       expect(Array.isArray(children)).toBe(true);
 
       const spanChild = (children as Array<{ type?: string; props?: { children?: string } }>).find(

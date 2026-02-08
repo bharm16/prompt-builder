@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Span } from '@opentelemetry/api';
 import { TracingService, traced, tracingService } from '../TracingService';
 
 const telemetry = vi.hoisted(() => {
@@ -223,7 +224,7 @@ describe('TracingService', () => {
     it('wraps methods with traced decorator and forwards attributes', async () => {
       const traceAsyncSpy = vi
         .spyOn(tracingService, 'traceAsync')
-        .mockImplementation(async (_name, fn) => await fn(telemetry.span));
+        .mockImplementation(async (_name, fn) => await fn(telemetry.span as unknown as Span));
 
       class Demo {
         async work(value: string) {

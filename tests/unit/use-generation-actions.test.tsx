@@ -40,6 +40,8 @@ const mockWaitForVideoJob = vi.mocked(waitForVideoJob);
 const mockBuildGeneration = vi.mocked(buildGeneration);
 const mockResolveGenerationOptions = vi.mocked(resolveGenerationOptions);
 const mockResolveAssetPrompt = vi.mocked(assetApi.resolve);
+type ResolvedPromptPayload = Awaited<ReturnType<typeof assetApi.resolve>>;
+type ResolvedAsset = ResolvedPromptPayload['assets'][number];
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-1',
@@ -56,6 +58,21 @@ const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   error: null,
   ...overrides,
 });
+
+const createAsset = (overrides: Partial<ResolvedAsset> = {}): ResolvedAsset => ({
+  id: overrides.id ?? 'asset-1',
+  userId: overrides.userId ?? 'user-1',
+  type: overrides.type ?? 'character',
+  trigger: overrides.trigger ?? '@hero',
+  name: overrides.name ?? 'Hero',
+  textDefinition: overrides.textDefinition ?? 'Hero character',
+  referenceImages: overrides.referenceImages ?? [],
+  usageCount: overrides.usageCount ?? 0,
+  lastUsedAt: overrides.lastUsedAt ?? null,
+  createdAt: overrides.createdAt ?? '2024-01-01T00:00:00Z',
+  updatedAt: overrides.updatedAt ?? '2024-01-01T00:00:00Z',
+  ...overrides,
+}) as ResolvedAsset;
 
 describe('useGenerationActions', () => {
   beforeEach(() => {
@@ -211,18 +228,19 @@ describe('useGenerationActions', () => {
   describe('core behavior', () => {
     it('resolves trigger prompts before WAN compile and forwards characterAssetId', async () => {
       const dispatch = vi.fn();
-      mockResolveAssetPrompt.mockResolvedValue({
+      const resolvedPrompt: Awaited<ReturnType<typeof assetApi.resolve>> = {
         originalText: '@matt walks through a neon alley',
         expandedText: 'Matt Harmon walks through a neon alley',
-        assets: [{ id: 'char-1' } as unknown as { id: string }],
-        characters: [{ id: 'char-1' } as unknown as { id: string }],
+        assets: [createAsset({ id: 'char-1' })],
+        characters: [createAsset({ id: 'char-1' })],
         styles: [],
         locations: [],
         objects: [],
         requiresKeyframe: true,
         negativePrompts: [],
         referenceImages: [],
-      } as Awaited<ReturnType<typeof assetApi.resolve>>);
+      };
+      mockResolveAssetPrompt.mockResolvedValue(resolvedPrompt);
       mockCompileWanPrompt.mockResolvedValue('compiled expanded prompt');
       mockGenerateVideoPreview.mockResolvedValue({
         success: true,

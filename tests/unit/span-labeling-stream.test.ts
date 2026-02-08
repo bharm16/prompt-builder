@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type MockedFunction } from 'vitest';
 
 import { readSpanLabelStream } from '@features/span-highlighting/api/spanLabelingStream';
 import type { SpanLabel } from '@features/span-highlighting/api/spanLabelingTypes';
@@ -17,7 +17,7 @@ describe('readSpanLabelStream', () => {
         return { done: false, value };
       },
       releaseLock: vi.fn(),
-    } as ReadableStreamDefaultReader<Uint8Array>;
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
   };
 
   it('parses spans and counts parse errors', async () => {
@@ -29,7 +29,7 @@ describe('readSpanLabelStream', () => {
     ];
 
     const reader = createReader(lines);
-    const onChunk = vi.fn<[SpanLabel], void>();
+    const onChunk: MockedFunction<(span: SpanLabel) => void> = vi.fn();
     const log = { debug: vi.fn(), warn: vi.fn() };
 
     const result = await readSpanLabelStream(reader, onChunk, log, {

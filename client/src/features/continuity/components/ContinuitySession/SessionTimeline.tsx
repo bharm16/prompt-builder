@@ -32,9 +32,9 @@ export function SessionTimeline({
           key={shot.id}
           shot={shot}
           isSelected={selectedShotId === shot.id}
-          onSelect={onSelectShot}
-          onGenerate={onGenerateShot}
-          onView={onViewAsset}
+          {...(onSelectShot ? { onSelect: onSelectShot } : {})}
+          {...(onGenerateShot ? { onGenerate: onGenerateShot } : {})}
+          {...(onViewAsset ? { onView: onViewAsset } : {})}
         />
       ))}
     </div>

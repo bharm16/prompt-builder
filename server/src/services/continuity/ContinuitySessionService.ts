@@ -182,7 +182,7 @@ export class ContinuitySessionService {
       characterAssetId?: ContinuityShot['characterAssetId'] | null;
       faceStrength?: ContinuityShot['faceStrength'];
       camera?: ContinuityShot['camera'];
-      versions?: Array<Record<string, unknown>>;
+      versions?: ContinuityShot['versions'];
     }
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
@@ -193,11 +193,8 @@ export class ContinuitySessionService {
     const shot = session.shots[shotIndex]!;
     let nextVersions = updates.versions;
     if (updates.versions !== undefined) {
-      const enforced = enforceImmutableVersions(
-        shot.versions ?? null,
-        updates.versions as ContinuityShot['versions']
-      );
-      nextVersions = enforced.versions as ContinuityShot['versions'] | null | undefined;
+      const enforced = enforceImmutableVersions(shot.versions ?? null, updates.versions ?? null);
+      nextVersions = enforced.versions ?? undefined;
       if (enforced.warnings.length) {
         this.log.warn('Preserved immutable media references during continuity shot update', {
           sessionId,
@@ -207,7 +204,7 @@ export class ContinuitySessionService {
       }
     }
 
-    const next: ContinuityShot = {
+    let next: ContinuityShot = {
       ...shot,
       ...(updates.prompt !== undefined ? { userPrompt: updates.prompt } : {}),
       ...(updates.continuityMode ? { continuityMode: updates.continuityMode } : {}),
@@ -215,15 +212,22 @@ export class ContinuitySessionService {
       ...(updates.styleReferenceId !== undefined ? { styleReferenceId: updates.styleReferenceId } : {}),
       ...(updates.styleStrength !== undefined ? { styleStrength: updates.styleStrength } : {}),
       ...(updates.modelId ? { modelId: updates.modelId } : {}),
-      ...(updates.characterAssetId !== undefined
-        ? updates.characterAssetId
-          ? { characterAssetId: updates.characterAssetId }
-          : { characterAssetId: undefined }
-        : {}),
       ...(updates.faceStrength !== undefined ? { faceStrength: updates.faceStrength } : {}),
       ...(updates.camera ? { camera: { ...(shot.camera ?? {}), ...updates.camera } } : {}),
-      ...(nextVersions !== undefined ? { versions: nextVersions as ContinuityShot['versions'] } : {}),
+      ...(nextVersions !== undefined ? { versions: nextVersions } : {}),
     };
+
+    if (updates.characterAssetId !== undefined) {
+      if (updates.characterAssetId) {
+        next = {
+          ...next,
+          characterAssetId: updates.characterAssetId,
+        };
+      } else {
+        const { characterAssetId: _unused, ...withoutCharacterAsset } = next;
+        next = withoutCharacterAsset;
+      }
+    }
 
     session.shots[shotIndex] = next;
     session.updatedAt = new Date();

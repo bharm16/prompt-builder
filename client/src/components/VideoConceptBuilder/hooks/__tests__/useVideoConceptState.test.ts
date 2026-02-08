@@ -74,7 +74,10 @@ describe('useVideoConceptState', () => {
 
       dispatchAction(dispatch, {
         type: 'APPLY_ELEMENTS',
-        payload: { subjectDescriptors: [' with scarf', ',glowing eyes'] },
+        payload: { subjectDescriptors: [' with scarf', ',glowing eyes'] } as Extract<
+          VideoConceptAction,
+          { type: 'APPLY_ELEMENTS' }
+        >['payload'],
       });
 
       expect(result.current[0].elements.subjectDescriptor1).toBe('with scarf');

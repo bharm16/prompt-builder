@@ -85,7 +85,7 @@ export const GenerationCard = memo(function GenerationCard({
     Boolean(onSelectFrame);
   const hasSelectedFrame =
     canSelectFrames &&
-    Boolean(selectedFrameUrl) &&
+    selectedFrameUrl !== null &&
     generation.mediaUrls.includes(selectedFrameUrl);
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
@@ -153,14 +153,14 @@ export const GenerationCard = memo(function GenerationCard({
           videoUrl={mediaUrl}
           videoStoragePath={mediaStoragePath}
           videoAssetId={primaryVideoAssetId}
-          thumbnailUrl={generation.thumbnailUrl ?? undefined}
+          thumbnailUrl={generation.thumbnailUrl ?? null}
           thumbnailStoragePath={thumbnailStoragePath}
           isGenerating={isGenerating}
           progressPercent={progressPercent}
           tier={generation.tier}
           modelLabel={config?.label ?? generation.model}
           isFailed={isFailed}
-          failedMessage={generation.error}
+          {...(generation.error !== undefined ? { failedMessage: generation.error } : {})}
           onRetry={showRetry && onRetry ? () => onRetry(generation) : undefined}
           onCancel={isGenerating && onCancel ? () => onCancel(generation) : undefined}
           onDelete={onDelete ? () => onDelete(generation) : undefined}
@@ -236,10 +236,7 @@ export const GenerationCard = memo(function GenerationCard({
         )}
         {showContinueScene && (
           <ContinueSceneButton
-            onClick={(event) => {
-              event.stopPropagation();
-              onContinueSequence?.(generation);
-            }}
+            onClick={() => onContinueSequence?.(generation)}
             disabled={!continuitySourceId || isStartingSequence}
             isLoading={isStartingSequence}
             label="Continue as Sequence"

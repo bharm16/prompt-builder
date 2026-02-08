@@ -36,10 +36,10 @@ const DepthEstimationRequestSchema = z.object({
   imageUrl: z.string().url('Invalid image URL'),
 });
 
-interface RequestWithUser extends Request {
+type RequestWithUser = Request & {
   user?: { uid?: string };
   id?: string;
-}
+};
 
 interface DepthEstimationSuccessPayload {
   depthMapUrl: string | null;

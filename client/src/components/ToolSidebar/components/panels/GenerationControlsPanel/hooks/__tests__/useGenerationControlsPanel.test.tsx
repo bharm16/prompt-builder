@@ -65,8 +65,13 @@ const buildBaseProps = (
   ...overrides,
 });
 
+type GenerationControlsStateOverrides = Partial<Omit<GenerationControlsState, 'domain' | 'ui'>> & {
+  domain?: Partial<GenerationControlsState['domain']>;
+  ui?: Partial<GenerationControlsState['ui']>;
+};
+
 const buildInitialState = (
-  overrides: Partial<GenerationControlsState> = {}
+  overrides: GenerationControlsStateOverrides = {}
 ): GenerationControlsState => ({
   ...DEFAULT_GENERATION_CONTROLS_STATE,
   ...overrides,
@@ -82,7 +87,7 @@ const buildInitialState = (
 
 const buildWrapper = (initialState?: GenerationControlsState) =>
   ({ children }: { children: ReactNode }) => (
-    <GenerationControlsStoreProvider initialState={initialState}>
+    <GenerationControlsStoreProvider {...(initialState ? { initialState } : {})}>
       <GenerationControlsProvider>{children}</GenerationControlsProvider>
     </GenerationControlsStoreProvider>
   );

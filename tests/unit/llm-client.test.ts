@@ -116,7 +116,7 @@ describe('LLMClient', () => {
     it('ignores ClientAbortError in circuit breaker error filter', () => {
       const adapter = createAdapter();
       const client = new LLMClient({ adapter, providerName: 'test' });
-      const breaker = (client as unknown as { breaker: FakeCircuitBreaker }).breaker;
+      const breaker = (client as unknown as { breaker: InstanceType<typeof FakeCircuitBreaker> }).breaker;
       const errorFilter = breaker.options.errorFilter as (err: Error) => boolean;
 
       expect(errorFilter(new ClientAbortError('client aborted'))).toBe(true);

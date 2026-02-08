@@ -40,8 +40,8 @@ export interface HighlightMetadata {
 }
 
 export interface ParseResult {
-  spans?: Array<{ id?: string; [key: string]: unknown }>;
-  [key: string]: unknown;
+  spans?: Array<{ id?: string | undefined }>;
+  displayText?: string;
 }
 
 /**

@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { useSharedPrompt } from '@components/SharedPrompt/hooks/useSharedPrompt';
-import { getPromptRepository } from '@repositories';
+import { getPromptRepository } from '@repositories/index';
 import { PromptContext } from '@/utils/PromptContext';
 import { logger } from '@/services/LoggingService';
 import { useToast } from '@components/Toast';
 
-vi.mock('@repositories', () => ({
+vi.mock('@repositories/index', () => ({
   getPromptRepository: vi.fn(),
 }));
 
@@ -27,14 +27,16 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
+const debugLogger = vi.hoisted(() => ({
+  logEffect: vi.fn(),
+  logAction: vi.fn(),
+  logError: vi.fn(),
+  startTimer: vi.fn(),
+  endTimer: vi.fn(),
+}));
+
 vi.mock('@hooks/useDebugLogger', () => ({
-  useDebugLogger: () => ({
-    logEffect: vi.fn(),
-    logAction: vi.fn(),
-    logError: vi.fn(),
-    startTimer: vi.fn(),
-    endTimer: vi.fn(),
-  }),
+  useDebugLogger: () => debugLogger,
 }));
 
 vi.mock('@components/Toast', () => ({
@@ -165,7 +167,6 @@ describe('useSharedPrompt', () => {
     });
 
     it('copies output to clipboard and resets copied state', async () => {
-      vi.useFakeTimers();
       const writeText = vi.fn().mockResolvedValue(undefined);
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText },
@@ -188,6 +189,8 @@ describe('useSharedPrompt', () => {
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
+
+      vi.useFakeTimers();
 
       await act(async () => {
         await result.current.handleCopy();

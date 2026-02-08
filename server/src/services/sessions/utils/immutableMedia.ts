@@ -162,14 +162,15 @@ const mergeGeneration = (
   const incomingIds = normalizeStringList(incoming.mediaAssetIds);
   if (existingIds.length) {
     if (!incomingIds.length || !listsEqual(existingIds, incomingIds)) {
-      warnings.push({
+      const warning: ImmutableMediaWarning = {
         scope: 'generation',
         field: 'mediaAssetIds',
         versionId,
-        generationId: isNonEmptyString(incoming.id) ? incoming.id : undefined,
         previous: existingIds,
         incoming: incomingIds.length ? incomingIds : null,
-      });
+        ...(isNonEmptyString(incoming.id) ? { generationId: incoming.id } : {}),
+      };
+      warnings.push(warning);
       next.mediaAssetIds = existingIds;
     }
   }
@@ -260,13 +261,13 @@ export function enforceImmutableVersions(
       warnings
     );
 
-    if (preview !== undefined) {
+    if (preview != null) {
       next.preview = preview;
     }
-    if (video !== undefined) {
+    if (video != null) {
       next.video = video;
     }
-    if (generations !== undefined) {
+    if (generations != null) {
       next.generations = generations;
     }
 

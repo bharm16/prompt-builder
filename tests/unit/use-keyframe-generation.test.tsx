@@ -106,7 +106,7 @@ describe('useKeyframeGeneration', () => {
 
       await waitFor(() => {
         expect(result.current.keyframes).toHaveLength(1);
-        expect(result.current.keyframes[0].imageUrl).toBe('latest');
+        expect(result.current.keyframes[0]?.imageUrl).toBe('latest');
       });
 
       first.resolve({
@@ -115,7 +115,7 @@ describe('useKeyframeGeneration', () => {
       } as Response);
 
       await waitFor(() => {
-        expect(result.current.keyframes[0].imageUrl).toBe('latest');
+        expect(result.current.keyframes[0]?.imageUrl).toBe('latest');
       });
     });
   });
@@ -138,7 +138,7 @@ describe('useKeyframeGeneration', () => {
 
       await waitFor(() => {
         expect(result.current.keyframes).toHaveLength(1);
-        expect(result.current.keyframes[0].imageUrl).toBe('frame-1');
+        expect(result.current.keyframes[0]?.imageUrl).toBe('frame-1');
         expect(result.current.error).toBeNull();
       });
     });

@@ -80,7 +80,7 @@ export class ConsistentVideoService {
         return { video, resolved };
       }
 
-      const primaryCharacter = resolved.characters[0];
+      const primaryCharacter = resolved.characters[0]!;
       const characterData = await this.assetService.getAssetForGeneration(
         userId,
         primaryCharacter.id

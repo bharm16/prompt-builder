@@ -144,7 +144,10 @@ describe('SpanLabelingApi', () => {
   });
 
   it('streams spans when reader is available', async () => {
-    const reader = { read: vi.fn(), releaseLock: vi.fn() } as ReadableStreamDefaultReader<Uint8Array>;
+    const reader = {
+      read: vi.fn(),
+      releaseLock: vi.fn(),
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
     const response = {
       ok: true,
       body: { getReader: () => reader },

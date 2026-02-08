@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveVersionTimestamp,
   isHighlightSnapshot,
-} from '@features/prompt-optimizer/PromptCanvas';
+} from '@features/prompt-optimizer/PromptCanvas/utils/versioning';
 
 describe('PromptCanvas helpers', () => {
   describe('resolveVersionTimestamp', () => {

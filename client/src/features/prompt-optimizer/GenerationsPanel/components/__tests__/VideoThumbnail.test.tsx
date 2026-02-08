@@ -84,7 +84,6 @@ describe('VideoThumbnail', () => {
       render(
         <VideoThumbnail
           videoUrl={null}
-          thumbnailUrl={undefined}
           isGenerating={false}
         />
       );

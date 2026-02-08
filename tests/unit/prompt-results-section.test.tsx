@@ -77,7 +77,7 @@ describe('PromptResultsSection', () => {
 
       mockUsePromptActions.mockReturnValue({
         handleCreateNew: vi.fn(),
-      } as ReturnType<typeof usePromptActions>);
+      } as unknown as ReturnType<typeof usePromptActions>);
 
       mockUsePromptServices.mockReturnValue({
         promptOptimizer: buildPromptOptimizer({
@@ -127,7 +127,7 @@ describe('PromptResultsSection', () => {
 
       mockUsePromptActions.mockReturnValue({
         handleCreateNew: vi.fn(),
-      } as ReturnType<typeof usePromptActions>);
+      } as unknown as ReturnType<typeof usePromptActions>);
 
       mockUsePromptServices.mockReturnValue({
         promptOptimizer: buildPromptOptimizer({

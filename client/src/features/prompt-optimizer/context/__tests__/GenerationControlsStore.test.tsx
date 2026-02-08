@@ -28,7 +28,12 @@ const SAMPLE_CAMERA_MOTION: CameraPath = {
   duration: 1,
 };
 
-const buildInitialState = (overrides: Partial<GenerationControlsState> = {}): GenerationControlsState => ({
+type GenerationControlsStateOverrides = Partial<Omit<GenerationControlsState, 'domain' | 'ui'>> & {
+  domain?: Partial<GenerationControlsState['domain']>;
+  ui?: Partial<GenerationControlsState['ui']>;
+};
+
+const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): GenerationControlsState => ({
   ...DEFAULT_GENERATION_CONTROLS_STATE,
   ...overrides,
   domain: {
@@ -43,7 +48,7 @@ const buildInitialState = (overrides: Partial<GenerationControlsState> = {}): Ge
 
 const buildWrapper = (initialState?: GenerationControlsState) =>
   ({ children }: { children: ReactNode }) => (
-    <GenerationControlsStoreProvider initialState={initialState}>
+    <GenerationControlsStoreProvider {...(initialState ? { initialState } : {})}>
       {children}
     </GenerationControlsStoreProvider>
   );

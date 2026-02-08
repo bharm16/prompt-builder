@@ -110,7 +110,8 @@ describe('VideoConceptApi', () => {
 
       expect(result.valid).toBe(true);
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [, options] = fetchMock.mock.calls[0];
+      const firstCall = fetchMock.mock.calls[0];
+      const options = firstCall?.[1];
       expect(options?.headers).toEqual(
         expect.objectContaining({
           'Content-Type': 'application/json',

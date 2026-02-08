@@ -33,7 +33,7 @@ describe('sceneChangeApi', () => {
   describe('error handling', () => {
     it('throws when fetch is unavailable', async () => {
       const globalWithFetch = global as { fetch?: typeof fetch };
-      globalWithFetch.fetch = undefined;
+      globalWithFetch.fetch = undefined as unknown as typeof fetch;
 
       await expect(detectSceneChange(request)).rejects.toThrow(
         'Fetch is not available in this environment.'

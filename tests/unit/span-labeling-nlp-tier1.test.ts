@@ -42,14 +42,18 @@ describe('closed vocabulary extraction', () => {
 });
 
 describe('merge and deduplicate spans', () => {
+  const setClosedVocabPriority = (value: boolean) => {
+    (SpanLabelingConfig.NEURO_SYMBOLIC.MERGE as { CLOSED_VOCAB_PRIORITY: boolean }).CLOSED_VOCAB_PRIORITY = value;
+  };
+
   const originalClosedPriority = SpanLabelingConfig.NEURO_SYMBOLIC.MERGE.CLOSED_VOCAB_PRIORITY;
 
   beforeEach(() => {
-    SpanLabelingConfig.NEURO_SYMBOLIC.MERGE.CLOSED_VOCAB_PRIORITY = true;
+    setClosedVocabPriority(true);
   });
 
   afterEach(() => {
-    SpanLabelingConfig.NEURO_SYMBOLIC.MERGE.CLOSED_VOCAB_PRIORITY = originalClosedPriority;
+    setClosedVocabPriority(originalClosedPriority);
   });
 
   it('prefers closed-vocabulary spans when overlapping with open vocab', () => {
@@ -79,8 +83,20 @@ describe('section header filtering', () => {
   it('filters spans that are section headers', () => {
     const text = '## Camera\nPan shot';
     const spans: NlpSpan[] = [
-      { text: 'Camera', start: text.indexOf('Camera'), end: text.indexOf('Camera') + 6, role: 'camera' },
-      { text: 'Pan shot', start: text.indexOf('Pan shot'), end: text.indexOf('Pan shot') + 8, role: 'camera.movement' },
+      {
+        text: 'Camera',
+        start: text.indexOf('Camera'),
+        end: text.indexOf('Camera') + 6,
+        role: 'camera',
+        confidence: 0.9,
+      },
+      {
+        text: 'Pan shot',
+        start: text.indexOf('Pan shot'),
+        end: text.indexOf('Pan shot') + 8,
+        role: 'camera.movement',
+        confidence: 0.9,
+      },
     ];
 
     const filtered = filterSectionHeaders(text, spans);
@@ -91,7 +107,13 @@ describe('section header filtering', () => {
   it('keeps spans that are not header contexts', () => {
     const text = 'The camera pans smoothly.';
     const spans: NlpSpan[] = [
-      { text: 'camera', start: text.indexOf('camera'), end: text.indexOf('camera') + 6, role: 'camera' },
+      {
+        text: 'camera',
+        start: text.indexOf('camera'),
+        end: text.indexOf('camera') + 6,
+        role: 'camera',
+        confidence: 0.9,
+      },
     ];
 
     const filtered = filterSectionHeaders(text, spans);

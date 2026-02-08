@@ -72,7 +72,8 @@ const extractOptimizationOptions = (value: unknown): OptimizationOptions | null 
 interface PromptOptimizer {
   inputPrompt: string;
   genericOptimizedPrompt?: string | null;
-  improvementContext: Record<string, unknown> | null;
+  improvementContext: unknown | null;
+  qualityScore: number | null;
   optimize: (
     prompt: string,
     context: Record<string, unknown> | null,
@@ -191,6 +192,7 @@ export function usePromptOptimization({
       const ctx =
         (normalizedContext as Record<string, unknown> | null | undefined) ||
         promptOptimizer.improvementContext;
+      const optimizationContext = (ctx as Record<string, unknown> | null | undefined) ?? null;
 
       // Serialize prompt context
       const serializedContext = promptContext
@@ -263,14 +265,14 @@ export function usePromptOptimization({
           ? await promptOptimizer.compile(
               resolvedCompilePrompt,
               effectiveTargetModel,
-              ctx
+              optimizationContext
             )
           : resolvedCompilePrompt
             ? { optimized: resolvedCompilePrompt, score: promptOptimizer.qualityScore }
             : null
         : await promptOptimizer.optimize(
             prompt,
-            ctx,
+            optimizationContext,
             brainstormContextData,
             effectiveTargetModel,
             {

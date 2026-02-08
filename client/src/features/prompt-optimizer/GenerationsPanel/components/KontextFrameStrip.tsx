@@ -61,7 +61,7 @@ export function KontextFrameStrip({
       setResolvedSlots((prev) => {
         const next = [...prev];
         changedIndices.forEach((index) => {
-          next[index] = slots[index];
+          next[index] = slots[index] ?? null;
           refreshAttemptedRef.current.delete(index);
         });
         return next;

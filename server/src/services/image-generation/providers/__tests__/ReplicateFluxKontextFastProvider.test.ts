@@ -105,7 +105,7 @@ describe('ReplicateFluxKontextFastProvider', () => {
       createPredictionMock.mockResolvedValueOnce({
         id: 'pred-1',
         status: 'succeeded',
-        output: [{}],
+        output: ['not-a-valid-url'],
       });
 
       const request: ImagePreviewRequest = {

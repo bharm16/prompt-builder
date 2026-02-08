@@ -37,7 +37,7 @@ describe('PromptActions', () => {
 
   describe('error handling', () => {
     it('disables generate when no supported model is selected', async () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: undefined } as ReturnType<typeof usePromptConfig>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: undefined } as unknown as ReturnType<typeof usePromptConfig>);
 
       render(<PromptActions {...baseProps} />);
 
@@ -48,7 +48,7 @@ describe('PromptActions', () => {
 
   describe('edge cases', () => {
     it('closes export menu when clicking outside', () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptConfig>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as unknown as ReturnType<typeof usePromptConfig>);
       const onToggleExportMenu = vi.fn();
 
       render(
@@ -67,7 +67,7 @@ describe('PromptActions', () => {
 
   describe('core behavior', () => {
     it('copies prompt and opens model URL for the selected model', async () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as ReturnType<typeof usePromptConfig>);
+      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as unknown as ReturnType<typeof usePromptConfig>);
       const user = userEvent.setup();
       const onCopy = vi.fn();
       const onToggleExportMenu = vi.fn();

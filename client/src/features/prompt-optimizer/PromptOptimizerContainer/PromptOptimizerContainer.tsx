@@ -455,7 +455,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
             displayedPrompt={promptOptimizer.displayedPrompt}
             optimizedPrompt={promptOptimizer.optimizedPrompt}
             selectedMode={selectedMode}
-            promptContext={stablePromptContext}
+            promptContext={stablePromptContext as unknown as Record<string, unknown> | null}
           />
         )}
       </div>

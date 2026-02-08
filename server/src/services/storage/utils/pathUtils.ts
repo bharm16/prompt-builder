@@ -22,7 +22,7 @@ export function generateStoragePath(userId: string, type: StorageType, extension
 
 export function extractUserIdFromPath(path: string): string | null {
   const match = path.match(/^users\/([^/]+)\//);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 export function validatePathOwnership(path: string, userId: string): boolean {

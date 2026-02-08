@@ -43,12 +43,17 @@ export function ModelRecommendation({
     isLoadingOverride !== undefined ||
     errorOverride !== undefined;
 
-  const { recommendation: fetchedRecommendation, isLoading: fetchedLoading, error: fetchedError } =
-    useModelRecommendation(prompt, {
+  const recommendationOptions = useMemo(
+    () => ({
       mode,
-      durationSeconds,
       enabled: !hasExternal && Boolean(prompt && prompt.trim().length > 0),
-    });
+      ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
+    }),
+    [durationSeconds, hasExternal, mode, prompt]
+  );
+
+  const { recommendation: fetchedRecommendation, isLoading: fetchedLoading, error: fetchedError } =
+    useModelRecommendation(prompt, recommendationOptions);
 
   const recommendation = hasExternal ? (recommendationOverride ?? null) : fetchedRecommendation;
   const isLoading = hasExternal ? Boolean(isLoadingOverride) : fetchedLoading;
@@ -58,11 +63,19 @@ export function ModelRecommendation({
   const efficient = recommendation?.alsoConsider;
   const filteredOut = recommendation?.filteredOut ?? [];
   const comparisonModels = recommendation?.suggestComparison ? recommendation?.comparisonModels : undefined;
+  const comparisonOptions = useMemo(
+    () => ({
+      ...(recommendation?.recommendations
+        ? { recommendations: recommendation.recommendations }
+        : {}),
+      ...(comparisonModels ? { comparisonModels } : {}),
+    }),
+    [comparisonModels, recommendation?.recommendations]
+  );
 
-  const { comparison, isOpen, openComparison, closeComparison } = useModelComparison({
-    recommendations: recommendation?.recommendations,
-    comparisonModels,
-  });
+  const { comparison, isOpen, openComparison, closeComparison } = useModelComparison(
+    comparisonOptions
+  );
 
   const lastTrackedRecommendationRef = useRef<string | null>(null);
 
@@ -75,9 +88,11 @@ export function ModelRecommendation({
       event: 'recommendation_viewed',
       recommendationId,
       promptId: recommendationId,
-      recommendedModelId: recommendation?.recommended?.modelId,
+      ...(recommendation?.recommended?.modelId
+        ? { recommendedModelId: recommendation.recommended.modelId }
+        : {}),
       mode,
-      durationSeconds,
+      ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
     });
   }, [durationSeconds, mode, recommendation?.promptId, recommendation?.recommended?.modelId]);
 
@@ -85,12 +100,15 @@ export function ModelRecommendation({
     (modelId: string) => {
       void trackModelRecommendationEvent({
         event: 'model_selected',
-        recommendationId: recommendation?.promptId,
-        promptId: recommendation?.promptId,
-        recommendedModelId: recommendation?.recommended?.modelId,
+        ...(recommendation?.promptId
+          ? { recommendationId: recommendation.promptId, promptId: recommendation.promptId }
+          : {}),
+        ...(recommendation?.recommended?.modelId
+          ? { recommendedModelId: recommendation.recommended.modelId }
+          : {}),
         selectedModelId: modelId,
         mode,
-        durationSeconds,
+        ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
       });
       onSelectModel(normalizeModelIdForSelection(modelId));
     },
@@ -248,11 +266,14 @@ export function ModelRecommendation({
             onClick={() => {
               void trackModelRecommendationEvent({
                 event: 'compare_opened',
-                recommendationId: recommendation?.promptId,
-                promptId: recommendation?.promptId,
-                recommendedModelId: recommendation?.recommended?.modelId,
+                ...(recommendation?.promptId
+                  ? { recommendationId: recommendation.promptId, promptId: recommendation.promptId }
+                  : {}),
+                ...(recommendation?.recommended?.modelId
+                  ? { recommendedModelId: recommendation.recommended.modelId }
+                  : {}),
                 mode,
-                durationSeconds,
+                ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
               });
               onCompareModels?.(comparisonModels);
               openComparison(comparisonModels);

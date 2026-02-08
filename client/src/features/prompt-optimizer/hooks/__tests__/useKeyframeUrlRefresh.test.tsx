@@ -16,7 +16,12 @@ vi.mock('@/services/media/MediaUrlResolver', () => ({
   resolveMediaUrl: vi.fn(),
 }));
 
-const buildInitialState = (overrides: Partial<GenerationControlsState> = {}): GenerationControlsState => ({
+type GenerationControlsStateOverrides = Partial<Omit<GenerationControlsState, 'domain' | 'ui'>> & {
+  domain?: Partial<GenerationControlsState['domain']>;
+  ui?: Partial<GenerationControlsState['ui']>;
+};
+
+const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): GenerationControlsState => ({
   ...DEFAULT_GENERATION_CONTROLS_STATE,
   ...overrides,
   domain: {

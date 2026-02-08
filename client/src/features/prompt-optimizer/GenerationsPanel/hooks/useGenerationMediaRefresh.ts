@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { resolveMediaUrl, type MediaUrlRequest } from '@/services/media/MediaUrlResolver';
 import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { logger } from '@/services/LoggingService';
 import type { Generation } from '../types';
@@ -12,7 +12,7 @@ const buildSignature = (generation: Generation): string =>
 const resolveAssetHints = (
   url: string | null | undefined,
   ref: string | null | undefined
-): { storagePath?: string | null; assetId?: string | null } => {
+): { storagePath: string | null; assetId: string | null } => {
   const normalizedRef = typeof ref === 'string' ? ref.trim() : '';
   const storagePath =
     normalizedRef && normalizedRef.startsWith('users/')
@@ -44,13 +44,14 @@ const resolveGenerationMedia = async (
     ? await Promise.all(
         generation.mediaUrls.map(async (url, index) => {
           const { storagePath, assetId } = resolveAssetHints(url, assetRefs?.[index] || null);
-          const result = await resolveMediaUrl({
+          const request: MediaUrlRequest = {
             kind: mediaKind,
             url,
-            storagePath,
-            assetId,
             preferFresh: true,
-          });
+            ...(storagePath !== null ? { storagePath } : { storagePath: null }),
+            ...(assetId !== null ? { assetId } : { assetId: null }),
+          };
+          const result = await resolveMediaUrl(request);
           return result.url ?? url;
         })
       )

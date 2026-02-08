@@ -31,7 +31,9 @@ describe('videoGenerate face swap preprocessing', () => {
       ...payload,
     }));
 
-    const reserveCreditsMock = vi.fn(async () => true);
+    const reserveCreditsMock = vi.fn(
+      async (_userId: string, _amount: number) => true
+    );
 
     const handler = createVideoGenerateHandler({
       videoGenerationService: {
@@ -138,7 +140,9 @@ describe('videoGenerate face swap preprocessing', () => {
       ...payload,
     }));
 
-    const reserveCreditsMock = vi.fn(async () => true);
+    const reserveCreditsMock = vi.fn(
+      async (_userId: string, _amount: number) => true
+    );
 
     const handler = createVideoGenerateHandler({
       videoGenerationService: {

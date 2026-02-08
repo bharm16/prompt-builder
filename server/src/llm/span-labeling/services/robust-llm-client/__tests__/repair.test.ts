@@ -5,6 +5,7 @@ const mockCallModel = vi.fn();
 const mockValidateSchema = vi.fn();
 const mockValidateSpans = vi.fn();
 const mockFormatValidationErrors = vi.fn(() => 'formatted errors');
+const normalizeParsedResponse = <T extends Record<string, unknown>>(value: T): T => value;
 
 vi.mock('../modelInvocation', () => ({
   callModel: (...args: unknown[]) => mockCallModel(...args),
@@ -44,8 +45,11 @@ const baseParams = {
     enableLogprobs: false,
   },
   providerName: 'openai',
-  parseResponseText: (_: string) => ({ ok: true, value: { spans: [], meta: { version: 'v1', notes: '' } } }),
-  normalizeParsedResponse: (value: Record<string, unknown>) => value,
+  parseResponseText: (_: string): { ok: true; value: { spans: never[]; meta: { version: string; notes: string } } } => ({
+    ok: true,
+    value: { spans: [], meta: { version: 'v1', notes: '' } },
+  }),
+  normalizeParsedResponse,
   injectDefensiveMeta: vi.fn(),
 };
 
@@ -62,7 +66,7 @@ describe('attemptRepair', () => {
       mockCallModel.mockResolvedValue({ text: 'bad', metadata: {} });
       const params = {
         ...baseParams,
-        parseResponseText: () => ({ ok: false, error: 'parse failed' }),
+        parseResponseText: (): { ok: false; error: string } => ({ ok: false, error: 'parse failed' }),
       };
 
       await expect(attemptRepair(params)).rejects.toThrow('parse failed');

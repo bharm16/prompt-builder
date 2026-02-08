@@ -14,16 +14,17 @@ vi.mock('@/config/api.config', () => ({
 
 describe('storageApi', () => {
   const mockBuildHeaders = vi.mocked(buildFirebaseAuthHeaders);
+  const fetchMock = vi.fn<typeof fetch>();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    global.fetch = fetchMock as typeof fetch;
   });
 
   describe('error handling', () => {
     it('throws the payload error message when response is not ok', async () => {
       mockBuildHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
-      (global.fetch as typeof fetch).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         json: async () => ({ error: 'No access' }),
       } as Response);
@@ -33,7 +34,7 @@ describe('storageApi', () => {
 
     it('falls back to a default error message when payload has no details', async () => {
       mockBuildHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
-      (global.fetch as typeof fetch).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         json: async () => ({}),
       } as Response);
@@ -45,7 +46,7 @@ describe('storageApi', () => {
   describe('edge cases', () => {
     it('builds query params for listFiles', async () => {
       mockBuildHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
-      (global.fetch as typeof fetch).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { items: [] } }),
       } as Response);
@@ -61,7 +62,7 @@ describe('storageApi', () => {
 
     it('includes filename in download URL query', async () => {
       mockBuildHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
-      (global.fetch as typeof fetch).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { downloadUrl: 'url' } }),
       } as Response);
@@ -79,7 +80,7 @@ describe('storageApi', () => {
   describe('core behavior', () => {
     it('returns data payloads on successful responses', async () => {
       mockBuildHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
-      (global.fetch as typeof fetch).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { viewUrl: 'https://example.com/view' } }),
       } as Response);

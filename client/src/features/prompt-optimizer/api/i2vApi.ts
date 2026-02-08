@@ -17,7 +17,7 @@ export interface ImageObservationResponse {
   durationMs: number;
 }
 
-const ImageObservationSchema: z.ZodType<ImageObservation> = z
+const ImageObservationSchema = z
   .object({
     imageHash: z.string().optional(),
     subject: z.object({
@@ -52,7 +52,7 @@ const ImageObservationSchema: z.ZodType<ImageObservation> = z
   })
   .passthrough();
 
-const ImageObservationResponseSchema: z.ZodType<ImageObservationResponse> = z
+const ImageObservationResponseSchema = z
   .object({
     success: z.boolean(),
     observation: ImageObservationSchema.optional(),
@@ -93,7 +93,7 @@ export async function observeImage(
   }
 
   const responsePayload = (await response.json()) as unknown;
-  return ImageObservationResponseSchema.parse(responsePayload);
+  return ImageObservationResponseSchema.parse(responsePayload) as ImageObservationResponse;
 }
 
 export const i2vApi = {

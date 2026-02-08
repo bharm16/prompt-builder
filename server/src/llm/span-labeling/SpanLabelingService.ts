@@ -165,7 +165,7 @@ function applyI2VFilterIfNeeded(
 
   const spans = Array.isArray(result.spans) ? result.spans : [];
   const filtered = spans.filter((span) =>
-    span?.category ? I2V_ALLOWED_CATEGORIES.has(span.category) : false
+    span?.role ? I2V_ALLOWED_CATEGORIES.has(span.role) : false
   );
 
   if (filtered.length === spans.length) {

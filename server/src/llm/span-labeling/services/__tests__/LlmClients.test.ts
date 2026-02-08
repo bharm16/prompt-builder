@@ -22,7 +22,8 @@ describe('LLM Clients', () => {
       const result = (client as unknown as { _postProcessResult: (r: LabelSpansResult) => LabelSpansResult })
         ._postProcessResult(baseResult);
 
-      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.logprobsAdjustment).toBe(false);
     });
   });
 
@@ -35,8 +36,9 @@ describe('LLM Clients', () => {
         });
 
       const span = (normalized.spans as Array<Record<string, unknown>>)[0];
-      expect(span.role).toBe('subject');
-      expect('category' in span).toBe(false);
+      expect(span).toBeDefined();
+      expect(span?.role).toBe('subject');
+      expect(span ? 'category' in span : false).toBe(false);
     });
   });
 
@@ -52,8 +54,10 @@ describe('LLM Clients', () => {
         ._postProcessResult(baseResult);
 
       expect(result.spans[0]?.confidence).toBe(0.4);
-      expect(result.spans[0]?._originalConfidence).toBe(0.9);
-      expect(result.meta._providerOptimizations.averageLogprobsConfidence).toBe(0.4);
+      const adjustedSpan = result.spans[0] as unknown as Record<string, unknown> | undefined;
+      expect(adjustedSpan?._originalConfidence).toBe(0.9);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.averageLogprobsConfidence).toBe(0.4);
       expect(result.meta._clientType).toBe('GroqLlmClient');
     });
 
@@ -62,8 +66,9 @@ describe('LLM Clients', () => {
       const result = (client as unknown as { _postProcessResult: (r: LabelSpansResult) => LabelSpansResult })
         ._postProcessResult(baseResult);
 
-      expect(result.meta._providerOptimizations.strictSchema).toBe(true);
-      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.strictSchema).toBe(true);
+      expect(providerOptimizations.logprobsAdjustment).toBe(false);
       expect(result.meta._clientType).toBe('OpenAILlmClient');
     });
 

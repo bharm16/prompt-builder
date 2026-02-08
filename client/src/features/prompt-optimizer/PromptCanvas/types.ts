@@ -8,6 +8,7 @@ import type { OptimizationOptions } from '../types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
+import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
 
 import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
@@ -57,13 +58,7 @@ export interface SuggestionPayload {
   offsets?: { start?: number; end?: number } | null;
   metadata?: Record<string, unknown> | null;
   trigger?: 'selection' | 'highlight' | 'bento-grid';
-  allLabeledSpans?: Array<{
-    start: number;
-    end: number;
-    category?: string;
-    confidence?: number;
-    [key: string]: unknown;
-  }>;
+  allLabeledSpans?: HighlightSpan[];
 }
 
 export interface SpanClickPayload {
@@ -197,19 +192,7 @@ export interface PromptCanvasProps {
   onCreateNew: () => void;
   initialHighlights?: HighlightSnapshot | null | undefined;
   initialHighlightsVersion?: number | undefined;
-  onHighlightsPersist?: ((result: {
-    spans: Array<{
-      start: number;
-      end: number;
-      category: string;
-      confidence: number;
-    }>;
-    meta: Record<string, unknown> | null;
-    signature: string;
-    cacheId?: string | null;
-    source?: string;
-    [key: string]: unknown;
-  }) => void) | undefined;
+  onHighlightsPersist?: ((result: SpanLabelingResult) => void) | undefined;
   onUndo?: (() => void) | undefined;
   onRedo?: (() => void) | undefined;
   canUndo?: boolean | undefined;

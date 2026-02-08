@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import { StoryboardPreviewService } from '../StoryboardPreviewService';
 import { STORYBOARD_FRAME_COUNT, BASE_PROVIDER, EDIT_PROVIDER } from '../constants';
 import { buildEditPrompt } from '../prompts';
@@ -25,7 +25,9 @@ const createServices = () => {
   const generatePreview = vi.spyOn(imageGenerationService, 'generatePreview');
 
   const adapter = {
-    complete: vi.fn<Promise<AIResponse>, [string, Record<string, unknown>?]>(),
+    complete: vi.fn() as MockedFunction<
+      (prompt: string, options?: Record<string, unknown>) => Promise<AIResponse>
+    >,
   };
   const llmClient = new LLMClient({ adapter, providerName: 'test-llm', defaultTimeout: 1000 });
   const storyboardFramePlanner = new StoryboardFramePlanner({ llmClient });
@@ -238,10 +240,15 @@ describe('StoryboardPreviewService', () => {
 
       const baseCall = generatePreview.mock.calls[0];
       const editCall = generatePreview.mock.calls[1];
+      const firstDelta = deltas[0];
 
       expect(baseCall?.[1]?.provider).toBe(BASE_PROVIDER);
       expect(baseCall?.[1]?.disablePromptTransformation).toBe(true);
-      expect(editCall?.[0]).toBe(buildEditPrompt('base prompt', deltas[0]));
+      expect(firstDelta).toBeDefined();
+      if (firstDelta === undefined) {
+        throw new Error('expected first storyboard delta');
+      }
+      expect(editCall?.[0]).toBe(buildEditPrompt('base prompt', firstDelta));
       expect(editCall?.[1]?.provider).toBe(EDIT_PROVIDER);
       expect(editCall?.[1]?.inputImageUrl).toBe('https://images.example.com/base-provider.webp');
       expect(editCall?.[1]?.seed).toBe(12);

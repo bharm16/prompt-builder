@@ -59,7 +59,7 @@ export class CameraMotionErrorBoundary extends Component<
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error for debugging
     log.error('CameraMotionErrorBoundary caught an error', error, {
       componentStack: errorInfo.componentStack,
@@ -81,7 +81,7 @@ export class CameraMotionErrorBoundary extends Component<
     });
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError) {
       // Render fallback content if provided
       if (this.props.fallback) {

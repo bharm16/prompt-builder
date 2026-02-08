@@ -4,25 +4,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { ToolRail } from '@components/ToolSidebar/components/ToolRail';
 import type { User } from '@hooks/types';
-import type { ActiveTool } from '@/contexts/AppShellContext';
 
 vi.mock(
   '@utils/cn',
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
-
-const appShellState = vi.hoisted(() => ({
-  activeTool: 'studio' as ActiveTool,
-  setActiveTool: vi.fn(),
-}));
-
-vi.mock('@/contexts/AppShellContext', () => ({
-  useAppShell: () => appShellState,
-}));
 
 const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['activePanel']; user: User | null; onPanelChange: (panel: Parameters<typeof ToolRail>[0]['activePanel']) => void; }) =>
   render(
@@ -33,8 +22,7 @@ const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['ac
 
 describe('ToolRail', () => {
   beforeEach(() => {
-    appShellState.activeTool = 'studio';
-    appShellState.setActiveTool.mockClear();
+    vi.clearAllMocks();
   });
 
   describe('error handling', () => {
@@ -72,17 +60,15 @@ describe('ToolRail', () => {
   });
 
   describe('edge cases', () => {
-    it('marks Create as active when active tool is create', () => {
-      appShellState.activeTool = 'create';
-
+    it('marks Tool as active when active panel is studio', () => {
       renderToolRail({
-        activePanel: 'sessions',
+        activePanel: 'studio',
         user: null,
         onPanelChange: vi.fn(),
       });
 
-      const createButton = screen.getByRole('button', { name: 'Create' });
-      expect(createButton).toHaveAttribute('aria-pressed', 'true');
+      const toolButton = screen.getByRole('button', { name: 'Tool' });
+      expect(toolButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('marks Chars as active when active panel is characters', () => {
@@ -98,7 +84,7 @@ describe('ToolRail', () => {
   });
 
   describe('core behavior', () => {
-    it('switches to create tool when Create is clicked', () => {
+    it('switches to studio panel when Tool is clicked', () => {
       const onPanelChange = vi.fn();
 
       renderToolRail({
@@ -107,11 +93,10 @@ describe('ToolRail', () => {
         onPanelChange,
       });
 
-      const createButton = screen.getByRole('button', { name: 'Create' });
-      createButton.click();
+      const toolButton = screen.getByRole('button', { name: 'Tool' });
+      toolButton.click();
 
-      expect(appShellState.setActiveTool).toHaveBeenCalledWith('create');
-      expect(onPanelChange).toHaveBeenCalledWith('create');
+      expect(onPanelChange).toHaveBeenCalledWith('studio');
     });
   });
 });

@@ -24,9 +24,8 @@ export function isSubstringMatch(normalizedA: string, normalizedB: string): bool
 }
 
 export interface SpanForValidation {
-  id?: string;
-  role?: string;
-  [key: string]: unknown;
+  id?: string | undefined;
+  role?: string | undefined;
 }
 
 /**

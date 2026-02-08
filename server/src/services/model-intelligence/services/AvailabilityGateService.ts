@@ -122,10 +122,11 @@ export class AvailabilityGateService {
       ...snapshot,
       models: snapshot.models.map((model) => {
         const entitlement = entitlementByModel.get(model.id);
+        const entitled = entitlement?.entitled;
         return {
           ...model,
           planTier,
-          ...(entitlement ? { entitled: entitlement.entitled } : {}),
+          ...(entitled !== undefined ? { entitled } : {}),
         };
       }),
     };

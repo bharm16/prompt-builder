@@ -214,7 +214,7 @@ export const PromptTopBar = ({
         compileOnly: true,
         compilePrompt: genericPrompt,
         createVersion: true,
-        targetModel: explicitTargetModel,
+        ...(explicitTargetModel ? { targetModel: explicitTargetModel } : {}),
       });
     } else {
       void onOptimize(inputPrompt);

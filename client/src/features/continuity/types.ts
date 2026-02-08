@@ -23,8 +23,8 @@ export type ContinuitySession = {
   userId: string;
   name: string;
   description?: string;
-  primaryStyleReference: StyleReference;
-  sceneProxy?: SessionSceneProxy;
+  primaryStyleReference: StyleReference | null;
+  sceneProxy?: SessionSceneProxy | null;
   shots: ContinuityShot[];
   defaultSettings: ContinuitySessionSettings;
   status: 'active' | 'completed' | 'archived';

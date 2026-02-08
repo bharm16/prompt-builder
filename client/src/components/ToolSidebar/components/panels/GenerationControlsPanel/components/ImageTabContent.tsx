@@ -19,7 +19,7 @@ interface ImageTabContentProps {
   promptLabel?: string;
   isInputLocked: boolean;
   isOptimizing: boolean;
-  promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
+  promptInputRef: React.RefObject<HTMLTextAreaElement>;
   onPromptInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onPromptKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onCreateFromTrigger?: ((trigger: string) => void) | undefined;

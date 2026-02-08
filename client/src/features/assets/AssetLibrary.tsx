@@ -90,10 +90,9 @@ export function AssetLibrary({
   const handleAddImage = useCallback(
     async (assetId: string, file: File, metadata: Record<string, string | undefined>) => {
       try {
-        const result = await assetApi.addImage(assetId, file, metadata);
+        await assetApi.addImage(assetId, file, metadata);
         const updated = await assetApi.get(assetId);
         actions.updateAsset(updated);
-        return result;
       } catch (err) {
         actions.setError(err instanceof Error ? err.message : 'Failed to upload image');
         throw err;

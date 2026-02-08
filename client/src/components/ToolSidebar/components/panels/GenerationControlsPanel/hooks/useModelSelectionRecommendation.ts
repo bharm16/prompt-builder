@@ -28,8 +28,8 @@ interface UseModelSelectionRecommendationResult {
   modelRecommendation: ModelRecommendation | null;
   isRecommendationLoading: boolean;
   recommendationError: string | null;
-  recommendedModelId?: string;
-  efficientModelId?: string;
+  recommendedModelId: string | undefined;
+  efficientModelId: string | undefined;
   renderModelOptions: Array<{ id: string; label: string }>;
   renderModelId: string;
   recommendationAgeMs: number | null;
@@ -58,7 +58,7 @@ const buildRecommendationSpans = (
         confidence: span.confidence,
       };
     })
-    .filter((span): span is ModelRecommendationSpan => Boolean(span));
+    .filter((span): span is NonNullable<typeof span> => span !== null);
 
   return normalizedSpans.length ? normalizedSpans : undefined;
 };
@@ -98,9 +98,9 @@ export function useModelSelectionRecommendation({
     error: recommendationError,
   } = useModelRecommendation(prompt, {
     mode: recommendationMode,
-    durationSeconds,
-    spans: recommendationSpans,
     enabled: shouldLoadRecommendations,
+    ...(typeof durationSeconds === "number" ? { durationSeconds } : {}),
+    ...(recommendationSpans ? { spans: recommendationSpans } : {}),
   });
 
   const recommendedModelId = useMemo(() => {

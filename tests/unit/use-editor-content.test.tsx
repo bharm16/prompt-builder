@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 
 import { useEditorContent } from '@features/prompt-optimizer/PromptCanvas/hooks/useEditorContent';
 import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
@@ -25,7 +25,7 @@ describe('useEditorContent', () => {
   it('renders placeholder text when no prompt is available', () => {
     const editor = document.createElement('div');
     document.body.appendChild(editor);
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as unknown as RefObject<HTMLElement>;
 
     renderHook(() =>
       useEditorContent({
@@ -56,7 +56,7 @@ describe('useEditorContent', () => {
 
     mockGetSelectionOffsets.mockReturnValue({ start: 1, end: 3 });
 
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as unknown as RefObject<HTMLElement>;
 
     renderHook(() =>
       useEditorContent({

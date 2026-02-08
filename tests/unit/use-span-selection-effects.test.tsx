@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 
 import { useSpanSelectionEffects } from '@features/prompt-optimizer/PromptCanvas/hooks/useSpanSelectionEffects';
 
@@ -33,14 +33,14 @@ describe('useSpanSelectionEffects', () => {
 
   it('marks selected span and dims others', async () => {
     const { editor, spanA, spanB } = createEditorWithSpans();
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
     const setState = vi.fn();
 
     const { rerender } = renderHook(useSpanSelectionEffects, {
       initialProps: {
         editorRef,
         enableMLHighlighting: true,
-        selectedSpanId: null,
+        selectedSpanId: null as string | null,
         displayedPrompt: 'Hello world',
         setState,
       },
@@ -65,7 +65,7 @@ describe('useSpanSelectionEffects', () => {
 
   it('tracks swap timing and clears classes after delay', () => {
     const { editor, spanA } = createEditorWithSpans();
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
     const setState = vi.fn();
 
     const { rerender } = renderHook(useSpanSelectionEffects, {

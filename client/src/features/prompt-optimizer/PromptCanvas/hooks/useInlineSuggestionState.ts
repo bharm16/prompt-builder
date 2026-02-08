@@ -60,7 +60,7 @@ export function useInlineSuggestionState({
   onSuggestionClick,
   setState,
 }: UseInlineSuggestionStateOptions): UseInlineSuggestionStateResult {
-  const suggestionsListRef = useRef<HTMLDivElement>(null);
+  const suggestionsListRef = useRef<HTMLDivElement>(null!);
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const previousSelectedSpanIdRef = useRef<string | null>(null);
   const previousSuggestionCountRef = useRef(0);

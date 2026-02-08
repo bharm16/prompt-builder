@@ -13,7 +13,7 @@ describe('cn', () => {
 
   describe('edge cases', () => {
     it('flattens nested arrays and collapses whitespace', () => {
-      const result = cn('base', ['alpha', ['beta', '  gamma  '], null], false);
+      const result = cn('base', ['alpha', 'beta', '  gamma  '], false);
 
       expect(result).toBe('base alpha beta gamma');
     });

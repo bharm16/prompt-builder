@@ -24,7 +24,10 @@ export function ContinueSceneButton({
             ? 'border border-[#22252C] bg-transparent text-[#3A3E4C] cursor-not-allowed'
             : 'border border-[#22252C] bg-transparent text-[#555B6E] hover:border-[#3A3D46] hover:text-[#8B92A5]'
         }`}
-        onClick={onClick}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick?.();
+        }}
         disabled={disabled || isLoading}
       >
         {isLoading ? 'Starting...' : label}

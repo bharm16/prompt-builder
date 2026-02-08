@@ -15,12 +15,12 @@ import { logger } from '@infrastructure/Logger';
 const DEV_FALLBACK_KEY = 'dev-key-12345';
 const BEARER_PREFIX = 'Bearer ';
 
-interface ApiAuthRequest extends Request {
+type ApiAuthRequest = Request & {
   apiKey?: string;
   user?: { uid: string };
   id?: string;
   query: Request['query'] & { apiKey?: string };
-}
+};
 
 function normalizeHeaderValue(
   headerValue: string | string[] | undefined

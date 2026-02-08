@@ -14,8 +14,8 @@ const makeSpan = (text: string, start: number, role?: string, confidence = 0.5):
   text,
   start,
   end: start + text.length,
-  role,
   confidence,
+  ...(role ? { role } : {}),
 });
 
 describe('AdjacentSpanMerger (additional)', () => {

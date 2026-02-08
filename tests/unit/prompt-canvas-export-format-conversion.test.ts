@@ -4,9 +4,9 @@ import { convertExportFormat } from '@features/prompt-optimizer/PromptCanvas/uti
 
 describe('exportFormatConversion', () => {
   it('converts known formats', () => {
-    expect(convertExportFormat('md')).toBe('markdown');
+    expect(convertExportFormat('md' as never)).toBe('markdown');
     expect(convertExportFormat('markdown')).toBe('markdown');
-    expect(convertExportFormat('txt')).toBe('text');
+    expect(convertExportFormat('txt' as never)).toBe('text');
     expect(convertExportFormat('text')).toBe('text');
   });
 

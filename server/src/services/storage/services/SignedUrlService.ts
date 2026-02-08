@@ -1,4 +1,4 @@
-import { Storage } from '@google-cloud/storage';
+import { Storage, type GetSignedUrlConfig } from '@google-cloud/storage';
 import { STORAGE_CONFIG } from '../config/storageConfig';
 import { logger } from '@infrastructure/Logger';
 
@@ -60,7 +60,7 @@ export class SignedUrlService {
         const extensionHeaders: Record<string, string> = {
           'x-goog-if-generation-match': '0',
         };
-        const options: Record<string, unknown> = {
+        const options: GetSignedUrlConfig = {
           version: 'v4',
           action: 'write',
           expires: expiresAtMs,

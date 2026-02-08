@@ -189,12 +189,16 @@ export function ShotEditor({
     if (!prompt.trim()) return;
     setIsSubmitting(true);
     try {
+      const yaw = parseNumber(cameraYaw);
+      const pitch = parseNumber(cameraPitch);
+      const roll = parseNumber(cameraRoll);
+      const dolly = parseNumber(cameraDolly);
       const camera = useCameraHints
         ? {
-            yaw: parseNumber(cameraYaw),
-            pitch: parseNumber(cameraPitch),
-            ...(cameraRoll ? { roll: parseNumber(cameraRoll) } : {}),
-            ...(cameraDolly ? { dolly: parseNumber(cameraDolly) } : {}),
+            ...(yaw !== undefined ? { yaw } : {}),
+            ...(pitch !== undefined ? { pitch } : {}),
+            ...(roll !== undefined ? { roll } : {}),
+            ...(dolly !== undefined ? { dolly } : {}),
           }
         : undefined;
 
@@ -208,11 +212,12 @@ export function ShotEditor({
             : usePreviousReference
               ? 'frame-bridge'
               : 'none',
-        styleStrength: showContinuityControls ? styleStrength : undefined,
-        styleReferenceId: showContinuityControls ? styleReferenceId : undefined,
-        modelId: canonicalModelId,
-        characterAssetId: useCharacter && characterAssetId ? characterAssetId : undefined,
-        camera,
+        ...(showContinuityControls
+          ? { styleStrength, styleReferenceId }
+          : {}),
+        ...(canonicalModelId ? { modelId: canonicalModelId } : {}),
+        ...(useCharacter && characterAssetId ? { characterAssetId } : {}),
+        ...(camera ? { camera } : {}),
       };
 
       await onAddShot(input);

@@ -84,7 +84,7 @@ export function createVideoProviders(
 
   const geminiBaseUrl = (options.geminiBaseUrl || DEFAULT_VEO_BASE_URL).replace(/\/+$/, '');
 
-  return {
+  const providers: VideoProviderMap = {
     replicate: {
       id: 'replicate',
       requiredKey: 'REPLICATE_API_TOKEN',
@@ -101,7 +101,7 @@ export function createVideoProviders(
           providerLog
         );
         const asset = await storeVideoFromUrl(assetStore, url, providerLog);
-        return { asset, seed };
+        return { asset, ...(seed !== undefined ? { seed } : {}) };
       },
     },
     openai: {
@@ -169,4 +169,6 @@ export function createVideoProviders(
       },
     },
   };
+
+  return providers;
 }

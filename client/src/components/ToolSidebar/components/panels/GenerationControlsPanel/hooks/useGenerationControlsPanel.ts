@@ -47,7 +47,7 @@ const log = logger.child("GenerationControlsPanel");
 export interface UseGenerationControlsPanelResult {
   refs: {
     fileInputRef: RefObject<HTMLInputElement>;
-    resolvedPromptInputRef: RefObject<HTMLTextAreaElement | null>;
+    resolvedPromptInputRef: RefObject<HTMLTextAreaElement>;
   };
   state: {
     activeTab: GenerationControlsTab;
@@ -98,8 +98,8 @@ export interface UseGenerationControlsPanelResult {
     modelRecommendation: ModelRecommendation | null;
     isRecommendationLoading: boolean;
     recommendationError: string | null;
-    recommendedModelId?: string;
-    efficientModelId?: string;
+    recommendedModelId: string | undefined;
+    efficientModelId: string | undefined;
     renderModelOptions: Array<{ id: string; label: string }>;
     renderModelId: string;
     recommendationAgeMs: number | null;
@@ -157,8 +157,8 @@ export const useGenerationControlsPanel = (
     onImageUpload,
   } = props;
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const localPromptInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null!);
+  const localPromptInputRef = useRef<HTMLTextAreaElement>(null!);
   const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
   const promptHighlights = useOptionalPromptHighlights();
 
@@ -400,6 +400,7 @@ export const useGenerationControlsPanel = (
     if (!aspectRatioOptions.length) return;
     if (aspectRatioOptions.includes(aspectRatio)) return;
     const nextRatio = aspectRatioOptions[0];
+    if (!nextRatio) return;
     log.info("Clamping aspect ratio to supported option", {
       previousAspectRatio: aspectRatio,
       nextAspectRatio: nextRatio,

@@ -80,7 +80,7 @@ describe('HistoryItem', () => {
       render(
         <HistoryItem
           {...baseProps}
-          entry={createEntry({ uuid: undefined })}
+          entry={createEntry({ uuid: '' })}
           onOpenInNewTab={onOpenInNewTab}
         />
       );

@@ -1,13 +1,11 @@
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { ContinuitySession, ContinuityShot, CreateSessionInput, CreateShotInput, UpdateShotInput } from '../types';
+import type { ContinuitySession, CreateSessionInput, CreateShotInput, UpdateShotInput } from '../types';
 import { z } from 'zod';
 import {
   ContinuityApiResponseSchema,
-  ContinuitySessionSchema,
   ContinuityShotSchema,
 } from './schemas';
-import type { SessionDto } from '@shared/types/session';
 
 const SessionDtoSchema = z.object({
   id: z.string(),
@@ -26,6 +24,8 @@ const SessionDtoSchema = z.object({
     })
     .optional(),
 }).passthrough();
+
+type SessionDtoPayload = z.infer<typeof SessionDtoSchema>;
 
 async function fetchWithAuth<T>(
   endpoint: string,
@@ -55,7 +55,7 @@ async function fetchWithAuth<T>(
   return parsed.data.data;
 }
 
-function sessionToContinuity(session: SessionDto): ContinuitySession {
+function sessionToContinuity(session: SessionDtoPayload): ContinuitySession {
   if (!session.continuity) {
     throw new Error('Session does not include continuity data');
   }
@@ -65,10 +65,11 @@ function sessionToContinuity(session: SessionDto): ContinuitySession {
     userId: session.userId,
     name: session.name || 'Continuity Session',
     ...(session.description ? { description: session.description } : {}),
-    primaryStyleReference: session.continuity.primaryStyleReference as ContinuitySession['primaryStyleReference'],
-    ...(session.continuity.sceneProxy ? { sceneProxy: session.continuity.sceneProxy as ContinuitySession['sceneProxy'] } : {}),
+    primaryStyleReference:
+      (session.continuity.primaryStyleReference ?? null) as ContinuitySession['primaryStyleReference'],
+    sceneProxy: session.continuity.sceneProxy ?? null,
     shots: session.continuity.shots,
-    defaultSettings: session.continuity.settings as ContinuitySession['defaultSettings'],
+    defaultSettings: session.continuity.settings as unknown as ContinuitySession['defaultSettings'],
     status: session.status,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
@@ -81,7 +82,7 @@ export const continuityApi = {
       method: 'POST',
       body: JSON.stringify(input),
     });
-    return sessionToContinuity(session as SessionDto);
+    return sessionToContinuity(session);
   },
 
   listSessions: async () => {
@@ -89,12 +90,12 @@ export const continuityApi = {
       '/v2/sessions?includeContinuity=true&includePrompt=false',
       z.array(SessionDtoSchema)
     );
-    return sessions.map((session) => sessionToContinuity(session as SessionDto));
+    return sessions.map((session) => sessionToContinuity(session));
   },
 
   getSession: async (sessionId: string) => {
     const session = await fetchWithAuth(`/v2/sessions/${sessionId}`, SessionDtoSchema);
-    return sessionToContinuity(session as SessionDto);
+    return sessionToContinuity(session);
   },
 
   addShot: (sessionId: string, input: CreateShotInput) =>
@@ -125,7 +126,7 @@ export const continuityApi = {
       method: 'PUT',
       body: JSON.stringify(input),
     });
-    return sessionToContinuity(session as SessionDto);
+    return sessionToContinuity(session);
   },
 
   updateSessionSettings: async (sessionId: string, settings: Record<string, unknown>) => {
@@ -133,7 +134,7 @@ export const continuityApi = {
       method: 'PUT',
       body: JSON.stringify({ settings }),
     });
-    return sessionToContinuity(session as SessionDto);
+    return sessionToContinuity(session);
   },
 
   createSceneProxy: async (sessionId: string, input: Record<string, unknown>) => {
@@ -141,7 +142,7 @@ export const continuityApi = {
       method: 'POST',
       body: JSON.stringify(input),
     });
-    return sessionToContinuity(session as SessionDto);
+    return sessionToContinuity(session);
   },
 };
 

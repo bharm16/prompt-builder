@@ -2,26 +2,13 @@ import { useCallback } from 'react';
 import { getPromptRepository } from '@repositories/index';
 import type { Toast, User } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 
 const log = logger.child('useHighlightsPersistence');
 
-interface Span {
-  id?: string;
-  start: number;
-  end: number;
-  category: string;
-  confidence: number;
-}
-
-interface PersistenceResult {
-  spans: Span[];
-  meta?: Record<string, unknown> | null;
-  signature: string;
-  cacheId?: string | null;
-  source?: string;
-}
+type PersistenceResult = SpanLabelingResult;
 
 interface PromptHistory {
   updateEntryHighlight: (uuid: string, snapshot: HighlightSnapshot) => void;
@@ -55,10 +42,10 @@ export function useHighlightsPersistence({
   latestHighlightRef,
   persistedSignatureRef,
 }: UseHighlightsPersistenceParams): {
-  handleHighlightsPersist: (result: PersistenceResult) => Promise<void>;
+  handleHighlightsPersist: (result: PersistenceResult) => void;
 } {
   const handleHighlightsPersist = useCallback(
-    async (result: PersistenceResult): Promise<void> => {
+    (result: PersistenceResult): void => {
       if (!result || !Array.isArray(result.spans) || !result.signature) {
         return;
       }
@@ -110,29 +97,30 @@ export function useHighlightsPersistence({
         return;
       }
 
-      // Persist to remote repository
-      try {
-        const promptRepository = getPromptRepository();
-        await promptRepository.updateHighlights(currentPromptDocId, {
-          highlightCache: snapshot,
-        });
-        persistedSignatureRef.current = result.signature;
-      } catch (error) {
-        const info = sanitizeError(error);
-        log.warn('Failed to persist highlight snapshot', {
-          operation: 'updateHighlights',
-          error: info.message,
-          errorName: info.name,
-          promptUuid: currentPromptUuid ?? null,
-          promptDocId: currentPromptDocId ?? null,
-        });
-        // Silent failure for background highlight persistence - not critical to user workflow
-        // Only show error if it's a permission issue
-        const err = error as Error & { code?: string };
-        if (err.code === 'permission-denied') {
-          toast.warning('Unable to save highlights. You may need to sign in.');
+      void (async () => {
+        try {
+          const promptRepository = getPromptRepository();
+          await promptRepository.updateHighlights(currentPromptDocId, {
+            highlightCache: snapshot,
+          });
+          persistedSignatureRef.current = result.signature;
+        } catch (error) {
+          const info = sanitizeError(error);
+          log.warn('Failed to persist highlight snapshot', {
+            operation: 'updateHighlights',
+            error: info.message,
+            errorName: info.name,
+            promptUuid: currentPromptUuid ?? null,
+            promptDocId: currentPromptDocId ?? null,
+          });
+          // Silent failure for background highlight persistence - not critical to user workflow
+          // Only show error if it's a permission issue
+          const err = error as Error & { code?: string };
+          if (err.code === 'permission-denied') {
+            toast.warning('Unable to save highlights. You may need to sign in.');
+          }
         }
-      }
+      })();
     },
     [
       applyInitialHighlightSnapshot,

@@ -345,7 +345,7 @@ export class AIModelService {
         params,
         primaryConfig,
         fallbackClient,
-        fallbackConfig,
+        ...(fallbackConfig ? { fallbackConfig } : {}),
       });
 
       const response = await client.complete(systemPrompt, fallbackOptions);

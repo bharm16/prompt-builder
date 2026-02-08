@@ -344,15 +344,16 @@ export async function generateReplicateVideo(
     if ('url' in outputRecord && typeof outputRecord.url === 'function') {
       const url = (outputRecord.url as () => unknown)();
       log.info('Extracted URL from FileOutput', { url: String(url) });
-      return { url: String(url), seed };
+      return { url: String(url), ...(seed !== undefined ? { seed } : {}) };
     }
 
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      return { url: output[0], seed };
+      const firstUrl = output[0];
+      return { url: firstUrl, ...(seed !== undefined ? { seed } : {}) };
     }
 
     if (typeof outputRecord.url === 'string') {
-      return { url: outputRecord.url, seed };
+      return { url: outputRecord.url, ...(seed !== undefined ? { seed } : {}) };
     }
   }
 

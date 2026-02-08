@@ -128,7 +128,9 @@ describe('ReplicateFluxSchnellProvider', () => {
 
     it('strips preview sections and skips prompt transformation when disabled', async () => {
       const adapter = {
-        complete: vi.fn<Promise<AIResponse>, [string, Record<string, unknown>?]>(),
+        complete: vi.fn() as MockedFunction<
+          (prompt: string, options?: Record<string, unknown>) => Promise<AIResponse>
+        >,
       };
       const llmClient = new LLMClient({ adapter, providerName: 'test-llm', defaultTimeout: 1000 });
       const promptTransformer = new VideoToImagePromptTransformer({ llmClient });

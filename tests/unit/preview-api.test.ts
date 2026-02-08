@@ -67,7 +67,7 @@ describe('previewApi', () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: false,
         json: async () => ({ error: 'Not authorized' }),
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });
@@ -96,7 +96,7 @@ describe('previewApi', () => {
         json: async () => {
           throw new Error('bad json');
         },
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });
@@ -209,7 +209,7 @@ describe('previewApi', () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => payload,
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });

@@ -200,7 +200,7 @@ export async function generatePreview(
     isKontext ? { timeout: 60000 } : {}
   )) as unknown;
 
-  return GeneratePreviewResponseSchema.parse(payload);
+  return GeneratePreviewResponseSchema.parse(payload) as GeneratePreviewResponse;
 }
 
 /**
@@ -228,7 +228,7 @@ export async function generateStoryboardPreview(
     }
   )) as unknown;
 
-  return GenerateStoryboardPreviewResponseSchema.parse(payload);
+  return GenerateStoryboardPreviewResponseSchema.parse(payload) as GenerateStoryboardPreviewResponse;
 }
 
 export async function faceSwapPreview(options: {
@@ -245,7 +245,7 @@ export async function faceSwapPreview(options: {
     ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
   })) as unknown;
 
-  const parsed = FaceSwapPreviewResponseSchema.parse(payload);
+  const parsed = FaceSwapPreviewResponseSchema.parse(payload) as FaceSwapPreviewResponse;
 
   log.info('Face-swap preview request completed', {
     hasFaceSwapUrl: Boolean(parsed.data?.faceSwapUrl),
@@ -261,7 +261,7 @@ export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUr
 
   const encoded = encodeURIComponent(assetId.trim());
   const payload = (await apiClient.get(`/preview/image/view?assetId=${encoded}`)) as unknown;
-  return MediaViewUrlResponseSchema.parse(payload);
+  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
 }
 
 export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
@@ -269,7 +269,7 @@ export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUr
 
   const encoded = encodeURIComponent(assetId.trim());
   const payload = (await apiClient.get(`/preview/video/view?assetId=${encoded}`)) as unknown;
-  return MediaViewUrlResponseSchema.parse(payload);
+  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
 }
 
 export async function uploadPreviewImage(
@@ -313,7 +313,7 @@ export async function uploadPreviewImage(
     return UploadPreviewImageResponseSchema.parse({
       success: false,
       error: 'Failed to upload image',
-    });
+    }) as UploadPreviewImageResponse;
   }
 
   const parsed = UploadPreviewImageResponseSchema.safeParse(payload);
@@ -321,10 +321,10 @@ export async function uploadPreviewImage(
     return UploadPreviewImageResponseSchema.parse({
       success: false,
       error: 'Failed to upload image',
-    });
+    }) as UploadPreviewImageResponse;
   }
 
-  return parsed.data;
+  return parsed.data as UploadPreviewImageResponse;
 }
 
 export interface GenerateVideoResponse {
@@ -431,7 +431,7 @@ export async function generateVideoPreview(
       }
     )) as unknown;
 
-    const response = GenerateVideoResponseSchema.parse(responsePayload);
+    const response = GenerateVideoResponseSchema.parse(responsePayload) as GenerateVideoResponse;
 
     const durationMs = Math.round(
       (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
@@ -488,5 +488,5 @@ export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStat
     },
   })) as unknown;
 
-  return VideoJobStatusResponseSchema.parse(payload);
+  return VideoJobStatusResponseSchema.parse(payload) as VideoJobStatusResponse;
 }

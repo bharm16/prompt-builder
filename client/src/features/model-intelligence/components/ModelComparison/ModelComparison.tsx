@@ -44,23 +44,29 @@ export function ModelComparison({
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
-          <ComparisonPreview label={leftLabel} imageUrl={leftPreviewUrl} />
+          <ComparisonPreview
+            label={leftLabel}
+            {...(leftPreviewUrl ? { imageUrl: leftPreviewUrl } : {})}
+          />
           <ModelScoreCard
             score={left}
             label={leftLabel}
             variant="secondary"
             actionLabel="Use"
-            onSelect={onSelectModel}
+            {...(onSelectModel ? { onSelect: onSelectModel } : {})}
           />
         </div>
         <div className="space-y-2">
-          <ComparisonPreview label={rightLabel} imageUrl={rightPreviewUrl} />
+          <ComparisonPreview
+            label={rightLabel}
+            {...(rightPreviewUrl ? { imageUrl: rightPreviewUrl } : {})}
+          />
           <ModelScoreCard
             score={right}
             label={rightLabel}
             variant="secondary"
             actionLabel="Use"
-            onSelect={onSelectModel}
+            {...(onSelectModel ? { onSelect: onSelectModel } : {})}
           />
         </div>
       </div>

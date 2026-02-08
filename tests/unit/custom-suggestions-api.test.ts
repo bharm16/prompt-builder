@@ -99,7 +99,7 @@ describe('fetchCustomSuggestions', () => {
 
   it('throws when fetch is unavailable', async () => {
     const globalWithFetch = global as { fetch?: typeof fetch };
-    globalWithFetch.fetch = undefined;
+    delete globalWithFetch.fetch;
 
     await expect(fetchCustomSuggestions(defaultParams)).rejects.toThrow('Fetch API unavailable');
   });

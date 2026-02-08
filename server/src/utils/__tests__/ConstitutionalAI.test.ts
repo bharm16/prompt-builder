@@ -155,7 +155,9 @@ describe('ConstitutionalAI', () => {
         expect(result.revised).toBe(true);
         expect(result.output).toBe('revised output');
         expect(result.improvements).toHaveLength(1);
-        expect(result.improvements?.[0].principle).toBe('p1');
+        const firstImprovement = result.improvements?.[0];
+        expect(firstImprovement).toBeDefined();
+        expect(firstImprovement?.principle).toBe('p1');
       });
 
       it('strips markdown code fences from critique response', async () => {
@@ -241,7 +243,9 @@ describe('ConstitutionalAI', () => {
         const client = makeMockClient(['YES']);
         await ConstitutionalAI.quickValidation(client, 'output', null);
         expect(client.complete).toHaveBeenCalledTimes(1);
-        const prompt = client.complete.mock.calls[0][0] as string;
+        const calls = client.complete.mock.calls as unknown[][];
+        const prompt = calls[0]?.[0];
+        expect(typeof prompt).toBe('string');
         expect(prompt).toContain('helpful');
       });
 

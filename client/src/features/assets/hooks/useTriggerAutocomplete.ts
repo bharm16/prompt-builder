@@ -9,7 +9,7 @@ export interface AssetSuggestion {
   type: string;
   trigger: string;
   name: string;
-  thumbnailUrl?: string;
+  thumbnailUrl?: string | undefined;
 }
 
 interface AutocompletePosition {

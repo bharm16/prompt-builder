@@ -164,12 +164,19 @@ const extractCameraCues = (text: string): CameraCueExtraction => {
     }
   }
 
-  return {
-    shotSize: shotMatch?.canonical,
-    angle: angleMatch?.canonical,
+  const extracted: CameraCueExtraction = {
     lensDetails: Array.from(lensDetails.values()),
     hasAny: matches.length > 0,
   };
+
+  if (shotMatch?.canonical) {
+    extracted.shotSize = shotMatch.canonical;
+  }
+  if (angleMatch?.canonical) {
+    extracted.angle = angleMatch.canonical;
+  }
+
+  return extracted;
 };
 
 const hasRequiredCameraCues = (text: string, required: CameraCueExtraction): boolean => {

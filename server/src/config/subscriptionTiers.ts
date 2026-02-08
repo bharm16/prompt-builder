@@ -22,7 +22,7 @@ const DEFAULT_MODEL_TIER_REQUIREMENTS: Partial<Record<VideoModelId, PlanTier>> =
   // Leave empty to avoid gating unless explicitly configured.
 };
 
-const TierRequirementsSchema = z.record(z.unknown());
+const TierRequirementsSchema = z.record(z.string(), z.unknown());
 
 const normalizePlanTier = (value: unknown): PlanTier => {
   if (typeof value !== 'string') return 'unknown';

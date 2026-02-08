@@ -16,6 +16,7 @@ import type { GenerationControlsPanelProps } from "./types";
 import type { GenerationOverrides } from "@components/ToolSidebar/types";
 import { StyleReferenceControls } from "@/features/prompt-optimizer/components/StyleReferenceControls";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
+import type { SessionContinuityMode } from "@shared/types/session";
 
 export function GenerationControlsPanel(
   props: GenerationControlsPanelProps,
@@ -82,7 +83,7 @@ export function GenerationControlsPanel(
   );
 
   const handleModeChange = useCallback(
-    (mode: "frame-bridge" | "style-match") => {
+    (mode: SessionContinuityMode) => {
       if (!currentShot) return;
       void updateShot(currentShot.id, { continuityMode: mode });
     },

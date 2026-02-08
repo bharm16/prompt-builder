@@ -1,6 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
-import type { SessionDto, SessionContinuity, SessionContinuityShot, SessionStyleReference, SessionFrameBridge, SessionSeedInfo, SessionSceneProxy } from '@shared/types/session';
+import type {
+  SessionDto,
+  SessionContinuity,
+  SessionContinuityShot,
+  SessionStyleReference,
+  SessionFrameBridge,
+  SessionSeedInfo,
+  SessionSceneProxy,
+  SessionPrompt,
+  SessionPromptVersionEntry,
+} from '@shared/types/session';
 import type { ContinuitySession, ContinuityShot, StyleReference, FrameBridge, SeedInfo, SceneProxy } from '@services/continuity/types';
 import type {
   SessionCreateRequest,
@@ -44,11 +54,10 @@ export class SessionService {
     const session: SessionRecord = {
       id: this.generateSessionId(),
       userId,
-      name: request.name,
-      description: undefined,
       status: 'active',
       createdAt: now,
       updatedAt: now,
+      ...(request.name !== undefined ? { name: request.name } : {}),
       ...(prompt ? { prompt } : {}),
       ...(prompt?.uuid ? { promptUuid: prompt.uuid } : {}),
       hasContinuity: false,
@@ -118,9 +127,10 @@ export class SessionService {
             warningCount: enforcedVersions.warnings.length,
           });
         }
+        const nextVersions = enforcedVersions.versions ?? undefined;
         mergedPrompt = {
           ...mergedPrompt,
-          versions: enforcedVersions.versions ?? null,
+          ...(nextVersions !== undefined ? { versions: nextVersions } : {}),
         };
       }
     }
@@ -140,7 +150,16 @@ export class SessionService {
   }
 
   async updatePrompt(sessionId: string, updates: SessionPromptUpdate): Promise<SessionRecord> {
-    return this.updateSession(sessionId, { prompt: updates });
+    const promptUpdates: Partial<SessionPrompt> = {
+      ...(updates.title !== undefined ? { title: updates.title } : {}),
+      ...(updates.input !== undefined ? { input: updates.input } : {}),
+      ...(updates.output !== undefined ? { output: updates.output } : {}),
+      ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
+      ...(updates.generationParams !== undefined ? { generationParams: updates.generationParams } : {}),
+      ...(updates.keyframes !== undefined ? { keyframes: updates.keyframes } : {}),
+      ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
+    };
+    return this.updateSession(sessionId, { prompt: promptUpdates });
   }
 
   async updateHighlights(sessionId: string, updates: SessionHighlightUpdate): Promise<SessionRecord> {
@@ -149,9 +168,19 @@ export class SessionService {
     const prompt = current.prompt ?? { input: '', output: '' };
     const nextVersions = Array.isArray(prompt.versions) ? [...prompt.versions] : [];
     if (updates.versionEntry) {
+      const timestamp = updates.versionEntry.timestamp ?? new Date().toISOString();
+      const basePromptText =
+        (typeof prompt.output === 'string' && prompt.output.trim().length > 0
+          ? prompt.output
+          : prompt.input) || '';
+      const nextEntry: SessionPromptVersionEntry = {
+        versionId: `highlight_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        signature: 'highlight-update',
+        prompt: basePromptText,
+        timestamp,
+      };
       nextVersions.push({
-        ...updates.versionEntry,
-        timestamp: updates.versionEntry.timestamp ?? new Date().toISOString(),
+        ...nextEntry,
       });
     }
     const next = {
@@ -168,7 +197,10 @@ export class SessionService {
   }
 
   async updateOutput(sessionId: string, updates: SessionOutputUpdate): Promise<SessionRecord> {
-    return this.updateSession(sessionId, { prompt: updates });
+    const promptUpdates: Partial<SessionPrompt> = {
+      ...(updates.output !== undefined ? { output: updates.output } : {}),
+    };
+    return this.updateSession(sessionId, { prompt: promptUpdates });
   }
 
   async updateVersions(sessionId: string, updates: SessionVersionsUpdate): Promise<SessionRecord> {
@@ -178,7 +210,7 @@ export class SessionService {
     let nextVersions = updates.versions;
     if (updates.versions !== undefined) {
       const enforced = enforceImmutableVersions(prompt.versions ?? null, updates.versions ?? null);
-      nextVersions = enforced.versions ?? null;
+      nextVersions = enforced.versions ?? undefined;
       if (enforced.warnings.length) {
         this.log.warn('Preserved immutable media references during session version update', {
           sessionId,
@@ -190,7 +222,7 @@ export class SessionService {
       ...current,
       prompt: {
         ...prompt,
-        ...(nextVersions ? { versions: nextVersions } : {}),
+        ...(nextVersions !== undefined ? { versions: nextVersions } : {}),
       },
       updatedAt: new Date(),
     };
@@ -228,11 +260,49 @@ export class SessionService {
   }
 
   private mapShot(shot: ContinuityShot): SessionContinuityShot {
+    const mappedCamera = shot.camera
+      ? {
+          ...(shot.camera.yaw !== undefined ? { yaw: shot.camera.yaw } : {}),
+          ...(shot.camera.pitch !== undefined ? { pitch: shot.camera.pitch } : {}),
+          ...(shot.camera.roll !== undefined ? { roll: shot.camera.roll } : {}),
+          ...(shot.camera.dolly !== undefined ? { dolly: shot.camera.dolly } : {}),
+        }
+      : null;
+
     return {
-      ...shot,
+      id: shot.id,
+      sessionId: shot.sessionId,
+      sequenceIndex: shot.sequenceIndex,
+      userPrompt: shot.userPrompt,
+      continuityMode: shot.continuityMode,
+      styleStrength: shot.styleStrength,
+      styleReferenceId: shot.styleReferenceId,
+      modelId: shot.modelId,
+      status: shot.status,
       createdAt: shot.createdAt.toISOString(),
+      ...(shot.generationMode ? { generationMode: shot.generationMode } : {}),
       ...(shot.generatedAt ? { generatedAt: shot.generatedAt.toISOString() } : {}),
+      ...(shot.characterAssetId ? { characterAssetId: shot.characterAssetId } : {}),
+      ...(shot.faceStrength !== undefined ? { faceStrength: shot.faceStrength } : {}),
+      ...(mappedCamera && Object.keys(mappedCamera).length > 0 ? { camera: mappedCamera } : {}),
       ...(shot.seedInfo ? { seedInfo: this.mapSeedInfo(shot.seedInfo) } : {}),
+      ...(shot.inheritedSeed !== undefined ? { inheritedSeed: shot.inheritedSeed } : {}),
+      ...(shot.videoAssetId ? { videoAssetId: shot.videoAssetId } : {}),
+      ...(shot.previewAssetId ? { previewAssetId: shot.previewAssetId } : {}),
+      ...(shot.generatedKeyframeUrl ? { generatedKeyframeUrl: shot.generatedKeyframeUrl } : {}),
+      ...(shot.styleTransferApplied !== undefined
+        ? { styleTransferApplied: shot.styleTransferApplied }
+        : {}),
+      ...(shot.styleDegraded !== undefined ? { styleDegraded: shot.styleDegraded } : {}),
+      ...(shot.styleDegradedReason ? { styleDegradedReason: shot.styleDegradedReason } : {}),
+      ...(shot.sceneProxyRenderUrl ? { sceneProxyRenderUrl: shot.sceneProxyRenderUrl } : {}),
+      ...(shot.continuityMechanismUsed ? { continuityMechanismUsed: shot.continuityMechanismUsed } : {}),
+      ...(shot.styleScore !== undefined ? { styleScore: shot.styleScore } : {}),
+      ...(shot.identityScore !== undefined ? { identityScore: shot.identityScore } : {}),
+      ...(shot.qualityScore !== undefined ? { qualityScore: shot.qualityScore } : {}),
+      ...(shot.retryCount !== undefined ? { retryCount: shot.retryCount } : {}),
+      ...(shot.error ? { error: shot.error } : {}),
+      ...(shot.versions !== undefined ? { versions: shot.versions } : {}),
       ...(shot.frameBridge ? { frameBridge: this.mapFrameBridge(shot.frameBridge) } : {}),
       ...(shot.styleReference ? { styleReference: this.mapStyleReference(shot.styleReference) } : {}),
     };

@@ -68,6 +68,7 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
       }, 10000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [status.wasOffline, status.isOnline, onDismiss]);
 
   // Handle dismiss

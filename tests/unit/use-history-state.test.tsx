@@ -38,8 +38,8 @@ describe('useHistoryState', () => {
         result.current.addEntry(makeEntry({ uuid: 'second' }));
       });
 
-      expect(result.current.state.history[0].uuid).toBe('second');
-      expect(result.current.state.history[1].uuid).toBe('first');
+      expect(result.current.state.history[0]?.uuid).toBe('second');
+      expect(result.current.state.history[1]?.uuid).toBe('first');
     });
 
     it('addEntry replaces an existing entry with the same uuid', () => {
@@ -53,8 +53,8 @@ describe('useHistoryState', () => {
       });
 
       expect(result.current.state.history).toHaveLength(1);
-      expect(result.current.state.history[0].id).toBe('second-id');
-      expect(result.current.state.history[0].output).toBe('second output');
+      expect(result.current.state.history[0]?.id).toBe('second-id');
+      expect(result.current.state.history[0]?.output).toBe('second output');
     });
 
     it('addEntry replaces an existing entry with the same id even if uuid differs', () => {
@@ -68,8 +68,8 @@ describe('useHistoryState', () => {
       });
 
       expect(result.current.state.history).toHaveLength(1);
-      expect(result.current.state.history[0].uuid).toBe('second-uuid');
-      expect(result.current.state.history[0].output).toBe('second output');
+      expect(result.current.state.history[0]?.uuid).toBe('second-uuid');
+      expect(result.current.state.history[0]?.output).toBe('second output');
     });
 
     it('setHistory removes duplicate entries by id/uuid', () => {
@@ -86,9 +86,9 @@ describe('useHistoryState', () => {
       });
 
       expect(result.current.state.history).toHaveLength(3);
-      expect(result.current.state.history[0].output).toBe('newest');
-      expect(result.current.state.history[1].output).toBe('uuid-source');
-      expect(result.current.state.history[2].output).toBe('unique');
+      expect(result.current.state.history[0]?.output).toBe('newest');
+      expect(result.current.state.history[1]?.output).toBe('uuid-source');
+      expect(result.current.state.history[2]?.output).toBe('unique');
     });
 
     it('updateEntry with non-existent uuid leaves all entries unchanged', () => {
@@ -98,7 +98,7 @@ describe('useHistoryState', () => {
       act(() => { result.current.addEntry(entry); });
       act(() => { result.current.updateEntry('non-existent', { output: 'changed' }); });
 
-      expect(result.current.state.history[0].output).toBe('test output');
+      expect(result.current.state.history[0]?.output).toBe('test output');
     });
 
     it('removeEntry with non-existent id leaves all entries unchanged', () => {
@@ -145,7 +145,7 @@ describe('useHistoryState', () => {
       act(() => { result.current.setSearchQuery('cowboy'); });
 
       expect(result.current.filteredHistory).toHaveLength(1);
-      expect(result.current.filteredHistory[0].input).toContain('cowboy');
+      expect(result.current.filteredHistory[0]?.input).toContain('cowboy');
     });
 
     it('filters entries by output text (case-insensitive)', () => {
@@ -193,7 +193,7 @@ describe('useHistoryState', () => {
       act(() => { result.current.removeEntry('a'); });
 
       expect(result.current.state.history).toHaveLength(1);
-      expect(result.current.state.history[0].id).toBe('b');
+      expect(result.current.state.history[0]?.id).toBe('b');
     });
 
     it('setIsLoadingHistory updates loading state', () => {

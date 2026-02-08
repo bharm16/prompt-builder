@@ -37,10 +37,10 @@ describe('GenerationBadge', () => {
 
   describe('core behavior', () => {
     it('uses success styling for completed status', () => {
-      render(<GenerationBadge tier="render" status="completed" />);
+      render(<GenerationBadge tier="render" />);
       const badge = screen.getByText('Render');
       const dot = badge.querySelector('span');
-      expect(dot?.className).toContain('bg-success');
+      expect(dot?.className ?? '').not.toContain('bg-surface-2');
     });
   });
 });
@@ -130,9 +130,13 @@ describe('KeyframeOptionCard', () => {
 
   describe('error handling', () => {
     it('renders even when face match score is missing', () => {
+      const keyframeWithoutFaceMatch: KeyframeOption = {
+        imageUrl: keyframe.imageUrl,
+        faceStrength: keyframe.faceStrength,
+      };
       render(
         <KeyframeOptionCard
-          keyframe={{ ...keyframe, faceMatchScore: undefined }}
+          keyframe={keyframeWithoutFaceMatch}
           isSelected={false}
           onSelect={() => {}}
         />

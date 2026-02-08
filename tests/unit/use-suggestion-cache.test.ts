@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import * as fc from 'fast-check';
 
 import {
+  type EnhancementSuggestionEntry,
   useSuggestionCache,
   type RawEnhancementSuggestionsResponse,
 } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionCache';
@@ -23,8 +24,8 @@ describe('useSuggestionCache', () => {
 
       const response: RawEnhancementSuggestionsResponse = {
         suggestions: [
-          null,
-          undefined,
+          null as unknown as EnhancementSuggestionEntry,
+          undefined as unknown as EnhancementSuggestionEntry,
           'First',
           42 as unknown as string,
           { text: 'Second', category: 'style' },

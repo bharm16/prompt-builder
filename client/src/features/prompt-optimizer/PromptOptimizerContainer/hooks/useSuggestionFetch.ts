@@ -27,6 +27,7 @@ import {
   prepareSpanContext,
   buildSpanFingerprint,
 } from '@features/span-highlighting/utils/spanProcessing';
+import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 import type { Toast } from '@hooks/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -55,7 +56,7 @@ interface UseSuggestionFetchParams {
   stablePromptContext: PromptContext | null;
   toast: Toast;
   handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
-  i2vContext?: I2VContext | null;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 const log = logger.child('useSuggestionFetch');
@@ -154,9 +155,12 @@ export function useSuggestionFetch({
       const metadata: SuggestionsData['metadata'] = rawMetadata
         ? ({
             ...rawMetadata,
-            span: rawMetadata.span ? { ...rawMetadata.span } : undefined,
+            ...(rawMetadata.span ? { span: { ...rawMetadata.span } } : {}),
           } as SuggestionsData['metadata'])
         : null;
+      const normalizedLabeledSpans: HighlightSpan[] = Array.isArray(allLabeledSpans)
+        ? (allLabeledSpans as HighlightSpan[])
+        : [];
 
       // Early returns for invalid cases
       if (selectedMode !== 'video' || !trimmedHighlight) {
@@ -241,7 +245,7 @@ export function useSuggestionFetch({
           offsets: offsets ?? null,
           metadata: metadata ?? null,
           responseMetadata: cached.metadata ?? null,
-          allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+          allLabeledSpans: normalizedLabeledSpans,
           setSuggestions: updateSuggestions,
           onSuggestionClick: handleSuggestionClick,
           onClose: () => setSuggestionsData(null),
@@ -250,7 +254,9 @@ export function useSuggestionFetch({
       }
 
       // Retry function for error state - Requirement 3.3
-      const retryFn = () => fetchEnhancementSuggestions(payload);
+      const retryFn = () => {
+        void fetchEnhancementSuggestions(payload);
+      };
 
       // Schedule debounced request - Requirement 4.1, 4.2
       // NOTE: Loading state is shown AFTER debounce fires (inside scheduleRequest)
@@ -261,7 +267,7 @@ export function useSuggestionFetch({
           normalizedPrompt,
           suggestionContext,
           metadata,
-          allLabeledSpans,
+          allLabeledSpans: normalizedLabeledSpans,
           onRequestStart: () => {
             setSuggestionsData(() => ({
               show: true,
@@ -277,7 +283,7 @@ export function useSuggestionFetch({
               offsets: offsets ?? null,
               metadata: metadata ?? null,
               responseMetadata: null,
-              allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+              allLabeledSpans: normalizedLabeledSpans,
               onRetry: retryFn,
               setSuggestions: updateSuggestions,
               onSuggestionClick: handleSuggestionClick,

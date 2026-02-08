@@ -35,7 +35,15 @@ export class ContinuityPostProcessingService {
     if (!proxy) {
       throw new Error('Scene proxy is not available');
     }
-    return this.sceneProxy.renderFromProxy(userId, proxy, shotId, camera);
+    const normalizedCamera = camera
+      ? {
+          ...(camera.yaw !== undefined ? { yaw: camera.yaw } : {}),
+          ...(camera.pitch !== undefined ? { pitch: camera.pitch } : {}),
+          ...(camera.roll !== undefined ? { roll: camera.roll } : {}),
+          ...(camera.dolly !== undefined ? { dolly: camera.dolly } : {}),
+        }
+      : undefined;
+    return this.sceneProxy.renderFromProxy(userId, proxy, shotId, normalizedCamera);
   }
 
   createSceneProxyFromVideo(

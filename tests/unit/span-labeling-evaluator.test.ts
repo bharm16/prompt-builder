@@ -7,7 +7,7 @@ const evaluator = new RelaxedF1Evaluator();
 
 describe('RelaxedF1Evaluator', () => {
   it('returns 0 IoU for invalid span inputs', () => {
-    expect(evaluator.calculateIoU({ start: 'a' }, { start: 0, end: 1 })).toBe(0);
+    expect(evaluator.calculateIoU({ start: Number.NaN, end: 1 }, { start: 0, end: 1 })).toBe(0);
     expect(evaluator.calculateIoU({ start: 0, end: 1 }, { start: 0 })).toBe(0);
   });
 

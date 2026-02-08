@@ -342,10 +342,14 @@ export class AssetCrudService {
         trigger: asset.trigger,
         name: asset.name,
         textDefinition: asset.textDefinition,
-        negativePrompt: asset.negativePrompt,
         primaryImageUrl: primaryImage?.url || null,
         referenceImages: asset.referenceImages || [],
-        faceEmbedding: asset.faceEmbedding,
+        ...(asset.negativePrompt !== undefined
+          ? { negativePrompt: asset.negativePrompt }
+          : {}),
+        ...(asset.faceEmbedding !== undefined
+          ? { faceEmbedding: asset.faceEmbedding }
+          : {}),
       };
 
       this.log.info('Operation completed.', {

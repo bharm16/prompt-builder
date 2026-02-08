@@ -36,7 +36,7 @@ export const assetApi = {
       return await handleError(response, 'Failed to fetch assets');
     }
     const payload = await response.json();
-    return AssetListResponseSchema.parse(payload);
+    return AssetListResponseSchema.parse(payload) as AssetListResponse;
   },
 
   async get(assetId: string): Promise<Asset> {
@@ -49,7 +49,7 @@ export const assetApi = {
       return await handleError(response, 'Failed to fetch asset');
     }
     const payload = await response.json();
-    return AssetSchema.parse(payload);
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async create(data: {
@@ -73,7 +73,7 @@ export const assetApi = {
       return await handleError(response, 'Failed to create asset');
     }
     const payload = await response.json();
-    return AssetSchema.parse(payload);
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async update(
@@ -99,7 +99,7 @@ export const assetApi = {
       return await handleError(response, 'Failed to update asset');
     }
     const payload = await response.json();
-    return AssetSchema.parse(payload);
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async delete(assetId: string): Promise<boolean> {
@@ -221,7 +221,7 @@ export const assetApi = {
       return await handleError(response, 'Failed to set primary image');
     }
     const payload = await response.json();
-    return AssetSchema.parse(payload);
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async getForGeneration(assetId: string) {

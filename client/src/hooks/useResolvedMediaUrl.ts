@@ -57,7 +57,7 @@ export function useResolvedMediaUrl({
         if (lastRequestRef.current === request) {
           setError(message);
         }
-        return { url: url ?? null, source: 'unknown' };
+        return { url: url ?? null, source: 'unknown' as const };
       } finally {
         if (lastRequestRef.current === request) {
           setLoading(false);

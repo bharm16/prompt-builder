@@ -251,6 +251,31 @@ export class VideoJobStore {
     const normalizedOptions = Object.fromEntries(
       Object.entries(parsed.request.options ?? {}).filter(([, value]) => value !== undefined)
     ) as VideoJobRequest['options'];
+    const normalizedResult = parsed.result
+      ? {
+          assetId: parsed.result.assetId,
+          videoUrl: parsed.result.videoUrl,
+          contentType: parsed.result.contentType,
+          ...(parsed.result.inputMode !== undefined
+            ? { inputMode: parsed.result.inputMode }
+            : {}),
+          ...(parsed.result.startImageUrl !== undefined
+            ? { startImageUrl: parsed.result.startImageUrl }
+            : {}),
+          ...(parsed.result.storagePath !== undefined
+            ? { storagePath: parsed.result.storagePath }
+            : {}),
+          ...(parsed.result.viewUrl !== undefined
+            ? { viewUrl: parsed.result.viewUrl }
+            : {}),
+          ...(parsed.result.viewUrlExpiresAt !== undefined
+            ? { viewUrlExpiresAt: parsed.result.viewUrlExpiresAt }
+            : {}),
+          ...(parsed.result.sizeBytes !== undefined
+            ? { sizeBytes: parsed.result.sizeBytes }
+            : {}),
+        }
+      : undefined;
 
     const base: VideoJobRecord = {
       id,
@@ -268,8 +293,8 @@ export class VideoJobStore {
     if (typeof parsed.completedAtMs === 'number') {
       base.completedAtMs = parsed.completedAtMs;
     }
-    if (parsed.result) {
-      base.result = parsed.result;
+    if (normalizedResult) {
+      base.result = normalizedResult;
     }
     if (parsed.error) {
       base.error = parsed.error;

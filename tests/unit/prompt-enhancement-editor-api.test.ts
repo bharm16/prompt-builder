@@ -60,10 +60,9 @@ describe('fetchEnhancementSuggestions', () => {
 
   describe('edge cases', () => {
     it('defaults missing suggestions and placeholder flags', async () => {
-      mockPostEnhancementSuggestions.mockResolvedValue({
-        suggestions: undefined,
-        isPlaceholder: undefined,
-      });
+      mockPostEnhancementSuggestions.mockResolvedValue(
+        {} as Awaited<ReturnType<typeof postEnhancementSuggestions>>
+      );
 
       const result = await fetchEnhancementSuggestions(baseRequest);
 

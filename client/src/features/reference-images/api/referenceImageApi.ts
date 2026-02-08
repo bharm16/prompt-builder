@@ -9,14 +9,14 @@ export interface ReferenceImage {
   thumbnailUrl: string;
   storagePath: string;
   thumbnailPath: string;
-  label?: string | null;
+  label?: string | null | undefined;
   metadata: {
     width: number;
     height: number;
     sizeBytes: number;
     contentType: string;
-    source?: string | null;
-    originalName?: string | null;
+    source?: string | null | undefined;
+    originalName?: string | null | undefined;
   };
   createdAt: string;
   updatedAt: string;
@@ -24,13 +24,14 @@ export interface ReferenceImage {
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const authHeaders = await buildFirebaseAuthHeaders();
-  const headers: Record<string, string> = {
-    ...authHeaders,
-    ...(options.headers || {}),
-  };
-
+  const headers = new Headers(options.headers ?? {});
+  Object.entries(authHeaders).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      headers.set(key, value);
+    }
+  });
   if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+    headers.set('Content-Type', 'application/json');
   }
 
   const response = await fetch(`${API_CONFIG.baseURL}/reference-images${endpoint}`, {

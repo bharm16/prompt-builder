@@ -20,21 +20,21 @@ describe('usePromptOptimizerState', () => {
       const { result } = renderHook(() => usePromptOptimizerState());
 
       act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'first', start: 0, end: 5, category: 'subject' });
+        result.current.addLockedSpan({ id: 'span-1', text: 'first', category: 'subject' });
       });
       act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'duplicate', start: 0, end: 9, category: 'action' });
+        result.current.addLockedSpan({ id: 'span-1', text: 'duplicate', category: 'action' });
       });
 
       expect(result.current.state.lockedSpans).toHaveLength(1);
-      expect(result.current.state.lockedSpans[0].text).toBe('first');
+      expect(result.current.state.lockedSpans[0]?.text).toBe('first');
     });
 
     it('REMOVE_LOCKED_SPAN with non-existent id leaves state unchanged', () => {
       const { result } = renderHook(() => usePromptOptimizerState());
 
       act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'keep', start: 0, end: 4, category: 'subject' });
+        result.current.addLockedSpan({ id: 'span-1', text: 'keep', category: 'subject' });
       });
       act(() => {
         result.current.removeLockedSpan('non-existent');
@@ -47,8 +47,8 @@ describe('usePromptOptimizerState', () => {
       const { result } = renderHook(() => usePromptOptimizerState());
 
       act(() => {
-        result.current.addLockedSpan({ id: 'a', text: 'x', start: 0, end: 1, category: 'subject' });
-        result.current.addLockedSpan({ id: 'b', text: 'y', start: 2, end: 3, category: 'action' });
+        result.current.addLockedSpan({ id: 'a', text: 'x', category: 'subject' });
+        result.current.addLockedSpan({ id: 'b', text: 'y', category: 'action' });
       });
       act(() => {
         result.current.clearLockedSpans();
@@ -83,7 +83,7 @@ describe('usePromptOptimizerState', () => {
         result.current.setQualityScore(85);
         result.current.setDraftPrompt('draft');
         result.current.setIsDraftReady(true);
-        result.current.addLockedSpan({ id: 'lock-1', text: 'locked', start: 0, end: 6, category: 'subject' });
+        result.current.addLockedSpan({ id: 'lock-1', text: 'locked', category: 'subject' });
       });
 
       act(() => {
@@ -98,7 +98,7 @@ describe('usePromptOptimizerState', () => {
       expect(result.current.state.isProcessing).toBe(true);
       // lockedSpans preserved
       expect(result.current.state.lockedSpans).toHaveLength(1);
-      expect(result.current.state.lockedSpans[0].id).toBe('lock-1');
+      expect(result.current.state.lockedSpans[0]?.id).toBe('lock-1');
     });
   });
 
@@ -109,7 +109,7 @@ describe('usePromptOptimizerState', () => {
       act(() => {
         result.current.setInputPrompt('test input');
         result.current.setOptimizedPrompt('optimized');
-        result.current.addLockedSpan({ id: 'x', text: 'x', start: 0, end: 1, category: 'subject' });
+        result.current.addLockedSpan({ id: 'x', text: 'x', category: 'subject' });
       });
 
       act(() => {

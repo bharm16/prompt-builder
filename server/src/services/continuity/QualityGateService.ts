@@ -167,7 +167,7 @@ export class QualityGateService {
       QualityGateService.clipPipelinePromise = (async () => {
         const transformers = await import('@huggingface/transformers');
         const pipeline = await transformers.pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
-        return pipeline as ClipPipeline;
+        return pipeline as unknown as ClipPipeline;
       })();
     }
 

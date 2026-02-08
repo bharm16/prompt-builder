@@ -44,7 +44,7 @@ describe('useHighlightFingerprint', () => {
       const parseResult: ParseResult = {
         displayText: 'Hello world',
         spans: [
-          { id: 'span-1', displayStart: 0, displayEnd: 5, category: 'subject' },
+          { id: 'span-1', start: 0, end: 5, displayStart: 0, displayEnd: 5, category: 'subject' },
           { start: 6, end: 11, category: 'action' },
         ],
       };

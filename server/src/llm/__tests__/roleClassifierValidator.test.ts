@@ -51,8 +51,10 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].text).toBe('cat');
-      expect(labeled[0].confidence).toBe(0.9);
+      const firstLabeled = labeled[0];
+      expect(firstLabeled).toBeDefined();
+      expect(firstLabeled?.text).toBe('cat');
+      expect(firstLabeled?.confidence).toBe(0.9);
     });
   });
 
@@ -71,9 +73,15 @@ describe('roleClassifierValidator', () => {
       ]);
 
       const byText = Object.fromEntries(labeled.map((item) => [item.text, item]));
-      expect(byText.cat.confidence).toBe(1);
-      expect(byText.runs.confidence).toBe(0);
-      expect(byText.fast.confidence).toBe(0.7);
+      const cat = byText.cat as (typeof labeled)[number] | undefined;
+      const runs = byText.runs as (typeof labeled)[number] | undefined;
+      const fast = byText.fast as (typeof labeled)[number] | undefined;
+      expect(cat).toBeDefined();
+      expect(runs).toBeDefined();
+      expect(fast).toBeDefined();
+      expect(cat?.confidence).toBe(1);
+      expect(runs?.confidence).toBe(0);
+      expect(fast?.confidence).toBe(0.7);
     });
 
     it('skips long spans unless they are technical', () => {
@@ -87,7 +95,8 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].role).toBe(TAXONOMY.TECHNICAL.id);
+      expect(labeled[0]).toBeDefined();
+      expect(labeled[0]?.role).toBe(TAXONOMY.TECHNICAL.id);
     });
   });
 
@@ -104,8 +113,9 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].text).toBe('alpha');
-      expect(labeled[0].role).toBe(TAXONOMY.TECHNICAL.id);
+      expect(labeled[0]).toBeDefined();
+      expect(labeled[0]?.text).toBe('alpha');
+      expect(labeled[0]?.role).toBe(TAXONOMY.TECHNICAL.id);
     });
   });
 });

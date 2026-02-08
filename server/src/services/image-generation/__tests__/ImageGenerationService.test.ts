@@ -241,7 +241,12 @@ describe('ImageGenerationService', () => {
       expect(result.providerUrl).toBe(previewResult.imageUrl);
       expect(result.storagePath).toBe(storedAsset.id);
       expect(result.viewUrl).toBe(storedAsset.url);
-      expect(result.viewUrlExpiresAt).toBe(new Date(storedAsset.expiresAt).toISOString());
+      const expiresAt = storedAsset.expiresAt;
+      expect(expiresAt).toBeDefined();
+      if (expiresAt === undefined) {
+        throw new Error('expected expiresAt to be defined');
+      }
+      expect(result.viewUrlExpiresAt).toBe(new Date(expiresAt).toISOString());
       expect(result.sizeBytes).toBe(2048);
       expect(result.metadata.model).toBe('flux-schnell');
     });

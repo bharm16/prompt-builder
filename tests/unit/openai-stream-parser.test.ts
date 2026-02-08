@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ReadableStream } from 'stream/web';
 
 import { OpenAiStreamParser } from '@server/clients/adapters/openai/OpenAiStreamParser';
 

@@ -12,7 +12,11 @@
 import { createContainer, type DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import { metricsService } from '@infrastructure/MetricsService';
-import type { MetricsService as EnhancementMetricsService } from '@services/enhancement/services/types';
+import type {
+  MetricsService as EnhancementMetricsService,
+  VideoService,
+} from '@services/enhancement/services/types';
+import type { RedisClient } from '@services/cache/types';
 
 // Import generic LLM client
 import { LLMClient } from '@clients/LLMClient';
@@ -375,7 +379,7 @@ export async function configureServices(): Promise<DIContainer> {
   container.register(
     'spanLabelingCacheService',
     (redisClient: ReturnType<typeof createRedisClient>, config: ServiceConfig) => initSpanLabelingCache({
-      redis: redisClient,
+      redis: redisClient as RedisClient | null,
       defaultTTL: config.redis.defaultTTL,
       shortTTL: config.redis.shortTTL,
       maxMemoryCacheSize: config.redis.maxMemoryCacheSize,
@@ -413,7 +417,7 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'validationService',
-    (videoService: VideoPromptService) => new SuggestionValidationService(videoService),
+    (videoService: VideoService) => new SuggestionValidationService(videoService),
     ['videoService']
   );
 
@@ -455,7 +459,7 @@ export async function configureServices(): Promise<DIContainer> {
     (
       aiService: AIModelService,
       placeholderDetector: PlaceholderDetectionService,
-      videoService: VideoPromptService,
+      videoService: VideoService,
       brainstormBuilder: BrainstormContextBuilder,
       promptBuilder: CleanPromptBuilder,
       validationService: SuggestionValidationService,
@@ -575,9 +579,7 @@ export async function configureServices(): Promise<DIContainer> {
       replicateProvider: ReplicateFluxSchnellProvider | null,
       kontextProvider: ReplicateFluxKontextFastProvider | null
     ) => {
-      const providers = [replicateProvider, kontextProvider].filter(
-        (provider): provider is ImagePreviewProvider => Boolean(provider)
-      );
+      const providers = [replicateProvider, kontextProvider].filter(Boolean) as ImagePreviewProvider[];
 
       if (providers.length === 0) {
         logger.warn('No image preview providers configured');

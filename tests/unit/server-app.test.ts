@@ -71,7 +71,9 @@ describe('createApp', () => {
       expect(useMock).toHaveBeenCalledWith('/api/payment', { id: 'webhook' });
       const useCallOrder = useMock.mock.invocationCallOrder[0];
       const middlewareCallOrder = configureMiddlewareMock.mock.invocationCallOrder[0];
-      expect(useCallOrder).toBeLessThan(middlewareCallOrder);
+      expect(useCallOrder).toBeDefined();
+      expect(middlewareCallOrder).toBeDefined();
+      expect((useCallOrder ?? 0)).toBeLessThan((middlewareCallOrder ?? 0));
     });
   });
 

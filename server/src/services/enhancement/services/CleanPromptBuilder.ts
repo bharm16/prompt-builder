@@ -537,7 +537,7 @@ export class CleanPromptBuilder {
       ...(focusGuidance || []),
     ].filter(Boolean);
 
-    return {
+    const sharedContext: SharedPromptContext = {
       highlightedText,
       highlightedCategory,
       inlineContext,
@@ -550,13 +550,20 @@ export class CleanPromptBuilder {
       sectionLine: promptSection ? `Section: ${promptSection}` : '',
       slotLabel: slot || 'subject',
       guidance: getCategoryGuidance(highlightedCategory),
-      focusGuidance: focusGuidanceCombined.length ? focusGuidanceCombined.join(' | ') : '',
-      spanAnchors,
-      nearbySpanHints,
-      highlightWordCount,
+      ...(focusGuidanceCombined.length ? { focusGuidance: focusGuidanceCombined.join(' | ') } : {}),
       mode,
       replacementInstruction: '',
     };
+    if (spanAnchors !== undefined) {
+      sharedContext.spanAnchors = spanAnchors;
+    }
+    if (nearbySpanHints !== undefined) {
+      sharedContext.nearbySpanHints = nearbySpanHints;
+    }
+    if (highlightWordCount !== undefined) {
+      sharedContext.highlightWordCount = highlightWordCount;
+    }
+    return sharedContext;
   }
 
   /**

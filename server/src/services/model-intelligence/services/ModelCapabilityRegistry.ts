@@ -150,7 +150,7 @@ export class ModelCapabilityRegistry {
       qualityTier: 'preview',
     });
 
-    const draftI2vCaps = {
+    const draftI2vCaps: ModelCapabilities = {
       physics: 0.55,
       particleSystems: 0.5,
       fluidDynamics: 0.48,

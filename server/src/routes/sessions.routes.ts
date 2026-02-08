@@ -2,7 +2,17 @@ import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { SessionService } from '@services/sessions/SessionService';
+import type {
+  SessionCreateRequest,
+  SessionHighlightUpdate,
+  SessionListOptions,
+  SessionOutputUpdate,
+  SessionPromptUpdate,
+  SessionUpdateRequest,
+  SessionVersionsUpdate,
+} from '@services/sessions/types';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
+import type { CreateSessionRequest as ContinuityCreateSessionRequest } from '@services/continuity/types';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import { logger } from '@infrastructure/Logger';
 import {
@@ -58,6 +68,92 @@ const UpdateVersionsSchema = z.object({
   versions: z.array(z.record(z.string(), z.unknown())).optional(),
 }).strip();
 
+function requireRouteParam(req: Request, res: Response, key: string): string | null {
+  const value = req.params[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    res.status(400).json({ success: false, error: `Invalid ${key}` });
+    return null;
+  }
+  return value;
+}
+
+function toContinuityCreateSessionRequest(
+  data: z.infer<typeof CreateContinuitySessionSchema>
+): ContinuityCreateSessionRequest {
+  return {
+    name: data.name,
+    ...(typeof data.description === 'string' ? { description: data.description } : {}),
+    ...(typeof data.sourceVideoId === 'string' ? { sourceVideoId: data.sourceVideoId } : {}),
+    ...(typeof data.sourceImageUrl === 'string' ? { sourceImageUrl: data.sourceImageUrl } : {}),
+    ...(typeof data.initialPrompt === 'string' ? { initialPrompt: data.initialPrompt } : {}),
+    ...(data.settings ? { settings: data.settings } : {}),
+    ...(typeof data.sessionId === 'string' ? { sessionId: data.sessionId } : {}),
+  };
+}
+
+function toSessionCreateRequest(data: z.infer<typeof CreateSessionSchema>): SessionCreateRequest {
+  return {
+    ...(typeof data.name === 'string' ? { name: data.name } : {}),
+    ...(data.prompt
+      ? { prompt: data.prompt as unknown as NonNullable<SessionCreateRequest['prompt']> }
+      : {}),
+  };
+}
+
+function toSessionUpdateRequest(data: z.infer<typeof UpdateSessionSchema>): SessionUpdateRequest {
+  return {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.status !== undefined ? { status: data.status } : {}),
+    ...(data.prompt !== undefined
+      ? { prompt: data.prompt as unknown as NonNullable<SessionUpdateRequest['prompt']> }
+      : {}),
+  };
+}
+
+function toSessionPromptUpdate(data: z.infer<typeof UpdatePromptSchema>): SessionPromptUpdate {
+  return {
+    ...(data.title !== undefined ? { title: data.title } : {}),
+    ...(data.input !== undefined ? { input: data.input } : {}),
+    ...(data.output !== undefined ? { output: data.output } : {}),
+    ...(data.targetModel !== undefined ? { targetModel: data.targetModel } : {}),
+    ...(data.generationParams !== undefined ? { generationParams: data.generationParams } : {}),
+    ...(data.keyframes !== undefined
+      ? { keyframes: data.keyframes as SessionPromptUpdate['keyframes'] }
+      : {}),
+    ...(data.mode !== undefined ? { mode: data.mode } : {}),
+  };
+}
+
+function toSessionHighlightUpdate(
+  data: z.infer<typeof UpdateHighlightsSchema>
+): SessionHighlightUpdate {
+  const versionEntry = data.versionEntry
+    ? {
+        ...(data.versionEntry.timestamp !== undefined
+          ? { timestamp: data.versionEntry.timestamp }
+          : {}),
+      }
+    : undefined;
+  return {
+    ...(data.highlightCache !== undefined ? { highlightCache: data.highlightCache } : {}),
+    ...(versionEntry ? { versionEntry } : {}),
+  };
+}
+
+function toSessionOutputUpdate(data: z.infer<typeof UpdateOutputSchema>): SessionOutputUpdate {
+  return {
+    ...(data.output !== undefined ? { output: data.output } : {}),
+  };
+}
+
+function toSessionVersionsUpdate(data: z.infer<typeof UpdateVersionsSchema>): SessionVersionsUpdate {
+  return {
+    ...(data.versions !== undefined
+      ? { versions: data.versions as unknown as NonNullable<SessionVersionsUpdate['versions']> }
+      : {}),
+  };
+}
 
 export function createSessionRoutes(
   sessionService: SessionService,
@@ -87,7 +183,8 @@ export function createSessionRoutes(
           return;
         }
       }
-      const continuitySession = await continuityService.createSession(userId, parsed.data);
+      const continuityRequest = toContinuityCreateSessionRequest(parsed.data);
+      const continuitySession = await continuityService.createSession(userId, continuityRequest);
       const session = await sessionService.getSession(continuitySession.id);
       if (!session) {
         res.status(500).json({ success: false, error: 'Session not available after creation' });
@@ -102,14 +199,16 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
-      const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+      const parsedLimit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+      const limit = Number.isFinite(parsedLimit) ? parsedLimit : undefined;
       const includeContinuity = req.query.includeContinuity !== 'false';
       const includePrompt = req.query.includePrompt !== 'false';
-      const sessions = await sessionService.listSessions(userId, {
-        limit,
+      const listOptions: SessionListOptions = {
         includeContinuity,
         includePrompt,
-      });
+        ...(limit !== undefined ? { limit } : {}),
+      };
+      const sessions = await sessionService.listSessions(userId, listOptions);
       res.json({
         success: true,
         data: sessions.map((session) => sessionService.toDto(session)),
@@ -122,7 +221,8 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
-      const uuid = req.params.uuid;
+      const uuid = requireRouteParam(req, res, 'uuid');
+      if (!uuid) return;
       const session = await sessionService.getSessionByPromptUuid(userId, uuid);
       if (!session) {
         res.status(404).json({ success: false, error: 'Session not found' });
@@ -137,7 +237,9 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
-      const session = await sessionService.getSession(req.params.sessionId);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.getSession(sessionId);
       if (!session) {
         res.status(404).json({ success: false, error: 'Session not found' });
         return;
@@ -170,7 +272,7 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.createPromptSession(userId, parsed.data);
+      const session = await sessionService.createPromptSession(userId, toSessionCreateRequest(parsed.data));
       res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
@@ -185,7 +287,9 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.updateSession(req.params.sessionId, parsed.data);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.updateSession(sessionId, toSessionUpdateRequest(parsed.data));
       if (session.userId !== userId) {
         res.status(403).json({ success: false, error: 'Access denied' });
         return;
@@ -199,7 +303,9 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
-      const session = await sessionService.getSession(req.params.sessionId);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.getSession(sessionId);
       if (!session) {
         res.status(404).json({ success: false, error: 'Session not found' });
         return;
@@ -223,7 +329,9 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.updatePrompt(req.params.sessionId, parsed.data);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.updatePrompt(sessionId, toSessionPromptUpdate(parsed.data));
       if (session.userId !== userId) {
         res.status(403).json({ success: false, error: 'Access denied' });
         return;
@@ -242,7 +350,12 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.updateHighlights(req.params.sessionId, parsed.data);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.updateHighlights(
+        sessionId,
+        toSessionHighlightUpdate(parsed.data)
+      );
       if (session.userId !== userId) {
         res.status(403).json({ success: false, error: 'Access denied' });
         return;
@@ -261,7 +374,9 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.updateOutput(req.params.sessionId, parsed.data);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.updateOutput(sessionId, toSessionOutputUpdate(parsed.data));
       if (session.userId !== userId) {
         res.status(403).json({ success: false, error: 'Access denied' });
         return;
@@ -280,7 +395,12 @@ export function createSessionRoutes(
         res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
         return;
       }
-      const session = await sessionService.updateVersions(req.params.sessionId, parsed.data);
+      const sessionId = requireRouteParam(req, res, 'sessionId');
+      if (!sessionId) return;
+      const session = await sessionService.updateVersions(
+        sessionId,
+        toSessionVersionsUpdate(parsed.data)
+      );
       if (session.userId !== userId) {
         res.status(403).json({ success: false, error: 'Access denied' });
         return;
@@ -307,9 +427,11 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const session = await requireSessionForUser(continuityService, req, res);
       if (!session) return;
+      const shotId = requireRouteParam(req, res, 'shotId');
+      if (!shotId) return;
       await handleUpdateShot(continuityService, req, res, {
         sessionId: session.id,
-        shotId: req.params.shotId,
+        shotId,
       });
     })
   );
@@ -328,9 +450,11 @@ export function createSessionRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const session = await requireSessionForUser(continuityService, req, res);
       if (!session) return;
+      const shotId = requireRouteParam(req, res, 'shotId');
+      if (!shotId) return;
       await handleUpdateStyleReference(continuityService, req, res, {
         sessionId: session.id,
-        shotId: req.params.shotId,
+        shotId,
       });
     })
   );

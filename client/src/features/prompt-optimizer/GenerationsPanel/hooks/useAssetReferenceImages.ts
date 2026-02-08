@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { assetApi } from '@/features/assets/api/assetApi';
 import type { ResolvedPrompt } from '@shared/types/asset';
+import type { AssetType } from '@shared/types/asset';
 
 interface ReferenceImage {
   assetId: string;
-  assetType: string;
-  assetName?: string;
+  assetType: AssetType;
+  assetName?: string | undefined;
   imageUrl: string;
 }
 
@@ -42,8 +43,14 @@ export function useAssetReferenceImages(
     try {
       const result = await assetApi.resolve(prompt);
       if (requestIdRef.current !== currentRequestId) return;
-      setReferenceImages(result.referenceImages || []);
-      setResolvedPrompt(result);
+      const nextReferenceImages: ReferenceImage[] = (result.referenceImages ?? []).map((image) => ({
+        assetId: image.assetId,
+        assetType: image.assetType,
+        imageUrl: image.imageUrl,
+        ...(typeof image.assetName === 'string' ? { assetName: image.assetName } : {}),
+      }));
+      setReferenceImages(nextReferenceImages);
+      setResolvedPrompt(result as unknown as ResolvedPrompt);
     } catch (err) {
       if (requestIdRef.current !== currentRequestId) return;
       setError(err instanceof Error ? err.message : 'Failed to resolve assets');

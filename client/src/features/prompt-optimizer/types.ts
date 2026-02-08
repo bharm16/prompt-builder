@@ -7,6 +7,7 @@ import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
 import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from './types/coherence';
 import type { I2VContext } from './types/i2v';
+import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 
 /**
  * Prompt optimization mode configuration
@@ -120,14 +121,7 @@ export interface PromptResultsSectionProps {
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
-  onHighlightsPersist: (highlights: {
-    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
-    meta: Record<string, unknown> | null;
-    signature: string;
-    cacheId?: string | null;
-    source?: string;
-    [key: string]: unknown;
-  }) => void;
+  onHighlightsPersist: (highlights: SpanLabelingResult) => void;
   onUndo: () => void;
   onRedo: () => void;
   stablePromptContext?: PromptContext | null | undefined;

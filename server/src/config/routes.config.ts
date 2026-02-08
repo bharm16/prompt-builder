@@ -30,9 +30,9 @@ import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMed
 import { createMotionRoutes } from '@routes/motion.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
 
-interface RequestWithId extends Request {
+type RequestWithId = Request & {
   id?: string;
-}
+};
 
 /**
  * Register all application routes

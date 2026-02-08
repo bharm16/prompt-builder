@@ -18,6 +18,15 @@ function requireUserId(req: RequestWithUser, res: Response): string | null {
   return userId;
 }
 
+function requireRouteParam(req: Request, res: Response, key: string): string | null {
+  const value = req.params[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    res.status(400).json({ error: `Invalid ${key}` });
+    return null;
+  }
+  return value;
+}
+
 function normalizeOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
@@ -37,8 +46,9 @@ export function createReferenceImagesRoutes(
 
       const limitValue = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : NaN;
       const limit = Number.isFinite(limitValue) ? limitValue : undefined;
+      const listOptions = limit !== undefined ? { limit } : {};
 
-      const images = await referenceImageService.listImages(userId, { limit });
+      const images = await referenceImageService.listImages(userId, listOptions);
       res.json({ images });
     })
   );
@@ -58,14 +68,15 @@ export function createReferenceImagesRoutes(
 
       const label = normalizeOptionalString((req as Request & { body?: { label?: unknown } }).body?.label);
       const source = normalizeOptionalString((req as Request & { body?: { source?: unknown } }).body?.source);
+      const createInput = {
+        ...(label !== undefined ? { label } : {}),
+        ...(source !== undefined ? { source } : {}),
+        originalName: file.originalname,
+      };
 
       try {
         const buffer = await readUploadBuffer(file);
-        const image = await referenceImageService.createFromBuffer(userId, buffer, {
-          label,
-          source,
-          originalName: file.originalname,
-        });
+        const image = await referenceImageService.createFromBuffer(userId, buffer, createInput);
 
         res.status(201).json(image);
       } finally {
@@ -91,10 +102,13 @@ export function createReferenceImagesRoutes(
         return;
       }
 
-      const image = await referenceImageService.createFromUrl(userId, sourceUrl.trim(), {
-        label: normalizeOptionalString(label),
-        source: normalizeOptionalString(source),
-      });
+      const normalizedLabel = normalizeOptionalString(label);
+      const normalizedSource = normalizeOptionalString(source);
+      const createInput = {
+        ...(normalizedLabel !== undefined ? { label: normalizedLabel } : {}),
+        ...(normalizedSource !== undefined ? { source: normalizedSource } : {}),
+      };
+      const image = await referenceImageService.createFromUrl(userId, sourceUrl.trim(), createInput);
 
       res.status(201).json(image);
     })
@@ -106,7 +120,8 @@ export function createReferenceImagesRoutes(
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const imageId = req.params.id;
+      const imageId = requireRouteParam(req, res, 'id');
+      if (!imageId) return;
       const deleted = await referenceImageService.deleteImage(userId, imageId);
       if (!deleted) {
         res.status(404).json({ error: 'Reference image not found' });

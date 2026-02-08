@@ -66,7 +66,7 @@ export interface ToolSidebarProps {
   isProcessing?: boolean;
   isRefining?: boolean;
   genericOptimizedPrompt?: string | null;
-  promptInputRef?: RefObject<HTMLTextAreaElement | null>;
+  promptInputRef?: RefObject<HTMLTextAreaElement>;
   onCreateFromTrigger?: (trigger: string) => void;
   onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
   onRender: (model: string, overrides?: GenerationOverrides) => void;

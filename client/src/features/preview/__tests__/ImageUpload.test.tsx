@@ -58,6 +58,7 @@ describe('ImageUpload', () => {
       mockUploadPreviewImage.mockResolvedValueOnce({
         success: true,
         data: {
+          imageUrl: '',
           storagePath: 'path',
         },
       });

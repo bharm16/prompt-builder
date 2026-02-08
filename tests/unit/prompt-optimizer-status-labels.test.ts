@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { resolveActiveStatusLabel as resolveContainerLabel } from '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer';
-import { resolveActiveStatusLabel as resolveWorkspaceLabel } from '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace';
+import { resolveActiveStatusLabel } from '@features/prompt-optimizer/utils/activeStatusLabel';
 
 const baseParams = {
   inputPrompt: '',
@@ -48,28 +47,28 @@ describe('resolveActiveStatusLabel', () => {
   describe('PromptOptimizerContainer', () => {
     describe('error handling', () => {
       it('returns Refining when refining is true', () => {
-        expect(resolveContainerLabel(scenarios[0].params)).toBe('Refining');
+        expect(resolveActiveStatusLabel(scenarios[0]!.params)).toBe('Refining');
       });
 
       it('returns Optimizing when processing is true and not refining', () => {
-        expect(resolveContainerLabel(scenarios[1].params)).toBe('Optimizing');
+        expect(resolveActiveStatusLabel(scenarios[1]!.params)).toBe('Optimizing');
       });
     });
 
     describe('edge cases', () => {
       it('returns Draft when both prompts are empty', () => {
-        expect(resolveContainerLabel(scenarios[2].params)).toBe('Draft');
+        expect(resolveActiveStatusLabel(scenarios[2]!.params)).toBe('Draft');
       });
 
       it('returns Draft when only input prompt is present', () => {
-        expect(resolveContainerLabel(scenarios[3].params)).toBe('Draft');
+        expect(resolveActiveStatusLabel(scenarios[3]!.params)).toBe('Draft');
       });
     });
 
     describe('core behavior', () => {
       it('distinguishes Generated vs Optimized based on highlights', () => {
-        expect(resolveContainerLabel(scenarios[4].params)).toBe('Generated');
-        expect(resolveContainerLabel(scenarios[5].params)).toBe('Optimized');
+        expect(resolveActiveStatusLabel(scenarios[4]!.params)).toBe('Generated');
+        expect(resolveActiveStatusLabel(scenarios[5]!.params)).toBe('Optimized');
       });
     });
   });
@@ -77,28 +76,28 @@ describe('resolveActiveStatusLabel', () => {
   describe('PromptOptimizerWorkspace', () => {
     describe('error handling', () => {
       it('returns Refining when refining is true', () => {
-        expect(resolveWorkspaceLabel(scenarios[0].params)).toBe('Refining');
+        expect(resolveActiveStatusLabel(scenarios[0]!.params)).toBe('Refining');
       });
 
       it('returns Optimizing when processing is true and not refining', () => {
-        expect(resolveWorkspaceLabel(scenarios[1].params)).toBe('Optimizing');
+        expect(resolveActiveStatusLabel(scenarios[1]!.params)).toBe('Optimizing');
       });
     });
 
     describe('edge cases', () => {
       it('returns Draft when both prompts are empty', () => {
-        expect(resolveWorkspaceLabel(scenarios[2].params)).toBe('Draft');
+        expect(resolveActiveStatusLabel(scenarios[2]!.params)).toBe('Draft');
       });
 
       it('returns Draft when only input prompt is present', () => {
-        expect(resolveWorkspaceLabel(scenarios[3].params)).toBe('Draft');
+        expect(resolveActiveStatusLabel(scenarios[3]!.params)).toBe('Draft');
       });
     });
 
     describe('core behavior', () => {
       it('distinguishes Generated vs Optimized based on highlights', () => {
-        expect(resolveWorkspaceLabel(scenarios[4].params)).toBe('Generated');
-        expect(resolveWorkspaceLabel(scenarios[5].params)).toBe('Optimized');
+        expect(resolveActiveStatusLabel(scenarios[4]!.params)).toBe('Generated');
+        expect(resolveActiveStatusLabel(scenarios[5]!.params)).toBe('Optimized');
       });
     });
   });

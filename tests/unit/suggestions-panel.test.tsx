@@ -59,6 +59,11 @@ vi.mock('@components/SuggestionsPanel/components/PanelStates', () => ({
 
 const mockUseSuggestionsState = vi.mocked(useSuggestionsState);
 const mockUseCustomRequest = vi.mocked(useCustomRequest);
+const mockActions = {
+  SET_SUGGESTIONS: 'SET_SUGGESTIONS',
+  SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY',
+  SET_LOADING: 'SET_LOADING',
+} as const;
 
 describe('SuggestionsPanel', () => {
   beforeEach(() => {
@@ -81,7 +86,7 @@ describe('SuggestionsPanel', () => {
         hasCategories: false,
         isGroupedFormat: false,
         dispatch: vi.fn(),
-        actions: { SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY' },
+        actions: mockActions,
       });
 
       render(
@@ -108,7 +113,7 @@ describe('SuggestionsPanel', () => {
         hasCategories: false,
         isGroupedFormat: false,
         dispatch: vi.fn(),
-        actions: { SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY' },
+        actions: mockActions,
       });
 
       render(<SuggestionsPanel suggestionsData={{ show: false }} />);
@@ -127,7 +132,7 @@ describe('SuggestionsPanel', () => {
         hasCategories: true,
         isGroupedFormat: false,
         dispatch: vi.fn(),
-        actions: { SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY' },
+        actions: mockActions,
       });
 
       render(
@@ -157,7 +162,7 @@ describe('SuggestionsPanel', () => {
         hasCategories: true,
         isGroupedFormat: false,
         dispatch: vi.fn(),
-        actions: { SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY' },
+        actions: mockActions,
       });
 
       render(

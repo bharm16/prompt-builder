@@ -15,6 +15,11 @@ export default defineConfig({
       // Client utils shim for shared @utils/cn usage in client components
       { find: /^@utils\/cn$/, replacement: path.resolve(__dirname, '../../client/src/utils/cn') },
       { find: /^@utils\/subjectDescriptorCategories$/, replacement: path.resolve(__dirname, '../../client/src/utils/subjectDescriptorCategories') },
+      { find: /^@utils\/textQuoteRelocator$/, replacement: path.resolve(__dirname, '../../client/src/utils/textQuoteRelocator') },
+      { find: /^@utils\/canonicalText$/, replacement: path.resolve(__dirname, '../../client/src/utils/canonicalText') },
+      { find: /^@utils\/PromptContext\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/utils/PromptContext/$1') },
+      { find: /^@utils\/PromptContext$/, replacement: path.resolve(__dirname, '../../client/src/utils/PromptContext') },
+      { find: /^@config\/performance\.config$/, replacement: path.resolve(__dirname, '../../client/src/config/performance.config') },
 
       // Shared aliases (used by both client and server) - from both tsconfig.json files
       { find: /^@shared\/(.*)/, replacement: path.resolve(__dirname, '../../shared/$1') },

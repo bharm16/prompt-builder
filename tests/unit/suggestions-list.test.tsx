@@ -3,13 +3,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ButtonHTMLAttributes } from 'react';
 
 import { SuggestionsList, generateSuggestionKey } from '@components/SuggestionsPanel/components/SuggestionsList';
 import { simpleHash } from '@features/prompt-optimizer/utils/SuggestionCache';
 import { logger } from '@/services/LoggingService';
-import { useToast } from '@components/Toast';
+import { useToast } from '@/components/Toast';
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {
@@ -17,7 +17,7 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-vi.mock('@components/Toast', () => ({
+vi.mock('@/components/Toast', () => ({
   useToast: vi.fn(),
 }));
 
@@ -100,7 +100,7 @@ describe('SuggestionsList', () => {
 
       render(
         <SuggestionsList
-          suggestions={['Refine tone']}
+          suggestions={[{ text: 'Refine tone' }]}
           onSuggestionClick={onSuggestionClick}
         />
       );
@@ -119,8 +119,6 @@ describe('SuggestionsList', () => {
         configurable: true,
       });
 
-      vi.useFakeTimers();
-
       render(
         <SuggestionsList
           suggestions={[{ text: 'Copy me' }]}
@@ -131,11 +129,12 @@ describe('SuggestionsList', () => {
 
       fireEvent.click(screen.getByLabelText('Copy suggestion 1'));
 
-      expect(writeText).toHaveBeenCalledWith('Copy me');
-      expect(toastApi.success).toHaveBeenCalledWith('Copied to clipboard!', 1500);
-
-      vi.runAllTimers();
-      vi.useRealTimers();
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith('Copy me');
+      });
+      await waitFor(() => {
+        expect(toastApi.success).toHaveBeenCalledWith('Copied to clipboard!', 1500);
+      });
     });
   });
 });

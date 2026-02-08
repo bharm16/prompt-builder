@@ -187,7 +187,6 @@ describe('validateRequest', () => {
     it('calls next and replaces body with validated value on success', () => {
       const validatedValue = { name: 'Test', trimmed: true };
       const joiSchema = createJoiSchema(() => ({
-        error: undefined,
         value: validatedValue,
       }));
       const middleware = validateRequest(joiSchema as never);

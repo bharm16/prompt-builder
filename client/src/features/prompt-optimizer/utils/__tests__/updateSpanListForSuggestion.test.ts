@@ -23,14 +23,14 @@ const makeSpan = (
   category?: string,
   text?: string
 ): TestSpan => ({
-  id,
+  ...(typeof id === 'string' ? { id } : {}),
   start,
   end,
   text: text ?? `span-${start}-${end}`,
   quote: text ?? `span-${start}-${end}`,
   displayStart: start,
   displayEnd: end,
-  category,
+  ...(typeof category === 'string' ? { category } : {}),
 });
 
 describe('updateSpanListForSuggestion', () => {

@@ -78,11 +78,12 @@ export class ModelIntelligenceService {
     const requirements = this.requirementsService.extractRequirements(prompt, spans);
     const modelIds = this.registry.getAllModels();
 
-    const availability = await this.availabilityGate.filterModels(modelIds, {
+    const availabilityOptions = {
       mode,
       durationSeconds,
-      userId: options.userId,
-    });
+      ...(options.userId !== undefined ? { userId: options.userId } : {}),
+    };
+    const availability = await this.availabilityGate.filterModels(modelIds, availabilityOptions);
 
     const availabilityState =
       availability.availableModelIds.length > 0
@@ -126,10 +127,10 @@ export class ModelIntelligenceService {
       requirements,
       recommendations,
       recommended,
-      alsoConsider,
       suggestComparison: comparison.suggest,
-      comparisonModels: comparison.models,
-      filteredOut: availability.filteredOut,
+      ...(alsoConsider ? { alsoConsider } : {}),
+      ...(comparison.models ? { comparisonModels: comparison.models } : {}),
+      ...(availability.filteredOut.length > 0 ? { filteredOut: availability.filteredOut } : {}),
       computedAt: new Date(),
     };
   }
@@ -256,7 +257,8 @@ export class ModelIntelligenceService {
   ): { suggest: boolean; models?: [VideoModelId, VideoModelId] } {
     if (scores.length < 2) return { suggest: false };
 
-    const [first, second] = scores;
+    const first = scores[0]!;
+    const second = scores[1]!;
     const scoreDiff = first.overallScore - second.overallScore;
 
     if (scoreDiff < 12 && second.overallScore >= 65) {

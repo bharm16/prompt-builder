@@ -118,9 +118,12 @@ describe('unwrapSuggestionsArray', () => {
       const suggestions: Suggestion[] = [{ id: 1, text: 'test' }];
       const wrapped = { suggestions };
 
-      const result = unwrapSuggestionsArray<Suggestion[]>(wrapped, true);
+      const result = unwrapSuggestionsArray<Suggestion[] | { suggestions: Suggestion[] }>(wrapped, true);
 
-      expect(result.value).toEqual(suggestions);
+      expect(Array.isArray(result.value)).toBe(true);
+      if (Array.isArray(result.value)) {
+        expect(result.value).toEqual(suggestions);
+      }
     });
 
     it('returns unwrapped: false when no unwrapping occurred', () => {

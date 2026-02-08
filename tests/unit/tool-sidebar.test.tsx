@@ -10,8 +10,7 @@ vi.mock(
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
 const sidebarState = vi.hoisted(() => ({
@@ -92,21 +91,15 @@ const createProps = (overrides: Partial<ToolSidebarProps> = {}): ToolSidebarProp
   onCreateNew: vi.fn(),
   onDelete: vi.fn(),
   prompt: '',
-  aspectRatio: '16:9',
-  duration: 5,
-  selectedModel: 'sora-2',
-  onModelChange: vi.fn(),
-  onAspectRatioChange: vi.fn(),
-  onDurationChange: vi.fn(),
+  onPromptChange: vi.fn(),
+  onOptimize: vi.fn(async () => undefined),
+  showResults: true,
+  isProcessing: false,
+  isRefining: false,
+  genericOptimizedPrompt: null,
   onDraft: vi.fn(),
   onRender: vi.fn(),
-  isDraftDisabled: false,
-  isRenderDisabled: false,
-  keyframes: [],
-  onAddKeyframe: vi.fn(),
-  onRemoveKeyframe: vi.fn(),
-  tier: 'render',
-  onTierChange: vi.fn(),
+  onImageUpload: vi.fn(),
   onStoryboard: vi.fn(),
   assets: [],
   assetsByType: createAssetsByType([]),
@@ -127,8 +120,8 @@ describe('ToolSidebar', () => {
   });
 
   describe('error handling', () => {
-    it('renders generation controls when activePanel is create', () => {
-      sidebarState.activePanel = 'create';
+    it('renders generation controls when activePanel is studio', () => {
+      sidebarState.activePanel = 'studio';
 
       render(<ToolSidebar {...createProps()} />);
 

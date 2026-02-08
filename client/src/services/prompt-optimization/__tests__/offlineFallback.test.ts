@@ -132,7 +132,7 @@ describe('isAbortError', () => {
 describe('buildOfflineResult', () => {
   it('includes error message in metadata when error is an Error', () => {
     const result = buildOfflineResult(
-      { prompt: 'test', mode: 'optimize', signal: undefined },
+      { prompt: 'test', mode: 'optimize' },
       new Error('Auth failed'),
     );
     expect(result.metadata.errorMessage).toBe('Auth failed');
@@ -140,7 +140,7 @@ describe('buildOfflineResult', () => {
 
   it('sets errorMessage to null when error is null', () => {
     const result = buildOfflineResult(
-      { prompt: 'test', mode: 'optimize', signal: undefined },
+      { prompt: 'test', mode: 'optimize' },
       null,
     );
     expect(result.metadata.errorMessage).toBeNull();
@@ -148,7 +148,7 @@ describe('buildOfflineResult', () => {
 
   it('handles empty prompt by showing fallback text', () => {
     const result = buildOfflineResult(
-      { prompt: '', mode: 'optimize', signal: undefined },
+      { prompt: '', mode: 'optimize' },
       new Error('test'),
     );
     expect(result.draft).toContain('No original prompt was provided.');
@@ -156,7 +156,7 @@ describe('buildOfflineResult', () => {
 
   it('handles undefined prompt gracefully', () => {
     const result = buildOfflineResult(
-      { prompt: undefined as unknown as string, mode: 'optimize', signal: undefined },
+      { prompt: undefined as unknown as string, mode: 'optimize' },
       new Error('test'),
     );
     expect(result.draft).toContain('No original prompt was provided.');
@@ -164,7 +164,7 @@ describe('buildOfflineResult', () => {
 
   it('normalizes mode with hyphens to spaces', () => {
     const result = buildOfflineResult(
-      { prompt: 'hello', mode: 'scene-change', signal: undefined },
+      { prompt: 'hello', mode: 'scene-change' },
       new Error('e'),
     );
     expect(result.draft).toContain('scene change');
@@ -173,7 +173,7 @@ describe('buildOfflineResult', () => {
 
   it('defaults mode to "optimize" when mode is falsy', () => {
     const result = buildOfflineResult(
-      { prompt: 'hello', mode: '', signal: undefined },
+      { prompt: 'hello', mode: '' },
       new Error('e'),
     );
     expect(result.draft).toContain('optimize');
@@ -181,7 +181,7 @@ describe('buildOfflineResult', () => {
 
   it('produces a complete offline result structure', () => {
     const result = buildOfflineResult(
-      { prompt: 'A cinematic scene', mode: 'video-prompt', signal: undefined },
+      { prompt: 'A cinematic scene', mode: 'video-prompt' },
       new Error('401'),
     );
     expect(result.draft).toContain('A cinematic scene');
@@ -196,7 +196,7 @@ describe('buildOfflineResult', () => {
 
   it('refined text contains draft text', () => {
     const result = buildOfflineResult(
-      { prompt: 'test prompt', mode: 'optimize', signal: undefined },
+      { prompt: 'test prompt', mode: 'optimize' },
       new Error('err'),
     );
     expect(result.refined).toContain(result.draft);
@@ -209,7 +209,7 @@ describe('buildOfflineResult', () => {
 describe('emitOfflineCallbacks', () => {
   it('does not throw when callbacks are undefined', () => {
     const result = buildOfflineResult(
-      { prompt: 'x', mode: 'o', signal: undefined },
+      { prompt: 'x', mode: 'o' },
       null,
     );
     expect(() => emitOfflineCallbacks(result, {})).not.toThrow();
@@ -217,7 +217,7 @@ describe('emitOfflineCallbacks', () => {
 
   it('does not throw when callbacks are null', () => {
     const result = buildOfflineResult(
-      { prompt: 'x', mode: 'o', signal: undefined },
+      { prompt: 'x', mode: 'o' },
       null,
     );
     expect(() =>
@@ -228,7 +228,7 @@ describe('emitOfflineCallbacks', () => {
   it('calls onDraft with the draft text', () => {
     const onDraft = vi.fn();
     const result = buildOfflineResult(
-      { prompt: 'abc', mode: 'optimize', signal: undefined },
+      { prompt: 'abc', mode: 'optimize' },
       null,
     );
     emitOfflineCallbacks(result, { onDraft });
@@ -238,7 +238,7 @@ describe('emitOfflineCallbacks', () => {
   it('calls onSpans with empty array and offline-fallback source', () => {
     const onSpans = vi.fn();
     const result = buildOfflineResult(
-      { prompt: 'abc', mode: 'optimize', signal: undefined },
+      { prompt: 'abc', mode: 'optimize' },
       null,
     );
     emitOfflineCallbacks(result, { onSpans });
@@ -248,7 +248,7 @@ describe('emitOfflineCallbacks', () => {
   it('calls onRefined with refined text and metadata', () => {
     const onRefined = vi.fn();
     const result = buildOfflineResult(
-      { prompt: 'abc', mode: 'optimize', signal: undefined },
+      { prompt: 'abc', mode: 'optimize' },
       null,
     );
     emitOfflineCallbacks(result, { onRefined });
@@ -262,7 +262,7 @@ describe('emitOfflineCallbacks', () => {
 describe('handleOfflineFallback', () => {
   it('returns a complete result with usedFallback true', () => {
     const result = handleOfflineFallback(
-      { prompt: 'test', mode: 'optimize', signal: undefined },
+      { prompt: 'test', mode: 'optimize' },
       new Error('401'),
     );
     expect(result.usedFallback).toBe(true);
@@ -275,7 +275,7 @@ describe('handleOfflineFallback', () => {
     const onDraft = vi.fn();
     const onRefined = vi.fn();
     handleOfflineFallback(
-      { prompt: 'test', mode: 'optimize', onDraft, onRefined, signal: undefined },
+      { prompt: 'test', mode: 'optimize', onDraft, onRefined },
       new Error('401'),
     );
     expect(onDraft).toHaveBeenCalled();
@@ -284,7 +284,7 @@ describe('handleOfflineFallback', () => {
 
   it('includes the prompt text in draft output', () => {
     const result = handleOfflineFallback(
-      { prompt: 'my unique prompt text', mode: 'optimize', signal: undefined },
+      { prompt: 'my unique prompt text', mode: 'optimize' },
       new Error('err'),
     );
     expect(result.draft).toContain('my unique prompt text');

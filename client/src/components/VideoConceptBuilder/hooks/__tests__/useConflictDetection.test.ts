@@ -65,8 +65,8 @@ describe('useConflictDetection', () => {
 
     it('ignores stale responses from earlier requests', async () => {
       const dispatch = vi.fn() as Dispatch<VideoConceptAction>;
-      const first = createDeferred<{ conflicts: string[] }>();
-      const second = createDeferred<{ conflicts: string[] }>();
+      const first = createDeferred<{ valid: boolean; conflicts: string[] }>();
+      const second = createDeferred<{ valid: boolean; conflicts: string[] }>();
 
       mockValidateElements
         .mockReturnValueOnce(first.promise)
@@ -83,7 +83,7 @@ describe('useConflictDetection', () => {
       });
 
       await act(async () => {
-        first.resolve({ conflicts: ['old'] });
+        first.resolve({ valid: true, conflicts: ['old'] });
         await first.promise;
       });
 
@@ -93,7 +93,7 @@ describe('useConflictDetection', () => {
       });
 
       await act(async () => {
-        second.resolve({ conflicts: ['new'] });
+        second.resolve({ valid: true, conflicts: ['new'] });
         await second.promise;
       });
 

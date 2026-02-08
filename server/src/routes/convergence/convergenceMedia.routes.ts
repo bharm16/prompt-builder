@@ -8,6 +8,7 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
 import { Readable } from 'node:stream';
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { asyncHandler } from '@middleware/asyncHandler';
@@ -202,7 +203,7 @@ export function createConvergenceMediaRoutes(): Router {
         return res.end();
       }
 
-      const stream = Readable.fromWeb(upstream.body as ReadableStream<Uint8Array>);
+      const stream = Readable.fromWeb(upstream.body as unknown as NodeReadableStream<Uint8Array>);
       stream.on('error', (error) => {
         logger.warn('Convergence media proxy stream error', {
           error: error instanceof Error ? error.message : String(error),

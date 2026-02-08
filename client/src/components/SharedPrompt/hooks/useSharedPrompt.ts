@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getPromptRepository } from '../../../repositories';
+import { getPromptRepository } from '@repositories/index';
 import { PromptContext } from '../../../utils/PromptContext';
 import { escapeHTMLForMLHighlighting } from '../../../features/prompt-optimizer/utils/textFormatting';
 import { logger } from '../../../services/LoggingService';

@@ -52,7 +52,7 @@ describe('SpanBentoGrid', () => {
 
   describe('error handling', () => {
     it('omits hover handlers when onSpanHoverChange is not provided', () => {
-      const span: Span = { id: 'span-1', quote: 'hello', category: TAXONOMY.SHOT.id };
+      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
       mockUseSpanGrouping.mockReturnValue({
         groups: {
           [TAXONOMY.SHOT.id]: [span],
@@ -79,7 +79,7 @@ describe('SpanBentoGrid', () => {
 
   describe('edge cases', () => {
     it('passes defaultExpanded for shot and subject categories', () => {
-      const span: Span = { id: 'span-1', quote: 'hello', category: TAXONOMY.SHOT.id };
+      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
       mockUseSpanGrouping.mockReturnValue({
         groups: {
           [TAXONOMY.SHOT.id]: [span],
@@ -111,7 +111,7 @@ describe('SpanBentoGrid', () => {
   describe('core behavior', () => {
     it('calls scrollToSpan when a span is clicked', async () => {
       const user = userEvent.setup();
-      const span: Span = { id: 'span-1', quote: 'hello', category: TAXONOMY.SHOT.id };
+      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
       const editorRef = { current: document.createElement('div') };
 
       mockUseSpanGrouping.mockReturnValue({

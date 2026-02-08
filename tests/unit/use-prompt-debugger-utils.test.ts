@@ -84,8 +84,8 @@ describe('buildHighlightSuggestionPayload', () => {
         { inputPrompt: prompt, displayedPrompt: prompt },
         { text: 'TARGET' },
       );
-      expect(result.contextBefore.length).toBeLessThanOrEqual(300);
-      expect(result.contextAfter.length).toBeLessThanOrEqual(300);
+      expect((result.contextBefore ?? '').length).toBeLessThanOrEqual(300);
+      expect((result.contextAfter ?? '').length).toBeLessThanOrEqual(300);
     });
   });
 

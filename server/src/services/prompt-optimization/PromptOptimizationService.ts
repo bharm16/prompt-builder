@@ -361,10 +361,10 @@ export class PromptOptimizationService {
       return this.optimizeI2V({
         prompt,
         startImage,
-        constraintMode,
-        sourcePrompt,
         generationParams,
         skipCache,
+        ...(constraintMode !== undefined ? { constraintMode } : {}),
+        ...(sourcePrompt !== undefined ? { sourcePrompt } : {}),
       });
     }
 
@@ -537,9 +537,9 @@ export class PromptOptimizationService {
         const compilation = await this.compilationService.compileOptimizedPrompt({
           operation,
           optimizedPrompt,
-          targetModel,
           mode: finalMode,
           qualityAssessment,
+          ...(targetModel !== undefined ? { targetModel } : {}),
         });
 
         optimizedPrompt = compilation.prompt;

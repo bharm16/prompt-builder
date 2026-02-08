@@ -22,7 +22,8 @@ describe('attemptJsonRepair', () => {
       expect(changes).toContain('Added missing commas between objects');
       const parsed = JSON.parse(repaired) as Array<{ a?: number; b?: number }>;
       expect(parsed).toHaveLength(2);
-      expect(parsed[1].b).toBe(2);
+      expect(parsed[1]).toBeDefined();
+      expect(parsed[1]?.b).toBe(2);
     });
   });
 

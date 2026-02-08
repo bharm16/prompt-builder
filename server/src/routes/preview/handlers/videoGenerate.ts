@@ -122,7 +122,9 @@ const extractMotionMeta = (params: unknown) => {
 };
 
 const extractPromptTriggers = (prompt: string): string[] =>
-  Array.from(prompt.matchAll(TRIGGER_REGEX)).map((match) => match[1].toLowerCase());
+  Array.from(prompt.matchAll(TRIGGER_REGEX))
+    .map((match) => match[1]?.toLowerCase().trim())
+    .filter((trigger): trigger is string => Boolean(trigger));
 
 export const createVideoGenerateHandler = ({
   videoGenerationService,
@@ -340,7 +342,7 @@ export const createVideoGenerateHandler = ({
         const swapResult = await faceSwapService.swap({
           characterPrimaryImageUrl: characterData.primaryImageUrl,
           targetCompositionUrl: startImage,
-          aspectRatio,
+          ...(aspectRatio ? { aspectRatio } : {}),
         });
 
         resolvedStartImage = swapResult.swappedImageUrl;

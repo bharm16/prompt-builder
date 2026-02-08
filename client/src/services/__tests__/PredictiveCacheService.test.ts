@@ -189,7 +189,11 @@ describe('PredictiveCacheService', () => {
 
       if (service.getPredictions().length > 0) {
         expect(fetchFn).toHaveBeenCalled();
-        expect(fetchFn.mock.calls[0][0]).toHaveProperty('priority', false);
+        const firstCall = fetchFn.mock.calls[0];
+        expect(firstCall).toBeDefined();
+        const firstArg = firstCall?.[0];
+        expect(firstArg).toBeDefined();
+        expect(firstArg).toHaveProperty('priority', false);
       }
     });
 

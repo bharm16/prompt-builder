@@ -4,6 +4,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PromptModals } from '@features/prompt-optimizer/components/PromptModals';
 import { usePromptServices, usePromptUIStateContext } from '@features/prompt-optimizer/context/PromptStateContext';
 import { useSettings } from '@components/Settings';
+import type {
+  PromptServicesState,
+  PromptUIState,
+} from '@features/prompt-optimizer/context/types';
+import type { AppSettings } from '@components/Settings';
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptServices: vi.fn(),
@@ -39,28 +44,108 @@ const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
 const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUseSettings = vi.mocked(useSettings);
 
+const baseSettings: AppSettings = {
+  darkMode: false,
+  fontSize: 'medium',
+  autoSave: true,
+  exportFormat: 'text',
+};
+
+const createPromptUiState = (
+  overrides: Partial<PromptUIState> = {}
+): PromptUIState => ({
+  showHistory: false,
+  setShowHistory: vi.fn(),
+  showResults: false,
+  setShowResults: vi.fn(),
+  showSettings: false,
+  setShowSettings: vi.fn(),
+  showShortcuts: false,
+  setShowShortcuts: vi.fn(),
+  showImprover: false,
+  setShowImprover: vi.fn(),
+  showBrainstorm: false,
+  setShowBrainstorm: vi.fn(),
+  currentAIIndex: 0,
+  setCurrentAIIndex: vi.fn(),
+  outputSaveState: 'idle',
+  setOutputSaveState: vi.fn(),
+  outputLastSavedAt: null,
+  setOutputLastSavedAt: vi.fn(),
+  ...overrides,
+});
+
+const createPromptServicesState = (inputPrompt: string): PromptServicesState => ({
+  promptOptimizer: {
+    inputPrompt,
+    setInputPrompt: vi.fn(),
+    isProcessing: false,
+    optimizedPrompt: '',
+    setOptimizedPrompt: vi.fn(),
+    displayedPrompt: '',
+    setDisplayedPrompt: vi.fn(),
+    genericOptimizedPrompt: null,
+    setGenericOptimizedPrompt: vi.fn(),
+    previewPrompt: null,
+    setPreviewPrompt: vi.fn(),
+    previewAspectRatio: null,
+    setPreviewAspectRatio: vi.fn(),
+    qualityScore: null,
+    skipAnimation: false,
+    setSkipAnimation: vi.fn(),
+    improvementContext: null,
+    setImprovementContext: vi.fn(),
+    draftPrompt: '',
+    isDraftReady: false,
+    isRefining: false,
+    draftSpans: null,
+    refinedSpans: null,
+    lockedSpans: [],
+    optimize: vi.fn(async () => null),
+    compile: vi.fn(async () => null),
+    resetPrompt: vi.fn(),
+    setLockedSpans: vi.fn(),
+    addLockedSpan: vi.fn(),
+    removeLockedSpan: vi.fn(),
+    clearLockedSpans: vi.fn(),
+  },
+  promptHistory: {
+    history: [],
+    filteredHistory: [],
+    isLoadingHistory: false,
+    searchQuery: '',
+    setSearchQuery: vi.fn(),
+    saveToHistory: vi.fn(async () => null),
+    createDraft: vi.fn(() => ({ uuid: 'draft-uuid', id: 'draft-id' })),
+    updateEntryLocal: vi.fn(),
+    clearHistory: vi.fn(async () => {}),
+    deleteFromHistory: vi.fn(async () => {}),
+    loadHistoryFromFirestore: vi.fn(async () => {}),
+    updateEntryHighlight: vi.fn(),
+    updateEntryOutput: vi.fn(),
+    updateEntryPersisted: vi.fn(),
+    updateEntryVersions: vi.fn(),
+  },
+});
+
 describe('PromptModals', () => {
   describe('error handling', () => {
     it('renders settings closed when showSettings is false', () => {
-      mockUsePromptUIStateContext.mockReturnValue({
-        showSettings: false,
-        setShowSettings: vi.fn(),
-        showShortcuts: false,
-        setShowShortcuts: vi.fn(),
-        showImprover: false,
-        setShowImprover: vi.fn(),
-      } as ReturnType<typeof usePromptUIStateContext>);
+      mockUsePromptUIStateContext.mockReturnValue(
+        createPromptUiState({
+          showSettings: false,
+          showShortcuts: false,
+          showImprover: false,
+        })
+      );
 
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: { inputPrompt: 'hello' },
-        promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptServices>);
+      mockUsePromptServices.mockReturnValue(createPromptServicesState('hello'));
 
       mockUseSettings.mockReturnValue({
-        settings: {},
+        settings: baseSettings,
         updateSetting: vi.fn(),
         resetSettings: vi.fn(),
-      } as ReturnType<typeof useSettings>);
+      });
 
       render(<PromptModals />);
 
@@ -70,25 +155,21 @@ describe('PromptModals', () => {
 
   describe('edge cases', () => {
     it('renders keyboard shortcuts when enabled', () => {
-      mockUsePromptUIStateContext.mockReturnValue({
-        showSettings: false,
-        setShowSettings: vi.fn(),
-        showShortcuts: true,
-        setShowShortcuts: vi.fn(),
-        showImprover: false,
-        setShowImprover: vi.fn(),
-      } as ReturnType<typeof usePromptUIStateContext>);
+      mockUsePromptUIStateContext.mockReturnValue(
+        createPromptUiState({
+          showSettings: false,
+          showShortcuts: true,
+          showImprover: false,
+        })
+      );
 
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: { inputPrompt: 'hello' },
-        promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptServices>);
+      mockUsePromptServices.mockReturnValue(createPromptServicesState('hello'));
 
       mockUseSettings.mockReturnValue({
-        settings: {},
+        settings: baseSettings,
         updateSetting: vi.fn(),
         resetSettings: vi.fn(),
-      } as ReturnType<typeof useSettings>);
+      });
 
       render(<PromptModals />);
 
@@ -100,25 +181,22 @@ describe('PromptModals', () => {
     it('renders improvement form with the current prompt', async () => {
       const setShowSettings = vi.fn();
 
-      mockUsePromptUIStateContext.mockReturnValue({
-        showSettings: true,
-        setShowSettings,
-        showShortcuts: false,
-        setShowShortcuts: vi.fn(),
-        showImprover: true,
-        setShowImprover: vi.fn(),
-      } as ReturnType<typeof usePromptUIStateContext>);
+      mockUsePromptUIStateContext.mockReturnValue(
+        createPromptUiState({
+          showSettings: true,
+          setShowSettings,
+          showShortcuts: false,
+          showImprover: true,
+        })
+      );
 
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: { inputPrompt: 'hello world' },
-        promptHistory: { clearHistory: vi.fn() },
-      } as ReturnType<typeof usePromptServices>);
+      mockUsePromptServices.mockReturnValue(createPromptServicesState('hello world'));
 
       mockUseSettings.mockReturnValue({
-        settings: {},
+        settings: baseSettings,
         updateSetting: vi.fn(),
         resetSettings: vi.fn(),
-      } as ReturnType<typeof useSettings>);
+      });
 
       render(<PromptModals />);
 

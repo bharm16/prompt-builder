@@ -38,6 +38,27 @@ const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUseCapabilities = vi.mocked(useCapabilities);
 const mockUseModelRegistry = vi.mocked(useModelRegistry);
 
+const createPromptConfigState = (
+  overrides: Partial<ReturnType<typeof usePromptConfig>> = {}
+): ReturnType<typeof usePromptConfig> => ({
+  modes: [],
+  selectedMode: 'video',
+  setSelectedMode: vi.fn(),
+  currentMode: {
+    id: 'video',
+    name: 'Video Prompt',
+    icon: undefined as never,
+    description: 'Generate AI video prompts',
+  },
+  selectedModel: '',
+  setSelectedModel: vi.fn(),
+  generationParams: {},
+  setGenerationParams: vi.fn(),
+  videoTier: 'render',
+  setVideoTier: vi.fn(),
+  ...overrides,
+});
+
 describe('PromptControlsRow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,13 +76,9 @@ describe('PromptControlsRow', () => {
 
   describe('error handling', () => {
     it('returns null when not in video mode', () => {
-      mockUsePromptConfig.mockReturnValue({
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
         selectedMode: 'image',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
-      } as ReturnType<typeof usePromptConfig>);
+      }));
 
       const { container } = render(<PromptControlsRow />);
 
@@ -74,13 +91,9 @@ describe('PromptControlsRow', () => {
       mockUsePromptServices.mockReturnValue({
         promptOptimizer: { isProcessing: true, isRefining: false },
       } as ReturnType<typeof usePromptServices>);
-      mockUsePromptConfig.mockReturnValue({
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
         selectedMode: 'video',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
-      } as ReturnType<typeof usePromptConfig>);
+      }));
 
       render(<PromptControlsRow />);
 
@@ -91,13 +104,9 @@ describe('PromptControlsRow', () => {
 
   describe('core behavior', () => {
     it('labels the model selector with Auto when no model is selected', () => {
-      mockUsePromptConfig.mockReturnValue({
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
         selectedMode: 'video',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
-      } as ReturnType<typeof usePromptConfig>);
+      }));
 
       render(<PromptControlsRow />);
 

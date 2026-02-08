@@ -57,6 +57,36 @@ import { createAPIRoutes } from '@routes/api.routes';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 
+const createApiServices = (
+  optimize: ReturnType<typeof vi.fn> = vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt')
+): Parameters<typeof createAPIRoutes>[0] => ({
+  promptOptimizationService: {
+    optimize,
+    optimizeTwoStage: vi.fn(async () => ({ optimizedPrompt: 'optimized prompt' })),
+    compilePrompt: vi.fn(async () => ({ compiledPrompt: 'compiled prompt' })),
+  } as never,
+  enhancementService: {
+    getEnhancementSuggestions: vi.fn(async () => ({})),
+    getCustomSuggestions: vi.fn(async () => ({})),
+  },
+  sceneDetectionService: {
+    detectSceneChange: vi.fn(async () => ({})),
+  },
+  promptCoherenceService: {
+    checkCoherence: vi.fn(async () => ({ conflicts: [], harmonizations: [] })),
+  },
+  videoConceptService: {
+    getCreativeSuggestions: vi.fn(async () => []),
+    checkCompatibility: vi.fn(async () => ({})),
+    detectConflicts: vi.fn(async () => []),
+    completeScene: vi.fn(async () => ({})),
+    getSmartDefaults: vi.fn(async () => ({})),
+    generateVariations: vi.fn(async () => []),
+    parseConcept: vi.fn(async () => ({})),
+  } as never,
+  metricsService: undefined,
+});
+
 describe('createApp', () => {
   it('sets trust proxy and wires middleware/routes', () => {
     const configureMiddleware = vi.mocked(middlewareConfig.configureMiddleware);
@@ -180,13 +210,7 @@ describe('api.routes', () => {
     const app = express();
     app.use(express.json());
     app.use(
-      createAPIRoutes({
-        promptOptimizationService,
-        enhancementService: {},
-        sceneDetectionService: {},
-        videoConceptService: {},
-        metricsService: null,
-      })
+      createAPIRoutes(createApiServices(promptOptimizationService.optimize))
     );
 
     const badResponse = await request(app).post('/optimize').send({});
@@ -218,13 +242,7 @@ describe('api.routes', () => {
     const app = express();
     app.use(express.json());
     app.use(
-      createAPIRoutes({
-        promptOptimizationService,
-        enhancementService: {},
-        sceneDetectionService: {},
-        videoConceptService: {},
-        metricsService: null,
-      })
+      createAPIRoutes(createApiServices(promptOptimizationService.optimize))
     );
 
     const response = await request(app)
@@ -253,13 +271,7 @@ describe('api.routes', () => {
     const app = express();
     app.use(express.json());
     app.use(
-      createAPIRoutes({
-        promptOptimizationService,
-        enhancementService: {},
-        sceneDetectionService: {},
-        videoConceptService: {},
-        metricsService: null,
-      })
+      createAPIRoutes(createApiServices(promptOptimizationService.optimize))
     );
 
     const response = await request(app)

@@ -228,8 +228,9 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
       if (seed !== undefined) {
         input.seed = seed;
       }
-      if (hasInputImage) {
-        input.img_cond_path = request.inputImageUrl?.trim();
+      const inputImageUrl = request.inputImageUrl?.trim();
+      if (hasInputImage && inputImageUrl) {
+        input.img_cond_path = inputImageUrl;
       }
 
       const prediction = await this.createPrediction(input, userId);

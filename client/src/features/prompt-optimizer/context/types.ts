@@ -40,8 +40,8 @@ export interface PromptOptimizer {
   qualityScore: number | null;
   skipAnimation: boolean;
   setSkipAnimation: (skip: boolean) => void;
-  improvementContext: Record<string, unknown> | null;
-  setImprovementContext: (context: Record<string, unknown> | null) => void;
+  improvementContext: unknown | null;
+  setImprovementContext: (context: unknown | null) => void;
   draftPrompt: string;
   isDraftReady: boolean;
   isRefining: boolean;
@@ -152,8 +152,8 @@ export interface PromptSessionState {
   // Prompt State
   suggestionsData: SuggestionsData | null;
   setSuggestionsData: Dispatch<SetStateAction<SuggestionsData | null>>;
-  conceptElements: Record<string, unknown> | null;
-  setConceptElements: (elements: Record<string, unknown> | null) => void;
+  conceptElements: unknown | null;
+  setConceptElements: (elements: unknown | null) => void;
   promptContext: PromptContext | null;
   setPromptContext: (context: PromptContext | null) => void;
   currentPromptUuid: string | null;

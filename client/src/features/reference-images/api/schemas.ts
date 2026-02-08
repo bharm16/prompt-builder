@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { ReferenceImage } from './referenceImageApi';
 
 const ReferenceImageMetadataSchema = z
   .object({
@@ -12,7 +11,7 @@ const ReferenceImageMetadataSchema = z
   })
   .passthrough();
 
-export const ReferenceImageSchema: z.ZodType<ReferenceImage> = z
+export const ReferenceImageSchema = z
   .object({
     id: z.string(),
     userId: z.string(),

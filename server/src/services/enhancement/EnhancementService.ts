@@ -319,7 +319,7 @@ export class EnhancementService {
       );
 
       const promptBuildStart = Date.now();
-      const promptBuilderInput = {
+      const promptBuilderInput: PromptBuildParams = {
         highlightedText,
         contextBefore,
         contextAfter,
@@ -334,10 +334,13 @@ export class EnhancementService {
         videoConstraints,
         highlightWordCount,
         isPlaceholder,
-        spanAnchors: spanContext.spanAnchors,
-        nearbySpanHints: spanContext.nearbySpanHints,
-        focusGuidance,
+        ...(spanContext.spanAnchors ? { spanAnchors: spanContext.spanAnchors } : {}),
+        ...(spanContext.nearbySpanHints ? { nearbySpanHints: spanContext.nearbySpanHints } : {}),
+        ...(focusGuidance !== undefined ? { focusGuidance } : {}),
       };
+      if (highlightedCategoryConfidence !== null && highlightedCategoryConfidence !== undefined) {
+        promptBuilderInput.highlightedCategoryConfidence = highlightedCategoryConfidence;
+      }
       const promptResult = isPlaceholder
         ? this.core.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
         : this.core.promptBuilder.buildRewritePrompt(promptBuilderInput);
@@ -361,7 +364,7 @@ export class EnhancementService {
       metrics.usedContrastiveDecoding = generationResult.usedContrastiveDecoding;
 
       const postStart = Date.now();
-      const processingResult = await this.pipeline.suggestionProcessing.processSuggestions({
+      const suggestionProcessingParams = {
         suggestions: suggestions ?? [],
         highlightedCategory: highlightedCategory ?? null,
         highlightedText,
@@ -381,12 +384,16 @@ export class EnhancementService {
         editHistory,
         modelTarget,
         promptSection,
-        spanAnchors: spanContext.spanAnchors,
-        nearbySpanHints: spanContext.nearbySpanHints,
-        focusGuidance,
-        lockedSpanCategories: spanContext.lockedSpanCategories,
+        ...(spanContext.spanAnchors ? { spanAnchors: spanContext.spanAnchors } : {}),
+        ...(spanContext.nearbySpanHints ? { nearbySpanHints: spanContext.nearbySpanHints } : {}),
+        ...(focusGuidance !== undefined ? { focusGuidance } : {}),
+        ...(spanContext.lockedSpanCategories.length > 0
+          ? { lockedSpanCategories: spanContext.lockedSpanCategories }
+          : {}),
         skipDiversityCheck: generationResult.usedContrastiveDecoding,
-      });
+      };
+      const processingResult =
+        await this.pipeline.suggestionProcessing.processSuggestions(suggestionProcessingParams);
 
       const result = this._buildEnhancementResult({
         suggestionsToUse: processingResult.suggestionsToUse,
@@ -398,23 +405,29 @@ export class EnhancementService {
       });
 
       if (i2vContext && highlightedCategory) {
-        const filtered = this.i2vConstraints.filterSuggestions(
-          result.suggestions ?? [],
-          highlightedCategory,
-          i2vContext.lockMap,
-          i2vContext.observation
-        );
+        const hasGroupedSuggestions =
+          Array.isArray(result.suggestions) &&
+          result.suggestions.length > 0 &&
+          'suggestions' in result.suggestions[0]!;
+        if (!hasGroupedSuggestions) {
+          const filtered = this.i2vConstraints.filterSuggestions(
+            result.suggestions as Suggestion[],
+            highlightedCategory,
+            i2vContext.lockMap,
+            i2vContext.observation
+          );
 
-        result.suggestions = filtered.suggestions;
-        if (filtered.blockedReason || filtered.motionAlternatives) {
-          result.metadata = {
-            ...(result.metadata || {}),
-            i2v: {
-              locked: !!filtered.blockedReason,
-              reason: filtered.blockedReason,
-              motionAlternatives: filtered.motionAlternatives ?? [],
-            },
-          };
+          result.suggestions = filtered.suggestions;
+          if (filtered.blockedReason || filtered.motionAlternatives) {
+            result.metadata = {
+              ...(result.metadata || {}),
+              i2v: {
+                locked: !!filtered.blockedReason,
+                reason: filtered.blockedReason,
+                motionAlternatives: filtered.motionAlternatives ?? [],
+              },
+            };
+          }
         }
       }
 
@@ -528,15 +541,16 @@ export class EnhancementService {
     const isVideoPrompt = this.core.videoService.isVideoPrompt(fullPrompt);
 
     // Build prompt
-    const systemPrompt = this.core.promptBuilder.buildCustomPrompt({
+    const customPromptParams = {
       highlightedText,
       customRequest,
       fullPrompt,
       isVideoPrompt,
-      contextBefore,
-      contextAfter,
-      metadata,
-    });
+      ...(contextBefore !== undefined ? { contextBefore } : {}),
+      ...(contextAfter !== undefined ? { contextAfter } : {}),
+      ...(metadata !== undefined ? { metadata } : {}),
+    };
+    const systemPrompt = this.core.promptBuilder.buildCustomPrompt(customPromptParams);
 
     // Generate suggestions
     const schema = getCustomSuggestionSchema({ operation: 'custom_suggestions' });

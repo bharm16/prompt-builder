@@ -3,15 +3,16 @@ import { renderHook, act } from '@testing-library/react';
 
 import { useHistoryAuthActions } from '@features/history/hooks/useHistoryAuthActions';
 import { getAuthRepository } from '@repositories/index';
+import type { User } from '@hooks/types';
 
 vi.mock('@repositories/index', () => ({
   getAuthRepository: vi.fn(),
 }));
 
-type AuthRepository = Pick<
-  ReturnType<typeof getAuthRepository>,
-  'signInWithGoogle' | 'signOut'
->;
+type AuthRepository = {
+  signInWithGoogle: MockedFunction<() => Promise<User>>;
+  signOut: MockedFunction<() => Promise<void>>;
+};
 
 type DebugLogger = {
   logAction: MockedFunction<(action: string, payload?: unknown) => void>;
@@ -26,11 +27,11 @@ type ToastApi = {
   warning: MockedFunction<(message: string, duration?: number) => void>;
 };
 
-const mockGetAuthRepository = vi.mocked(getAuthRepository) as MockedFunction<() => AuthRepository>;
+const mockGetAuthRepository = vi.mocked(getAuthRepository);
 
 const createAuthRepository = (): AuthRepository => ({
-  signInWithGoogle: vi.fn(),
-  signOut: vi.fn(),
+  signInWithGoogle: vi.fn(async () => ({ uid: 'user-1' })),
+  signOut: vi.fn(async () => undefined),
 });
 
 const createDebugLogger = (): DebugLogger => ({
@@ -56,7 +57,7 @@ describe('useHistoryAuthActions', () => {
     authRepository = createAuthRepository();
     debug = createDebugLogger();
     toast = createToast();
-    mockGetAuthRepository.mockReturnValue(authRepository);
+    mockGetAuthRepository.mockReturnValue(authRepository as unknown as ReturnType<typeof getAuthRepository>);
   });
 
   describe('error handling', () => {
@@ -91,7 +92,7 @@ describe('useHistoryAuthActions', () => {
 
   describe('edge cases', () => {
     it('falls back to a generic name when displayName is missing', async () => {
-      authRepository.signInWithGoogle.mockResolvedValue({ displayName: null });
+      authRepository.signInWithGoogle.mockResolvedValue({ uid: 'user-2', displayName: '' });
 
       const { result } = renderHook(() => useHistoryAuthActions(debug, toast));
 

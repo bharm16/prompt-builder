@@ -53,12 +53,12 @@ describe('normalizeEntries', () => {
       const sparse = [{ input: 'test', output: 'result' }] as PromptHistoryEntry[];
       const normalized = normalizeEntries(sparse);
 
-      expect(normalized[0].title).toBeNull();
-      expect(normalized[0].brainstormContext).toBeNull();
-      expect(normalized[0].generationParams).toBeNull();
-      expect(normalized[0].keyframes).toBeNull();
-      expect(normalized[0].highlightCache).toBeNull();
-      expect(normalized[0].versions).toEqual([]);
+      expect(normalized[0]?.title).toBeNull();
+      expect(normalized[0]?.brainstormContext).toBeNull();
+      expect(normalized[0]?.generationParams).toBeNull();
+      expect(normalized[0]?.keyframes).toBeNull();
+      expect(normalized[0]?.highlightCache).toBeNull();
+      expect(normalized[0]?.versions).toEqual([]);
     });
   });
 
@@ -76,9 +76,9 @@ describe('normalizeEntries', () => {
       };
 
       const normalized = normalizeEntries([entry]);
-      expect(normalized[0].title).toBe('My Prompt');
-      expect(normalized[0].versions).toHaveLength(1);
-      expect(normalized[0].keyframes).toHaveLength(1);
+      expect(normalized[0]?.title).toBe('My Prompt');
+      expect(normalized[0]?.versions).toHaveLength(1);
+      expect(normalized[0]?.keyframes).toHaveLength(1);
     });
   });
 });
@@ -101,8 +101,8 @@ describe('loadFromFirestore', () => {
         { input: 'hello', output: 'world' },
       ]);
       const result = await loadFromFirestore('user-1');
-      expect(result[0].title).toBeNull();
-      expect(result[0].versions).toEqual([]);
+      expect(result[0]?.title).toBeNull();
+      expect(result[0]?.versions).toEqual([]);
     });
   });
 });
@@ -149,10 +149,12 @@ describe('saveEntry', () => {
         brainstormContext: { style: 'cinematic' },
       });
 
-      const callArg = mockRepository.save.mock.calls[0][1];
-      expect(callArg.uuid).toBe('existing-uuid');
-      expect(callArg.title).toBe('My Title');
-      expect(callArg.targetModel).toBe('kling');
+      const firstSaveCall = mockRepository.save.mock.calls[0];
+      expect(firstSaveCall).toBeDefined();
+      const callArg = firstSaveCall?.[1];
+      expect(callArg?.uuid).toBe('existing-uuid');
+      expect(callArg?.title).toBe('My Title');
+      expect(callArg?.targetModel).toBe('kling');
     });
   });
 });

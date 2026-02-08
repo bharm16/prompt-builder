@@ -51,7 +51,7 @@ describe('AssetGrid', () => {
       render(
         <AssetGrid
           assets={assets}
-          selectedAsset={{ ...assets[0], id: 'missing' }}
+          selectedAsset={{ ...assets[0]!, id: 'missing' }}
           onSelect={vi.fn()}
           onEdit={vi.fn()}
           onDelete={vi.fn()}
@@ -84,7 +84,7 @@ describe('AssetGrid', () => {
       render(
         <AssetGrid
           assets={assets}
-          selectedAsset={assets[1]}
+          selectedAsset={assets[1]!}
           onSelect={vi.fn()}
           onEdit={vi.fn()}
           onDelete={vi.fn()}

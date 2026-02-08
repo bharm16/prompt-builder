@@ -70,8 +70,8 @@ export type SessionContinuityMode = 'frame-bridge' | 'style-match' | 'native' | 
 
 export interface SessionStyleReference {
   id: string;
-  sourceVideoId?: string;
-  sourceFrameIndex?: number;
+  sourceVideoId?: string | undefined;
+  sourceFrameIndex?: number | undefined;
   frameUrl: string;
   frameTimestamp: number;
   resolution: { width: number; height: number };
@@ -81,8 +81,8 @@ export interface SessionStyleReference {
     lightingDescription: string;
     moodDescription: string;
     confidence: number;
-  };
-  extractedAt?: string;
+  } | undefined;
+  extractedAt?: string | undefined;
 }
 
 export interface SessionFrameBridge {
@@ -109,40 +109,40 @@ export interface SessionContinuityShot {
   sessionId: string;
   sequenceIndex: number;
   userPrompt: string;
-  generationMode?: SessionGenerationMode;
+  generationMode?: SessionGenerationMode | undefined;
   continuityMode: SessionContinuityMode;
   styleStrength: number;
   styleReferenceId: string | null;
-  styleReference?: SessionStyleReference;
-  frameBridge?: SessionFrameBridge;
-  characterAssetId?: string;
-  faceStrength?: number;
+  styleReference?: SessionStyleReference | undefined;
+  frameBridge?: SessionFrameBridge | undefined;
+  characterAssetId?: string | undefined;
+  faceStrength?: number | undefined;
   camera?: {
-    yaw?: number;
-    pitch?: number;
-    roll?: number;
-    dolly?: number;
-  };
+    yaw?: number | undefined;
+    pitch?: number | undefined;
+    roll?: number | undefined;
+    dolly?: number | undefined;
+  } | undefined;
   modelId: string;
-  seedInfo?: SessionSeedInfo;
-  inheritedSeed?: number;
-  videoAssetId?: string;
-  previewAssetId?: string;
-  generatedKeyframeUrl?: string;
-  styleTransferApplied?: boolean;
-  styleDegraded?: boolean;
-  styleDegradedReason?: string;
-  sceneProxyRenderUrl?: string;
-  continuityMechanismUsed?: string;
-  styleScore?: number;
-  identityScore?: number;
-  qualityScore?: number;
-  retryCount?: number;
+  seedInfo?: SessionSeedInfo | undefined;
+  inheritedSeed?: number | undefined;
+  videoAssetId?: string | undefined;
+  previewAssetId?: string | undefined;
+  generatedKeyframeUrl?: string | undefined;
+  styleTransferApplied?: boolean | undefined;
+  styleDegraded?: boolean | undefined;
+  styleDegradedReason?: string | undefined;
+  sceneProxyRenderUrl?: string | undefined;
+  continuityMechanismUsed?: string | undefined;
+  styleScore?: number | undefined;
+  identityScore?: number | undefined;
+  qualityScore?: number | undefined;
+  retryCount?: number | undefined;
   status: 'draft' | 'generating-keyframe' | 'generating-video' | 'completed' | 'failed';
-  error?: string;
+  error?: string | undefined;
   createdAt: string;
-  generatedAt?: string;
-  versions?: SessionPromptVersionEntry[];
+  generatedAt?: string | undefined;
+  versions?: SessionPromptVersionEntry[] | undefined;
 }
 
 export interface SessionContinuitySettings {
@@ -152,40 +152,40 @@ export interface SessionContinuitySettings {
   defaultModel: string;
   autoExtractFrameBridge: boolean;
   useCharacterConsistency: boolean;
-  useSceneProxy?: boolean;
-  autoRetryOnFailure?: boolean;
-  maxRetries?: number;
+  useSceneProxy?: boolean | undefined;
+  autoRetryOnFailure?: boolean | undefined;
+  maxRetries?: number | undefined;
   qualityThresholds?: {
     style: number;
     identity: number;
-  };
+  } | undefined;
 }
 
 export interface SessionSceneProxy {
   id: string;
   proxyType: string;
   referenceFrameUrl: string;
-  depthMapUrl?: string;
+  depthMapUrl?: string | undefined;
   status: 'ready' | 'failed' | 'building';
-  createdAt?: string;
-  error?: string;
+  createdAt?: string | undefined;
+  error?: string | undefined;
 }
 
 export interface SessionContinuity {
   shots: SessionContinuityShot[];
-  primaryStyleReference?: SessionStyleReference | null;
-  sceneProxy?: SessionSceneProxy | null;
+  primaryStyleReference?: SessionStyleReference | null | undefined;
+  sceneProxy?: SessionSceneProxy | null | undefined;
   settings: SessionContinuitySettings;
 }
 
 export interface SessionDto {
   id: string;
   userId: string;
-  name?: string;
-  description?: string;
+  name?: string | undefined;
+  description?: string | undefined;
   status: SessionStatus;
   createdAt: string;
   updatedAt: string;
-  prompt?: SessionPrompt;
-  continuity?: SessionContinuity;
+  prompt?: SessionPrompt | undefined;
+  continuity?: SessionContinuity | undefined;
 }

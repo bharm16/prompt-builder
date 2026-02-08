@@ -159,17 +159,21 @@ export class AssetResolverService {
     assetName?: string;
     imageUrl: string;
   }> {
-    return assets
-      .filter((asset) => (asset.referenceImages || []).length > 0)
-      .map((asset) => {
+    return assets.flatMap((asset) => {
+      if ((asset.referenceImages || []).length === 0) {
+        return [];
+      }
         const primary =
           asset.referenceImages.find((image) => image.isPrimary) || asset.referenceImages[0];
+        if (!primary) {
+          return [];
+        }
         return {
           assetId: asset.id,
           assetType: asset.type,
-          assetName: asset.name,
+          ...(asset.name ? { assetName: asset.name } : {}),
           imageUrl: primary.url,
-        };
+        } as const;
       });
   }
 
@@ -211,7 +215,9 @@ export class AssetResolverService {
           type: asset.type,
           trigger: asset.trigger,
           name: asset.name,
-          thumbnailUrl: asset.referenceImages?.[0]?.thumbnailUrl,
+          ...(asset.referenceImages?.[0]?.thumbnailUrl
+            ? { thumbnailUrl: asset.referenceImages[0]!.thumbnailUrl }
+            : {}),
         }));
 
       this.log.info('Operation completed.', {

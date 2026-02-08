@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { MutableRefObject, MouseEvent as ReactMouseEvent } from 'react';
+import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
 
 import { useLockedSpanInteractions } from '@features/prompt-optimizer/PromptCanvas/hooks/useLockedSpanInteractions';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
@@ -34,9 +34,9 @@ describe('useLockedSpanInteractions', () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const setHoveredSpanId = vi.fn();
 
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
-    const editorWrapperRef: MutableRefObject<HTMLDivElement | null> = { current: wrapper };
-    const lockButtonRef: MutableRefObject<HTMLButtonElement | null> = { current: lockButton };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
+    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
 
     const parseResultSpans: HighlightSpan[] = [
       { id: 'span-1', start: 0, end: 5, quote: 'hello' },
@@ -61,13 +61,15 @@ describe('useLockedSpanInteractions', () => {
     );
 
     act(() => {
-      result.current.handleHighlightMouseEnter({ target: span } as ReactMouseEvent);
+      const event = { target: span } as unknown as ReactMouseEvent;
+      result.current.handleHighlightMouseEnter(event);
     });
 
     expect(setHoveredSpanId).toHaveBeenCalledWith('span-1');
 
     act(() => {
-      result.current.handleHighlightMouseLeave({ relatedTarget: null } as ReactMouseEvent);
+      const event = { relatedTarget: null } as unknown as ReactMouseEvent;
+      result.current.handleHighlightMouseLeave(event);
       vi.advanceTimersByTime(2000);
     });
 
@@ -79,9 +81,9 @@ describe('useLockedSpanInteractions', () => {
     const addLockedSpan = vi.fn();
     const removeLockedSpan = vi.fn();
 
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
-    const editorWrapperRef: MutableRefObject<HTMLDivElement | null> = { current: wrapper };
-    const lockButtonRef: MutableRefObject<HTMLButtonElement | null> = { current: lockButton };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
+    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
 
     const parseResultSpans: HighlightSpan[] = [
       { id: 'span-1', start: 0, end: 5, quote: 'hello' },
@@ -124,9 +126,9 @@ describe('useLockedSpanInteractions', () => {
     const { editor, wrapper, lockButton } = createEditorElements();
     const addLockedSpan = vi.fn();
 
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
-    const editorWrapperRef: MutableRefObject<HTMLDivElement | null> = { current: wrapper };
-    const lockButtonRef: MutableRefObject<HTMLButtonElement | null> = { current: lockButton };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
+    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
 
     const { result } = renderHook(() =>
       useLockedSpanInteractions({
@@ -157,9 +159,9 @@ describe('useLockedSpanInteractions', () => {
 
   it('computes lock button position based on span bounds', async () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
-    const editorWrapperRef: MutableRefObject<HTMLDivElement | null> = { current: wrapper };
-    const lockButtonRef: MutableRefObject<HTMLButtonElement | null> = { current: lockButton };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
+    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
 
     wrapper.getBoundingClientRect = vi.fn(() => ({
       top: 0,

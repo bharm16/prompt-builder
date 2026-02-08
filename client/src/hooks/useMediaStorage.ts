@@ -5,8 +5,8 @@ import { storageApi } from '@/api/storageApi';
 interface UploadResult {
   storagePath: string;
   sizeBytes: number;
-  contentType?: string;
-  createdAt?: string;
+  contentType?: string | undefined;
+  createdAt?: string | undefined;
 }
 
 interface UploadUrlResult {
@@ -15,13 +15,13 @@ interface UploadUrlResult {
   maxSizeBytes: number;
 }
 
-const UploadUrlResultSchema: z.ZodType<UploadUrlResult> = z.object({
+const UploadUrlResultSchema = z.object({
   uploadUrl: z.string(),
   storagePath: z.string(),
   maxSizeBytes: z.number(),
 });
 
-const UploadResultSchema: z.ZodType<UploadResult> = z.object({
+const UploadResultSchema = z.object({
   storagePath: z.string(),
   sizeBytes: z.number(),
   contentType: z.string().optional(),

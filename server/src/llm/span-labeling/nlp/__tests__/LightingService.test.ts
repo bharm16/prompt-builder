@@ -135,7 +135,12 @@ describe('extractLightingSpans', () => {
       // Check no two spans have overlapping ranges
       const sorted = [...result.spans].sort((a, b) => a.start - b.start);
       for (let i = 1; i < sorted.length; i++) {
-        expect(sorted[i].start).toBeGreaterThanOrEqual(sorted[i - 1].end);
+        const current = sorted[i];
+        const previous = sorted[i - 1];
+        expect(current).toBeDefined();
+        expect(previous).toBeDefined();
+        if (!current || !previous) continue;
+        expect(current.start).toBeGreaterThanOrEqual(previous.end);
       }
     });
 

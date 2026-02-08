@@ -94,9 +94,9 @@ export class SuggestionProcessingService {
       {
         highlightedText: params.highlightedText,
         highlightedCategory: params.highlightedCategory,
-        lockedSpanCategories: params.lockedSpanCategories,
         isPlaceholder: params.isPlaceholder,
         isVideoPrompt: params.isVideoPrompt,
+        ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
         ...(params.videoConstraints ? { videoConstraints: params.videoConstraints } : {}),
       }
     );
@@ -105,7 +105,7 @@ export class SuggestionProcessingService {
       sanitizedSuggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
-      lockedSpanCategories: params.lockedSpanCategories,
+      ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
       regenerationDetails: {
         highlightWordCount: params.highlightWordCount,
       },
@@ -125,9 +125,9 @@ export class SuggestionProcessingService {
         editHistory: params.editHistory,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
-        spanAnchors: params.spanAnchors,
-        nearbySpanHints: params.nearbySpanHints,
-        focusGuidance: params.focusGuidance,
+        ...(params.spanAnchors !== undefined ? { spanAnchors: params.spanAnchors } : {}),
+        ...(params.nearbySpanHints !== undefined ? { nearbySpanHints: params.nearbySpanHints } : {}),
+        ...(params.focusGuidance !== undefined ? { focusGuidance: params.focusGuidance } : {}),
       },
       aiService: this.ai,
       schema: params.schema,

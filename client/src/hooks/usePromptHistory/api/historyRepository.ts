@@ -20,6 +20,13 @@ const isValidSessionId = (docId: string | null | undefined): docId is string => 
   return normalized.length > 0 && !normalized.startsWith('draft-');
 };
 
+const normalizeRecord = (value: unknown): Record<string, unknown> | null => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+};
+
 /**
  * Normalize prompt entries to ensure consistent shape
  */
@@ -140,17 +147,17 @@ export async function updatePrompt(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
-    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     let attemptedUuid = false;
     try {
-      if (shouldUseDocId) {
+      if (canUseDocId) {
         await repository.updatePrompt(docId, updates);
         return;
       }
       attemptedUuid = true;
       await repository.updatePrompt(uuid, updates);
     } catch (error) {
-      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
         try {
           await repository.updatePrompt(uuid, updates);
           return;
@@ -179,24 +186,25 @@ export async function updateHighlights(
   userId: string | undefined,
   uuid: string,
   docId: string | null,
-  highlightCache: unknown
+  highlightCache: Record<string, unknown> | null
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
-    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
+    const normalizedHighlightCache = normalizeRecord(highlightCache);
     let attemptedUuid = false;
     try {
-      if (shouldUseDocId) {
-        await repository.updateHighlights(docId, { highlightCache });
+      if (canUseDocId) {
+        await repository.updateHighlights(docId, { highlightCache: normalizedHighlightCache });
         return;
       }
       attemptedUuid = true;
-      await repository.updateHighlights(uuid, { highlightCache });
+      await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
     } catch (error) {
-      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
         try {
-          await repository.updateHighlights(uuid, { highlightCache });
+          await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
           return;
         } catch (fallbackError) {
           log.warn('Unable to persist updated highlights (fallback)', {
@@ -228,17 +236,17 @@ export async function updateOutput(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
-    const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     let attemptedUuid = false;
     try {
-      if (shouldUseDocId) {
+      if (canUseDocId) {
         await repository.updateOutput(docId, output);
         return;
       }
       attemptedUuid = true;
       await repository.updateOutput(uuid, output);
     } catch (error) {
-      if (userId && shouldUseDocId && !attemptedUuid && uuid && uuid !== docId) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
         try {
           await repository.updateOutput(uuid, output);
           return;
@@ -278,8 +286,7 @@ export async function updateVersions(
     );
 
     try {
-      const shouldUseDocId = Boolean(userId && isValidSessionId(docId));
-      if (shouldUseDocId) {
+      if (userId && isValidSessionId(docId)) {
         await repository.updateVersions(docId, versions);
         log.debug('Versions persisted to session store', { uuid, docId, versionCount: versions.length, generationCount });
         return;

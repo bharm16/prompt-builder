@@ -169,13 +169,16 @@ export function useVersionManagement({
 
   const versionsForPanel = useMemo(
     () =>
-      orderedVersions.map((entry, index) => ({
-        ...entry,
-        isDirty:
-          index === 0 && hasEditsSinceLastVersion
-            ? true
-            : Boolean(entry.isDirty ?? (entry as { dirty?: boolean }).dirty),
-      })),
+      orderedVersions.map((entry, index) => {
+        const entryWithDirty = entry as PromptVersionEntry & { isDirty?: boolean; dirty?: boolean };
+        return {
+          ...entry,
+          isDirty:
+            index === 0 && hasEditsSinceLastVersion
+              ? true
+              : Boolean(entryWithDirty.isDirty ?? entryWithDirty.dirty),
+        };
+      }),
     [orderedVersions, hasEditsSinceLastVersion]
   );
 

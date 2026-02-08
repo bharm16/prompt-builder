@@ -65,11 +65,17 @@ describe('immutableMedia utils', () => {
     const incoming: PromptVersionEntry = {
       ...existing,
       generations: [
-        {
-          ...existing.generations![0],
-          mediaAssetIds: ['users/user1/generations/overwritten.mp4'],
-          mediaUrls: ['https://new.example.com/video.mp4'],
-        },
+        (() => {
+          const baseGeneration = existing.generations?.[0];
+          if (!baseGeneration) {
+            throw new Error('Expected base generation');
+          }
+          return {
+            ...baseGeneration,
+            mediaAssetIds: ['users/user1/generations/overwritten.mp4'],
+            mediaUrls: ['https://new.example.com/video.mp4'],
+          };
+        })(),
       ],
     };
 

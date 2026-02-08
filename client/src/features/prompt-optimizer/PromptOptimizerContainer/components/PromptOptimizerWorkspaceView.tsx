@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { AppShellProps } from '@components/navigation/AppShell/types';
 import { AppShell } from '@components/navigation/AppShell';
 import { useToast } from '@components/Toast';
@@ -50,7 +49,7 @@ interface DebugProps {
   displayedPrompt: string;
   optimizedPrompt: string;
   selectedMode: string;
-  promptContext: PromptContext | null;
+  promptContext: Record<string, unknown> | null;
 }
 
 interface PromptOptimizerWorkspaceViewProps {
@@ -106,7 +105,7 @@ export function PromptOptimizerWorkspaceView({
     <AppShell
       showHistory={showHistory}
       onToggleHistory={onToggleHistory}
-      toolSidebarProps={toolSidebarProps}
+      {...(toolSidebarProps ? { toolSidebarProps } : {})}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
         {/* Skip to main content */}
@@ -141,7 +140,7 @@ export function PromptOptimizerWorkspaceView({
             prompt={detectedAssetsPrompt}
             assets={detectedAssets}
             onEditAsset={onEditAsset}
-            onCreateFromTrigger={onCreateFromTrigger}
+            {...(onCreateFromTrigger ? { onCreateFromTrigger } : {})}
           />
 
           {shouldShowLoading ? (

@@ -2,6 +2,7 @@ import express, { type Request, type Response, type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import type { PromptSpan } from '@services/model-intelligence/types';
 import {
   ModelRecommendationRequestSchema,
   ModelRecommendationEventSchema,
@@ -18,6 +19,27 @@ interface ApiResponse<T> {
   error?: string;
   details?: unknown;
 }
+
+type IncomingRecommendationSpan = {
+  text: string;
+  role?: string | undefined;
+  category?: string | undefined;
+  start?: number | undefined;
+  end?: number | undefined;
+  confidence?: number | undefined;
+};
+
+const normalizeRecommendationSpans = (
+  spans: IncomingRecommendationSpan[] | undefined
+): PromptSpan[] | undefined =>
+  spans?.map((span) => ({
+    text: span.text,
+    ...(span.role !== undefined ? { role: span.role } : {}),
+    ...(span.category !== undefined ? { category: span.category } : {}),
+    ...(span.start !== undefined ? { start: span.start } : {}),
+    ...(span.end !== undefined ? { end: span.end } : {}),
+    ...(span.confidence !== undefined ? { confidence: span.confidence } : {}),
+  }));
 
 const log = logger.child({ routes: 'model-intelligence' });
 
@@ -55,12 +77,13 @@ export function createModelIntelligenceRoutes(
 
       const { prompt, mode, spans, durationSeconds } = parsed.data;
       const userId = req.user?.uid ?? null;
+      const normalizedSpans = normalizeRecommendationSpans(spans);
 
       try {
         const recommendation = await modelIntelligenceService.getRecommendation(prompt, {
-          mode,
-          spans,
-          durationSeconds,
+          ...(mode !== undefined ? { mode } : {}),
+          ...(normalizedSpans !== undefined ? { spans: normalizedSpans } : {}),
+          ...(durationSeconds !== undefined ? { durationSeconds } : {}),
           userId,
         });
 

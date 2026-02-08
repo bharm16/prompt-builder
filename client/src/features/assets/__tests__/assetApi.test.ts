@@ -82,7 +82,9 @@ describe('assetApi', () => {
       const file = new File(['image'], 'test.png', { type: 'image/png' });
       await assetApi.addImage('asset-1', file, { angle: 'front', lighting: undefined });
 
-      const [, options] = fetchMock.mock.calls[0];
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [, options] = firstCall!;
       const body = options?.body as FormData;
       expect(body).toBeInstanceOf(FormData);
       expect(body.get('image')).toBe(file);
@@ -118,7 +120,9 @@ describe('assetApi', () => {
         name: 'Ada',
       });
 
-      const [, options] = fetchMock.mock.calls[0];
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [, options] = firstCall!;
       expect(options?.method).toBe('POST');
       expect(options?.headers).toEqual({
         'Content-Type': 'application/json',

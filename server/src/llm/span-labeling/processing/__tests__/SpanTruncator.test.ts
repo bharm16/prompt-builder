@@ -5,7 +5,7 @@ const buildSpan = (text: string, start: number, end: number, confidence?: number
   text,
   start,
   end,
-  confidence,
+  ...(confidence === undefined ? {} : { confidence }),
 });
 
 describe('truncateToMaxSpans', () => {

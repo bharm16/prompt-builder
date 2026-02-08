@@ -24,13 +24,16 @@ export async function waitForVideoJob(
       throw new Error(status.error || status.message || 'Failed to fetch video status');
     }
     if (status.status === 'completed' && status.videoUrl) {
-      return {
+      const result: VideoJobResult = {
         videoUrl: status.videoUrl,
-        storagePath: status.storagePath,
-        viewUrl: status.viewUrl,
-        viewUrlExpiresAt: status.viewUrlExpiresAt,
-        assetId: status.assetId,
+        ...(status.storagePath !== undefined ? { storagePath: status.storagePath } : {}),
+        ...(status.viewUrl !== undefined ? { viewUrl: status.viewUrl } : {}),
+        ...(status.viewUrlExpiresAt !== undefined
+          ? { viewUrlExpiresAt: status.viewUrlExpiresAt }
+          : {}),
+        ...(status.assetId !== undefined ? { assetId: status.assetId } : {}),
       };
+      return result;
     }
     if (status.status === 'completed') {
       throw new Error('Video generation completed but no URL was returned');

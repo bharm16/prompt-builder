@@ -14,7 +14,7 @@ describe('promptDebugger', () => {
 
   describe('error handling', () => {
     it('returns default values when state is empty', async () => {
-      const result = await promptDebugger.captureFullPromptData({});
+      const result = await promptDebugger.captureFullPromptData({}, null);
 
       expect(result.inputPrompt).toBe('');
       expect(result.optimizedPrompt).toBe('');
@@ -38,7 +38,7 @@ describe('promptDebugger', () => {
         optimizedPrompt: 'optimized',
         displayedPrompt: 'displayed',
         selectedMode: 'image',
-      });
+      }, null);
 
       expect(result.timestamp).toBe('2024-05-10T12:00:00.000Z');
       expect(result.inputPrompt).toBe('input');

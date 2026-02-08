@@ -26,7 +26,11 @@ describe('domManipulation', () => {
       confidence: 0.8,
     };
 
-    const wrapper = createHighlightWrapper(root, span, 1, 4, () => ({ bg: 'red', border: 'blue' }));
+    const wrapper = createHighlightWrapper(root, span, 1, 4, () => ({
+      bg: 'red',
+      border: 'blue',
+      ring: 'cyan',
+    }));
 
     expect(wrapper.className).toContain('value-word');
     expect(wrapper.dataset[DATASET_KEYS.SPAN_ID]).toBe('span-1');
@@ -36,6 +40,8 @@ describe('domManipulation', () => {
   it('enhances wrapper metadata', () => {
     const wrapper = document.createElement('span');
     enhanceWrapperWithMetadata(wrapper, {
+      start: 0,
+      end: 4,
       quote: 'text',
       leftCtx: 'left',
       rightCtx: 'right',

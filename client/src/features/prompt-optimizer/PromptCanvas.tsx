@@ -111,16 +111,16 @@ export function PromptCanvas({
   });
 
   // Refs
-  const editorRef = useRef<HTMLDivElement>(null);
-  const editorWrapperRef = useRef<HTMLDivElement>(null);
-  const editorColumnRef = useRef<HTMLDivElement>(null);
-  const outputLocklineRef = useRef<HTMLDivElement>(null);
-  const lockButtonRef = useRef<HTMLButtonElement>(null);
-  const outlineOverlayRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null!);
+  const editorWrapperRef = useRef<HTMLDivElement>(null!);
+  const editorColumnRef = useRef<HTMLDivElement>(null!);
+  const outputLocklineRef = useRef<HTMLDivElement>(null!);
+  const lockButtonRef = useRef<HTMLButtonElement>(null!);
+  const outlineOverlayRef = useRef<HTMLDivElement>(null!);
   const toast = useToast();
   const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null!);
   const versionsDrawer = useDrawerState({
     defaultOpen: true,
     storageKey: 'prompt-optimizer:versions-drawer',
@@ -826,7 +826,7 @@ export function PromptCanvas({
 
         void onReoptimize(inputPrompt, {
           compileOnly: true,
-          compilePrompt: genericPrompt,
+          ...(genericPrompt ? { compilePrompt: genericPrompt } : {}),
           createVersion: true,
         });
         return;
@@ -886,8 +886,9 @@ export function PromptCanvas({
           caretRect = rect;
         } else {
           const rects = range.getClientRects();
-          if (rects.length > 0) {
-            caretRect = rects[0];
+          const firstRect = rects[0];
+          if (firstRect) {
+            caretRect = firstRect;
           }
         }
       }
@@ -977,8 +978,8 @@ export function PromptCanvas({
     setSelectedSpanId,
     parseResultSpans: parseResult.spans,
     normalizedDisplayedPrompt,
-    i2vContext,
-    onSuggestionClick,
+    ...(i2vContext !== undefined ? { i2vContext } : {}),
+    ...(onSuggestionClick ? { onSuggestionClick } : {}),
     setState,
   });
 

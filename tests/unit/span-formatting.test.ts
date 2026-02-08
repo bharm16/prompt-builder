@@ -24,7 +24,7 @@ describe('scrollToSpan', () => {
 
   describe('error handling', () => {
     it('returns early when editorRef or span is missing', () => {
-      const ref = { current: null } as React.RefObject<HTMLElement>;
+      const ref = { current: null } as unknown as React.RefObject<HTMLElement>;
 
       expect(() => scrollToSpan(ref, undefined)).not.toThrow();
       expect(warnSpy).not.toHaveBeenCalled();

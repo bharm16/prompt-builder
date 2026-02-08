@@ -61,7 +61,7 @@ export function applyCoherenceRecommendation({
     const result = applySpanEditToPrompt({
       prompt: workingPrompt,
       edit,
-      span,
+      span: span as unknown as CoherenceSpan | null,
     });
 
     if (!result.updatedPrompt || !isFiniteNumber(result.matchStart) || !isFiniteNumber(result.matchEnd)) {

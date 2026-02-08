@@ -1,13 +1,4 @@
 import { z } from 'zod';
-import type {
-  GeneratePreviewResponse,
-  GenerateStoryboardPreviewResponse,
-  GenerateVideoResponse,
-  FaceSwapPreviewResponse,
-  MediaViewUrlResponse,
-  UploadPreviewImageResponse,
-  VideoJobStatusResponse,
-} from './previewApi';
 
 const PreviewMetadataSchema = z.object({
   aspectRatio: z.string(),
@@ -16,7 +7,7 @@ const PreviewMetadataSchema = z.object({
   generatedAt: z.string(),
 });
 
-export const GeneratePreviewResponseSchema: z.ZodType<GeneratePreviewResponse> = z
+export const GeneratePreviewResponseSchema = z
   .object({
     success: z.boolean(),
     data: z
@@ -34,7 +25,7 @@ export const GeneratePreviewResponseSchema: z.ZodType<GeneratePreviewResponse> =
   })
   .passthrough();
 
-export const UploadPreviewImageResponseSchema: z.ZodType<UploadPreviewImageResponse> = z
+export const UploadPreviewImageResponseSchema = z
   .object({
     success: z.boolean(),
     data: z
@@ -52,7 +43,7 @@ export const UploadPreviewImageResponseSchema: z.ZodType<UploadPreviewImageRespo
   })
   .passthrough();
 
-export const GenerateStoryboardPreviewResponseSchema: z.ZodType<GenerateStoryboardPreviewResponse> = z
+export const GenerateStoryboardPreviewResponseSchema = z
   .object({
     success: z.boolean(),
     data: z
@@ -68,7 +59,7 @@ export const GenerateStoryboardPreviewResponseSchema: z.ZodType<GenerateStoryboa
   })
   .passthrough();
 
-export const MediaViewUrlResponseSchema: z.ZodType<MediaViewUrlResponse> = z
+export const MediaViewUrlResponseSchema = z
   .object({
     success: z.boolean(),
     data: z
@@ -85,7 +76,7 @@ export const MediaViewUrlResponseSchema: z.ZodType<MediaViewUrlResponse> = z
   })
   .passthrough();
 
-export const FaceSwapPreviewResponseSchema: z.ZodType<FaceSwapPreviewResponse> = z
+export const FaceSwapPreviewResponseSchema = z
   .object({
     success: z.boolean(),
     data: z
@@ -99,7 +90,7 @@ export const FaceSwapPreviewResponseSchema: z.ZodType<FaceSwapPreviewResponse> =
   })
   .passthrough();
 
-export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
+export const GenerateVideoResponseSchema = z
   .object({
     success: z.boolean(),
     videoUrl: z.string().optional(),
@@ -123,7 +114,7 @@ export const GenerateVideoResponseSchema: z.ZodType<GenerateVideoResponse> = z
   })
   .passthrough();
 
-export const VideoJobStatusResponseSchema: z.ZodType<VideoJobStatusResponse> = z
+export const VideoJobStatusResponseSchema = z
   .object({
     success: z.boolean(),
     jobId: z.string(),

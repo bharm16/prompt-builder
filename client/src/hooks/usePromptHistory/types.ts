@@ -34,8 +34,8 @@ export interface SaveEntryParams {
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;
   keyframes?: PromptKeyframe[] | null;
-  brainstormContext?: unknown | null;
-  highlightCache?: unknown | null;
+  brainstormContext?: Record<string, unknown> | null;
+  highlightCache?: Record<string, unknown> | null;
   versions?: PromptVersionEntry[];
 }
 

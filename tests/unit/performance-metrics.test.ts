@@ -72,7 +72,7 @@ describe('performanceMetrics', () => {
       measureOptimizeToDraft();
       const measures = performance.getEntriesByName('optimize-to-draft', 'measure');
       expect(measures).toHaveLength(1);
-      expect(measures[0].duration).toBeGreaterThanOrEqual(0);
+      expect(measures[0]?.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('measureDraftToRefined creates a measure between draft and refined marks', () => {

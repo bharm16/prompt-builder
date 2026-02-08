@@ -17,11 +17,10 @@ describe('checkPromptCoherence', () => {
   describe('error handling', () => {
     it('throws when fetch is unavailable', async () => {
       const originalFetch = globalThis.fetch;
-      // @ts-expect-error intentionally removing fetch for test
       delete (globalThis as { fetch?: typeof fetch }).fetch;
 
       await expect(
-        checkPromptCoherence({ prompt: 'test' })
+        checkPromptCoherence({ beforePrompt: 'test', afterPrompt: 'test' })
       ).rejects.toThrow('Fetch is not available in this environment.');
 
       globalThis.fetch = originalFetch;
@@ -35,7 +34,7 @@ describe('checkPromptCoherence', () => {
       });
 
       await expect(
-        checkPromptCoherence({ prompt: 'test' }, { fetchImpl })
+        checkPromptCoherence({ beforePrompt: 'test', afterPrompt: 'test' }, { fetchImpl })
       ).rejects.toThrow('Failed to check coherence: 500');
     });
   });
@@ -48,7 +47,7 @@ describe('checkPromptCoherence', () => {
         json: () => Promise.resolve({ issues: [] }),
       });
 
-      const result = await checkPromptCoherence({ prompt: 'test' }, { fetchImpl });
+      const result = await checkPromptCoherence({ beforePrompt: 'test', afterPrompt: 'test' }, { fetchImpl });
 
       expect(fetchImpl).toHaveBeenCalledWith(
         '/api/check-prompt-coherence',

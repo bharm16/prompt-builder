@@ -21,6 +21,14 @@ export function createContinuityRoutes(
   userCreditService?: UserCreditService | null
 ): Router {
   const router = express.Router();
+  const requireShotId = (req: Request, res: Response): string | null => {
+    const shotId = req.params.shotId;
+    if (typeof shotId !== 'string' || shotId.trim().length === 0) {
+      res.status(400).json({ success: false, error: 'Invalid shotId' });
+      return null;
+    }
+    return shotId;
+  };
 
   router.post(
     '/sessions',
@@ -87,9 +95,11 @@ export function createContinuityRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const session = await requireSessionForUser(service, req, res);
       if (!session) return;
+      const shotId = requireShotId(req, res);
+      if (!shotId) return;
       await handleUpdateShot(service, req, res, {
         sessionId: session.id,
-        shotId: req.params.shotId,
+        shotId,
       });
     })
   );
@@ -108,9 +118,11 @@ export function createContinuityRoutes(
     asyncHandler(async (req: Request, res: Response) => {
       const session = await requireSessionForUser(service, req, res);
       if (!session) return;
+      const shotId = requireShotId(req, res);
+      if (!shotId) return;
       await handleUpdateStyleReference(service, req, res, {
         sessionId: session.id,
-        shotId: req.params.shotId,
+        shotId,
       });
     })
   );

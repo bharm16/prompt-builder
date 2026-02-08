@@ -12,8 +12,7 @@ vi.mock(
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
 const useCapabilitiesMock = vi.hoisted(() => vi.fn());
@@ -26,7 +25,7 @@ const createKeyframe = (overrides: Partial<KeyframeTile> = {}): KeyframeTile => 
   id: overrides.id ?? 'frame-1',
   url: overrides.url ?? 'https://example.com/frame.jpg',
   source: overrides.source ?? 'upload',
-  assetId: overrides.assetId,
+  ...(overrides.assetId === undefined ? {} : { assetId: overrides.assetId }),
 });
 
 const createProps = (overrides = {}) => ({

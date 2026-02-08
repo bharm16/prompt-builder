@@ -27,6 +27,9 @@ const CANONICAL_VIDEO_MODEL_IDS = new Set<VideoModelId>(
 const isCanonicalVideoModelId = (modelId: string): modelId is VideoModelId =>
   CANONICAL_VIDEO_MODEL_IDS.has(modelId as VideoModelId);
 
+const withCapabilityModelId = (capabilityModelId: string | null): { capabilityModelId?: string } =>
+  capabilityModelId ? { capabilityModelId } : {};
+
 export function getModelCapabilities(
   modelId: string
 ): {
@@ -123,7 +126,7 @@ export function getModelAvailability(
         reason: 'missing_credentials',
         requiredKey: 'OPENAI_API_KEY',
         resolvedModelId: resolvedId,
-        capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
         statusCode: 424,
         message: 'Sora video generation requires OPENAI_API_KEY.',
         supportsImageInput: capabilityInfo.supportsImageInput,
@@ -137,7 +140,7 @@ export function getModelAvailability(
       requestedId,
       available: true,
       resolvedModelId: resolvedId,
-      capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
       supportsImageInput: capabilityInfo.supportsImageInput,
       supportsI2V: capabilityInfo.supportsImageInput,
       entitled: true,
@@ -154,7 +157,7 @@ export function getModelAvailability(
         reason: 'missing_credentials',
         requiredKey: 'LUMA_API_KEY',
         resolvedModelId: resolvedId,
-        capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
         statusCode: 424,
         message: 'Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.',
         supportsImageInput: capabilityInfo.supportsImageInput,
@@ -168,7 +171,7 @@ export function getModelAvailability(
       requestedId,
       available: true,
       resolvedModelId: resolvedId,
-      capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
       supportsImageInput: capabilityInfo.supportsImageInput,
       supportsI2V: capabilityInfo.supportsImageInput,
       entitled: true,
@@ -185,7 +188,7 @@ export function getModelAvailability(
         reason: 'missing_credentials',
         requiredKey: 'KLING_API_KEY',
         resolvedModelId: resolvedId,
-        capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
         statusCode: 424,
         message: 'Kling video generation requires KLING_API_KEY.',
         supportsImageInput: capabilityInfo.supportsImageInput,
@@ -199,7 +202,7 @@ export function getModelAvailability(
       requestedId,
       available: true,
       resolvedModelId: resolvedId,
-      capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
       supportsImageInput: capabilityInfo.supportsImageInput,
       supportsI2V: capabilityInfo.supportsImageInput,
       entitled: true,
@@ -216,7 +219,7 @@ export function getModelAvailability(
         reason: 'missing_credentials',
         requiredKey: 'GEMINI_API_KEY',
         resolvedModelId: resolvedId,
-        capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
         statusCode: 424,
         message: 'Veo video generation requires GEMINI_API_KEY.',
         supportsImageInput: capabilityInfo.supportsImageInput,
@@ -230,7 +233,7 @@ export function getModelAvailability(
       requestedId,
       available: true,
       resolvedModelId: resolvedId,
-      capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
       supportsImageInput: capabilityInfo.supportsImageInput,
       supportsI2V: capabilityInfo.supportsImageInput,
       entitled: true,
@@ -246,7 +249,7 @@ export function getModelAvailability(
       reason: 'missing_credentials',
       requiredKey: 'REPLICATE_API_TOKEN',
       resolvedModelId: resolvedId,
-      capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
       statusCode: 424,
       message: 'Replicate API token is required for the selected video model.',
       supportsImageInput: capabilityInfo.supportsImageInput,
@@ -261,7 +264,7 @@ export function getModelAvailability(
     requestedId,
     available: true,
     resolvedModelId: resolvedId,
-    capabilityModelId: capabilityInfo.capabilityModelId ?? undefined,
+    ...withCapabilityModelId(capabilityInfo.capabilityModelId),
     supportsImageInput: capabilityInfo.supportsImageInput,
     supportsI2V: capabilityInfo.supportsImageInput,
     entitled: true,
@@ -294,7 +297,8 @@ export function getAvailabilitySnapshot(
   const uniqueIds = Array.from(new Set(modelIds));
 
   const models = uniqueIds.map((modelId) => {
-    if (!isCanonicalVideoModelId(modelId)) {
+    const canonicalModelId = isCanonicalVideoModelId(modelId) ? modelId : null;
+    if (!canonicalModelId) {
       log.warn('Non-canonical video model ID supplied to availability snapshot', { modelId });
       return {
         id: modelId,
@@ -307,18 +311,20 @@ export function getAvailabilitySnapshot(
       };
     }
 
-    const availability = getModelAvailability(modelId, providers, log);
+    const availability = getModelAvailability(canonicalModelId, providers, log);
     const supportsI2V = availability.supportsI2V ?? availability.supportsImageInput ?? false;
 
     return {
-      id: modelId,
+      id: canonicalModelId,
       available: availability.available,
-      reason: availability.available ? undefined : availability.reason ?? 'unknown_availability',
-      requiredKey: availability.requiredKey,
       supportsI2V,
-      supportsImageInput: availability.supportsImageInput,
-      entitled: availability.entitled,
       planTier: availability.planTier ?? 'unknown',
+      ...(availability.available ? {} : { reason: availability.reason ?? 'unknown_availability' }),
+      ...(availability.requiredKey ? { requiredKey: availability.requiredKey } : {}),
+      ...(availability.supportsImageInput !== undefined
+        ? { supportsImageInput: availability.supportsImageInput }
+        : {}),
+      ...(availability.entitled !== undefined ? { entitled: availability.entitled } : {}),
     };
   });
 

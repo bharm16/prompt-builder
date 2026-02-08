@@ -18,7 +18,7 @@ export interface GenerationControlsPanelProps {
   isProcessing?: boolean;
   isRefining?: boolean;
   genericOptimizedPrompt?: string | null;
-  promptInputRef?: RefObject<HTMLTextAreaElement | null>;
+  promptInputRef?: RefObject<HTMLTextAreaElement>;
   assets?: Asset[];
   onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
   onCreateFromTrigger?: (trigger: string) => void;

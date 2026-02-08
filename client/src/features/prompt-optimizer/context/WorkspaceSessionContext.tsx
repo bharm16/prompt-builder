@@ -39,7 +39,9 @@ interface WorkspaceSessionContextValue {
 
 const WorkspaceSessionContext = createContext<WorkspaceSessionContextValue | null>(null);
 
-const mapContinuityToSession = (continuity: ContinuitySession): SessionDto['continuity'] => ({
+const mapContinuityToSession = (
+  continuity: ContinuitySession
+): NonNullable<SessionDto['continuity']> => ({
   shots: continuity.shots,
   primaryStyleReference: continuity.primaryStyleReference ?? null,
   sceneProxy: continuity.sceneProxy ?? null,
@@ -166,7 +168,7 @@ export function WorkspaceSessionProvider({
   const addShot = useCallback(
     async (input: CreateShotInput): Promise<ContinuityShot> => {
       if (!sessionId) throw new Error('No active session');
-      const shot = await continuityApi.addShot(sessionId, input);
+      const shot = (await continuityApi.addShot(sessionId, input)) as ContinuityShot;
       setSession((prev) => {
         if (!prev?.continuity) return prev;
         return {
@@ -185,7 +187,7 @@ export function WorkspaceSessionProvider({
   const updateShot = useCallback(
     async (shotId: string, updates: UpdateShotInput): Promise<ContinuityShot> => {
       if (!sessionId) throw new Error('No active session');
-      const shot = await continuityApi.updateShot(sessionId, shotId, updates);
+      const shot = (await continuityApi.updateShot(sessionId, shotId, updates)) as ContinuityShot;
       updateShotInState(shot);
       return shot;
     },
@@ -195,7 +197,11 @@ export function WorkspaceSessionProvider({
   const updateShotStyleReference = useCallback(
     async (shotId: string, styleReferenceId: string | null): Promise<ContinuityShot> => {
       if (!sessionId) throw new Error('No active session');
-      const shot = await continuityApi.updateShotStyleReference(sessionId, shotId, styleReferenceId);
+      const shot = (await continuityApi.updateShotStyleReference(
+        sessionId,
+        shotId,
+        styleReferenceId
+      )) as ContinuityShot;
       updateShotInState(shot);
       return shot;
     },
@@ -207,7 +213,7 @@ export function WorkspaceSessionProvider({
       if (!sessionId) throw new Error('No active session');
       patchShotInState(shotId, { status: 'generating-video', error: undefined });
       try {
-        const shot = await continuityApi.generateShot(sessionId, shotId);
+        const shot = (await continuityApi.generateShot(sessionId, shotId)) as ContinuityShot;
         updateShotInState(shot);
         return shot;
       } catch (error) {
@@ -229,7 +235,8 @@ export function WorkspaceSessionProvider({
 
       setIsStartingSequence(true);
       try {
-        let continuityPayload = session?.continuity ?? null;
+        let continuityPayload: NonNullable<SessionDto['continuity']> | null =
+          session?.continuity ?? null;
         if (!session?.continuity) {
           const resolvedName = name ?? session?.name ?? 'Continuity Session';
           const safeName = resolvedName.trim() ? resolvedName : 'Continuity Session';
@@ -238,22 +245,23 @@ export function WorkspaceSessionProvider({
             name: safeName,
             sourceVideoId,
           });
-          continuityPayload = mapContinuityToSession(continuitySession);
+          const createdContinuity = mapContinuityToSession(continuitySession);
+          continuityPayload = createdContinuity;
           setSession((prev) =>
             prev
               ? {
                   ...prev,
-                  continuity: continuityPayload,
+                  continuity: createdContinuity,
                 }
               : prev
           );
         }
 
         const shotPrompt = prompt?.trim() || ' ';
-        const shot = await continuityApi.addShot(sessionId, {
+        const shot = (await continuityApi.addShot(sessionId, {
           prompt: shotPrompt,
           sourceVideoId,
-        });
+        })) as ContinuityShot;
         setSession((prev) => {
           if (!prev) return prev;
           const baseContinuity = prev.continuity ?? continuityPayload;

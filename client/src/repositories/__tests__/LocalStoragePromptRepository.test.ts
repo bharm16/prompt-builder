@@ -357,7 +357,7 @@ describe('LocalStoragePromptRepository', () => {
 
       const after = await repo.getUserPrompts('user1', 100);
       expect(after).toHaveLength(1);
-      expect(after[0].uuid).toBe('a');
+      expect(after[0]?.uuid).toBe('a');
     });
   });
 

@@ -197,7 +197,7 @@ export function useHighlightRendering({
       const { spanMap } = highlightStateRef.current;
       
       // Process and sort incoming spans
-      const sortedSpans = processAndSortSpans(spans, displayText);
+      const sortedSpans = processAndSortSpans<HighlightSpan>(spans, displayText);
       let skippedOverlap = 0;
       let skippedMismatch = 0;
       let skippedEmptyWrapper = 0;

@@ -240,12 +240,12 @@ describe('useDraftHistorySync', () => {
 
     it('detects deep-equal generation params and avoids updates', () => {
       const updates: Array<{ uuid: string; docId: string | null; updates: UpdatePayload }> = [];
-      const nestedParams = { steps: [1, 2], options: { seed: 9 } };
+      const params: CapabilityValues = { steps: 2, seed: 9 };
       const historyEntry: PromptHistoryEntry = {
         uuid: 'uuid-4',
         input: 'Draft',
         output: '',
-        generationParams: nestedParams,
+        generationParams: params,
       };
 
       const promptHistory = createPromptHistory([historyEntry], (uuid, docId, updatesPayload) => {
@@ -259,10 +259,7 @@ describe('useDraftHistorySync', () => {
           promptHistory,
           promptOptimizer: createPromptOptimizer({ inputPrompt: 'Draft' }),
           selectedModel: 'model-a',
-          generationParams: {
-            steps: [1, 2],
-            options: { seed: 9 },
-          } satisfies CapabilityValues,
+          generationParams: { steps: 2, seed: 9 },
         })
       );
 

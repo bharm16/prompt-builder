@@ -208,7 +208,10 @@ export function useSuggestionApply({
               updatedHighlights ?? latestHighlightRef.current,
               result.updatedPrompt
             );
-            const coherenceSpans = updatedSpans.length > 0 ? updatedSpans : fallbackSpans;
+            const coherenceSpans: CoherenceSpan[] =
+              updatedSpans.length > 0
+                ? (updatedSpans as unknown as CoherenceSpan[])
+                : fallbackSpans;
 
             if (coherenceSpans.length > 0) {
               void onCoherenceCheck({

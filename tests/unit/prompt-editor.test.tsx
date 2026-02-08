@@ -4,12 +4,21 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PromptEditor } from '@features/prompt-optimizer/components/PromptEditor';
 
 describe('PromptEditor', () => {
+  const createRequiredProps = () => ({
+    onTextSelection: vi.fn(),
+    onHighlightClick: vi.fn(),
+    onHighlightMouseDown: vi.fn(),
+    onCopyEvent: vi.fn(),
+    onInput: vi.fn(),
+  });
+
   describe('error handling', () => {
     it('invokes onHighlightMouseLeave when the pointer leaves', () => {
       const onHighlightMouseLeave = vi.fn();
 
       render(
         <PromptEditor
+          {...createRequiredProps()}
           onHighlightMouseLeave={onHighlightMouseLeave}
         />
       );
@@ -26,6 +35,7 @@ describe('PromptEditor', () => {
 
       render(
         <PromptEditor
+          {...createRequiredProps()}
           onHighlightMouseEnter={onHighlightMouseEnter}
         />
       );
@@ -42,6 +52,7 @@ describe('PromptEditor', () => {
 
       render(
         <PromptEditor
+          {...createRequiredProps()}
           onCopyEvent={onCopyEvent}
         />
       );

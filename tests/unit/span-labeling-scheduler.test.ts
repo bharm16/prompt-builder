@@ -37,6 +37,7 @@ describe('spanLabelingScheduler', () => {
     mockCache.get.mockReturnValue({
       spans: [],
       meta: null,
+      version: 'test',
       cacheId: 'cache',
       signature: 'sig',
       text: 'hello',

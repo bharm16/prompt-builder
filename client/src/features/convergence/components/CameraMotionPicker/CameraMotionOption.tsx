@@ -145,18 +145,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     const updateMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
     updateMotionPreference();
 
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', updateMotionPreference);
-    } else {
-      mediaQuery.addListener(updateMotionPreference);
-    }
+    mediaQuery.addEventListener('change', updateMotionPreference);
 
     return () => {
-      if (mediaQuery.addEventListener) {
-        mediaQuery.removeEventListener('change', updateMotionPreference);
-      } else {
-        mediaQuery.removeListener(updateMotionPreference);
-      }
+      mediaQuery.removeEventListener('change', updateMotionPreference);
     };
   }, []);
 
@@ -175,22 +167,12 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     };
     updateTouchCapability();
 
-    if (hoverQuery.addEventListener) {
-      hoverQuery.addEventListener('change', updateTouchCapability);
-      coarseQuery.addEventListener('change', updateTouchCapability);
-    } else {
-      hoverQuery.addListener(updateTouchCapability);
-      coarseQuery.addListener(updateTouchCapability);
-    }
+    hoverQuery.addEventListener('change', updateTouchCapability);
+    coarseQuery.addEventListener('change', updateTouchCapability);
 
     return () => {
-      if (hoverQuery.addEventListener) {
-        hoverQuery.removeEventListener('change', updateTouchCapability);
-        coarseQuery.removeEventListener('change', updateTouchCapability);
-      } else {
-        hoverQuery.removeListener(updateTouchCapability);
-        coarseQuery.removeListener(updateTouchCapability);
-      }
+      hoverQuery.removeEventListener('change', updateTouchCapability);
+      coarseQuery.removeEventListener('change', updateTouchCapability);
     };
   }, []);
 

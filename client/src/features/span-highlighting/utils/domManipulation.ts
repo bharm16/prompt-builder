@@ -11,23 +11,23 @@ import { logger } from '@/services/LoggingService';
 const log = logger.child('domManipulation');
 
 export interface SpanForWrapper {
-  category?: string;
-  source?: string;
-  id?: string;
+  category?: string | undefined;
+  source?: string | undefined;
+  id?: string | undefined;
+  role?: string | undefined;
   start: number;
   end: number;
-  startGrapheme?: number;
-  endGrapheme?: number;
-  validatorPass?: boolean;
-  idempotencyKey?: string;
-  quote?: string;
-  leftCtx?: string;
-  rightCtx?: string;
-  displayQuote?: string;
-  displayLeftCtx?: string;
-  displayRightCtx?: string;
-  confidence?: number;
-  [key: string]: unknown;
+  startGrapheme?: number | undefined;
+  endGrapheme?: number | undefined;
+  validatorPass?: boolean | undefined;
+  idempotencyKey?: string | undefined;
+  quote?: string | undefined;
+  leftCtx?: string | undefined;
+  rightCtx?: string | undefined;
+  displayQuote?: string | undefined;
+  displayLeftCtx?: string | undefined;
+  displayRightCtx?: string | undefined;
+  confidence?: number | undefined;
 }
 
 interface TextNodeIndex {

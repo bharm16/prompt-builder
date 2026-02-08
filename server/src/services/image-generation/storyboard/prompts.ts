@@ -38,7 +38,7 @@ export const buildFallbackDeltas = (expectedCount: number): string[] => {
   }
   const deltas: string[] = [];
   for (let index = 0; index < expectedCount; index += 1) {
-    deltas.push(FALLBACK_DELTAS[index % FALLBACK_DELTAS.length]);
+    deltas.push(FALLBACK_DELTAS[index % FALLBACK_DELTAS.length] ?? FALLBACK_DELTAS[0]!);
   }
   return deltas;
 };

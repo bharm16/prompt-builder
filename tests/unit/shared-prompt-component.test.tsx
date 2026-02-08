@@ -68,7 +68,6 @@ describe('SharedPrompt', () => {
     const handleCopy = vi.fn();
     mockUseSharedPrompt.mockReturnValue({
       prompt: {
-        uuid: 'uuid-123',
         input: 'Input text',
         output: 'Output text',
         mode: 'optimize',

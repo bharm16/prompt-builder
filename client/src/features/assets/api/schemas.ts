@@ -1,20 +1,13 @@
 import { z } from 'zod';
-import type {
-  Asset,
-  AssetListResponse,
-  AssetReferenceImage,
-  AssetType,
-  ResolvedPrompt,
-} from '@shared/types/asset';
 
-const AssetTypeSchema: z.ZodType<AssetType> = z.enum([
+const AssetTypeSchema = z.enum([
   'character',
   'style',
   'location',
   'object',
 ]);
 
-const AssetReferenceImageSchema: z.ZodType<AssetReferenceImage> = z
+const AssetReferenceImageSchema = z
   .object({
     id: z.string(),
     url: z.string(),
@@ -53,7 +46,7 @@ const AssetReferenceImageSchema: z.ZodType<AssetReferenceImage> = z
   })
   .passthrough();
 
-export const AssetSchema: z.ZodType<Asset> = z
+export const AssetSchema = z
   .object({
     id: z.string(),
     userId: z.string(),
@@ -71,7 +64,7 @@ export const AssetSchema: z.ZodType<Asset> = z
   })
   .passthrough();
 
-export const AssetListResponseSchema: z.ZodType<AssetListResponse> = z
+export const AssetListResponseSchema = z
   .object({
     assets: z.array(AssetSchema),
     total: z.number(),
@@ -91,7 +84,7 @@ const ResolvedPromptReferenceImageSchema = z.object({
   imageUrl: z.string(),
 });
 
-export const ResolvedPromptSchema: z.ZodType<ResolvedPrompt> = z
+export const ResolvedPromptSchema = z
   .object({
     originalText: z.string(),
     expandedText: z.string(),

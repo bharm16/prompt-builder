@@ -24,10 +24,13 @@ describe('KontextFrameStrip', () => {
       fireEvent.error(img);
 
       const buttons = screen.getAllByRole('button');
-      fireEvent.click(buttons[0]);
+      const firstButton = buttons[0];
+      expect(firstButton).toBeDefined();
+      if (!firstButton) return;
+      fireEvent.click(firstButton);
 
       expect(onFrameClick).not.toHaveBeenCalled();
-      expect(buttons[0]).toBeDisabled();
+      expect(firstButton).toBeDisabled();
     });
   });
 
@@ -70,7 +73,10 @@ describe('KontextFrameStrip', () => {
         />
       );
 
-      fireEvent.click(screen.getAllByRole('button')[0]);
+      const firstButton = screen.getAllByRole('button')[0];
+      expect(firstButton).toBeDefined();
+      if (!firstButton) return;
+      fireEvent.click(firstButton);
       expect(onFrameClick).toHaveBeenCalledWith(0, 'https://cdn/frame.png');
     });
   });

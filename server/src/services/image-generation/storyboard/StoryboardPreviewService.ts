@@ -193,7 +193,7 @@ export class StoryboardPreviewService {
     const seedBase = computeSeedBase(options.seed);
 
     for (let index = 0; index < options.deltas.length; index += 1) {
-      const delta = options.deltas[index];
+      const delta = options.deltas[index]!;
       const editPrompt = buildEditPrompt(options.prompt, delta);
       const editSeed = computeEditSeed(seedBase, index);
 

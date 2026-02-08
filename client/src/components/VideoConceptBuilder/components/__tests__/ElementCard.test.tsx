@@ -99,7 +99,7 @@ describe('ElementCard', () => {
           elements={defaultElements}
           compatibilityScores={{}}
           descriptorCategories={{}}
-          elementConfig={{ subjectDescriptor1: descriptorConfigs.subjectDescriptor1 }}
+          elementConfig={{ subjectDescriptor1: descriptorConfigs.subjectDescriptor1! }}
           onValueChange={vi.fn()}
           onFetchSuggestions={vi.fn(async () => {})}
         />
@@ -193,7 +193,7 @@ describe('ElementCard', () => {
       expect(onValueChange).toHaveBeenCalled();
       expect(screen.getByText('Physical')).toBeInTheDocument();
 
-      await user.click(screen.getAllByRole('button', { name: /ai fill/i })[0]);
+      await user.click(screen.getAllByRole('button', { name: /ai fill/i })[0]!);
       expect(onFetchSuggestions).toHaveBeenCalledWith('subjectDescriptor1' as ElementKey);
     });
   });

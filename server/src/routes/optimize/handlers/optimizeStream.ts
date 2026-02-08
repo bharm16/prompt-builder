@@ -5,6 +5,7 @@ import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationP
 import { createSseChannel } from '@routes/optimize/sse';
 import type { PromptOptimizationServiceContract } from '../types';
 import { promptSchema } from '@config/schemas/promptSchemas';
+import { normalizeContext, normalizeLockedSpans, normalizeTargetModel } from './requestNormalization';
 
 export const createOptimizeStreamHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -45,6 +46,9 @@ export const createOptimizeStreamHandler = (
       lockedSpans,
       startImage,
     } = parsed.data;
+    const normalizedTargetModel = normalizeTargetModel(targetModel);
+    const normalizedContext = normalizeContext(context);
+    const normalizedLockedSpans = normalizeLockedSpans(lockedSpans);
 
     if (typeof startImage === 'string' && startImage.trim().length > 0) {
       res.status(400).json({
@@ -56,10 +60,10 @@ export const createOptimizeStreamHandler = (
 
     const { normalizedGenerationParams, error } = normalizeGenerationParams({
       generationParams,
-      targetModel,
       operation,
       requestId,
-      userId,
+      ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+      ...(userId ? { userId } : {}),
     });
     if (error) {
       res.status(error.status).json({
@@ -80,27 +84,27 @@ export const createOptimizeStreamHandler = (
       userId,
       promptLength: prompt?.length || 0,
       mode,
-      targetModel,
-      hasContext: !!context,
+      targetModel: normalizedTargetModel,
+      hasContext: !!normalizedContext,
       hasBrainstormContext: !!brainstormContext,
       generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
       skipCache: !!skipCache,
-      lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
+      lockedSpanCount: normalizedLockedSpans.length,
     });
 
     try {
       markProcessingStarted();
 
-      const result = await promptOptimizationService.optimizeTwoStage({
+      const optimizeRequest = {
         prompt,
         mode,
-        targetModel,
-        context,
-        brainstormContext,
+        context: normalizedContext,
+        brainstormContext: brainstormContext ?? null,
         generationParams: normalizedGenerationParams,
         skipCache,
-        lockedSpans,
+        lockedSpans: normalizedLockedSpans,
         signal,
+        ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
         onDraftChunk: (delta: string): void => {
           if (!delta) {
             return;
@@ -138,7 +142,8 @@ export const createOptimizeStreamHandler = (
             });
           }
         },
-      });
+      };
+      const result = await promptOptimizationService.optimizeTwoStage(optimizeRequest);
 
       sendEvent('refined', {
         refined: result.refined,

@@ -11,8 +11,7 @@ vi.mock(
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
 const toastMocks = vi.hoisted(() => ({

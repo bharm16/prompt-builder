@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
-import type { ContinuitySession } from '@services/continuity/types';
+import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
 import { CreditCostCalculator } from '@services/continuity/CreditCostCalculator';
 import { requireUserId, type RequestWithUser } from '@middleware/requireUserId';
 import {
@@ -95,6 +95,20 @@ const buildCreateShotInput = (input: z.infer<typeof CreateShotSchema>) => ({
   ...buildCameraInput(input.camera),
 });
 
+const buildUpdateShotCameraInput = (
+  camera?: z.infer<typeof UpdateShotSchema>['camera']
+): { camera?: { yaw?: number; pitch?: number; roll?: number; dolly?: number } } => {
+  if (!camera) return {};
+  return {
+    camera: {
+      ...(camera.yaw !== undefined ? { yaw: camera.yaw } : {}),
+      ...(camera.pitch !== undefined ? { pitch: camera.pitch } : {}),
+      ...(camera.roll !== undefined ? { roll: camera.roll } : {}),
+      ...(camera.dolly !== undefined ? { dolly: camera.dolly } : {}),
+    },
+  };
+};
+
 export async function handleCreateShot(
   service: ContinuitySessionService,
   req: Request,
@@ -127,7 +141,27 @@ export async function handleUpdateShot(
     return;
   }
 
-  const shot = await service.updateShot(options.sessionId, options.shotId, parsed.data);
+  const updates = {
+    ...(parsed.data.prompt !== undefined ? { prompt: parsed.data.prompt } : {}),
+    ...(parsed.data.continuityMode !== undefined
+      ? { continuityMode: parsed.data.continuityMode }
+      : {}),
+    ...(parsed.data.generationMode !== undefined ? { generationMode: parsed.data.generationMode } : {}),
+    ...(parsed.data.styleReferenceId !== undefined
+      ? { styleReferenceId: parsed.data.styleReferenceId }
+      : {}),
+    ...(parsed.data.styleStrength !== undefined ? { styleStrength: parsed.data.styleStrength } : {}),
+    ...(parsed.data.modelId !== undefined ? { modelId: parsed.data.modelId } : {}),
+    ...(parsed.data.characterAssetId !== undefined
+      ? { characterAssetId: parsed.data.characterAssetId }
+      : {}),
+    ...(parsed.data.faceStrength !== undefined ? { faceStrength: parsed.data.faceStrength } : {}),
+    ...buildUpdateShotCameraInput(parsed.data.camera),
+    ...(parsed.data.versions !== undefined
+      ? { versions: parsed.data.versions as unknown as ContinuityShot['versions'] }
+      : {}),
+  };
+  const shot = await service.updateShot(options.sessionId, options.shotId, updates);
   res.json({ success: true, data: shot });
 }
 

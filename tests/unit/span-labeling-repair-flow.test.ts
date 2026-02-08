@@ -57,7 +57,10 @@ describe('attemptRepair', () => {
         result: { spans: [], meta: { version: 'v1', notes: '' } },
       });
 
-      const parseResponseText = () => ({ ok: true, value: { spans: [], meta: { version: 'v1', notes: '' } } });
+      const parseResponseText = (_text: string) => ({
+        ok: true as const,
+        value: { spans: [], meta: { version: 'v1', notes: '' } },
+      });
 
       await expect(
         attemptRepair({
@@ -94,7 +97,10 @@ describe('attemptRepair', () => {
         result: { spans: [], meta: { version: 'v1', notes: '' } },
       });
 
-      const parseResponseText = () => ({ ok: true, value: { spans: [], meta: { version: 'v1', notes: '' } } });
+      const parseResponseText = (_text: string) => ({
+        ok: true as const,
+        value: { spans: [], meta: { version: 'v1', notes: '' } },
+      });
       const injectDefensiveMeta = vi.fn();
 
       const result = await attemptRepair({
@@ -133,8 +139,8 @@ describe('attemptRepair', () => {
         result: { spans: [{ text: 'Hero', role: 'subject' }], meta: { version: 'v1', notes: '' } },
       });
 
-      const parseResponseText = () => ({
-        ok: true,
+      const parseResponseText = (_text: string) => ({
+        ok: true as const,
         value: { spans: [{ text: 'Hero', role: 'subject' }], meta: { version: 'v1', notes: '' } },
       });
 

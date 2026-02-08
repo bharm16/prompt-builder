@@ -35,7 +35,7 @@ export class ObservationCache {
   async set(imageHash: string, observation: ImageObservation): Promise<void> {
     this.memory.set(imageHash, { data: observation, expires: Date.now() + TTL_SECONDS * 1000 });
     try {
-      await cacheService.set(`${NAMESPACE}:${imageHash}`, observation, TTL_SECONDS);
+      await cacheService.set(`${NAMESPACE}:${imageHash}`, observation, { ttl: TTL_SECONDS });
     } catch {
       // Redis unavailable, memory-only
     }

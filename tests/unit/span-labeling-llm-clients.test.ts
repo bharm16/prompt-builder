@@ -11,7 +11,7 @@ describe('GroqLlmClient', () => {
     client._lastResponseMetadata = { averageConfidence: 0.4 };
 
     const result: LabelSpansResult = {
-      spans: [{ text: 'cat', confidence: 0.9 }],
+      spans: [{ text: 'cat', role: 'subject', confidence: 0.9 }],
       meta: { version: 'v1', notes: '' },
     };
 
@@ -21,7 +21,8 @@ describe('GroqLlmClient', () => {
     expect(adjusted.spans[0]?.confidence).toBe(0.4);
     const span = adjusted.spans[0] as { _originalConfidence?: number };
     expect(span._originalConfidence).toBe(0.9);
-    expect(adjusted.meta?._providerOptimizations?.logprobsAdjustment).toBe(true);
+    const providerOptimizations = (adjusted.meta?._providerOptimizations ?? {}) as Record<string, unknown>;
+    expect(providerOptimizations.logprobsAdjustment).toBe(true);
   });
 
   it('adds provider metadata even when no logprobs are available', () => {
@@ -29,7 +30,7 @@ describe('GroqLlmClient', () => {
     client._lastResponseMetadata = {};
 
     const result: LabelSpansResult = {
-      spans: [{ text: 'cat', confidence: 0.9 }],
+      spans: [{ text: 'cat', role: 'subject', confidence: 0.9 }],
       meta: { version: 'v1', notes: '' },
     };
 
@@ -37,8 +38,9 @@ describe('GroqLlmClient', () => {
       ._postProcessResult(result);
 
     expect(adjusted.spans[0]?.confidence).toBe(0.9);
-    expect(adjusted.meta?._providerOptimizations?.provider).toBe('groq');
-    expect(adjusted.meta?._providerOptimizations?.logprobsAdjustment).toBe(false);
+    const providerOptimizations = (adjusted.meta?._providerOptimizations ?? {}) as Record<string, unknown>;
+    expect(providerOptimizations.provider).toBe('groq');
+    expect(providerOptimizations.logprobsAdjustment).toBe(false);
   });
 });
 
@@ -46,7 +48,7 @@ describe('OpenAILlmClient', () => {
   it('adds OpenAI provider metadata without changing spans', () => {
     const client = new OpenAILlmClient();
     const result: LabelSpansResult = {
-      spans: [{ text: 'cat', confidence: 0.8 }],
+      spans: [{ text: 'cat', role: 'subject', confidence: 0.8 }],
       meta: { version: 'v1', notes: '' },
     };
 
@@ -54,7 +56,8 @@ describe('OpenAILlmClient', () => {
       ._postProcessResult(result);
 
     expect(adjusted.spans[0]?.confidence).toBe(0.8);
-    expect(adjusted.meta?._providerOptimizations?.provider).toBe('openai');
-    expect(adjusted.meta?._providerOptimizations?.strictSchema).toBe(true);
+    const providerOptimizations = (adjusted.meta?._providerOptimizations ?? {}) as Record<string, unknown>;
+    expect(providerOptimizations.provider).toBe('openai');
+    expect(providerOptimizations.strictSchema).toBe(true);
   });
 });

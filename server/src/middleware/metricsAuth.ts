@@ -54,7 +54,7 @@ export function metricsAuthMiddleware(
   const validToken = process.env.METRICS_TOKEN;
 
   if (!validToken) {
-    logger.error('METRICS_TOKEN environment variable not configured', {
+    logger.error('METRICS_TOKEN environment variable not configured', undefined, {
       requestId: req.id,
     });
 

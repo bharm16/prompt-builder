@@ -25,6 +25,8 @@ describe('BentoBox', () => {
     icon: () => <span>icon</span>,
     backgroundColor: 'red',
     borderColor: 'blue',
+    order: 1,
+    description: 'Shot configuration',
   };
 
   describe('error handling', () => {
@@ -67,7 +69,7 @@ describe('BentoBox', () => {
   describe('core behavior', () => {
     it('renders spans and passes colors to SpanItem', () => {
       const spans: Span[] = [
-        { id: 'span-1', quote: 'hello', category: 'shot' },
+        { id: 'span-1', quote: 'hello', category: 'shot', start: 0, end: 5 },
       ];
 
       render(

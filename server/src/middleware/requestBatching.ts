@@ -154,7 +154,7 @@ export class RequestBatchingService {
 
         // Record metrics
         metricsService.recordHistogram('batch_size', requests.length);
-        metricsService.recordCounter('batched_requests_total', requests.length);
+        metricsService.recordCounter('batched_requests_total');
 
         res.json(results);
         return;
@@ -263,7 +263,11 @@ export class RequestBatchingService {
     const worker = async () => {
       while (index < items.length) {
         const currentIndex = index++;
-        results[currentIndex] = await processor(items[currentIndex], currentIndex);
+        const item = items[currentIndex];
+        if (item === undefined) {
+          continue;
+        }
+        results[currentIndex] = await processor(item, currentIndex);
       }
     };
 

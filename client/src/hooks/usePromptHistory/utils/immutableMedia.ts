@@ -220,11 +220,19 @@ export function enforceImmutableVersions(
   const merged = versions.map((version) => {
     const existing = existingMap.get(version.versionId);
     if (!existing) return version;
+    const preview = mergePreview(existing.preview, version.preview, version.versionId, warnings);
+    const video = mergeVideo(existing.video, version.video, version.versionId, warnings);
+    const generations = mergeGenerations(
+      existing.generations,
+      version.generations,
+      version.versionId,
+      warnings
+    );
     return {
       ...version,
-      preview: mergePreview(existing.preview, version.preview, version.versionId, warnings),
-      video: mergeVideo(existing.video, version.video, version.versionId, warnings),
-      generations: mergeGenerations(existing.generations, version.generations, version.versionId, warnings),
+      ...(preview != null ? { preview } : {}),
+      ...(video != null ? { video } : {}),
+      ...(generations != null ? { generations } : {}),
     };
   });
 

@@ -37,6 +37,14 @@ vi.mock('@llm/span-labeling/nlp/filters/sectionHeaders', () => ({
 }));
 
 describe('NlpSpanService', () => {
+  const setCompromiseEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.COMPROMISE as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setLightingEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.LIGHTING as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
   const originalCompromise = SpanLabelingConfig.COMPROMISE.ENABLED;
   const originalLighting = SpanLabelingConfig.LIGHTING.ENABLED;
 
@@ -47,13 +55,13 @@ describe('NlpSpanService', () => {
     mockExtractOpenVocabulary.mockReset();
     mockFilterSectionHeaders.mockReset();
 
-    SpanLabelingConfig.COMPROMISE.ENABLED = true;
-    SpanLabelingConfig.LIGHTING.ENABLED = true;
+    setCompromiseEnabled(true);
+    setLightingEnabled(true);
   });
 
   afterEach(() => {
-    SpanLabelingConfig.COMPROMISE.ENABLED = originalCompromise;
-    SpanLabelingConfig.LIGHTING.ENABLED = originalLighting;
+    setCompromiseEnabled(originalCompromise);
+    setLightingEnabled(originalLighting);
   });
 
   it('returns empty stats for invalid input', async () => {

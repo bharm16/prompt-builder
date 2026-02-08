@@ -7,7 +7,7 @@ describe('spanLabelingErrors', () => {
     const res = {
       status: 400,
       json: async () => ({ message: 'Bad request' }),
-    } as Response;
+    } as unknown as Response;
 
     const error = await buildRequestError(res);
 
@@ -21,7 +21,7 @@ describe('spanLabelingErrors', () => {
       json: async () => {
         throw new Error('Invalid JSON');
       },
-    } as Response;
+    } as unknown as Response;
 
     const error = await buildRequestError(res);
 

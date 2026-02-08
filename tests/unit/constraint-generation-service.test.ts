@@ -119,10 +119,7 @@ describe('ConstraintGenerationService', () => {
           { highlightWordCount: 1 },
           { forceMode: mode }
         );
-        expect(result.minWords).toBeLessThanOrEqual(
-          result.maxWords,
-          `Failed for mode: ${mode}`
-        );
+        expect(result.minWords).toBeLessThanOrEqual(result.maxWords);
       }
     });
 

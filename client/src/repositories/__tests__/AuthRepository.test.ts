@@ -134,7 +134,9 @@ describe('MockAuthRepository', () => {
       repo.onAuthStateChanged(callback);
       await repo.signInWithGoogle();
       expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback.mock.calls[1][0]).not.toBeNull();
+      const secondCall = callback.mock.calls[1];
+      expect(secondCall).toBeDefined();
+      expect(secondCall?.[0]).not.toBeNull();
     });
 
     it('notifies on sign out', async () => {
@@ -144,7 +146,9 @@ describe('MockAuthRepository', () => {
       repo.onAuthStateChanged(callback);
       await repo.signOut();
       expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback.mock.calls[1][0]).toBeNull();
+      const secondCall = callback.mock.calls[1];
+      expect(secondCall).toBeDefined();
+      expect(secondCall?.[0]).toBeNull();
     });
 
     it('returns unsubscribe function that stops notifications', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import type { NavigateFunction } from 'react-router-dom';
+import type { NavigateOptions, To } from 'react-router-dom';
 
 import {
   usePromptOptimization,
@@ -68,7 +68,14 @@ const createSetters = () => {
   const setShowResults: MockedFunction<SetShowResults> = vi.fn();
   const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> = vi.fn();
   const resetEditStacks: MockedFunction<ResetEditStacks> = vi.fn();
-  const navigate: MockedFunction<Navigate> = vi.fn();
+  const navigateMock = vi.fn();
+  const navigate: Navigate = (to: To | number, options?: NavigateOptions) => {
+    if (typeof to === 'number') {
+      navigateMock(to);
+      return;
+    }
+    navigateMock(to, options);
+  };
 
   return {
     setCurrentPromptUuid,
@@ -78,6 +85,7 @@ const createSetters = () => {
     applyInitialHighlightSnapshot,
     resetEditStacks,
     navigate,
+    navigateMock,
   };
 };
 
@@ -133,7 +141,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef,
         skipLoadFromUrlRef,
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -177,7 +185,7 @@ describe('usePromptOptimization', () => {
     expect(setters.resetEditStacks).toHaveBeenCalled();
     expect(setters.setCurrentPromptUuid).toHaveBeenCalledWith('uuid-1');
     expect(setters.setCurrentPromptDocId).toHaveBeenCalledWith('doc-1');
-    expect(setters.navigate).toHaveBeenCalledWith('/session/doc-1', { replace: true });
+    expect(setters.navigateMock).toHaveBeenCalledWith('/session/doc-1', { replace: true });
     expect(skipLoadFromUrlRef.current).toBe(true);
     expect(persistedSignatureRef.current).toBeNull();
   });
@@ -222,7 +230,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef,
         skipLoadFromUrlRef,
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -287,7 +295,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef,
         skipLoadFromUrlRef,
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -342,7 +350,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef: { current: null },
         skipLoadFromUrlRef: { current: false },
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -405,7 +413,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef: { current: null },
         skipLoadFromUrlRef: { current: false },
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -470,7 +478,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef: { current: null },
         skipLoadFromUrlRef: { current: false },
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 

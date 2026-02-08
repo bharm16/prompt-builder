@@ -44,11 +44,17 @@ describe('GcsImageAssetStore', () => {
   beforeEach(() => {
     fileMock = createFileMock('image-previews/test-id');
     bucketMock = {
-      file: vi.fn(() => fileMock),
+      file: vi.fn((path: string) => {
+        void path;
+        return fileMock;
+      }),
       getFiles: vi.fn(),
     };
     storageMock = {
-      bucket: vi.fn(() => bucketMock),
+      bucket: vi.fn((name: string) => {
+        void name;
+        return bucketMock;
+      }),
     };
     vi.clearAllMocks();
   });

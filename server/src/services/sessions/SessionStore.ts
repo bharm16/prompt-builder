@@ -98,7 +98,7 @@ export class SessionStore {
       ...(session.name ? { name: session.name } : {}),
       ...(session.description ? { description: session.description } : {}),
       status: session.status,
-      ...(session.prompt ? { prompt: session.prompt as Record<string, unknown> } : {}),
+      ...(session.prompt ? { prompt: session.prompt as unknown as Record<string, unknown> } : {}),
       ...(session.continuity ? { continuity: serializeContinuitySession(session.continuity) } : {}),
       ...(session.promptUuid ? { promptUuid: session.promptUuid } : {}),
       hasContinuity,
@@ -114,7 +114,11 @@ export class SessionStore {
       ...(stored.name ? { name: stored.name } : {}),
       ...(stored.description ? { description: stored.description } : {}),
       status: stored.status,
-      ...(stored.prompt ? { prompt: stored.prompt as SessionRecord['prompt'] } : {}),
+      ...(stored.prompt
+        ? {
+            prompt: stored.prompt as unknown as NonNullable<SessionRecord['prompt']>,
+          }
+        : {}),
       ...(stored.continuity ? { continuity: deserializeContinuitySession(sessionId, stored.continuity) } : {}),
       ...(stored.promptUuid ? { promptUuid: stored.promptUuid } : {}),
       hasContinuity: Boolean(stored.hasContinuity),

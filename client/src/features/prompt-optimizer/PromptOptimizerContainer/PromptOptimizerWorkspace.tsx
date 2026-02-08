@@ -105,7 +105,7 @@ function PromptOptimizerContent({
   convergenceHandoff,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
-  const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = React.useRef<HTMLTextAreaElement>(null!);
   // Track if we've already applied the handoff to prevent re-applying
   const handoffAppliedRef = React.useRef<string | null>(null);
 
@@ -819,7 +819,7 @@ function PromptOptimizerContent({
         displayedPrompt: promptOptimizer.displayedPrompt,
         optimizedPrompt: promptOptimizer.optimizedPrompt,
         selectedMode,
-        promptContext: stablePromptContext,
+        promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
       }}
     />
   );
@@ -840,7 +840,7 @@ function PromptOptimizerWorkspace({
   const { sessionId } = useParams<{ sessionId?: string }>();
 
   return (
-    <WorkspaceSessionProvider sessionId={sessionId}>
+    <WorkspaceSessionProvider {...(sessionId ? { sessionId } : {})}>
       <PromptStateProvider user={user}>
         <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
       </PromptStateProvider>

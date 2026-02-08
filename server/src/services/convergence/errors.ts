@@ -30,7 +30,9 @@ export class ConvergenceError extends Error {
     super(code);
     this.name = 'ConvergenceError';
     this.code = code;
-    this.details = details;
+    if (details !== undefined) {
+      this.details = details;
+    }
 
     // Maintains proper stack trace for where our error was thrown (only available on V8)
     if (Error.captureStackTrace) {

@@ -2,7 +2,7 @@
  * Unit tests for useCustomRequest hook
  */
 
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi, type MockedFunction } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
 import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRequest';
@@ -56,11 +56,17 @@ describe('useCustomRequest', () => {
     const setSuggestions = vi.fn();
     const setError = vi.fn();
     const suggestions: SuggestionItem[] = [{ text: 'Sharper focus' }];
-    const onCustomRequest = vi.fn<[string], Promise<SuggestionItem[]>>();
+    const onCustomRequest: MockedFunction<(request: string) => Promise<SuggestionItem[]>> = vi.fn();
     onCustomRequest.mockResolvedValue(suggestions);
 
     const { result } = renderHook(() =>
-      useCustomRequest({ onCustomRequest, setSuggestions, setError })
+      useCustomRequest({
+        selectedText: 'scene',
+        fullPrompt: 'full prompt',
+        onCustomRequest,
+        setSuggestions,
+        setError,
+      })
     );
 
     await act(async () => {
@@ -83,7 +89,7 @@ describe('useCustomRequest', () => {
   it('falls back to fetchCustomSuggestions when onCustomRequest is not provided', async () => {
     const setSuggestions = vi.fn();
     const setError = vi.fn();
-    mockFetchCustomSuggestions.mockResolvedValue(['One', 'Two']);
+    mockFetchCustomSuggestions.mockResolvedValue([{ text: 'One' }, { text: 'Two' }]);
 
     const { result } = renderHook(() =>
       useCustomRequest({
@@ -108,20 +114,22 @@ describe('useCustomRequest', () => {
       fullPrompt: 'full prompt',
       signal: expect.any(AbortSignal),
     });
-    expect(setSuggestions).toHaveBeenCalledWith(
-      [{ text: 'One' }, { text: 'Two' }],
-      undefined
-    );
+    expect(setSuggestions).toHaveBeenCalledWith([{ text: 'One' }, { text: 'Two' }], undefined);
     expect(setError).toHaveBeenCalledWith('');
   });
 
   it('ignores CancellationError without setting error state', async () => {
     const setError = vi.fn();
-    const onCustomRequest = vi.fn<[string], Promise<SuggestionItem[]>>();
+    const onCustomRequest: MockedFunction<(request: string) => Promise<SuggestionItem[]>> = vi.fn();
     onCustomRequest.mockRejectedValue(new CancellationError('Request cancelled'));
 
     const { result } = renderHook(() =>
-      useCustomRequest({ onCustomRequest, setError })
+      useCustomRequest({
+        selectedText: 'scene',
+        fullPrompt: 'full prompt',
+        onCustomRequest,
+        setError,
+      })
     );
 
     await act(async () => {
@@ -139,11 +147,16 @@ describe('useCustomRequest', () => {
 
   it('sets error state when request fails', async () => {
     const setError = vi.fn();
-    const onCustomRequest = vi.fn<[string], Promise<SuggestionItem[]>>();
+    const onCustomRequest: MockedFunction<(request: string) => Promise<SuggestionItem[]>> = vi.fn();
     onCustomRequest.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() =>
-      useCustomRequest({ onCustomRequest, setError })
+      useCustomRequest({
+        selectedText: 'scene',
+        fullPrompt: 'full prompt',
+        onCustomRequest,
+        setError,
+      })
     );
 
     await act(async () => {

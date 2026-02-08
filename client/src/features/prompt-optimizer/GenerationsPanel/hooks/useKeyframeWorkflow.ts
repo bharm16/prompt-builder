@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Asset } from '@shared/types/asset';
+import type { Asset, AssetType } from '@shared/types/asset';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type { GenerationParams } from '../types';
 import type { GenerationOverrides } from '@components/ToolSidebar/types';
 
 interface AssetReferenceImage {
   assetId: string;
-  assetType: string;
-  assetName?: string;
+  assetType: AssetType;
+  assetName?: string | undefined;
   imageUrl: string;
 }
 

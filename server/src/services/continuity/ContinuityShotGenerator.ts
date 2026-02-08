@@ -127,19 +127,20 @@ export class ContinuityShotGenerator {
         const modeForStrategy = isContinuity ? resolvedContinuityMode : effectiveContinuityMode;
         const strategy = this.providerService.getContinuityStrategy(provider, modeForStrategy, shot.modelId);
 
-        const mechanism = await this.resolveContinuityMechanism({
+        const mechanismContext = {
           session,
           shot,
-          previousShot,
           provider,
           providerCaps,
           strategy,
           isContinuity,
           modeForStrategy,
           supportsSeedPersistence,
-          inheritedSeed,
           requiresCharacter,
-        });
+          ...(previousShot ? { previousShot } : {}),
+          ...(inheritedSeed !== undefined ? { inheritedSeed } : {}),
+        };
+        const mechanism = await this.resolveContinuityMechanism(mechanismContext);
 
         const startImageUrl = mechanism.startImageUrl;
         const continuityMechanismUsed = mechanism.continuityMechanismUsed;
@@ -197,7 +198,11 @@ export class ContinuityShotGenerator {
         );
 
         if (supportsSeedPersistence) {
-          const seedInfo = this.providerService.extractSeed(provider, shot.modelId, result as Record<string, unknown>);
+          const seedInfo = this.providerService.extractSeed(
+            provider,
+            shot.modelId,
+            result as unknown as Record<string, unknown>
+          );
           if (seedInfo) {
             shot.seedInfo = seedInfo;
           }
@@ -267,7 +272,9 @@ export class ContinuityShotGenerator {
           shot.videoAssetId = result.assetId;
         }
 
-        shot.continuityMechanismUsed = continuityMechanismUsed;
+        if (continuityMechanismUsed !== undefined) {
+          shot.continuityMechanismUsed = continuityMechanismUsed;
+        }
         shot.status = 'completed';
         shot.generatedAt = new Date();
 
