@@ -9,6 +9,7 @@ import {
   type StorageType,
 } from '../config/storageConfig';
 import { generateStoragePath, validatePathOwnership } from '../utils/pathUtils';
+import { createForbiddenError } from '../utils/httpError';
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 const RESUMABLE_THRESHOLD_BYTES = 5 * 1024 * 1024;
@@ -308,7 +309,7 @@ export class UploadService {
     createdAt: string;
   }> {
     if (!validatePathOwnership(path, userId)) {
-      throw new Error('Unauthorized - file does not belong to user');
+      throw createForbiddenError('Unauthorized - file does not belong to user');
     }
 
     const file = this.bucket.file(path);

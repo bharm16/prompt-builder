@@ -1,6 +1,7 @@
 import { Storage } from '@google-cloud/storage';
 import { STORAGE_CONFIG } from '../config/storageConfig';
 import { validatePathOwnership, getTypeFromPath } from '../utils/pathUtils';
+import { createForbiddenError } from '../utils/httpError';
 
 export class RetentionService {
   private readonly storage: Storage;
@@ -13,7 +14,7 @@ export class RetentionService {
 
   async deleteFile(path: string, userId: string): Promise<{ deleted: boolean; path: string }> {
     if (!validatePathOwnership(path, userId)) {
-      throw new Error('Unauthorized - cannot delete files belonging to other users');
+      throw createForbiddenError('Unauthorized - cannot delete files belonging to other users');
     }
 
     const file = this.bucket.file(path);

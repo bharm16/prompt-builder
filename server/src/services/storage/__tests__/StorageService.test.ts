@@ -116,7 +116,30 @@ describe('StorageService', () => {
     const { service } = buildStorageService();
     await expect(
       service.getViewUrl('user123', 'users/otheruser/generations/123-abc.mp4')
-    ).rejects.toThrow('Unauthorized');
+    ).rejects.toMatchObject({
+      message: 'Unauthorized - cannot access files belonging to other users',
+      statusCode: 403,
+    });
+  });
+
+  it('rejects download URL requests for non-owned files with 403', async () => {
+    const { service } = buildStorageService();
+    await expect(
+      service.getDownloadUrl('user123', 'users/otheruser/generations/123-abc.mp4')
+    ).rejects.toMatchObject({
+      message: 'Unauthorized - cannot access files belonging to other users',
+      statusCode: 403,
+    });
+  });
+
+  it('rejects metadata requests for non-owned files with 403', async () => {
+    const { service } = buildStorageService();
+    await expect(
+      service.getFileMetadata('user123', 'users/otheruser/generations/123-abc.mp4')
+    ).rejects.toMatchObject({
+      message: 'Unauthorized',
+      statusCode: 403,
+    });
   });
 
   it('deletes owned file', async () => {

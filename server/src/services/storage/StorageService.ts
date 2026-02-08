@@ -12,6 +12,7 @@ import {
   type StorageType,
 } from './config/storageConfig';
 import { generateStoragePath, validatePathOwnership } from './utils/pathUtils';
+import { createForbiddenError } from './utils/httpError';
 
 function normalizeContentType(value: string): string {
   return value.split(';')[0]?.trim().toLowerCase();
@@ -363,7 +364,7 @@ export class StorageService {
         process.env.NODE_ENV !== 'production' &&
         process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
       if (!allowCrossUser) {
-        throw new Error('Unauthorized - cannot access files belonging to other users');
+        throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
       }
       this.log.warn('Bypassing storage ownership check in development', {
         userId,
@@ -395,7 +396,7 @@ export class StorageService {
         process.env.NODE_ENV !== 'production' &&
         process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
       if (!allowCrossUser) {
-        throw new Error('Unauthorized - cannot access files belonging to other users');
+        throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
       }
       this.log.warn('Bypassing storage ownership check in development', {
         userId,
@@ -486,7 +487,7 @@ export class StorageService {
     metadata: Record<string, unknown>;
   }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized');
+      throw createForbiddenError('Unauthorized');
     }
 
     return this.withTiming(
