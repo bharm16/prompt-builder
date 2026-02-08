@@ -27,6 +27,9 @@ export function ReferenceImageUploader({
       await onUpload(file, metadata);
       setMetadata({});
       event.target.value = '';
+    } catch {
+      // Avoid unhandled promise rejections from async event handlers.
+      // Parent upload handlers are responsible for presenting error state.
     } finally {
       setIsUploading(false);
     }

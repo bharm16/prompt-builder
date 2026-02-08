@@ -1,4 +1,4 @@
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useMemo } from 'react';
 import type { Asset, AssetType, AssetListResponse } from '@shared/types/asset';
 
 interface AssetState {
@@ -110,46 +110,71 @@ function assetReducer(state: AssetState, action: AssetAction): AssetState {
 export function useAssetState() {
   const [state, dispatch] = useReducer(assetReducer, initialState);
 
-  const actions = {
-    setLoading: useCallback(
-      (loading: boolean) => dispatch({ type: 'SET_LOADING', payload: loading }),
-      []
-    ),
-    setError: useCallback(
-      (error: string | null) => dispatch({ type: 'SET_ERROR', payload: error }),
-      []
-    ),
-    setAssets: useCallback(
-      (data: AssetListResponse) => dispatch({ type: 'SET_ASSETS', payload: data }),
-      []
-    ),
-    addAsset: useCallback(
-      (asset: Asset) => dispatch({ type: 'ADD_ASSET', payload: asset }),
-      []
-    ),
-    updateAsset: useCallback(
-      (asset: Asset) => dispatch({ type: 'UPDATE_ASSET', payload: asset }),
-      []
-    ),
-    deleteAsset: useCallback(
-      (assetId: string) => dispatch({ type: 'DELETE_ASSET', payload: assetId }),
-      []
-    ),
-    selectAsset: useCallback(
-      (asset: Asset | null) => dispatch({ type: 'SELECT_ASSET', payload: asset }),
-      []
-    ),
-    openEditor: useCallback(
-      (mode: 'create' | 'edit', asset: Asset | null = null, assetType: AssetType | null = null) =>
-        dispatch({ type: 'OPEN_EDITOR', payload: { mode, asset, assetType } }),
-      []
-    ),
-    closeEditor: useCallback(() => dispatch({ type: 'CLOSE_EDITOR' }), []),
-    setFilter: useCallback(
-      (type: AssetType | null) => dispatch({ type: 'SET_FILTER', payload: type }),
-      []
-    ),
-  };
+  const setLoading = useCallback(
+    (loading: boolean) => dispatch({ type: 'SET_LOADING', payload: loading }),
+    []
+  );
+  const setError = useCallback(
+    (error: string | null) => dispatch({ type: 'SET_ERROR', payload: error }),
+    []
+  );
+  const setAssets = useCallback(
+    (data: AssetListResponse) => dispatch({ type: 'SET_ASSETS', payload: data }),
+    []
+  );
+  const addAsset = useCallback(
+    (asset: Asset) => dispatch({ type: 'ADD_ASSET', payload: asset }),
+    []
+  );
+  const updateAsset = useCallback(
+    (asset: Asset) => dispatch({ type: 'UPDATE_ASSET', payload: asset }),
+    []
+  );
+  const deleteAsset = useCallback(
+    (assetId: string) => dispatch({ type: 'DELETE_ASSET', payload: assetId }),
+    []
+  );
+  const selectAsset = useCallback(
+    (asset: Asset | null) => dispatch({ type: 'SELECT_ASSET', payload: asset }),
+    []
+  );
+  const openEditor = useCallback(
+    (mode: 'create' | 'edit', asset: Asset | null = null, assetType: AssetType | null = null) =>
+      dispatch({ type: 'OPEN_EDITOR', payload: { mode, asset, assetType } }),
+    []
+  );
+  const closeEditor = useCallback(() => dispatch({ type: 'CLOSE_EDITOR' }), []);
+  const setFilter = useCallback(
+    (type: AssetType | null) => dispatch({ type: 'SET_FILTER', payload: type }),
+    []
+  );
+
+  const actions = useMemo(
+    () => ({
+      setLoading,
+      setError,
+      setAssets,
+      addAsset,
+      updateAsset,
+      deleteAsset,
+      selectAsset,
+      openEditor,
+      closeEditor,
+      setFilter,
+    }),
+    [
+      setLoading,
+      setError,
+      setAssets,
+      addAsset,
+      updateAsset,
+      deleteAsset,
+      selectAsset,
+      openEditor,
+      closeEditor,
+      setFilter,
+    ]
+  );
 
   const filteredAssets = state.filterType
     ? state.assets.filter((asset) => asset.type === state.filterType)

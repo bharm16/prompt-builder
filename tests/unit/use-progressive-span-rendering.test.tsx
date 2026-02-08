@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
 
 import {
   useProgressiveSpanRendering,
@@ -26,8 +26,10 @@ describe('useProgressiveSpanRendering', () => {
     });
 
     it('handles empty spans by returning a complete state', () => {
+      const spans: Span[] = [];
+
       const { result, unmount } = renderHook(() =>
-        useProgressiveSpanRendering({ spans: [], enabled: true })
+        useProgressiveSpanRendering({ spans, enabled: true })
       );
 
       expect(result.current.visibleSpans).toEqual([]);
@@ -38,32 +40,43 @@ describe('useProgressiveSpanRendering', () => {
   });
 
   describe('edge cases', () => {
-    it('progressively reveals spans based on confidence thresholds', async () => {
+    it('progressively reveals spans based on confidence thresholds', () => {
       const spans: Span[] = [
         { id: 'high', start: 0, end: 2, confidence: 0.95 },
         { id: 'medium', start: 3, end: 5, confidence: 0.7 },
         { id: 'low', start: 6, end: 8, confidence: 0.4 },
       ];
 
-      const { result, unmount } = renderHook(() =>
-        useProgressiveSpanRendering({
-          spans,
-          enabled: true,
-          mediumConfidenceDelay: 5,
-          lowConfidenceDelay: 10,
-        })
-      );
+      vi.useFakeTimers();
+      try {
+        const { result, unmount } = renderHook(() =>
+          useProgressiveSpanRendering({
+            spans,
+            enabled: true,
+            mediumConfidenceDelay: 5,
+            lowConfidenceDelay: 10,
+          })
+        );
 
-      expect(result.current.visibleSpans).toHaveLength(1);
-      expect(result.current.isRendering).toBe(true);
+        expect(result.current.visibleSpans).toHaveLength(1);
+        expect(result.current.isRendering).toBe(true);
 
-      await waitFor(() => {
+        act(() => {
+          vi.advanceTimersByTime(5);
+        });
+        expect(result.current.visibleSpans).toHaveLength(2);
+
+        act(() => {
+          vi.advanceTimersByTime(5);
+        });
         expect(result.current.visibleSpans).toHaveLength(3);
-      });
+        expect(result.current.progress).toBe(100);
+        expect(result.current.isRendering).toBe(false);
 
-      expect(result.current.progress).toBe(100);
-      expect(result.current.isRendering).toBe(false);
-      unmount();
+        unmount();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
