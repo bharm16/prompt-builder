@@ -115,7 +115,7 @@ describe('ReplicateFluxKontextFastProvider', () => {
       };
 
       await expect(provider.generatePreview(request)).rejects.toThrow(
-        'Replicate API returned an empty response. The image generation may have failed or the model is still processing. Please try again.'
+        'Invalid response from Replicate API: no image URL returned.'
       );
     });
   });

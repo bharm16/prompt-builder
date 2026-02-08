@@ -79,10 +79,10 @@ describe('useSuggestionApi', () => {
         metadata: null,
         allLabeledSpans: [],
       });
+      const rejection = expect(promise).rejects.toThrow('boom');
 
       await vi.advanceTimersByTimeAsync(200);
-
-      await expect(promise).rejects.toThrow('boom');
+      await rejection;
     });
 
     it('surfaces cancellation errors returned by the request', async () => {
@@ -104,10 +104,10 @@ describe('useSuggestionApi', () => {
         metadata: null,
         allLabeledSpans: [],
       });
+      const rejection = expect(promise).rejects.toThrow(CancellationError);
 
       await vi.advanceTimersByTimeAsync(200);
-
-      await expect(promise).rejects.toThrow(CancellationError);
+      await rejection;
     });
   });
 
@@ -186,11 +186,26 @@ describe('useSuggestionApi', () => {
           contextAfter: 'after',
           fullPrompt: 'prompt',
           inputPrompt: 'input',
-          brainstormContext: { format: 'video' },
+          brainstormContext: expect.objectContaining({
+            metadata: expect.objectContaining({ format: 'video' }),
+          }),
           metadata: { category: 'style' },
-          allLabeledSpans: [{ text: 'span-a' }],
-          nearbySpans: [{ text: 'span-b' }],
+          allLabeledSpans: [
+            expect.objectContaining({
+              text: 'span-a',
+              role: 'style',
+              category: 'style',
+            }),
+          ],
+          nearbySpans: [
+            expect.objectContaining({
+              text: 'span-b',
+              role: 'style',
+              category: 'style',
+            }),
+          ],
           editHistory: [{ id: 'edit-1' }],
+          signal: expect.anything(),
         })
       );
 

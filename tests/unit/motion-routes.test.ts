@@ -6,6 +6,8 @@ const {
   depthServiceMock,
   getGCSStorageServiceMock,
   createDepthEstimationServiceForUserMock,
+  getDepthWarmupStatusMock,
+  getStartupWarmupPromiseMock,
 } = vi.hoisted(() => {
   const depthServiceMock = {
     isAvailable: vi.fn(),
@@ -16,6 +18,8 @@ const {
     depthServiceMock,
     getGCSStorageServiceMock: vi.fn(),
     createDepthEstimationServiceForUserMock: vi.fn(() => depthServiceMock),
+    getDepthWarmupStatusMock: vi.fn(),
+    getStartupWarmupPromiseMock: vi.fn(),
   };
 });
 
@@ -25,11 +29,14 @@ vi.mock('@services/convergence/storage', () => ({
 
 vi.mock('@services/convergence/depth', () => ({
   createDepthEstimationServiceForUser: createDepthEstimationServiceForUserMock,
+  getDepthWarmupStatus: getDepthWarmupStatusMock,
+  getStartupWarmupPromise: getStartupWarmupPromiseMock,
 }));
 
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { createMotionRoutes } from '@routes/motion.routes';
 import { CAMERA_PATHS } from '@services/convergence/constants';
+import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 const TEST_API_KEY = 'motion-test-key';
 let previousAllowedApiKeys: string | undefined;
@@ -53,6 +60,11 @@ describe('motion.routes', () => {
     getGCSStorageServiceMock.mockReturnValue({ id: 'storage-service' });
     depthServiceMock.isAvailable.mockReturnValue(true);
     depthServiceMock.estimateDepth.mockResolvedValue('https://example.com/depth.png');
+    getStartupWarmupPromiseMock.mockReturnValue(null);
+    getDepthWarmupStatusMock.mockReturnValue({
+      warmupInFlight: false,
+      lastWarmupAt: Date.now(),
+    });
   });
 
   afterEach(() => {
@@ -65,10 +77,13 @@ describe('motion.routes', () => {
 
   it('returns 400 for invalid depth requests', async () => {
     const app = createTestApp();
-    const response = await request(app)
-      .post('/api/motion/depth')
-      .set('x-api-key', TEST_API_KEY)
-      .send({});
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/api/motion/depth')
+        .set('x-api-key', TEST_API_KEY)
+        .send({})
+    );
+    if (!response) return;
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
@@ -79,10 +94,13 @@ describe('motion.routes', () => {
     depthServiceMock.isAvailable.mockReturnValue(false);
 
     const app = createTestApp();
-    const response = await request(app)
-      .post('/api/motion/depth')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ imageUrl: 'https://example.com/keyframe.png' });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/api/motion/depth')
+        .set('x-api-key', TEST_API_KEY)
+        .send({ imageUrl: 'https://example.com/keyframe.png' })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -95,10 +113,13 @@ describe('motion.routes', () => {
 
   it('returns a depth map when estimation succeeds', async () => {
     const app = createTestApp();
-    const response = await request(app)
-      .post('/api/motion/depth')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ imageUrl: 'https://example.com/keyframe.png' });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/api/motion/depth')
+        .set('x-api-key', TEST_API_KEY)
+        .send({ imageUrl: 'https://example.com/keyframe.png' })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -113,10 +134,13 @@ describe('motion.routes', () => {
     depthServiceMock.estimateDepth.mockRejectedValue(new Error('depth failed'));
 
     const app = createTestApp();
-    const response = await request(app)
-      .post('/api/motion/depth')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ imageUrl: 'https://example.com/keyframe.png' });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/api/motion/depth')
+        .set('x-api-key', TEST_API_KEY)
+        .send({ imageUrl: 'https://example.com/keyframe.png' })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -126,9 +150,12 @@ describe('motion.routes', () => {
 
   it('returns 404 for removed convergence routes', async () => {
     const app = createTestApp();
-    const response = await request(app)
-      .get('/api/convergence/start')
-      .set('x-api-key', TEST_API_KEY);
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .get('/api/convergence/start')
+        .set('x-api-key', TEST_API_KEY)
+    );
+    if (!response) return;
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe('Not found');

@@ -1,15 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { KontextFrameStrip } from '@features/prompt-optimizer/GenerationsPanel/components/KontextFrameStrip';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+
+vi.mock('@/services/media/MediaUrlResolver', () => ({
+  resolveMediaUrl: vi.fn(),
+}));
+
+const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);
 
 describe('KontextFrameStrip', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveMediaUrl.mockResolvedValue({ url: null, source: 'unknown' } as any);
   });
 
   describe('error handling', () => {
-    it('disables a frame when the image fails to load', () => {
+    it('disables a frame when the image fails to load', async () => {
       const onFrameClick = vi.fn();
       render(
         <KontextFrameStrip
@@ -27,10 +35,14 @@ describe('KontextFrameStrip', () => {
       const firstButton = buttons[0];
       expect(firstButton).toBeDefined();
       if (!firstButton) return;
+
+      await waitFor(() => {
+        expect(firstButton).toBeDisabled();
+      });
+
       fireEvent.click(firstButton);
 
       expect(onFrameClick).not.toHaveBeenCalled();
-      expect(firstButton).toBeDisabled();
     });
   });
 

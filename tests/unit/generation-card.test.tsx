@@ -80,22 +80,29 @@ describe('GenerationCard', () => {
   });
 
   describe('edge cases', () => {
-    it('ignores card click when clicking the actions button', () => {
+    it('ignores card click when clicking an interactive child button', () => {
       const onClick = vi.fn();
-      const onDelete = vi.fn();
+      const onSelectFrame = vi.fn();
       const generation = createGeneration({ status: 'completed' });
 
       render(
         <GenerationCard
           generation={generation}
           onClick={onClick}
-          onDelete={onDelete}
+          onSelectFrame={onSelectFrame}
+          selectedFrameUrl={null}
         />
       );
 
-      fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+      const frameButton = screen
+        .getAllByRole('button', { name: /frame/i })
+        .find((element) => element.tagName === 'BUTTON');
+      expect(frameButton).toBeDefined();
+      if (!frameButton) return;
 
-      expect(onDelete).toHaveBeenCalledWith(generation);
+      fireEvent.click(frameButton);
+
+      expect(onSelectFrame).toHaveBeenCalledWith('https://cdn/frame.png', 1, 'gen-1');
       expect(onClick).not.toHaveBeenCalled();
     });
   });

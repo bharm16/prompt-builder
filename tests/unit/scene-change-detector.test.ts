@@ -6,9 +6,11 @@ import { extractSceneContext } from '@/utils/sceneChange/sceneContextParser';
 import { detectSceneChange } from '@/utils/sceneChange/sceneChangeApi';
 import { applySceneChangeUpdates } from '@/utils/sceneChange/sceneChangeUpdates';
 
-const logSpies = {
-  error: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@/utils/sceneChange/sceneContextParser', () => ({
   extractSceneContext: vi.fn(),

@@ -675,7 +675,7 @@ describe('BaseStrategy Implementation Tests', () => {
             const result = strategy.augment(transformed);
 
             expect(result.metadata.modelId).toBe('runway-gen45');
-            expect(result.metadata.pipelineVersion).toBe('1.0.0');
+            expect(result.metadata.pipelineVersion).toBe('2.0.0');
           }
         ),
         { numRuns: 100 }

@@ -61,9 +61,7 @@ describe('storyboard helpers', () => {
       expect(systemPrompt).toContain('Return exactly 3 edit instructions');
       expect(systemPrompt).toContain('{"deltas"');
       expect(repairPrompt).toContain('REPAIR MODE');
-      expect(editPrompt.startsWith('Continuity:')).toBe(true);
-      expect(editPrompt).toContain('Base prompt: base prompt');
-      expect(editPrompt).toContain('Edit instruction: delta prompt');
+      expect(editPrompt).toBe('base prompt. delta prompt');
     });
 
     it('cycles fallback deltas and exposes storyboard constants', () => {

@@ -99,26 +99,28 @@ describe('usePromptVersioning', () => {
       });
     });
 
-    expect(promptHistory.updateEntryVersions).toHaveBeenCalledWith(
-      'uuid-1',
-      'doc-1',
-      expect.arrayContaining([
-        existingVersions[0],
-        expect.objectContaining({
-          versionId: expect.stringMatching(/^v-1704067200000-/),
-          label: 'v2',
-          signature: 'sig-new',
-          prompt: 'New prompt',
-          editCount: 2,
-          edits: [{ timestamp: '2024-01-01T00:00:00.000Z', source: 'manual' }],
-          preview: {
-            generatedAt: new Date(1700000000000).toISOString(),
-            imageUrl: 'https://example.com/image.png',
-            aspectRatio: '4:3',
-          },
-        }),
-      ])
-    );
+    expect(promptHistory.updateEntryVersions).toHaveBeenCalledWith('uuid-1', 'doc-1', expect.any(Array));
+    const versions = vi.mocked(promptHistory.updateEntryVersions).mock.calls[0]?.[2];
+    expect(versions).toHaveLength(2);
+    expect(versions?.[0]).toEqual(existingVersions[0]);
+    expect(versions?.[1]).toMatchObject({
+      versionId: expect.stringMatching(/^v-1704067200000-/),
+      label: 'v2',
+      signature: 'sig-new',
+      prompt: 'New prompt',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      editCount: 2,
+      edits: [{ timestamp: '2024-01-01T00:00:00.000Z', source: 'manual' }],
+      highlights: { spans: [], signature: 'sig-new' },
+      preview: {
+        generatedAt: new Date(1700000000000).toISOString(),
+        imageUrl: 'https://example.com/image.png',
+        aspectRatio: '4:3',
+        storagePath: null,
+        assetId: null,
+        viewUrlExpiresAt: null,
+      },
+    });
     expect(resetVersionEdits).toHaveBeenCalled();
   });
 
@@ -165,16 +167,20 @@ describe('usePromptVersioning', () => {
       });
     });
 
-    expect(promptHistory.updateEntryVersions).toHaveBeenCalledWith('uuid-2', 'doc-2', [
-      expect.objectContaining({
-        signature: 'sig-same',
-        preview: {
-          generatedAt: '2024-01-01T00:00:00.000Z',
-          imageUrl: null,
-          aspectRatio: '16:9',
-        },
-      }),
-    ]);
+    expect(promptHistory.updateEntryVersions).toHaveBeenCalledWith('uuid-2', 'doc-2', expect.any(Array));
+    const versions = vi.mocked(promptHistory.updateEntryVersions).mock.calls[0]?.[2];
+    expect(versions).toHaveLength(1);
+    expect(versions?.[0]).toMatchObject({
+      signature: 'sig-same',
+      preview: {
+        generatedAt: '2024-01-01T00:00:00.000Z',
+        imageUrl: null,
+        aspectRatio: '16:9',
+        storagePath: null,
+        assetId: null,
+        viewUrlExpiresAt: null,
+      },
+    });
     expect(resetVersionEdits).not.toHaveBeenCalled();
   });
 

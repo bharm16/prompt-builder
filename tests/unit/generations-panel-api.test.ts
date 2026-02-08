@@ -165,7 +165,7 @@ describe('waitForVideoJob', () => {
       vi.setSystemTime(2000);
       await vi.advanceTimersByTimeAsync(2000);
 
-      await expect(promise).resolves.toBe('https://cdn/video.mp4');
+      await expect(promise).resolves.toMatchObject({ videoUrl: 'https://cdn/video.mp4' });
       expect(mockGetVideoPreviewStatus).toHaveBeenCalledTimes(2);
     });
   });

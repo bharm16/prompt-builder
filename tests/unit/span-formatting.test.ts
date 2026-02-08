@@ -3,7 +3,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { scrollToSpan } from '@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting';
 
-const warnSpy = vi.fn();
+const { warnSpy } = vi.hoisted(() => ({
+  warnSpy: vi.fn(),
+}));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {

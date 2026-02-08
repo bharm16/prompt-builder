@@ -74,9 +74,15 @@ describe('fetchEnhancementSuggestions', () => {
       mockAbortableRequest();
 
       const promise = fetchEnhancementSuggestions(defaultParams);
+      const rejection = promise
+        .then(() => {
+          throw new Error('Expected timeout rejection');
+        })
+        .catch((error: unknown) => error as Error);
       await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
 
-      await expect(promise).rejects.toThrow('Request timed out after 8 seconds');
+      const error = await rejection;
+      expect(error.message).toContain('Request timed out after 8 seconds');
     });
 
     it('should not timeout if response arrives quickly', async () => {
@@ -138,10 +144,16 @@ describe('fetchEnhancementSuggestions', () => {
       mockAbortableRequest();
 
       const promise = fetchEnhancementSuggestions(defaultParams);
+      const rejection = promise
+        .then(() => {
+          throw new Error('Expected timeout rejection');
+        })
+        .catch((error: unknown) => error as Error);
       await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
 
-      await expect(promise).rejects.not.toThrow(CancellationError);
-      await expect(promise).rejects.toThrow('Request timed out after 8 seconds');
+      const error = await rejection;
+      expect(error).not.toBeInstanceOf(CancellationError);
+      expect(error.message).toContain('Request timed out after 8 seconds');
     });
 
     it('should throw CancellationError for user cancellation (not timeout error)', async () => {

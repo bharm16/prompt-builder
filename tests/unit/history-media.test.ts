@@ -45,7 +45,7 @@ describe('historyMedia', () => {
         ],
       });
 
-      expect(resolveHistoryThumbnail(entry)).toBeNull();
+      expect(resolveHistoryThumbnail(entry)).toEqual({ url: null });
     });
 
     it('returns false when timestamps are missing or invalid', () => {
@@ -64,7 +64,11 @@ describe('historyMedia', () => {
         ],
       });
 
-      expect(resolveHistoryThumbnail(entry)).toBe('https://cdn.example.com/last.png');
+      expect(resolveHistoryThumbnail(entry)).toEqual({
+        url: 'https://cdn.example.com/last.png',
+        storagePath: null,
+        assetId: null,
+      });
     });
 
     it('treats future timestamps as not recent', () => {

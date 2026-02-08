@@ -2,6 +2,7 @@ import React from 'react';
 import { expect, afterEach, vi } from 'vitest';
 // Ensure all tests run with test environment semantics
 process.env.NODE_ENV = 'test';
+process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'prompt-builder-test-bucket';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 

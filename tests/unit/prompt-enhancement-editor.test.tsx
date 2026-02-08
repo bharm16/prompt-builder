@@ -25,19 +25,19 @@ describe('PromptEnhancementEditor', () => {
       ).toThrow('hook failed');
     });
 
-    it('bubbles mouse up errors from the hook', () => {
+    it('invokes mouse up handler from the hook', () => {
       const contentRef = createRef<HTMLDivElement>();
+      const handleMouseUp = vi.fn();
       mockUseEnhancementEditor.mockReturnValue({
         contentRef,
-        handleMouseUp: () => {
-          throw new Error('mouse up failed');
-        },
+        handleMouseUp,
       });
 
       render(<PromptEnhancementEditor promptContent="Prompt" onPromptUpdate={vi.fn()} />);
 
       const content = screen.getByText('Prompt');
-      expect(() => fireEvent.mouseUp(content)).toThrow('mouse up failed');
+      fireEvent.mouseUp(content);
+      expect(handleMouseUp).toHaveBeenCalled();
     });
   });
 

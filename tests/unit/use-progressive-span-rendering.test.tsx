@@ -45,7 +45,7 @@ describe('useProgressiveSpanRendering', () => {
         { id: 'low', start: 6, end: 8, confidence: 0.4 },
       ];
 
-      const { result } = renderHook(() =>
+      const { result, unmount } = renderHook(() =>
         useProgressiveSpanRendering({
           spans,
           enabled: true,
@@ -63,6 +63,7 @@ describe('useProgressiveSpanRendering', () => {
 
       expect(result.current.progress).toBe(100);
       expect(result.current.isRendering).toBe(false);
+      unmount();
     });
   });
 

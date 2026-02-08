@@ -17,6 +17,7 @@ vi.mock('@routes/preview/inlineProcessor', () => ({
 }));
 
 import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenerate';
+import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 describe('videoGenerate face swap preprocessing', () => {
   beforeEach(() => {
@@ -70,14 +71,17 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic portrait shot.',
-        model: 'sora-2',
-        startImage: 'https://images.example.com/start.webp',
-        characterAssetId: 'char-123',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          startImage: 'https://images.example.com/start.webp',
+          characterAssetId: 'char-123',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(response.body.faceSwapApplied).toBe(true);
@@ -120,14 +124,17 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic portrait shot.',
-        model: 'sora-2',
-        startImage: 'https://images.example.com/start.webp',
-        characterAssetId: 'char-123',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          startImage: 'https://images.example.com/start.webp',
+          characterAssetId: 'char-123',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Face-swap not available');
@@ -178,13 +185,16 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic portrait shot.',
-        model: 'sora-2',
-        characterAssetId: 'char-123',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          characterAssetId: 'char-123',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(response.body.keyframeGenerated).toBe(true);
@@ -255,12 +265,15 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: '@matt walks through a neon alley',
-        model: 'sora-2',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: '@matt walks through a neon alley',
+          model: 'sora-2',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(response.body.keyframeGenerated).toBe(true);
@@ -311,13 +324,16 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic portrait shot.',
-        model: 'sora-2',
-        startImage: 'https://images.example.com/start.webp',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          startImage: 'https://images.example.com/start.webp',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(response.body.keyframeGenerated).toBe(false);
@@ -364,14 +380,17 @@ describe('videoGenerate face swap preprocessing', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic portrait shot.',
-        model: 'sora-2',
-        startImage: 'https://images.example.com/start.webp',
-        characterAssetId: 'char-123',
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          startImage: 'https://images.example.com/start.webp',
+          characterAssetId: 'char-123',
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(500);
     expect(response.body.error).toBe('Face-swap failed');

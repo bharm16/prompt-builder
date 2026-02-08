@@ -12,11 +12,13 @@ import type {
 } from '@features/prompt-optimizer/PromptCanvas/types';
 import type { Toast } from '@hooks/types';
 
-const logSpies = {
-  debug: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@features/prompt-optimizer/utils/applySuggestion', () => ({
   applySuggestionToPrompt: vi.fn(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { CategoryLegend } from '@features/prompt-optimizer/components/CategoryLegend';
@@ -35,7 +35,11 @@ describe('CategoryLegend', () => {
         <CategoryLegend show onClose={onClose} isSuggestionsOpen />
       );
 
-      expect(screen.getAllByRole('listitem')).toHaveLength(CATEGORY_ORDER.length);
+      const categoryList = screen.getAllByRole('list')[0];
+      if (!categoryList) {
+        throw new Error('Expected category list');
+      }
+      expect(within(categoryList).getAllByRole('listitem')).toHaveLength(CATEGORY_ORDER.length);
 
       const dialog = screen.getByRole('dialog', { name: 'Highlight categories' });
       expect(dialog).toHaveStyle({ right: 'calc(var(--pc-gap, 16px) + var(--pc-right-rail, 420px) + var(--pc-gap, 16px))' });

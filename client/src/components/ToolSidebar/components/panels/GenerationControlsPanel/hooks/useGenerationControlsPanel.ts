@@ -424,16 +424,6 @@ export const useGenerationControlsPanel = (
   }, [durationOptions, duration, handleDurationChange]);
 
   useEffect(() => {
-    if (!showMotionControls) return;
-    if (activeTab === "video") return;
-    log.debug("Forcing video tab because motion controls are enabled", {
-      previousTab: activeTab,
-      primaryKeyframeUrlHost,
-    });
-    setActiveTab("video");
-  }, [showMotionControls, activeTab, primaryKeyframeUrlHost]);
-
-  useEffect(() => {
     if (keyframes[0]) return;
     if (!showCameraMotionModal) return;
     log.info(

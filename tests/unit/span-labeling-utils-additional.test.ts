@@ -28,7 +28,7 @@ describe('TextChunker (additional)', () => {
       const sentences = chunker.splitIntoSentences(text);
 
       expect(sentences.map((s) => s.text)).toEqual([
-        'Bullet item',
+        '- Bullet item',
         '## Heading',
         'A normal sentence.',
       ]);
@@ -40,8 +40,9 @@ describe('TextChunker (additional)', () => {
 
       const chunks = chunker.chunkText(text);
 
-      expect(chunks).toHaveLength(2);
+      expect(chunks).toHaveLength(3);
       expect(chunks[1]?.text.startsWith('One two.')).toBe(true);
+      expect(chunks[2]?.text.startsWith('Three four.')).toBe(true);
     });
   });
 

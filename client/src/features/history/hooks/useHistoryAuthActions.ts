@@ -28,8 +28,9 @@ export function useHistoryAuthActions(
       const authRepository = getAuthRepository();
       const signedInUser = await authRepository.signInWithGoogle();
       const displayName =
-        typeof signedInUser.displayName === 'string'
-          ? signedInUser.displayName
+        typeof signedInUser.displayName === 'string' &&
+          signedInUser.displayName.trim().length > 0
+          ? signedInUser.displayName.trim()
           : 'User';
       debug.endTimer('signIn', 'Sign in successful');
       toast.success(`Welcome, ${displayName}!`);

@@ -15,9 +15,11 @@ vi.mock('@/PromptImprovementForm/utils/questionGeneration', () => ({
   generateFallbackQuestions: vi.fn(),
 }));
 
-const childLogger = {
-  error: vi.fn(),
-};
+const { childLogger } = vi.hoisted(() => ({
+  childLogger: {
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {

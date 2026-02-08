@@ -26,7 +26,7 @@ describe('QualityScore', () => {
       expect(screen.getByText('0')).toBeInTheDocument();
 
       act(() => {
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(1200);
       });
 
       expect(screen.getByText('80')).toBeInTheDocument();

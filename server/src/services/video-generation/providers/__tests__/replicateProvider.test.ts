@@ -1,4 +1,3 @@
-import { Blob } from 'buffer';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildReplicateInput, generateReplicateVideo } from '../replicateProvider';
 import type { VideoModelId } from '../../types';
@@ -86,6 +85,11 @@ describe('generateReplicateVideo', () => {
     );
 
     const input = (run.mock.calls[0]?.[1] as { input: Record<string, unknown> }).input;
-    expect(input.image).toBeInstanceOf(Blob);
+    expect(input.image).toEqual(
+      expect.objectContaining({
+        size: expect.any(Number),
+        type: 'image/png',
+      })
+    );
   });
 });

@@ -63,7 +63,7 @@ describe('ReferenceImageGrid', () => {
         />
       );
 
-      const image = screen.getByRole('img');
+      const image = screen.getByRole('presentation');
       expect(image).toHaveAttribute('src', 'full.jpg');
     });
   });

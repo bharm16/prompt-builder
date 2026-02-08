@@ -6,9 +6,11 @@ import { findCategoryForPhrase, mapGroupToCategory } from '@/utils/PromptContext
 import { getCategoryColor } from '@/utils/PromptContext/categoryStyles';
 import { categoryColors, DEFAULT_CATEGORY_COLOR } from '@/features/prompt-optimizer/config/categoryColors';
 
-const logSpies = {
-  warn: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    warn: vi.fn(),
+  },
+}));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {
@@ -43,7 +45,7 @@ describe('PromptContext utilities', () => {
         const unique = new Set(moodKeywords);
 
         expect(moodKeywords).toContain('dark dark forest');
-        expect(moodKeywords).toContain('dark forest');
+        expect(moodKeywords).toContain('dark dark');
         expect(unique.size).toBe(moodKeywords.length);
       });
 

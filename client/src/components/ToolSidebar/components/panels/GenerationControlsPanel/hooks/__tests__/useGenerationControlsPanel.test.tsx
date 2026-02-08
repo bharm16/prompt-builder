@@ -55,6 +55,27 @@ vi.mock('@/features/span-highlighting', () => ({
   sanitizeText: (value: string) => value,
 }));
 
+vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+  useWorkspaceSession: () => ({
+    session: null,
+    loading: false,
+    error: null,
+    isSequenceMode: false,
+    shots: [],
+    currentShotId: null,
+    currentShot: null,
+    currentShotIndex: -1,
+    setCurrentShotId: vi.fn(),
+    refreshSession: vi.fn(),
+    addShot: vi.fn(),
+    updateShot: vi.fn(),
+    updateShotStyleReference: vi.fn(),
+    generateShot: vi.fn(),
+    startSequence: vi.fn(),
+    isStartingSequence: false,
+  }),
+}));
+
 const buildBaseProps = (
   overrides: Partial<GenerationControlsPanelProps> = {}
 ): GenerationControlsPanelProps => ({

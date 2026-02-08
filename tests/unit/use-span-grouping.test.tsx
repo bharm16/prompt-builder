@@ -8,7 +8,9 @@ import {
 import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
 import { TAXONOMY } from '@shared/taxonomy';
 
-const warnSpy = vi.fn();
+const { warnSpy } = vi.hoisted(() => ({
+  warnSpy: vi.fn(),
+}));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {

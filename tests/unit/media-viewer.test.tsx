@@ -1,46 +1,46 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { MediaViewer } from '@/components/MediaViewer/MediaViewer';
 import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
 import { VideoPlayer } from '@/components/MediaViewer/components/VideoPlayer';
-import { useMediaStorage } from '@/hooks/useMediaStorage';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
-vi.mock('@/hooks/useMediaStorage', () => ({
-  useMediaStorage: vi.fn(),
+vi.mock('@/hooks/useResolvedMediaUrl', () => ({
+  useResolvedMediaUrl: vi.fn(),
 }));
 
 describe('MediaViewer', () => {
-  const mockUseMediaStorage = vi.mocked(useMediaStorage);
-  const createMediaStorageHookResult = (
-    overrides: Partial<ReturnType<typeof useMediaStorage>> = {}
-  ): ReturnType<typeof useMediaStorage> => ({
-    uploadFile: vi.fn(),
-    getViewUrl: vi.fn(),
-    deleteFile: vi.fn(),
-    listFiles: vi.fn(),
-    uploading: false,
-    uploadProgress: 0,
+  const mockUseResolvedMediaUrl = vi.mocked(useResolvedMediaUrl);
+  const createResolvedMediaHookResult = (
+    overrides: Partial<ReturnType<typeof useResolvedMediaUrl>> = {}
+  ): ReturnType<typeof useResolvedMediaUrl> => ({
+    url: null,
+    expiresAt: null,
+    loading: false,
     error: null,
-    clearError: vi.fn(),
+    refresh: vi.fn().mockResolvedValue({ url: null, source: 'direct' }),
     ...overrides,
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseResolvedMediaUrl.mockReturnValue(createResolvedMediaHookResult());
   });
 
   describe('error handling', () => {
-    it('shows an error message when media loading fails', async () => {
-      const getViewUrl = vi.fn().mockRejectedValue(new Error('No access'));
-      mockUseMediaStorage.mockReturnValue(createMediaStorageHookResult({ getViewUrl }));
+    it('shows an error message when media loading fails', () => {
+      mockUseResolvedMediaUrl.mockReturnValue(
+        createResolvedMediaHookResult({ error: 'No access' })
+      );
 
       render(<MediaViewer storagePath="assets/video.mp4" contentType="video/mp4" />);
 
-      await waitFor(() => expect(screen.getByText('No access')).toBeInTheDocument());
+      expect(screen.getByText('No access')).toBeInTheDocument();
     });
 
     it('renders image fallback when src is missing', () => {
+      mockUseResolvedMediaUrl.mockReturnValue(createResolvedMediaHookResult({ url: null }));
       render(<ImagePreview src={null} />);
 
       expect(screen.getByText('Image unavailable')).toBeInTheDocument();
@@ -55,24 +55,29 @@ describe('MediaViewer', () => {
 
   describe('edge cases', () => {
     it('uses initialUrl when no storage path is provided', () => {
-      const getViewUrl = vi.fn();
-      mockUseMediaStorage.mockReturnValue(createMediaStorageHookResult({ getViewUrl }));
+      mockUseResolvedMediaUrl.mockReturnValue(
+        createResolvedMediaHookResult({ url: '/image.png' })
+      );
 
       render(<MediaViewer storagePath={null} contentType="image/png" initialUrl="/image.png" />);
 
       const img = screen.getByRole('img');
       expect(img).toHaveAttribute('src', '/image.png');
-      expect(getViewUrl).not.toHaveBeenCalled();
+      expect(mockUseResolvedMediaUrl).toHaveBeenCalled();
     });
 
-    it('clears image error state when src changes', () => {
+    it('clears image error state when src changes', async () => {
+      mockUseResolvedMediaUrl.mockReturnValue(createResolvedMediaHookResult({ url: '/bad.png' }));
       const { rerender } = render(<ImagePreview src="/bad.png" />);
 
       const img = screen.getByRole('img');
       fireEvent.error(img);
 
-      expect(screen.getByText('Image unavailable')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Image unavailable')).toBeInTheDocument();
+      });
 
+      mockUseResolvedMediaUrl.mockReturnValue(createResolvedMediaHookResult({ url: '/good.png' }));
       rerender(<ImagePreview src="/good.png" />);
 
       expect(screen.getByRole('img')).toHaveAttribute('src', '/good.png');
@@ -80,19 +85,18 @@ describe('MediaViewer', () => {
   });
 
   describe('core behavior', () => {
-    it('renders a video when content type is video', async () => {
-      const getViewUrl = vi.fn().mockResolvedValue('https://cdn/video.mp4');
-      mockUseMediaStorage.mockReturnValue(createMediaStorageHookResult({ getViewUrl }));
+    it('renders a video when content type is video', () => {
+      mockUseResolvedMediaUrl.mockReturnValue(
+        createResolvedMediaHookResult({ url: 'https://cdn/video.mp4' })
+      );
 
       const { container } = render(
         <MediaViewer storagePath="assets/video.mp4" contentType="video/mp4" />
       );
 
-      await waitFor(() => {
-        const video = container.querySelector('video');
-        expect(video).not.toBeNull();
-        expect(video).toHaveAttribute('src', 'https://cdn/video.mp4');
-      });
+      const video = container.querySelector('video');
+      expect(video).not.toBeNull();
+      expect(video).toHaveAttribute('src', 'https://cdn/video.mp4');
     });
   });
 });

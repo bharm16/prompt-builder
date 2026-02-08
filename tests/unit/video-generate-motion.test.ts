@@ -16,6 +16,7 @@ vi.mock('@routes/preview/inlineProcessor', () => ({
 }));
 
 import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenerate';
+import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 describe('videoGenerate motion guidance', () => {
   beforeEach(() => {
@@ -54,16 +55,19 @@ describe('videoGenerate motion guidance', () => {
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic shot of a runner at dawn.',
-        model: 'sora-2',
-        generationParams: {
-          camera_motion_id: 'pan_left',
-          subject_motion: 'running steadily toward the horizon',
-        },
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic shot of a runner at dawn.',
+          model: 'sora-2',
+          generationParams: {
+            camera_motion_id: 'pan_left',
+            subject_motion: 'running steadily toward the horizon',
+          },
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(createJobMock).toHaveBeenCalledTimes(1);

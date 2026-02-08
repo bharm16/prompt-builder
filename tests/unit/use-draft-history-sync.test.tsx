@@ -258,7 +258,7 @@ describe('useDraftHistorySync', () => {
           currentPromptDocId: 'doc-4',
           promptHistory,
           promptOptimizer: createPromptOptimizer({ inputPrompt: 'Draft' }),
-          selectedModel: 'model-a',
+          selectedModel: '',
           generationParams: { steps: 2, seed: 9 },
         })
       );

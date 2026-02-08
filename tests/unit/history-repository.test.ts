@@ -181,14 +181,14 @@ describe('updatePrompt', () => {
     vi.clearAllMocks();
   });
 
-  it('skips Firestore update when docId starts with draft-', async () => {
+  it('falls back to uuid when docId starts with draft-', async () => {
     await updatePrompt('user-1', 'uuid-1', 'draft-123', { input: 'new' });
-    expect(mockRepository.updatePrompt).not.toHaveBeenCalled();
+    expect(mockRepository.updatePrompt).toHaveBeenCalledWith('uuid-1', { input: 'new' });
   });
 
-  it('skips Firestore update when docId is null', async () => {
+  it('falls back to uuid when docId is null', async () => {
     await updatePrompt('user-1', 'uuid-1', null, { input: 'new' });
-    expect(mockRepository.updatePrompt).not.toHaveBeenCalled();
+    expect(mockRepository.updatePrompt).toHaveBeenCalledWith('uuid-1', { input: 'new' });
   });
 
   it('calls updatePrompt with docId for valid Firestore doc', async () => {
@@ -205,9 +205,9 @@ describe('updateOutput', () => {
     mockRepository.updateOutput = vi.fn().mockResolvedValue(undefined);
   });
 
-  it('skips when docId is a draft id for Firestore repo', async () => {
+  it('falls back to uuid when docId is a draft id for Firestore repo', async () => {
     await updateOutput('user-1', 'uuid-1', 'draft-456', 'new output');
-    expect(mockRepository.updateOutput).not.toHaveBeenCalled();
+    expect(mockRepository.updateOutput).toHaveBeenCalledWith('uuid-1', 'new output');
   });
 });
 
@@ -217,9 +217,9 @@ describe('updateVersions', () => {
     mockRepository.updateVersions = vi.fn().mockResolvedValue(undefined);
   });
 
-  it('skips Firestore write when docId is draft', async () => {
+  it('falls back to uuid when docId is draft', async () => {
     await updateVersions('user-1', 'uuid-1', 'draft-789', []);
-    expect(mockRepository.updateVersions).not.toHaveBeenCalled();
+    expect(mockRepository.updateVersions).toHaveBeenCalledWith('uuid-1', []);
   });
 });
 

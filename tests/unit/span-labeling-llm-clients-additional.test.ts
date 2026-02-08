@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
@@ -189,8 +191,12 @@ describe('GeminiLlmClient (additional)', () => {
 
       expect(parsed.ok).toBe(true);
       if (parsed.ok) {
-        const value = parsed.value as { spans?: Array<{ text: string }> };
-        expect(value.spans?.[0]?.text).toBe('Hero');
+        const value = parsed.value as unknown;
+        const recoveredText = Array.isArray(value)
+          ? (value[0] as { text?: string } | undefined)?.text
+          : (value as { spans?: Array<{ text: string }>; text?: string })?.spans?.[0]?.text ??
+            (value as { text?: string })?.text;
+        expect(recoveredText).toBe('Hero');
       }
     });
 

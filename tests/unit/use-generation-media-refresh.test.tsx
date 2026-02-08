@@ -3,9 +3,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 import { useGenerationMediaRefresh } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationMediaRefresh';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
-import { storageApi } from '@/api/storageApi';
-import { getVideoAssetViewUrl } from '@features/preview/api/previewApi';
-import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
 
 const loggerChild = vi.hoisted(() => ({
   warn: vi.fn(),
@@ -13,34 +12,26 @@ const loggerChild = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@/api/storageApi', () => ({
-  storageApi: { getViewUrl: vi.fn() },
-}));
-
-vi.mock('@features/preview/api/previewApi', () => ({
-  getImageAssetViewUrl: vi.fn(),
-  getVideoAssetViewUrl: vi.fn(),
+vi.mock('@/services/media/MediaUrlResolver', () => ({
+  resolveMediaUrl: vi.fn(),
 }));
 
 vi.mock('@/utils/storageUrl', () => ({
   extractStorageObjectPath: vi.fn(),
-  extractVideoContentAssetId: vi.fn(),
 }));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: { child: () => loggerChild },
 }));
 
-const mockGetViewUrl = vi.mocked(storageApi.getViewUrl);
-const mockGetVideoAssetViewUrl = vi.mocked(getVideoAssetViewUrl);
+const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);
 const mockExtractStorageObjectPath = vi.mocked(extractStorageObjectPath);
-const mockExtractVideoContentAssetId = vi.mocked(extractVideoContentAssetId);
 
 describe('useGenerationMediaRefresh', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveMediaUrl.mockResolvedValue({ url: null, source: 'unknown' } as any);
     mockExtractStorageObjectPath.mockReturnValue(null);
-    mockExtractVideoContentAssetId.mockReturnValue(null);
   });
 
   const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
@@ -61,14 +52,13 @@ describe('useGenerationMediaRefresh', () => {
 
   describe('error handling', () => {
     it('keeps original URLs when asset refresh fails', async () => {
-      mockExtractVideoContentAssetId.mockReturnValue('asset-1');
-      mockGetVideoAssetViewUrl.mockRejectedValue(new Error('boom'));
+      mockResolveMediaUrl.mockRejectedValueOnce(new Error('boom'));
       const dispatch = vi.fn();
 
       renderHook(() => useGenerationMediaRefresh([createGeneration()], dispatch));
 
       await waitFor(() => {
-        expect(loggerChild.warn).toHaveBeenCalled();
+        expect(loggerChild.error).toHaveBeenCalled();
       });
 
       expect(dispatch).not.toHaveBeenCalled();
@@ -87,14 +77,17 @@ describe('useGenerationMediaRefresh', () => {
 
       await waitFor(() => {
         expect(dispatch).not.toHaveBeenCalled();
-        expect(mockGetViewUrl).not.toHaveBeenCalled();
+        expect(mockResolveMediaUrl).not.toHaveBeenCalled();
       });
     });
   });
 
   describe('core behavior', () => {
     it('refreshes media URLs using storage paths', async () => {
-      mockGetViewUrl.mockResolvedValue({ viewUrl: 'https://cdn/updated.mp4' });
+      mockResolveMediaUrl.mockResolvedValue({
+        url: 'https://cdn/updated.mp4',
+        source: 'storage',
+      } as any);
       const dispatch = vi.fn();
 
       renderHook(() =>

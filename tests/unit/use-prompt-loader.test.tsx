@@ -7,33 +7,38 @@ import { getPromptRepositoryForUser } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import type { Toast } from '@hooks/types';
 
-const logSpies = {
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { logSpies, PromptContextMock } = vi.hoisted(() => {
+  class PromptContextMock {
+    elements: Record<string, unknown>;
+    metadata: Record<string, unknown>;
 
-class PromptContextMock {
-  elements: Record<string, unknown>;
-  metadata: Record<string, unknown>;
+    constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
+      this.elements = elements;
+      this.metadata = metadata;
+    }
 
-  constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
-    this.elements = elements;
-    this.metadata = metadata;
+    toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
+      return { elements: this.elements, metadata: this.metadata };
+    }
+
+    static fromJSON(data: Record<string, unknown> | null | undefined): PromptContextMock | null {
+      if (!data) return null;
+      const { elements = {}, metadata = {} } = data as {
+        elements?: Record<string, unknown>;
+        metadata?: Record<string, unknown>;
+      };
+      return new PromptContextMock(elements, metadata);
+    }
   }
 
-  toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
-    return { elements: this.elements, metadata: this.metadata };
-  }
-
-  static fromJSON(data: Record<string, unknown> | null | undefined): PromptContextMock | null {
-    if (!data) return null;
-    const { elements = {}, metadata = {} } = data as {
-      elements?: Record<string, unknown>;
-      metadata?: Record<string, unknown>;
-    };
-    return new PromptContextMock(elements, metadata);
-  }
-}
+  return {
+    PromptContextMock,
+    logSpies: {
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@repositories/index', () => ({
   getPromptRepositoryForUser: vi.fn(),

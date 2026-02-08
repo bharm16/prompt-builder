@@ -3,11 +3,19 @@ import { render } from '@testing-library/react';
 import { Icon, createIconComponent, type IconName, type IconSize } from '../Icon';
 import { iconSizes } from '@/styles/tokens';
 import { logger } from '@/services/LoggingService';
+import type { ComponentProps } from 'react';
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {
     warn: vi.fn(),
   },
+}));
+
+vi.mock('@promptstudio/system/components/ui/icons', () => ({
+  User: (props: ComponentProps<'svg'> & { size?: number }) => (
+    <svg data-icon="User" {...props} />
+  ),
+  Missing: undefined,
 }));
 
 describe('Icon', () => {
@@ -17,12 +25,12 @@ describe('Icon', () => {
 
   describe('error handling', () => {
     it('returns null and logs a warning when icon name is missing', () => {
-      const { container } = render(<Icon name={'NotARealIcon' as IconName} />);
+      const { container } = render(<Icon name={'Missing' as IconName} />);
 
       expect(container.firstChild).toBeNull();
       expect(logger.warn).toHaveBeenCalledWith('Icon not found', {
         component: 'Icon',
-        iconName: 'NotARealIcon',
+        iconName: 'Missing',
       });
     });
 

@@ -206,7 +206,18 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
     // 2. LLM-powered rewrite (Consumes structured IR)
     const rewriteConstraints = this.getRewriteConstraints(ir, context);
-    const rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+    let rewrittenPrompt: string | Record<string, unknown>;
+    let rewriteFallbackUsed = false;
+    try {
+      rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+    } catch (error) {
+      // Keep the strategy pipeline deterministic even when the LLM provider is unavailable.
+      rewrittenPrompt = ir.raw;
+      rewriteFallbackUsed = true;
+
+      const message = error instanceof Error ? error.message : String(error);
+      this.addWarning(`LLM rewrite unavailable; using fallback prompt (${message})`);
+    }
 
     // 2.5. Post-IR TechStripper (model-aware placebo removal on LLM output)
     let postRewritePrompt = rewrittenPrompt as string | Record<string, unknown>;
@@ -230,7 +241,9 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
       durationMs: performance.now() - startTime,
       changes: [
         ...transformResult.changes,
-        'LLM-powered model rewrite from IR',
+        rewriteFallbackUsed
+          ? 'LLM rewrite unavailable; used deterministic fallback from analyzed prompt'
+          : 'LLM-powered model rewrite from IR',
         ...postStripChanges,
       ],
     });

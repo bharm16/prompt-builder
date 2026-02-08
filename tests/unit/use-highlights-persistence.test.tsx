@@ -7,9 +7,11 @@ import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types
 import type { Toast } from '@hooks/types';
 import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
 
-const logSpies = {
-  warn: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    warn: vi.fn(),
+  },
+}));
 
 vi.mock('@repositories/index', () => ({
   getPromptRepository: vi.fn(),

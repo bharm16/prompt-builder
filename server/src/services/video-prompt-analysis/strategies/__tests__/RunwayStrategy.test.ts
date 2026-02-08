@@ -157,24 +157,36 @@ describe('RunwayStrategy', () => {
     });
   });
 
-  describe('augment - passthrough behavior', () => {
-    it('returns prompt unchanged', () => {
+  describe('augment - mandatory stability behavior', () => {
+    it('injects mandatory stability constraints when missing', () => {
       const input = makeResult('Dolly in: A woman walks through a garden');
       const result = strategy.augment(input);
-      expect(result.prompt).toBe('Dolly in: A woman walks through a garden');
+      expect(result.prompt).toContain('Dolly in: A woman walks through a garden');
+      expect(result.prompt).toContain('single continuous shot');
+      expect(result.prompt).toContain('fluid motion');
+      expect(result.prompt).toContain('consistent geometry');
     });
 
-    it('returns empty triggersInjected', () => {
+    it('records injected triggers', () => {
+      strategy.normalize('test');
       const result = strategy.augment(makeResult('test'));
-      expect(result.metadata.triggersInjected).toEqual([]);
+      expect(result.metadata.triggersInjected).toEqual(
+        expect.arrayContaining(['single continuous shot', 'fluid motion', 'consistent geometry'])
+      );
     });
 
-    it('records augment phase with empty changes', () => {
+    it('records augment phase with constraint changes', () => {
       strategy.normalize('test');
       const result = strategy.augment(makeResult('test'));
       const augPhase = result.metadata.phases.find(p => p.phase === 'augment');
       expect(augPhase).toBeDefined();
-      expect(augPhase?.changes).toEqual([]);
+      expect(augPhase?.changes).toEqual(
+        expect.arrayContaining([
+          'Injected mandatory constraint: "single continuous shot"',
+          'Injected mandatory constraint: "fluid motion"',
+          'Injected mandatory constraint: "consistent geometry"',
+        ])
+      );
     });
   });
 

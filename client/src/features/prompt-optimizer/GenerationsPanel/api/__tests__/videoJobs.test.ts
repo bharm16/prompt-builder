@@ -197,7 +197,7 @@ describe('waitForVideoJob', () => {
       expect(getVideoPreviewStatus).toHaveBeenCalledTimes(3);
 
       const result = await promise;
-      expect(result).toBe('https://example.com/video.mp4');
+      expect(result).toMatchObject({ videoUrl: 'https://example.com/video.mp4' });
     });
   });
 
@@ -214,7 +214,9 @@ describe('waitForVideoJob', () => {
       await vi.runAllTimersAsync();
       const result = await promise;
 
-      expect(result).toBe('https://storage.example.com/videos/output.mp4');
+      expect(result).toMatchObject({
+        videoUrl: 'https://storage.example.com/videos/output.mp4',
+      });
       expect(getVideoPreviewStatus).toHaveBeenCalledWith('job-456');
     });
 
@@ -236,7 +238,7 @@ describe('waitForVideoJob', () => {
       await vi.advanceTimersByTimeAsync(2000); // Third call
 
       const result = await promise;
-      expect(result).toBe('https://example.com/done.mp4');
+      expect(result).toMatchObject({ videoUrl: 'https://example.com/done.mp4' });
       expect(callIndex).toBe(3);
     });
   });

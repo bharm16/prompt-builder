@@ -151,29 +151,40 @@ describe('KlingStrategy', () => {
     });
   });
 
-  describe('augment - passthrough behavior', () => {
-    it('returns the prompt string unchanged', () => {
+  describe('augment - mandatory audio constraints', () => {
+    it('injects mandatory audio constraints when missing', () => {
       // Call normalize first to initialize metadata pipeline
       strategy.normalize('A warrior stands in heavy rain');
       const input = makeResult('A warrior stands in heavy rain');
       const result = strategy.augment(input);
-      expect(result.prompt).toBe('A warrior stands in heavy rain');
+      expect(result.prompt).toContain('A warrior stands in heavy rain');
+      expect(result.prompt).toContain('synced lips');
+      expect(result.prompt).toContain('natural speech');
+      expect(result.prompt).toContain('high fidelity audio');
     });
 
-    it('returns empty triggersInjected after full pipeline', () => {
+    it('records injected mandatory constraints in triggersInjected', () => {
       strategy.normalize('test prompt');
       const input = makeResult('test prompt');
       const result = strategy.augment(input);
-      expect(result.metadata.triggersInjected).toEqual([]);
+      expect(result.metadata.triggersInjected).toEqual(
+        expect.arrayContaining(['synced lips', 'natural speech', 'high fidelity audio'])
+      );
     });
 
-    it('records augment phase with empty changes', () => {
+    it('records augment phase changes for injected constraints', () => {
       strategy.normalize('test prompt');
       const input = makeResult('test prompt');
       const result = strategy.augment(input);
       const augmentPhase = result.metadata.phases.find(p => p.phase === 'augment');
       expect(augmentPhase).toBeDefined();
-      expect(augmentPhase?.changes).toEqual([]);
+      expect(augmentPhase?.changes).toEqual(
+        expect.arrayContaining([
+          'Injected mandatory constraint: "synced lips"',
+          'Injected mandatory constraint: "natural speech"',
+          'Injected mandatory constraint: "high fidelity audio"',
+        ])
+      );
     });
   });
 

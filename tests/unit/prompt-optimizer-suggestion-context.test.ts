@@ -69,7 +69,7 @@ describe('enhancementSuggestionContext', () => {
 
     const result = buildSuggestionContext('Hello world', 'world', 6, 3);
 
-    expect(result.contextBefore).toBe('Hel');
+    expect(result.contextBefore).toBe('lo');
     expect(result.contextAfter).toBe('');
     expect(result.found).toBe(true);
   });

@@ -126,7 +126,13 @@ describe('useEnhancementEditor', () => {
       });
 
       expect(mockFetchEnhancementSuggestions).not.toHaveBeenCalled();
-      expect(onShowSuggestionsChange).not.toHaveBeenCalled();
+      expect(onShowSuggestionsChange).toHaveBeenCalled();
+      const latestState = onShowSuggestionsChange.mock.calls.at(-1)?.[0];
+      expect(latestState).toMatchObject({
+        show: false,
+        selectedText: '',
+        fullPrompt: 'Inside',
+      });
     });
   });
 

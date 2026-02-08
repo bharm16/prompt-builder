@@ -1,4 +1,4 @@
-import { Blob } from 'buffer';
+import { Blob as NodeBlob } from 'node:buffer';
 import type Replicate from 'replicate';
 import type { VideoGenerationOptions, VideoModelId } from '../types';
 
@@ -39,6 +39,9 @@ const isWan25Model = (modelId: string): boolean => modelId.includes('wan-2.5');
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const isBlobLike = (value: unknown): value is Blob =>
+  (typeof Blob !== 'undefined' && value instanceof Blob) || value instanceof NodeBlob;
+
 const normalizeContentType = (value: string | null): string =>
   value?.split(';')[0]?.trim().toLowerCase() ?? '';
 
@@ -59,7 +62,7 @@ function getUrlExtension(value: string): string | null {
 function summarizeInputForLog(input: Record<string, unknown>): Record<string, unknown> {
   const summary: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
-    if (value instanceof Blob) {
+    if (isBlobLike(value)) {
       summary[key] = {
         type: 'Blob',
         size: value.size,
@@ -120,7 +123,11 @@ async function resolveReplicateImageInput(
   }
 
   const buffer = await response.arrayBuffer();
-  return new Blob([buffer], { type: contentType });
+  const BlobCtor =
+    typeof globalThis.Blob === 'function'
+      ? globalThis.Blob
+      : (NodeBlob as unknown as typeof Blob);
+  return new BlobCtor([buffer], { type: contentType });
 }
 
 function normalizeWanSize(rawSize: string): string | null {

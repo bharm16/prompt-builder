@@ -191,6 +191,12 @@ describe('previewApi', () => {
     });
 
     it('requests the video preview status without caching', async () => {
+      apiClientMocks.get.mockResolvedValueOnce({
+        success: true,
+        jobId: 'job-123',
+        status: 'processing',
+      });
+
       await getVideoPreviewStatus('job-123');
 
       expect(apiClientMocks.get).toHaveBeenCalledWith('/preview/video/jobs/job-123', {

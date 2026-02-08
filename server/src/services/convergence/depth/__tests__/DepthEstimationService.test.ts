@@ -62,11 +62,8 @@ describe('DepthEstimationService', () => {
           input: { image_url: 'https://example.com/image.jpg' },
         })
       );
-      expect(mockStorageService.upload).toHaveBeenCalledWith(
-        'https://fal.media/files/depth-output.png',
-        expect.stringContaining('convergence/')
-      );
-      expect(result).toBe('https://storage.example.com/depth.png');
+      expect(mockStorageService.upload).not.toHaveBeenCalled();
+      expect(result).toBe('https://fal.media/files/depth-output.png');
     });
 
     it('should fallback to Replicate when fal.ai fails', async () => {
@@ -87,16 +84,16 @@ describe('DepthEstimationService', () => {
         storageService: mockStorageService,
       });
 
-      const resultPromise = service.estimateDepth('https://example.com/image.jpg');
+      const resultPromise = service.estimateDepth('https://example.com/image-fallback.jpg');
       await vi.runAllTimersAsync();
       const result = await resultPromise;
 
       expect(fal.subscribe).toHaveBeenCalled();
       expect(mockReplicateRun).toHaveBeenCalledWith(
-        'cjwbw/depth-anything',
+        'chenxwh/depth-anything-v2',
         expect.any(Object)
       );
-      expect(result).toBe('https://storage.example.com/depth.png');
+      expect(result).toBe('https://replicate.delivery/depth.png');
     });
   });
 

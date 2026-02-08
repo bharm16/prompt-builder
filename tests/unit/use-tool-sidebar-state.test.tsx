@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 import { useToolSidebarState } from '@components/ToolSidebar/hooks/useToolSidebarState';
 
 describe('useToolSidebarState', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   describe('error handling', () => {
     it('uses the provided default panel', () => {
       const { result } = renderHook(() => useToolSidebarState('characters'));

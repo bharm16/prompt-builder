@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
 
 import { useLockedSpanInteractions } from '@features/prompt-optimizer/PromptCanvas/hooks/useLockedSpanInteractions';
@@ -76,7 +76,7 @@ describe('useLockedSpanInteractions', () => {
     expect(setHoveredSpanId).toHaveBeenCalledWith(null);
   });
 
-  it('adds locked class and toggles lock state', async () => {
+  it('adds locked class and toggles lock state', () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const addLockedSpan = vi.fn();
     const removeLockedSpan = vi.fn();
@@ -111,9 +111,7 @@ describe('useLockedSpanInteractions', () => {
       })
     );
 
-    await waitFor(() => {
-      expect(span.classList.contains('value-word--locked')).toBe(true);
-    });
+    expect(span.classList.contains('border-dashed')).toBe(true);
 
     act(() => {
       result.current.handleToggleLock();
@@ -157,7 +155,7 @@ describe('useLockedSpanInteractions', () => {
     );
   });
 
-  it('computes lock button position based on span bounds', async () => {
+  it('computes lock button position based on span bounds', () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const editorRef = { current: editor } as RefObject<HTMLElement>;
     const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
@@ -205,8 +203,6 @@ describe('useLockedSpanInteractions', () => {
       })
     );
 
-    await waitFor(() => {
-      expect(result.current.lockButtonPosition).toEqual({ top: 10, left: 60 });
-    });
+    expect(result.current.lockButtonPosition).toEqual({ top: 10, left: 60 });
   });
 });

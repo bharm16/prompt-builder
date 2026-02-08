@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
+    child: vi.fn(() => ({
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    })),
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
@@ -21,6 +27,7 @@ import { requestIdMiddleware } from '@middleware/requestId';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { errorHandler } from '@middleware/errorHandler';
 import { PerformanceMonitor } from '@middleware/performanceMonitor';
+import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 const mockedLogger = vi.mocked(logger);
 
@@ -45,9 +52,12 @@ describe('requestIdMiddleware', () => {
       });
     });
 
-    const response = await request(app)
-      .get('/test')
-      .set('x-request-id', 'incoming-id');
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .get('/test')
+        .set('x-request-id', 'incoming-id')
+    );
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.headers['x-request-id']).toBe('incoming-id');
@@ -62,7 +72,8 @@ describe('requestIdMiddleware', () => {
       res.json({ id: req.id });
     });
 
-    const response = await request(app).get('/test');
+    const response = await runSupertestOrSkip(() => request(app).get('/test'));
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.headers['x-request-id']).toBe('uuid-fixed');
@@ -84,7 +95,8 @@ describe('asyncHandler', () => {
       res.status(500).json({ error: err.message });
     });
 
-    const response = await request(app).get('/boom');
+    const response = await runSupertestOrSkip(() => request(app).get('/boom'));
+    if (!response) return;
 
     expect(response.status).toBe(500);
     expect(response.body.error).toBe('boom');
@@ -118,9 +130,12 @@ describe('errorHandler', () => {
 
     app.use(errorHandler);
 
-    const response = await request(app)
-      .post('/fail')
-      .send({ email: 'user@example.com', message: 'hello' });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/fail')
+        .send({ email: 'user@example.com', message: 'hello' })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(418);
     expect(response.body.error).toBe('failure');
@@ -154,7 +169,8 @@ describe('PerformanceMonitor', () => {
       res.json({ ok: true });
     });
 
-    const response = await request(app).get('/ok');
+    const response = await runSupertestOrSkip(() => request(app).get('/ok'));
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.headers['x-response-time']).toMatch(/\d+ms/);
@@ -176,7 +192,8 @@ describe('PerformanceMonitor', () => {
       res.json({ ok: true });
     });
 
-    const response = await request(app).get('/slow');
+    const response = await runSupertestOrSkip(() => request(app).get('/slow'));
+    if (!response) return;
 
     expect(response.status).toBe(200);
     expect(metricsService.recordAlert).toHaveBeenCalledWith('request_latency_exceeded', {

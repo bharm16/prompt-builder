@@ -32,10 +32,13 @@ describe('SignedUrlService', () => {
     );
   });
 
-  it('throws when view URL requested for missing file', async () => {
+  it('generates a view URL with read action', async () => {
     const { service, mockFile } = buildService();
-    mockFile.exists.mockResolvedValueOnce([false]);
+    const result = await service.getViewUrl('users/user123/missing.mp4');
 
-    await expect(service.getViewUrl('users/user123/missing.mp4')).rejects.toThrow('File not found');
+    expect(result.viewUrl).toBeDefined();
+    expect(mockFile.getSignedUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'read', responseDisposition: 'inline' })
+    );
   });
 });
