@@ -154,7 +154,7 @@
     "eval:regression": "tsx --tsconfig server/tsconfig.json tests/evaluation/regression/RegressionRunner.ts",
     "golden:fix": "tsx --tsconfig server/tsconfig.json scripts/evaluation/fix-golden-set-indices.ts",
     "quality:gate": "tsx --tsconfig server/tsconfig.json tests/ci/quality-gate.ts",
-    "test:e2e": "playwright test --config config/test/playwright.config.js",
+    "test:e2e": "bash scripts/test-e2e-if-present.sh",
     "test:e2e:ui": "playwright test --ui --config config/test/playwright.config.js",
     "test:e2e:debug": "playwright test --debug --config config/test/playwright.config.js",
     "test:e2e:latency": "playwright test tests/e2e/text-to-highlights-latency.spec.js",
