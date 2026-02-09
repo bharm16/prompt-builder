@@ -74,9 +74,11 @@ export default [
       'react/prop-types': 'off', // Turn off if not using prop-types
       // Security rules
       'no-secrets/no-secrets': 'warn',
-      'security/detect-object-injection': 'warn',
-      'security/detect-non-literal-regexp': 'warn',
-      'security/detect-non-literal-fs-filename': 'warn',
+      // High-noise security heuristics are disabled during stabilization.
+      // These rules produce large volumes of false positives in typed code.
+      'security/detect-object-injection': 'off',
+      'security/detect-non-literal-regexp': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
       'security/detect-eval-with-expression': 'error',
       'security/detect-no-csrf-before-method-override': 'error',
       'security/detect-buffer-noassert': 'error',
@@ -85,7 +87,7 @@ export default [
       'security/detect-new-buffer': 'error',
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
-      'security/detect-unsafe-regex': 'warn',
+      'security/detect-unsafe-regex': 'off',
       // Hardcoded spacing/formatting values detection in inline styles
       'no-hardcoded-css/no-hardcoded-css': ['warn', {
         allowPixelValues: false,

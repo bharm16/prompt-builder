@@ -8,6 +8,11 @@ import {
   persistSelectedModel,
 } from '@features/prompt-optimizer/context/promptStateStorage';
 
+const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const safeCapabilityKeyArbitrary = fc
+  .string({ minLength: 1 })
+  .filter((key) => !UNSAFE_RECORD_KEYS.has(key));
+
 describe('promptStateStorage', () => {
   const originalGetItem = localStorage.getItem;
   const originalSetItem = localStorage.setItem;
@@ -68,13 +73,26 @@ describe('promptStateStorage', () => {
     it('round-trips generation params with property-based coverage', () => {
       fc.assert(
         fc.property(
-          fc.dictionary(fc.string({ minLength: 1 }), fc.oneof(fc.string(), fc.integer(), fc.boolean())),
+          fc.dictionary(
+            safeCapabilityKeyArbitrary,
+            fc.oneof(fc.string(), fc.integer(), fc.boolean())
+          ),
           (params) => {
             persistGenerationParams(params);
             expect(loadGenerationParams()).toEqual(params);
           }
         )
       );
+    });
+
+    it('sanitizes unsafe object keys in generation params', () => {
+      const params = JSON.parse(
+        '{"safe":"ok","__proto__":false}'
+      ) as Record<string, string | number | boolean>;
+
+      persistGenerationParams(params);
+
+      expect(loadGenerationParams()).toEqual({ safe: 'ok' });
     });
   });
 });
