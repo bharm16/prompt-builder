@@ -40,6 +40,32 @@ npm run test:e2e    # Playwright e2e tests
 npm run test:coverage # Unit tests with coverage report
 ```
 
+## Commit Protocol (MANDATORY)
+
+Before EVERY commit, run all three checks in order:
+
+1. `npx tsc --noEmit` — must exit 0
+2. `npx eslint --config config/lint/eslint.config.js . --quiet` — must have 0 errors
+3. `npm run test:unit` — must pass all shards
+
+If any check fails, DO NOT commit. Fix the failures first.
+
+A pre-commit hook enforces checks 1-2 automatically. Run `bash scripts/install-hooks.sh` after cloning.
+
+### Commit Scope Rules
+
+- Maximum ~10 files per commit unless it's a mechanical refactor (rename, import path change)
+- If a fix requires touching 20+ files, stop and reconsider — there's probably a root cause fix that touches 2-3 files
+- Never combine dependency upgrades with code changes in the same commit
+- Never combine test infrastructure changes with production code changes
+
+## Change Scope Limits
+
+- Type changes to shared interfaces: must run `tsc --noEmit` BEFORE continuing to other files
+- Dependency version bumps: isolated commit, nothing else in it
+- If fixing types requires adding `| null` or `| undefined` to more than 3 interfaces, STOP — find the root cause instead of widening types
+- If a test fix requires changing the production type to make it pass, that's a production code change, not a test fix — treat it accordingly
+
 ## Architecture Patterns
 
 ### Frontend Pattern: VideoConceptBuilder

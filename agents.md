@@ -112,12 +112,39 @@ npm run migrate:backfill
 - Avoid splitting files purely by line count; split by responsibility/reason-to-change.
 - Preserve existing architecture conventions unless task explicitly requires refactor.
 
+## Commit Protocol (MANDATORY)
+
+Before EVERY commit, run all three checks in order:
+
+1. `npx tsc --noEmit` — must exit 0
+2. `npx eslint --config config/lint/eslint.config.js . --quiet` — must have 0 errors
+3. `npm run test:unit` — must pass all shards
+
+If any check fails, DO NOT commit. Fix the failures first.
+
+A pre-commit hook enforces checks 1-2 automatically. Run `bash scripts/install-hooks.sh` to install it.
+
+### Commit Scope Rules
+
+- Maximum ~10 files per commit unless it's a mechanical refactor (rename, import path change).
+- If a fix requires touching 20+ files, stop and reconsider — there's probably a root cause fix that touches 2-3 files.
+- Never combine dependency upgrades with code changes in the same commit.
+- Never combine test infrastructure changes with production code changes.
+
+### Change Scope Limits
+
+- Type changes to shared interfaces: must run `tsc --noEmit` BEFORE continuing to other files.
+- Dependency version bumps: isolated commit, nothing else in it.
+- If fixing types requires adding `| null` or `| undefined` to more than 3 interfaces, STOP — find the root cause instead of widening types.
+- If a test fix requires changing the production type to make it pass, that's a production code change, not a test fix — treat it accordingly.
+
 ## Validation Order Before Handoff
 
-1. `npm run lint:all`
-2. `npm run test:unit`
-3. `npm run test:e2e` (or targeted e2e spec if scope is narrow)
-4. `npm run build`
+1. `npx tsc --noEmit`
+2. `npm run lint:all`
+3. `npm run test:unit`
+4. `npm run test:e2e` (or targeted e2e spec if scope is narrow)
+5. `npm run build`
 
 ## Useful References
 
