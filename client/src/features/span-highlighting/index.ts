@@ -19,7 +19,6 @@ export {
   useSpanLabeling,
   useHighlightRendering,
   useHighlightSourceSelection,
-  useProgressiveSpanRendering,
   useHighlightFingerprint,
   createHighlightSignature,
 } from './hooks/index.ts';
@@ -88,4 +87,3 @@ import * as spanServices from './services/index.ts';
 import * as spanApi from './api/index.ts';
 
 export { spanHooks, spanUtils, spanConfig, spanServices, spanApi };
-

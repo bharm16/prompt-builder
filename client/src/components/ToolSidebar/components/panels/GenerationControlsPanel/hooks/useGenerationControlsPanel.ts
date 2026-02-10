@@ -3,31 +3,20 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ChangeEvent,
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import type { CapabilityValues } from "@shared/capabilities";
-import { useCapabilities } from "@features/prompt-optimizer/hooks/useCapabilities";
-import { useTriggerAutocomplete } from "@/features/prompt-optimizer/components/TriggerAutocomplete";
 import { sanitizeText } from "@/features/span-highlighting";
-import { logger } from "@/services/LoggingService";
 import { safeUrlHost } from "@/utils/url";
 import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
-import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from "../constants";
 import type { AutocompleteState } from "../components/PromptTriggerAutocomplete";
 import type {
   GenerationControlsPanelProps,
   GenerationControlsTab,
   ImageSubTab,
 } from "../types";
-import {
-  getFieldInfo,
-  resolveNumberOptions,
-  resolveStringOptions,
-  type FieldInfo,
-} from "../utils/capabilities";
+import type { FieldInfo } from "../utils/capabilities";
 import type { CameraPath } from "@/features/convergence/types";
 import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
 import type { ModelRecommendation } from "@/features/model-intelligence/types";
@@ -38,11 +27,12 @@ import {
 } from "@/features/prompt-optimizer/context/GenerationControlsStore";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
-import { useEditingPersistence } from "./useEditingPersistence";
 import { useModelSelectionRecommendation } from "./useModelSelectionRecommendation";
 import { useFaceSwapState, type FaceSwapMode } from "./useFaceSwapState";
-
-const log = logger.child("GenerationControlsPanel");
+import { useCapabilitiesClamping } from "./useCapabilitiesClamping";
+import { useCameraMotionModalFlow } from "./useCameraMotionModalFlow";
+import { usePromptEditingLifecycle } from "./usePromptEditingLifecycle";
+import { useUploadAndAutocomplete } from "./useUploadAndAutocomplete";
 
 export interface UseGenerationControlsPanelResult {
   refs: {
@@ -160,16 +150,18 @@ export const useGenerationControlsPanel = (
   const fileInputRef = useRef<HTMLInputElement>(null!);
   const localPromptInputRef = useRef<HTMLTextAreaElement>(null!);
   const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
-  const promptHighlights = useOptionalPromptHighlights();
+  const previousShotIdRef = useRef<string | null>(null);
+  const autocompleteKeyDownRef = useRef<(
+    event: KeyboardEvent<HTMLTextAreaElement>,
+  ) => boolean>(() => false);
 
-  const [isUploading, setIsUploading] = useState(false);
+  const promptHighlights = useOptionalPromptHighlights();
   const {
     controls,
     faceSwapPreview: faceSwapPreviewState,
     setFaceSwapPreview,
   } = useGenerationControlsContext();
   const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
-  const previousShotIdRef = useRef<string | null>(null);
   const { domain, ui } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -263,25 +255,11 @@ export const useGenerationControlsPanel = (
     [storeActions],
   );
 
-  const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
-  const {
-    isEditing,
-    setIsEditing,
-    originalInputPrompt,
-    setOriginalInputPrompt,
-    originalSelectedModel,
-    setOriginalSelectedModel,
-    resetEditingState,
-  } = useEditingPersistence();
-
-  // Editing persistence handled in hook.
-
   const hasPrimaryKeyframe = Boolean(keyframes[0]);
   const isKeyframeLimitReached = keyframes.length >= 3;
-  const isUploadDisabled =
-    !onImageUpload || isUploading || isKeyframeLimitReached;
   const primaryKeyframeUrl = keyframes[0]?.url ?? null;
   const primaryKeyframeUrlHost = safeUrlHost(primaryKeyframeUrl);
+
   const {
     recommendationMode,
     modelRecommendation,
@@ -302,58 +280,71 @@ export const useGenerationControlsPanel = (
     promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
 
-  useEffect(() => {
-    if (!selectedModel.trim()) return;
-    const expectedTier: VideoTier =
-      selectedModel === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
-    if (tier === expectedTier) return;
-    storeActions.setVideoTier(expectedTier);
-  }, [selectedModel, storeActions, tier]);
-
-  const capabilitiesModelId = useMemo(() => {
-    if (activeTab === "video") {
-      return tier === "draft" ? VIDEO_DRAFT_MODEL.id : renderModelId;
-    }
-    return renderModelId;
-  }, [activeTab, renderModelId, tier]);
-
-  const { schema } = useCapabilities(capabilitiesModelId);
   const canOptimize = typeof onOptimize === "function";
   const isOptimizing = Boolean(isProcessing || isRefining);
   const isGenerating = controls?.isGenerating ?? false;
   const isGenerationReady = Boolean(controls);
 
-  const currentParams = useMemo<CapabilityValues>(
-    () => ({
-      aspect_ratio: aspectRatio,
-      duration_s: duration,
-    }),
-    [aspectRatio, duration],
-  );
+  const {
+    aspectRatioInfo,
+    durationInfo,
+    aspectRatioOptions,
+    durationOptions,
+  } = useCapabilitiesClamping({
+    activeTab,
+    selectedModel,
+    videoTier: tier,
+    renderModelId,
+    aspectRatio,
+    duration,
+    setVideoTier: storeActions.setVideoTier,
+    onAspectRatioChange: handleAspectRatioChange,
+    onDurationChange: handleDurationChange,
+  });
 
-  const aspectRatioInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, "aspect_ratio"),
-    [schema, currentParams],
-  );
+  const {
+    isEditing,
+    resetEditingState,
+    handleEditClick,
+    handleCancelEdit,
+    handleUpdate,
+    handleReoptimize,
+    handlePromptKeyDown,
+  } = usePromptEditingLifecycle({
+    prompt,
+    selectedModel,
+    canOptimize,
+    isOptimizing,
+    showResults,
+    genericOptimizedPrompt,
+    onOptimize,
+    onPromptChange,
+    resolvedPromptInputRef,
+    handleModelChange,
+    handleAutocompleteKeyDown: (event) => autocompleteKeyDownRef.current(event),
+  });
 
-  const durationInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, "duration_s"),
-    [schema, currentParams],
-  );
+  const {
+    isUploadDisabled,
+    handleFile,
+    handleUploadRequest,
+    handleAutocompleteKeyDown,
+    autocomplete,
+  } = useUploadAndAutocomplete({
+    fileInputRef,
+    inputRef: resolvedPromptInputRef,
+    prompt,
+    assets,
+    onPromptChange,
+    isOptimizing,
+    showResults,
+    isEditing,
+    onInsertTrigger,
+    onImageUpload,
+    isKeyframeLimitReached,
+  });
 
-  const aspectRatioOptions = useMemo(
-    () =>
-      resolveStringOptions(
-        aspectRatioInfo?.allowedValues,
-        DEFAULT_ASPECT_RATIOS,
-      ),
-    [aspectRatioInfo?.allowedValues],
-  );
-
-  const durationOptions = useMemo(
-    () => resolveNumberOptions(durationInfo?.allowedValues, DEFAULT_DURATIONS),
-    [durationInfo?.allowedValues],
-  );
+  autocompleteKeyDownRef.current = handleAutocompleteKeyDown;
 
   const {
     faceSwap,
@@ -378,6 +369,20 @@ export const useGenerationControlsPanel = (
     setFaceSwapPreview,
   });
 
+  const {
+    showCameraMotionModal,
+    handleCameraMotionButtonClick,
+    handleCloseCameraMotionModal,
+    handleSelectCameraMotion,
+  } = useCameraMotionModalFlow({
+    showMotionControls,
+    hasPrimaryKeyframe,
+    keyframes,
+    primaryKeyframeUrlHost,
+    cameraMotion,
+    onSelectCameraMotion: storeActions.setCameraMotion,
+  });
+
   useEffect(() => {
     const nextShotId = isSequenceMode ? (currentShot?.id ?? null) : null;
     if (previousShotIdRef.current === nextShotId) return;
@@ -397,140 +402,11 @@ export const useGenerationControlsPanel = (
   ]);
 
   useEffect(() => {
-    if (!aspectRatioOptions.length) return;
-    if (aspectRatioOptions.includes(aspectRatio)) return;
-    const nextRatio = aspectRatioOptions[0];
-    if (!nextRatio) return;
-    log.info("Clamping aspect ratio to supported option", {
-      previousAspectRatio: aspectRatio,
-      nextAspectRatio: nextRatio,
-      allowedAspectRatios: aspectRatioOptions,
-    });
-    handleAspectRatioChange(nextRatio);
-  }, [aspectRatioOptions, aspectRatio, handleAspectRatioChange]);
-
-  useEffect(() => {
-    if (!durationOptions.length) return;
-    if (durationOptions.includes(duration)) return;
-    const closest = durationOptions.reduce((best, value) =>
-      Math.abs(value - duration) < Math.abs(best - duration) ? value : best,
-    );
-    log.info("Clamping duration to supported option", {
-      previousDuration: duration,
-      nextDuration: closest,
-      allowedDurations: durationOptions,
-    });
-    handleDurationChange(closest);
-  }, [durationOptions, duration, handleDurationChange]);
-
-  useEffect(() => {
-    if (keyframes[0]) return;
-    if (!showCameraMotionModal) return;
-    log.info(
-      "Closing camera motion modal because primary keyframe is missing",
-      {
-        keyframesCount: keyframes.length,
-      },
-    );
-    setShowCameraMotionModal(false);
-  }, [keyframes, showCameraMotionModal]);
-
-  useEffect(() => {
     if (!canOptimize) return;
     if (!showResults && resolvedPromptInputRef.current) {
       resolvedPromptInputRef.current.focus();
     }
   }, [canOptimize, showResults, resolvedPromptInputRef]);
-
-  const {
-    isOpen: autocompleteOpen,
-    suggestions: autocompleteSuggestions,
-    selectedIndex: autocompleteSelectedIndex,
-    position: autocompletePosition,
-    query: autocompleteQuery,
-    handleKeyDown: handleAutocompleteKeyDown,
-    selectSuggestion: selectAutocompleteSuggestion,
-    setSelectedIndex: setAutocompleteSelectedIndex,
-    close: closeAutocomplete,
-    updateFromCursor: updateAutocompletePosition,
-  } = useTriggerAutocomplete({
-    inputRef: resolvedPromptInputRef,
-    prompt,
-    assets,
-    isEnabled:
-      Boolean(onPromptChange) && !isOptimizing && (!showResults || isEditing),
-    onSelect: (asset, range) => {
-      onInsertTrigger?.(asset.trigger, range);
-    },
-  });
-
-  const handleFile = useCallback(
-    async (file: File) => {
-      if (isUploadDisabled || !onImageUpload) return;
-      const result = onImageUpload(file);
-      if (result && typeof (result as Promise<void>).then === "function") {
-        setIsUploading(true);
-        try {
-          await result;
-        } finally {
-          setIsUploading(false);
-        }
-      }
-    },
-    [isUploadDisabled, onImageUpload],
-  );
-
-  const handleUploadRequest = useCallback(() => {
-    if (isUploadDisabled) return;
-    fileInputRef.current?.click();
-  }, [isUploadDisabled]);
-
-  const handleCameraMotionButtonClick = useCallback(() => {
-    if (!hasPrimaryKeyframe) {
-      log.warn("Camera motion modal requested without a primary keyframe", {
-        showMotionControls,
-        keyframesCount: keyframes.length,
-      });
-      return;
-    }
-
-    log.info("Opening camera motion modal from generation controls panel", {
-      keyframesCount: keyframes.length,
-      primaryKeyframeUrlHost,
-      currentCameraMotionId: cameraMotion?.id ?? null,
-    });
-    setShowCameraMotionModal(true);
-  }, [
-    hasPrimaryKeyframe,
-    showMotionControls,
-    keyframes.length,
-    primaryKeyframeUrlHost,
-    cameraMotion?.id,
-  ]);
-
-  const handleCloseCameraMotionModal = useCallback(() => {
-    log.info("Camera motion modal closed from generation controls panel", {
-      primaryKeyframeUrlHost,
-      currentCameraMotionId: cameraMotion?.id ?? null,
-    });
-    setShowCameraMotionModal(false);
-  }, [cameraMotion?.id, primaryKeyframeUrlHost]);
-
-  const handleSelectCameraMotion = useCallback(
-    (path: CameraPath) => {
-      log.info(
-        "Camera motion selected from modal in generation controls panel",
-        {
-          cameraMotionId: path.id,
-          cameraMotionLabel: path.label,
-          primaryKeyframeUrlHost,
-        },
-      );
-      storeActions.setCameraMotion(path);
-      setShowCameraMotionModal(false);
-    },
-    [primaryKeyframeUrlHost, storeActions],
-  );
 
   const handleInputPromptChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>): void => {
@@ -539,118 +415,6 @@ export const useGenerationControlsPanel = (
       onPromptChange(updatedPrompt);
     },
     [onPromptChange],
-  );
-
-  const handleEditClick = useCallback((): void => {
-    if (!canOptimize || isOptimizing) {
-      return;
-    }
-    setOriginalInputPrompt(prompt);
-    setOriginalSelectedModel(selectedModel);
-    setIsEditing(true);
-    setTimeout(() => {
-      resolvedPromptInputRef.current?.focus();
-    }, 0);
-  }, [
-    canOptimize,
-    isOptimizing,
-    prompt,
-    resolvedPromptInputRef,
-    selectedModel,
-  ]);
-
-  const handleCancelEdit = useCallback((): void => {
-    if (!canOptimize) return;
-    onPromptChange?.(originalInputPrompt);
-    if (originalSelectedModel !== undefined) {
-      handleModelChange(originalSelectedModel);
-    }
-    resetEditingState();
-  }, [
-    canOptimize,
-    handleModelChange,
-    onPromptChange,
-    originalInputPrompt,
-    originalSelectedModel,
-    resetEditingState,
-  ]);
-
-  const handleUpdate = useCallback((): void => {
-    if (!canOptimize || isOptimizing || !onOptimize) {
-      return;
-    }
-    const promptChanged = prompt !== originalInputPrompt;
-    const modelChanged =
-      typeof originalSelectedModel === "string" &&
-      originalSelectedModel !== selectedModel;
-    const genericPrompt =
-      typeof genericOptimizedPrompt === "string" &&
-      genericOptimizedPrompt.trim()
-        ? genericOptimizedPrompt
-        : null;
-
-    if (modelChanged && !promptChanged && genericPrompt) {
-      void onOptimize(prompt, {
-        compileOnly: true,
-        compilePrompt: genericPrompt,
-        createVersion: true,
-      });
-    } else {
-      void onOptimize(prompt);
-    }
-
-    resetEditingState();
-  }, [
-    canOptimize,
-    genericOptimizedPrompt,
-    isOptimizing,
-    onOptimize,
-    originalInputPrompt,
-    originalSelectedModel,
-    prompt,
-    selectedModel,
-    resetEditingState,
-  ]);
-
-  const handleReoptimize = useCallback((): void => {
-    if (!canOptimize || isOptimizing || !onOptimize) {
-      return;
-    }
-    void onOptimize(prompt);
-  }, [canOptimize, isOptimizing, onOptimize, prompt]);
-
-  const handlePromptKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-      if (handleAutocompleteKeyDown(event)) {
-        return;
-      }
-      if (!canOptimize || isOptimizing || !onOptimize) {
-        return;
-      }
-      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        if (!showResults) {
-          if (prompt.trim()) {
-            void onOptimize(prompt);
-          }
-        } else if (isEditing) {
-          handleUpdate();
-        } else {
-          handleReoptimize();
-        }
-      }
-    },
-    [
-      canOptimize,
-      handleAutocompleteKeyDown,
-      handleReoptimize,
-      handleUpdate,
-      isEditing,
-      isOptimizing,
-      onOptimize,
-      prompt,
-      showResults,
-    ],
   );
 
   const handleCopy = useCallback(async () => {
@@ -734,17 +498,7 @@ export const useGenerationControlsPanel = (
       aspectRatioOptions,
       durationOptions,
     },
-    autocomplete: {
-      autocompleteOpen,
-      autocompleteSuggestions,
-      autocompleteSelectedIndex,
-      autocompletePosition,
-      autocompleteQuery,
-      selectAutocompleteSuggestion,
-      setAutocompleteSelectedIndex,
-      closeAutocomplete,
-      updateAutocompletePosition,
-    },
+    autocomplete,
     actions: {
       setActiveTab,
       setImageSubTab,

@@ -1,9 +1,15 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 
+export interface RefundCreditsOptions {
+  refundKey: string;
+  reason?: string;
+}
+
 export class UserCreditService {
   private db = getFirestore();
   private collection = this.db.collection('users');
+  private refundCollection = this.db.collection('credit_refunds');
 
   /**
    * Checks if a user has enough credits and reserves them in a transaction.
@@ -43,14 +49,57 @@ export class UserCreditService {
   /**
    * Refund credits when a generation fails.
    */
-  async refundCredits(userId: string, cost: number): Promise<void> {
+  async refundCredits(
+    userId: string,
+    cost: number,
+    options?: RefundCreditsOptions
+  ): Promise<boolean> {
+    if (cost <= 0) {
+      return true;
+    }
+
     try {
-      await this.collection.doc(userId).update({
-        credits: admin.firestore.FieldValue.increment(cost),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      const refundKey = options?.refundKey?.trim();
+      if (!refundKey) {
+        await this.collection.doc(userId).update({
+          credits: admin.firestore.FieldValue.increment(cost),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return true;
+      }
+
+      const userRef = this.collection.doc(userId);
+      const refundRef = this.refundCollection.doc(refundKey);
+
+      await this.db.runTransaction(async (transaction) => {
+        const existingRefund = await transaction.get(refundRef);
+        if (existingRefund.exists) {
+          return;
+        }
+
+        transaction.update(userRef, {
+          credits: admin.firestore.FieldValue.increment(cost),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        transaction.set(refundRef, {
+          refundKey,
+          userId,
+          amount: cost,
+          ...(options?.reason ? { reason: options.reason } : {}),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       });
+
+      return true;
     } catch (error) {
-      logger.error('Credit refund failed', error as Error, { userId, cost });
+      logger.error('Credit refund failed', error as Error, {
+        userId,
+        cost,
+        refundKey: options?.refundKey,
+      });
+      return false;
     }
   }
 

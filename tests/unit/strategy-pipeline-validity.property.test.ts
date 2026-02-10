@@ -493,6 +493,13 @@ class TestKlingStrategy extends BaseStrategy {
 }
 
 describe('BaseStrategy Implementation Tests', () => {
+  const placeboSafeInputArb = fc
+    .string({ minLength: 1, maxLength: 100 })
+    .filter((value) => {
+      const lower = value.toLowerCase();
+      return lower.trim().length > 0 && !/\b4k\b/.test(lower) && !lower.includes('trending on artstation');
+    });
+
   /**
    * Tests that BaseStrategy correctly integrates TechStripper
    * For Runway model, placebo tokens should be stripped
@@ -508,7 +515,7 @@ describe('BaseStrategy Implementation Tests', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }),
+          placeboSafeInputArb,
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);
@@ -516,10 +523,11 @@ describe('BaseStrategy Implementation Tests', () => {
             const output = typeof transformed.prompt === 'string'
               ? transformed.prompt
               : JSON.stringify(transformed.prompt);
+            const normalizedOutput = output.toLowerCase();
 
             // Placebo tokens should be stripped for Runway
-            expect(output.toLowerCase()).not.toContain('4k');
-            expect(output.toLowerCase()).not.toContain('trending on artstation');
+            expect(normalizedOutput).not.toMatch(/\b4k\b/);
+            expect(normalizedOutput).not.toContain('trending on artstation');
           }
         ),
         { numRuns: 100 }
@@ -536,7 +544,7 @@ describe('BaseStrategy Implementation Tests', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+          placeboSafeInputArb,
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);

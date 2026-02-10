@@ -5,6 +5,8 @@ import { cacheService } from '@services/cache/CacheService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { RedisClient } from '@services/cache/types';
 import { userCreditService } from '@services/credits/UserCreditService';
+import { createCreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
+import { getRefundFailureStore } from '@services/credits/RefundFailureStore';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import { getStorageService } from '@services/storage/StorageService';
 import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
@@ -19,6 +21,16 @@ export function registerInfrastructureServices(container: DIContainer): void {
   container.registerValue('metricsService', metricsService);
   container.registerValue('cacheService', cacheService);
   container.registerValue('userCreditService', userCreditService);
+  container.register('refundFailureStore', () => getRefundFailureStore(), [], { singleton: true });
+
+  container.register(
+    'creditRefundSweeper',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DI container values are untyped at registration boundary
+    (refundFailureStore: any, creditService: typeof userCreditService) =>
+      createCreditRefundSweeper(refundFailureStore, creditService),
+    ['refundFailureStore', 'userCreditService'],
+    { singleton: true }
+  );
 
   container.register('storageService', () => getStorageService(), [], { singleton: true });
 

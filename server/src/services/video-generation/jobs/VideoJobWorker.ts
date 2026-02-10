@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
 import type { VideoGenerationService } from '../VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import { getStorageService } from '@services/storage/StorageService';
 import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
@@ -194,7 +195,18 @@ export class VideoJobWorker {
 
       const marked = await this.jobStore.markFailed(job.id, errorMessage);
       if (marked) {
-        await this.userCreditService.refundCredits(job.userId, job.creditsReserved);
+        const refundKey = buildRefundKey(['video-job', job.id, 'video']);
+        await refundWithGuard({
+          userCreditService: this.userCreditService,
+          userId: job.userId,
+          amount: job.creditsReserved,
+          refundKey,
+          reason: 'video job worker failed',
+          metadata: {
+            jobId: job.id,
+            workerId: this.workerId,
+          },
+        });
       } else {
         this.log.warn('Video job failure skipped (status changed)', {
           jobId: job.id,

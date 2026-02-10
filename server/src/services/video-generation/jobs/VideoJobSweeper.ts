@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 
@@ -125,7 +126,17 @@ export class VideoJobSweeper {
       return;
     }
 
-    await this.userCreditService.refundCredits(job.userId, job.creditsReserved);
+    const refundKey = buildRefundKey(['video-job', job.id, 'video']);
+    await refundWithGuard({
+      userCreditService: this.userCreditService,
+      userId: job.userId,
+      amount: job.creditsReserved,
+      refundKey,
+      reason: 'video job sweeper stale timeout',
+      metadata: {
+        jobId: job.id,
+      },
+    });
   }
 }
 

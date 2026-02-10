@@ -140,12 +140,25 @@ describe('errorHandler', () => {
     expect(response.status).toBe(418);
     expect(response.body.error).toBe('failure');
     expect(response.body.requestId).toBe('uuid-fixed');
-    expect(response.body.details).toEqual({ reason: 'teapot' });
-    expect(response.body.stack).toContain('Error: failure');
+    const parsedDetails =
+      typeof response.body.details === 'string'
+        ? JSON.parse(response.body.details)
+        : response.body.details;
+    expect(parsedDetails).toEqual({ reason: 'teapot' });
+    expect(response.body.stack).toBeUndefined();
 
     expect(mockedLogger.error).toHaveBeenCalled();
-    const meta = mockedLogger.error.mock.calls[0]?.[2] as { bodyPreview?: string };
-    expect(meta.bodyPreview).toContain('[REDACTED]');
+    const matchingCall = mockedLogger.error.mock.calls.find(
+      (call) =>
+        call.length >= 3 &&
+        typeof call[2] === 'object' &&
+        call[2] !== null &&
+        'bodyPreview' in (call[2] as Record<string, unknown>)
+    );
+    expect(matchingCall).toBeDefined();
+    const meta = matchingCall?.[2] as { bodyPreview?: string };
+    expect(typeof meta.bodyPreview).toBe('string');
+    expect(meta.bodyPreview as string).toContain('[REDACTED]');
   });
 });
 

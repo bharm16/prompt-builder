@@ -11,6 +11,12 @@ vi.mock('fs', async () => {
   };
 });
 
+vi.mock('@llm/span-labeling/nlp/paths', () => ({
+  modelPath: 'package.json',
+  modelDirPath: '.',
+  vocabPath: 'server/src/llm/span-labeling/nlp/vocab.json',
+}));
+
 vi.mock('@llm/span-labeling/nlp/log', () => ({
   log: {
     info: vi.fn(),

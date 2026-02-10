@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { act } from '@testing-library/react';
 
 import { NetworkStatusBanner } from '../components/shared/NetworkStatusBanner';
-import type { NetworkStatus } from '../hooks/useNetworkStatus';
+import type { NetworkStatus } from '../types';
 
 // ============================================================================
 // NetworkStatusBanner

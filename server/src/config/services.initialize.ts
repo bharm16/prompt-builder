@@ -7,6 +7,7 @@ import type { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWor
 import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import type { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
+import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
 
 interface HealthCheckResult {
   healthy: boolean;
@@ -269,6 +270,12 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   }
 
   if (!isTestEnv && !promptOutputOnly) {
+    const creditRefundSweeper = container.resolve<CreditRefundSweeper | null>('creditRefundSweeper');
+    if (creditRefundSweeper) {
+      creditRefundSweeper.start();
+      logger.info('✅ Credit refund sweeper started');
+    }
+
     const videoAssetRetentionService =
       container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
     if (videoAssetRetentionService) {

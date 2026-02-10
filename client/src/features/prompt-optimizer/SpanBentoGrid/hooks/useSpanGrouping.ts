@@ -211,38 +211,3 @@ export function useSpanGrouping(
     };
   }, [spans, enableHierarchy]);
 }
-
-/**
- * Get hierarchy display info for a category
- * Useful for rendering nested UI
- */
-export function useCategoryHierarchyInfo(
-  categoryId: string,
-  spans: Span[]
-): {
-  isParent: boolean;
-  isAttribute: boolean;
-  parentCategory: string | null;
-  parentSpans: Span[];
-  attributeSpans: Span[];
-  hasAttributes: boolean;
-} {
-  return useMemo(() => {
-    const isParent = getAllParentCategories().includes(categoryId);
-    const isAttr = isAttribute(categoryId);
-    const parent = isAttr ? getParentCategory(categoryId) : null;
-
-    // Separate parent spans from attribute spans
-    const parentSpans = spans.filter((s) => !s._isAttribute);
-    const attributeSpans = spans.filter((s) => s._isAttribute);
-
-    return {
-      isParent,
-      isAttribute: isAttr,
-      parentCategory: parent,
-      parentSpans,
-      attributeSpans,
-      hasAttributes: attributeSpans.length > 0,
-    };
-  }, [categoryId, spans]);
-}

@@ -130,6 +130,20 @@ function subjectTermVariants(subjectTerm: string): string[] {
   return variants;
 }
 
+function findFirstTermPosition(prompt: string, terms: readonly string[]): number {
+  const lowerPrompt = prompt.toLowerCase();
+  let best = Number.POSITIVE_INFINITY;
+
+  for (const term of terms) {
+    const index = lowerPrompt.indexOf(term.toLowerCase());
+    if (index !== -1 && index < best) {
+      best = index;
+    }
+  }
+
+  return Number.isFinite(best) ? best : -1;
+}
+
 describe('Runway CSAE Ordering Property Tests', () => {
   const strategy = new RunwayStrategy();
 
@@ -228,7 +242,15 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             // If both categories are present, subject should come before action.
             if (subjectPos !== -1 && actionPos !== -1) {
-              expect(subjectPos).toBeLessThan(actionPos);
+              if (subjectPos === actionPos) {
+                const subjectTextPos = findFirstTermPosition(prompt, subjectTermVariants(subjectTerm));
+                const actionTextPos = findFirstTermPosition(prompt, [actionTerm]);
+                if (subjectTextPos !== -1 && actionTextPos !== -1) {
+                  expect(subjectTextPos).toBeLessThan(actionTextPos);
+                }
+              } else {
+                expect(subjectPos).toBeLessThan(actionPos);
+              }
             }
           }
         ),

@@ -2,6 +2,7 @@ import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { getStorageService } from '@services/storage/StorageService';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 
 interface InlinePreviewProcessorParams {
   jobId: string;
@@ -113,7 +114,18 @@ export function scheduleInlineVideoPreviewProcessing({
 
         const marked = await videoJobStore.markFailed(jobId, errorMessage);
         if (marked) {
-          await userCreditService.refundCredits(claimed.userId, claimed.creditsReserved);
+          const refundKey = buildRefundKey(['video-job', jobId, 'video']);
+          await refundWithGuard({
+            userCreditService,
+            userId: claimed.userId,
+            amount: claimed.creditsReserved,
+            refundKey,
+            reason: 'inline video preview failed',
+            metadata: {
+              jobId,
+              workerId,
+            },
+          });
         } else {
           logger.warn('Inline preview job failure skipped (status changed)', {
             jobId,

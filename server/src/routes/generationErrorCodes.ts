@@ -1,0 +1,9 @@
+import type { ApiErrorCode } from '@server/types/apiError';
+
+export const GENERATION_ERROR_CODES = {
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+  INSUFFICIENT_CREDITS: 'INSUFFICIENT_CREDITS',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  GENERATION_FAILED: 'GENERATION_FAILED',
+} as const satisfies Record<string, ApiErrorCode>;

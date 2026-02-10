@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { WifiOff, Wifi, RefreshCw, X } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import type { NetworkStatus } from '@/features/convergence/hooks/useNetworkStatus';
+import type { NetworkStatus } from '@/features/convergence/types';
 
 // ============================================================================
 // Types

@@ -160,8 +160,11 @@ describe('errorHandler', () => {
 
       errorHandler(error, req, res, mockNext);
 
-      expect(res.responseBody).toMatchObject({
-        details: { field: 'email', issue: 'invalid format' },
+      const body = res.responseBody as { details?: string };
+      const parsedDetails = body.details ? JSON.parse(body.details) : undefined;
+      expect(parsedDetails).toEqual({
+        field: 'email',
+        issue: 'invalid format',
       });
     });
   });
@@ -176,8 +179,8 @@ describe('errorHandler', () => {
 
       expect(res.statusCode).toBe(410);
       expect(res.responseBody).toMatchObject({
-        error: 'SESSION_EXPIRED',
-        message: 'Session has expired',
+        error: 'Session has expired',
+        code: 'SESSION_EXPIRED',
         requestId: 'conv-req',
       });
     });
@@ -194,9 +197,9 @@ describe('errorHandler', () => {
 
       errorHandler(error, req, res, mockNext);
 
-      expect(res.responseBody).toMatchObject({
-        details: { required: 10, available: 5 },
-      });
+      const body = res.responseBody as { details?: string };
+      const parsedDetails = body.details ? JSON.parse(body.details) : undefined;
+      expect(parsedDetails).toEqual({ required: 10, available: 5 });
     });
   });
 
@@ -257,9 +260,7 @@ describe('errorHandler', () => {
 
       errorHandler(new Error('test'), req, res, mockNext);
 
-      expect(res.responseBody).toMatchObject({
-        requestId: undefined,
-      });
+      expect(res.responseBody).not.toHaveProperty('requestId');
     });
 
     it('handles empty body gracefully', () => {

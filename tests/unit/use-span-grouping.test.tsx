@@ -3,7 +3,6 @@ import { renderHook } from '@testing-library/react';
 
 import {
   useSpanGrouping,
-  useCategoryHierarchyInfo,
 } from '@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping';
 import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
 import { TAXONOMY } from '@shared/taxonomy';
@@ -80,27 +79,5 @@ describe('useSpanGrouping', () => {
       expect(group?.[1]?.id).toBe('s1');
     });
 
-    it('separates parent and attribute spans in hierarchy info hook', () => {
-      const spans: Span[] = [
-        { id: 'parent', category: TAXONOMY.SUBJECT.id, quote: 'person', start: 0, end: 6 },
-        {
-          id: 'attr',
-          category: 'subject.appearance',
-          quote: 'tall',
-          start: 5,
-          end: 9,
-          _isAttribute: true,
-        },
-      ];
-
-      const { result } = renderHook(() =>
-        useCategoryHierarchyInfo(TAXONOMY.SUBJECT.id, spans)
-      );
-
-      expect(result.current.isParent).toBe(true);
-      expect(result.current.attributeSpans).toHaveLength(1);
-      expect(result.current.parentSpans).toHaveLength(1);
-      expect(result.current.hasAttributes).toBe(true);
-    });
   });
 });
