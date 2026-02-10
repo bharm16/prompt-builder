@@ -494,8 +494,3 @@ export class SoraStrategy extends BaseStrategy {
     return tokens;
   }
 }
-
-/**
- * Singleton instance for convenience
- */
-export const soraStrategy = new SoraStrategy();

@@ -5,7 +5,6 @@ import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas';
 import { FallbackRegenerationService } from './services/FallbackRegenerationService';
-import { SuggestionProcessor } from './services/SuggestionProcessor';
 import { StyleTransferService } from './services/StyleTransferService';
 import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer';
 import { EnhancementMetricsService } from './services/EnhancementMetricsService';
@@ -13,6 +12,7 @@ import { VideoContextDetectionService } from './services/VideoContextDetectionSe
 import { SuggestionGenerationService } from './services/SuggestionGenerationService';
 import { SuggestionProcessingService } from './services/SuggestionProcessingService';
 import { I2VConstrainedSuggestions } from './services/I2VConstrainedSuggestions';
+import { detectPlaceholder } from './services/placeholderDetection';
 import { CacheKeyFactory } from './utils/CacheKeyFactory';
 import { PROMPT_MODES } from './constants';
 import { getParentCategory } from '@shared/taxonomy';
@@ -20,7 +20,6 @@ import { hashString } from '@utils/hash';
 import type {
   AIService,
   VideoService,
-  PlaceholderDetector,
   BrainstormBuilder,
   PromptBuilder,
   ValidationService,
@@ -33,8 +32,6 @@ import type {
   EnhancementMetrics,
   Suggestion,
   VideoConstraints,
-  CategoryAlignmentResult,
-  BrainstormContext,
   PromptBuildParams,
   GroupedSuggestions,
   OutputSchema,
@@ -44,7 +41,6 @@ import type {
 
 interface EnhancementServiceDependencies {
   aiService: AIService;
-  placeholderDetector: PlaceholderDetector;
   videoService: VideoService;
   brainstormBuilder: BrainstormBuilder;
   promptBuilder: PromptBuilder;
@@ -56,7 +52,6 @@ interface EnhancementServiceDependencies {
 
 interface EnhancementCoreServices {
   ai: AIService;
-  placeholderDetector: PlaceholderDetector;
   videoService: VideoService;
   brainstormBuilder: BrainstormBuilder;
   promptBuilder: PromptBuilder;
@@ -68,7 +63,6 @@ interface EnhancementCoreServices {
 
 interface EnhancementPipelineServices {
   fallbackRegeneration: FallbackRegenerationService;
-  suggestionProcessor: SuggestionProcessor;
   styleTransfer: StyleTransferService;
   contrastiveDiversity: ContrastiveDiversityEnforcer;
   metricsLogger: EnhancementMetricsService;
@@ -95,7 +89,6 @@ export class EnhancementService {
   constructor(dependencies: EnhancementServiceDependencies) {
     const {
       aiService,
-      placeholderDetector,
       videoService,
       brainstormBuilder,
       promptBuilder,
@@ -107,7 +100,6 @@ export class EnhancementService {
 
     this.core = {
       ai: aiService,
-      placeholderDetector,
       videoService,
       brainstormBuilder,
       promptBuilder,
@@ -131,19 +123,16 @@ export class EnhancementService {
       validationService,
       diversityEnforcer
     );
-    const suggestionProcessor = new SuggestionProcessor(validationService);
     const suggestionProcessing = new SuggestionProcessingService(
       diversityEnforcer,
       validationService,
       categoryAligner,
       fallbackRegeneration,
-      suggestionProcessor,
       aiService
     );
 
     this.pipeline = {
       fallbackRegeneration,
-      suggestionProcessor,
       styleTransfer: new StyleTransferService(aiService),
       contrastiveDiversity,
       metricsLogger: new EnhancementMetricsService(metricsService),
@@ -245,7 +234,7 @@ export class EnhancementService {
         );
 
         if (prefilter.blockedReason) {
-          const isPlaceholder = this.core.placeholderDetector.detectPlaceholder(
+          const isPlaceholder = detectPlaceholder(
             highlightedText,
             contextBefore,
             contextAfter,
@@ -311,7 +300,7 @@ export class EnhancementService {
         return cached;
       }
 
-      const isPlaceholder = this.core.placeholderDetector.detectPlaceholder(
+      const isPlaceholder = detectPlaceholder(
         highlightedText,
         contextBefore,
         contextAfter,
@@ -434,7 +423,7 @@ export class EnhancementService {
       metrics.postProcessing = Date.now() - postStart;
 
       // Note: sanitizedSuggestions not available here after extraction, using suggestionsToUse instead
-      this.pipeline.suggestionProcessor.logResult(
+      this.pipeline.suggestionProcessing.logResult(
         result,
         processingResult.suggestionsToUse,
         processingResult.usedFallback,
@@ -609,7 +598,7 @@ export class EnhancementService {
     isPlaceholder: boolean;
     phraseRole: string | null;
   }): EnhancementResult {
-    const groupedSuggestions = this.pipeline.suggestionProcessor.groupSuggestions(
+    const groupedSuggestions = this.pipeline.suggestionProcessing.groupSuggestions(
       params.suggestionsToUse,
       params.isPlaceholder
     );
@@ -636,7 +625,7 @@ export class EnhancementService {
     if (params.usedFallback) buildResultParams.usedFallback = true;
     if (params.suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
     
-    return this.pipeline.suggestionProcessor.buildResult(buildResultParams);
+    return this.pipeline.suggestionProcessing.buildResult(buildResultParams);
   }
 
   private _buildSpanContext({

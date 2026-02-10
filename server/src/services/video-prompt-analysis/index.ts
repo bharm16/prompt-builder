@@ -48,16 +48,13 @@ export {
   StrategyRegistry,
   BaseStrategy,
   RunwayStrategy,
-  runwayStrategy,
   LumaStrategy,
-  lumaStrategy,
   KlingStrategy,
-  klingStrategy,
   SoraStrategy,
-  soraStrategy,
   VeoStrategy,
-  veoStrategy,
+  WanStrategy,
 } from './strategies';
+export type { StrategyFactory } from './strategies';
 export type {
   PromptOptimizationResult,
   OptimizationMetadata,

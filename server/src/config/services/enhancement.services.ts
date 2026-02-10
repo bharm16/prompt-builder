@@ -8,7 +8,6 @@ import { EnhancementService } from '@services/EnhancementService';
 import { BrainstormContextBuilder } from '@services/enhancement/services/BrainstormContextBuilder';
 import { CategoryAlignmentService } from '@services/enhancement/services/CategoryAlignmentService';
 import { CleanPromptBuilder } from '@services/enhancement/services/CleanPromptBuilder';
-import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
 import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
 import { SuggestionDiversityEnforcer } from '@services/enhancement/services/SuggestionDeduplicator';
 import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
@@ -19,7 +18,6 @@ import { VideoPromptService } from '@services/video-prompt-analysis/index';
 import { VideoConceptService } from '@services/VideoConceptService';
 
 export function registerEnhancementServices(container: DIContainer): void {
-  container.register('placeholderDetector', () => new PlaceholderDetectionService(), []);
   container.register('videoService', () => new VideoPromptService(), []);
   container.register('brainstormBuilder', () => new BrainstormContextBuilder(), []);
   container.register('promptBuilder', () => new CleanPromptBuilder(), []);
@@ -63,7 +61,6 @@ export function registerEnhancementServices(container: DIContainer): void {
     'enhancementService',
     (
       aiService: AIModelService,
-      placeholderDetector: PlaceholderDetectionService,
       videoService: VideoService,
       brainstormBuilder: BrainstormContextBuilder,
       promptBuilder: CleanPromptBuilder,
@@ -74,7 +71,6 @@ export function registerEnhancementServices(container: DIContainer): void {
     ) =>
       new EnhancementService({
         aiService,
-        placeholderDetector,
         videoService,
         brainstormBuilder,
         promptBuilder,
@@ -85,7 +81,6 @@ export function registerEnhancementServices(container: DIContainer): void {
       }),
     [
       'aiService',
-      'placeholderDetector',
       'videoService',
       'brainstormBuilder',
       'promptBuilder',

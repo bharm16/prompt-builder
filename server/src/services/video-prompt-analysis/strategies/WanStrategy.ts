@@ -162,7 +162,3 @@ export class WanStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const wanStrategy = new WanStrategy();

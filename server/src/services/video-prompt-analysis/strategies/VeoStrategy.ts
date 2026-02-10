@@ -610,7 +610,3 @@ export class VeoStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const veoStrategy = new VeoStrategy();

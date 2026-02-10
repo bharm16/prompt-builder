@@ -496,7 +496,3 @@ export class RunwayStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const runwayStrategy = new RunwayStrategy();

@@ -388,18 +388,6 @@ export interface VideoService {
 export type AIService = AIModelService;
 
 /**
- * Placeholder detector interface
- */
-export interface PlaceholderDetector {
-  detectPlaceholder(
-    highlightedText: string,
-    contextBefore: string,
-    contextAfter: string,
-    fullPrompt: string
-  ): boolean;
-}
-
-/**
  * Brainstorm builder interface
  */
 export interface BrainstormBuilder {

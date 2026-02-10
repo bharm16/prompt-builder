@@ -783,7 +783,3 @@ export class KlingStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const klingStrategy = new KlingStrategy();

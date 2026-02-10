@@ -284,9 +284,9 @@ describe('StrategyRegistry Integration', () => {
             const registry = new StrategyRegistry();
             const strategy = new MockStrategy(modelId, modelName);
 
-            registry.register(strategy);
+            registry.register(modelId, () => new MockStrategy(modelId, modelName));
 
-            // Strategy should be retrievable
+            // Strategy should be retrievable (fresh instance each call)
             const retrieved = registry.get(modelId);
             expect(retrieved).toBeDefined();
             expect(retrieved?.modelId).toBe(modelId);
@@ -319,7 +319,7 @@ describe('StrategyRegistry Integration', () => {
 
             // Register all strategies
             for (const modelId of modelIds) {
-              registry.register(new MockStrategy(modelId, `Model ${modelId}`));
+              registry.register(modelId, () => new MockStrategy(modelId, `Model ${modelId}`));
             }
 
             // has() should return true for registered
@@ -347,7 +347,7 @@ describe('StrategyRegistry Integration', () => {
 
             // Register all strategies
             for (const modelId of modelIds) {
-              registry.register(new MockStrategy(modelId, `Model ${modelId}`));
+              registry.register(modelId, () => new MockStrategy(modelId, `Model ${modelId}`));
             }
 
             // getAll() should return all strategies
@@ -375,10 +375,10 @@ describe('StrategyRegistry Integration', () => {
             const strategy2 = new MockStrategy(modelId, 'Model 2');
 
             // First registration should succeed
-            registry.register(strategy1);
+            registry.register(modelId, () => strategy1);
 
             // Second registration with same modelId should throw
-            expect(() => registry.register(strategy2)).toThrow();
+            expect(() => registry.register(modelId, () => strategy2)).toThrow();
           }
         ),
         { numRuns: 100 }

@@ -4,7 +4,7 @@
  * This file has been refactored into a folder structure.
  * The original implementation has been split into:
  * - services/FallbackRegenerationService.ts
- * - services/SuggestionProcessor.ts
+ * - services/SuggestionProcessingService.ts
  * - services/StyleTransferService.ts
  * - config/schemas.ts
  * - config/styleDefinitions.ts
@@ -14,4 +14,3 @@
  */
 
 export { EnhancementService } from './enhancement/index';
-

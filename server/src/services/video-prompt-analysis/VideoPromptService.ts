@@ -9,15 +9,13 @@ import { SectionDetectionService } from './services/detection/SectionDetectionSe
 import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
 import { countWords } from './utils/textHelpers';
 import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
-import {
-  StrategyRegistry,
-  runwayStrategy,
-  lumaStrategy,
-  klingStrategy,
-  soraStrategy,
-  veoStrategy,
-  wanStrategy,
-} from './strategies';
+import { StrategyRegistry } from './strategies';
+import { RunwayStrategy } from './strategies/RunwayStrategy';
+import { LumaStrategy } from './strategies/LumaStrategy';
+import { KlingStrategy } from './strategies/KlingStrategy';
+import { SoraStrategy } from './strategies/SoraStrategy';
+import { VeoStrategy } from './strategies/VeoStrategy';
+import { WanStrategy } from './strategies/WanStrategy';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
 import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
 import type { ModelCapabilities } from './services/detection/ModelDetectionService';
@@ -59,14 +57,15 @@ export class VideoPromptService {
     this.sectionDetector = new SectionDetectionService();
     this.taxonomyValidator = new TaxonomyValidationService();
     
-    // Initialize strategy registry with all 5 model strategies
+    // Register strategy factories — each get() call creates a fresh instance
+    // to prevent shared mutable state across concurrent requests
     this.strategyRegistry = new StrategyRegistry();
-    this.strategyRegistry.register(runwayStrategy);
-    this.strategyRegistry.register(lumaStrategy);
-    this.strategyRegistry.register(klingStrategy);
-    this.strategyRegistry.register(soraStrategy);
-    this.strategyRegistry.register(veoStrategy);
-    this.strategyRegistry.register(wanStrategy);
+    this.strategyRegistry.register('runway-gen45', () => new RunwayStrategy());
+    this.strategyRegistry.register('luma-ray3', () => new LumaStrategy());
+    this.strategyRegistry.register('kling-26', () => new KlingStrategy());
+    this.strategyRegistry.register('sora-2', () => new SoraStrategy());
+    this.strategyRegistry.register('veo-4', () => new VeoStrategy());
+    this.strategyRegistry.register('wan-2.2', () => new WanStrategy());
   }
 
   /**
