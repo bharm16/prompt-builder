@@ -19,9 +19,9 @@ import type {
   Suggestion,
   EnhancementMetrics,
   OutputSchema,
+  PromptBuildResult,
 } from './types';
 import type { ContrastiveDiversityEnforcer } from './ContrastiveDiversityEnforcer';
-import type { PromptBuildResult } from './prompt-builders/index';
 
 export interface SuggestionGenerationParams {
   systemPrompt: string;
