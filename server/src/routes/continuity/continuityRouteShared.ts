@@ -1,9 +1,12 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { sendApiError } from '@middleware/apiErrorResponse';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
 import { CreditCostCalculator } from '@services/continuity/CreditCostCalculator';
+import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import { requireUserId, type RequestWithUser } from '@middleware/requireUserId';
 import {
   CreateSceneProxySchema,
@@ -37,24 +40,54 @@ export const ContinuitySessionInputSchema = z
 export async function requireSessionForUser(
   service: ContinuitySessionService,
   req: Request,
-  res: Response
+  res: Response,
+  options?: { canonicalErrors?: boolean }
 ): Promise<ContinuitySession | null> {
-  const userId = requireUserId(req as RequestWithUser, res);
+  const userId = options?.canonicalErrors
+    ? (req as RequestWithUser).user?.uid ?? null
+    : requireUserId(req as RequestWithUser, res);
+  if (!userId && options?.canonicalErrors) {
+    sendApiError(res, req, 401, {
+      error: 'Authentication required',
+      code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
+    });
+  }
   if (!userId) return null;
 
   const sessionId = req.params.sessionId;
   if (!sessionId || Array.isArray(sessionId)) {
-    res.status(400).json({ success: false, error: 'Invalid sessionId' });
+    if (options?.canonicalErrors) {
+      sendApiError(res, req, 400, {
+        error: 'Invalid sessionId',
+        code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+      });
+    } else {
+      res.status(400).json({ success: false, error: 'Invalid sessionId' });
+    }
     return null;
   }
 
   const session = await service.getSession(sessionId);
   if (!session) {
-    res.status(404).json({ success: false, error: 'Session not found' });
+    if (options?.canonicalErrors) {
+      sendApiError(res, req, 404, {
+        error: 'Session not found',
+        code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+      });
+    } else {
+      res.status(404).json({ success: false, error: 'Session not found' });
+    }
     return null;
   }
   if (session.userId !== userId) {
-    res.status(403).json({ success: false, error: 'Access denied' });
+    if (options?.canonicalErrors) {
+      sendApiError(res, req, 403, {
+        error: 'Access denied',
+        code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
+      });
+    } else {
+      res.status(403).json({ success: false, error: 'Access denied' });
+    }
     return null;
   }
   return session;
@@ -173,30 +206,61 @@ export async function handleGenerateShot(
   userCreditService?: UserCreditService | null
 ): Promise<void> {
   if (!userCreditService) {
-    res.status(503).json({ success: false, error: 'Credit service unavailable' });
+    sendApiError(res, req, 503, {
+      error: 'Credit service unavailable',
+      code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+    });
     return;
   }
 
   const shotId = req.params.shotId;
   if (!shotId || Array.isArray(shotId)) {
-    res.status(400).json({ success: false, error: 'Invalid shotId' });
+    sendApiError(res, req, 400, {
+      error: 'Invalid shotId',
+      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+    });
     return;
   }
 
   const shot = session.shots.find((s) => s.id === shotId);
   if (!shot) {
-    res.status(404).json({ success: false, error: 'Shot not found' });
+    sendApiError(res, req, 404, {
+      error: 'Shot not found',
+      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+    });
     return;
   }
 
   const cost = CreditCostCalculator.calculateShotCost(shot, session);
+  const requestId = (req as Request & { id?: string }).id;
+  const operationToken =
+    requestId ??
+    buildRefundKey([
+      'continuity-shot',
+      session.id,
+      shotId,
+      session.userId,
+      Date.now(),
+      Math.random(),
+    ]);
+  const unusedRetriesRefundKey = buildRefundKey([
+    'continuity-shot',
+    operationToken,
+    'unusedRetries',
+  ]);
+  const failedActualCostRefundKey = buildRefundKey([
+    'continuity-shot',
+    operationToken,
+    'failedActualCost',
+  ]);
+  const catchAllRefundKey = buildRefundKey(['continuity-shot', operationToken, 'catchAll']);
 
   const reserved = await userCreditService.reserveCredits(session.userId, cost.totalCost);
   if (!reserved) {
-    res.status(402).json({
-      success: false,
+    sendApiError(res, req, 402, {
       error: 'Insufficient credits',
-      message: `This generation requires up to ${cost.totalCost} credits (including possible retries).`,
+      code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+      details: `This generation requires up to ${cost.totalCost} credits (including possible retries).`,
     });
     return;
   }
@@ -207,15 +271,61 @@ export async function handleGenerateShot(
     const actualCost = cost.perAttemptCost * (actualRetries + 1);
     const refundAmount = cost.totalCost - actualCost;
     if (refundAmount > 0) {
-      await userCreditService.refundCredits(session.userId, refundAmount);
+      await refundWithGuard({
+        userCreditService,
+        userId: session.userId,
+        amount: refundAmount,
+        refundKey: unusedRetriesRefundKey,
+        reason: 'continuity shot unused retry budget',
+        metadata: {
+          requestId,
+          sessionId: session.id,
+          shotId,
+        },
+      });
     }
     if (result.status === 'failed') {
-      await userCreditService.refundCredits(session.userId, actualCost);
+      await refundWithGuard({
+        userCreditService,
+        userId: session.userId,
+        amount: actualCost,
+        refundKey: failedActualCostRefundKey,
+        reason: 'continuity shot failed actual cost',
+        metadata: {
+          requestId,
+          sessionId: session.id,
+          shotId,
+        },
+      });
     }
     res.json({ success: true, data: result });
   } catch (error) {
-    await userCreditService.refundCredits(session.userId, cost.totalCost);
-    throw error;
+    await refundWithGuard({
+      userCreditService,
+      userId: session.userId,
+      amount: cost.totalCost,
+      refundKey: catchAllRefundKey,
+      reason: 'continuity shot generation exception',
+      metadata: {
+        requestId,
+        sessionId: session.id,
+        shotId,
+      },
+    });
+
+    const statusCode =
+      typeof (error as { statusCode?: unknown })?.statusCode === 'number'
+        ? ((error as { statusCode?: number }).statusCode as number)
+        : 500;
+
+    sendApiError(res, req, statusCode, {
+      error: 'Shot generation failed',
+      code:
+        statusCode === 503
+          ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+          : GENERATION_ERROR_CODES.GENERATION_FAILED,
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

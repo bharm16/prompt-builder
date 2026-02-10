@@ -167,6 +167,24 @@ describe('errorHandler', () => {
         issue: 'invalid format',
       });
     });
+
+    it('includes code from error object when provided', () => {
+      const req = createMockRequest({ id: 'req-code-1' });
+      const res = createMockResponse();
+      const error = Object.assign(new Error('Credit error'), {
+        statusCode: 402,
+        code: 'INSUFFICIENT_CREDITS',
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(402);
+      expect(res.responseBody).toMatchObject({
+        error: 'Credit error',
+        code: 'INSUFFICIENT_CREDITS',
+        requestId: 'req-code-1',
+      });
+    });
   });
 
   describe('ConvergenceError handling', () => {

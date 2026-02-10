@@ -44,7 +44,7 @@ describe('videoGenerate motion guidance', () => {
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
-        refundCredits: vi.fn(async () => undefined),
+        refundCredits: vi.fn(async () => true),
       } as never,
       keyframeService: null as never,
       faceSwapService: null as never,

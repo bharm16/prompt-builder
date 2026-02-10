@@ -4,8 +4,11 @@ import { logger } from '@infrastructure/Logger';
 import { parseVideoPreviewRequest } from '@routes/preview/videoRequest';
 import { getVideoCost } from '@config/modelCosts';
 import { VIDEO_MODELS } from '@config/modelConfig';
+import { sendApiError } from '@middleware/apiErrorResponse';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
+import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import type { PreviewRoutesServices } from '@routes/types';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { VideoGenerationOptions, VideoModelId } from '@services/video-generation/types';
 import {
   CAMERA_MOTION_DESCRIPTIONS,
@@ -126,6 +129,17 @@ const extractPromptTriggers = (prompt: string): string[] =>
     .map((match) => match[1]?.toLowerCase().trim())
     .filter((trigger): trigger is string => Boolean(trigger));
 
+const hasStatusCode = (value: unknown): value is { statusCode: number } => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  if (!('statusCode' in value)) {
+    return false;
+  }
+  const statusCode = (value as { statusCode?: unknown }).statusCode;
+  return typeof statusCode === 'number' && Number.isFinite(statusCode);
+};
+
 export const createVideoGenerateHandler = ({
   videoGenerationService,
   videoJobStore,
@@ -136,18 +150,18 @@ export const createVideoGenerateHandler = ({
 }: VideoGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService || !videoJobStore) {
-      return res.status(503).json({
-        success: false,
+      return sendApiError(res, req, 503, {
         error: 'Video generation service is not available',
-        message: 'Video generation queue is not configured',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Video generation queue is not configured',
       });
     }
 
     const parsed = parseVideoPreviewRequest(req.body);
     if (!parsed.ok) {
-      return res.status(parsed.status).json({
-        success: false,
+      return sendApiError(res, req, parsed.status, {
         error: parsed.error,
+        code: GENERATION_ERROR_CODES.INVALID_REQUEST,
       });
     }
 
@@ -169,10 +183,10 @@ export const createVideoGenerateHandler = ({
       try {
         assertUrlSafe(startImage, 'startImage');
       } catch (err) {
-        return res.status(400).json({
-          success: false,
+        return sendApiError(res, req, 400, {
           error: 'Invalid startImage URL',
-          message: err instanceof Error ? err.message : 'URL validation failed',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
         });
       }
     }
@@ -180,10 +194,10 @@ export const createVideoGenerateHandler = ({
       try {
         assertUrlSafe(inputReference, 'inputReference');
       } catch (err) {
-        return res.status(400).json({
-          success: false,
+        return sendApiError(res, req, 400, {
           error: 'Invalid inputReference URL',
-          message: err instanceof Error ? err.message : 'URL validation failed',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
         });
       }
     }
@@ -198,10 +212,10 @@ export const createVideoGenerateHandler = ({
     const hasPromptTriggers = uniquePromptTriggerCount > 0;
 
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
-      return res.status(401).json({
-        success: false,
+      return sendApiError(res, req, 401, {
         error: 'Authentication required',
-        message: 'You must be logged in to generate videos.',
+        code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
+        details: 'You must be logged in to generate videos.',
       });
     }
 
@@ -242,10 +256,10 @@ export const createVideoGenerateHandler = ({
               uniquePromptTriggerCount,
             }
           );
-          return res.status(500).json({
-            success: false,
+          return sendApiError(res, req, 500, {
             error: 'Prompt resolution failed',
-            message: errorMessage,
+            code: GENERATION_ERROR_CODES.GENERATION_FAILED,
+            details: errorMessage,
           });
         }
       }
@@ -275,18 +289,90 @@ export const createVideoGenerateHandler = ({
       log.error('User credit service is not available - blocking paid feature access', undefined, {
         path: req.path,
       });
-      return res.status(503).json({
-        success: false,
+      return sendApiError(res, req, 503, {
         error: 'Video generation service is not available',
-        message: 'Credit service is not configured',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Credit service is not configured',
       });
     }
 
     let resolvedStartImage = startImage;
     let generatedKeyframeUrl: string | null = null;
     let swappedImageUrl: string | null = null;
+    let videoCost = 0;
     let keyframeCost = 0;
     let faceSwapCost = 0;
+    const refundOperationToken =
+      requestId ??
+      buildRefundKey([
+        'preview-video',
+        userId,
+        cleanedPrompt,
+        model ?? 'auto',
+        Date.now(),
+        Math.random(),
+      ]);
+    const faceSwapRefundKey = buildRefundKey([
+      'preview-video',
+      refundOperationToken,
+      userId,
+      'faceSwap',
+    ]);
+    const keyframeRefundKey = buildRefundKey([
+      'preview-video',
+      refundOperationToken,
+      userId,
+      'keyframe',
+    ]);
+    const videoRefundKey = buildRefundKey(['preview-video', refundOperationToken, userId, 'video']);
+    const refundFaceSwapCredits = async (reason: string): Promise<void> => {
+      if (faceSwapCost <= 0) {
+        return;
+      }
+      await refundWithGuard({
+        userCreditService,
+        userId,
+        amount: faceSwapCost,
+        refundKey: faceSwapRefundKey,
+        reason,
+        metadata: {
+          requestId,
+          route: 'preview/video/generate',
+        },
+      });
+    };
+    const refundKeyframeCredits = async (reason: string): Promise<void> => {
+      if (keyframeCost <= 0) {
+        return;
+      }
+      await refundWithGuard({
+        userCreditService,
+        userId,
+        amount: keyframeCost,
+        refundKey: keyframeRefundKey,
+        reason,
+        metadata: {
+          requestId,
+          route: 'preview/video/generate',
+        },
+      });
+    };
+    const refundVideoCredits = async (reason: string): Promise<void> => {
+      if (videoCost <= 0) {
+        return;
+      }
+      await refundWithGuard({
+        userCreditService,
+        userId,
+        amount: videoCost,
+        refundKey: videoRefundKey,
+        reason,
+        metadata: {
+          requestId,
+          route: 'preview/video/generate',
+        },
+      });
+    };
 
     if (startImage && characterAssetId && faceSwapAlreadyApplied) {
       resolvedStartImage = startImage;
@@ -302,10 +388,11 @@ export const createVideoGenerateHandler = ({
           requestId,
           characterAssetId,
         });
-        return res.status(400).json({
-          success: false,
+        return sendApiError(res, req, 400, {
           error: 'Face-swap not available',
-          message: 'Character + composition reference requires face-swap service. Use startImage alone for direct i2v, or characterAssetId alone for auto-keyframe.',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details:
+            'Character + composition reference requires face-swap service. Use startImage alone for direct i2v, or characterAssetId alone for auto-keyframe.',
         });
       }
 
@@ -314,10 +401,10 @@ export const createVideoGenerateHandler = ({
         FACE_SWAP_CREDIT_COST
       );
       if (!hasFaceSwapCredits) {
-        return res.status(402).json({
-          success: false,
+        return sendApiError(res, req, 402, {
           error: 'Insufficient credits',
-          message: `Character-composition face-swap requires ${FACE_SWAP_CREDIT_COST} credits plus video credits.`,
+          code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+          details: `Character-composition face-swap requires ${FACE_SWAP_CREDIT_COST} credits plus video credits.`,
         });
       }
       faceSwapCost = FACE_SWAP_CREDIT_COST;
@@ -325,11 +412,11 @@ export const createVideoGenerateHandler = ({
       try {
         const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
         if (!characterData.primaryImageUrl) {
-          await userCreditService.refundCredits(userId, faceSwapCost);
-          return res.status(400).json({
-            success: false,
+          await refundFaceSwapCredits('video face-swap missing character reference image');
+          return sendApiError(res, req, 400, {
             error: 'Character has no reference image',
-            message: 'The character asset must have a reference image for face-swap.',
+            code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+            details: 'The character asset must have a reference image for face-swap.',
           });
         }
 
@@ -354,16 +441,16 @@ export const createVideoGenerateHandler = ({
           durationMs: swapResult.durationMs,
         });
       } catch (error) {
-        await userCreditService.refundCredits(userId, faceSwapCost);
+        await refundFaceSwapCredits('video face-swap preprocessing failed');
         const errorMessage = error instanceof Error ? error.message : String(error);
         log.error('Face-swap failed', error instanceof Error ? error : new Error(errorMessage), {
           requestId,
           characterAssetId,
         });
-        return res.status(500).json({
-          success: false,
+        return sendApiError(res, req, 500, {
           error: 'Face-swap failed',
-          message: `Failed to composite character face: ${errorMessage}`,
+          code: GENERATION_ERROR_CODES.GENERATION_FAILED,
+          details: `Failed to composite character face: ${errorMessage}`,
         });
       }
     } else if (characterAssetId && autoKeyframe && !startImage) {
@@ -390,10 +477,10 @@ export const createVideoGenerateHandler = ({
             KEYFRAME_CREDIT_COST
           );
           if (!hasKeyframeCredits) {
-            return res.status(402).json({
-              success: false,
+            return sendApiError(res, req, 402, {
               error: 'Insufficient credits',
-              message: `Character-consistent generation requires ${KEYFRAME_CREDIT_COST} credits for keyframe plus video credits.`,
+              code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+              details: `Character-consistent generation requires ${KEYFRAME_CREDIT_COST} credits for keyframe plus video credits.`,
             });
           }
           keyframeCost = KEYFRAME_CREDIT_COST;
@@ -401,11 +488,11 @@ export const createVideoGenerateHandler = ({
           const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
 
           if (!characterData.primaryImageUrl) {
-            await userCreditService.refundCredits(userId, keyframeCost);
-            return res.status(400).json({
-              success: false,
+            await refundKeyframeCredits('video keyframe missing character reference image');
+            return sendApiError(res, req, 400, {
               error: 'Character has no reference image',
-              message:
+              code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+              details:
                 'The character asset must have at least one reference image for face-consistent generation.',
             });
           }
@@ -432,7 +519,7 @@ export const createVideoGenerateHandler = ({
           });
         } catch (error) {
           if (keyframeCost > 0) {
-            await userCreditService.refundCredits(userId, keyframeCost);
+            await refundKeyframeCredits('video keyframe preprocessing failed');
           }
 
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -445,10 +532,10 @@ export const createVideoGenerateHandler = ({
             }
           );
 
-          return res.status(500).json({
-            success: false,
+          return sendApiError(res, req, 500, {
             error: 'Keyframe generation failed',
-            message: `Failed to generate character-consistent keyframe: ${errorMessage}`,
+            code: GENERATION_ERROR_CODES.GENERATION_FAILED,
+            details: `Failed to generate character-consistent keyframe: ${errorMessage}`,
           });
         }
       }
@@ -456,12 +543,8 @@ export const createVideoGenerateHandler = ({
 
     const availability = videoGenerationService.getModelAvailability(model);
     if (!availability.available) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      if (faceSwapCost > 0) {
-        await userCreditService.refundCredits(userId, faceSwapCost);
-      }
+      await refundKeyframeCredits('video model unavailable after keyframe reservation');
+      await refundFaceSwapCredits('video model unavailable after face-swap reservation');
       const snapshot = videoGenerationService.getAvailabilitySnapshot(
         Object.values(VIDEO_MODELS) as VideoModelId[]
       );
@@ -473,16 +556,22 @@ export const createVideoGenerateHandler = ({
         )
       );
       const statusCode = availability.statusCode || 503;
-      return res.status(statusCode).json({
-        success: false,
+      const availabilityDetails = [
+        availability.message || 'Requested video model is not available',
+        ...(availability.reason ? [`Reason: ${availability.reason}`] : []),
+        ...(availability.requiredKey ? [`Missing key: ${availability.requiredKey}`] : []),
+        ...(availability.resolvedModelId ? [`Resolved model: ${availability.resolvedModelId}`] : []),
+        ...(snapshot.availableModelIds.length > 0
+          ? [`Available models: ${snapshot.availableModelIds.join(', ')}`]
+          : []),
+        ...(availableCapabilityModels.length > 0
+          ? [`Available capability models: ${availableCapabilityModels.join(', ')}`]
+          : []),
+      ].join(' | ');
+      return sendApiError(res, req, statusCode, {
         error: 'Video model not available',
-        message: availability.message || 'Requested video model is not available',
-        model: model || 'auto',
-        reason: availability.reason,
-        requiredKey: availability.requiredKey,
-        resolvedModelId: availability.resolvedModelId,
-        availableModels: snapshot.availableModelIds,
-        availableCapabilityModels,
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: availabilityDetails,
       });
     }
 
@@ -498,16 +587,18 @@ export const createVideoGenerateHandler = ({
     });
 
     if (normalized.error) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      if (faceSwapCost > 0) {
-        await userCreditService.refundCredits(userId, faceSwapCost);
-      }
-      return res.status(normalized.error.status).json({
-        success: false,
+      await refundKeyframeCredits('video request normalization failed after keyframe reservation');
+      await refundFaceSwapCredits('video request normalization failed after face-swap reservation');
+      const code =
+        normalized.error.status === 503
+          ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+          : normalized.error.status >= 500
+            ? GENERATION_ERROR_CODES.GENERATION_FAILED
+            : GENERATION_ERROR_CODES.INVALID_REQUEST;
+      return sendApiError(res, req, normalized.error.status, {
         error: normalized.error.error,
-        message: normalized.error.details,
+        code,
+        ...(normalized.error.details ? { details: normalized.error.details } : {}),
       });
     }
 
@@ -534,7 +625,7 @@ export const createVideoGenerateHandler = ({
 
     // Calculate cost based on model and duration (per-second pricing)
     const durationForCost = paramDurationS ?? 8; // Default to 8 seconds if not specified
-    const videoCost = getVideoCost(costModel, durationForCost);
+    videoCost = getVideoCost(costModel, durationForCost);
 
     const size =
       typeof paramResolution === 'string' &&
@@ -593,17 +684,13 @@ export const createVideoGenerateHandler = ({
 
     const hasCredits = await userCreditService.reserveCredits(userId, videoCost);
     if (!hasCredits) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      if (faceSwapCost > 0) {
-        await userCreditService.refundCredits(userId, faceSwapCost);
-      }
+      await refundKeyframeCredits('video credits insufficient after keyframe reservation');
+      await refundFaceSwapCredits('video credits insufficient after face-swap reservation');
       const preprocessingCost = keyframeCost + faceSwapCost;
-      return res.status(402).json({
-        success: false,
+      return sendApiError(res, req, 402, {
         error: 'Insufficient credits',
-        message: `This generation requires ${videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ''}.`,
+        code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+        details: `This generation requires ${videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ''}.`,
       });
     }
 
@@ -724,17 +811,17 @@ export const createVideoGenerateHandler = ({
         ...responsePayload,
       });
     } catch (error: unknown) {
-      await userCreditService.refundCredits(userId, videoCost);
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      if (faceSwapCost > 0) {
-        await userCreditService.refundCredits(userId, faceSwapCost);
-      }
+      await refundVideoCredits('video queueing failed');
+      await refundKeyframeCredits('video queueing failed after keyframe reservation');
+      await refundFaceSwapCredits('video queueing failed after face-swap reservation');
 
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
+      const statusCode = hasStatusCode(error) ? error.statusCode : 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
+      const code =
+        statusCode === 503
+          ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+          : GENERATION_ERROR_CODES.GENERATION_FAILED;
 
       log.error('Operation failed.', errorInstance, {
         operation,
@@ -744,10 +831,10 @@ export const createVideoGenerateHandler = ({
         statusCode,
       });
 
-      return res.status(statusCode).json({
-        success: false,
+      return sendApiError(res, req, statusCode, {
         error: 'Video generation failed',
-        message: errorMessage,
+        code,
+        details: errorMessage,
       });
     }
   };
