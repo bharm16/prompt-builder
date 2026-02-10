@@ -416,6 +416,79 @@ describe('videoGenerate face swap preprocessing', () => {
     );
   });
 
+  it('refunds keyframe credits when keyframe preprocessing fails', async () => {
+    const refundCreditsMock = vi.fn(async () => true);
+
+    const handler = createVideoGenerateHandler({
+      videoGenerationService: {
+        getModelAvailability: () => ({
+          available: true,
+          resolvedModelId: 'sora-2',
+        }),
+      } as never,
+      videoJobStore: {
+        createJob: vi.fn(),
+      } as never,
+      userCreditService: {
+        reserveCredits: vi.fn(async () => true),
+        refundCredits: refundCreditsMock,
+      } as never,
+      keyframeService: {
+        generateKeyframe: vi.fn(async () => {
+          throw new Error('pulid unavailable');
+        }),
+      } as never,
+      faceSwapService: null as never,
+      assetService: {
+        getAssetForGeneration: vi.fn(async () => ({
+          primaryImageUrl: 'https://images.example.com/face.webp',
+          negativePrompt: null,
+          faceEmbedding: null,
+        })),
+      } as never,
+    });
+
+    const app = express();
+    app.use((req, _res, next) => {
+      (req as express.Request & { id?: string }).id = 'req-refund-kf-1';
+      next();
+    });
+    app.use(express.json());
+    app.post('/preview/video/generate', handler);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic portrait shot.',
+          model: 'sora-2',
+          characterAssetId: 'char-123',
+        })
+    );
+    if (!response) return;
+
+    const expectedRefundKey = buildRefundKey([
+      'preview-video',
+      'req-refund-kf-1',
+      'user-123',
+      'keyframe',
+    ]);
+
+    expect(response.status).toBe(500);
+    expect(response.body).toMatchObject({
+      error: 'Keyframe generation failed',
+      code: 'GENERATION_FAILED',
+    });
+    expect(refundCreditsMock).toHaveBeenCalledWith(
+      'user-123',
+      2,
+      expect.objectContaining({
+        refundKey: expectedRefundKey,
+        reason: 'video keyframe preprocessing failed',
+      })
+    );
+  });
+
   it('refunds video and face-swap credits when queueing fails after face-swap preprocessing', async () => {
     const refundCreditsMock = vi.fn(async () => true);
 

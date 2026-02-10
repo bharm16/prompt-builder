@@ -39,7 +39,9 @@ Distribute tests based on **where the bugs actually live** in that code, not a u
 | API routes, middleware | 50% | 30% | 20% | Most bugs are in validation and error propagation |
 | Transformation logic (span labeling, suggestions, taxonomy) | 20% | 30% | **50%** | Most bugs are in the transformation itself |
 | Services with external deps (LLM calls, Replicate, Stripe) | 40% | 30% | 30% | Failure modes are diverse and costly |
+| Credit / billing / payment flows | **50%** | 30% | 20% | Every failure path risks real money loss |
 | Pure utilities | 10% | 60% | 30% | Boundary values and edge cases dominate |
+| Video generation workflows | 30% | 30% | 40% | Model resolution + provider dispatch is the core logic |
 
 The old rule of "60% error cases always" was producing test suites that exhaustively covered `try/catch` blocks while barely touching prompt transformation logic. Match the distribution to the risk profile.
 
@@ -356,6 +358,8 @@ Snapshot tests are fine specifically for schema shape assertions where you *want
 
 Your `/api/optimize-stream` endpoint uses `createSseChannel` to send events. Test the handler by mocking `req`/`res` and asserting the SSE event sequence.
 
+**Shared SSE helpers** live in `tests/unit/test-helpers/`. SSE response mocking and event parsing are used across multiple streaming endpoint tests, so they are extracted into shared utilities rather than duplicated per test file. If you need to test any SSE endpoint, import from there first.
+
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOptimizeStreamHandler } from '@routes/optimize/handlers/optimizeStream';
@@ -463,6 +467,422 @@ describe('optimize-stream handler', () => {
 
     const handler = createOptimizeStreamHandler(mockService as any);
     await expect(handler(req, res)).resolves.not.toThrow();
+  });
+});
+```
+
+### Testing Credit & Billing Flows
+
+Credit flows are the highest-risk code in the codebase. A bug here loses real money. Test every failure path, not just the happy path.
+
+**Key principle:** The reserve → use → refund-on-failure lifecycle must be tested as a complete sequence, not just individual methods. The most dangerous bugs live in the gaps between steps.
+
+#### UserCreditService — Transactional Credit Operations
+
+`UserCreditService` wraps Firestore transactions. Mock Firestore at the transaction boundary, not at the individual document level.
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { UserCreditService } from '@services/credits/UserCreditService';
+
+// Factory for a mock Firestore that simulates transaction behavior
+function createMockFirestore(initialCredits: number) {
+  let credits = initialCredits;
+  const refunds = new Map<string, boolean>();
+
+  const mockTransaction = {
+    get: vi.fn().mockImplementation(async () => ({
+      exists: true,
+      data: () => ({ credits }),
+    })),
+    update: vi.fn().mockImplementation((_ref, updates) => {
+      // Simulate FieldValue.increment
+      if (updates.credits?._methodName === 'FieldValue.increment') {
+        credits += updates.credits.operand;
+      }
+    }),
+    set: vi.fn().mockImplementation((ref, data) => {
+      if (data.refundKey) refunds.set(data.refundKey, true);
+    }),
+  };
+
+  return {
+    runTransaction: vi.fn().mockImplementation(async (fn) => fn(mockTransaction)),
+    collection: vi.fn().mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ credits }) }),
+        update: vi.fn(),
+      }),
+    }),
+    mockTransaction,
+    getCredits: () => credits,
+    hasRefund: (key: string) => refunds.has(key),
+  };
+}
+
+describe('UserCreditService', () => {
+  describe('reserveCredits', () => {
+    it('deducts credits when balance is sufficient', async () => {
+      const db = createMockFirestore(100);
+      // ... inject db into service
+      const result = await service.reserveCredits('user-1', 30);
+      expect(result).toBe(true);
+      expect(db.getCredits()).toBe(70);
+    });
+
+    it('returns false without modifying balance when insufficient credits', async () => {
+      const db = createMockFirestore(10);
+      const result = await service.reserveCredits('user-1', 30);
+      expect(result).toBe(false);
+      expect(db.getCredits()).toBe(10); // unchanged
+    });
+
+    it('returns false for non-existent user', async () => {
+      const db = createMockFirestore(0);
+      db.mockTransaction.get.mockResolvedValue({ exists: false, data: () => null });
+      const result = await service.reserveCredits('ghost-user', 10);
+      expect(result).toBe(false);
+    });
+
+    it('throws on Firestore transaction failure', async () => {
+      const db = createMockFirestore(100);
+      db.runTransaction.mockRejectedValue(new Error('Firestore unavailable'));
+      await expect(service.reserveCredits('user-1', 10))
+        .rejects.toThrow('Failed to process credit transaction');
+    });
+  });
+
+  describe('refundCredits', () => {
+    it('skips refund for zero or negative amount', async () => {
+      const result = await service.refundCredits('user-1', 0);
+      expect(result).toBe(true);
+      // No Firestore calls made
+    });
+
+    it('uses idempotency key to prevent double refund', async () => {
+      const db = createMockFirestore(70);
+      // First refund succeeds
+      await service.refundCredits('user-1', 30, { refundKey: 'gen-abc' });
+      expect(db.getCredits()).toBe(100);
+
+      // Second refund with same key is a no-op
+      db.mockTransaction.get.mockResolvedValueOnce({ exists: true }); // refund doc exists
+      await service.refundCredits('user-1', 30, { refundKey: 'gen-abc' });
+      expect(db.getCredits()).toBe(100); // still 100, not 130
+    });
+
+    it('returns false (not throws) on Firestore failure', async () => {
+      const db = createMockFirestore(70);
+      db.runTransaction.mockRejectedValue(new Error('write conflict'));
+      const result = await service.refundCredits('user-1', 30, { refundKey: 'gen-abc' });
+      expect(result).toBe(false); // silent failure — refundGuard will retry
+    });
+  });
+});
+```
+
+#### refundWithGuard — Retry + Dead Letter Queue
+
+`refundWithGuard` wraps `UserCreditService.refundCredits` with retries and a failure store. This is the safety net. Test the retry sequence, the backoff timing, and the escalation to the failure store.
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { refundWithGuard, buildRefundKey } from '@services/credits/refundGuard';
+
+describe('refundWithGuard', () => {
+  let mockCreditService: { refundCredits: ReturnType<typeof vi.fn> };
+  let mockFailureStore: { upsertFailure: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    mockCreditService = { refundCredits: vi.fn() };
+    mockFailureStore = { upsertFailure: vi.fn().mockResolvedValue(undefined) };
+  });
+
+  it('returns true immediately on first successful refund', async () => {
+    mockCreditService.refundCredits.mockResolvedValue(true);
+
+    const result = await refundWithGuard({
+      userCreditService: mockCreditService as any,
+      userId: 'user-1',
+      amount: 30,
+      refundKey: 'gen-abc',
+      refundFailureStore: mockFailureStore as any,
+    });
+
+    expect(result).toBe(true);
+    expect(mockCreditService.refundCredits).toHaveBeenCalledTimes(1);
+    expect(mockFailureStore.upsertFailure).not.toHaveBeenCalled();
+  });
+
+  it('retries up to N times before enqueuing failure', async () => {
+    mockCreditService.refundCredits.mockResolvedValue(false); // all attempts fail
+
+    const result = await refundWithGuard({
+      userCreditService: mockCreditService as any,
+      userId: 'user-1',
+      amount: 30,
+      refundKey: 'gen-abc',
+      requestRetries: 3,
+      baseDelayMs: 1, // fast for tests
+      refundFailureStore: mockFailureStore as any,
+    });
+
+    expect(result).toBe(false);
+    expect(mockCreditService.refundCredits).toHaveBeenCalledTimes(3);
+    expect(mockFailureStore.upsertFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refundKey: 'gen-abc',
+        userId: 'user-1',
+        amount: 30,
+      }),
+    );
+  });
+
+  it('succeeds on retry after initial failures', async () => {
+    mockCreditService.refundCredits
+      .mockResolvedValueOnce(false)  // attempt 1 fails
+      .mockResolvedValueOnce(false)  // attempt 2 fails
+      .mockResolvedValueOnce(true);  // attempt 3 succeeds
+
+    const result = await refundWithGuard({
+      userCreditService: mockCreditService as any,
+      userId: 'user-1',
+      amount: 30,
+      refundKey: 'gen-abc',
+      requestRetries: 3,
+      baseDelayMs: 1,
+      refundFailureStore: mockFailureStore as any,
+    });
+
+    expect(result).toBe(true);
+    expect(mockFailureStore.upsertFailure).not.toHaveBeenCalled();
+  });
+
+  it('returns false if failure store itself fails (catastrophic path)', async () => {
+    mockCreditService.refundCredits.mockResolvedValue(false);
+    mockFailureStore.upsertFailure.mockRejectedValue(new Error('Firestore down'));
+
+    const result = await refundWithGuard({
+      userCreditService: mockCreditService as any,
+      userId: 'user-1',
+      amount: 30,
+      refundKey: 'gen-abc',
+      requestRetries: 1,
+      baseDelayMs: 1,
+      refundFailureStore: mockFailureStore as any,
+    });
+
+    expect(result).toBe(false);
+    // This is the worst case — money is lost, only logs remain.
+    // The test documents that the code handles it without crashing.
+  });
+
+  it('treats zero amount as a no-op success', async () => {
+    const result = await refundWithGuard({
+      userCreditService: mockCreditService as any,
+      userId: 'user-1',
+      amount: 0,
+      refundKey: 'gen-abc',
+      refundFailureStore: mockFailureStore as any,
+    });
+
+    expect(result).toBe(true);
+    expect(mockCreditService.refundCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildRefundKey', () => {
+  it('produces deterministic key from parts', () => {
+    const key1 = buildRefundKey(['user-1', 'gen-abc', 30]);
+    const key2 = buildRefundKey(['user-1', 'gen-abc', 30]);
+    expect(key1).toBe(key2);
+  });
+
+  it('produces different keys for different inputs', () => {
+    const key1 = buildRefundKey(['user-1', 'gen-abc']);
+    const key2 = buildRefundKey(['user-1', 'gen-xyz']);
+    expect(key1).not.toBe(key2);
+  });
+
+  it('filters null and undefined parts', () => {
+    const key1 = buildRefundKey(['user-1', null, 'gen-abc']);
+    const key2 = buildRefundKey(['user-1', 'gen-abc']);
+    expect(key1).toBe(key2);
+  });
+});
+```
+
+#### Full Lifecycle Test — Reserve → Generate → Refund
+
+This pattern tests the complete credit lifecycle as it flows through a generation route or workflow. The goal is to verify that credits are **always** accounted for, even when the generation provider crashes.
+
+```typescript
+describe('generation credit lifecycle', () => {
+  let mockCredits: {
+    reserveCredits: ReturnType<typeof vi.fn>;
+    refundCredits: ReturnType<typeof vi.fn>;
+  };
+  let mockProvider: { generate: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    mockCredits = {
+      reserveCredits: vi.fn().mockResolvedValue(true),
+      refundCredits: vi.fn().mockResolvedValue(true),
+    };
+    mockProvider = { generate: vi.fn() };
+  });
+
+  it('reserves before generation and does not refund on success', async () => {
+    mockProvider.generate.mockResolvedValue({ assetId: 'vid-1', videoUrl: '...' });
+
+    await generateWithCredits(mockCredits, mockProvider, {
+      userId: 'user-1', prompt: 'a cat', cost: 80,
+    });
+
+    expect(mockCredits.reserveCredits).toHaveBeenCalledWith('user-1', 80);
+    expect(mockCredits.refundCredits).not.toHaveBeenCalled();
+  });
+
+  it('refunds on provider failure', async () => {
+    mockProvider.generate.mockRejectedValue(new Error('GPU timeout'));
+
+    await expect(
+      generateWithCredits(mockCredits, mockProvider, {
+        userId: 'user-1', prompt: 'a cat', cost: 80,
+      }),
+    ).rejects.toThrow('GPU timeout');
+
+    expect(mockCredits.reserveCredits).toHaveBeenCalledWith('user-1', 80);
+    expect(mockCredits.refundCredits).toHaveBeenCalledWith('user-1', 80, expect.any(Object));
+  });
+
+  it('rejects generation when reservation fails (insufficient credits)', async () => {
+    mockCredits.reserveCredits.mockResolvedValue(false);
+
+    await expect(
+      generateWithCredits(mockCredits, mockProvider, {
+        userId: 'user-1', prompt: 'a cat', cost: 80,
+      }),
+    ).rejects.toThrow(/insufficient|credits/i);
+
+    expect(mockProvider.generate).not.toHaveBeenCalled(); // never started
+    expect(mockCredits.refundCredits).not.toHaveBeenCalled(); // nothing to refund
+  });
+});
+```
+
+### Testing Video Generation Workflows
+
+The `generateVideoWorkflow` function orchestrates model resolution, provider dispatch, and asset storage. Test each decision point independently.
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { generateVideoWorkflow } from '@services/video-generation/workflows/generateVideo';
+import type { VideoProviderMap } from '@services/video-generation/providers/VideoProviders';
+
+describe('generateVideoWorkflow', () => {
+  let mockProviders: VideoProviderMap;
+  let mockAssetStore: { store: ReturnType<typeof vi.fn>; getStream: ReturnType<typeof vi.fn> };
+  let mockLog: Record<string, ReturnType<typeof vi.fn>>;
+
+  beforeEach(() => {
+    mockLog = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    mockAssetStore = { store: vi.fn(), getStream: vi.fn() };
+    mockProviders = {
+      openai: {
+        generate: vi.fn().mockResolvedValue({
+          asset: { id: 'vid-1', url: 'https://...', contentType: 'video/mp4' },
+        }),
+      },
+    } as unknown as VideoProviderMap;
+  });
+
+  it('throws VIDEO_MODEL_UNAVAILABLE when model has no credentials', async () => {
+    // Empty providers = nothing available
+    await expect(
+      generateVideoWorkflow('a cat', { model: 'sora-2' }, {} as any, mockAssetStore as any, mockLog),
+    ).rejects.toMatchObject({
+      code: 'VIDEO_MODEL_UNAVAILABLE',
+    });
+  });
+
+  it('resolves provider from model ID and dispatches generation', async () => {
+    const result = await generateVideoWorkflow(
+      'a cat jumping',
+      { model: 'sora-2' },
+      mockProviders,
+      mockAssetStore as any,
+      mockLog,
+    );
+
+    expect(result.assetId).toBe('vid-1');
+    expect(mockProviders.openai.generate).toHaveBeenCalledWith(
+      'a cat jumping',
+      expect.any(String),       // resolved model ID
+      expect.any(Object),       // options
+      mockAssetStore,
+      mockLog,
+    );
+  });
+
+  it('sets inputMode to i2v when startImage is provided', async () => {
+    const result = await generateVideoWorkflow(
+      'a cat jumping',
+      { model: 'sora-2', startImage: 'https://img.example/cat.png' },
+      mockProviders,
+      mockAssetStore as any,
+      mockLog,
+    );
+
+    expect(result.inputMode).toBe('i2v');
+    expect(result.startImageUrl).toBe('https://img.example/cat.png');
+  });
+
+  it('propagates provider errors without swallowing them', async () => {
+    (mockProviders.openai.generate as ReturnType<typeof vi.fn>)
+      .mockRejectedValue(new Error('Provider rate limit'));
+
+    await expect(
+      generateVideoWorkflow('a cat', { model: 'sora-2' }, mockProviders, mockAssetStore as any, mockLog),
+    ).rejects.toThrow('Provider rate limit');
+
+    expect(mockLog.error).toHaveBeenCalled();
+  });
+});
+```
+
+### Testing Payment / Webhook Processing
+
+`PaymentService` parses `STRIPE_PRICE_CREDITS` config and handles webhook events. The parsing logic has multiple edge cases worth testing.
+
+```typescript
+describe('parsePriceCredits', () => {
+  it('parses valid JSON mapping', () => {
+    const result = parsePriceCredits('{"price_abc": 400, "price_def": 1500}');
+    expect(result).toEqual({ price_abc: 400, price_def: 1500 });
+  });
+
+  it('returns empty object for undefined input', () => {
+    expect(parsePriceCredits(undefined)).toEqual({});
+  });
+
+  it('returns empty object for invalid JSON', () => {
+    expect(parsePriceCredits('not json')).toEqual({});
+  });
+
+  it('filters entries with zero or negative credit values', () => {
+    const result = parsePriceCredits('{"good": 100, "zero": 0, "negative": -50}');
+    expect(result).toEqual({ good: 100 });
+  });
+
+  it('coerces string credit values to integers', () => {
+    const result = parsePriceCredits('{"price_abc": "400"}');
+    expect(result).toEqual({ price_abc: 400 });
+  });
+
+  it('truncates fractional credit values', () => {
+    const result = parsePriceCredits('{"price_abc": 400.7}');
+    expect(result).toEqual({ price_abc: 400 });
   });
 });
 ```
@@ -687,6 +1107,8 @@ describe('CompatibilityService', () => {
 
 ## Part 4: Test File Structure
 
+### Ordering Within a Test File
+
 Every test file follows this ordering:
 
 ```typescript
@@ -724,6 +1146,29 @@ describe('ServiceName', () => {
 
 This ordering is a guideline, not a mandate. For transformation-heavy services (span labeling, enhancement), the "core behavior" section will naturally be the largest.
 
+### Test File Location
+
+The codebase uses **two** test file locations. Follow the convention that already exists in the directory you're working in:
+
+| Location | When to use | Example |
+|----------|-------------|---------|
+| `__tests__/` subdirectory | Co-located with source, for services and modules that have their own directory | `server/src/services/credits/__tests__/UserCreditService.test.ts` |
+| `tests/unit/` (project root) | Cross-cutting tests, integration-style unit tests, tests that span multiple modules | `tests/unit/convergence-credits.test.ts` |
+
+**Rule of thumb:** If the source file lives inside a feature directory that already has a `__tests__/` folder, put the test there. If the test exercises a route handler or cross-module flow, put it in `tests/unit/`.
+
+Do not mix conventions within the same directory. If `server/src/services/credits/` already has `__tests__/`, put new credit tests there — not in `tests/unit/`.
+
+### Shared Test Helpers
+
+Shared test utilities live in `tests/unit/test-helpers/`. A helper belongs there if and only if **3+ test files** use it. Current helpers:
+
+| Helper | Purpose |
+|--------|---------|
+| `supertestSafeRequest.ts` | Wraps supertest with consistent error handling |
+
+If you create SSE mock utilities (`createMockSseResponse`, `parseSseEvents`), they should go here since multiple streaming endpoint tests need them.
+
 ---
 
 ## Part 5: By File Type Cheat Sheet
@@ -732,6 +1177,29 @@ This ordering is a guideline, not a mandate. For transformation-heavy services (
 - Test delegation: does the orchestrator call the right sub-service with the right args?
 - Test error propagation: does a sub-service failure surface correctly?
 - Test cache behavior: does cache hit skip expensive calls?
+
+### Credit / Billing Services
+- Test the full reserve → use → refund lifecycle, not just individual methods
+- Test idempotency: same refund key must not double-refund
+- Test insufficient balance: reservation must fail cleanly, generation must never start
+- Test catastrophic failure: what happens when the refund store itself is down?
+- Test edge amounts: zero credits, negative amounts, fractional amounts
+
+### Video Generation Workflows
+- Test model resolution: does `model: 'sora-2'` dispatch to the correct provider?
+- Test unavailable models: does a missing API key produce a clear error, not a crash?
+- Test input mode detection: `startImage` present → `i2v`, absent → `t2v`
+- Test provider error propagation: provider errors must surface, not be swallowed
+
+### Payment / Webhook Handlers
+- Test config parsing: valid JSON, invalid JSON, missing env var, malformed entries
+- Test value coercion: string numbers, fractional numbers, zero, negative
+- Test webhook event handling: successful events, duplicate events, malformed payloads
+
+### Middleware
+- Test request validation: invalid body → 400 with structured error
+- Test error transformation: thrown errors → correct HTTP status + `ApiError` shape
+- Test async error capture: unhandled rejections in route handlers → caught and formatted
 
 ### Hooks
 - Test state transitions: does dispatch produce the expected state?
@@ -768,6 +1236,8 @@ Before submitting any test, verify:
 | Is mock verification accompanied by an outcome assertion? | YES |
 | Are mocks fully typed (no `as unknown as`)? | YES |
 | Are examples grounded in real codebase types/services? | YES |
+| Is the test file in the correct location per the convention? | YES |
+| For credit flows: is every failure path tested for refund behavior? | YES |
 
 ---
 
@@ -782,5 +1252,12 @@ Before submitting any test, verify:
 | Span labeling service | `server/src/llm/span-labeling/SpanLabelingService.ts` |
 | Enhancement service | `server/src/services/enhancement/EnhancementService.ts` |
 | Shared taxonomy | `shared/taxonomy.ts` |
+| Credit service | `server/src/services/credits/UserCreditService.ts` |
+| Refund guard | `server/src/services/credits/refundGuard.ts` |
+| Refund failure store | `server/src/services/credits/RefundFailureStore.ts` |
+| Credit refund sweeper | `server/src/services/credits/CreditRefundSweeper.ts` |
+| Video generation workflow | `server/src/services/video-generation/workflows/generateVideo.ts` |
+| Payment service | `server/src/services/payment/PaymentService.ts` |
+| Shared test helpers | `tests/unit/test-helpers/` |
 
 *Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [STYLE_RULES.md](./STYLE_RULES.md)*
