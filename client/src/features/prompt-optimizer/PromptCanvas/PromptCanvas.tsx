@@ -23,45 +23,45 @@ import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prom
 import type {
   PromptCanvasProps,
   HighlightSnapshot,
-} from './PromptCanvas/types';
-import type { GenerationsPanelProps } from './GenerationsPanel/types';
+} from './types';
+import type { GenerationsPanelProps } from '../GenerationsPanel/types';
 
-import { useClipboard } from './hooks/useClipboard';
-import { useShareLink } from './hooks/useShareLink';
+import { useClipboard } from '../hooks/useClipboard';
+import { useShareLink } from '../hooks/useShareLink';
 import {
   escapeHTMLForMLHighlighting,
   formatTextToHTML,
-} from './utils/textFormatting';
-import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
-import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
-import { useParseResult } from './PromptCanvas/hooks/useParseResult';
-import { usePromptCanvasState } from './PromptCanvas/hooks/usePromptCanvasState';
-import { usePromptStatus } from './PromptCanvas/hooks/usePromptStatus';
-import { useSpanSelectionEffects } from './PromptCanvas/hooks/useSpanSelectionEffects';
-import { useCoherenceSpanMarkers } from './PromptCanvas/hooks/useCoherenceSpanMarkers';
-import { useSuggestionSelection } from './PromptCanvas/hooks/useSuggestionSelection';
-import { useTextSelection } from './PromptCanvas/hooks/useTextSelection';
-import { useEditorContent } from './PromptCanvas/hooks/useEditorContent';
-import { useKeyboardShortcuts } from './PromptCanvas/hooks/useKeyboardShortcuts';
-import { usePromptExport } from './PromptCanvas/hooks/usePromptExport';
-import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInteractions';
-import { useShotGenerations } from './PromptCanvas/hooks/useShotGenerations';
-import { useTriggerValidation } from './PromptCanvas/hooks/useTriggerValidation';
-import { useInlineSuggestionState } from './PromptCanvas/hooks/useInlineSuggestionState';
-import { useVersionManagement } from './PromptCanvas/hooks/useVersionManagement';
-import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
-import { PromptCanvasView } from './PromptCanvas/components/PromptCanvasView';
-import { useGenerationControlsStoreState } from './context/GenerationControlsStore';
-import { useWorkspaceSession } from './context/WorkspaceSessionContext';
-import { AI_MODEL_IDS, AI_MODEL_LABELS } from './components/constants';
+} from '../utils/textFormatting';
+import { useSpanDataConversion } from './hooks/useSpanDataConversion';
+import { useSuggestionDetection } from './hooks/useSuggestionDetection';
+import { useParseResult } from './hooks/useParseResult';
+import { usePromptCanvasState } from './hooks/usePromptCanvasState';
+import { usePromptStatus } from './hooks/usePromptStatus';
+import { useSpanSelectionEffects } from './hooks/useSpanSelectionEffects';
+import { useCoherenceSpanMarkers } from './hooks/useCoherenceSpanMarkers';
+import { useSuggestionSelection } from './hooks/useSuggestionSelection';
+import { useTextSelection } from './hooks/useTextSelection';
+import { useEditorContent } from './hooks/useEditorContent';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePromptExport } from './hooks/usePromptExport';
+import { useLockedSpanInteractions } from './hooks/useLockedSpanInteractions';
+import { useShotGenerations } from './hooks/useShotGenerations';
+import { useTriggerValidation } from './hooks/useTriggerValidation';
+import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
+import { useVersionManagement } from './hooks/useVersionManagement';
+import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
+import { PromptCanvasView } from './components/PromptCanvasView';
+import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
+import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { AI_MODEL_IDS, AI_MODEL_LABELS } from '../components/constants';
 import {
   usePromptActions,
   usePromptConfig,
   usePromptHighlights,
   usePromptServices,
   usePromptSession,
-} from './context/PromptStateContext';
-import { serializeKeyframes } from './utils/keyframeTransforms';
+} from '../context/PromptStateContext';
+import { serializeKeyframes } from '../utils/keyframeTransforms';
 
 // Main PromptCanvas Component
 export function PromptCanvas({

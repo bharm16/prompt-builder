@@ -15,10 +15,13 @@
 // IMPORTANT: Import instrument.mjs FIRST, before any other imports
 import './instrument.mjs';
 
+import { existsSync, readdirSync } from 'node:fs';
 import dotenv from 'dotenv';
 import { validateEnv } from '@utils/validateEnv';
 import { logger } from '@infrastructure/Logger';
 import { configureServices, initializeServices } from '@config/services.config';
+import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig';
+import { modelDirPath, modelPath } from '@llm/span-labeling/nlp/paths';
 import { createApp } from './src/app.js';
 import { startServer, setupGracefulShutdown } from './src/server.js';
 
@@ -27,6 +30,32 @@ dotenv.config();
 
 const toError = (error: unknown): Error =>
   error instanceof Error ? error : new Error(String(error));
+
+function assertSpanLabelingModelsPresent(): void {
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const inTestMode = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+  const shouldCheck =
+    !promptOutputOnly &&
+    !inTestMode &&
+    NEURO_SYMBOLIC.ENABLED &&
+    Boolean(NEURO_SYMBOLIC.GLINER?.ENABLED);
+
+  if (!shouldCheck) {
+    return;
+  }
+
+  const hasModelFile = existsSync(modelPath);
+  const hasModelDirectory = existsSync(modelDirPath);
+  const hasAnyModelAssets = hasModelDirectory && readdirSync(modelDirPath).length > 0;
+
+  if (hasModelFile && hasAnyModelAssets) {
+    return;
+  }
+
+  throw new Error(
+    `Span-labeling model assets are missing in server/src/llm/span-labeling/nlp/models/. Run: npm run download-models`
+  );
+}
 
 /**
  * Bootstrap the application
@@ -39,6 +68,7 @@ async function bootstrap() {
     logger.info('Validating environment variables...');
     validateEnv();
     logger.info('✅ Environment variables validated successfully');
+    assertSpanLabelingModelsPresent();
 
     // ========================================================================
     // 2. Configure Dependency Injection Container

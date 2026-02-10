@@ -126,6 +126,8 @@
     "server": "tsx --tsconfig server/tsconfig.json server/index.ts",
     "server:e2e": "NODE_ENV=test tsx --tsconfig server/tsconfig.json server/index.ts",
     "dev:e2e": "NODE_ENV=test tsx --tsconfig server/tsconfig.json server/index.ts & vite --config config/build/vite.config.ts",
+    "download-models": "bash scripts/download-models.sh",
+    "upload-models": "bash scripts/upload-models.sh",
     "start": "tsx scripts/dev/start.ts",
     "restart": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true && lsof -ti :5173 | xargs kill -9 2>/dev/null || true && npm start",
     "verify-keys": "tsx scripts/verify-api-keys.ts",
