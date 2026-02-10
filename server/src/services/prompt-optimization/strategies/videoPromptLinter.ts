@@ -60,6 +60,10 @@ function looksLikePresentParticipleAction(action: string): boolean {
   return /ing$/i.test(firstToken);
 }
 
+function tokensMatch(left: string, right: string): boolean {
+  return left.localeCompare(right) === 0;
+}
+
 function findSecondaryActionVerbs(action: string): string[] {
   const tokens = (action.toLowerCase().match(/\b[a-z']+\b/g) || []).filter(Boolean);
   if (tokens.length <= 1) return [];
@@ -70,7 +74,7 @@ function findSecondaryActionVerbs(action: string): string[] {
   for (let i = 1; i < tokens.length; i++) {
     const token = tokens[i] || '';
     if (!token.endsWith('ing')) continue;
-    if (token === first) continue;
+    if (tokensMatch(token, first)) continue;
     if (ALLOWED_SECONDARY_ACTION_ING.has(token)) continue;
     if (SECONDARY_ING_NOUNS.has(token)) continue;
     const prev = tokens[i - 1] || '';

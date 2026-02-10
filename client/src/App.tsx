@@ -4,7 +4,6 @@ import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import { ToastProvider } from './components/Toast';
 import { AppShellProvider } from './contexts/AppShellContext';
-import { MainWorkspace } from './components/layout/MainWorkspace';
 import { LoadingDots } from './components/LoadingDots';
 import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
 import { apiClient } from './services/ApiClient';
@@ -27,6 +26,7 @@ const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').the
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
 const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
 const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
+const MainWorkspace = lazy(() => import('./components/layout/MainWorkspace').then((module) => ({ default: module.MainWorkspace })));
 
 function RouteFallback(): React.ReactElement {
   return (

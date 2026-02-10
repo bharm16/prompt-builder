@@ -34,32 +34,39 @@ function getOpenAIEnhancementSchema(isPlaceholder: boolean): JSONSchema {
   return {
     name: 'enhancement_suggestions',
     strict: true,
-    type: 'array',
-    items: {
-      type: 'object',
-      required,
-      additionalProperties: false,
-      properties: {
-        text: {
-          type: 'string',
-          description: 'Replacement phrase (2-20 words). Must fit grammatically in surrounding context. No leading/trailing punctuation unless part of the phrase.',
-        },
-        category: {
-          type: 'string',
-          description: 'Taxonomy category for the suggestion. Valid values: subject, action, camera, lighting, style, technical, shot, environment, audio, mood.',
-          enum: ['subject', 'action', 'camera', 'lighting', 'style', 'technical', 'shot', 'environment', 'audio', 'mood'],
-        },
-        explanation: {
-          type: 'string',
-          description: 'Brief explanation of visual effect or why this replacement works (under 15 words).',
-        },
-        slot: {
-          type: 'string',
-          description: 'Optional: Specific slot within category (e.g., subject.appearance, camera.movement).',
-        },
-        visual_focus: {
-          type: 'string',
-          description: 'Optional: What the camera should focus on with this suggestion.',
+    type: 'object',
+    required: ['suggestions'],
+    additionalProperties: false,
+    properties: {
+      suggestions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required,
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: 'string',
+              description: 'Replacement phrase (2-20 words). Must fit grammatically in surrounding context. No leading/trailing punctuation unless part of the phrase.',
+            },
+            category: {
+              type: 'string',
+              description: 'Taxonomy category for the suggestion. Valid values: subject, action, camera, lighting, style, technical, shot, environment, audio, mood.',
+              enum: ['subject', 'action', 'camera', 'lighting', 'style', 'technical', 'shot', 'environment', 'audio', 'mood'],
+            },
+            explanation: {
+              type: 'string',
+              description: 'Brief explanation of visual effect or why this replacement works (under 15 words).',
+            },
+            slot: {
+              type: 'string',
+              description: 'Optional: Specific slot within category (e.g., subject.appearance, camera.movement).',
+            },
+            visual_focus: {
+              type: 'string',
+              description: 'Optional: What the camera should focus on with this suggestion.',
+            },
+          },
         },
       },
     },

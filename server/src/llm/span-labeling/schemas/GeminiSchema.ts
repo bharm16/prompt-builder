@@ -246,6 +246,7 @@ export const GEMINI_JSON_SCHEMA = {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           text: { type: "string" },
           role: { 
@@ -259,6 +260,7 @@ export const GEMINI_JSON_SCHEMA = {
     },
     meta: {
       type: "object",
+      additionalProperties: false,
       properties: {
         version: { type: "string" },
         notes: { type: "string" }
@@ -267,5 +269,6 @@ export const GEMINI_JSON_SCHEMA = {
     },
     isAdversarial: { type: "boolean" }
   },
-  required: ["analysis_trace", "spans", "meta"]
+  required: ["analysis_trace", "spans", "meta", "isAdversarial"],
+  additionalProperties: false
 };

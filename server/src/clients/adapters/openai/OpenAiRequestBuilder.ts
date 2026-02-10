@@ -5,6 +5,7 @@
 import type { CompletionOptions, OpenAiPayload } from './types.ts';
 import { OpenAiMessageBuilder } from './OpenAiMessageBuilder.ts';
 import { hashString } from '@utils/hash';
+import { normalizeOpenAiSchema } from './normalizeSchema.ts';
 
 interface RequestBuilderConfig {
   defaultModel: string;
@@ -52,12 +53,13 @@ export class OpenAiRequestBuilder {
     }
 
     if (options.schema) {
+      const { name, schema } = normalizeOpenAiSchema(options.schema);
       payload.response_format = {
         type: 'json_schema',
         json_schema: {
-          name: 'structured_response',
+          name,
           strict: true,
-          schema: options.schema,
+          schema,
         },
       };
     } else if (options.responseFormat) {

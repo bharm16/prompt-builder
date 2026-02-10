@@ -3,10 +3,20 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 E2E_DIR="${ROOT_DIR}/tests/e2e"
+IS_CI="${CI:-false}"
+
+fail_or_skip() {
+  local message="$1"
+  if [ "${IS_CI}" = "true" ]; then
+    echo "[test:e2e] ${message} Failing because CI requires executable e2e coverage."
+    exit 1
+  fi
+  echo "[test:e2e] ${message} Skipping e2e suite."
+  exit 0
+}
 
 if [ ! -d "${E2E_DIR}" ]; then
-  echo "[test:e2e] No tests/e2e directory found. Skipping e2e suite."
-  exit 0
+  fail_or_skip "No tests/e2e directory found."
 fi
 
 has_specs=0
@@ -26,8 +36,7 @@ done < <(
 )
 
 if [ "${has_specs}" -eq 0 ]; then
-  echo "[test:e2e] No e2e spec files found in tests/e2e. Skipping e2e suite."
-  exit 0
+  fail_or_skip "No e2e spec files found in tests/e2e."
 fi
 
 cd "${ROOT_DIR}"

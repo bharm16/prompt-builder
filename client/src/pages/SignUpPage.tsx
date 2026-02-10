@@ -48,6 +48,20 @@ function mapAuthError(error: unknown): string {
   }
 }
 
+function secureEquals(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+
+  for (let i = 0; i < maxLength; i++) {
+    diff |= (leftBytes[i] ?? 0) ^ (rightBytes[i] ?? 0);
+  }
+
+  return diff === 0;
+}
+
 export function SignUpPage(): React.ReactElement {
   const toast = useToast();
   const navigate = useNavigate();
@@ -108,7 +122,7 @@ export function SignUpPage(): React.ReactElement {
         setError('Enter your name (optional), email, and password.');
         return;
       }
-      if (password !== confirmPassword) {
+      if (!secureEquals(password, confirmPassword)) {
         setError('Passwords do not match.');
         return;
       }

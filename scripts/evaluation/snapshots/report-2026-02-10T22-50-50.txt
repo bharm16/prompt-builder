@@ -1,0 +1,81 @@
+Evaluation Report - 2026-02-10T22:50:50.008Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (25 prompts evaluated):
+  Average Score:      16.04/25
+  Average Span Count: 6.4
+  Errors:             2
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    ██ 1
+  good (18-22)         ██████ 4
+  acceptable (13-17)   █████████████████████████████ 18
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - 6s (23x)
+  - 16:9 (21x)
+  - 24fps (17x)
+  - 60fps (6x)
+  - Low-Angle Shot (3x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 10968 | P50: 11731 | P95: 14167 | P99: 16702
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: 6s (technical), 16:9 (technical), 24fps (technical), 6s (technical), 16:9 (technical)
+  IMPORTANT: Lively music with dog barks and laughter (audio), Low-angle pan with 50mm lens at f/2.8 (technical), Soft side sunlight with warm highlights (technical), Shot on Kodak Portra 400 stock (technical), Excited dog barks and wind rustling leaves (audio)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - technical: 86
+  - lighting: 30
+  - audio: 23
+  - camera: 19
+  - style: 14
+  - shot: 6
+  - environment: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         1.26 / 1.83
+  subject      1.57 / 2.22
+  action       1.00 / 1.76
+  environment  1.00 / 1.52
+  lighting     1.06 / 1.81
+  camera       1.00 / 1.05
+  style        1.00 / 1.20
+  technical    2.00 / 3.00
+  audio        0.00 / 0.00
+
+TOP TAXONOMY ERRORS:
+  - shot.type → camera.movement (3x) (e.g. "handheld from a low angle with shallow depth of field", "slow dolly in over-the-shoulder with shallow depth of field (f/1.8-f/2.8)", "tracking shot at eye level with selective focus (f/4-f/5.6)")
+  - camera.lens → camera.movement (2x) (e.g. "static tripod at eye level with shallow depth of field (f/1.8-f/2.8)", "static tripod at eye level with shallow depth of field (f/1.8-f/2.8)")
+  - subject.appearance → subject.appearance (1x) (e.g. "vibrant orange stripes, energetic movements")
+  - camera.movement → camera (1x) (e.g. "static tripod at eye level with shallow depth of field (f/1.8-f/2.8)")
+  - camera.movement → camera.angle (1x) (e.g. "tracking shot at eye level with selective focus (f/4-f/5.6)")
+
+ERRORS BY SECTION:
+  main            missed 3, falsePositives 0
+  technicalSpecs  missed 148, falsePositives 0
+  alternatives    missed 28, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   0.0% (0/160)
+  medium 0.0% (0/0)
+  low    0.0% (0/0)
+  Notes: No false positives to analyze. No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [13/25] "storyboard with sketches panning from left to right"
+    Notes: The extraction missed several critical technical specifications and audio elements, leading to low coverage scores. Some elements were misclassified, affecting taxonomy scores.
+  [14/25] "man jogging through a park"
+    Notes: The extraction missed several critical technical specifications and audio elements, which are essential for a comprehensive understanding of the video prompt. The taxonomy role for the camera movement was incorrectly assigned, and the coverage for shot types was insufficient.
+  [14/25] "man cooking a meal in a kitchen"
+    Notes: The extraction missed several critical technical specifications and audio elements, which are essential for a comprehensive understanding of the video prompt. There was also a taxonomy error in classifying a camera movement as a shot type.
+
+================================================================================

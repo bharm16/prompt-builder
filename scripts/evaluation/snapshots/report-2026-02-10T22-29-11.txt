@@ -1,0 +1,79 @@
+Evaluation Report - 2026-02-10T22:29:11.983Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (2 prompts evaluated):
+  Average Score:      22.5/25
+  Average Span Count: 22.5
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    ████████████████████ 1
+  good (18-22)         ████████████████████ 1
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - low-angle shot (1x)
+  - golden hour lighting (1x)
+  - chef's focus and skill (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - Natural sunlight from windows, soft and warm (1x)
+  - rolled-up shirt sleeves, wooden spoon (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 4046 | P50: 4849 | P95: 4849 | P99: 4849
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: low-angle shot (camera), golden hour lighting (lighting), chef's focus and skill (subject)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - camera: 1
+  - lighting: 1
+  - subject: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         5.00 / 5.00
+  subject      4.50 / 4.50
+  action       5.00 / 5.00
+  environment  5.00 / 5.00
+  lighting     4.50 / 4.50
+  camera       4.50 / 4.50
+  style        5.00 / 5.00
+  technical    5.00 / 5.00
+  audio        5.00 / 5.00
+
+FALSE POSITIVE REASONS:
+  - duplicate: 1
+      e.g.: Natural sunlight from windows, soft and warm
+  - other: 1
+      e.g.: rolled-up shirt sleeves, wooden spoon
+
+TOP TAXONOMY ERRORS:
+  - subject.appearance → subject.wardrobe (1x) (e.g. "chef's knife")
+
+ERRORS BY SECTION:
+  main            missed 0, falsePositives 1
+  technicalSpecs  missed 0, falsePositives 1
+  alternatives    missed 3, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   4.4% (2/45)
+    Failures: "Natural sunlight from windows, soft and warm" (lighting.source), "rolled-up shirt sleeves, wooden spoon" (subject.wardrobe)
+  medium 0.0% (0/0)
+  low    0.0% (0/0)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [22/25] "man cooking a meal in a kitchen"
+    Notes: The extraction was mostly accurate, with a few minor issues. The 'chef's knife' was misclassified as 'subject.appearance' instead of 'subject.wardrobe'. The 'rolled-up shirt sleeves, wooden spoon' span was overly broad, combining wardrobe and object. The 'chef's focus and skill' was missed, which is important for capturing the subject's emotion.
+  [23/25] "dog, barking, at home"
+    Notes: The extraction was mostly accurate, with comprehensive coverage of the main and technical specs sections. However, it missed some elements in the alternative approaches section, such as 'low-angle shot' and 'golden hour lighting'. There was a duplicate extraction for lighting in the technical specs. Overall, the taxonomy and granularity were handled well.
+
+================================================================================

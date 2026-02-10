@@ -28,8 +28,13 @@ export class Logger implements ILogger {
   private appRoot: string;
 
   constructor(config: LoggerConfig = {}) {
-    // Default to 'debug' in development, 'info' in production (Requirement 8.1, 8.2)
-    const defaultLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+    // Keep test output quiet by default; development stays verbose.
+    const defaultLevel =
+      process.env.NODE_ENV === 'production'
+        ? 'info'
+        : process.env.NODE_ENV === 'test'
+          ? 'warn'
+          : 'debug';
     const includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
     const stackLevels = config.logStackLevels?.length
       ? config.logStackLevels

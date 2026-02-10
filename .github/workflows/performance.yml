@@ -51,24 +51,93 @@ jobs:
           sudo mv k6-v0.48.0-linux-amd64/k6 /usr/local/bin/
 
       - name: Run baseline load test
-        run: k6 run --out json=baseline-results.json load-tests/k6-basic.js
-        continue-on-error: true
+        run: npm run test:load -- --summary-export=baseline-summary.json
 
       - name: Run stress test
-        run: k6 run --out json=stress-results.json load-tests/k6-stress.js
-        continue-on-error: true
+        run: npm run test:load:stress -- --summary-export=stress-summary.json
 
-      - name: Parse k6 results
+      - name: Parse k6 summaries
         run: |
           echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### Baseline Test" >> $GITHUB_STEP_SUMMARY
-          k6 inspect baseline-results.json | grep -E "(http_req_duration|http_reqs)" >> $GITHUB_STEP_SUMMARY || true
+          node -e '
+            const fs = require("fs");
+            const summary = JSON.parse(fs.readFileSync("baseline-summary.json", "utf8"));
+            const p95 = summary?.metrics?.http_req_duration?.values?.["p(95)"];
+            const failedRate = summary?.metrics?.http_req_failed?.values?.rate;
+            console.log(`- p95 duration: ${typeof p95 === "number" ? `${p95.toFixed(2)}ms` : "n/a"}`);
+            console.log(`- failed request rate: ${typeof failedRate === "number" ? (failedRate * 100).toFixed(2) + "%" : "n/a"}`);
+          ' >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Stress Test" >> $GITHUB_STEP_SUMMARY
-          k6 inspect stress-results.json | grep -E "(http_req_duration|http_reqs)" >> $GITHUB_STEP_SUMMARY || true
+          node -e '
+            const fs = require("fs");
+            const summary = JSON.parse(fs.readFileSync("stress-summary.json", "utf8"));
+            const p95 = summary?.metrics?.http_req_duration?.values?.["p(95)"];
+            const failedRate = summary?.metrics?.http_req_failed?.values?.rate;
+            console.log(`- p95 duration: ${typeof p95 === "number" ? `${p95.toFixed(2)}ms` : "n/a"}`);
+            console.log(`- failed request rate: ${typeof failedRate === "number" ? (failedRate * 100).toFixed(2) + "%" : "n/a"}`);
+          ' >> $GITHUB_STEP_SUMMARY
+
+      - name: Enforce performance thresholds
+        run: |
+          node -e '
+            const fs = require("fs");
+
+            const baseline = JSON.parse(fs.readFileSync("baseline-summary.json", "utf8"));
+            const stress = JSON.parse(fs.readFileSync("stress-summary.json", "utf8"));
+
+            const getP95 = (summary) => summary?.metrics?.http_req_duration?.values?.["p(95)"];
+            const getFailedRate = (summary) => summary?.metrics?.http_req_failed?.values?.rate;
+
+            const baselineP95 = getP95(baseline);
+            const stressP95 = getP95(stress);
+            const baselineFailedRate = getFailedRate(baseline);
+            const stressFailedRate = getFailedRate(stress);
+
+            const failures = [];
+
+            if (!Number.isFinite(baselineP95)) failures.push("Baseline p95 duration is missing.");
+            if (!Number.isFinite(stressP95)) failures.push("Stress p95 duration is missing.");
+            if (!Number.isFinite(baselineFailedRate)) failures.push("Baseline failed-request rate is missing.");
+            if (!Number.isFinite(stressFailedRate)) failures.push("Stress failed-request rate is missing.");
+
+            if (Number.isFinite(baselineP95) && baselineP95 > 900) {
+              failures.push(`Baseline p95 ${baselineP95.toFixed(2)}ms exceeded 900ms.`);
+            }
+            if (Number.isFinite(stressP95) && stressP95 > 1400) {
+              failures.push(`Stress p95 ${stressP95.toFixed(2)}ms exceeded 1400ms.`);
+            }
+            if (Number.isFinite(baselineFailedRate) && baselineFailedRate >= 0.01) {
+              failures.push(`Baseline failure rate ${(baselineFailedRate * 100).toFixed(2)}% exceeded 1.00%.`);
+            }
+            if (Number.isFinite(stressFailedRate) && stressFailedRate >= 0.03) {
+              failures.push(`Stress failure rate ${(stressFailedRate * 100).toFixed(2)}% exceeded 3.00%.`);
+            }
+            if (
+              Number.isFinite(baselineP95) &&
+              baselineP95 > 0 &&
+              Number.isFinite(stressP95)
+            ) {
+              const regressionRatio = stressP95 / baselineP95;
+              if (regressionRatio > 1.9) {
+                failures.push(`Stress p95 regressed to ${(regressionRatio * 100).toFixed(1)}% of baseline (>190%).`);
+              }
+            }
+
+            if (failures.length > 0) {
+              console.error("\\nPerformance gate failed:");
+              for (const failure of failures) {
+                console.error(`- ${failure}`);
+              }
+              process.exit(1);
+            }
+
+            console.log("Performance thresholds passed.");
+          '
 
       - name: Upload k6 results
         uses: actions/upload-artifact@v4
@@ -76,19 +145,9 @@ jobs:
         with:
           name: k6-results
           path: |
-            baseline-results.json
-            stress-results.json
+            baseline-summary.json
+            stress-summary.json
           retention-days: 30
-
-      - name: Analyze performance regression
-        run: |
-          # Download baseline from main branch
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Comparing performance with main branch..."
-            # This would fetch previous baseline and compare
-            # For now, just check thresholds
-            echo "Performance comparison not yet implemented"
-          fi
 
       - name: Cleanup
         if: always()

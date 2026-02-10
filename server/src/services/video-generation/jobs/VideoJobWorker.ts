@@ -88,6 +88,7 @@ export class VideoJobWorker {
     }
     this.isTicking = true;
     let claimedJobs = 0;
+    let shouldScheduleNextTick = false;
     try {
       while (this.activeCount < this.maxConcurrent) {
         const job = await this.jobStore.claimNextJob(this.workerId, this.leaseMs);
@@ -109,18 +110,20 @@ export class VideoJobWorker {
       });
     } finally {
       this.isTicking = false;
-      if (!this.isRunning) {
-        return;
+      shouldScheduleNextTick = this.isRunning;
+      if (shouldScheduleNextTick) {
+        if (claimedJobs === 0) {
+          this.currentPollIntervalMs = Math.min(
+            this.maxPollIntervalMs,
+            Math.round(this.currentPollIntervalMs * this.pollBackoffFactor)
+          );
+        } else {
+          this.currentPollIntervalMs = this.basePollIntervalMs;
+        }
       }
+    }
 
-      if (claimedJobs === 0) {
-        this.currentPollIntervalMs = Math.min(
-          this.maxPollIntervalMs,
-          Math.round(this.currentPollIntervalMs * this.pollBackoffFactor)
-        );
-      } else {
-        this.currentPollIntervalMs = this.basePollIntervalMs;
-      }
+    if (shouldScheduleNextTick) {
       this.scheduleNextTick(this.currentPollIntervalMs);
     }
   }

@@ -5,17 +5,6 @@
 
 export const CATEGORY_GUIDANCE = {
   /**
-   * Subject-specific guidance
-   */
-  subject: [
-    'Person type: specific occupation, age group, character archetype',
-    'Object type: vehicle, tool, artifact, natural object with defining characteristics',
-    'Animal type: species, breed, age, distinctive markings',
-    'Identity markers: 2-3 key identifiers that make the subject recognizable',
-    'Avoid vague terms: use "young painter" not "person", "bengal cat" not "cat"',
-  ],
-
-  /**
    * Lighting-specific guidance
    */
   lighting: [
@@ -42,6 +31,11 @@ export const CATEGORY_GUIDANCE = {
    * Subject/Character-specific guidance
    */
   subject: [
+    'Person type: specific occupation, age group, character archetype',
+    'Object type: vehicle, tool, artifact, natural object with defining characteristics',
+    'Animal type: species, breed, age, distinctive markings',
+    'Identity markers: 2-3 key identifiers that make the subject recognizable',
+    'Avoid vague terms: use "young painter" not "person", "bengal cat" not "cat"',
     'Physical characteristics: 2-3 specific, observable traits (age markers, build, distinctive features)',
     'Facial details: expression, eye contact, micro-expressions, emotional tells',
     'Posture and gesture: specific body language, stance, hand positions',
@@ -154,4 +148,3 @@ export const GUIDANCE_MAPPING = {
   technical: 'technical',
   spec: 'technical',
 };
-

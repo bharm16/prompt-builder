@@ -53,11 +53,6 @@ export const PromptTopBar = ({
   const { selectedModel, setSelectedModel } = usePromptConfig();
   const { promptOptimizer } = usePromptServices();
 
-  // Hide when brainstorm modal is open
-  if (showBrainstorm) {
-    return null;
-  }
-
   const debug = useDebugLogger('PromptTopBar');
   const localTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = inputRef ?? localTextareaRef;
@@ -276,6 +271,11 @@ export const PromptTopBar = ({
       showResults,
     ]
   );
+
+  // Hide when brainstorm modal is open.
+  if (showBrainstorm) {
+    return null;
+  }
 
   return (
     <header
