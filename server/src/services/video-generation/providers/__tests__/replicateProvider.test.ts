@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildReplicateInput, generateReplicateVideo } from '../replicateProvider';
-import type { VideoModelId } from '../../types';
+import type { VideoModelId } from '@services/video-generation/types';
 
 describe('buildReplicateInput', () => {
   it('includes a rounded seed when provided', () => {

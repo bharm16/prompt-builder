@@ -1,0 +1,105 @@
+import { describe, expect, it, vi } from 'vitest';
+import { VIDEO_MODELS } from '@config/modelConfig';
+import {
+  isKlingModelId,
+  isLumaModelId,
+  isOpenAISoraModelId,
+  isVeoModelId,
+  resolveGenerationModelId,
+  resolveGenerationModelSelection,
+  resolvePromptModelId,
+  resolveProviderForGenerationModel,
+} from '../ModelRegistry';
+
+describe('ModelRegistry', () => {
+  it('resolves default generation model when selection is empty/auto', () => {
+    expect(resolveGenerationModelSelection(undefined)).toEqual({
+      modelId: VIDEO_MODELS.PRO,
+      resolvedBy: 'default',
+    });
+    expect(resolveGenerationModelSelection('auto')).toEqual({
+      modelId: VIDEO_MODELS.PRO,
+      resolvedBy: 'default',
+    });
+    expect(resolveGenerationModelSelection('  ')).toEqual({
+      modelId: VIDEO_MODELS.PRO,
+      resolvedBy: 'default',
+    });
+  });
+
+  it('resolves model keys and aliases to canonical ids', () => {
+    expect(resolveGenerationModelSelection('SORA_2')).toMatchObject({
+      modelId: VIDEO_MODELS.SORA_2,
+      resolvedBy: 'key',
+    });
+
+    expect(resolveGenerationModelSelection('sora')).toMatchObject({
+      modelId: VIDEO_MODELS.SORA_2,
+      resolvedBy: 'alias',
+    });
+
+    expect(resolveGenerationModelSelection('veo-3')).toMatchObject({
+      modelId: VIDEO_MODELS.VEO_3,
+      resolvedBy: 'alias',
+    });
+  });
+
+  it('resolves direct canonical model id as resolvedBy=id', () => {
+    expect(resolveGenerationModelSelection(VIDEO_MODELS.KLING_V2_1)).toEqual({
+      modelId: VIDEO_MODELS.KLING_V2_1,
+      resolvedBy: 'id',
+      requested: VIDEO_MODELS.KLING_V2_1,
+    });
+  });
+
+  it('falls back to default and logs warning for unknown model selection', () => {
+    const warn = vi.fn();
+    const result = resolveGenerationModelSelection('non-existent-model', { warn });
+
+    expect(result).toEqual({
+      modelId: VIDEO_MODELS.PRO,
+      resolvedBy: 'default',
+      requested: 'non-existent-model',
+    });
+    expect(warn).toHaveBeenCalledWith(
+      'Unknown video model requested; falling back to default',
+      { model: 'non-existent-model' }
+    );
+  });
+
+  it('returns generation model id directly via helper', () => {
+    expect(resolveGenerationModelId('sora')).toBe(VIDEO_MODELS.SORA_2);
+    expect(resolveGenerationModelId('wan-2.5')).toBe(VIDEO_MODELS.DRAFT_I2V_WAN_2_5);
+  });
+
+  it('resolves prompt model aliases and passthrough values', () => {
+    expect(resolvePromptModelId('kling-v2-1-master')).toBe('kling-26');
+    expect(resolvePromptModelId('veo-3')).toBe('veo-4');
+    expect(resolvePromptModelId(' custom-model ')).toBe('custom-model');
+    expect(resolvePromptModelId(undefined)).toBeNull();
+    expect(resolvePromptModelId('')).toBeNull();
+  });
+
+  it('exposes model family type guards', () => {
+    expect(isOpenAISoraModelId(VIDEO_MODELS.SORA_2)).toBe(true);
+    expect(isOpenAISoraModelId(VIDEO_MODELS.SORA_2_PRO)).toBe(true);
+    expect(isOpenAISoraModelId(VIDEO_MODELS.PRO)).toBe(false);
+
+    expect(isLumaModelId(VIDEO_MODELS.LUMA_RAY3)).toBe(true);
+    expect(isLumaModelId(VIDEO_MODELS.SORA_2)).toBe(false);
+
+    expect(isKlingModelId(VIDEO_MODELS.KLING_V2_1)).toBe(true);
+    expect(isKlingModelId(VIDEO_MODELS.PRO)).toBe(false);
+
+    expect(isVeoModelId(VIDEO_MODELS.VEO_3)).toBe(true);
+    expect(isVeoModelId(VIDEO_MODELS.SORA_2)).toBe(false);
+  });
+
+  it('maps canonical generation model ids to provider ids', () => {
+    expect(resolveProviderForGenerationModel(VIDEO_MODELS.SORA_2)).toBe('openai');
+    expect(resolveProviderForGenerationModel(VIDEO_MODELS.LUMA_RAY3)).toBe('luma');
+    expect(resolveProviderForGenerationModel(VIDEO_MODELS.KLING_V2_1)).toBe('kling');
+    expect(resolveProviderForGenerationModel(VIDEO_MODELS.VEO_3)).toBe('gemini');
+    expect(resolveProviderForGenerationModel(VIDEO_MODELS.PRO)).toBe('replicate');
+  });
+});

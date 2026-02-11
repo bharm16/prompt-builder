@@ -45,6 +45,32 @@ describe('ModelScoringService', () => {
       expect(factors).toContain('motionComplexity');
       expect(score.overallScore).toBeGreaterThan(0);
     });
+
+    it('uses default mode boost when boost values are missing', () => {
+      const requirements = withRequirements({
+        motion: { ...BASE_REQUIREMENTS.motion, hasMorphing: true },
+      });
+      const capabilitiesWithoutBoost = {
+        ...baseCapabilities,
+        i2vBoost: undefined,
+        t2vBoost: undefined,
+      } as unknown as ModelCapabilities;
+
+      const t2vScore = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        capabilitiesWithoutBoost,
+        requirements,
+        't2v'
+      );
+      const i2vScore = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        capabilitiesWithoutBoost,
+        requirements,
+        'i2v'
+      );
+
+      expect(i2vScore.overallScore).toBe(t2vScore.overallScore);
+    });
   });
 
   describe('core behavior', () => {
@@ -79,6 +105,56 @@ describe('ModelScoringService', () => {
       const i2vScore = service.scoreModel(VIDEO_MODELS.SORA_2, capabilities, requirements, 'i2v');
 
       expect(i2vScore.overallScore).toBeLessThan(t2vScore.overallScore);
+    });
+
+    it('records strengths for high capability factors', () => {
+      const requirements = withRequirements({
+        style: { ...BASE_REQUIREMENTS.style, isPhotorealistic: true },
+      });
+      const score = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        { ...baseCapabilities, photorealism: 0.9 },
+        requirements,
+        't2v'
+      );
+
+      expect(score.strengths).toEqual(
+        expect.arrayContaining([expect.stringContaining('Photorealism')])
+      );
+    });
+
+    it('records weaknesses and warnings when weighted capabilities are low', () => {
+      const requirements = withRequirements({
+        physics: { ...BASE_REQUIREMENTS.physics, hasComplexPhysics: true },
+        character: {
+          ...BASE_REQUIREMENTS.character,
+          requiresFacialPerformance: true,
+          emotionalIntensity: 'intense',
+        },
+        motion: { ...BASE_REQUIREMENTS.motion, hasMorphing: true },
+      });
+
+      const score = service.scoreModel(
+        VIDEO_MODELS.DRAFT,
+        {
+          ...baseCapabilities,
+          physics: 0.5,
+          facialPerformance: 0.5,
+          morphing: 0.4,
+          characterActing: 0.4,
+        },
+        requirements,
+        't2v'
+      );
+
+      expect(score.weaknesses.length).toBeGreaterThan(0);
+      expect(score.warnings).toEqual(
+        expect.arrayContaining([
+          'Physics simulation may be inconsistent',
+          'Facial expressions may lack subtlety',
+          'Morphing effects may not render smoothly',
+        ])
+      );
     });
   });
 });

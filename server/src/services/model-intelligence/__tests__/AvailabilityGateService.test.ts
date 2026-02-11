@@ -4,6 +4,7 @@ import { VIDEO_MODELS } from '@config/modelConfig';
 import type { VideoAvailabilitySnapshot, VideoAvailabilitySnapshotModel } from '@services/video-generation/types';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import type { BillingProfileStore } from '@services/payment/BillingProfileStore';
 
 type MockVideoGenerationService = {
   getAvailabilitySnapshot: MockedFunction<VideoGenerationService['getAvailabilitySnapshot']>;
@@ -11,6 +12,10 @@ type MockVideoGenerationService = {
 
 type MockUserCreditService = {
   getBalance: MockedFunction<UserCreditService['getBalance']>;
+};
+
+type MockBillingProfileStore = {
+  getProfile: MockedFunction<BillingProfileStore['getProfile']>;
 };
 
 const createSnapshot = (models: VideoAvailabilitySnapshotModel[]): VideoAvailabilitySnapshot => ({
@@ -131,6 +136,172 @@ describe('AvailabilityGateService', () => {
       expect(result.filteredOut).toEqual(
         expect.arrayContaining([{ modelId: VIDEO_MODELS.VEO_3, reason: 'unknown_availability' }])
       );
+    });
+
+    it('preserves unavailable model reasons from availability snapshot', async () => {
+      const snapshot = createSnapshot([
+        {
+          id: VIDEO_MODELS.SORA_2,
+          available: false,
+          reason: 'missing_credentials',
+          requiredKey: 'OPENAI_API_KEY',
+        },
+      ]);
+      const mockVideoService: MockVideoGenerationService = {
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
+      };
+
+      const service = new AvailabilityGateService(
+        mockVideoService as unknown as VideoGenerationService,
+        null
+      );
+
+      const result = await service.filterModels([VIDEO_MODELS.SORA_2], {
+        mode: 't2v',
+        durationSeconds: 8,
+      });
+
+      expect(result.availableModelIds).toEqual([]);
+      expect(result.filteredOut).toEqual([
+        { modelId: VIDEO_MODELS.SORA_2, reason: 'missing_credentials' },
+      ]);
+      expect(result.unknownModelIds).toEqual([]);
+    });
+
+    it('filters out models with explicit entitlement=false from snapshot', async () => {
+      const snapshot = createSnapshot([
+        {
+          id: VIDEO_MODELS.SORA_2,
+          available: true,
+          supportsI2V: true,
+          entitled: false,
+        },
+      ]);
+      const mockVideoService: MockVideoGenerationService = {
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
+      };
+
+      const service = new AvailabilityGateService(
+        mockVideoService as unknown as VideoGenerationService,
+        null
+      );
+
+      const result = await service.filterModels([VIDEO_MODELS.SORA_2], {
+        mode: 't2v',
+        durationSeconds: 8,
+      });
+
+      expect(result.availableModelIds).toEqual([]);
+      expect(result.filteredOut).toEqual(
+        expect.arrayContaining([{ modelId: VIDEO_MODELS.SORA_2, reason: 'not_entitled' }])
+      );
+    });
+
+    it('continues without credit gating when balance lookup fails', async () => {
+      const snapshot = createSnapshot([
+        {
+          id: VIDEO_MODELS.VEO_3,
+          available: true,
+          supportsI2V: true,
+        },
+      ]);
+      const mockVideoService: MockVideoGenerationService = {
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
+      };
+      const mockCreditService: MockUserCreditService = {
+        getBalance: vi
+          .fn<UserCreditService['getBalance']>()
+          .mockRejectedValue(new Error('credit service unavailable')),
+      };
+
+      const service = new AvailabilityGateService(
+        mockVideoService as unknown as VideoGenerationService,
+        mockCreditService as unknown as UserCreditService
+      );
+
+      const result = await service.filterModels([VIDEO_MODELS.VEO_3], {
+        mode: 't2v',
+        durationSeconds: 8,
+        userId: 'user-1',
+      });
+
+      expect(result.availableModelIds).toEqual([VIDEO_MODELS.VEO_3]);
+      expect(result.filteredOut).toEqual([]);
+    });
+
+    it('skips credit gating for api-key users', async () => {
+      const snapshot = createSnapshot([
+        {
+          id: VIDEO_MODELS.VEO_3,
+          available: true,
+          supportsI2V: true,
+        },
+      ]);
+      const mockVideoService: MockVideoGenerationService = {
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
+      };
+      const mockCreditService: MockUserCreditService = {
+        getBalance: vi.fn<UserCreditService['getBalance']>().mockResolvedValue(0),
+      };
+
+      const service = new AvailabilityGateService(
+        mockVideoService as unknown as VideoGenerationService,
+        mockCreditService as unknown as UserCreditService
+      );
+
+      const result = await service.filterModels([VIDEO_MODELS.VEO_3], {
+        mode: 't2v',
+        durationSeconds: 8,
+        userId: 'api-key:abc123',
+      });
+
+      expect(mockCreditService.getBalance).not.toHaveBeenCalled();
+      expect(result.availableModelIds).toEqual([VIDEO_MODELS.VEO_3]);
+    });
+
+    it('enriches snapshot with resolved plan tier from billing profile', async () => {
+      const snapshot = createSnapshot([
+        {
+          id: VIDEO_MODELS.SORA_2,
+          available: true,
+          supportsI2V: true,
+        },
+      ]);
+      const mockVideoService: MockVideoGenerationService = {
+        getAvailabilitySnapshot: vi
+          .fn<VideoGenerationService['getAvailabilitySnapshot']>()
+          .mockReturnValue(snapshot),
+      };
+      const billingProfileStore: MockBillingProfileStore = {
+        getProfile: vi.fn<BillingProfileStore['getProfile']>().mockResolvedValue({
+          createdAtMs: Date.now(),
+          updatedAtMs: Date.now(),
+          planTier: 'creator',
+        }),
+      };
+
+      const service = new AvailabilityGateService(
+        mockVideoService as unknown as VideoGenerationService,
+        null,
+        billingProfileStore as unknown as BillingProfileStore
+      );
+
+      const result = await service.filterModels([VIDEO_MODELS.SORA_2], {
+        mode: 't2v',
+        durationSeconds: 8,
+        userId: 'user-1',
+      });
+
+      expect(result.snapshot?.models[0]?.planTier).toBe('creator');
+      expect(result.snapshot?.models[0]?.entitled).toBe(true);
     });
   });
 });
