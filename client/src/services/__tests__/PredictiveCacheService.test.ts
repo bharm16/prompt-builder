@@ -5,11 +5,12 @@
  * history management, and pre-warm flow.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PredictiveCacheService } from '../PredictiveCacheService';
 
 describe('PredictiveCacheService', () => {
   let service: PredictiveCacheService;
+  const originalRequestIdleCallback = globalThis.requestIdleCallback;
 
   beforeEach(() => {
     service = new PredictiveCacheService({
@@ -18,6 +19,16 @@ describe('PredictiveCacheService', () => {
       minFrequency: 2,
       predictionWindow: 5,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalRequestIdleCallback === undefined) {
+      delete (globalThis as { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback;
+      return;
+    }
+
+    globalThis.requestIdleCallback = originalRequestIdleCallback;
   });
 
   // ---------------------------------------------------------------------------
@@ -71,6 +82,23 @@ describe('PredictiveCacheService', () => {
       }
       expect(service.getStats().historySize).toBe(10);
     });
+
+    it('schedules prewarm opportunity when requestIdleCallback is available', () => {
+      const requestIdleCallbackMock = vi
+        .fn()
+        .mockImplementation((callback: IdleRequestCallback) => {
+          callback({
+            didTimeout: false,
+            timeRemaining: () => 10,
+          } as IdleDeadline);
+          return 1;
+        });
+      globalThis.requestIdleCallback = requestIdleCallbackMock;
+
+      service.recordRequest({ text: 'schedule idle prewarm' });
+
+      expect(requestIdleCallbackMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -123,6 +151,26 @@ describe('PredictiveCacheService', () => {
         expect(p.confidence).toBeGreaterThanOrEqual(0);
         expect(p.confidence).toBeLessThanOrEqual(1);
       }
+    });
+
+    it('returns similar_pattern prediction for highly similar recent text', () => {
+      const similarService = new PredictiveCacheService({
+        enabled: true,
+        minFrequency: 10,
+      });
+
+      similarService.recordRequest({ text: 'bright red apple on wooden table' });
+      similarService.recordRequest({ text: 'bright red apple on wooden table now' });
+
+      const predictions = similarService.getPredictions();
+      expect(predictions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            text: 'bright red apple on wooden table',
+            reason: 'similar_pattern',
+          }),
+        ])
+      );
     });
   });
 
@@ -239,6 +287,23 @@ describe('PredictiveCacheService', () => {
       await Promise.all([p1, p2]);
 
       // Second call should be a no-op due to isPreWarming guard
+    });
+
+    it('uses timeout fallback when requestIdleCallback is unavailable', async () => {
+      vi.useFakeTimers();
+      delete (globalThis as { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback;
+
+      const fetchFn = vi.fn().mockResolvedValue({});
+      service.recordRequest({ text: 'fallback idle' });
+      service.recordRequest({ text: 'other' });
+      service.recordRequest({ text: 'fallback idle' });
+
+      const preWarmPromise = service.preWarmCache(fetchFn);
+      await vi.advanceTimersByTimeAsync(1000);
+      await preWarmPromise;
+
+      expect(fetchFn).toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 });

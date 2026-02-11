@@ -4,7 +4,7 @@
  * Tests format transformations, file extension mapping, and MIME type mapping.
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExportService } from '../exportService';
 
 const baseData = {
@@ -155,5 +155,105 @@ describe('ExportService.getMimeType', () => {
 
   it('returns application/json for json format', () => {
     expect(ExportService.getMimeType('json')).toBe('application/json');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// downloadFile
+// ---------------------------------------------------------------------------
+describe('ExportService.downloadFile', () => {
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+
+  afterEach(() => {
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    vi.restoreAllMocks();
+  });
+
+  it('creates anchor, triggers click, and revokes blob URL', () => {
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+
+    const click = vi.fn();
+    const anchor = document.createElement('a');
+    anchor.click = click;
+    const originalCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        if (tagName === 'a') {
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      });
+
+    ExportService.downloadFile('content', 'file.txt', 'text/plain');
+
+    expect(createElementSpy).toHaveBeenCalledWith('a');
+    expect(anchor.href).toBe('blob:mock-url');
+    expect(anchor.download).toBe('file.txt');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// export dispatcher
+// ---------------------------------------------------------------------------
+describe('ExportService.export', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('dispatches markdown export with md filename and markdown mime', () => {
+    vi.spyOn(ExportService, 'exportAsMarkdown').mockReturnValue('md-content');
+    const downloadSpy = vi.spyOn(ExportService, 'downloadFile').mockImplementation(() => {});
+
+    ExportService.export('markdown', baseData);
+
+    expect(downloadSpy).toHaveBeenCalledWith(
+      'md-content',
+      'prompt-optimization.md',
+      'text/markdown'
+    );
+  });
+
+  it('dispatches json export with json filename and application/json mime', () => {
+    vi.spyOn(ExportService, 'exportAsJson').mockReturnValue('{\"ok\":true}');
+    const downloadSpy = vi.spyOn(ExportService, 'downloadFile').mockImplementation(() => {});
+
+    ExportService.export('json', baseData);
+
+    expect(downloadSpy).toHaveBeenCalledWith(
+      '{\"ok\":true}',
+      'prompt-optimization.json',
+      'application/json'
+    );
+  });
+
+  it('dispatches text export for text and unknown formats', () => {
+    const exportAsTextSpy = vi.spyOn(ExportService, 'exportAsText').mockReturnValue('text-content');
+    const downloadSpy = vi.spyOn(ExportService, 'downloadFile').mockImplementation(() => {});
+
+    ExportService.export('text', baseData);
+    ExportService.export('unexpected' as 'text', baseData);
+
+    expect(exportAsTextSpy).toHaveBeenCalledTimes(2);
+    expect(downloadSpy).toHaveBeenNthCalledWith(
+      1,
+      'text-content',
+      'prompt-optimization.txt',
+      'text/plain'
+    );
+    expect(downloadSpy).toHaveBeenNthCalledWith(
+      2,
+      'text-content',
+      'prompt-optimization.txt',
+      'text/plain'
+    );
   });
 });

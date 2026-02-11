@@ -30,6 +30,7 @@ describe('LocalStoragePromptRepository', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     localStorage.clear();
   });
 
@@ -114,6 +115,61 @@ describe('LocalStoragePromptRepository', () => {
         output: 'out',
       });
       expect(result.id).toBeTruthy();
+    });
+
+    it('falls back to trimmed history on QuotaExceededError', async () => {
+      const seededHistory = Array.from({ length: 80 }, (_, i) => ({
+        id: String(i),
+        uuid: `uuid-${i}`,
+        input: `input-${i}`,
+        output: `output-${i}`,
+        timestamp: new Date().toISOString(),
+      }));
+      localStorage.setItem(testKey, JSON.stringify(seededHistory));
+
+      const originalSetItem = localStorage.setItem.bind(localStorage);
+      const quotaError = new Error('quota exceeded');
+      quotaError.name = 'QuotaExceededError';
+      const setItemSpy = vi
+        .spyOn(localStorage, 'setItem')
+        .mockImplementationOnce(() => {
+          throw quotaError;
+        })
+        .mockImplementation((key: string, value: string) => {
+          originalSetItem(key, value);
+        });
+
+      await repo.save('user1', {
+        uuid: 'new-uuid',
+        input: 'new input',
+        output: 'new output',
+      });
+
+      const parsed = JSON.parse(localStorage.getItem(testKey) || '[]');
+      expect(parsed).toHaveLength(50);
+      expect(parsed[0]).toMatchObject({
+        uuid: 'new-uuid',
+        input: 'new input',
+        output: 'new output',
+      });
+      expect(setItemSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws PromptRepositoryError when storage fails with non-quota error', async () => {
+      const storageError = new Error('Storage unavailable');
+      storageError.name = 'SecurityError';
+      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw storageError;
+      });
+
+      await expect(
+        repo.save('user1', {
+          input: 'cannot-save',
+          output: 'cannot-save',
+        })
+      ).rejects.toBeInstanceOf(PromptRepositoryError);
+
+      expect(setItemSpy).toHaveBeenCalled();
     });
   });
 
