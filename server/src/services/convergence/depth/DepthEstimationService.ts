@@ -227,9 +227,10 @@ const runReplicateWarmup = (
         input: { image: warmupImageUrl },
       });
 
+      lastWarmupAt = Date.now();
       startupWarmLog.info('Completed Replicate depth warmup', {
         operation: 'replicateDepthWarmup',
-        durationMs: Date.now() - startedAt,
+        durationMs: lastWarmupAt - startedAt,
         warmupImageUrlHost,
       });
 
@@ -419,7 +420,7 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
 
 export function getDepthWarmupStatus(): { warmupInFlight: boolean; lastWarmupAt: number } {
   return {
-    warmupInFlight: Boolean(warmupInFlight),
+    warmupInFlight: Boolean(warmupInFlight || replicateWarmupInFlight),
     lastWarmupAt,
   };
 }

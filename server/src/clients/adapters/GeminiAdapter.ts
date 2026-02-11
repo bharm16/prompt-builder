@@ -64,11 +64,23 @@ export class GeminiAdapter {
       errorThresholdPercentage: 50,
       resetTimeout: 10000, // Wait 10s before retrying after open
       name: 'GeminiAPI',
+      // Client/input errors should not trip circuit health.
+      errorFilter: (err: Error) => {
+        if (err instanceof ClientAbortError || err.name === 'ClientAbortError') {
+          return true;
+        }
+
+        if (err instanceof APIError) {
+          return err.statusCode >= 400 && err.statusCode < 500 && err.statusCode !== 429;
+        }
+
+        return false;
+      },
     });
 
-    this.breaker.fallback(() => {
-      throw new APIError('Gemini API Circuit Breaker Open', 503, true);
-    });
+    this.breaker.fallback(() =>
+      Promise.reject(new APIError('Gemini API Circuit Breaker Open', 503, true))
+    );
 
     this.breaker.on('open', () => this.log.warn('Gemini Circuit Breaker OPENED'));
     this.breaker.on('halfOpen', () => this.log.info('Gemini Circuit Breaker HALF-OPEN'));

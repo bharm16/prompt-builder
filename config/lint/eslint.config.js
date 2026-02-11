@@ -130,8 +130,10 @@ export default [
       '**/__tests__/**/*.{js,jsx,ts,tsx}',
       '**/*.{test,spec}.{js,jsx,ts,tsx}',
       'tests/**/*.{js,jsx,ts,tsx}',
-      'config/test/vitest.setup.js',
+      'config/test/vitest.setup.client.js',
+      'config/test/vitest.setup.server.js',
       'config/test/vitest.config.js',
+      'config/test/vitest.workspace.js',
       'config/test/playwright.config.js',
     ],
     languageOptions: {

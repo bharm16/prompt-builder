@@ -68,7 +68,7 @@ for shard in $(seq 1 "${SHARDS}"); do
       --poolOptions.forks.maxForks=1
       --reporter="${REPORTER}"
       --config
-      config/test/vitest.config.js
+      config/test/vitest.legacy.config.js
     )
     if [ "${SILENT}" = "1" ]; then
       vitest_args+=(--silent=passed-only)

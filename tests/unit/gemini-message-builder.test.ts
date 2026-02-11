@@ -60,5 +60,91 @@ describe('GeminiMessageBuilder', () => {
       expect(payload.generationConfig?.responseSchema).toEqual({ type: 'object' });
       expect(payload.generationConfig?.responseMimeType).toBe('application/json');
     });
+
+    it('removes unsupported additionalProperties from Gemini response schemas', () => {
+      const builder = new GeminiMessageBuilder();
+      const schema = {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          spans: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                text: { type: 'string' },
+              },
+              required: ['text'],
+            },
+          },
+          meta: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              version: { type: 'string' },
+            },
+            required: ['version'],
+          },
+        },
+        required: ['spans', 'meta'],
+      };
+
+      const payload = builder.buildPayload('System prompt', {
+        userMessage: 'Hi',
+        responseSchema: schema,
+      });
+
+      expect(payload.generationConfig?.responseSchema).toEqual({
+        type: 'object',
+        properties: {
+          spans: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+              },
+              required: ['text'],
+            },
+          },
+          meta: {
+            type: 'object',
+            properties: {
+              version: { type: 'string' },
+            },
+            required: ['version'],
+          },
+        },
+        required: ['spans', 'meta'],
+      });
+    });
+
+    it('unwraps response schemas provided in OpenAI wrapper shape', () => {
+      const builder = new GeminiMessageBuilder();
+      const payload = builder.buildPayload('System prompt', {
+        userMessage: 'Hi',
+        responseSchema: {
+          name: 'wrapped_schema',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              ok: { type: 'boolean' },
+            },
+            required: ['ok'],
+          },
+        },
+      });
+
+      expect(payload.generationConfig?.responseSchema).toEqual({
+        type: 'object',
+        properties: {
+          ok: { type: 'boolean' },
+        },
+        required: ['ok'],
+      });
+    });
   });
 });
