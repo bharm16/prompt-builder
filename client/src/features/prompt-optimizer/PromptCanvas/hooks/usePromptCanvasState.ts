@@ -9,7 +9,7 @@ import { useCallback, useReducer } from 'react';
 
 import type { PromptCanvasAction, PromptCanvasState } from '../types';
 
-const initialState: PromptCanvasState = {
+export const initialPromptCanvasState: PromptCanvasState = {
   showExportMenu: false,
   showLegend: false,
   rightPaneMode: 'refine',
@@ -31,7 +31,7 @@ const initialState: PromptCanvasState = {
   justReplaced: null,
 };
 
-function promptCanvasReducer(
+export function promptCanvasReducer(
   state: PromptCanvasState,
   action: PromptCanvasAction
 ): PromptCanvasState {
@@ -64,7 +64,7 @@ export interface UsePromptCanvasStateReturn {
 }
 
 export function usePromptCanvasState(): UsePromptCanvasStateReturn {
-  const [state, dispatch] = useReducer(promptCanvasReducer, initialState);
+  const [state, dispatch] = useReducer(promptCanvasReducer, initialPromptCanvasState);
 
   const setState = useCallback((payload: Partial<PromptCanvasState>) => {
     dispatch({ type: 'MERGE_STATE', payload });

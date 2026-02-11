@@ -33,6 +33,7 @@ import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { useSuggestionApi } from './useSuggestionApi';
 import { useSuggestionCache } from './useSuggestionCache';
+import { mergeSuggestions } from '../utils/mergeSuggestions';
 import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 
 interface FetchPayload {
@@ -60,24 +61,7 @@ interface UseSuggestionFetchParams {
 }
 
 const log = logger.child('useSuggestionFetch');
-
-const mergeSuggestions = (
-  existing: SuggestionItem[],
-  incoming: SuggestionItem[]
-): SuggestionItem[] => {
-  const seen = new Set<string>();
-  const out: SuggestionItem[] = [];
-  const add = (suggestion: SuggestionItem): void => {
-    const key = (suggestion?.text || '').trim().toLowerCase();
-    if (!key) return;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push(suggestion);
-  };
-  existing.forEach(add);
-  incoming.forEach(add);
-  return out;
-};
+export { mergeSuggestions } from '../utils/mergeSuggestions';
 
 /**
  * Hook for fetching enhancement suggestions
