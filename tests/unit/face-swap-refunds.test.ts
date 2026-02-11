@@ -19,6 +19,99 @@ describe('faceSwap preview refunds', () => {
     getAuthenticatedUserIdMock.mockResolvedValue('user-1');
   });
 
+  it('reserves credits, generates swap, and does not refund on success', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const refundCreditsMock = vi.fn(async () => true);
+    const getAssetForGenerationMock = vi.fn(async () => ({
+      primaryImageUrl: 'https://images.example.com/source.webp',
+    }));
+    const swapMock = vi.fn(async () => ({
+      swappedImageUrl: 'https://images.example.com/swapped.webp',
+    }));
+
+    const handler = createFaceSwapPreviewHandler({
+      faceSwapService: {
+        swap: swapMock,
+      } as never,
+      assetService: {
+        getAssetForGeneration: getAssetForGenerationMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: refundCreditsMock,
+      } as never,
+    });
+
+    const app = express();
+    app.use((req, _res, next) => {
+      (req as express.Request & { id?: string }).id = 'req-fs-success-1';
+      next();
+    });
+    app.use(express.json());
+    app.post('/preview/face-swap', handler);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/face-swap').send({
+        characterAssetId: 'char-1',
+        targetImageUrl: 'https://images.example.com/target.webp',
+      })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(200);
+    expect(reserveCreditsMock).toHaveBeenCalledWith('user-1', 2);
+    expect(getAssetForGenerationMock).toHaveBeenCalledTimes(1);
+    expect(swapMock).toHaveBeenCalledTimes(1);
+    expect(refundCreditsMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects generation when reservation fails and never starts provider', async () => {
+    const reserveCreditsMock = vi.fn(async () => false);
+    const refundCreditsMock = vi.fn(async () => true);
+    const getAssetForGenerationMock = vi.fn();
+    const swapMock = vi.fn();
+
+    const handler = createFaceSwapPreviewHandler({
+      faceSwapService: {
+        swap: swapMock,
+      } as never,
+      assetService: {
+        getAssetForGeneration: getAssetForGenerationMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: refundCreditsMock,
+      } as never,
+    });
+
+    const app = express();
+    app.use((req, _res, next) => {
+      (req as express.Request & { id?: string }).id = 'req-fs-insufficient-1';
+      next();
+    });
+    app.use(express.json());
+    app.post('/preview/face-swap', handler);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/face-swap').send({
+        characterAssetId: 'char-1',
+        targetImageUrl: 'https://images.example.com/target.webp',
+      })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(402);
+    expect(response.body).toMatchObject({
+      error: 'Insufficient credits',
+      code: 'INSUFFICIENT_CREDITS',
+      requestId: 'req-fs-insufficient-1',
+    });
+    expect(reserveCreditsMock).toHaveBeenCalledWith('user-1', 2);
+    expect(getAssetForGenerationMock).not.toHaveBeenCalled();
+    expect(swapMock).not.toHaveBeenCalled();
+    expect(refundCreditsMock).not.toHaveBeenCalled();
+  });
+
   it('refunds reserved face-swap credits when character has no reference image', async () => {
     const refundCreditsMock = vi.fn(async () => true);
 
