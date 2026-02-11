@@ -53,6 +53,7 @@ export async function streamWithFetch(
     const decoder = new TextDecoder();
 
     let buffer = '';
+    let currentEvent = 'message'; // Default event type
 
     while (true) {
       const { done, value } = await reader.read();
@@ -63,8 +64,6 @@ export async function streamWithFetch(
       // Parse SSE messages
       const lines = buffer.split('\n');
       buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      let currentEvent = 'message'; // Default event type
 
       for (const line of lines) {
         if (line.startsWith('event: ')) {
