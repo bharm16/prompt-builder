@@ -61,6 +61,13 @@ export interface StorageService {
    * @param gcsUrls Array of signed GCS URLs to delete
    */
   delete(gcsUrls: string[]): Promise<void>;
+
+  /**
+   * Refresh a signed GCS URL for an object in this bucket.
+   *
+   * Returns null if the URL does not map to this bucket.
+   */
+  refreshSignedUrl?(url: string): Promise<string | null>;
 }
 
 // ============================================================================
@@ -337,6 +344,28 @@ export class GCSStorageService implements StorageService {
       count: gcsUrls.length,
       duration,
     });
+  }
+
+  /**
+   * Refresh a signed URL for an object in this bucket.
+   *
+   * Returns null when the URL is not for this bucket.
+   */
+  async refreshSignedUrl(url: string): Promise<string | null> {
+    const objectPath = this.extractObjectPath(url);
+    if (!objectPath) {
+      return null;
+    }
+
+    const file = this.bucket.file(objectPath);
+    const signedUrl = await this.getSignedUrl(file);
+
+    this.log.debug('Refreshed signed URL for convergence media asset', {
+      objectPath,
+      sourceHost: this.getUrlHost(url),
+    });
+
+    return signedUrl;
   }
 
   // ============================================================================

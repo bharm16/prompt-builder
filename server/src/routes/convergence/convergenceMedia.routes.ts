@@ -177,7 +177,23 @@ export function createConvergenceMediaRoutes(): Router {
         host: parsedUrl.hostname,
       });
 
-      const upstream = await fetch(parsedUrl.toString(), {
+      const storageService = getGCSStorageService();
+      let upstreamUrl = parsedUrl.toString();
+      try {
+        const refreshedUrl = await storageService.refreshSignedUrl(upstreamUrl);
+        if (refreshedUrl) {
+          upstreamUrl = refreshedUrl;
+        }
+      } catch (error) {
+        logger.warn('Failed to refresh convergence media proxy URL; using original', {
+          bucketName,
+          objectPath,
+          host: parsedUrl.hostname,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const upstream = await fetch(upstreamUrl, {
         method: req.method === 'HEAD' ? 'HEAD' : 'GET',
         redirect: 'follow',
       });

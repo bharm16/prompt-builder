@@ -275,7 +275,7 @@ const shouldProxyUrl = (url: string): boolean => {
   }
 };
 
-const buildProxyUrl = (url: string): string => {
+export const buildProxyUrl = (url: string): string => {
   if (!shouldProxyUrl(url)) {
     return url;
   }

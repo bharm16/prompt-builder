@@ -115,7 +115,7 @@ export type {
   FalDepthResponse,
 } from './depth';
 export {
-  ReplicateDepthEstimationService,
+  FalDepthEstimationService,
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
 } from './depth';

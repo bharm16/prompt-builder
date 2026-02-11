@@ -8,6 +8,7 @@ import { cn } from '@/utils/cn';
 import type { CameraPath } from '@/features/convergence/types';
 import { CameraMotionPickerWithErrorBoundary } from '@/features/convergence/components/CameraMotionPicker';
 import { useCameraMotion } from '@/hooks/useCameraMotion';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { safeUrlHost } from '@/utils/url';
@@ -19,6 +20,8 @@ export interface CameraMotionModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string;
+  imageStoragePath?: string | null;
+  imageAssetId?: string | null;
   onSelect: (cameraPath: CameraPath) => void;
   initialSelection?: CameraPath | null;
 }
@@ -27,11 +30,22 @@ export function CameraMotionModal({
   isOpen,
   onClose,
   imageUrl,
+  imageStoragePath = null,
+  imageAssetId = null,
   onSelect,
   initialSelection = null,
 }: CameraMotionModalProps): React.ReactElement | null {
   const { state, actions } = useCameraMotion();
   const { estimateDepth, reset } = actions;
+  const { url: resolvedImageUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: imageUrl,
+    storagePath: imageStoragePath,
+    assetId: imageAssetId,
+    enabled: isOpen,
+    preferFresh: true,
+  });
+  const pickerImageUrl = resolvedImageUrl?.trim() || imageUrl.trim();
   const lastImageUrlRef = useRef<string | null>(null);
   const previousIsOpenRef = useRef(false);
   const hasLoggedEstimateRef = useRef(false);
@@ -118,6 +132,7 @@ export function CameraMotionModal({
       fallbackMode: state.fallbackMode,
       cameraPathsCount: state.cameraPaths.length,
       depthMapUrlHost: safeUrlHost(state.depthMapUrl),
+      pickerImageUrlHost: safeUrlHost(pickerImageUrl),
       error: state.error,
     });
   }, [
@@ -126,6 +141,7 @@ export function CameraMotionModal({
     state.fallbackMode,
     state.cameraPaths.length,
     state.depthMapUrl,
+    pickerImageUrl,
     state.error,
   ]);
 
@@ -220,7 +236,7 @@ export function CameraMotionModal({
           ) : (
             <CameraMotionPickerWithErrorBoundary
               cameraPaths={state.cameraPaths}
-              imageUrl={imageUrl}
+              imageUrl={pickerImageUrl}
               depthMapUrl={state.depthMapUrl}
               selectedCameraMotion={initialSelection?.id ?? null}
               fallbackMode={state.fallbackMode}

@@ -20,7 +20,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Check, Loader2 } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
-import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
+import { buildProxyUrl, renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
 import type { CameraPath } from '@/features/convergence/types';
 import { sanitizeError } from '@/utils/logging';
 import { safeUrlHost } from '@/utils/url';
@@ -450,6 +450,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     !showFallbackText &&
     !showAnimation &&
     (prefersReducedMotion || isTouchDevice);
+  const staticImageSrc = buildProxyUrl(staticPreviewFrame ?? imageUrl);
   const previewHintText = isTouchDevice
     ? 'Tap and hold to play'
     : 'Press and hold to play';
@@ -503,7 +504,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
             {/* Static image when not hovering or not yet rendered */}
             {!showAnimation && (
               <img
-                src={staticPreviewFrame ?? imageUrl}
+                src={staticImageSrc}
                 alt={cameraPath.label}
                 className="h-full w-full object-cover"
               />

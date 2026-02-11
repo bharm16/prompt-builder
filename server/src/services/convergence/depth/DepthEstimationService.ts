@@ -1,7 +1,7 @@
 /**
  * DepthEstimationService for Visual Convergence
  *
- * Integrates with fal.ai Depth Anything v2 (primary) with Replicate fallback for depth map generation.
+ * Integrates with fal.ai Depth Anything v2 for depth map generation.
  * Used to create depth maps from images for client-side camera motion rendering.
  *
  * Requirements:
@@ -13,7 +13,6 @@
  */
 
 import { fal } from '@fal-ai/client';
-import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { isFalKeyPlaceholder, resolveFalApiKey } from '@utils/falApiKey';
 import { safeUrlHost } from '@utils/url';
@@ -31,11 +30,6 @@ import type { DepthEstimationProvider, FalDepthResponse } from './types';
 const FAL_DEPTH_MODEL = 'fal-ai/image-preprocessors/depth-anything/v2' as const;
 
 /**
- * Replicate fallback model identifier (Depth Anything v2)
- */
-const REPLICATE_DEPTH_MODEL_FALLBACK = 'chenxwh/depth-anything-v2' as const;
-
-/**
  * Configuration for depth estimation
  */
 const DEPTH_ESTIMATION_CONFIG = {
@@ -43,8 +37,14 @@ const DEPTH_ESTIMATION_CONFIG = {
   maxRetries: 2,
   /** Base delay for exponential backoff (ms) */
   baseDelayMs: 1000,
-  /** Timeout for depth estimation (5 minutes) */
-  timeoutMs: 5 * 60 * 1000,
+  /** Timeout for cold-start warmup recovery (ms) */
+  warmupRetryTimeoutMs: (() => {
+    const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_WARMUP_RETRY_TIMEOUT_MS || '', 10);
+    if (Number.isFinite(raw) && raw >= 5_000) {
+      return raw;
+    }
+    return 20_000;
+  })(),
   /** Cache TTL in milliseconds (1 hour) */
   cacheTtlMs: 60 * 60 * 1000,
 } as const;
@@ -137,7 +137,6 @@ let warmerInitialized = false;
 let warmIntervalId: ReturnType<typeof setInterval> | null = null;
 let warmupInFlight: Promise<void> | null = null;
 let lastWarmupAt = 0;
-let replicateWarmupInFlight: Promise<boolean> | null = null;
 let startupWarmupPromise: Promise<DepthWarmupResult> | null = null;
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
@@ -203,53 +202,6 @@ const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
   })();
 
   return warmupInFlight;
-};
-
-const runReplicateWarmup = (
-  replicateApiToken: string,
-  warmupImageUrl: string
-): Promise<boolean> => {
-  if (replicateWarmupInFlight) {
-    return replicateWarmupInFlight;
-  }
-
-  const startedAt = Date.now();
-  const warmupImageUrlHost = safeUrlHost(warmupImageUrl);
-  replicateWarmupInFlight = (async () => {
-    try {
-      startupWarmLog.debug('Starting Replicate depth warmup', {
-        operation: 'replicateDepthWarmup',
-        warmupImageUrlHost,
-      });
-
-      const replicate = new Replicate({ auth: replicateApiToken });
-      await replicate.run(REPLICATE_DEPTH_MODEL_FALLBACK as `${string}/${string}`, {
-        input: { image: warmupImageUrl },
-      });
-
-      lastWarmupAt = Date.now();
-      startupWarmLog.info('Completed Replicate depth warmup', {
-        operation: 'replicateDepthWarmup',
-        durationMs: lastWarmupAt - startedAt,
-        warmupImageUrlHost,
-      });
-
-      return true;
-    } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(String(error));
-      startupWarmLog.warn('Replicate depth warmup failed', {
-        operation: 'replicateDepthWarmup',
-        durationMs: Date.now() - startedAt,
-        warmupImageUrlHost,
-        error: errObj.message,
-      });
-      return false;
-    } finally {
-      replicateWarmupInFlight = null;
-    }
-  })();
-
-  return replicateWarmupInFlight;
 };
 
 export interface DepthWarmupResult {
@@ -321,10 +273,8 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
     }
 
     const falApiKey = resolveFalApiKey();
-    const replicateApiToken = process.env.REPLICATE_API_TOKEN;
-
-    if (!falApiKey && !replicateApiToken) {
-      return { success: false, skipped: true, message: 'no-providers' };
+    if (!falApiKey) {
+      return { success: false, skipped: true, message: 'no-fal-provider' };
     }
 
     const warmupImageUrl = FAL_WARM_START_CONFIG.warmupImageUrl;
@@ -332,70 +282,32 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
     const timeoutMs = startupWarmupConfig.timeoutMs;
     const startedAt = Date.now();
 
-    if (falApiKey) {
-      fal.config({ credentials: falApiKey });
+    fal.config({ credentials: falApiKey });
 
-      if (lastWarmupAt > 0) {
-        return {
-          success: true,
-          provider: 'fal.ai',
-          durationMs: 0,
-          message: 'already-warmed',
-        };
-      }
-
-      startupWarmLog.info('Depth warmup starting (fal.ai)', {
-        operation: 'depthStartupWarmup',
-        provider: 'fal.ai',
-        timeoutMs,
-        warmupImageUrlHost,
-      });
-
-      const beforeWarmupAt = lastWarmupAt;
-      try {
-        await withTimeout(runFalWarmup('startup'), timeoutMs);
-      } catch (error) {
-        const errObj = error instanceof Error ? error : new Error(String(error));
-        startupWarmLog.warn('Depth warmup timed out (fal.ai)', {
-          operation: 'depthStartupWarmup',
-          provider: 'fal.ai',
-          timeoutMs,
-          warmupImageUrlHost,
-          error: errObj.message,
-        });
-      }
-
-      const durationMs = Date.now() - startedAt;
-      if (lastWarmupAt > beforeWarmupAt) {
-        return { success: true, provider: 'fal.ai', durationMs };
-      }
-
+    if (lastWarmupAt > 0) {
       return {
-        success: false,
+        success: true,
         provider: 'fal.ai',
-        durationMs,
-        message: 'fal-warmup-failed',
+        durationMs: 0,
+        message: 'already-warmed',
       };
     }
 
-    startupWarmLog.info('Depth warmup starting (replicate)', {
+    startupWarmLog.info('Depth warmup starting (fal.ai)', {
       operation: 'depthStartupWarmup',
-      provider: 'replicate',
+      provider: 'fal.ai',
       timeoutMs,
       warmupImageUrlHost,
     });
 
-    let replicateSuccess = false;
+    const beforeWarmupAt = lastWarmupAt;
     try {
-      replicateSuccess = await withTimeout(
-        runReplicateWarmup(replicateApiToken!, warmupImageUrl),
-        timeoutMs
-      );
+      await withTimeout(runFalWarmup('startup'), timeoutMs);
     } catch (error) {
       const errObj = error instanceof Error ? error : new Error(String(error));
-      startupWarmLog.warn('Depth warmup timed out (replicate)', {
+      startupWarmLog.warn('Depth warmup timed out (fal.ai)', {
         operation: 'depthStartupWarmup',
-        provider: 'replicate',
+        provider: 'fal.ai',
         timeoutMs,
         warmupImageUrlHost,
         error: errObj.message,
@@ -403,15 +315,15 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
     }
 
     const durationMs = Date.now() - startedAt;
-    if (replicateSuccess) {
-      return { success: true, provider: 'replicate', durationMs };
+    if (lastWarmupAt > beforeWarmupAt) {
+      return { success: true, provider: 'fal.ai', durationMs };
     }
 
     return {
       success: false,
-      provider: 'replicate',
+      provider: 'fal.ai',
       durationMs,
-      message: 'replicate-warmup-failed',
+      message: 'fal-warmup-failed',
     };
   })();
 
@@ -420,7 +332,7 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
 
 export function getDepthWarmupStatus(): { warmupInFlight: boolean; lastWarmupAt: number } {
   return {
-    warmupInFlight: Boolean(warmupInFlight || replicateWarmupInFlight),
+    warmupInFlight: Boolean(warmupInFlight),
     lastWarmupAt,
   };
 }
@@ -470,8 +382,6 @@ export interface DepthEstimationService {
 export interface DepthEstimationServiceOptions {
   /** fal.ai API key (defaults to FAL_KEY/FAL_API_KEY env vars) */
   falApiKey?: string | undefined;
-  /** Replicate API token for fallback (defaults to REPLICATE_API_TOKEN env var) */
-  replicateApiToken?: string | undefined;
   /** Storage service for persisting depth maps to GCS */
   storageService: StorageService;
   /** User ID for storage path organization */
@@ -479,21 +389,19 @@ export interface DepthEstimationServiceOptions {
 }
 
 /**
- * fal.ai-based implementation of DepthEstimationService with Replicate fallback.
+ * fal.ai-based implementation of DepthEstimationService.
  *
  * Uses Depth Anything v2 model to generate depth maps from images.
  * Depth maps are uploaded to GCS and served via signed URLs.
  */
-export class ReplicateDepthEstimationService implements DepthEstimationService {
+export class FalDepthEstimationService implements DepthEstimationService {
   private readonly log = logger.child({ service: 'DepthEstimationService' });
   private readonly falAvailable: boolean;
-  private readonly replicate: Replicate | null;
   private readonly storageService: StorageService;
-  private readonly userId: string;
 
   constructor(options: DepthEstimationServiceOptions) {
     const falApiKey = resolveFalApiKey(options.falApiKey);
-    const replicateApiToken = options.replicateApiToken || process.env.REPLICATE_API_TOKEN;
+    this.storageService = options.storageService;
 
     if (falApiKey) {
       fal.config({ credentials: falApiKey });
@@ -508,18 +416,9 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
       }
     }
 
-    if (replicateApiToken) {
-      this.replicate = new Replicate({ auth: replicateApiToken });
-    } else {
-      this.replicate = null;
-    }
-
-    if (!this.falAvailable && !this.replicate) {
+    if (!this.falAvailable) {
       this.log.warn('No depth estimation providers available');
     }
-
-    this.storageService = options.storageService;
-    this.userId = options.userId || 'anonymous';
 
     // If the warmer was not started at app bootstrap, start it on first construction.
     if (this.falAvailable) {
@@ -531,13 +430,13 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
    * Check if the depth estimation service is available
    */
   isAvailable(): boolean {
-    return this.falAvailable || this.replicate !== null;
+    return this.falAvailable;
   }
 
   /**
    * Generate a depth map from an image URL
    *
-   * Uses fal.ai Depth Anything v2 with Replicate fallback and retry logic.
+   * Uses fal.ai Depth Anything v2 with retry logic.
    * The resulting depth map is uploaded to GCS and returned as a signed URL.
    *
    * @param imageUrl - URL of the source image
@@ -546,7 +445,7 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
    */
   async estimateDepth(imageUrl: string): Promise<string> {
     if (!this.isAvailable()) {
-      throw new Error('Depth estimation service is not available: no providers configured');
+      throw new Error('Depth estimation service is not available: fal.ai provider not configured');
     }
 
     const cachedDepthMap = getCachedDepthMap(imageUrl);
@@ -559,48 +458,18 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
     }
 
     const startTime = Date.now();
-    const primaryProvider: DepthEstimationProvider = this.falAvailable ? 'fal.ai' : 'replicate';
+    const primaryProvider: DepthEstimationProvider = 'fal.ai';
+    const providerImageUrl = await this.resolveInputImageUrlForFal(imageUrl);
     this.log.info('Starting depth estimation', {
       imageUrlHost: this.getUrlHost(imageUrl),
+      providerImageUrlHost: this.getUrlHost(providerImageUrl),
       primaryProvider,
     });
 
     try {
-      let depthMapTempUrl: string;
+      const depthMapTempUrl = await this.estimateDepthWithFalRecovery(providerImageUrl);
 
-      if (this.falAvailable) {
-        try {
-          depthMapTempUrl = await withRetry(
-            () => this.runFalDepthEstimation(imageUrl),
-            DEPTH_ESTIMATION_CONFIG.maxRetries,
-            DEPTH_ESTIMATION_CONFIG.baseDelayMs
-          );
-        } catch (falError) {
-          this.log.warn('fal.ai depth estimation failed, trying Replicate fallback', {
-            error: (falError as Error).message,
-          });
-
-          if (this.replicate) {
-            depthMapTempUrl = await withRetry(
-              () => this.runReplicateDepthEstimation(imageUrl),
-              DEPTH_ESTIMATION_CONFIG.maxRetries,
-              DEPTH_ESTIMATION_CONFIG.baseDelayMs
-            );
-          } else {
-            throw falError;
-          }
-        }
-      } else if (this.replicate) {
-        depthMapTempUrl = await withRetry(
-          () => this.runReplicateDepthEstimation(imageUrl),
-          DEPTH_ESTIMATION_CONFIG.maxRetries,
-          DEPTH_ESTIMATION_CONFIG.baseDelayMs
-        );
-      } else {
-        throw new Error('No depth estimation providers available');
-      }
-
-      // Return the temporary URL directly - fal.ai/Replicate URLs are valid for hours
+      // Return the temporary URL directly - fal.ai URLs are valid for hours
       // and the client media proxy handles CORS. This saves 1-3 seconds per request.
       // If persistence is needed later, GCS upload can be done asynchronously.
       const signedUrl = depthMapTempUrl;
@@ -624,9 +493,130 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
     }
   }
 
+  private async estimateDepthWithFalRecovery(imageUrl: string): Promise<string> {
+    try {
+      return await withRetry(
+        () => this.runFalDepthEstimation(imageUrl),
+        DEPTH_ESTIMATION_CONFIG.maxRetries,
+        DEPTH_ESTIMATION_CONFIG.baseDelayMs
+      );
+    } catch (error) {
+      if (!this.shouldAttemptWarmupRecovery(error)) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const beforeWarmupAt = lastWarmupAt;
+      const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+      this.log.warn('fal.ai depth estimation failed on cold start; warming and retrying once', {
+        error: errorMessage,
+        warmupImageUrlHost,
+        warmupRetryTimeoutMs: DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs,
+      });
+
+      try {
+        await withTimeout(runFalWarmup('startup'), DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs);
+      } catch (warmupError) {
+        const warmupErrorMessage =
+          warmupError instanceof Error ? warmupError.message : String(warmupError);
+        this.log.warn('Cold-start warmup retry timed out; retrying depth estimation anyway', {
+          warmupRetryTimeoutMs: DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs,
+          error: warmupErrorMessage,
+        });
+      }
+
+      const warmed = lastWarmupAt > beforeWarmupAt;
+      this.log.info('Depth warmup retry completed', {
+        warmed,
+        warmupInFlight: Boolean(warmupInFlight),
+      });
+
+      return withRetry(
+        () => this.runFalDepthEstimation(imageUrl),
+        DEPTH_ESTIMATION_CONFIG.maxRetries,
+        DEPTH_ESTIMATION_CONFIG.baseDelayMs
+      );
+    }
+  }
+
+  private async resolveInputImageUrlForFal(imageUrl: string): Promise<string> {
+    const host = this.getUrlHost(imageUrl);
+    const isGcsUrl =
+      host === 'storage.googleapis.com' || (host?.endsWith('.storage.googleapis.com') ?? false);
+    if (!isGcsUrl) {
+      return imageUrl;
+    }
+
+    if (typeof this.storageService.refreshSignedUrl !== 'function') {
+      return imageUrl;
+    }
+
+    try {
+      const refreshedUrl = await this.storageService.refreshSignedUrl(imageUrl);
+      if (!refreshedUrl) {
+        return imageUrl;
+      }
+
+      if (refreshedUrl !== imageUrl) {
+        this.log.debug('Refreshed signed GCS URL for depth estimation input', {
+          originalHost: host,
+          refreshedHost: this.getUrlHost(refreshedUrl),
+        });
+      }
+
+      return refreshedUrl;
+    } catch (error) {
+      this.log.warn('Failed to refresh signed GCS URL for depth estimation input; using original', {
+        imageUrlHost: host,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return imageUrl;
+    }
+  }
+
   // ============================================================================
   // Private Methods
   // ============================================================================
+
+  private shouldAttemptWarmupRecovery(error: unknown): boolean {
+    const coldStartLikely = lastWarmupAt === 0 || Boolean(warmupInFlight);
+    if (!coldStartLikely) {
+      return false;
+    }
+
+    const statusCode = this.getErrorStatusCode(error);
+    if (statusCode && [408, 422, 429, 500, 502, 503, 504].includes(statusCode)) {
+      return true;
+    }
+
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    return [
+      'unprocessable',
+      'timed out',
+      'timeout',
+      'temporarily unavailable',
+      'service unavailable',
+      'model is loading',
+      'overloaded',
+    ].some(fragment => message.includes(fragment));
+  }
+
+  private getErrorStatusCode(error: unknown): number | null {
+    if (!error || typeof error !== 'object') {
+      return null;
+    }
+    const candidate = error as {
+      status?: unknown;
+      statusCode?: unknown;
+      response?: { status?: unknown };
+    };
+    for (const value of [candidate.statusCode, candidate.status, candidate.response?.status]) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+    }
+    return null;
+  }
 
   /**
    * Run the depth estimation model on fal.ai
@@ -661,107 +651,6 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
   }
 
   /**
-   * Run the depth estimation model on Replicate
-   *
-   * @param imageUrl - URL of the source image
-   * @returns Temporary URL of the generated depth map
-   */
-  private async runReplicateDepthEstimation(imageUrl: string): Promise<string> {
-    if (!this.replicate) {
-      throw new Error('Replicate client not initialized');
-    }
-
-    this.log.debug('Calling Replicate depth estimation (fallback)', {
-      model: REPLICATE_DEPTH_MODEL_FALLBACK,
-      imageUrlHost: this.getUrlHost(imageUrl),
-    });
-
-    const input = {
-      image: imageUrl,
-    };
-
-    const output = await this.replicate.run(
-      REPLICATE_DEPTH_MODEL_FALLBACK as `${string}/${string}`,
-      { input }
-    );
-
-    this.log.debug('Replicate depth estimation response', {
-      outputType: typeof output,
-      outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
-    });
-
-    // Extract URL from output
-    const depthMapUrl = this.extractUrlFromOutput(output);
-
-    if (!depthMapUrl) {
-      throw new Error('Invalid output format from Replicate: Could not extract depth map URL');
-    }
-
-    return depthMapUrl;
-  }
-
-  /**
-   * Extract URL from Replicate output
-   *
-   * Handles various output formats:
-   * - Direct string URL
-   * - FileOutput object with url() method
-   * - Array of URLs
-   */
-  private extractUrlFromOutput(output: unknown): string | null {
-    // Direct string URL
-    if (typeof output === 'string' && output.startsWith('http')) {
-      return output;
-    }
-
-    // Object with url property or method
-    if (output && typeof output === 'object') {
-      const outputRecord = output as Record<string, unknown>;
-
-      // Depth Anything v2 returns grey/color depth URLs as fields
-      const depthKeys = ['grey_depth', 'gray_depth', 'color_depth', 'colour_depth'];
-      for (const key of depthKeys) {
-        if (!(key in outputRecord)) continue;
-        const value = outputRecord[key];
-        if (typeof value === 'string' && value.startsWith('http')) {
-          return value;
-        }
-        if (value && typeof value === 'object') {
-          const valueRecord = value as Record<string, unknown>;
-          if ('url' in valueRecord && typeof valueRecord.url === 'function') {
-            const url = (valueRecord.url as () => unknown)();
-            return typeof url === 'string' ? url : String(url);
-          }
-          if ('url' in valueRecord && typeof valueRecord.url === 'string') {
-            return valueRecord.url;
-          }
-        }
-      }
-
-      // FileOutput with url() method
-      if ('url' in outputRecord && typeof outputRecord.url === 'function') {
-        const url = (outputRecord.url as () => unknown)();
-        return typeof url === 'string' ? url : String(url);
-      }
-
-      // Direct url property
-      if ('url' in outputRecord && typeof outputRecord.url === 'string') {
-        return outputRecord.url;
-      }
-
-      // Array of URLs
-      if (Array.isArray(output) && output.length > 0) {
-        const firstItem = output[0];
-        if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
-          return firstItem;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  /**
    * Safely extract hostname from URL for logging
    */
   private getUrlHost(url: string): string | null {
@@ -786,7 +675,7 @@ export class ReplicateDepthEstimationService implements DepthEstimationService {
 export function createDepthEstimationService(
   options: DepthEstimationServiceOptions
 ): DepthEstimationService {
-  return new ReplicateDepthEstimationService(options);
+  return new FalDepthEstimationService(options);
 }
 
 /**
@@ -794,22 +683,19 @@ export function createDepthEstimationService(
  *
  * @param storageService - Storage service for GCS uploads
  * @param userId - User ID for storage path organization
- * @param replicateApiToken - Optional Replicate API token
  * @param falApiKey - Optional fal.ai API key
  * @returns DepthEstimationService instance
  */
 export function createDepthEstimationServiceForUser(
   storageService: StorageService,
   userId: string,
-  replicateApiToken?: string,
   falApiKey?: string
 ): DepthEstimationService {
-  return new ReplicateDepthEstimationService({
+  return new FalDepthEstimationService({
     storageService,
     userId,
-    replicateApiToken,
     falApiKey,
   });
 }
 
-export default ReplicateDepthEstimationService;
+export default FalDepthEstimationService;

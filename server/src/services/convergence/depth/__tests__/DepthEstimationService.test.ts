@@ -1,17 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fal } from '@fal-ai/client';
-import Replicate from 'replicate';
-import { ReplicateDepthEstimationService } from '../DepthEstimationService';
+import { FalDepthEstimationService } from '../DepthEstimationService';
 
 vi.mock('@fal-ai/client', () => ({
   fal: {
     config: vi.fn(),
     subscribe: vi.fn(),
   },
-}));
-
-vi.mock('replicate', () => ({
-  default: vi.fn(),
 }));
 
 describe('DepthEstimationService', () => {
@@ -21,6 +16,7 @@ describe('DepthEstimationService', () => {
     uploadFromUrl: ReturnType<typeof vi.fn>;
     uploadBuffer: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    refreshSignedUrl: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -31,6 +27,7 @@ describe('DepthEstimationService', () => {
       uploadFromUrl: vi.fn().mockResolvedValue('https://storage.example.com/depth.png'),
       uploadBuffer: vi.fn().mockResolvedValue('https://storage.example.com/depth.png'),
       delete: vi.fn().mockResolvedValue(undefined),
+      refreshSignedUrl: vi.fn().mockResolvedValue(null),
     };
   });
 
@@ -39,7 +36,7 @@ describe('DepthEstimationService', () => {
   });
 
   describe('estimateDepth with fal.ai', () => {
-    it('should use fal.ai as primary provider', async () => {
+    it('uses fal.ai as provider', async () => {
       (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
           image: {
@@ -49,7 +46,7 @@ describe('DepthEstimationService', () => {
         },
       });
 
-      const service = new ReplicateDepthEstimationService({
+      const service = new FalDepthEstimationService({
         falApiKey: 'test-fal-key',
         storageService: mockStorageService,
       });
@@ -62,47 +59,48 @@ describe('DepthEstimationService', () => {
           input: { image_url: 'https://example.com/image.jpg' },
         })
       );
-      expect(mockStorageService.upload).not.toHaveBeenCalled();
       expect(result).toBe('https://fal.media/files/depth-output.png');
     });
 
-    it('should fallback to Replicate when fal.ai fails', async () => {
-      vi.useFakeTimers();
+    it('refreshes signed GCS URLs before calling fal', async () => {
+      const staleSignedUrl =
+        'https://storage.googleapis.com/vidra-media-prod/users/user-1/previews/images/stale.jpg?X-Goog-Date=20260131T223719Z&X-Goog-Expires=3600';
+      const refreshedSignedUrl =
+        'https://storage.googleapis.com/vidra-media-prod/users/user-1/previews/images/stale.jpg?X-Goog-Date=20260211T222000Z&X-Goog-Expires=3600';
 
-      (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('fal.ai error')
-      );
+      mockStorageService.refreshSignedUrl.mockResolvedValue(refreshedSignedUrl);
+      (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          image: {
+            url: 'https://fal.media/files/depth-output.png',
+            content_type: 'image/png',
+          },
+        },
+      });
 
-      const mockReplicateRun = vi.fn().mockResolvedValue('https://replicate.delivery/depth.png');
-      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-        run: mockReplicateRun,
-      }));
-
-      const service = new ReplicateDepthEstimationService({
+      const service = new FalDepthEstimationService({
         falApiKey: 'test-fal-key',
-        replicateApiToken: 'test-replicate-token',
         storageService: mockStorageService,
       });
 
-      const resultPromise = service.estimateDepth('https://example.com/image-fallback.jpg');
-      await vi.runAllTimersAsync();
-      const result = await resultPromise;
+      await service.estimateDepth(staleSignedUrl);
 
-      expect(fal.subscribe).toHaveBeenCalled();
-      expect(mockReplicateRun).toHaveBeenCalledWith(
-        'chenxwh/depth-anything-v2',
-        expect.any(Object)
+      expect(mockStorageService.refreshSignedUrl).toHaveBeenCalledWith(staleSignedUrl);
+      expect(fal.subscribe).toHaveBeenCalledWith(
+        'fal-ai/image-preprocessors/depth-anything/v2',
+        expect.objectContaining({
+          input: { image_url: refreshedSignedUrl },
+        })
       );
-      expect(result).toBe('https://replicate.delivery/depth.png');
     });
 
-    it('propagates fal failure when replicate fallback is unavailable', async () => {
+    it('propagates fal failure after retries are exhausted', async () => {
       vi.useFakeTimers();
       (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('fal unavailable')
       );
 
-      const service = new ReplicateDepthEstimationService({
+      const service = new FalDepthEstimationService({
         falApiKey: 'test-fal-key',
         storageService: mockStorageService,
       });
@@ -125,7 +123,7 @@ describe('DepthEstimationService', () => {
         },
       });
 
-      const service = new ReplicateDepthEstimationService({
+      const service = new FalDepthEstimationService({
         falApiKey: 'test-fal-key',
         storageService: mockStorageService,
       });
@@ -138,99 +136,91 @@ describe('DepthEstimationService', () => {
       expect(second).toBe('https://fal.media/files/depth-cache.png');
       expect(fal.subscribe).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('estimateDepth with replicate output parsing', () => {
-    it('extracts grey_depth string URL output', async () => {
-      const mockReplicateRun = vi.fn().mockResolvedValue({
-        grey_depth: 'https://replicate.delivery/grey-depth.png',
-      });
-      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-        run: mockReplicateRun,
-      }));
-
-      const service = new ReplicateDepthEstimationService({
-        replicateApiToken: 'test-replicate-token',
-        storageService: mockStorageService,
-      });
-
-      const result = await service.estimateDepth('https://example.com/replicate-grey-depth.jpg');
-
-      expect(result).toBe('https://replicate.delivery/grey-depth.png');
-    });
-
-    it('extracts URL from object-style replicate output', async () => {
-      const mockReplicateRun = vi.fn().mockResolvedValue({
-        grey_depth: {
-          url: () => 'https://replicate.delivery/object-depth.png',
-        },
-      });
-      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-        run: mockReplicateRun,
-      }));
-
-      const service = new ReplicateDepthEstimationService({
-        replicateApiToken: 'test-replicate-token',
-        storageService: mockStorageService,
-      });
-
-      const result = await service.estimateDepth('https://example.com/replicate-object-depth.jpg');
-
-      expect(result).toBe('https://replicate.delivery/object-depth.png');
-    });
-
-    it('throws when replicate output cannot be parsed into a URL', async () => {
+    it('retries once after warmup when cold-start fal calls fail', async () => {
       vi.useFakeTimers();
-      const mockReplicateRun = vi.fn().mockResolvedValue({ unexpected: true });
-      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-        run: mockReplicateRun,
-      }));
 
-      const service = new ReplicateDepthEstimationService({
-        replicateApiToken: 'test-replicate-token',
+      const targetImageUrl = 'https://example.com/cold-start-image.jpg';
+      const warmupImageUrl = 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg';
+      let targetAttempts = 0;
+
+      (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        async (_model: string, payload: { input?: { image_url?: string } }) => {
+          const requestImageUrl = payload.input?.image_url;
+          if (requestImageUrl === targetImageUrl) {
+            targetAttempts += 1;
+            if (targetAttempts <= 3) {
+              throw new Error('Unprocessable Entity');
+            }
+
+            return {
+              data: {
+                image: {
+                  url: 'https://fal.media/files/depth-after-warmup.png',
+                  content_type: 'image/png',
+                },
+              },
+            };
+          }
+
+          if (requestImageUrl === warmupImageUrl) {
+            return {
+              data: {
+                image: {
+                  url: 'https://fal.media/files/depth-warmup.png',
+                  content_type: 'image/png',
+                },
+              },
+            };
+          }
+
+          throw new Error(`Unexpected image URL: ${String(requestImageUrl)}`);
+        }
+      );
+
+      const service = new FalDepthEstimationService({
+        falApiKey: 'test-fal-key',
         storageService: mockStorageService,
       });
 
-      const assertion = expect(
-        service.estimateDepth('https://example.com/replicate-invalid-output.jpg')
-      ).rejects.toThrow('Invalid output format from Replicate: Could not extract depth map URL');
+      const resultPromise = service.estimateDepth(targetImageUrl);
       await vi.runAllTimersAsync();
-      await assertion;
+      const result = await resultPromise;
+
+      expect(result).toBe('https://fal.media/files/depth-after-warmup.png');
+      expect(fal.subscribe).toHaveBeenCalledWith(
+        'fal-ai/image-preprocessors/depth-anything/v2',
+        expect.objectContaining({
+          input: { image_url: warmupImageUrl },
+        })
+      );
     });
   });
 
   describe('isAvailable', () => {
-    it('should return true when fal.ai is configured', () => {
-      const service = new ReplicateDepthEstimationService({
+    it('returns true when fal.ai is configured', () => {
+      const service = new FalDepthEstimationService({
         falApiKey: 'test-key',
         storageService: mockStorageService,
       });
       expect(service.isAvailable()).toBe(true);
     });
 
-    it('should return true when only Replicate is configured', () => {
-      const service = new ReplicateDepthEstimationService({
-        replicateApiToken: 'test-token',
-        storageService: mockStorageService,
-      });
-      expect(service.isAvailable()).toBe(true);
-    });
-
-    it('should return false when no providers configured', () => {
-      const service = new ReplicateDepthEstimationService({
+    it('returns false when fal.ai is not configured', () => {
+      const service = new FalDepthEstimationService({
         storageService: mockStorageService,
       });
       expect(service.isAvailable()).toBe(false);
     });
   });
 
-  it('throws when estimateDepth is called with no providers configured', async () => {
-    const service = new ReplicateDepthEstimationService({
+  it('throws when estimateDepth is called without a configured fal.ai provider', async () => {
+    const service = new FalDepthEstimationService({
       storageService: mockStorageService,
     });
 
     await expect(service.estimateDepth('https://example.com/no-providers.jpg')).rejects.toThrow(
-      'Depth estimation service is not available: no providers configured'
+      'Depth estimation service is not available: fal.ai provider not configured'
     );
   });
 });

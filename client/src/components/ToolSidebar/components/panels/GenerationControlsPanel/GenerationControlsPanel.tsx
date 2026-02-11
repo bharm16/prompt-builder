@@ -338,6 +338,8 @@ export function GenerationControlsPanel(
           isOpen={state.showCameraMotionModal}
           onClose={actions.handleCloseCameraMotionModal}
           imageUrl={keyframes[0].url}
+          imageStoragePath={keyframes[0].storagePath ?? null}
+          imageAssetId={keyframes[0].assetId ?? null}
           onSelect={actions.handleSelectCameraMotion}
           initialSelection={cameraMotion}
         />
