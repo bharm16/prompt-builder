@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RetryPolicy } from '../RetryPolicy';
 
+const { sleepMock } = vi.hoisted(() => ({
+  sleepMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../sleep', () => ({
+  sleep: sleepMock,
+}));
+
 // Mock the logger
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
@@ -124,6 +132,38 @@ describe('RetryPolicy.execute', () => {
       await RetryPolicy.execute(fn, { onRetry });
 
       expect(onRetry).not.toHaveBeenCalled();
+    });
+
+    it('waits fixed delay between retries when delayMs is set', async () => {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('retry me'))
+        .mockResolvedValueOnce('ok');
+
+      const result = await RetryPolicy.execute(fn, { maxRetries: 1, delayMs: 250 });
+
+      expect(result).toBe('ok');
+      expect(sleepMock).toHaveBeenCalledWith(250);
+    });
+
+    it('uses dynamic delay function for exponential-style backoff', async () => {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('fail-1'))
+        .mockRejectedValueOnce(new Error('fail-2'))
+        .mockResolvedValueOnce('ok');
+      const getDelayMs = vi.fn((attempt: number) => 100 * attempt);
+
+      const result = await RetryPolicy.execute(fn, {
+        maxRetries: 2,
+        getDelayMs,
+      });
+
+      expect(result).toBe('ok');
+      expect(getDelayMs).toHaveBeenNthCalledWith(1, 1);
+      expect(getDelayMs).toHaveBeenNthCalledWith(2, 2);
+      expect(sleepMock).toHaveBeenNthCalledWith(1, 100);
+      expect(sleepMock).toHaveBeenNthCalledWith(2, 200);
     });
   });
 
