@@ -203,6 +203,9 @@ const buildService = (
     videoGenerator,
     sessionStore,
     seedService,
+    frameBridge,
+    styleReference,
+    sceneProxy,
   };
 };
 
@@ -354,5 +357,173 @@ describe('ContinuitySessionService', () => {
     );
     expect(result.status).toBe('completed');
     expect(providerAdapter.getContinuityStrategy).toHaveBeenCalled();
+  });
+
+  it('returns existing session immediately when sessionId already exists', async () => {
+    const existingSession = buildSession({ id: 'session-existing' });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(existingSession),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service } = buildService(buildSession(), { sessionStore });
+
+    const result = await service.createSession('user-1', {
+      sessionId: 'session-existing',
+      name: 'Ignored name',
+    });
+
+    expect(result).toBe(existingSession);
+    expect(sessionStore.save).not.toHaveBeenCalled();
+  });
+
+  it('adds shots with inherited defaults and previous style reference', async () => {
+    const previousShot = buildShot({
+      id: 'shot-0',
+      sequenceIndex: 0,
+      status: 'completed',
+      continuityMode: 'style-match',
+      generationMode: 'continuity',
+      videoAssetId: 'video-0',
+      frameBridge: {
+        id: 'bridge-0',
+        sourceVideoId: 'video-0',
+        sourceShotId: 'shot-0',
+        frameUrl: 'https://example.com/bridge.png',
+        framePosition: 'last',
+        frameTimestamp: 4,
+        resolution: { width: 1280, height: 720 },
+        aspectRatio: '16:9',
+        extractedAt: new Date(),
+      },
+    });
+    const session = buildSession({ shots: [previousShot] });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service } = buildService(session, { sessionStore });
+
+    const shot = await service.addShot({
+      sessionId: session.id,
+      prompt: 'Next shot',
+    });
+
+    expect(shot.sequenceIndex).toBe(1);
+    expect(shot.styleReferenceId).toBe('shot-0');
+    expect(shot.generationMode).toBe(session.defaultSettings.generationMode);
+    expect(shot.continuityMode).toBe(session.defaultSettings.defaultContinuityMode);
+    expect(shot.modelId).toBe(session.defaultSettings.defaultModel);
+    expect(shot.frameBridge).toEqual(previousShot.frameBridge);
+    expect(shot.status).toBe('draft');
+    expect(sessionStore.save).toHaveBeenCalled();
+  });
+
+  it('merges camera fields and removes characterAssetId when set to null on update', async () => {
+    const session = buildSession({
+      shots: [
+        buildShot({
+          id: 'shot-update',
+          characterAssetId: 'char-1',
+          camera: { yaw: 8, pitch: 2 },
+        }),
+      ],
+    });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service } = buildService(session, { sessionStore });
+
+    const updated = await service.updateShot(session.id, 'shot-update', {
+      camera: { roll: 3, dolly: 1 },
+      characterAssetId: null,
+      styleStrength: 0.8,
+    });
+
+    expect(updated.camera).toEqual({ yaw: 8, pitch: 2, roll: 3, dolly: 1 });
+    expect(updated.characterAssetId).toBeUndefined();
+    expect(updated.styleStrength).toBe(0.8);
+    expect(sessionStore.save).toHaveBeenCalled();
+  });
+
+  it('only applies allowed session setting keys', async () => {
+    const session = buildSession();
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service } = buildService(session, { sessionStore });
+
+    const updated = await service.updateSessionSettings(session.id, {
+      defaultStyleStrength: 0.92,
+      maxRetries: 3,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      unknownSetting: 'ignored' as any,
+    } as any);
+
+    expect(updated.defaultSettings.defaultStyleStrength).toBe(0.92);
+    expect(updated.defaultSettings.maxRetries).toBe(3);
+    expect((updated.defaultSettings as unknown as Record<string, unknown>).unknownSetting).toBeUndefined();
+    expect(sessionStore.save).toHaveBeenCalled();
+  });
+
+  it('creates scene proxy from source shot and enables scene proxy usage when ready', async () => {
+    const session = buildSession({
+      shots: [
+        buildShot({
+          id: 'shot-1',
+          videoAssetId: 'video-1',
+          status: 'completed',
+        }),
+      ],
+      defaultSettings: {
+        ...buildSession().defaultSettings,
+        useSceneProxy: false,
+      },
+    });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service, videoGenerator, sceneProxy } = buildService(session, {
+      sessionStore,
+      sceneProxy: {
+        createProxyFromVideo: vi.fn().mockResolvedValue({
+          id: 'proxy-1',
+          sourceVideoId: 'video-1',
+          proxyType: 'depth-parallax',
+          referenceFrameUrl: 'https://example.com/proxy.png',
+          status: 'ready',
+          createdAt: new Date(),
+        }),
+      },
+    });
+
+    const updated = await service.createSceneProxy(session.id, 'shot-1');
+
+    expect(videoGenerator.getVideoUrl).toHaveBeenCalledWith('video-1');
+    expect(sceneProxy.createProxyFromVideo).toHaveBeenCalledWith(
+      session.userId,
+      'video-1',
+      'https://example.com/video.mp4'
+    );
+    expect(updated.sceneProxy?.id).toBe('proxy-1');
+    expect(updated.defaultSettings.useSceneProxy).toBe(true);
+    expect(sessionStore.save).toHaveBeenCalled();
   });
 });

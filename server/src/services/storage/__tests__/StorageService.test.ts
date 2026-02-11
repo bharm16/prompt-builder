@@ -66,8 +66,11 @@ const buildStorageService = () => {
 };
 
 describe('StorageService', () => {
+  const originalAllowCrossUser = process.env.ALLOW_DEV_CROSS_USER_STORAGE;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ALLOW_DEV_CROSS_USER_STORAGE = originalAllowCrossUser;
   });
 
   it('returns upload URL for valid type and content type', async () => {
@@ -148,5 +151,98 @@ describe('StorageService', () => {
 
     expect(result.deleted).toBe(true);
     expect(mockRetentionService.deleteFile).toHaveBeenCalled();
+  });
+
+  it('confirms uploads through upload service', async () => {
+    const { service, mockUploadService } = buildStorageService();
+
+    const result = await service.confirmUpload('user123', 'users/user123/previews/images/123-abc.webp');
+
+    expect(result.storagePath).toBe('users/user123/previews/images/123-abc.webp');
+    expect(mockUploadService.confirmUpload).toHaveBeenCalledWith(
+      'users/user123/previews/images/123-abc.webp',
+      'user123'
+    );
+  });
+
+  it('lists files through retention service', async () => {
+    const { service, mockRetentionService } = buildStorageService();
+
+    await service.listFiles('user123', { type: 'generation', limit: 5, pageToken: 'next' });
+
+    expect(mockRetentionService.listUserFiles).toHaveBeenCalledWith('user123', {
+      type: 'generation',
+      limit: 5,
+      pageToken: 'next',
+    });
+  });
+
+  it('deletes multiple files through retention service', async () => {
+    const { service, mockRetentionService } = buildStorageService();
+
+    const result = await service.deleteFiles('user123', [
+      'users/user123/generations/a.mp4',
+      'users/user123/generations/b.mp4',
+    ]);
+
+    expect(result).toEqual({ deleted: 2, failed: 0, details: [] });
+    expect(mockRetentionService.deleteFiles).toHaveBeenCalledWith(
+      ['users/user123/generations/a.mp4', 'users/user123/generations/b.mp4'],
+      'user123'
+    );
+  });
+
+  it('returns storage usage through retention service', async () => {
+    const { service, mockRetentionService } = buildStorageService();
+    mockRetentionService.getUserStorageUsage.mockResolvedValueOnce({
+      totalBytes: 1024,
+      totalMB: 0.001,
+      byType: { generation: 1024 },
+      fileCount: 1,
+    });
+
+    const usage = await service.getStorageUsage('user123');
+
+    expect(usage.totalBytes).toBe(1024);
+    expect(mockRetentionService.getUserStorageUsage).toHaveBeenCalledWith('user123');
+  });
+
+  it('checks file existence via bucket file handle', async () => {
+    const { service } = buildStorageService();
+
+    const exists = await service.fileExists('users/user123/generations/exists.mp4');
+
+    expect(exists).toBe(true);
+  });
+
+  it('returns metadata for owned files', async () => {
+    const { service } = buildStorageService();
+
+    const metadata = await service.getFileMetadata('user123', 'users/user123/generations/123-abc.mp4');
+
+    expect(metadata.storagePath).toBe('users/user123/generations/123-abc.mp4');
+    expect(metadata.sizeBytes).toBe(1024);
+    expect(metadata.contentType).toBe('video/mp4');
+  });
+
+  it('allows cross-user view URL in development when explicitly enabled', async () => {
+    const { service, mockSignedUrlService } = buildStorageService();
+    process.env.ALLOW_DEV_CROSS_USER_STORAGE = 'true';
+
+    const result = await service.getViewUrl('user123', 'users/otheruser/generations/123-abc.mp4');
+
+    expect(result.viewUrl).toBe('https://storage.googleapis.com/view');
+    expect(mockSignedUrlService.getViewUrl).toHaveBeenCalledWith(
+      'users/otheruser/generations/123-abc.mp4'
+    );
+  });
+
+  it('propagates delegated upload errors', async () => {
+    const { service, mockUploadService } = buildStorageService();
+    mockUploadService.uploadFromUrl.mockRejectedValueOnce(new Error('upstream failed'));
+
+    await expect(
+      service.saveFromUrl('user123', 'https://api.example.com/video.mp4', 'generation')
+    ).rejects.toThrow('upstream failed');
   });
 });

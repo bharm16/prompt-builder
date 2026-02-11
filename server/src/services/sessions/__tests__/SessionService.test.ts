@@ -1,0 +1,257 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SessionRecord } from '../types';
+import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
+import { SessionService } from '../SessionService';
+
+const buildRecord = (overrides: Partial<SessionRecord> = {}): SessionRecord => ({
+  id: 'session-1',
+  userId: 'user-1',
+  status: 'active',
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  ...overrides,
+});
+
+const buildShot = (overrides: Partial<ContinuityShot> = {}): ContinuityShot => ({
+  id: 'shot-1',
+  sessionId: 'session-1',
+  sequenceIndex: 0,
+  userPrompt: 'Prompt',
+  continuityMode: 'frame-bridge',
+  styleStrength: 0.6,
+  styleReferenceId: null,
+  modelId: 'model-a' as ContinuityShot['modelId'],
+  status: 'completed',
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  generatedAt: new Date('2026-01-01T00:00:10.000Z'),
+  frameBridge: {
+    id: 'bridge-1',
+    sourceVideoId: 'video-1',
+    sourceShotId: 'shot-0',
+    frameUrl: 'https://example.com/bridge.png',
+    framePosition: 'last',
+    frameTimestamp: 6,
+    resolution: { width: 1280, height: 720 },
+    aspectRatio: '16:9',
+    extractedAt: new Date('2026-01-01T00:00:05.000Z'),
+  },
+  ...overrides,
+});
+
+const buildContinuity = (overrides: Partial<ContinuitySession> = {}): ContinuitySession => ({
+  id: 'session-1',
+  userId: 'user-1',
+  name: 'Continuity',
+  primaryStyleReference: {
+    id: 'style-1',
+    sourceVideoId: 'video-1',
+    sourceFrameIndex: 0,
+    frameUrl: 'https://example.com/style.png',
+    frameTimestamp: 0,
+    resolution: { width: 1920, height: 1080 },
+    aspectRatio: '16:9',
+    extractedAt: new Date('2026-01-01T00:00:00.000Z'),
+  },
+  shots: [buildShot()],
+  defaultSettings: {
+    generationMode: 'continuity',
+    defaultContinuityMode: 'frame-bridge',
+    defaultStyleStrength: 0.6,
+    defaultModel: 'model-a' as ContinuitySession['defaultSettings']['defaultModel'],
+    autoExtractFrameBridge: false,
+    useCharacterConsistency: false,
+  },
+  status: 'active',
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  ...overrides,
+});
+
+describe('SessionService', () => {
+  const sessionStore = {
+    save: vi.fn(),
+    get: vi.fn(),
+    findByPromptUuid: vi.fn(),
+    findByUser: vi.fn(),
+    delete: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStore.findByPromptUuid.mockResolvedValue(null);
+    sessionStore.get.mockResolvedValue(null);
+    sessionStore.findByUser.mockResolvedValue([]);
+  });
+
+  it('creates prompt sessions and assigns prompt UUID when missing', async () => {
+    const service = new SessionService(sessionStore as never);
+
+    const created = await service.createPromptSession('user-1', {
+      name: 'Prompt Session',
+      prompt: {
+        input: 'raw prompt',
+        output: 'optimized prompt',
+      },
+    });
+
+    expect(created.id).toContain('session_');
+    expect(created.prompt?.uuid).toEqual(expect.any(String));
+    expect(created.promptUuid).toBe(created.prompt?.uuid);
+    expect(sessionStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', name: 'Prompt Session' })
+    );
+  });
+
+  it('updates existing session when create is called with a known prompt UUID', async () => {
+    const existing = buildRecord({
+      id: 'existing-1',
+      name: 'Existing',
+      prompt: {
+        uuid: 'prompt-uuid-1',
+        input: 'old in',
+        output: 'old out',
+      },
+      promptUuid: 'prompt-uuid-1',
+    });
+    sessionStore.findByPromptUuid.mockResolvedValue(existing);
+    sessionStore.get.mockResolvedValue(existing);
+
+    const service = new SessionService(sessionStore as never);
+    const result = await service.createPromptSession('user-1', {
+      name: 'Updated Name',
+      prompt: {
+        uuid: 'prompt-uuid-1',
+        input: 'new in',
+        output: 'new out',
+      },
+    });
+
+    expect(result.id).toBe('existing-1');
+    expect(sessionStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'existing-1',
+        name: 'Updated Name',
+        prompt: expect.objectContaining({ input: 'new in', output: 'new out' }),
+      })
+    );
+  });
+
+  it('updates status lifecycle fields', async () => {
+    const current = buildRecord({ id: 'session-1', status: 'active' });
+    sessionStore.get.mockResolvedValue(current);
+
+    const service = new SessionService(sessionStore as never);
+    const updated = await service.updateSession('session-1', {
+      status: 'completed',
+      name: 'Done Session',
+    });
+
+    expect(updated.status).toBe('completed');
+    expect(updated.name).toBe('Done Session');
+    expect(sessionStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'session-1', status: 'completed' })
+    );
+  });
+
+  it('filters session listing by includeContinuity/includePrompt flags', async () => {
+    const promptOnly = buildRecord({ id: 'prompt-only', prompt: { input: 'in', output: 'out' } });
+    const continuityOnly = buildRecord({ id: 'continuity-only', continuity: buildContinuity() });
+    const both = buildRecord({
+      id: 'both',
+      prompt: { input: 'in', output: 'out' },
+      continuity: buildContinuity({ id: 'both' }),
+    });
+    sessionStore.findByUser.mockResolvedValue([promptOnly, continuityOnly, both]);
+
+    const service = new SessionService(sessionStore as never);
+
+    const noContinuity = await service.listSessions('user-1', { includeContinuity: false });
+    const noPrompt = await service.listSessions('user-1', { includePrompt: false });
+
+    expect(noContinuity.map((s) => s.id)).toEqual(['prompt-only']);
+    expect(noPrompt.map((s) => s.id)).toEqual(['continuity-only']);
+  });
+
+  it('updates highlights and appends version entries', async () => {
+    const current = buildRecord({
+      id: 'session-1',
+      prompt: {
+        input: 'input',
+        output: 'output',
+      },
+    });
+    sessionStore.get.mockResolvedValue(current);
+
+    const service = new SessionService(sessionStore as never);
+    const updated = await service.updateHighlights('session-1', {
+      highlightCache: { spans: [{ start: 0, end: 4 }] },
+      versionEntry: { timestamp: '2026-02-11T00:00:00.000Z' },
+    });
+
+    expect(updated.prompt?.highlightCache).toEqual({ spans: [{ start: 0, end: 4 }] });
+    expect(updated.prompt?.versions).toHaveLength(1);
+    expect(updated.prompt?.versions?.[0]?.timestamp).toBe('2026-02-11T00:00:00.000Z');
+  });
+
+  it('preserves immutable media fields when versions are updated', async () => {
+    const current = buildRecord({
+      id: 'session-1',
+      prompt: {
+        input: 'input',
+        output: 'output',
+        versions: [
+          {
+            versionId: 'v1',
+            signature: 'sig',
+            prompt: 'prompt',
+            timestamp: '2026-02-11T00:00:00.000Z',
+            preview: {
+              generatedAt: '2026-02-11T00:00:00.000Z',
+              imageUrl: 'https://example.com/old.png',
+              storagePath: 'users/user-1/previews/images/original.webp',
+              assetId: 'asset-old',
+            },
+          },
+        ],
+      },
+    });
+    sessionStore.get.mockResolvedValue(current);
+
+    const service = new SessionService(sessionStore as never);
+    const updated = await service.updateVersions('session-1', {
+      versions: [
+        {
+          versionId: 'v1',
+          signature: 'sig',
+          prompt: 'prompt',
+          timestamp: '2026-02-11T00:01:00.000Z',
+          preview: {
+            generatedAt: '2026-02-11T00:01:00.000Z',
+            imageUrl: 'https://example.com/new.png',
+            storagePath: 'users/user-1/previews/images/overwritten.webp',
+            assetId: 'asset-new',
+          },
+        },
+      ],
+    });
+
+    expect(updated.prompt?.versions?.[0]?.preview?.storagePath).toBe(
+      'users/user-1/previews/images/original.webp'
+    );
+    expect(updated.prompt?.versions?.[0]?.preview?.assetId).toBe('asset-old');
+  });
+
+  it('maps continuity sessions to DTO with ISO date fields', () => {
+    const service = new SessionService(sessionStore as never);
+    const dto = service.toDto(
+      buildRecord({
+        continuity: buildContinuity(),
+      })
+    );
+
+    expect(dto.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(dto.continuity?.primaryStyleReference?.extractedAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(dto.continuity?.shots[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(dto.continuity?.shots[0]?.frameBridge?.extractedAt).toBe('2026-01-01T00:00:05.000Z');
+  });
+});
