@@ -52,6 +52,16 @@ If any check fails, DO NOT commit. Fix the failures first.
 
 A pre-commit hook enforces checks 1-2 automatically. Run `bash scripts/install-hooks.sh` after cloning.
 
+### Integration Test Gate (Service Changes)
+
+When modifying files in `server/src/config/services.config.ts`, `server/src/config/services.initialize.ts`, `server/src/app.ts`, `server/src/server.ts`, or `server/index.ts`, also run:
+
+```bash
+PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
+```
+
+If these fail, the change broke application startup or DI wiring. Fix the source code, not the tests.
+
 ### Commit Scope Rules
 
 - Maximum ~10 files per commit unless it's a mechanical refactor (rename, import path change)
@@ -143,10 +153,61 @@ Before modifying code, ask:
    - `REDIS_URL` (caching, defaults to in-memory)
    - `API_KEY` (production API auth)
 
+## Writing Integration Tests
+
+Read `docs/architecture/typescript/TEST_GUIDE.md` Part 3 before writing ANY integration test.
+
+### The Cardinal Rule
+
+**Write tests from contracts, not implementations.** Read registration files, type interfaces, route declarations, and schema definitions. Do NOT read service implementations when writing the test assertions. The test encodes what the code PROMISES to do. If the implementation doesn't match the promise, the test should fail.
+
+Files to read for contracts:
+- `server/src/config/services.config.ts` — every service name and its factory
+- `server/src/config/services.initialize.ts` — initialization order and health checks
+- `server/src/app.ts` — middleware stack and route registration
+- `server/src/routes/*.routes.ts` — route paths and their schemas
+- `server/src/schemas/*.ts` — Zod validation contracts
+- `shared/taxonomy.ts` — category definitions
+
+Files to NOT read when writing assertions:
+- Service class implementations (e.g., `EnhancementService.ts` internals)
+- Route handler function bodies
+- LLM prompt templates
+- Utility function implementations
+
+### When Generating Integration Tests
+
+1. Read the contract files listed above
+2. Write assertions based on what the contracts promise
+3. Run the test — expect failures
+4. Report failures to the user with root cause analysis
+5. **STOP. Do not auto-fix.** Ask the user whether to fix the source code or adjust the test spec.
+
+### When Fixing Integration Test Failures
+
+If the user asks you to fix failing integration tests:
+- Default to fixing the SOURCE CODE, not the test
+- Only modify the test if it references a service name, route path, or schema field that genuinely does not exist in any contract file
+- Never weaken an assertion to make it pass (e.g., changing `.toBe(200)` to `.toBeDefined()`)
+- Never add try/catch in the test to swallow errors
+- Never change `expect(x).toBe(y)` to `expect(x).toBe(z)` where `z` is what the broken code returns
+
+### Integration Test Types (Quick Reference)
+
+| Type | When to Write | What to Assert |
+|------|--------------|----------------|
+| Bootstrap (Type 1) | Changed startup sequence, DI config, env validation | Server starts, health check returns 200 |
+| DI Container (Type 2) | Added/removed/renamed a service registration | Every registered name resolves without throwing |
+| Full-Stack Route (Type 3) | Changed middleware, auth, or route wiring | Request through real app gets expected status |
+| Database (Type 4) | Changed Firestore schema, transaction logic | Data round-trips correctly through emulator |
+| Workflow (Type 5) | Changed service that feeds into another service | Output of service A is valid input for service B |
+| Contract (Type 6) | Integrated new external API or updated client | Client handles real response fixtures correctly |
+
 ## Documentation References
 
 - Architecture rules: `docs/architecture/CLAUDE_CODE_RULES.md`
 - TypeScript style: `docs/architecture/typescript/STYLE_RULES.md`
+- Test guide (includes integration tests): `docs/architecture/typescript/TEST_GUIDE.md`
 - Zod patterns: `docs/architecture/typescript/ZOD_PATTERNS.md`
 - Logging: `docs/architecture/typescript/LOGGING_PATTERNS.md`
 

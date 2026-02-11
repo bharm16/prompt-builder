@@ -45,7 +45,37 @@
 - npm run test:e2e   Playwright
 - npm run build      Vite build
 
+## Integration tests
+
+Read `docs/architecture/typescript/TEST_GUIDE.md` Part 3 before writing any integration test.
+
+Cardinal rule: **write tests from contracts, not implementations.**
+
+Contract files to read:
+- `server/src/config/services.config.ts` (service registrations)
+- `server/src/config/services.initialize.ts` (init order, health checks)
+- `server/src/app.ts` (middleware, route mounting)
+- `server/src/routes/*.routes.ts` (route paths, schemas)
+- `server/src/schemas/*.ts` (Zod contracts)
+
+Do NOT read service class internals, handler bodies, or prompt templates when writing assertions.
+
+Workflow:
+1. Read contract files.
+2. Write assertions against what contracts promise.
+3. Run tests — expect failures.
+4. Report failures with root cause analysis.
+5. STOP. Ask the user whether to fix source code or adjust the test spec.
+
+When fixing failures: default to fixing source code, not the test. Never weaken assertions.
+
+When modifying `services.config.ts`, `services.initialize.ts`, `app.ts`, `server.ts`, or `server/index.ts`, run:
+```bash
+PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
+```
+
 ## Working notes
 - Keep changes small and consistent with existing patterns.
 - Update or add tests for behavior changes.
 - See client/GEMINI.md and server/GEMINI.md for subsystem-specific guidance.
+- Integration test guide: docs/architecture/typescript/TEST_GUIDE.md (Part 3).
