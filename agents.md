@@ -22,9 +22,16 @@ Do not replace existing `CLAUDE.md` / `GEMINI.md` files; use this as Codex-speci
 
 ### 2) Bugfix Workflow
 1. Reproduce with the smallest deterministic path.
-2. Add a failing test when practical.
+2. **Write a failing test first** that reproduces the bug. If the bug is in a service, write a unit test. If it crosses service boundaries, write an integration test. The test must fail _before_ the fix and pass _after_.
 3. Fix root cause (not symptom) in service/hook layer first, then UI/API layer.
-4. Re-run the failing test, then regression checks.
+4. Run the new test — it must pass.
+5. Run the full existing test suite (`npm run test:unit`) — all existing tests must still pass without modification.
+
+**Test update rules during bugfixes:**
+- Never weaken an existing test to accommodate a fix. If an existing test fails after your fix, your fix changed a contract — treat that as a separate decision.
+- Never update a test and the source file it covers in the same logical change unless the contract itself is intentionally changing.
+- A failing existing test after a bugfix is information, not a problem to silence. Investigate before touching the test.
+- Default action: _add_ a new test case, don't _edit_ existing ones.
 
 ### 3) Performance Workflow
 1. Start app and verify baseline behavior.

@@ -74,6 +74,21 @@ When modifying `services.config.ts`, `services.initialize.ts`, `app.ts`, `server
 PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
 
+## Bugfix protocol
+
+When fixing a bug, follow this sequence exactly:
+
+1. Write a failing test first that reproduces the bug. Unit test for service bugs, integration test for cross-service bugs. Must fail before the fix and pass after.
+2. Fix root cause in service/hook layer, not symptom in UI/API layer.
+3. Run the new test — must pass.
+4. Run full existing suite (`npm run test:unit`) — all existing tests must pass without modification.
+
+Test update rules during bugfixes:
+- Never weaken an existing test to accommodate a fix. A failing existing test means your fix changed a contract — treat that as a separate decision.
+- Never update a test and the source file it covers in the same logical change unless the contract itself is intentionally changing.
+- A failing existing test after a bugfix is information. Investigate before touching the test.
+- Default action: add a new test case, don't edit existing ones.
+
 ## Working notes
 - Keep changes small and consistent with existing patterns.
 - Update or add tests for behavior changes.
