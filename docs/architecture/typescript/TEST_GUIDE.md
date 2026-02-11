@@ -1,7 +1,7 @@
 # Test Writing Guide
 
 > Single reference for writing and generating tests in the PromptCanvas codebase.
-> Covers quality heuristics, TypeScript patterns, and codebase-specific guidance.
+> Covers quality heuristics, TypeScript patterns, integration testing, and codebase-specific guidance.
 
 ---
 
@@ -352,7 +352,657 @@ Snapshot tests are fine specifically for schema shape assertions where you *want
 
 ---
 
-## Part 3: Codebase-Specific Patterns
+## Part 3: Integration Tests
+
+### The Test Tier Model
+
+Every test in the codebase falls into one of three tiers. These are not interchangeable. Each tier catches a different class of bug, runs at a different speed, and requires different infrastructure.
+
+| Tier | What It Proves | What It Mocks | Speed | Catches |
+|------|---------------|---------------|-------|---------|
+| **Unit** | A single module works correctly in isolation | All dependencies | < 50ms per test | Logic errors, edge cases, transformation bugs |
+| **Integration** | Multiple real modules work together correctly | Only external boundaries (network, third-party APIs, databases) | 100ms–30s per test | Wiring errors, DI misconfigurations, middleware conflicts, contract mismatches, startup failures |
+| **E2E** | The full system works from the user's perspective | Nothing (real browser, real server) | 5–60s per test | Deployment errors, UI regressions, cross-stack failures |
+
+The critical distinction is **what gets mocked**.
+
+- **Unit test:** Everything except the module under test is mocked.
+- **Integration test:** Real modules collaborate. Only things you *can't* run locally (external APIs, third-party services) are mocked.
+- **E2E test:** Nothing is mocked. Real browser hits real server.
+
+If you mock every dependency and inject a fresh `express()` app, you are writing a unit test — even if you use `supertest`, even if the file is in `tests/integration/`, even if the test exercises an HTTP endpoint. The file location does not determine the test tier. The dependency boundary does.
+
+---
+
+### Why Integration Tests Exist
+
+Unit tests prove that individual modules work. E2E tests prove the whole system works. Integration tests fill the gap between them by catching **assembly errors** — bugs that only appear when real modules are wired together.
+
+Examples of bugs that only integration tests catch:
+
+- A service factory in the DI container references a dependency that was never registered
+- Two routes accidentally mount on the same path, and the second one silently shadows the first
+- A middleware calls `next()` with an error object in the wrong shape, and the error handler doesn't recognize it
+- The real auth middleware rejects requests that a mocked auth middleware accepts
+- An environment variable is required at startup but no test ever exercises the startup path
+- A Firestore transaction uses a field name that doesn't match the schema the read-side expects
+- The Express body parser runs after a middleware that needs `req.body`, so it sees `undefined`
+- A circular dependency between two services causes a stack overflow on first resolution
+- Redis connection timeout cascades into service initialization failure and the health endpoint never becomes ready
+
+None of these bugs are visible in a unit test because unit tests replace the collaborating module with a mock. The mock always does the right thing. The real module might not.
+
+---
+
+### Types of Integration Tests
+
+Integration tests are not one thing. There are several distinct types, each with a different scope and purpose.
+
+#### Type 1: Bootstrap / Startup Tests
+
+**Purpose:** Verify the application starts up, connects to dependencies, and responds to health checks.
+
+**What's real:** DI container, service factories, middleware stack, route registration, env validation, server binding.
+
+**What's mocked:** External API health checks (optional — can let them fail gracefully), database connections (can use in-memory or emulated).
+
+**Why it matters:** The single most common class of "works on my machine" production failures is the application failing to start. A developer adds a service, forgets to register it in the DI container, and the server crashes on boot. No unit test catches this because unit tests never exercise the real DI container.
+
+```typescript
+// tests/integration/bootstrap.integration.test.ts
+import { describe, it, expect, afterEach } from 'vitest';
+import type { Server } from 'http';
+
+describe('Server Bootstrap', () => {
+  let server: Server | null = null;
+
+  afterEach(async () => {
+    if (server) {
+      await new Promise<void>((resolve) => server!.close(() => resolve()));
+      server = null;
+    }
+  });
+
+  it('starts up and responds to health check', async () => {
+    const { bootstrap } = await import('../../server/index.ts');
+    const result = await bootstrap();
+    server = result.server;
+
+    expect(result.app).toBeDefined();
+    expect(result.container).toBeDefined();
+
+    const address = server!.address();
+    const port = typeof address === 'object' ? address?.port : 3001;
+    const res = await fetch(`http://localhost:${port}/health`);
+    expect(res.status).toBe(200);
+  }, 30_000);
+
+  it('exposes metrics endpoint', async () => {
+    const { bootstrap } = await import('../../server/index.ts');
+    const result = await bootstrap();
+    server = result.server;
+
+    const address = server!.address();
+    const port = typeof address === 'object' ? address?.port : 3001;
+    const res = await fetch(`http://localhost:${port}/metrics`);
+    expect(res.status).toBe(200);
+  }, 30_000);
+});
+```
+
+**Key considerations:**
+
+- Use dynamic imports so the module's side effects don't fire at test load time.
+- Use `PORT=0` in the test environment to let the OS assign a free port, avoiding port collisions with a running dev server.
+- Give generous timeouts (30s+). Service initialization involves health checks, model warmup, and connection establishment.
+- Always close the server in `afterEach`. Leaked servers hold ports and break subsequent test runs.
+- External API health checks may fail without API keys. That's fine — the bootstrap test verifies the server comes up, not that every API key is valid. Services that fail health checks should degrade gracefully (null out the client), and this test verifies that degradation works.
+
+---
+
+#### Type 2: DI Container Tests
+
+**Purpose:** Verify that every service registered in the DI container can be resolved without errors, and that the dependency graph has no cycles or missing registrations.
+
+**What's real:** The container, all factory functions, all service constructors.
+
+**What's mocked:** External clients (API keys, network connections).
+
+```typescript
+// tests/integration/di-container.integration.test.ts
+import { describe, it, expect } from 'vitest';
+import { configureServices } from '@config/services.config';
+
+describe('DI Container', () => {
+  it('resolves all registered services without errors', async () => {
+    const container = await configureServices();
+
+    // Every service name that the app depends on at runtime
+    const criticalServices = [
+      'promptOptimizationService',
+      'enhancementService',
+      'sceneDetectionService',
+      'promptCoherenceService',
+      'videoConceptService',
+      'spanLabelingCacheService',
+      'metricsService',
+      'logger',
+    ];
+
+    for (const name of criticalServices) {
+      expect(() => container.resolve(name)).not.toThrow();
+    }
+  });
+
+  it('returns the same instance for singleton registrations', async () => {
+    const container = await configureServices();
+
+    const logger1 = container.resolve('logger');
+    const logger2 = container.resolve('logger');
+    expect(logger1).toBe(logger2);
+  });
+
+  it('returns null (not throws) for optional services without credentials', async () => {
+    // Temporarily remove API keys
+    const originalKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+      const container = await configureServices();
+      // Should resolve to null, not throw
+      const client = container.resolve('claudeClient');
+      expect(client).toBeNull();
+    } finally {
+      if (originalKey) process.env.OPENAI_API_KEY = originalKey;
+    }
+  });
+});
+```
+
+**When to add a test here:** Every time you register a new service in any `services/*.services.ts` file, add its name to the `criticalServices` list. This is the cheapest way to prevent "forgot to register a dependency" bugs.
+
+---
+
+#### Type 3: Full-Stack Route Tests
+
+**Purpose:** Verify that a request flows through the real middleware stack, real route registration, real validation, and real service layer — with only external API calls mocked.
+
+**What's real:** Express app (from `createApp`), middleware stack, route registration, request validation, service orchestration logic.
+
+**What's mocked:** LLM API calls, Replicate API calls, Stripe API calls, Firebase Admin SDK. Anything that requires credentials or makes network requests to a third-party.
+
+This is the critical difference from what the codebase currently calls "integration tests." Current tests create a bare `express()`, mount a single route slice, and mock every injected service. Full-stack route tests use the real `createApp(container)` with real services that have their external HTTP clients mocked at the lowest possible boundary.
+
+```typescript
+// tests/integration/api/optimize-fullstack.integration.test.ts
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import request from 'supertest';
+import type { Application } from 'express';
+import { configureServices, initializeServices } from '@config/services.config';
+import { createApp } from '../../server/src/app';
+import type { DIContainer } from '@infrastructure/DIContainer';
+
+// Mock ONLY the external HTTP boundary
+vi.mock('@clients/OpenAIClient', () => ({
+  OpenAIClient: vi.fn().mockImplementation(() => ({
+    complete: vi.fn().mockResolvedValue({
+      content: [{ text: 'optimized prompt text' }],
+      usage: { inputTokens: 50, outputTokens: 100 },
+    }),
+    completeStreaming: vi.fn(),
+    healthCheck: vi.fn().mockResolvedValue({ healthy: true }),
+  })),
+}));
+
+describe('Optimize Route (full-stack)', () => {
+  let app: Application;
+  let container: DIContainer;
+
+  beforeAll(async () => {
+    container = await configureServices();
+    await initializeServices(container);
+    app = createApp(container);
+  }, 30_000);
+
+  it('returns 400 for empty prompt', async () => {
+    const res = await request(app)
+      .post('/api/optimize-stream')
+      .set('x-api-key', process.env.ALLOWED_API_KEYS || 'test-key')
+      .send({ prompt: '', mode: 'video' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns SSE stream with expected event sequence for valid prompt', async () => {
+    const res = await request(app)
+      .post('/api/optimize-stream')
+      .set('x-api-key', process.env.ALLOWED_API_KEYS || 'test-key')
+      .send({
+        prompt: 'A woman walks along a beach at golden hour',
+        mode: 'video',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/event-stream');
+  });
+
+  it('rejects unauthenticated requests', async () => {
+    const res = await request(app)
+      .post('/api/optimize-stream')
+      .send({ prompt: 'A cat', mode: 'video' });
+
+    expect(res.status).toBe(401);
+  });
+});
+```
+
+**The hierarchy of mock boundaries:**
+
+```
+Unit test:       mock everything except the function under test
+                 ↓
+Route handler:   mock all services, test HTTP shape
+                 ↓
+Full-stack:      mock only external HTTP clients (OpenAI, Stripe, Replicate)
+                 ↓
+E2E:             mock nothing
+```
+
+The further down this hierarchy you go, the more bugs you catch, and the slower and harder to maintain the test becomes. Full-stack route tests are the sweet spot for catching assembly errors at the route level without needing a browser.
+
+---
+
+#### Type 4: Database / Persistence Integration Tests
+
+**Purpose:** Verify that your data access layer correctly reads and writes data through the real database client, with correct field names, transaction semantics, and query logic.
+
+**What's real:** Firestore client (using emulator), Redis client (using test instance or in-memory mock at the protocol level), query logic, transaction logic.
+
+**What's mocked:** Nothing — use the Firebase Emulator Suite or a test Redis instance.
+
+```typescript
+// tests/integration/credits/credit-transactions.integration.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+// Assumes Firebase Emulator is running (firebase emulators:start)
+
+describe('Credit Transactions (Firestore)', () => {
+  beforeEach(async () => {
+    // Clear Firestore emulator state between tests
+    await fetch(
+      `http://localhost:8080/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
+      { method: 'DELETE' },
+    );
+  });
+
+  it('reserves credits atomically — concurrent requests do not double-spend', async () => {
+    // Seed user with 50 credits
+    await seedUser('user-1', { credits: 50 });
+
+    // Two concurrent reservations of 30 each — one must fail
+    const results = await Promise.all([
+      creditService.reserveCredits('user-1', 30),
+      creditService.reserveCredits('user-1', 30),
+    ]);
+
+    const successes = results.filter(Boolean);
+    expect(successes).toHaveLength(1); // exactly one succeeded
+
+    const user = await getUser('user-1');
+    expect(user.credits).toBe(20); // 50 - 30 = 20
+  });
+
+  it('refund with idempotency key prevents double-refund', async () => {
+    await seedUser('user-1', { credits: 70 });
+
+    await creditService.refundCredits('user-1', 30, { refundKey: 'gen-abc' });
+    await creditService.refundCredits('user-1', 30, { refundKey: 'gen-abc' });
+
+    const user = await getUser('user-1');
+    expect(user.credits).toBe(100); // 70 + 30 = 100, not 130
+  });
+});
+```
+
+**When to use database integration tests vs mocked tests:**
+
+- If your test is about **business logic that uses a database**, mock the database. The business logic is the subject under test, not the database.
+- If your test is about **whether data survives a round-trip through the database**, use the real database (emulator). Transaction semantics, field names, indexes, and query behavior are the subject under test.
+- If your test is about **concurrent access**, you must use the real database. Mocks don't reproduce contention.
+
+---
+
+#### Type 5: Multi-Service Workflow Tests
+
+**Purpose:** Verify that a workflow that spans multiple services produces the correct end-to-end outcome when those services are wired together.
+
+**What's real:** All services in the workflow chain. The DI container or manual wiring connects them.
+
+**What's mocked:** External API clients at the HTTP boundary.
+
+This type is most valuable for workflows where data transforms as it flows through multiple services, and each service makes decisions based on the output of the previous one.
+
+```typescript
+// tests/integration/workflows/optimize-and-label.integration.test.ts
+import { describe, it, expect, vi } from 'vitest';
+
+describe('Optimize → Label → Enhance workflow', () => {
+  // Mock only the LLM HTTP boundary
+  const mockLLM = {
+    complete: vi.fn(),
+    completeStreaming: vi.fn(),
+    healthCheck: vi.fn().mockResolvedValue({ healthy: true }),
+  };
+
+  it('optimization output is valid input for span labeling', async () => {
+    // Step 1: Optimize
+    mockLLM.complete.mockResolvedValueOnce({
+      content: [{ text: 'A woman in her 30s walks barefoot along a pristine beach at golden hour, lateral tracking shot' }],
+    });
+    const optimized = await optimizationService.optimize({
+      prompt: 'person on beach',
+      mode: 'video',
+    });
+
+    // Step 2: Label — using real output from step 1
+    mockLLM.complete.mockResolvedValueOnce({
+      spans: [
+        { text: 'woman in her 30s', category: 'subject.identity', confidence: 0.92 },
+        { text: 'pristine beach', category: 'location.setting', confidence: 0.88 },
+      ],
+    });
+    const labeled = await spanLabelingService.label({ text: optimized.text });
+
+    // Verify the contract between services
+    expect(labeled.spans.length).toBeGreaterThan(0);
+    for (const span of labeled.spans) {
+      // Every span text must be a substring of the optimized text
+      expect(optimized.text).toContain(span.text);
+    }
+
+    // Step 3: Enhance — using real output from step 2
+    mockLLM.complete.mockResolvedValueOnce({
+      suggestions: ['elderly man', 'young dancer'],
+    });
+    const enhanced = await enhancementService.enhance({
+      highlightedText: labeled.spans[0].text,
+      highlightedCategory: labeled.spans[0].category,
+      fullPrompt: optimized.text,
+    });
+
+    expect(enhanced.suggestions.length).toBeGreaterThan(0);
+    // Suggestions should not include the original text
+    expect(enhanced.suggestions.map(s => s.text || s)).not.toContain(labeled.spans[0].text);
+  });
+});
+```
+
+**Why this matters:** The contract between `optimizationService` output and `spanLabelingService` input is implicit. If the optimization service changes its output format, unit tests for both services will pass, but the workflow will break. Multi-service workflow tests catch these contract mismatches.
+
+---
+
+#### Type 6: External Contract Tests
+
+**Purpose:** Verify that your code correctly handles real responses from external APIs — not just the happy path you mocked, but actual response shapes including error responses, rate limits, and edge cases.
+
+**What's real:** Your client code (parsing, error handling, retry logic).
+
+**What's mocked:** The HTTP transport layer (using `nock` or similar), but with response bodies captured from real API calls.
+
+```typescript
+// tests/integration/contracts/openai-response.integration.test.ts
+import { describe, it, expect } from 'vitest';
+import nock from 'nock';
+
+// Response fixtures captured from real OpenAI API calls
+import successResponse from '../../fixtures/openai/chat-completion-success.json';
+import rateLimitResponse from '../../fixtures/openai/rate-limit-429.json';
+import contentFilterResponse from '../../fixtures/openai/content-filter-400.json';
+
+describe('OpenAI Client (contract)', () => {
+  afterEach(() => nock.cleanAll());
+
+  it('parses a real success response correctly', async () => {
+    nock('https://api.openai.com')
+      .post('/v1/chat/completions')
+      .reply(200, successResponse);
+
+    const result = await openaiClient.complete({ prompt: 'test' });
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].text).toBe(successResponse.choices[0].message.content);
+    expect(result.usage.inputTokens).toBe(successResponse.usage.prompt_tokens);
+  });
+
+  it('throws a typed error on rate limit', async () => {
+    nock('https://api.openai.com')
+      .post('/v1/chat/completions')
+      .reply(429, rateLimitResponse, { 'retry-after': '2' });
+
+    await expect(openaiClient.complete({ prompt: 'test' }))
+      .rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+        retryAfterMs: 2000,
+      });
+  });
+
+  it('throws a typed error on content filter rejection', async () => {
+    nock('https://api.openai.com')
+      .post('/v1/chat/completions')
+      .reply(400, contentFilterResponse);
+
+    await expect(openaiClient.complete({ prompt: 'test' }))
+      .rejects.toMatchObject({
+        code: 'CONTENT_FILTERED',
+      });
+  });
+});
+```
+
+**When to use contract tests:**
+
+- After an external API changes its response format and breaks your code. Capture the new response as a fixture, write the test, then fix the code.
+- For any external API where you handle multiple response types (success, error, rate limit, timeout). Unit tests with hand-crafted mocks tend to drift from reality. Contract tests with captured fixtures stay accurate.
+- When onboarding a new external provider (Replicate, Luma, Kling). Capture representative responses before writing the client, then build the client to pass the contract tests.
+
+---
+
+### Integration Test Anti-Patterns
+
+#### Anti-Pattern 1: Mocking Everything (Disguised Unit Test)
+
+```typescript
+// ❌ This is a unit test in an integration test's clothing
+function createApp() {
+  const videoConceptService = {
+    getCreativeSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
+    checkCompatibility: vi.fn().mockResolvedValue({ compatible: true }),
+    // ... every method mocked
+  };
+
+  const app = express();
+  app.use(express.json());
+  app.use('/api/video', createVideoRoutes({ videoConceptService } as never));
+  return { app, videoConceptService };
+}
+```
+
+This pattern creates a fresh `express()` app, mocks every service, and mounts a single route slice. It tests that the route handler calls the right mock method with the right args and returns the right status code. That is **route handler unit testing** — useful, but it catches zero wiring bugs.
+
+The `as never` cast is the tell. If you need to force-cast the service container to silence TypeScript, you are not providing a real container and this is not an integration test.
+
+**Correct label:** "route handler unit test" or "route contract test."
+
+**When this is appropriate:** When you want fast, isolated tests of request validation, status codes, and response shapes. These tests are valuable. They just aren't integration tests.
+
+#### Anti-Pattern 2: Testing the Mock, Not the Code
+
+```typescript
+// ❌ The mock returns X, then we assert X. This tests nothing.
+mockService.getCreativeSuggestions.mockResolvedValue({ suggestions: ['sunset'] });
+const res = await request(app).post('/api/video/suggestions').send(body);
+expect(res.body.suggestions).toContain('sunset');
+```
+
+In an integration test, the service is real. The assertion tests the actual output of the real service, not a mock return value.
+
+#### Anti-Pattern 3: Sharing State Between Tests
+
+```typescript
+// ❌ Tests depend on execution order
+let server;
+
+it('starts the server', async () => {
+  server = await startServer();
+});
+
+it('responds to health check', async () => {
+  // Fails if run in isolation or if previous test fails
+  const res = await fetch(`http://localhost:3001/health`);
+  expect(res.status).toBe(200);
+});
+```
+
+Each integration test must be independently runnable. Use `beforeAll`/`beforeEach` for shared setup.
+
+#### Anti-Pattern 4: No Cleanup
+
+```typescript
+// ❌ Leaked server holds the port, breaks all subsequent tests
+it('starts and checks health', async () => {
+  const { server } = await bootstrap();
+  const res = await fetch('http://localhost:3001/health');
+  expect(res.status).toBe(200);
+  // server is never closed
+});
+```
+
+Integration tests that start servers, open connections, or create files **must** clean up in `afterEach`/`afterAll`. This is non-negotiable. Leaked resources cause flaky tests that fail on the second run.
+
+#### Anti-Pattern 5: Testing Through the UI When You Mean to Test the API
+
+If you're testing whether the `/api/optimize-stream` endpoint returns the right SSE events, don't spin up Playwright and navigate a browser. Use `supertest` against the real Express app. Save E2E tests for things that require a browser (DOM rendering, navigation, user flows).
+
+---
+
+### Integration Test Infrastructure
+
+#### Configuration
+
+Integration tests run with `npm run test:integration`, which uses `config/test/vitest.integration.config.js`:
+
+```javascript
+export default defineConfig({
+  test: {
+    environment: 'node',
+    setupFiles: ['./config/test/vitest.integration.setup.ts'],
+    include: ['tests/integration/**/*.integration.test.ts'],
+    testTimeout: 30000,  // generous for service initialization
+    hookTimeout: 15000,
+  },
+});
+```
+
+#### Setup File
+
+`config/test/vitest.integration.setup.ts` sets the baseline environment:
+
+```typescript
+process.env.NODE_ENV = 'test';
+process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'prompt-builder-test-bucket';
+```
+
+Add environment overrides here when integration tests need consistent configuration across all suites.
+
+#### File Location
+
+All integration tests live in `tests/integration/` and must match the pattern `*.integration.test.ts`.
+
+```
+tests/integration/
+├── api/                           # Full-stack route tests
+│   ├── optimize-fullstack.integration.test.ts
+│   └── preview-fullstack.integration.test.ts
+├── billing/                       # Credit and payment workflow tests
+│   ├── checkout-session.integration.test.ts
+│   └── webhook-handlers.integration.test.ts
+├── credits/                       # Credit transaction tests
+│   └── credit-transactions.integration.test.ts
+├── contracts/                     # External API contract tests
+│   └── openai-response.integration.test.ts
+├── workflows/                     # Multi-service workflow tests
+│   └── optimize-and-label.integration.test.ts
+├── bootstrap.integration.test.ts  # Server startup test
+└── di-container.integration.test.ts  # DI resolution test
+```
+
+#### Running Integration Tests in CI
+
+Integration tests are slower and more fragile than unit tests. Run them in a separate CI step:
+
+```yaml
+# .github/workflows/test.yml
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: unit  # only run if unit tests pass
+    services:
+      redis:
+        image: redis:7
+        ports: [6379:6379]
+    steps:
+      - run: npm run test:integration
+```
+
+---
+
+### Decision Framework: Unit vs Integration vs E2E
+
+When writing a new test, ask these questions in order:
+
+**1. Am I testing a single function's logic (transformation, calculation, validation)?**
+→ Unit test. Mock all dependencies.
+
+**2. Am I testing that modules wire together correctly (DI, middleware, route registration)?**
+→ Integration test (Type 1 or 2). Use real container, mock external APIs.
+
+**3. Am I testing a request → response cycle through real middleware and services?**
+→ Integration test (Type 3). Use `createApp(container)` with `supertest`, mock external HTTP.
+
+**4. Am I testing that data survives a round-trip through the database?**
+→ Integration test (Type 4). Use database emulator.
+
+**5. Am I testing that data flows correctly across multiple services?**
+→ Integration test (Type 5). Wire real services, mock external HTTP.
+
+**6. Am I testing that my code handles real external API responses correctly?**
+→ Integration test (Type 6). Use `nock` with captured response fixtures.
+
+**7. Am I testing what the user sees and does in a browser?**
+→ E2E test. Use Playwright.
+
+**8. Am I testing that the server starts and serves traffic?**
+→ Integration test (Type 1). This is not E2E — no browser is involved.
+
+If you're unsure, err toward the simpler (higher in the list) option. A unit test that runs in 10ms is better than an integration test that runs in 5s if both catch the same bug.
+
+---
+
+### The Existing Route Handler Tests
+
+The files in `tests/integration/api/` (e.g., `video-routes.integration.test.ts`, `preview-routes.integration.test.ts`) follow a pattern where every service is mocked and a fresh `express()` app is created per test. These are valuable tests — they verify request validation, status codes, and handler-to-service delegation. They belong in the test suite.
+
+However, they are functionally **route handler unit tests**, not integration tests. They would pass even if the DI container is broken, the middleware stack is misconfigured, or the route registration is wrong.
+
+You don't need to rename or move them. But when you encounter a bug that these tests didn't catch — especially a wiring or startup bug — the fix is to add a test from one of the six integration types above, not to add another route handler test with more mocks.
+
+---
+
+## Part 4: Codebase-Specific Patterns
 
 ### Testing SSE / Streaming Endpoints
 
@@ -1105,7 +1755,7 @@ describe('CompatibilityService', () => {
 
 ---
 
-## Part 4: Test File Structure
+## Part 5: Test File Structure
 
 ### Ordering Within a Test File
 
@@ -1171,7 +1821,7 @@ If you create SSE mock utilities (`createMockSseResponse`, `parseSseEvents`), th
 
 ---
 
-## Part 5: By File Type Cheat Sheet
+## Part 6: By File Type Cheat Sheet
 
 ### Services (orchestrators, thin delegators)
 - Test delegation: does the orchestrator call the right sub-service with the right args?
@@ -1223,7 +1873,7 @@ If you create SSE mock utilities (`createMockSseResponse`, `parseSseEvents`), th
 
 ---
 
-## Part 6: Self-Check
+## Part 7: Self-Check
 
 Before submitting any test, verify:
 
