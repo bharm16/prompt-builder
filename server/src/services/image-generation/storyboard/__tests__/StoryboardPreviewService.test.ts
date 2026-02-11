@@ -83,6 +83,51 @@ describe('StoryboardPreviewService', () => {
         service.generateStoryboard({ prompt: 'valid prompt' })
       ).rejects.toThrow('generation failed');
     });
+
+    it('throws on partial edit failure and chains input images up to the failing frame', async () => {
+      const { imageGenerationService, storyboardFramePlanner, planDeltas, generatePreview } =
+        createServices();
+      planDeltas.mockResolvedValueOnce(['delta 1', 'delta 2', 'delta 3']);
+      generatePreview
+        .mockResolvedValueOnce({
+          imageUrl: 'https://images.example.com/base.webp',
+          providerUrl: 'https://images.example.com/base-provider.webp',
+          metadata: {
+            aspectRatio: '16:9',
+            model: 'flux-schnell',
+            duration: 1200,
+            generatedAt: new Date().toISOString(),
+          },
+        })
+        .mockResolvedValueOnce({
+          imageUrl: 'https://images.example.com/edit-1.webp',
+          providerUrl: 'https://images.example.com/edit-1-provider.webp',
+          metadata: {
+            aspectRatio: '16:9',
+            model: 'kontext-fast',
+            duration: 1200,
+            generatedAt: new Date().toISOString(),
+          },
+        })
+        .mockRejectedValueOnce(new Error('edit frame 2 failed'));
+
+      const service = new StoryboardPreviewService({
+        imageGenerationService,
+        storyboardFramePlanner,
+      });
+
+      await expect(service.generateStoryboard({ prompt: 'valid prompt' })).rejects.toThrow(
+        'edit frame 2 failed'
+      );
+
+      expect(generatePreview).toHaveBeenCalledTimes(3);
+      expect(generatePreview.mock.calls[1]?.[1]?.inputImageUrl).toBe(
+        'https://images.example.com/base-provider.webp'
+      );
+      expect(generatePreview.mock.calls[2]?.[1]?.inputImageUrl).toBe(
+        'https://images.example.com/edit-1-provider.webp'
+      );
+    });
   });
 
   describe('edge cases', () => {

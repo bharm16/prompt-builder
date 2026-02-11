@@ -95,6 +95,108 @@ describe('DepthEstimationService', () => {
       );
       expect(result).toBe('https://replicate.delivery/depth.png');
     });
+
+    it('propagates fal failure when replicate fallback is unavailable', async () => {
+      vi.useFakeTimers();
+      (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('fal unavailable')
+      );
+
+      const service = new ReplicateDepthEstimationService({
+        falApiKey: 'test-fal-key',
+        storageService: mockStorageService,
+      });
+
+      const assertion = expect(
+        service.estimateDepth('https://example.com/fal-only-failure.jpg')
+      ).rejects.toThrow('fal unavailable');
+      await vi.runAllTimersAsync();
+      await assertion;
+      expect(fal.subscribe).toHaveBeenCalledTimes(3);
+    });
+
+    it('returns cached depth URL on repeated requests for the same image', async () => {
+      (fal.subscribe as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          image: {
+            url: 'https://fal.media/files/depth-cache.png',
+            content_type: 'image/png',
+          },
+        },
+      });
+
+      const service = new ReplicateDepthEstimationService({
+        falApiKey: 'test-fal-key',
+        storageService: mockStorageService,
+      });
+      const imageUrl = 'https://example.com/cache-hit-image.jpg';
+
+      const first = await service.estimateDepth(imageUrl);
+      const second = await service.estimateDepth(imageUrl);
+
+      expect(first).toBe('https://fal.media/files/depth-cache.png');
+      expect(second).toBe('https://fal.media/files/depth-cache.png');
+      expect(fal.subscribe).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('estimateDepth with replicate output parsing', () => {
+    it('extracts grey_depth string URL output', async () => {
+      const mockReplicateRun = vi.fn().mockResolvedValue({
+        grey_depth: 'https://replicate.delivery/grey-depth.png',
+      });
+      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+        run: mockReplicateRun,
+      }));
+
+      const service = new ReplicateDepthEstimationService({
+        replicateApiToken: 'test-replicate-token',
+        storageService: mockStorageService,
+      });
+
+      const result = await service.estimateDepth('https://example.com/replicate-grey-depth.jpg');
+
+      expect(result).toBe('https://replicate.delivery/grey-depth.png');
+    });
+
+    it('extracts URL from object-style replicate output', async () => {
+      const mockReplicateRun = vi.fn().mockResolvedValue({
+        grey_depth: {
+          url: () => 'https://replicate.delivery/object-depth.png',
+        },
+      });
+      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+        run: mockReplicateRun,
+      }));
+
+      const service = new ReplicateDepthEstimationService({
+        replicateApiToken: 'test-replicate-token',
+        storageService: mockStorageService,
+      });
+
+      const result = await service.estimateDepth('https://example.com/replicate-object-depth.jpg');
+
+      expect(result).toBe('https://replicate.delivery/object-depth.png');
+    });
+
+    it('throws when replicate output cannot be parsed into a URL', async () => {
+      vi.useFakeTimers();
+      const mockReplicateRun = vi.fn().mockResolvedValue({ unexpected: true });
+      (Replicate as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+        run: mockReplicateRun,
+      }));
+
+      const service = new ReplicateDepthEstimationService({
+        replicateApiToken: 'test-replicate-token',
+        storageService: mockStorageService,
+      });
+
+      const assertion = expect(
+        service.estimateDepth('https://example.com/replicate-invalid-output.jpg')
+      ).rejects.toThrow('Invalid output format from Replicate: Could not extract depth map URL');
+      await vi.runAllTimersAsync();
+      await assertion;
+    });
   });
 
   describe('isAvailable', () => {
@@ -120,5 +222,15 @@ describe('DepthEstimationService', () => {
       });
       expect(service.isAvailable()).toBe(false);
     });
+  });
+
+  it('throws when estimateDepth is called with no providers configured', async () => {
+    const service = new ReplicateDepthEstimationService({
+      storageService: mockStorageService,
+    });
+
+    await expect(service.estimateDepth('https://example.com/no-providers.jpg')).rejects.toThrow(
+      'Depth estimation service is not available: no providers configured'
+    );
   });
 });

@@ -14,6 +14,17 @@ vi.mock('@routes/preview/auth', () => ({
   getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
+const createApp = (handler: express.RequestHandler, requestId = 'req-sb-1') => {
+  const app = express();
+  app.use((req, _res, next) => {
+    (req as express.Request & { id?: string }).id = requestId;
+    next();
+  });
+  app.use(express.json());
+  app.post('/preview/generate/storyboard', handler);
+  return app;
+};
+
 describe('imageStoryboardGenerate refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,13 +52,7 @@ describe('imageStoryboardGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-sb-success-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/generate/storyboard', handler);
+    const app = createApp(handler, 'req-sb-success-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate/storyboard').send({
@@ -78,13 +83,7 @@ describe('imageStoryboardGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-sb-insufficient-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/generate/storyboard', handler);
+    const app = createApp(handler, 'req-sb-insufficient-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate/storyboard').send({
@@ -120,13 +119,7 @@ describe('imageStoryboardGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-sb-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/generate/storyboard', handler);
+    const app = createApp(handler, 'req-sb-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate/storyboard').send({
@@ -156,5 +149,140 @@ describe('imageStoryboardGenerate refunds', () => {
         reason: 'preview storyboard generation failed',
       })
     );
+  });
+
+  it('returns 401 when authentication is missing', async () => {
+    getAuthenticatedUserIdMock.mockResolvedValueOnce(null);
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generateStoryboardMock = vi.fn();
+
+    const handler = createImageStoryboardGenerateHandler({
+      storyboardPreviewService: {
+        generateStoryboard: generateStoryboardMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-sb-auth-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate/storyboard').send({ prompt: 'A storyboard prompt' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+      requestId: 'req-sb-auth-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+    expect(generateStoryboardMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'prompt', body: { prompt: '   ' }, error: 'Prompt must be a non-empty string' },
+    {
+      name: 'speedMode',
+      body: { prompt: 'A storyboard prompt', speedMode: 'warp-speed' },
+      error: 'speedMode must be one of: Lightly Juiced, Juiced, Extra Juiced, Real Time',
+    },
+    {
+      name: 'seed',
+      body: { prompt: 'A storyboard prompt', seed: 'invalid-seed' },
+      error: 'Invalid input: expected number, received string',
+    },
+  ])('returns 400 for invalid parsed request field $name', async ({ body, error }) => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generateStoryboardMock = vi.fn();
+
+    const handler = createImageStoryboardGenerateHandler({
+      storyboardPreviewService: {
+        generateStoryboard: generateStoryboardMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-sb-parse-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate/storyboard').send(body)
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error,
+      code: 'INVALID_REQUEST',
+      requestId: 'req-sb-parse-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+    expect(generateStoryboardMock).not.toHaveBeenCalled();
+  });
+
+  it('charges one fewer frame when seedImageUrl is provided', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generateStoryboardMock = vi.fn(async () => ({
+      imageUrls: ['https://images.example.com/frame-1.webp'],
+      storagePaths: ['users/u/preview-image/f1.webp'],
+      deltas: ['0'],
+      baseImageUrl: 'https://images.example.com/base.webp',
+    }));
+
+    const handler = createImageStoryboardGenerateHandler({
+      storyboardPreviewService: {
+        generateStoryboard: generateStoryboardMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-sb-seed-credits-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate/storyboard').send({
+        prompt: 'A storyboard prompt',
+        seedImageUrl: 'https://images.example.com/seed.webp',
+      })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(200);
+    expect(reserveCreditsMock).toHaveBeenCalledWith('user-1', STORYBOARD_FRAME_COUNT - 1);
+    expect(generateStoryboardMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 503 when storyboard preview service is missing', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const handler = createImageStoryboardGenerateHandler({
+      storyboardPreviewService: null as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-sb-missing-service-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate/storyboard').send({ prompt: 'A storyboard prompt' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      error: 'Storyboard preview service is not available',
+      code: 'SERVICE_UNAVAILABLE',
+      requestId: 'req-sb-missing-service-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
   });
 });

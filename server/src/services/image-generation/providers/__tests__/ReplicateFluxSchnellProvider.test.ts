@@ -103,6 +103,56 @@ describe('ReplicateFluxSchnellProvider', () => {
         'Replicate API returned no output. The image generation may have failed silently.'
       );
     });
+
+    it('maps rate-limit errors to status 429 with parsed details', async () => {
+      const provider = new ReplicateFluxSchnellProvider({ apiToken: 'token' });
+      const sleepSpy = vi.spyOn(provider as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+      sleepSpy.mockResolvedValue(undefined);
+      createPredictionMock.mockRejectedValue(
+        new Error('429 {"detail":"Slow down","retry_after":0}')
+      );
+
+      await expect(
+        provider.generatePreview({ prompt: 'valid prompt', userId: 'user-1' })
+      ).rejects.toMatchObject({
+        message: 'Slow down',
+        statusCode: 429,
+      });
+
+      sleepSpy.mockRestore();
+    });
+
+    it.each([
+      ['failed' as const, 'GPU crashed'],
+      ['canceled' as const, null],
+    ])(
+      'throws when prediction transitions to %s during polling',
+      async (status, predictionError) => {
+        const provider = new ReplicateFluxSchnellProvider({ apiToken: 'token' });
+        const sleepSpy = vi.spyOn(provider as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+        sleepSpy.mockResolvedValue(undefined);
+
+        createPredictionMock.mockResolvedValueOnce({
+          id: 'pred-1',
+          status: 'processing',
+          output: null,
+        });
+        getPredictionMock.mockResolvedValueOnce({
+          id: 'pred-1',
+          status,
+          output: null,
+          error: predictionError,
+        });
+
+        await expect(
+          provider.generatePreview({ prompt: 'valid prompt', userId: 'user-1' })
+        ).rejects.toThrow(
+          `Image generation failed: ${predictionError || 'Unknown error'}`
+        );
+
+        sleepSpy.mockRestore();
+      }
+    );
   });
 
   describe('edge cases', () => {
@@ -124,6 +174,24 @@ describe('ReplicateFluxSchnellProvider', () => {
 
       const call = createPredictionMock.mock.calls[0]?.[0] as CreatePredictionRequest;
       expect(call.input.aspect_ratio).toBe('16:9');
+    });
+
+    it('passes through supported aspect ratios after trimming', async () => {
+      const provider = new ReplicateFluxSchnellProvider({ apiToken: 'token' });
+      createPredictionMock.mockResolvedValueOnce({
+        id: 'pred-1',
+        status: 'succeeded',
+        output: 'https://images.example.com/output.webp',
+      });
+
+      await provider.generatePreview({
+        prompt: 'valid prompt',
+        userId: 'user-1',
+        aspectRatio: ' 21:9 ',
+      });
+
+      const call = createPredictionMock.mock.calls[0]?.[0] as CreatePredictionRequest;
+      expect(call.input.aspect_ratio).toBe('21:9');
     });
 
     it('strips preview sections and skips prompt transformation when disabled', async () => {
@@ -161,6 +229,43 @@ describe('ReplicateFluxSchnellProvider', () => {
 
       const call = createPredictionMock.mock.calls[0]?.[0] as CreatePredictionRequest;
       expect(call.input.prompt).toBe('Cinematic shot of a skyline.');
+    });
+
+    it('transforms prompts for video-like input when transformation is enabled', async () => {
+      const adapter = {
+        complete: vi.fn() as MockedFunction<
+          (prompt: string, options?: Record<string, unknown>) => Promise<AIResponse>
+        >,
+      };
+      const llmClient = new LLMClient({ adapter, providerName: 'test-llm', defaultTimeout: 1000 });
+      const promptTransformer = new VideoToImagePromptTransformer({ llmClient });
+      const transformSpy = vi
+        .spyOn(promptTransformer, 'transform')
+        .mockResolvedValue('still frame of skyline at dusk');
+      const provider = new ReplicateFluxSchnellProvider({
+        apiToken: 'token',
+        promptTransformer,
+      });
+      const isVideoPromptSpy = vi
+        .spyOn(VideoPromptDetectionService.prototype, 'isVideoPrompt')
+        .mockReturnValue(true);
+
+      createPredictionMock.mockResolvedValueOnce({
+        id: 'pred-1',
+        status: 'succeeded',
+        output: 'https://images.example.com/output.webp',
+      });
+
+      await provider.generatePreview({
+        prompt: 'Slow pan over skyline at dusk',
+        userId: 'user-1',
+      });
+
+      const call = createPredictionMock.mock.calls[0]?.[0] as CreatePredictionRequest;
+      expect(transformSpy).toHaveBeenCalledWith('Slow pan over skyline at dusk');
+      expect(call.input.prompt).toBe('still frame of skyline at dusk');
+
+      isVideoPromptSpy.mockRestore();
     });
 
     it('retries create prediction on rate limits before succeeding', async () => {

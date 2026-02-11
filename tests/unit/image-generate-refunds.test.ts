@@ -14,6 +14,17 @@ vi.mock('@routes/preview/auth', () => ({
   getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
+const createApp = (handler: express.RequestHandler, requestId = 'req-image-1') => {
+  const app = express();
+  app.use((req, _res, next) => {
+    (req as express.Request & { id?: string }).id = requestId;
+    next();
+  });
+  app.use(express.json());
+  app.post('/preview/generate', handler);
+  return app;
+};
+
 describe('imageGenerate refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,13 +53,7 @@ describe('imageGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-img-success-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/generate', handler);
+    const app = createApp(handler, 'req-img-success-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate').send({
@@ -119,13 +124,7 @@ describe('imageGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-img-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/generate', handler);
+    const app = createApp(handler, 'req-img-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate').send({
@@ -152,6 +151,230 @@ describe('imageGenerate refunds', () => {
       1,
       expect.objectContaining({
         refundKey: expectedRefundKey,
+        reason: 'preview image generation failed',
+      })
+    );
+  });
+
+  it('returns 401 when authentication is missing', async () => {
+    getAuthenticatedUserIdMock.mockResolvedValueOnce(null);
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generatePreviewMock = vi.fn();
+
+    const handler = createImageGenerateHandler({
+      imageGenerationService: {
+        generatePreview: generatePreviewMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-auth-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+      requestId: 'req-img-auth-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+    expect(generatePreviewMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'provider type',
+      body: { prompt: 'A dramatic portrait', provider: 123 },
+      message: 'provider must be a string',
+    },
+    {
+      name: 'unsupported provider',
+      body: { prompt: 'A dramatic portrait', provider: 'unknown-provider' },
+      message: 'Unsupported provider: unknown-provider',
+    },
+    {
+      name: 'speedMode',
+      body: { prompt: 'A dramatic portrait', speedMode: 'warp-speed' },
+      message: 'speedMode must be one of: Lightly Juiced, Juiced, Extra Juiced, Real Time',
+    },
+    {
+      name: 'seed',
+      body: { prompt: 'A dramatic portrait', seed: '42' },
+      message: 'seed must be a finite number',
+    },
+    {
+      name: 'outputQuality',
+      body: { prompt: 'A dramatic portrait', outputQuality: 'high' },
+      message: 'outputQuality must be a finite number',
+    },
+    {
+      name: 'aspectRatio',
+      body: { prompt: 'A dramatic portrait', aspectRatio: 169 },
+      message: 'aspectRatio must be a string',
+    },
+    {
+      name: 'inputImageUrl',
+      body: { prompt: 'A dramatic portrait', inputImageUrl: '   ' },
+      message: 'inputImageUrl must be a non-empty string',
+    },
+  ])('returns 400 for invalid $name', async ({ body, message }) => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generatePreviewMock = vi.fn();
+
+    const handler = createImageGenerateHandler({
+      imageGenerationService: {
+        generatePreview: generatePreviewMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-invalid-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send(body)
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: message,
+      code: 'INVALID_REQUEST',
+      requestId: 'req-img-invalid-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+    expect(generatePreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when kontext provider is used without inputImageUrl', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const generatePreviewMock = vi.fn();
+    const handler = createImageGenerateHandler({
+      imageGenerationService: {
+        generatePreview: generatePreviewMock,
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-kontext-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({
+        prompt: 'A dramatic portrait',
+        provider: 'kontext',
+      })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: 'inputImageUrl is required when using the replicate-flux-kontext-fast provider',
+      code: 'INVALID_REQUEST',
+      requestId: 'req-img-kontext-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+    expect(generatePreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when image generation service is missing', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const handler = createImageGenerateHandler({
+      imageGenerationService: null as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: vi.fn(async () => true),
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-missing-service-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      error: 'Image generation service is not available',
+      code: 'SERVICE_UNAVAILABLE',
+      requestId: 'req-img-missing-service-1',
+    });
+    expect(reserveCreditsMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when credit service is missing', async () => {
+    const generatePreviewMock = vi.fn();
+    const handler = createImageGenerateHandler({
+      imageGenerationService: {
+        generatePreview: generatePreviewMock,
+      } as never,
+      userCreditService: null as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-missing-credits-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      error: 'Image generation service is not available',
+      code: 'SERVICE_UNAVAILABLE',
+      requestId: 'req-img-missing-credits-1',
+    });
+    expect(generatePreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('maps statusCode 503 generation errors to SERVICE_UNAVAILABLE', async () => {
+    const reserveCreditsMock = vi.fn(async () => true);
+    const refundCreditsMock = vi.fn(async () => true);
+    const generationError = Object.assign(new Error('provider unavailable'), {
+      statusCode: 503,
+    });
+    const handler = createImageGenerateHandler({
+      imageGenerationService: {
+        generatePreview: vi.fn(async () => {
+          throw generationError;
+        }),
+      } as never,
+      userCreditService: {
+        reserveCredits: reserveCreditsMock,
+        refundCredits: refundCreditsMock,
+      } as never,
+      assetService: null as never,
+    });
+
+    const app = createApp(handler, 'req-img-503-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      error: 'Image generation failed',
+      code: 'SERVICE_UNAVAILABLE',
+      requestId: 'req-img-503-1',
+    });
+    expect(reserveCreditsMock).toHaveBeenCalledWith('user-1', 1);
+    expect(refundCreditsMock).toHaveBeenCalledWith(
+      'user-1',
+      1,
+      expect.objectContaining({
         reason: 'preview image generation failed',
       })
     );
