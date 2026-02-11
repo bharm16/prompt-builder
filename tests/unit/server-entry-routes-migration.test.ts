@@ -400,8 +400,8 @@ describe('suggestions.routes', () => {
 
     const compare = await runSupertestOrSkip(() =>
       request(app).post('/evaluate/compare').send({
-        setA: [{ text: 'A' }],
-        setB: [{ text: 'B' }],
+        setA: [{ text: 'Option A' }],
+        setB: [{ text: 'Option B' }],
         context: { highlightedText: 'Original text' },
       })
     );

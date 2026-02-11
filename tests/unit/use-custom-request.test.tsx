@@ -174,4 +174,81 @@ describe('useCustomRequest', () => {
     );
     expect(mockLogger.error).toHaveBeenCalled();
   });
+
+  it('returns early with a user-facing error when selected text or full prompt is missing', async () => {
+    const setSuggestions = vi.fn();
+    const setError = vi.fn();
+    const onCustomRequest: MockedFunction<(request: string) => Promise<SuggestionItem[]>> = vi.fn();
+
+    const { result } = renderHook(() =>
+      useCustomRequest({
+        selectedText: '',
+        fullPrompt: '',
+        onCustomRequest,
+        setSuggestions,
+        setError,
+      })
+    );
+
+    await act(async () => {
+      result.current.setCustomRequest('Try this');
+    });
+
+    await act(async () => {
+      await result.current.handleCustomRequest();
+    });
+
+    expect(setError).toHaveBeenCalledWith(
+      'Select text in the prompt before applying a custom request.'
+    );
+    expect(setSuggestions).not.toHaveBeenCalled();
+    expect(onCustomRequest).not.toHaveBeenCalled();
+    expect(result.current.isCustomLoading).toBe(false);
+  });
+
+  it('toggles loading state while a request is in flight', async () => {
+    const setSuggestions = vi.fn();
+    const setError = vi.fn();
+    let resolveRequest: ((value: SuggestionItem[]) => void) | null = null;
+    const onCustomRequest: MockedFunction<(request: string) => Promise<SuggestionItem[]>> = vi.fn(
+      (_request: string) =>
+        new Promise<SuggestionItem[]>((resolve) => {
+          resolveRequest = resolve;
+        })
+    );
+
+    const { result } = renderHook(() =>
+      useCustomRequest({
+        selectedText: 'scene',
+        fullPrompt: 'full prompt',
+        onCustomRequest,
+        setSuggestions,
+        setError,
+      })
+    );
+
+    await act(async () => {
+      result.current.setCustomRequest('Increase contrast');
+    });
+
+    let pendingRequest: Promise<void> | null = null;
+    await act(async () => {
+      pendingRequest = result.current.handleCustomRequest();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCustomLoading).toBe(true);
+    });
+
+    await act(async () => {
+      resolveRequest?.([{ text: 'Increase local contrast around subject' }]);
+      await pendingRequest;
+    });
+
+    expect(result.current.isCustomLoading).toBe(false);
+    expect(setSuggestions).toHaveBeenCalledWith(
+      [{ text: 'Increase local contrast around subject' }],
+      undefined
+    );
+  });
 });
