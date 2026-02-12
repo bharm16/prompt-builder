@@ -2,12 +2,42 @@ import React, { useMemo, type ReactElement } from 'react';
 import { Highlighter, Plus, Upload } from '@promptstudio/system/components/ui';
 import { cn } from '@utils/cn';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
 
 interface ImageReferenceSlotsRowProps {
   keyframes: KeyframeTile[];
   isUploadDisabled: boolean;
   onRequestUpload: () => void;
   onRemoveKeyframe: (id: string) => void;
+}
+
+function ReferenceSlotImage({
+  tile,
+  index,
+}: {
+  tile: KeyframeTile;
+  index: number;
+}): ReactElement {
+  const shouldResolveUrl = Boolean(
+    tile.storagePath || tile.assetId || (tile.url && hasGcsSignedUrlParams(tile.url))
+  );
+
+  const { url: resolvedUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: tile.url,
+    storagePath: tile.storagePath ?? null,
+    assetId: tile.assetId ?? null,
+    enabled: shouldResolveUrl,
+  });
+
+  return (
+    <img
+      src={resolvedUrl || tile.url}
+      alt={`Reference ${index + 1}`}
+      className="w-full h-full object-cover rounded-lg"
+    />
+  );
 }
 
 export function ImageReferenceSlotsRow({
@@ -48,11 +78,7 @@ export function ImageReferenceSlotsRow({
               aria-disabled={!canUpload}
             >
               {tile ? (
-                <img
-                  src={tile.url}
-                  alt={`Reference ${index + 1}`}
-                  className="w-full h-full object-cover rounded-lg"
-                />
+                <ReferenceSlotImage tile={tile} index={index} />
               ) : (
                 <Plus className="w-4 h-4 text-white" />
               )}

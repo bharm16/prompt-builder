@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState, type ReactElement } from 'react'
 import { Plus } from '@promptstudio/system/components/ui';
 import { cn } from '@utils/cn';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
 
 interface KeyframeSlotsRowProps {
   keyframes: KeyframeTile[];
@@ -9,6 +11,34 @@ interface KeyframeSlotsRowProps {
   onRequestUpload: () => void;
   onUploadFile: (file: File) => void | Promise<void>;
   onRemoveKeyframe: (id: string) => void;
+}
+
+function KeyframeSlotImage({
+  tile,
+  index,
+}: {
+  tile: KeyframeTile;
+  index: number;
+}): ReactElement {
+  const shouldResolveUrl = Boolean(
+    tile.storagePath || tile.assetId || (tile.url && hasGcsSignedUrlParams(tile.url))
+  );
+
+  const { url: resolvedUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: tile.url,
+    storagePath: tile.storagePath ?? null,
+    assetId: tile.assetId ?? null,
+    enabled: shouldResolveUrl,
+  });
+
+  return (
+    <img
+      src={resolvedUrl || tile.url}
+      alt={`Keyframe ${index + 1}`}
+      className="w-full h-full object-cover rounded-lg"
+    />
+  );
 }
 
 export function KeyframeSlotsRow({
@@ -77,11 +107,7 @@ export function KeyframeSlotsRow({
             >
               {tile ? (
                 <>
-                  <img
-                    src={tile.url}
-                    alt={`Keyframe ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
+                  <KeyframeSlotImage tile={tile} index={index} />
                   <div className="absolute inset-0 bg-black/15 pointer-events-none" />
                   <span className="absolute left-1.5 bottom-1 text-[8px] font-semibold text-white/70 pointer-events-none">
                     Frame {index + 1}
