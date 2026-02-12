@@ -28,6 +28,7 @@ import {
   requireSessionForUser,
   requireUserId,
 } from './continuity/continuityRouteShared';
+import { handleGenerateShotStream } from './continuity/handleGenerateShotStream';
 
 const CreateSessionSchema = z.object({
   name: z.string().optional(),
@@ -442,6 +443,54 @@ export function createSessionRoutes(
       const session = await requireSessionForUser(continuityService, req, res);
       if (!session) return;
       await handleGenerateShot(continuityService, session, req, res, userCreditService);
+    })
+  );
+
+  router.get(
+    '/:sessionId/shots/:shotId/status',
+    asyncHandler(async (req: Request, res: Response) => {
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      const shotId = requireRouteParam(req, res, 'shotId');
+      if (!shotId) return;
+      const shot = session.shots.find((candidate) => candidate.id === shotId);
+      if (!shot) {
+        res.status(404).json({ success: false, error: 'Shot not found' });
+        return;
+      }
+
+      // Status reads are eventually consistent with persisted generator checkpoints.
+      res.json({
+        success: true,
+        data: {
+          shotId: shot.id,
+          status: shot.status,
+          continuityMechanismUsed: shot.continuityMechanismUsed ?? null,
+          styleScore: shot.styleScore ?? null,
+          identityScore: shot.identityScore ?? null,
+          styleDegraded: shot.styleDegraded ?? false,
+          styleDegradedReason: shot.styleDegradedReason ?? null,
+          generatedKeyframeUrl: shot.generatedKeyframeUrl ?? null,
+          frameBridgeUrl: shot.frameBridge?.frameUrl ?? null,
+          retryCount: shot.retryCount ?? 0,
+          error: shot.error ?? null,
+        },
+      });
+    })
+  );
+
+  router.post(
+    '/:sessionId/shots/:shotId/generate-stream',
+    asyncHandler(async (req: Request, res: Response) => {
+      const session = await requireSessionForUser(continuityService, req, res);
+      if (!session) return;
+      await handleGenerateShotStream(
+        continuityService,
+        session,
+        req,
+        res,
+        userCreditService
+      );
     })
   );
 

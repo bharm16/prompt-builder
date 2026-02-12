@@ -71,7 +71,31 @@ const buildServices = () => {
     getSession: vi.fn().mockResolvedValue({
       id: 'session-1',
       userId: 'user-1',
-      shots: [],
+      shots: [
+        {
+          id: 'shot-1',
+          sessionId: 'session-1',
+          sequenceIndex: 0,
+          userPrompt: 'A character enters frame',
+          continuityMode: 'frame-bridge',
+          generationMode: 'continuity',
+          styleStrength: 0.6,
+          styleReferenceId: null,
+          modelId: 'model-a',
+          status: 'generating-video',
+          continuityMechanismUsed: 'frame-bridge',
+          styleScore: 0.82,
+          identityScore: 0.91,
+          styleDegraded: false,
+          styleDegradedReason: null,
+          generatedKeyframeUrl: 'https://example.com/keyframe.png',
+          frameBridge: {
+            frameUrl: 'https://example.com/bridge.png',
+          },
+          retryCount: 1,
+          error: null,
+        },
+      ],
       defaultSettings: {
         generationMode: 'continuity',
         defaultContinuityMode: 'frame-bridge',
@@ -226,5 +250,62 @@ describe('sessions.routes', () => {
     expect(sessionService.updateHighlights).not.toHaveBeenCalled();
     expect(sessionService.updateOutput).not.toHaveBeenCalled();
     expect(sessionService.updateVersions).not.toHaveBeenCalled();
+  });
+
+  it('returns shot status payload for /sessions/:sessionId/shots/:shotId/status', async () => {
+    const { sessionService, continuityService } = buildServices();
+    const app = createApp(sessionService, continuityService);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app).get('/sessions/session-1/shots/shot-1/status').set('x-user-id', 'user-1')
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      data: {
+        shotId: 'shot-1',
+        status: 'generating-video',
+        continuityMechanismUsed: 'frame-bridge',
+        styleScore: 0.82,
+        identityScore: 0.91,
+        styleDegraded: false,
+        styleDegradedReason: null,
+        generatedKeyframeUrl: 'https://example.com/keyframe.png',
+        frameBridgeUrl: 'https://example.com/bridge.png',
+        retryCount: 1,
+        error: null,
+      },
+    });
+  });
+
+  it('returns 404 for unknown shots on status route', async () => {
+    const { sessionService, continuityService } = buildServices();
+    continuityService.getSession.mockResolvedValueOnce({
+      id: 'session-1',
+      userId: 'user-1',
+      shots: [],
+      defaultSettings: {
+        generationMode: 'continuity',
+        defaultContinuityMode: 'frame-bridge',
+        defaultStyleStrength: 0.6,
+        defaultModel: 'model-a',
+        autoExtractFrameBridge: false,
+        useCharacterConsistency: false,
+      },
+    });
+    const app = createApp(sessionService, continuityService);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app).get('/sessions/session-1/shots/missing-shot/status').set('x-user-id', 'user-1')
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({
+      success: false,
+      error: 'Shot not found',
+    });
   });
 });

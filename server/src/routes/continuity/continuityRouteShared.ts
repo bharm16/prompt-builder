@@ -142,6 +142,151 @@ const buildUpdateShotCameraInput = (
   };
 };
 
+export interface ShotGenerationReservation {
+  shotId: string;
+  cost: ReturnType<typeof CreditCostCalculator.calculateShotCost>;
+  requestId?: string;
+  operationToken: string;
+  unusedRetriesRefundKey: string;
+  failedActualCostRefundKey: string;
+  catchAllRefundKey: string;
+}
+
+export async function reserveShotGenerationCredits(
+  session: ContinuitySession,
+  req: Request,
+  res: Response,
+  userCreditService?: UserCreditService | null
+): Promise<ShotGenerationReservation | null> {
+  if (!userCreditService) {
+    sendApiError(res, req, 503, {
+      error: 'Credit service unavailable',
+      code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+    });
+    return null;
+  }
+
+  const shotId = req.params.shotId;
+  if (!shotId || Array.isArray(shotId)) {
+    sendApiError(res, req, 400, {
+      error: 'Invalid shotId',
+      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+    });
+    return null;
+  }
+
+  const shot = session.shots.find((s) => s.id === shotId);
+  if (!shot) {
+    sendApiError(res, req, 404, {
+      error: 'Shot not found',
+      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+    });
+    return null;
+  }
+
+  const cost = CreditCostCalculator.calculateShotCost(shot, session);
+  const requestId = (req as Request & { id?: string }).id;
+  const operationToken =
+    requestId ??
+    buildRefundKey([
+      'continuity-shot',
+      session.id,
+      shotId,
+      session.userId,
+      Date.now(),
+      Math.random(),
+    ]);
+  const unusedRetriesRefundKey = buildRefundKey([
+    'continuity-shot',
+    operationToken,
+    'unusedRetries',
+  ]);
+  const failedActualCostRefundKey = buildRefundKey([
+    'continuity-shot',
+    operationToken,
+    'failedActualCost',
+  ]);
+  const catchAllRefundKey = buildRefundKey(['continuity-shot', operationToken, 'catchAll']);
+
+  const reserved = await userCreditService.reserveCredits(session.userId, cost.totalCost);
+  if (!reserved) {
+    sendApiError(res, req, 402, {
+      error: 'Insufficient credits',
+      code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+      details: `This generation requires up to ${cost.totalCost} credits (including possible retries).`,
+    });
+    return null;
+  }
+
+  return {
+    shotId,
+    cost,
+    ...(requestId ? { requestId } : {}),
+    operationToken,
+    unusedRetriesRefundKey,
+    failedActualCostRefundKey,
+    catchAllRefundKey,
+  };
+}
+
+export async function settleSuccessfulShotGeneration(
+  session: ContinuitySession,
+  userCreditService: UserCreditService,
+  reservation: ShotGenerationReservation,
+  result: ContinuityShot
+): Promise<void> {
+  const actualRetries = result.retryCount ?? 0;
+  const actualCost = reservation.cost.perAttemptCost * (actualRetries + 1);
+  const refundAmount = reservation.cost.totalCost - actualCost;
+  if (refundAmount > 0) {
+    await refundWithGuard({
+      userCreditService,
+      userId: session.userId,
+      amount: refundAmount,
+      refundKey: reservation.unusedRetriesRefundKey,
+      reason: 'continuity shot unused retry budget',
+      metadata: {
+        ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
+        sessionId: session.id,
+        shotId: reservation.shotId,
+      },
+    });
+  }
+  if (result.status === 'failed') {
+    await refundWithGuard({
+      userCreditService,
+      userId: session.userId,
+      amount: actualCost,
+      refundKey: reservation.failedActualCostRefundKey,
+      reason: 'continuity shot failed actual cost',
+      metadata: {
+        ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
+        sessionId: session.id,
+        shotId: reservation.shotId,
+      },
+    });
+  }
+}
+
+export async function settleExceptionalShotGeneration(
+  session: ContinuitySession,
+  userCreditService: UserCreditService,
+  reservation: ShotGenerationReservation
+): Promise<void> {
+  await refundWithGuard({
+    userCreditService,
+    userId: session.userId,
+    amount: reservation.cost.totalCost,
+    refundKey: reservation.catchAllRefundKey,
+    reason: 'continuity shot generation exception',
+    metadata: {
+      ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
+      sessionId: session.id,
+      shotId: reservation.shotId,
+    },
+  });
+}
+
 export async function handleCreateShot(
   service: ContinuitySessionService,
   req: Request,
@@ -205,113 +350,15 @@ export async function handleGenerateShot(
   res: Response,
   userCreditService?: UserCreditService | null
 ): Promise<void> {
-  if (!userCreditService) {
-    sendApiError(res, req, 503, {
-      error: 'Credit service unavailable',
-      code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
-    });
-    return;
-  }
-
-  const shotId = req.params.shotId;
-  if (!shotId || Array.isArray(shotId)) {
-    sendApiError(res, req, 400, {
-      error: 'Invalid shotId',
-      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
-    });
-    return;
-  }
-
-  const shot = session.shots.find((s) => s.id === shotId);
-  if (!shot) {
-    sendApiError(res, req, 404, {
-      error: 'Shot not found',
-      code: GENERATION_ERROR_CODES.INVALID_REQUEST,
-    });
-    return;
-  }
-
-  const cost = CreditCostCalculator.calculateShotCost(shot, session);
-  const requestId = (req as Request & { id?: string }).id;
-  const operationToken =
-    requestId ??
-    buildRefundKey([
-      'continuity-shot',
-      session.id,
-      shotId,
-      session.userId,
-      Date.now(),
-      Math.random(),
-    ]);
-  const unusedRetriesRefundKey = buildRefundKey([
-    'continuity-shot',
-    operationToken,
-    'unusedRetries',
-  ]);
-  const failedActualCostRefundKey = buildRefundKey([
-    'continuity-shot',
-    operationToken,
-    'failedActualCost',
-  ]);
-  const catchAllRefundKey = buildRefundKey(['continuity-shot', operationToken, 'catchAll']);
-
-  const reserved = await userCreditService.reserveCredits(session.userId, cost.totalCost);
-  if (!reserved) {
-    sendApiError(res, req, 402, {
-      error: 'Insufficient credits',
-      code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
-      details: `This generation requires up to ${cost.totalCost} credits (including possible retries).`,
-    });
-    return;
-  }
+  const reservation = await reserveShotGenerationCredits(session, req, res, userCreditService);
+  if (!reservation || !userCreditService) return;
 
   try {
-    const result = await service.generateShot(session.id, shotId);
-    const actualRetries = result.retryCount ?? 0;
-    const actualCost = cost.perAttemptCost * (actualRetries + 1);
-    const refundAmount = cost.totalCost - actualCost;
-    if (refundAmount > 0) {
-      await refundWithGuard({
-        userCreditService,
-        userId: session.userId,
-        amount: refundAmount,
-        refundKey: unusedRetriesRefundKey,
-        reason: 'continuity shot unused retry budget',
-        metadata: {
-          requestId,
-          sessionId: session.id,
-          shotId,
-        },
-      });
-    }
-    if (result.status === 'failed') {
-      await refundWithGuard({
-        userCreditService,
-        userId: session.userId,
-        amount: actualCost,
-        refundKey: failedActualCostRefundKey,
-        reason: 'continuity shot failed actual cost',
-        metadata: {
-          requestId,
-          sessionId: session.id,
-          shotId,
-        },
-      });
-    }
+    const result = await service.generateShot(session.id, reservation.shotId);
+    await settleSuccessfulShotGeneration(session, userCreditService, reservation, result);
     res.json({ success: true, data: result });
   } catch (error) {
-    await refundWithGuard({
-      userCreditService,
-      userId: session.userId,
-      amount: cost.totalCost,
-      refundKey: catchAllRefundKey,
-      reason: 'continuity shot generation exception',
-      metadata: {
-        requestId,
-        sessionId: session.id,
-        shotId,
-      },
-    });
+    await settleExceptionalShotGeneration(session, userCreditService, reservation);
 
     const statusCode =
       typeof (error as { statusCode?: unknown })?.statusCode === 'number'

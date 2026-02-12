@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ContinuitySession, ContinuityShot } from '../types';
 import { ContinuityShotGenerator } from '../ContinuityShotGenerator';
 import { ContinuitySessionVersionMismatchError } from '../ContinuitySessionStore';
+import type { ShotGenerationStage } from '../ShotGenerationProgress';
 
 const buildShot = (overrides: Partial<ContinuityShot> = {}): ContinuityShot => ({
   id: 'shot-1',
@@ -234,6 +235,92 @@ describe('ContinuityShotGenerator', () => {
     expect(mediaService.generateVideo).not.toHaveBeenCalled();
   });
 
+  it('emits only relevant stages for standard generation with an existing frame bridge', async () => {
+    const session = buildSession(
+      {
+        generationMode: 'standard',
+        continuityMode: 'frame-bridge',
+      },
+      {
+        defaultSettings: {
+          ...buildSession().defaultSettings,
+          generationMode: 'standard',
+        },
+      }
+    );
+    const { generator } = createGenerator(session);
+    const stages: ShotGenerationStage[] = [];
+
+    const result = await generator.generateShot('session-1', 'shot-1', {
+      onStage: (event) => {
+        stages.push(event.stage);
+      },
+    });
+
+    expect(result.status).toBe('completed');
+    expect(stages).toContain('generating-video');
+    expect(stages).toContain('completed');
+    expect(stages).not.toContain('extracting-frame');
+    expect(stages).not.toContain('generating-keyframe');
+    expect(stages).not.toContain('quality-gate');
+    expect(stages).not.toContain('retrying');
+    expect(stages).not.toContain('failed');
+  });
+
+  it('emits extracting-frame only when on-demand frame extraction runs', async () => {
+    const frameBridge = buildShot().frameBridge;
+    const session = buildSession({
+      continuityMode: 'frame-bridge',
+    });
+    delete (session.shots[1] as Partial<ContinuityShot>).frameBridge;
+    const { generator } = createGenerator(session, {
+      mediaService: {
+        extractBridgeFrame: vi.fn().mockResolvedValue(frameBridge),
+      },
+    });
+    const stages: ShotGenerationStage[] = [];
+
+    const result = await generator.generateShot('session-1', 'shot-1', {
+      onStage: (event) => {
+        stages.push(event.stage);
+      },
+    });
+
+    expect(result.status).toBe('completed');
+    expect(stages).toContain('extracting-frame');
+    expect(stages).not.toContain('generating-keyframe');
+  });
+
+  it('emits generating-keyframe for the ip-adapter continuity path', async () => {
+    const session = buildSession({
+      continuityMode: 'style-match',
+      generationMode: 'continuity',
+    });
+    delete (session.shots[1] as Partial<ContinuityShot>).frameBridge;
+    const { generator } = createGenerator(session, {
+      providerService: {
+        getContinuityStrategy: vi.fn().mockReturnValue({ type: 'ip-adapter' }),
+      },
+      mediaService: {
+        generateStyledKeyframe: vi.fn().mockResolvedValue('https://example.com/keyframe.png'),
+      },
+    });
+    const stages: ShotGenerationStage[] = [];
+
+    const result = await generator.generateShot('session-1', 'shot-1', {
+      onStage: (event) => {
+        stages.push(event.stage);
+      },
+    });
+
+    expect(result.status).toBe('completed');
+    expect(stages).toContain('generating-keyframe');
+    expect(stages).toContain('generating-video');
+    expect(stages).toContain('quality-gate');
+    expect(stages).toContain('completed');
+    expect(stages).not.toContain('extracting-frame');
+  });
+
   it('retries once after quality-gate style failure and adjusts style strength', async () => {
     const session = buildSession({ styleStrength: 0.6 });
     const { generator, mediaService, postProcessingService } = createGenerator(session, {
@@ -244,8 +331,13 @@ describe('ContinuityShotGenerator', () => {
           .mockResolvedValueOnce({ passed: true, styleScore: 0.88 }),
       },
     });
+    const stages: ShotGenerationStage[] = [];
 
-    const result = await generator.generateShot('session-1', 'shot-1');
+    const result = await generator.generateShot('session-1', 'shot-1', {
+      onStage: (event) => {
+        stages.push(event.stage);
+      },
+    });
 
     expect(mediaService.generateVideo).toHaveBeenCalledTimes(2);
     expect(postProcessingService.evaluateQuality).toHaveBeenCalledTimes(2);
@@ -253,6 +345,8 @@ describe('ContinuityShotGenerator', () => {
     expect(result.retryCount).toBe(1);
     expect(result.styleStrength).toBeCloseTo(0.7, 5);
     expect(result.qualityScore).toBe(1);
+    expect(stages.filter((stage) => stage === 'quality-gate')).toHaveLength(2);
+    expect(stages).toContain('retrying');
   });
 
   it('uses seed-only continuity mechanism in standard mode when inherited seed exists', async () => {
@@ -328,11 +422,17 @@ describe('ContinuityShotGenerator', () => {
           .mockResolvedValueOnce(null),
       },
     });
+    const stages: ShotGenerationStage[] = [];
 
-    const result = await generator.generateShot('session-1', 'shot-1');
+    const result = await generator.generateShot('session-1', 'shot-1', {
+      onStage: (event) => {
+        stages.push(event.stage);
+      },
+    });
 
     expect(result.status).toBe('failed');
     expect(result.error).toContain('provider unavailable');
     expect(sessionStore.save).toHaveBeenCalled();
+    expect(stages).toContain('failed');
   });
 });

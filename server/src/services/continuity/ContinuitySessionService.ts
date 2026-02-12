@@ -15,6 +15,7 @@ import { ContinuityMediaService } from './ContinuityMediaService';
 import { ContinuityPostProcessingService } from './ContinuityPostProcessingService';
 import { ContinuityShotGenerator } from './ContinuityShotGenerator';
 import { enforceImmutableVersions } from '@services/sessions/utils/immutableMedia';
+import type { ShotGenerationObserver } from './ShotGenerationProgress';
 
 export class ContinuitySessionService {
   private readonly log = logger.child({ service: 'ContinuitySessionService' });
@@ -165,8 +166,12 @@ export class ContinuitySessionService {
     return shot;
   }
 
-  async generateShot(sessionId: string, shotId: string): Promise<ContinuityShot> {
-    return await this.shotGenerator.generateShot(sessionId, shotId);
+  async generateShot(
+    sessionId: string,
+    shotId: string,
+    observer?: ShotGenerationObserver
+  ): Promise<ContinuityShot> {
+    return await this.shotGenerator.generateShot(sessionId, shotId, observer);
   }
 
   async updateShot(
