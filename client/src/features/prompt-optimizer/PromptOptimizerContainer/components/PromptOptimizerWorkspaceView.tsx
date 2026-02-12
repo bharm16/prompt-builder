@@ -11,7 +11,7 @@ import { PromptModals } from '../../components/PromptModals';
 import { QuickCharacterCreate } from '../../components/QuickCharacterCreate';
 import { DetectedAssets } from '../../components/DetectedAssets';
 import { PromptResultsLayout } from '../../layouts/PromptResultsLayout';
-import { WorkspaceShotTimeline } from '../../components/ShotTimeline';
+import { SequenceWorkspace } from '../../components/SequenceWorkspace';
 import { useWorkspaceSession } from '../../context/WorkspaceSessionContext';
 
 interface QuickCreateState {
@@ -90,7 +90,14 @@ export function PromptOptimizerWorkspaceView({
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
   const toast = useToast();
-  const { shots, isSequenceMode, currentShotId, setCurrentShotId, addShot } = useWorkspaceSession();
+  const { shots, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
+  const promptText = toolSidebarProps?.prompt ?? '';
+  const isOptimizing = Boolean(toolSidebarProps?.isProcessing || toolSidebarProps?.isRefining);
+
+  const handleAiEnhance = useCallback(() => {
+    if (typeof toolSidebarProps?.onOptimize !== 'function') return;
+    void toolSidebarProps.onOptimize(promptText);
+  }, [promptText, toolSidebarProps]);
 
   const handleAddShot = useCallback(async () => {
     try {
@@ -154,14 +161,18 @@ export function PromptOptimizerWorkspaceView({
             </main>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <PromptResultsLayout {...promptResultsLayoutProps} />
-              {isSequenceMode && shots.length > 0 && (
-                <WorkspaceShotTimeline
-                  shots={shots}
-                  currentShotId={currentShotId}
-                  onShotSelect={setCurrentShotId}
+              {isSequenceMode && shots.length > 0 ? (
+                <SequenceWorkspace
+                  promptText={promptText}
+                  isOptimizing={isOptimizing}
+                  onAiEnhance={handleAiEnhance}
                   onAddShot={handleAddShot}
+                  {...(toolSidebarProps?.onPromptChange
+                    ? { onPromptChange: toolSidebarProps.onPromptChange }
+                    : {})}
                 />
+              ) : (
+                <PromptResultsLayout {...promptResultsLayoutProps} />
               )}
             </div>
           )}

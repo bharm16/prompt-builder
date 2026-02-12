@@ -11,17 +11,19 @@ export interface StrengthSliderProps {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
+  label?: string;
 }
 
 export function StrengthSlider({
   value,
   onChange,
   disabled = false,
+  label = 'Style strength',
 }: StrengthSliderProps): React.ReactElement {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-muted">
-        <span>Style strength</span>
+        <span>{label}</span>
         <span>{value.toFixed(2)}</span>
       </div>
       <input

@@ -14,9 +14,7 @@ import { VideoTabContent } from "./components/VideoTabContent";
 import { useGenerationControlsPanel } from "./hooks/useGenerationControlsPanel";
 import type { GenerationControlsPanelProps } from "./types";
 import type { GenerationOverrides } from "@components/ToolSidebar/types";
-import { StyleReferenceControls } from "@/features/prompt-optimizer/components/StyleReferenceControls";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
-import type { SessionContinuityMode } from "@shared/types/session";
 
 export function GenerationControlsPanel(
   props: GenerationControlsPanelProps,
@@ -44,11 +42,7 @@ export function GenerationControlsPanel(
   } = useGenerationControlsPanel(props);
   const {
     isSequenceMode,
-    shots,
-    currentShot,
     currentShotIndex,
-    updateShotStyleReference,
-    updateShot,
   } = useWorkspaceSession();
   const {
     aspectRatio,
@@ -65,41 +59,6 @@ export function GenerationControlsPanel(
     isSequenceMode && currentShotIndex >= 0
       ? `Shot ${currentShotIndex + 1} Prompt`
       : "Prompt";
-
-  const handleStyleReferenceChange = useCallback(
-    (sourceShotId: string) => {
-      if (!currentShot) return;
-      void updateShotStyleReference(currentShot.id, sourceShotId);
-    },
-    [currentShot, updateShotStyleReference],
-  );
-
-  const handleStrengthChange = useCallback(
-    (strength: number) => {
-      if (!currentShot) return;
-      void updateShot(currentShot.id, { styleStrength: strength });
-    },
-    [currentShot, updateShot],
-  );
-
-  const handleModeChange = useCallback(
-    (mode: SessionContinuityMode) => {
-      if (!currentShot) return;
-      void updateShot(currentShot.id, { continuityMode: mode });
-    },
-    [currentShot, updateShot],
-  );
-
-  const styleReferenceControls =
-    isSequenceMode && currentShot ? (
-      <StyleReferenceControls
-        shots={shots}
-        currentShot={currentShot}
-        onStyleReferenceChange={handleStyleReferenceChange}
-        onStrengthChange={handleStrengthChange}
-        onModeChange={handleModeChange}
-      />
-    ) : null;
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
@@ -258,7 +217,6 @@ export function GenerationControlsPanel(
           onPromptKeyDown={actions.handlePromptKeyDown}
           onCreateFromTrigger={onCreateFromTrigger}
           autocomplete={autocomplete}
-          afterPrompt={styleReferenceControls}
           faceSwapMode={faceSwap.mode}
           faceSwapCharacterOptions={faceSwap.characterOptions}
           selectedCharacterId={faceSwap.selectedCharacterId}

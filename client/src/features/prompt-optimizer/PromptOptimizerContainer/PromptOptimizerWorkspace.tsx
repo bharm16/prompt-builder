@@ -44,6 +44,7 @@ import {
   usePromptCoherence,
   useAutoSave,
   useAssetManagement,
+  useSequenceShotPromptSync,
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
@@ -272,24 +273,13 @@ function PromptOptimizerContent({
     toast,
   ]);
 
-  useEffect(() => {
-    if (!isSequenceMode || !currentShot) return;
-    const nextPrompt = (currentShot.userPrompt ?? '').trim();
-    if (!nextPrompt) return;
-    if (promptOptimizer.inputPrompt !== nextPrompt) {
-      promptOptimizer.setInputPrompt(nextPrompt);
-      if (promptOptimizer.displayedPrompt?.trim()) {
-        setDisplayedPromptSilently('');
-        setShowResults(false);
-      }
-    }
-  }, [
+  useSequenceShotPromptSync({
     isSequenceMode,
-    currentShot?.id,
+    currentShot,
     promptOptimizer,
     setDisplayedPromptSilently,
     setShowResults,
-  ]);
+  });
 
   useEffect(() => {
     if (!isSequenceMode || !currentShot) return;
