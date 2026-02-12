@@ -225,4 +225,26 @@ describe('continuitySerialization', () => {
 
     vi.useRealTimers();
   });
+
+  it('omits undefined optional shot fields during serialization', () => {
+    const shot = buildShot({
+      status: 'draft',
+      ...({
+        generatedAt: undefined,
+        frameBridge: undefined,
+        styleReference: undefined,
+        seedInfo: undefined,
+      } as unknown as Partial<ContinuityShot>),
+    });
+    const session = buildSession({ shots: [shot] });
+
+    const stored = serializeContinuitySession(session);
+    const storedShot = stored.shots[0] as Record<string, unknown>;
+
+    expect(storedShot).toBeDefined();
+    expect(Object.hasOwn(storedShot, 'generatedAt')).toBe(false);
+    expect(Object.hasOwn(storedShot, 'frameBridge')).toBe(false);
+    expect(Object.hasOwn(storedShot, 'styleReference')).toBe(false);
+    expect(Object.hasOwn(storedShot, 'seedInfo')).toBe(false);
+  });
 });

@@ -165,11 +165,17 @@ describe('SessionService', () => {
 
     const service = new SessionService(sessionStore as never);
 
-    const noContinuity = await service.listSessions('user-1', { includeContinuity: false });
-    const noPrompt = await service.listSessions('user-1', { includePrompt: false });
+    const noContinuity = await service.listSessions('user-1', {
+      includePrompt: true,
+      includeContinuity: false,
+    });
+    const noPrompt = await service.listSessions('user-1', {
+      includePrompt: false,
+      includeContinuity: true,
+    });
 
-    expect(noContinuity.map((s) => s.id)).toEqual(['prompt-only']);
-    expect(noPrompt.map((s) => s.id)).toEqual(['continuity-only']);
+    expect(noContinuity.map((s) => s.id)).toEqual(['prompt-only', 'both']);
+    expect(noPrompt.map((s) => s.id)).toEqual(['continuity-only', 'both']);
   });
 
   it('updates highlights and appends version entries', async () => {

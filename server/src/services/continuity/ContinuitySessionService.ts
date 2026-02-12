@@ -40,7 +40,7 @@ export class ContinuitySessionService {
     let primaryStyleReference: StyleReference;
 
     if (request.sourceVideoId) {
-      const videoUrl = await this.mediaService.getVideoUrl(request.sourceVideoId);
+      const videoUrl = await this.mediaService.getVideoUrl(request.sourceVideoId, userId);
       if (!videoUrl) throw new Error('Source video not found');
       primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
         userId,
@@ -125,7 +125,7 @@ export class ContinuitySessionService {
 
     let frameBridge = previousShot?.frameBridge;
     if (!frameBridge && continuityMode === 'frame-bridge' && previousShot?.videoAssetId) {
-      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId);
+      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
       if (videoUrl) {
         frameBridge = await this.mediaService.extractBridgeFrame(
           session.userId,
@@ -256,7 +256,7 @@ export class ContinuitySessionService {
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
     if (sourceVideoId) {
-      const videoUrl = await this.mediaService.getVideoUrl(sourceVideoId);
+      const videoUrl = await this.mediaService.getVideoUrl(sourceVideoId, session.userId);
       if (!videoUrl) throw new Error('Source video not found');
       session.primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
         session.userId,
@@ -327,10 +327,10 @@ export class ContinuitySessionService {
       const shot = session.shots.find((s) => s.id === sourceShotId);
       if (!shot?.videoAssetId) throw new Error('Shot has no video asset');
       videoId = shot.videoAssetId;
-      videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId);
+      videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId, session.userId);
     } else if (sourceVideoId) {
       videoId = sourceVideoId;
-      videoUrl = await this.mediaService.getVideoUrl(sourceVideoId);
+      videoUrl = await this.mediaService.getVideoUrl(sourceVideoId, session.userId);
     }
 
     if (!videoId || !videoUrl) throw new Error('Source video not found for proxy');

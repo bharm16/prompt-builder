@@ -10,12 +10,13 @@ import { Button } from '@promptstudio/system/components/ui/button';
 
 import { cn } from '@/utils/cn';
 import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
-import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
 
 import type { Generation } from '../types';
 import { getModelConfig } from '../config/generationConfig';
 import { useGenerationProgress } from '../hooks/useGenerationProgress';
+import { resolvePrimaryVideoSource } from '../utils/videoSource';
 import { KontextFrameStrip } from './KontextFrameStrip';
 import { VideoThumbnail } from './VideoThumbnail';
 
@@ -56,14 +57,11 @@ export const GenerationCard = memo(function GenerationCard({
     useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
   const primaryMediaRef = generation.mediaAssetIds?.[0] ?? null;
-  const mediaStoragePath =
-    primaryMediaRef?.startsWith?.('users/')
-      ? primaryMediaRef
-      : (mediaUrl ? extractStorageObjectPath(mediaUrl) : null);
-  const primaryVideoAssetId =
-    (!mediaStoragePath ? primaryMediaRef : null) ??
-    (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
-  const continuitySourceId = primaryVideoAssetId;
+  const { storagePath: mediaStoragePath, assetId: primaryVideoAssetId } = resolvePrimaryVideoSource(
+    mediaUrl,
+    primaryMediaRef
+  );
+  const continuitySourceId = primaryVideoAssetId ?? mediaStoragePath;
   const thumbnailStoragePath = generation.thumbnailUrl
     ? extractStorageObjectPath(generation.thumbnailUrl)
     : null;

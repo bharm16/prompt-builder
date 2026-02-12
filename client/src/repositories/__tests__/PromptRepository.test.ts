@@ -112,6 +112,37 @@ describe('PromptRepository', () => {
     });
   });
 
+  it('getUserPrompts keeps prompt entries that also have continuity payloads', async () => {
+    mockApiClient.get.mockResolvedValue({
+      data: [
+        {
+          id: 'session_mixed',
+          updatedAt: '2026-02-12T16:00:00.000Z',
+          prompt: {
+            uuid: '22222222-2222-4222-8222-222222222222',
+            input: 'mixed input',
+            output: 'mixed output',
+            versions: [],
+          },
+          continuity: {
+            shots: [{ id: 'shot-1' }],
+          },
+        },
+      ],
+    });
+
+    const result = await repository.getUserPrompts('user-1', 10);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'session_mixed',
+      uuid: '22222222-2222-4222-8222-222222222222',
+      input: 'mixed input',
+      output: 'mixed output',
+      versions: [],
+    });
+  });
+
   it('getById routes uuid lookup through by-prompt endpoint', async () => {
     mockApiClient.get.mockResolvedValue({
       data: {

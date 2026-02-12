@@ -410,7 +410,11 @@ export function useGenerationActions(
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
-          ...(videoStoragePath ? { mediaAssetIds: [videoStoragePath] } : videoAssetId ? { mediaAssetIds: [videoAssetId] } : {}),
+          ...(videoAssetId
+            ? { mediaAssetIds: [videoAssetId] }
+            : videoStoragePath
+              ? { mediaAssetIds: [videoStoragePath] }
+              : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -646,7 +650,11 @@ export function useGenerationActions(
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
-          ...(videoStoragePath ? { mediaAssetIds: [videoStoragePath] } : videoAssetId ? { mediaAssetIds: [videoAssetId] } : {}),
+          ...(videoAssetId
+            ? { mediaAssetIds: [videoAssetId] }
+            : videoStoragePath
+              ? { mediaAssetIds: [videoStoragePath] }
+              : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;

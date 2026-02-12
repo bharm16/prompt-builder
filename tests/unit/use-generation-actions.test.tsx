@@ -308,5 +308,37 @@ describe('useGenerationActions', () => {
         })
       );
     });
+
+    it('stores video asset ids for render generations when both asset and storage refs exist', async () => {
+      const dispatch = vi.fn();
+      mockGenerateVideoPreview.mockResolvedValue({
+        success: true,
+        videoUrl: 'https://cdn/video.mp4',
+        assetId: 'video-asset-1',
+        storagePath: 'users/user-1/generations/video.mp4',
+      });
+
+      const { result } = renderHook(() =>
+        useGenerationActions(dispatch, { promptVersionId: 'version-1' })
+      );
+
+      await act(async () => {
+        await result.current.generateRender('sora-2', 'Prompt', { promptVersionId: 'version-1' });
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'UPDATE_GENERATION',
+          payload: expect.objectContaining({
+            id: 'gen-1',
+            updates: expect.objectContaining({
+              status: 'completed',
+              mediaUrls: ['https://cdn/video.mp4'],
+              mediaAssetIds: ['video-asset-1'],
+            }),
+          }),
+        })
+      );
+    });
   });
 });

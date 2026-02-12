@@ -123,5 +123,55 @@ describe('GenerationCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /frame/i }));
       expect(onSelectFrame).toHaveBeenCalledWith('https://cdn/frame.png', 1, 'gen-1');
     });
+
+    it('keeps continue-as-sequence enabled when asset id exists but URL is a signed storage URL', async () => {
+      const onContinueSequence = vi.fn();
+      const generation = createGeneration({
+        mediaType: 'video',
+        status: 'completed',
+        mediaUrls: [
+          'https://storage.googleapis.com/example-bucket/users%2Fuser-1%2Fgeneration%2Fvideo.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Signature=abc',
+        ],
+        mediaAssetIds: ['video-asset-123'],
+      });
+
+      const user = userEvent.setup();
+      render(
+        <GenerationCard
+          generation={generation}
+          onContinueSequence={onContinueSequence}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /continue as sequence/i });
+      expect(button).toBeEnabled();
+      await user.click(button);
+      expect(onContinueSequence).toHaveBeenCalledWith(generation);
+    });
+
+    it('keeps continue-as-sequence enabled when only storage path exists', async () => {
+      const onContinueSequence = vi.fn();
+      const generation = createGeneration({
+        mediaType: 'video',
+        status: 'completed',
+        mediaUrls: [
+          'https://storage.googleapis.com/example-bucket/users%2Fuser-1%2Fgeneration%2Fvideo.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Signature=abc',
+        ],
+        mediaAssetIds: ['users/user-1/generations/video.mp4'],
+      });
+
+      const user = userEvent.setup();
+      render(
+        <GenerationCard
+          generation={generation}
+          onContinueSequence={onContinueSequence}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /continue as sequence/i });
+      expect(button).toBeEnabled();
+      await user.click(button);
+      expect(onContinueSequence).toHaveBeenCalledWith(generation);
+    });
   });
 });

@@ -68,22 +68,30 @@ export const deserializeContinuitySession = (
 };
 
 export const serializeShot = (shot: ContinuityShot): Record<string, unknown> => ({
-  ...shot,
-  createdAt: shot.createdAt.getTime(),
-  generatedAt: shot.generatedAt ? shot.generatedAt.getTime() : undefined,
-  frameBridge: shot.frameBridge
-    ? {
-        ...shot.frameBridge,
-        extractedAt: shot.frameBridge.extractedAt.getTime(),
-      }
-    : undefined,
-  styleReference: shot.styleReference ? serializeStyleReference(shot.styleReference) : undefined,
-  seedInfo: shot.seedInfo
-    ? {
-        ...shot.seedInfo,
-        extractedAt: shot.seedInfo.extractedAt.getTime(),
-      }
-    : undefined,
+  ...Object.fromEntries(
+    Object.entries({
+      ...shot,
+      createdAt: shot.createdAt.getTime(),
+      ...(shot.generatedAt ? { generatedAt: shot.generatedAt.getTime() } : {}),
+      ...(shot.frameBridge
+        ? {
+            frameBridge: {
+              ...shot.frameBridge,
+              extractedAt: shot.frameBridge.extractedAt.getTime(),
+            },
+          }
+        : {}),
+      ...(shot.styleReference ? { styleReference: serializeStyleReference(shot.styleReference) } : {}),
+      ...(shot.seedInfo
+        ? {
+            seedInfo: {
+              ...shot.seedInfo,
+              extractedAt: shot.seedInfo.extractedAt.getTime(),
+            },
+          }
+        : {}),
+    }).filter(([, value]) => value !== undefined)
+  ),
 });
 
 export const deserializeShot = (raw: Record<string, unknown>): ContinuityShot => {

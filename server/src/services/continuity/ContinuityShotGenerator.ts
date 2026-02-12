@@ -71,7 +71,7 @@ export class ContinuityShotGenerator {
     }
 
     if (effectiveContinuityMode === 'frame-bridge' && !shot.frameBridge && previousShot?.videoAssetId) {
-      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId);
+      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
       if (videoUrl) {
         try {
           shot.frameBridge = await this.mediaService.extractBridgeFrame(
@@ -279,7 +279,7 @@ export class ContinuityShotGenerator {
         shot.generatedAt = new Date();
 
         if (session.defaultSettings.autoExtractFrameBridge && shot.videoAssetId) {
-          const videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId);
+          const videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId, session.userId);
           if (videoUrl) {
             try {
               const bridge = await this.mediaService.extractBridgeFrame(

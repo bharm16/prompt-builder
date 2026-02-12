@@ -274,8 +274,8 @@ function PromptOptimizerContent({
 
   useEffect(() => {
     if (!isSequenceMode || !currentShot) return;
-    const rawPrompt = currentShot.userPrompt ?? '';
-    const nextPrompt = rawPrompt.trim() ? rawPrompt : '';
+    const nextPrompt = (currentShot.userPrompt ?? '').trim();
+    if (!nextPrompt) return;
     if (promptOptimizer.inputPrompt !== nextPrompt) {
       promptOptimizer.setInputPrompt(nextPrompt);
       if (promptOptimizer.displayedPrompt?.trim()) {

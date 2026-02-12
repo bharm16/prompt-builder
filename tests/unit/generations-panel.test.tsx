@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel/GenerationsPanel';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
@@ -58,7 +58,10 @@ vi.mock('@features/prompt-optimizer/context/GenerationControlsStore', () => ({
 }));
 
 vi.mock('@features/prompt-optimizer/GenerationsPanel/components/GenerationCard', () => ({
-  GenerationCard: (props: { generation: Generation }) => {
+  GenerationCard: (props: {
+    generation: Generation;
+    onContinueSequence?: ((generation: Generation) => void) | undefined;
+  }) => {
     generationCardSpy(props);
     return <div data-testid="generation-card">{props.generation.id}</div>;
   },
@@ -241,6 +244,110 @@ describe('GenerationsPanel', () => {
 
       unmount();
       expect(setControls).toHaveBeenCalledWith(null);
+    });
+
+    it('uses video asset id parsed from preview URL when mediaAssetIds contains a storage path', async () => {
+      const startSequence = vi.fn().mockResolvedValue({ id: 'shot-1' });
+      mockUseWorkspaceSession.mockReturnValue({
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-1',
+            mediaUrls: ['https://example.com/api/preview/video/content/asset-123/stream.m3u8'],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 1,
+        },
+      ]);
+
+      render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      await act(async () => {
+        await firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+      });
+
+      expect(startSequence).toHaveBeenCalledWith({
+        sourceVideoId: 'asset-123',
+        prompt: 'Prompt',
+      });
+    });
+
+    it('falls back to storage path when no asset id is available', async () => {
+      const startSequence = vi.fn().mockResolvedValue({ id: 'shot-2' });
+      mockUseWorkspaceSession.mockReturnValue({
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-2',
+            mediaUrls: [
+              'https://storage.googleapis.com/example-bucket/users%2Fuser-1%2Fgeneration%2Fvideo.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Signature=abc',
+            ],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 2,
+        },
+      ]);
+
+      render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      await act(async () => {
+        await firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+      });
+
+      expect(startSequence).toHaveBeenCalledWith({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+        prompt: 'Prompt',
+      });
     });
   });
 });

@@ -22,7 +22,7 @@ import {
 import { logger } from '@/services/LoggingService';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
 import { useToast } from '@components/Toast';
-import { extractVideoContentAssetId } from '@/utils/storageUrl';
+import { resolvePrimaryVideoSource } from './utils/videoSource';
 
 const log = logger.child('GenerationsPanel');
 const MAX_KEYFRAMES = 3;
@@ -433,8 +433,11 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     async (generation: Generation) => {
       if (isSequenceMode || isStartingSequence) return;
       const mediaUrl = generation.mediaUrls[0] ?? null;
-      const sourceVideoId =
-        generation.mediaAssetIds?.[0] ?? (mediaUrl ? extractVideoContentAssetId(mediaUrl) : null);
+      const { assetId, storagePath } = resolvePrimaryVideoSource(
+        mediaUrl,
+        generation.mediaAssetIds?.[0] ?? null
+      );
+      const sourceVideoId = assetId ?? storagePath;
       if (!sourceVideoId) {
         toast.warning('Unable to start a sequence from this generation.');
         return;

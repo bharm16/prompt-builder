@@ -1,12 +1,16 @@
 import type { AssetService } from '@services/asset/AssetService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
+import { getStorageService } from '@services/storage/StorageService';
+import { logger } from '@infrastructure/Logger';
 import type { FrameBridgeService } from './FrameBridgeService';
 import type { StyleReferenceService } from './StyleReferenceService';
 import type { StyleAnalysisService } from './StyleAnalysisService';
 import type { StyleReference } from './types';
 
 export class ContinuityMediaService {
+  private readonly log = logger.child({ service: 'ContinuityMediaService' });
+
   constructor(
     private frameBridge: FrameBridgeService,
     private styleReference: StyleReferenceService,
@@ -15,8 +19,36 @@ export class ContinuityMediaService {
     private assetService: AssetService
   ) {}
 
-  getVideoUrl(videoAssetId: string): ReturnType<VideoGenerationService['getVideoUrl']> {
-    return this.videoGenerator.getVideoUrl(videoAssetId);
+  async getVideoUrl(
+    videoAssetId: string,
+    userId?: string
+  ): ReturnType<VideoGenerationService['getVideoUrl']> {
+    const trimmedId = typeof videoAssetId === 'string' ? videoAssetId.trim() : '';
+    if (!trimmedId) {
+      return null;
+    }
+
+    const directUrl = await this.videoGenerator.getVideoUrl(trimmedId);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    if (!userId || !trimmedId.startsWith('users/')) {
+      return null;
+    }
+
+    try {
+      const storage = getStorageService();
+      const signed = await storage.getViewUrl(userId, trimmedId);
+      return signed.viewUrl || null;
+    } catch (error) {
+      this.log.warn('Failed to resolve continuity source from storage path', {
+        userId,
+        storagePath: trimmedId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 
   generateVideo(
@@ -58,8 +90,35 @@ export class ContinuityMediaService {
     videoUrl: string,
     shotId: string
   ): Promise<StyleReference> {
-    const frame = await this.extractRepresentativeFrame(userId, videoId, videoUrl, shotId);
-    return await this.createStyleReferenceFromVideo(videoId, frame);
+    try {
+      const frame = await this.extractRepresentativeFrame(userId, videoId, videoUrl, shotId);
+      return await this.createStyleReferenceFromVideo(videoId, frame);
+    } catch (error) {
+      if (!this.isMissingMediaBinary(error)) {
+        throw error;
+      }
+
+      this.log.warn('Falling back to synthetic style reference because ffmpeg/ffprobe is unavailable', {
+        userId,
+        videoId,
+        shotId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const fallbackFrame: Parameters<StyleReferenceService['createFromVideo']>[1] = {
+        id: `frame_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        sourceVideoId: videoId,
+        sourceShotId: shotId,
+        frameUrl: videoUrl,
+        framePosition: 'representative',
+        frameTimestamp: 0,
+        resolution: { width: 1920, height: 1080 },
+        aspectRatio: '16:9',
+        extractedAt: new Date(),
+      };
+
+      return await this.createStyleReferenceFromVideo(videoId, fallbackFrame);
+    }
   }
 
   async createStyleReferenceFromImage(sourceImageUrl: string): Promise<StyleReference> {
@@ -94,5 +153,19 @@ export class ContinuityMediaService {
     const buffer = Buffer.from(await response.arrayBuffer());
     const metadata = await (await import('sharp')).default(buffer).metadata();
     return { width: metadata.width || 1920, height: metadata.height || 1080 };
+  }
+
+  private isMissingMediaBinary(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') {
+      return true;
+    }
+
+    const message = error.message.toLowerCase();
+    return message.includes('spawn ffprobe enoent') || message.includes('spawn ffmpeg enoent');
   }
 }

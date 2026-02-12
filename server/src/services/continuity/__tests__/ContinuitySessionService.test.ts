@@ -1,4 +1,4 @@
-import { beforeAll, describe, it, expect, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { ContinuitySessionService as ContinuitySessionServiceType } from '../ContinuitySessionService';
 import type { ContinuityProviderService as ContinuityProviderServiceType } from '../ContinuityProviderService';
 import type { ContinuityMediaService as ContinuityMediaServiceType } from '../ContinuityMediaService';
@@ -11,6 +11,13 @@ let ContinuityProviderService: typeof ContinuityProviderServiceType;
 let ContinuityMediaService: typeof ContinuityMediaServiceType;
 let ContinuityPostProcessingService: typeof ContinuityPostProcessingServiceType;
 let ContinuityShotGenerator: typeof ContinuityShotGeneratorType;
+const mockStorageGetViewUrl = vi.hoisted(() => vi.fn());
+
+vi.mock('@services/storage/StorageService', () => ({
+  getStorageService: () => ({
+    getViewUrl: mockStorageGetViewUrl,
+  }),
+}));
 
 beforeAll(async () => {
   process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'test-bucket';
@@ -210,6 +217,10 @@ const buildService = (
 };
 
 describe('ContinuitySessionService', () => {
+  beforeEach(() => {
+    mockStorageGetViewUrl.mockReset();
+  });
+
   it('fails continuity generation when no visual anchor is available', async () => {
     const shot = buildShot({
       continuityMode: 'frame-bridge',
@@ -377,6 +388,131 @@ describe('ContinuitySessionService', () => {
 
     expect(result).toBe(existingSession);
     expect(sessionStore.save).not.toHaveBeenCalled();
+  });
+
+  it('supports storage-path source videos when asset-id URL lookup fails', async () => {
+    mockStorageGetViewUrl.mockResolvedValue({
+      viewUrl: 'https://storage.googleapis.com/example/users/user-1/generations/video.mp4?sig=abc',
+      expiresAt: new Date().toISOString(),
+      storagePath: 'users/user-1/generations/video.mp4',
+    });
+    const frame = {
+      id: 'frame-1',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+      sourceShotId: 'initial',
+      frameUrl: 'https://example.com/frame.png',
+      framePosition: 'representative',
+      frameTimestamp: 1,
+      resolution: { width: 1920, height: 1080 },
+      aspectRatio: '16:9',
+      extractedAt: new Date(),
+    };
+    const styleRef: StyleReference = {
+      id: 'style-1',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+      sourceFrameIndex: 0,
+      frameUrl: 'https://example.com/frame.png',
+      frameTimestamp: 1,
+      resolution: { width: 1920, height: 1080 },
+      aspectRatio: '16:9',
+      extractedAt: new Date(),
+    };
+
+    const { service, videoGenerator } = buildService(buildSession(), {
+      videoGenerator: {
+        getVideoUrl: vi.fn().mockResolvedValue(null),
+      },
+      frameBridge: {
+        extractRepresentativeFrame: vi.fn().mockResolvedValue(frame),
+      },
+      styleReference: {
+        createFromVideo: vi.fn().mockResolvedValue(styleRef),
+      },
+      styleAnalysis: {
+        analyzeForDisplay: vi.fn().mockResolvedValue({
+          dominantColors: [],
+          lightingDescription: 'Soft light',
+          moodDescription: 'Calm',
+          confidence: 0.8,
+        }),
+      },
+    });
+
+    const result = await service.createSession('user-1', {
+      name: 'Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+
+    expect(result.primaryStyleReference.sourceVideoId).toBe('users/user-1/generations/video.mp4');
+    expect(videoGenerator.getVideoUrl).toHaveBeenCalledWith('users/user-1/generations/video.mp4');
+    expect(mockStorageGetViewUrl).toHaveBeenCalledWith(
+      'user-1',
+      'users/user-1/generations/video.mp4'
+    );
+  });
+
+  it('falls back to a synthetic style reference when ffprobe is unavailable', async () => {
+    const videoUrl = 'https://example.com/video.mp4';
+    const ffprobeMissingError = Object.assign(new Error('spawn ffprobe ENOENT'), {
+      code: 'ENOENT',
+      syscall: 'spawn ffprobe',
+    });
+
+    const { service, frameBridge, styleReference } = buildService(buildSession(), {
+      videoGenerator: {
+        getVideoUrl: vi.fn().mockResolvedValue(videoUrl),
+      },
+      frameBridge: {
+        extractRepresentativeFrame: vi.fn().mockRejectedValue(ffprobeMissingError),
+      },
+      styleReference: {
+        createFromVideo: vi
+          .fn()
+          .mockImplementation(async (sourceVideoId: string, frame: { frameUrl: string }) => ({
+            id: 'style-fallback',
+            sourceVideoId,
+            sourceFrameIndex: 0,
+            frameUrl: frame.frameUrl,
+            frameTimestamp: 0,
+            resolution: { width: 1920, height: 1080 },
+            aspectRatio: '16:9',
+            extractedAt: new Date(),
+          })),
+      },
+      styleAnalysis: {
+        analyzeForDisplay: vi.fn().mockResolvedValue({
+          dominantColors: [],
+          lightingDescription: 'Unknown',
+          moodDescription: 'Unknown',
+          confidence: 0.5,
+        }),
+      },
+    });
+
+    const result = await service.createSession('user-1', {
+      name: 'Session',
+      sourceVideoId: 'video-asset-1',
+    });
+
+    expect(frameBridge.extractRepresentativeFrame).toHaveBeenCalledWith(
+      'user-1',
+      'video-asset-1',
+      videoUrl,
+      'initial'
+    );
+    expect(styleReference.createFromVideo).toHaveBeenCalledWith(
+      'video-asset-1',
+      expect.objectContaining({
+        sourceVideoId: 'video-asset-1',
+        sourceShotId: 'initial',
+        frameUrl: videoUrl,
+        framePosition: 'representative',
+        frameTimestamp: 0,
+        aspectRatio: '16:9',
+      })
+    );
+    expect(result.primaryStyleReference.sourceVideoId).toBe('video-asset-1');
+    expect(result.primaryStyleReference.frameUrl).toBe(videoUrl);
   });
 
   it('adds shots with inherited defaults and previous style reference', async () => {

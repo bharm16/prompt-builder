@@ -19,11 +19,9 @@ const resolveAssetHints = (
       ? normalizedRef
       : (url ? extractStorageObjectPath(url) : null);
   const assetId =
-    storagePath
-      ? null
-      : normalizedRef
-        ? normalizedRef
-        : null;
+    normalizedRef && !normalizedRef.startsWith('users/')
+      ? normalizedRef
+      : null;
   return { storagePath, assetId };
 };
 

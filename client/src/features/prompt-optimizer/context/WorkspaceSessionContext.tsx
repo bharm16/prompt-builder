@@ -257,7 +257,11 @@ export function WorkspaceSessionProvider({
           );
         }
 
-        const shotPrompt = prompt?.trim() || ' ';
+        const requestedPrompt = prompt?.trim();
+        const sessionPrompt = session?.prompt?.input?.trim();
+        const activeShotPrompt = currentShot?.userPrompt?.trim();
+        const shotPrompt =
+          requestedPrompt || sessionPrompt || activeShotPrompt || 'Continue the scene';
         const shot = (await continuityApi.addShot(sessionId, {
           prompt: shotPrompt,
           sourceVideoId,
@@ -280,7 +284,7 @@ export function WorkspaceSessionProvider({
         setIsStartingSequence(false);
       }
     },
-    [isStartingSequence, session, sessionId, updateShotInState]
+    [currentShot, isStartingSequence, session, sessionId]
   );
 
   const value = useMemo(

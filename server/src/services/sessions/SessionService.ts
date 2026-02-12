@@ -77,12 +77,19 @@ export class SessionService {
 
   async listSessions(userId: string, options: SessionListOptions = {}): Promise<SessionRecord[]> {
     const sessions = await this.sessionStore.findByUser(userId, options.limit);
-    if (options.includeContinuity === false) {
-      return sessions.filter((session) => !session.continuity);
+    const includePrompt = options.includePrompt ?? true;
+    const includeContinuity = options.includeContinuity ?? true;
+
+    const promptOnlyView = includePrompt && !includeContinuity;
+    if (promptOnlyView) {
+      return sessions.filter((session) => Boolean(session.prompt));
     }
-    if (options.includePrompt === false) {
-      return sessions.filter((session) => !session.prompt);
+
+    const continuityOnlyView = includeContinuity && !includePrompt;
+    if (continuityOnlyView) {
+      return sessions.filter((session) => Boolean(session.continuity));
     }
+
     return sessions;
   }
 
