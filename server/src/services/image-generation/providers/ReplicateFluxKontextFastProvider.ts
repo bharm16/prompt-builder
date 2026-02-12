@@ -9,6 +9,7 @@ import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { sleep as sleepForMs } from '@utils/sleep';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
+import { stripPreviewSections } from '@services/image-generation/promptSanitization';
 import type {
   ImagePreviewProvider,
   ImagePreviewRequest,
@@ -175,7 +176,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
     }
 
     const aspectRatio = normalizeAspectRatio(request.aspectRatio, hasInputImage);
-    const cleanedPrompt = this.stripPreviewSections(trimmedPrompt);
+    const cleanedPrompt = stripPreviewSections(trimmedPrompt);
 
     let promptForModel = cleanedPrompt;
     let promptWasTransformed = false;
@@ -596,31 +597,5 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
     ];
 
     return temporalPatterns.some((pattern) => pattern.test(normalized));
-  }
-
-  private stripPreviewSections(prompt: string): string {
-    if (!prompt) {
-      return prompt;
-    }
-
-    const markers: RegExp[] = [
-      /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
-      /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
-      /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
-      /\r?\n\s*technical specs\s*[:\n]/i,
-      /\r?\n\s*alternative approaches\s*[:\n]/i,
-      /\r?\n\s*variation\s+\d+/i,
-    ];
-
-    let cutIndex = -1;
-    for (const marker of markers) {
-      const match = marker.exec(prompt);
-      if (match && (cutIndex === -1 || match.index < cutIndex)) {
-        cutIndex = match.index;
-      }
-    }
-
-    const stripped = (cutIndex >= 0 ? prompt.slice(0, cutIndex) : prompt).trim();
-    return stripped.length >= 10 ? stripped : prompt.trim();
   }
 }

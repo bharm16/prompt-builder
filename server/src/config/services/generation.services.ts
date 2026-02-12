@@ -47,17 +47,24 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'storyboardFramePlanner',
-    (geminiClient: LLMClient | null) => {
+    (geminiClient: LLMClient | null, claudeClient: LLMClient | null) => {
       if (!geminiClient) {
         logger.warn('Gemini client not available, storyboard frame planner disabled');
         return null;
       }
+      if (!claudeClient) {
+        logger.warn(
+          'OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)'
+        );
+      }
       return new StoryboardFramePlanner({
         llmClient: geminiClient,
+        visionLlmClient: claudeClient,
         timeoutMs: 8000,
+        visionTimeoutMs: 15000,
       });
     },
-    ['geminiClient']
+    ['geminiClient', 'claudeClient']
   );
 
   container.register(

@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { stripPreviewSections } from '@services/image-generation/promptSanitization';
 import type { ImagePreviewSpeedMode } from '@services/image-generation/providers/types';
 import { StoryboardFramePlanner } from './StoryboardFramePlanner';
 import { BASE_PROVIDER, EDIT_PROVIDER, STORYBOARD_FRAME_COUNT } from './constants';
@@ -50,6 +51,7 @@ export class StoryboardPreviewService {
     if (!trimmedPrompt) {
       throw new Error('Prompt is required and must be a non-empty string');
     }
+    const storyboardPrompt = stripPreviewSections(trimmedPrompt);
 
     const userId = request.userId ?? 'anonymous';
     const seedImageUrl = normalizeSeedImageUrl(request.seedImageUrl);
@@ -57,29 +59,16 @@ export class StoryboardPreviewService {
     const effectiveReferenceImageUrl = seedImageUrl ? undefined : referenceImageUrl;
     this.log.info('Storyboard preview generation started', {
       userId,
-      promptLength: trimmedPrompt.length,
+      promptLength: storyboardPrompt.length,
+      originalPromptLength: trimmedPrompt.length,
       aspectRatio: request.aspectRatio,
       speedMode: request.speedMode,
       seedProvided: request.seed !== undefined,
       hasSeedImage: Boolean(seedImageUrl),
       hasReferenceImage: Boolean(referenceImageUrl),
     });
-    const deltas = await this.storyboardFramePlanner.planDeltas(
-      trimmedPrompt,
-      STORYBOARD_FRAME_COUNT
-    );
-
-    if (deltas.length !== STORYBOARD_FRAME_COUNT - 1) {
-      throw new Error('Storyboard planner did not return the expected number of deltas');
-    }
-
-    this.log.info('Storyboard deltas planned', {
-      userId,
-      deltaCount: deltas.length,
-    });
-
     const { baseImageUrl, baseProviderUrl, baseStoragePath } = await this.resolveBaseImage({
-      prompt: trimmedPrompt,
+      prompt: storyboardPrompt,
       ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
       ...(seedImageUrl ? { seedImageUrl } : {}),
       ...(effectiveReferenceImageUrl ? { referenceImageUrl: effectiveReferenceImageUrl } : {}),
@@ -98,12 +87,27 @@ export class StoryboardPreviewService {
       usedReferenceImage: Boolean(effectiveReferenceImageUrl),
     });
 
-    const { imageUrls, storagePaths } = await this.generateEditFrames({
+    const deltas = await this.storyboardFramePlanner.planDeltas(
+      storyboardPrompt,
+      STORYBOARD_FRAME_COUNT,
+      baseProviderUrl
+    );
+
+    if (deltas.length !== STORYBOARD_FRAME_COUNT - 1) {
+      throw new Error('Storyboard planner did not return the expected number of deltas');
+    }
+
+    this.log.info('Storyboard deltas planned', {
+      userId,
+      deltaCount: deltas.length,
+    });
+
+    const { imageUrls, storagePaths } = await this.generateKeyframes({
       baseImageUrl,
       baseProviderUrl,
       ...(baseStoragePath ? { baseStoragePath } : {}),
-      deltas,
-      prompt: trimmedPrompt,
+      keyframeDescriptions: deltas,
+      prompt: storyboardPrompt,
       ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
       ...(request.speedMode ? { speedMode: request.speedMode } : {}),
       ...(request.seed !== undefined ? { seed: request.seed } : {}),
@@ -176,11 +180,11 @@ export class StoryboardPreviewService {
     };
   }
 
-  private async generateEditFrames(options: {
+  private async generateKeyframes(options: {
     baseImageUrl: string;
     baseProviderUrl: string;
     baseStoragePath?: string;
-    deltas: string[];
+    keyframeDescriptions: string[];
     prompt: string;
     aspectRatio?: string;
     speedMode?: ImagePreviewSpeedMode;
@@ -189,47 +193,55 @@ export class StoryboardPreviewService {
   }): Promise<{ imageUrls: string[]; storagePaths: string[] }> {
     const imageUrls: string[] = [options.baseImageUrl];
     const storagePaths: string[] = [options.baseStoragePath ?? ''];
-    let previousUrl = options.baseProviderUrl;
     const seedBase = computeSeedBase(options.seed);
 
-    for (let index = 0; index < options.deltas.length; index += 1) {
-      const delta = options.deltas[index]!;
-      const editPrompt = buildEditPrompt(options.prompt, delta);
+    const framePromises = options.keyframeDescriptions.map(async (description, index) => {
+      const framePrompt = buildEditPrompt(options.prompt, description);
       const editSeed = computeEditSeed(seedBase, index);
 
       try {
-        this.log.debug('Storyboard edit frame generation started', {
+        this.log.debug('Storyboard keyframe generation started', {
           userId: options.userId,
           frameIndex: index + 1,
+          descriptionPreview: description.slice(0, 120),
         });
 
-        const result = await this.imageGenerationService.generatePreview(editPrompt, {
+        const result = await this.imageGenerationService.generatePreview(framePrompt, {
           ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
           provider: EDIT_PROVIDER,
-          inputImageUrl: previousUrl,
+          inputImageUrl: options.baseProviderUrl,
           ...(options.speedMode ? { speedMode: options.speedMode } : {}),
           userId: options.userId,
           ...(editSeed !== undefined ? { seed: editSeed } : {}),
           disablePromptTransformation: true,
         });
 
-        previousUrl = resolveChainingUrl(result);
-        imageUrls.push(result.imageUrl);
-        storagePaths.push(result.storagePath ?? '');
+        return {
+          index,
+          imageUrl: result.imageUrl,
+          storagePath: result.storagePath ?? '',
+        };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log.error(
-          'Storyboard edit frame generation failed',
+          'Storyboard keyframe generation failed',
           error instanceof Error ? error : new Error(errorMessage),
           {
             userId: options.userId,
             frameIndex: index + 1,
-            deltaPreview: delta.slice(0, 160),
+            descriptionPreview: description.slice(0, 160),
             provider: EDIT_PROVIDER,
           }
         );
         throw error;
       }
+    });
+
+    const results = await Promise.all(framePromises);
+    results.sort((left, right) => left.index - right.index);
+    for (const result of results) {
+      imageUrls.push(result.imageUrl);
+      storagePaths.push(result.storagePath);
     }
 
     return { imageUrls, storagePaths };
