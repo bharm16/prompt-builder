@@ -1,11 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Copy, Trash2, Wand2, X } from '@promptstudio/system/components/ui';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
+import { CameraMotionModal } from '@components/modals/CameraMotionModal';
 import { GenerationFooter } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter';
 import { VideoSettingsRow } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow';
 import { useCapabilitiesClamping } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
 import { useModelSelectionRecommendation } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
 import type { VideoTier } from '@components/ToolSidebar/types';
+import type { CameraPath } from '@/features/convergence/types';
+import type { ContinuityShot } from '@/features/continuity/types';
 import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
 import {
   useGenerationControlsStoreActions,
@@ -42,6 +45,15 @@ const parseAspectRatio = (value: unknown): string => {
   return '16:9';
 };
 
+const normalizeRef = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const resolveShotReferenceImage = (shot: ContinuityShot | null): string | null =>
+  normalizeRef(shot?.frameBridge?.frameUrl ?? shot?.styleReference?.frameUrl ?? shot?.generatedKeyframeUrl ?? null);
+
 export function SequenceWorkspace({
   promptText,
   onPromptChange,
@@ -51,6 +63,7 @@ export function SequenceWorkspace({
   onExitSequence,
 }: SequenceWorkspaceProps): React.ReactElement {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCameraMotionModalOpen, setIsCameraMotionModalOpen] = useState(false);
   const { copy } = useClipboard();
 
   const {
@@ -65,7 +78,7 @@ export function SequenceWorkspace({
   } = useWorkspaceSession();
 
   const { domain } = useGenerationControlsStoreState();
-  const { setSelectedModel, setVideoTier, mergeGenerationParams } = useGenerationControlsStoreActions();
+  const { setSelectedModel, setVideoTier, mergeGenerationParams, setCameraMotion } = useGenerationControlsStoreActions();
   const promptHighlights = useOptionalPromptHighlights();
 
   const selectedModel = domain.selectedModel;
@@ -83,6 +96,38 @@ export function SequenceWorkspace({
     () => (currentShotIndex > 0 ? orderedShots[currentShotIndex - 1] ?? null : null),
     [currentShotIndex, orderedShots]
   );
+
+  const motionSource = useMemo(() => {
+    const primaryKeyframe = keyframes[0];
+    const keyframeUrl = normalizeRef(primaryKeyframe?.url ?? null);
+    if (keyframeUrl) {
+      return {
+        imageUrl: keyframeUrl,
+        imageStoragePath: primaryKeyframe?.storagePath ?? null,
+        imageAssetId: primaryKeyframe?.assetId ?? null,
+      };
+    }
+
+    const previousShotFrameUrl = resolveShotReferenceImage(previousShot);
+    if (previousShotFrameUrl) {
+      return {
+        imageUrl: previousShotFrameUrl,
+        imageStoragePath: null,
+        imageAssetId: null,
+      };
+    }
+
+    const primaryStyleFrameUrl = normalizeRef(session?.continuity?.primaryStyleReference?.frameUrl ?? null);
+    if (primaryStyleFrameUrl) {
+      return {
+        imageUrl: primaryStyleFrameUrl,
+        imageStoragePath: null,
+        imageAssetId: null,
+      };
+    }
+
+    return null;
+  }, [keyframes, previousShot, session?.continuity?.primaryStyleReference?.frameUrl]);
 
   const {
     modelRecommendation,
@@ -176,6 +221,22 @@ export function SequenceWorkspace({
   const handleClearPrompt = useCallback((): void => {
     onPromptChange?.('');
   }, [onPromptChange]);
+
+  const handleOpenCameraMotion = useCallback((): void => {
+    if (!motionSource) return;
+    setIsCameraMotionModalOpen(true);
+  }, [motionSource]);
+
+  const handleCloseCameraMotion = useCallback((): void => {
+    setIsCameraMotionModalOpen(false);
+  }, []);
+
+  const handleSelectCameraMotion = useCallback(
+    (cameraPath: CameraPath): void => {
+      setCameraMotion(cameraPath);
+    },
+    [setCameraMotion]
+  );
 
   const isGenerateDisabled =
     !currentShot ||
@@ -296,8 +357,21 @@ export function SequenceWorkspace({
         onDurationChange={handleDurationChange}
         isAspectRatioDisabled={aspectRatioInfo?.state.disabled}
         isDurationDisabled={durationInfo?.state.disabled}
-        isMotionDisabled
+        onOpenMotion={handleOpenCameraMotion}
+        isMotionDisabled={!motionSource}
       />
+
+      {motionSource && (
+        <CameraMotionModal
+          isOpen={isCameraMotionModalOpen}
+          onClose={handleCloseCameraMotion}
+          imageUrl={motionSource.imageUrl}
+          imageStoragePath={motionSource.imageStoragePath}
+          imageAssetId={motionSource.imageAssetId}
+          onSelect={handleSelectCameraMotion}
+          initialSelection={domain.cameraMotion}
+        />
+      )}
 
       <GenerationFooter
         renderModelOptions={renderModelOptions}

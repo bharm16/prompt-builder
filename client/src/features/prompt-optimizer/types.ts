@@ -45,6 +45,7 @@ export interface OptimizationOptions {
   startImage?: string;
   sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
+  preserveSessionView?: boolean;
 }
 
 export interface LockedSpan {

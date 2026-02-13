@@ -27,10 +27,21 @@ vi.mock('../../../layouts/PromptResultsLayout', () => ({
 }));
 
 vi.mock('../../../components/SequenceWorkspace', () => ({
-  SequenceWorkspace: ({ onExitSequence }: { onExitSequence?: () => void }) => (
-    <button type="button" data-testid="sequence-workspace" onClick={onExitSequence}>
-      Sequence workspace
-    </button>
+  SequenceWorkspace: ({
+    onExitSequence,
+    onAiEnhance,
+  }: {
+    onExitSequence?: () => void;
+    onAiEnhance?: () => void;
+  }) => (
+    <div>
+      <button type="button" data-testid="sequence-workspace" onClick={onExitSequence}>
+        Sequence workspace
+      </button>
+      <button type="button" data-testid="sequence-ai-enhance" onClick={onAiEnhance}>
+        AI Enhance
+      </button>
+    </div>
   ),
 }));
 
@@ -258,5 +269,73 @@ describe('PromptOptimizerWorkspaceView', () => {
     await user.click(screen.getByTestId('sequence-workspace'));
 
     expect(navigateMock).toHaveBeenCalledWith('/session/source-from-sidebar');
+  });
+
+  it('passes preserveSessionView when enhancing prompt in sequence workspace', async () => {
+    const user = userEvent.setup();
+    const props = buildProps();
+    const onOptimize = vi.fn(async () => undefined);
+    props.toolSidebarProps.onOptimize = onOptimize;
+    props.toolSidebarProps.prompt = 'Shot prompt';
+
+    useWorkspaceSessionMock.mockReturnValue({
+      session: null,
+      shots: [{ id: 'shot-1', sequenceIndex: 0 }],
+      isSequenceMode: true,
+      setCurrentShotId: vi.fn(),
+      addShot: vi.fn(async () => ({ id: 'shot-2' })),
+    });
+
+    render(<PromptOptimizerWorkspaceView {...props} />);
+
+    await user.click(screen.getByTestId('sequence-ai-enhance'));
+
+    expect(onOptimize).toHaveBeenCalledWith('Shot prompt', { preserveSessionView: true });
+  });
+
+  it('passes previous-shot image context when enhancing in sequence workspace', async () => {
+    const user = userEvent.setup();
+    const props = buildProps();
+    const onOptimize = vi.fn(async () => undefined);
+    props.toolSidebarProps.onOptimize = onOptimize;
+    props.toolSidebarProps.prompt = 'Shot 2 motion prompt';
+
+    useWorkspaceSessionMock.mockReturnValue({
+      session: {
+        id: 'continuity-1',
+        continuity: {
+          primaryStyleReference: {
+            frameUrl: 'https://img/primary-style.png',
+          },
+        },
+      },
+      shots: [
+        {
+          id: 'shot-1',
+          sequenceIndex: 0,
+          userPrompt: 'Shot 1 prompt',
+          styleReference: { frameUrl: 'https://img/shot-1-style.png' },
+        },
+        {
+          id: 'shot-2',
+          sequenceIndex: 1,
+          userPrompt: '',
+        },
+      ],
+      currentShotId: 'shot-2',
+      isSequenceMode: true,
+      setCurrentShotId: vi.fn(),
+      addShot: vi.fn(async () => ({ id: 'shot-3' })),
+    });
+
+    render(<PromptOptimizerWorkspaceView {...props} />);
+
+    await user.click(screen.getByTestId('sequence-ai-enhance'));
+
+    expect(onOptimize).toHaveBeenCalledWith('Shot 2 motion prompt', {
+      preserveSessionView: true,
+      startImage: 'https://img/shot-1-style.png',
+      sourcePrompt: 'Shot 1 prompt',
+    });
   });
 });

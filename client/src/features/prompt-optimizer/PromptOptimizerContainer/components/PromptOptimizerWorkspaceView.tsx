@@ -7,8 +7,10 @@ import { AppShell } from '@components/navigation/AppShell';
 import { useToast } from '@components/Toast';
 import DebugButton from '@components/DebugButton';
 import AssetEditor from '@features/assets/components/AssetEditor';
+import type { ContinuityShot } from '@/features/continuity/types';
 import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
 import type { PromptModalsProps } from '../../types';
+import type { OptimizationOptions } from '../../types';
 import type { PromptResultsLayoutProps } from '../../layouts/PromptResultsLayout';
 import { PromptModals } from '../../components/PromptModals';
 import { QuickCharacterCreate } from '../../components/QuickCharacterCreate';
@@ -79,6 +81,9 @@ const normalizeRef = (value: string | null | undefined): string | null => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
+
+const resolveShotReferenceImage = (shot: ContinuityShot | null): string | null =>
+  normalizeRef(shot?.frameBridge?.frameUrl ?? shot?.styleReference?.frameUrl ?? shot?.generatedKeyframeUrl ?? null);
 
 const collectVideoRefs = (entry: PromptHistoryEntry): Set<string> => {
   const refs = new Set<string>();
@@ -151,14 +156,39 @@ export function PromptOptimizerWorkspaceView({
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { session, shots, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
+  const { session, shots, currentShotId, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
   const promptText = toolSidebarProps?.prompt ?? '';
   const isOptimizing = Boolean(toolSidebarProps?.isProcessing || toolSidebarProps?.isRefining);
 
+  const orderedShots = useMemo(
+    () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
+    [shots]
+  );
+
+  const sequenceEnhanceContext = useMemo(() => {
+    const activeShotIndex = currentShotId
+      ? orderedShots.findIndex((shot) => shot.id === currentShotId)
+      : -1;
+    const previousShot = activeShotIndex > 0 ? orderedShots[activeShotIndex - 1] ?? null : null;
+
+    const startImage =
+      resolveShotReferenceImage(previousShot) ??
+      normalizeRef(session?.continuity?.primaryStyleReference?.frameUrl ?? null);
+    const sourcePrompt =
+      normalizeRef(previousShot?.userPrompt ?? null) ?? normalizeRef(session?.prompt?.input ?? null);
+
+    return { startImage, sourcePrompt };
+  }, [currentShotId, orderedShots, session?.continuity?.primaryStyleReference?.frameUrl, session?.prompt?.input]);
+
   const handleAiEnhance = useCallback(() => {
     if (typeof toolSidebarProps?.onOptimize !== 'function') return;
-    void toolSidebarProps.onOptimize(promptText);
-  }, [promptText, toolSidebarProps]);
+    const optimizeOptions: OptimizationOptions = {
+      preserveSessionView: true,
+      ...(sequenceEnhanceContext.startImage ? { startImage: sequenceEnhanceContext.startImage } : {}),
+      ...(sequenceEnhanceContext.sourcePrompt ? { sourcePrompt: sequenceEnhanceContext.sourcePrompt } : {}),
+    };
+    void toolSidebarProps.onOptimize(promptText, optimizeOptions);
+  }, [promptText, sequenceEnhanceContext.sourcePrompt, sequenceEnhanceContext.startImage, toolSidebarProps]);
 
   const handleAddShot = useCallback(async () => {
     try {
@@ -171,14 +201,14 @@ export function PromptOptimizerWorkspaceView({
 
   const sourceVideoRefs = useMemo(() => {
     const refs = new Set<string>();
-    const firstShotVideoId = normalizeRef(shots[0]?.videoAssetId ?? null);
+    const firstShotVideoId = normalizeRef(orderedShots[0]?.videoAssetId ?? null);
     if (firstShotVideoId) refs.add(firstShotVideoId);
     const primarySourceVideoId = normalizeRef(
       session?.continuity?.primaryStyleReference?.sourceVideoId ?? null
     );
     if (primarySourceVideoId) refs.add(primarySourceVideoId);
     return [...refs];
-  }, [session?.continuity?.primaryStyleReference?.sourceVideoId, shots]);
+  }, [orderedShots, session?.continuity?.primaryStyleReference?.sourceVideoId]);
 
   const sequenceOriginSessionId = useMemo(() => {
     const history = Array.isArray(toolSidebarProps?.history) ? toolSidebarProps.history : [];

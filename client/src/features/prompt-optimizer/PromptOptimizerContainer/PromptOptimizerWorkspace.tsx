@@ -471,6 +471,22 @@ function PromptOptimizerContent({
     ]
   );
 
+  const handleSequenceOptimizationApplied = useCallback(
+    async (optimizedPrompt: string): Promise<void> => {
+      if (!isSequenceMode || !currentShotId) return;
+      try {
+        await updateShot(currentShotId, { prompt: optimizedPrompt });
+      } catch (error) {
+        log.warn('Failed to persist optimized sequence prompt', {
+          shotId: currentShotId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        toast.error('Failed to save optimized shot prompt');
+      }
+    },
+    [currentShotId, isSequenceMode, toast, updateShot]
+  );
+
   const handleDraft = useCallback(
     (model: DraftModel, overrides?: GenerationOverrides): void => {
       generationControls?.onDraft?.(model, overrides);
@@ -527,6 +543,7 @@ function PromptOptimizerContent({
     persistedSignatureRef,
     skipLoadFromUrlRef,
     navigate,
+    onOptimizationApplied: handleSequenceOptimizationApplied,
   });
   const handleSidebarOptimize = useCallback(
     (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>

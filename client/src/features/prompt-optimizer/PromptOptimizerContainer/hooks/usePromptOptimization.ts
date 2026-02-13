@@ -56,6 +56,7 @@ const OPTIMIZATION_OPTION_KEYS: ReadonlyArray<keyof OptimizationOptions> = [
   'targetModel',
   'forceGenericTarget',
   'createVersion',
+  'preserveSessionView',
 ];
 
 const extractOptimizationOptions = (value: unknown): OptimizationOptions | null => {
@@ -74,6 +75,7 @@ interface PromptOptimizer {
   genericOptimizedPrompt?: string | null;
   improvementContext: unknown | null;
   qualityScore: number | null;
+  setInputPrompt?: (prompt: string) => void;
   optimize: (
     prompt: string,
     context: Record<string, unknown> | null,
@@ -130,6 +132,7 @@ export interface UsePromptOptimizationParams {
   persistedSignatureRef: React.MutableRefObject<string | null>;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
   navigate: NavigateFunction;
+  onOptimizationApplied?: (optimizedPrompt: string) => Promise<void> | void;
 }
 
 export interface UsePromptOptimizationReturn {
@@ -168,6 +171,7 @@ export function usePromptOptimization({
   persistedSignatureRef,
   skipLoadFromUrlRef,
   navigate,
+  onOptimizationApplied,
 }: UsePromptOptimizationParams): UsePromptOptimizationReturn {
   /**
    * Handle prompt optimization
@@ -282,6 +286,20 @@ export function usePromptOptimization({
           );
 
       if (result) {
+        const preserveSessionView = normalizedOptions?.preserveSessionView === true;
+        if (preserveSessionView) {
+          if (typeof promptOptimizer.setInputPrompt === 'function') {
+            promptOptimizer.setInputPrompt(result.optimized);
+            setDisplayedPromptSilently('');
+            setShowResults(false);
+          } else {
+            setDisplayedPromptSilently(result.optimized);
+            setShowResults(true);
+          }
+          await onOptimizationApplied?.(result.optimized);
+          return;
+        }
+
         if (isCompileOnly && !effectiveTargetModel) {
           setShowResults(true);
           setDisplayedPromptSilently(result.optimized);
@@ -371,6 +389,7 @@ export function usePromptOptimization({
       persistedSignatureRef,
       skipLoadFromUrlRef,
       navigate,
+      onOptimizationApplied,
     ]
   );
 
