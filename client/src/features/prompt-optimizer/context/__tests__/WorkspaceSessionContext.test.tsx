@@ -40,7 +40,7 @@ const buildSession = (overrides: Partial<SessionDto> = {}): SessionDto => ({
 });
 
 const buildContinuitySession = (): ContinuitySession => ({
-  id: 'session-1',
+  id: 'continuity-1',
   userId: 'user-1',
   name: 'Continuity Session',
   primaryStyleReference: null,
@@ -78,6 +78,9 @@ const wrapper =
     <WorkspaceSessionProvider sessionId="session-1">{children}</WorkspaceSessionProvider>
   );
 
+const wrapperWithoutSession =
+  ({ children }: { children: ReactNode }) => <WorkspaceSessionProvider>{children}</WorkspaceSessionProvider>;
+
 describe('WorkspaceSessionContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -92,21 +95,191 @@ describe('WorkspaceSessionContext', () => {
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/v2/sessions/session-1');
     });
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
 
+    let sequenceResult: Awaited<ReturnType<typeof result.current.startSequence>> | null = null;
     await act(async () => {
-      await result.current.startSequence({
+      sequenceResult = await result.current.startSequence({
         sourceVideoId: 'users/user-1/generations/video.mp4',
       });
     });
 
     expect(mockCreateSession).toHaveBeenCalledWith({
-      sessionId: 'session-1',
       name: 'Session',
       sourceVideoId: 'users/user-1/generations/video.mp4',
     });
-    expect(mockAddShot).toHaveBeenCalledWith('session-1', {
+    expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
       prompt: 'Keep this prompt',
       sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(sequenceResult).toMatchObject({ sessionId: 'continuity-1' });
+  });
+
+  it('starts sequence from originSessionId when route has no active session', async () => {
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper: wrapperWithoutSession });
+
+    let sequenceResult: Awaited<ReturnType<typeof result.current.startSequence>> | null = null;
+    await act(async () => {
+      sequenceResult = await result.current.startSequence({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+        prompt: 'Continue the scene',
+        originSessionId: 'source-session-1',
+      });
+    });
+
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockCreateSession).toHaveBeenCalledWith({
+      name: 'Continuity Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
+      prompt: 'Continue the scene',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(sequenceResult).toMatchObject({ sessionId: 'continuity-1' });
+  });
+
+  it('starts sequence without route session by creating a new continuity session', async () => {
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper: wrapperWithoutSession });
+
+    let sequenceResult: Awaited<ReturnType<typeof result.current.startSequence>> | null = null;
+    await act(async () => {
+      sequenceResult = await result.current.startSequence({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+        prompt: 'Continue from this clip',
+      });
+    });
+
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockCreateSession).toHaveBeenCalledWith({
+      name: 'Continuity Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
+      prompt: 'Continue from this clip',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(sequenceResult).toMatchObject({ sessionId: 'continuity-1' });
+  });
+
+  it('does not force sequence mode or reuse continuity on mixed prompt+continuity sessions', async () => {
+    const mixedShot = buildShot();
+    mockApiGet.mockResolvedValue({
+      data: buildSession({
+        continuity: {
+          shots: [mixedShot],
+          primaryStyleReference: null,
+          sceneProxy: null,
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'frame-bridge',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/v2/sessions/session-1');
+    });
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
+    expect(result.current.isSequenceMode).toBe(false);
+
+    let sequenceResult: Awaited<ReturnType<typeof result.current.startSequence>> | null = null;
+    await act(async () => {
+      sequenceResult = await result.current.startSequence({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+      });
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledWith({
+      name: 'Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
+      prompt: 'Keep this prompt',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(sequenceResult).toMatchObject({ sessionId: 'continuity-1' });
+  });
+
+  it('ignores stale session responses when route session id changes', async () => {
+    let resolveSession1: ((value: unknown) => void) | null = null;
+    let resolveSession2: ((value: unknown) => void) | null = null;
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/v2/sessions/session-1') {
+        return new Promise((resolve) => {
+          resolveSession1 = resolve;
+        });
+      }
+      if (url === '/v2/sessions/session-2') {
+        return new Promise((resolve) => {
+          resolveSession2 = resolve;
+        });
+      }
+      return Promise.resolve({ data: null });
+    });
+
+    let activeSessionId = 'session-1';
+    const dynamicWrapper = ({ children }: { children: ReactNode }) => (
+      <WorkspaceSessionProvider sessionId={activeSessionId}>{children}</WorkspaceSessionProvider>
+    );
+
+    const { result, rerender } = renderHook(() => useWorkspaceSession(), {
+      wrapper: dynamicWrapper,
+    });
+
+    activeSessionId = 'session-2';
+    rerender();
+
+    await act(async () => {
+      resolveSession2?.({
+        data: buildSession({
+          id: 'session-2',
+          name: 'Second Session',
+        }),
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-2');
+    });
+
+    await act(async () => {
+      resolveSession1?.({
+        data: buildSession({
+          id: 'session-1',
+          name: 'First Session',
+          prompt: undefined,
+          continuity: {
+            shots: [buildShot()],
+            primaryStyleReference: null,
+            sceneProxy: null,
+            settings: {
+              generationMode: 'continuity',
+              defaultContinuityMode: 'frame-bridge',
+              defaultStyleStrength: 0.6,
+              defaultModel: 'model-1',
+              autoExtractFrameBridge: false,
+              useCharacterConsistency: false,
+            },
+          },
+        }),
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-2');
+      expect(result.current.isSequenceMode).toBe(false);
     });
   });
 });

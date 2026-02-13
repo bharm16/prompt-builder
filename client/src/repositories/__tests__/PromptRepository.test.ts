@@ -181,6 +181,39 @@ describe('PromptRepository', () => {
     expect(result).toMatchObject({ id: 'session_abc', input: 'in', output: 'out' });
   });
 
+  it('maps continuity-only sessions to a minimal prompt entry for route loading', async () => {
+    mockApiClient.get.mockResolvedValue({
+      data: {
+        id: 'continuity_1',
+        name: 'Continuity Session',
+        updatedAt: '2026-02-12T00:00:00.000Z',
+        continuity: {
+          shots: [{ id: 'shot-1' }],
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'frame-bridge',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+          },
+        },
+      },
+    });
+
+    const result = await repository.getById('continuity_1');
+
+    expect(result).toMatchObject({
+      id: 'continuity_1',
+      uuid: 'continuity_1',
+      title: 'Continuity Session',
+      input: '',
+      output: '',
+      mode: 'video',
+      versions: [],
+    });
+  });
+
   it('resolves uuid to session id once and reuses cached resolution for later writes', async () => {
     mockApiClient.get.mockResolvedValue({ data: { id: 'session_cached' } });
     mockApiClient.patch.mockResolvedValue(undefined);

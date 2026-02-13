@@ -208,7 +208,29 @@ export class PromptRepository {
   }
 
   private _mapSessionToPrompt(session: SessionDto | null | undefined): PromptHistoryEntry | null {
-    if (!session?.prompt) return null;
+    if (!session?.prompt) {
+      // Continuity-only sessions do not carry a prompt payload. Expose a
+      // minimal entry so route loading can stay on the session view.
+      if (session?.continuity) {
+        return {
+          id: session.id,
+          uuid: session.id,
+          timestamp: session.updatedAt,
+          title: session.name ?? 'Continuity Session',
+          input: '',
+          output: '',
+          score: null,
+          targetModel: null,
+          generationParams: null,
+          keyframes: null,
+          brainstormContext: null,
+          highlightCache: null,
+          versions: [],
+          mode: 'video',
+        };
+      }
+      return null;
+    }
     this.rememberSessionId(session.prompt.uuid ?? undefined, session.id);
     const prompt = session.prompt;
     const mapped: PromptHistoryEntry = {

@@ -3,11 +3,6 @@ import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { cn } from '@/utils/cn';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@promptstudio/system/components/ui/tooltip';
 import { AssetPopover } from './AssetPopover';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -30,24 +25,32 @@ export function AssetChip({ asset, onEdit }: AssetChipProps): React.ReactElement
     : `@${asset.trigger}`;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold transition',
-            'bg-surface-2 text-foreground hover:bg-surface-3',
-            config.colorClass
-          )}
-        >
-          <Icon className="h-3 w-3" />
-          <span>{triggerLabel}</span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="bg-surface-1 p-0">
-        <AssetPopover asset={asset} onEdit={onEdit} />
-      </TooltipContent>
-    </Tooltip>
+    <div className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label={triggerLabel}
+        className={cn(
+          'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold transition',
+          'bg-surface-2 text-foreground hover:bg-surface-3',
+          config.colorClass
+        )}
+      >
+        <Icon className="h-3 w-3" />
+        <span>{triggerLabel}</span>
+      </button>
+      <div
+        className={cn(
+          'pointer-events-none absolute left-0 top-full z-50 mt-1',
+          'opacity-0 transition-opacity duration-150',
+          'group-hover:pointer-events-auto group-hover:opacity-100',
+          'group-focus-within:pointer-events-auto group-focus-within:opacity-100'
+        )}
+      >
+        <div className="rounded-md border border-border bg-surface-1 shadow-lg">
+          <AssetPopover asset={asset} onEdit={onEdit} />
+        </div>
+      </div>
+    </div>
   );
 }
 

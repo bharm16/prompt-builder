@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -11,11 +12,18 @@ import type { SessionDto } from '@shared/types/session';
 import type { ContinuitySession, ContinuityShot, CreateShotInput, UpdateShotInput } from '@/features/continuity/types';
 import { continuityApi } from '@/features/continuity/api/continuityApi';
 import { apiClient } from '@/services/ApiClient';
+import { logger } from '@/services/LoggingService';
 
 interface StartSequenceInput {
   sourceVideoId: string;
   prompt?: string;
   name?: string;
+  originSessionId?: string;
+}
+
+interface StartSequenceResult {
+  sessionId: string;
+  shot: ContinuityShot;
 }
 
 interface WorkspaceSessionContextValue {
@@ -33,11 +41,12 @@ interface WorkspaceSessionContextValue {
   updateShot: (shotId: string, updates: UpdateShotInput) => Promise<ContinuityShot>;
   updateShotStyleReference: (shotId: string, styleReferenceId: string | null) => Promise<ContinuityShot>;
   generateShot: (shotId: string) => Promise<ContinuityShot>;
-  startSequence: (input: StartSequenceInput) => Promise<ContinuityShot>;
+  startSequence: (input: StartSequenceInput) => Promise<StartSequenceResult>;
   isStartingSequence: boolean;
 }
 
 const WorkspaceSessionContext = createContext<WorkspaceSessionContextValue | null>(null);
+const log = logger.child('WorkspaceSessionContext');
 
 const mapContinuityToSession = (
   continuity: ContinuitySession
@@ -68,23 +77,51 @@ export function WorkspaceSessionProvider({
   const [error, setError] = useState<string | null>(null);
   const [currentShotId, setCurrentShotId] = useState<string | null>(null);
   const [isStartingSequence, setIsStartingSequence] = useState(false);
+  const routeSessionIdRef = useRef<string | undefined>(sessionId);
+  const refreshRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    routeSessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const refreshSession = useCallback(async () => {
-    if (!sessionId) {
+    const requestedSessionId = sessionId;
+    const requestId = refreshRequestIdRef.current + 1;
+    refreshRequestIdRef.current = requestId;
+
+    if (!requestedSessionId) {
       setSession(null);
       setError(null);
+      setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(sessionId)}`);
+      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(requestedSessionId)}`);
+      if (
+        refreshRequestIdRef.current !== requestId ||
+        routeSessionIdRef.current !== requestedSessionId
+      ) {
+        return;
+      }
       const data = (response as { data?: SessionDto }).data ?? null;
       setSession(data);
     } catch (err) {
+      if (
+        refreshRequestIdRef.current !== requestId ||
+        routeSessionIdRef.current !== requestedSessionId
+      ) {
+        return;
+      }
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (
+        refreshRequestIdRef.current === requestId &&
+        routeSessionIdRef.current === requestedSessionId
+      ) {
+        setLoading(false);
+      }
     }
   }, [sessionId]);
 
@@ -93,6 +130,11 @@ export function WorkspaceSessionProvider({
   }, [refreshSession]);
 
   useEffect(() => {
+    setSession((prev) => {
+      if (!sessionId) return null;
+      return prev?.id === sessionId ? prev : null;
+    });
+    setError(null);
     setCurrentShotId(null);
   }, [sessionId]);
 
@@ -106,7 +148,9 @@ export function WorkspaceSessionProvider({
     [shots]
   );
 
-  const isSequenceMode = orderedShots.length > 0;
+  // A session can contain continuity data and still be a prompt workspace.
+  // Only continuity-only sessions should force sequence UI mode.
+  const isSequenceMode = orderedShots.length > 0 && !session?.prompt;
 
   const currentShot = useMemo(() => {
     if (!currentShotId) return null;
@@ -228,58 +272,120 @@ export function WorkspaceSessionProvider({
   );
 
   const startSequence = useCallback(
-    async ({ sourceVideoId, prompt, name }: StartSequenceInput): Promise<ContinuityShot> => {
-      if (!sessionId) throw new Error('No active session');
-      if (!sourceVideoId) throw new Error('Missing source video');
-      if (isStartingSequence) throw new Error('Sequence creation in progress');
+    async ({
+      sourceVideoId,
+      prompt,
+      name,
+      originSessionId,
+    }: StartSequenceInput): Promise<StartSequenceResult> => {
+      const routeSessionIdAtStart = sessionId ?? null;
+      const isCurrentRouteSessionLoaded =
+        Boolean(routeSessionIdAtStart) && session?.id === routeSessionIdAtStart;
+      const activeSessionId = routeSessionIdAtStart ?? originSessionId ?? session?.id ?? null;
+      if (!sourceVideoId) {
+        log.error('Cannot start sequence without a source video id', undefined, {
+          routeSessionId: sessionId ?? null,
+          originSessionId: originSessionId ?? null,
+        });
+        throw new Error('Missing source video');
+      }
+      if (isStartingSequence) {
+        log.warn('Sequence creation already in progress', {
+          routeSessionId: sessionId ?? null,
+          originSessionId: originSessionId ?? null,
+          sourceVideoId,
+        });
+        throw new Error('Sequence creation in progress');
+      }
 
       setIsStartingSequence(true);
       try {
+        let targetSessionId = activeSessionId;
         let continuityPayload: NonNullable<SessionDto['continuity']> | null =
-          session?.continuity ?? null;
-        if (!session?.continuity) {
-          const resolvedName = name ?? session?.name ?? 'Continuity Session';
+          isCurrentRouteSessionLoaded ? session?.continuity ?? null : null;
+        const canReuseCurrentContinuitySession =
+          Boolean(activeSessionId) &&
+          isCurrentRouteSessionLoaded &&
+          Boolean(session?.continuity) &&
+          !session?.prompt &&
+          routeSessionIdAtStart === activeSessionId;
+
+        if (!canReuseCurrentContinuitySession) {
+          const resolvedName =
+            name ??
+            (isCurrentRouteSessionLoaded ? session?.name : undefined) ??
+            'Continuity Session';
           const safeName = resolvedName.trim() ? resolvedName : 'Continuity Session';
           const continuitySession = await continuityApi.createSession({
-            sessionId,
             name: safeName,
             sourceVideoId,
           });
           const createdContinuity = mapContinuityToSession(continuitySession);
+          targetSessionId = continuitySession.id;
           continuityPayload = createdContinuity;
-          setSession((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  continuity: createdContinuity,
-                }
-              : prev
-          );
+          if (
+            targetSessionId === routeSessionIdAtStart &&
+            routeSessionIdRef.current === routeSessionIdAtStart
+          ) {
+            setSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    continuity: createdContinuity,
+                  }
+                : prev
+            );
+          }
+        }
+
+        if (!targetSessionId) {
+          throw new Error('Failed to create continuity session');
         }
 
         const requestedPrompt = prompt?.trim();
-        const sessionPrompt = session?.prompt?.input?.trim();
-        const activeShotPrompt = currentShot?.userPrompt?.trim();
+        const sessionPrompt = isCurrentRouteSessionLoaded ? session?.prompt?.input?.trim() : null;
+        const activeShotPrompt = isCurrentRouteSessionLoaded ? currentShot?.userPrompt?.trim() : null;
         const shotPrompt =
           requestedPrompt || sessionPrompt || activeShotPrompt || 'Continue the scene';
-        const shot = (await continuityApi.addShot(sessionId, {
+        const shot = (await continuityApi.addShot(targetSessionId, {
           prompt: shotPrompt,
           sourceVideoId,
         })) as ContinuityShot;
-        setSession((prev) => {
-          if (!prev) return prev;
-          const baseContinuity = prev.continuity ?? continuityPayload;
-          if (!baseContinuity) return prev;
-          return {
-            ...prev,
-            continuity: {
-              ...baseContinuity,
-              shots: [...(baseContinuity.shots ?? []), shot],
-            },
-          };
+        if (
+          targetSessionId === routeSessionIdAtStart &&
+          routeSessionIdRef.current === routeSessionIdAtStart
+        ) {
+          setSession((prev) => {
+            if (!prev) return prev;
+            const baseContinuity = prev.continuity ?? continuityPayload;
+            if (!baseContinuity) return prev;
+            return {
+              ...prev,
+              continuity: {
+                ...baseContinuity,
+                shots: [...(baseContinuity.shots ?? []), shot],
+              },
+            };
+          });
+          setCurrentShotId(shot.id);
+        }
+        log.info('Sequence started', {
+          sourceVideoId,
+          targetSessionId,
+          routeSessionId: sessionId ?? null,
+          originSessionId: originSessionId ?? null,
+          shotId: shot.id,
         });
-        setCurrentShotId(shot.id);
-        return shot;
+        return { sessionId: targetSessionId, shot };
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        log.error('Failed to start sequence', err, {
+          sourceVideoId,
+          activeSessionId,
+          routeSessionId: sessionId ?? null,
+          originSessionId: originSessionId ?? null,
+        });
+        throw error;
       } finally {
         setIsStartingSequence(false);
       }

@@ -1,10 +1,13 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import type { PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { AppShellProps } from '@components/navigation/AppShell/types';
 import { AppShell } from '@components/navigation/AppShell';
 import { useToast } from '@components/Toast';
 import DebugButton from '@components/DebugButton';
 import AssetEditor from '@features/assets/components/AssetEditor';
+import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
 import type { PromptModalsProps } from '../../types';
 import type { PromptResultsLayoutProps } from '../../layouts/PromptResultsLayout';
 import { PromptModals } from '../../components/PromptModals';
@@ -71,6 +74,62 @@ interface PromptOptimizerWorkspaceViewProps {
   debugProps: DebugProps;
 }
 
+const normalizeRef = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const collectVideoRefs = (entry: PromptHistoryEntry): Set<string> => {
+  const refs = new Set<string>();
+  const versions = Array.isArray(entry.versions) ? entry.versions : [];
+
+  for (const version of versions) {
+    const video = version?.video;
+    if (!video) continue;
+
+    const assetId = normalizeRef(video.assetId ?? null);
+    if (assetId) refs.add(assetId);
+
+    const storagePath = normalizeRef(video.storagePath ?? null);
+    if (storagePath) refs.add(storagePath);
+
+    const videoUrl = normalizeRef(video.videoUrl ?? null);
+    if (!videoUrl) continue;
+
+    const assetIdFromUrl = normalizeRef(extractVideoContentAssetId(videoUrl));
+    if (assetIdFromUrl) refs.add(assetIdFromUrl);
+
+    const storagePathFromUrl = normalizeRef(extractStorageObjectPath(videoUrl));
+    if (storagePathFromUrl) refs.add(storagePathFromUrl);
+  }
+
+  return refs;
+};
+
+const resolveSequenceOriginSessionId = (
+  history: PromptHistoryEntry[],
+  currentSessionId: string | null,
+  sourceVideoRefs: string[]
+): string | null => {
+  if (!history.length || !sourceVideoRefs.length) return null;
+  const sourceSet = new Set(sourceVideoRefs);
+
+  for (const entry of history) {
+    const entryId = normalizeRef(entry.id);
+    if (!entryId || entryId === currentSessionId) continue;
+    const entryRefs = collectVideoRefs(entry);
+    if (entryRefs.size === 0) continue;
+    for (const ref of sourceSet) {
+      if (entryRefs.has(ref)) {
+        return entryId;
+      }
+    }
+  }
+
+  return null;
+};
+
 export function PromptOptimizerWorkspaceView({
   toolSidebarProps,
   showHistory,
@@ -89,8 +148,10 @@ export function PromptOptimizerWorkspaceView({
   promptResultsLayoutProps,
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
+  const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const { shots, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
+  const { session, shots, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
   const promptText = toolSidebarProps?.prompt ?? '';
   const isOptimizing = Boolean(toolSidebarProps?.isProcessing || toolSidebarProps?.isRefining);
 
@@ -107,6 +168,52 @@ export function PromptOptimizerWorkspaceView({
       toast.error(error instanceof Error ? error.message : 'Failed to add shot');
     }
   }, [addShot, setCurrentShotId, toast]);
+
+  const sourceVideoRefs = useMemo(() => {
+    const refs = new Set<string>();
+    const firstShotVideoId = normalizeRef(shots[0]?.videoAssetId ?? null);
+    if (firstShotVideoId) refs.add(firstShotVideoId);
+    const primarySourceVideoId = normalizeRef(
+      session?.continuity?.primaryStyleReference?.sourceVideoId ?? null
+    );
+    if (primarySourceVideoId) refs.add(primarySourceVideoId);
+    return [...refs];
+  }, [session?.continuity?.primaryStyleReference?.sourceVideoId, shots]);
+
+  const sequenceOriginSessionId = useMemo(() => {
+    const history = Array.isArray(toolSidebarProps?.history) ? toolSidebarProps.history : [];
+    return resolveSequenceOriginSessionId(history, normalizeRef(session?.id ?? null), sourceVideoRefs);
+  }, [session?.id, sourceVideoRefs, toolSidebarProps?.history]);
+
+  const originSessionIdFromQuery = useMemo(() => {
+    const value = normalizeRef(new URLSearchParams(location.search).get('originSessionId'));
+    if (!value) return null;
+    if (value === normalizeRef(session?.id ?? null)) return null;
+    return value;
+  }, [location.search, session?.id]);
+
+  const originSessionIdFromSidebarState = useMemo(() => {
+    const candidate = normalizeRef(toolSidebarProps?.currentPromptDocId ?? null);
+    if (!candidate) return null;
+    if (candidate === normalizeRef(session?.id ?? null)) return null;
+    return candidate;
+  }, [session?.id, toolSidebarProps?.currentPromptDocId]);
+
+  const handleExitSequence = useCallback((): void => {
+    if (originSessionIdFromQuery) {
+      navigate(`/session/${encodeURIComponent(originSessionIdFromQuery)}`);
+      return;
+    }
+    if (originSessionIdFromSidebarState) {
+      navigate(`/session/${encodeURIComponent(originSessionIdFromSidebarState)}`);
+      return;
+    }
+    if (sequenceOriginSessionId) {
+      navigate(`/session/${encodeURIComponent(sequenceOriginSessionId)}`);
+      return;
+    }
+    navigate('/');
+  }, [navigate, originSessionIdFromQuery, originSessionIdFromSidebarState, sequenceOriginSessionId]);
 
   return (
     <AppShell
@@ -167,6 +274,7 @@ export function PromptOptimizerWorkspaceView({
                   isOptimizing={isOptimizing}
                   onAiEnhance={handleAiEnhance}
                   onAddShot={handleAddShot}
+                  onExitSequence={handleExitSequence}
                   {...(toolSidebarProps?.onPromptChange
                     ? { onPromptChange: toolSidebarProps.onPromptChange }
                     : {})}

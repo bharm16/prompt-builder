@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Copy, Trash2, Wand2 } from '@promptstudio/system/components/ui';
+import { Copy, Trash2, Wand2, X } from '@promptstudio/system/components/ui';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationFooter } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter';
 import { VideoSettingsRow } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow';
@@ -25,6 +25,7 @@ interface SequenceWorkspaceProps {
   isOptimizing: boolean;
   onAiEnhance: () => void;
   onAddShot: () => void;
+  onExitSequence?: () => void;
 }
 
 const parseDuration = (value: unknown): number => {
@@ -47,6 +48,7 @@ export function SequenceWorkspace({
   isOptimizing,
   onAiEnhance,
   onAddShot,
+  onExitSequence,
 }: SequenceWorkspaceProps): React.ReactElement {
   const [isGenerating, setIsGenerating] = useState(false);
   const { copy } = useClipboard();
@@ -190,7 +192,18 @@ export function SequenceWorkspace({
         <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
           Sequence
         </span>
-        <span className="ml-2 truncate text-sm text-foreground">{session?.name || 'Untitled session'}</span>
+        <span className="ml-2 flex-1 truncate text-sm text-foreground">{session?.name || 'Untitled session'}</span>
+        {onExitSequence && (
+          <button
+            type="button"
+            onClick={onExitSequence}
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-1 hover:text-foreground"
+            aria-label="Exit sequence"
+          >
+            <X className="h-3.5 w-3.5" />
+            Exit
+          </button>
+        )}
       </header>
 
       <ShotVisualStrip

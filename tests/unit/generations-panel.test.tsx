@@ -12,6 +12,8 @@ const mockUseAssetReferenceImages = vi.fn();
 const mockUseKeyframeWorkflow = vi.fn();
 const mockUseGenerationControlsContext = vi.fn();
 const mockUseWorkspaceSession = vi.fn();
+const mockUsePromptNavigation = vi.fn();
+const mockUsePromptSession = vi.fn();
 const mockUseGenerationControlsStoreState = vi.fn();
 const mockUseGenerationControlsStoreActions = vi.fn();
 
@@ -50,6 +52,11 @@ vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
 
 vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   useWorkspaceSession: () => mockUseWorkspaceSession(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+  usePromptNavigation: () => mockUsePromptNavigation(),
+  usePromptSession: () => mockUsePromptSession(),
 }));
 
 vi.mock('@features/prompt-optimizer/context/GenerationControlsStore', () => ({
@@ -133,12 +140,20 @@ describe('GenerationsPanel', () => {
       subjectMotion: '',
     });
     mockUseWorkspaceSession.mockReturnValue({
+      session: { id: 'session-current' },
       isSequenceMode: false,
       isStartingSequence: false,
       startSequence: vi.fn(),
       currentShot: null,
       generateShot: vi.fn(),
       updateShot: vi.fn(),
+    });
+    mockUsePromptNavigation.mockReturnValue({
+      navigate: vi.fn(),
+      sessionId: 'session-current',
+    });
+    mockUsePromptSession.mockReturnValue({
+      currentPromptDocId: 'session-current',
     });
     mockUseGenerationControlsStoreState.mockReturnValue({
       domain: {
@@ -247,8 +262,9 @@ describe('GenerationsPanel', () => {
     });
 
     it('uses video asset id parsed from preview URL when mediaAssetIds contains a storage path', async () => {
-      const startSequence = vi.fn().mockResolvedValue({ id: 'shot-1' });
+      const startSequence = vi.fn().mockResolvedValue({ sessionId: 'sequence-1', shot: { id: 'shot-1' } });
       mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
         isSequenceMode: false,
         isStartingSequence: false,
         startSequence,
@@ -294,12 +310,14 @@ describe('GenerationsPanel', () => {
       expect(startSequence).toHaveBeenCalledWith({
         sourceVideoId: 'asset-123',
         prompt: 'Prompt',
+        originSessionId: 'session-current',
       });
     });
 
     it('falls back to storage path when no asset id is available', async () => {
-      const startSequence = vi.fn().mockResolvedValue({ id: 'shot-2' });
+      const startSequence = vi.fn().mockResolvedValue({ sessionId: 'sequence-2', shot: { id: 'shot-2' } });
       mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
         isSequenceMode: false,
         isStartingSequence: false,
         startSequence,
@@ -347,7 +365,87 @@ describe('GenerationsPanel', () => {
       expect(startSequence).toHaveBeenCalledWith({
         sourceVideoId: 'users/user-1/generations/video.mp4',
         prompt: 'Prompt',
+        originSessionId: 'session-current',
       });
+    });
+
+    it('does not navigate into sequence if user changes sessions before sequence startup resolves', async () => {
+      let resolveStartSequence: ((value: { sessionId: string; shot: { id: string } }) => void) | null = null;
+      const startSequence = vi.fn().mockImplementation(
+        () =>
+          new Promise<{ sessionId: string; shot: { id: string } }>((resolve) => {
+            resolveStartSequence = resolve;
+          })
+      );
+      mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-race',
+            mediaUrls: ['https://example.com/api/preview/video/content/asset-123/stream.m3u8'],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 3,
+        },
+      ]);
+
+      const navigate = vi.fn();
+      mockUsePromptNavigation.mockReturnValue({
+        navigate,
+        sessionId: 'session-current',
+      });
+
+      const view = render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      const pendingContinue = firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+
+      mockUsePromptNavigation.mockReturnValue({
+        navigate,
+        sessionId: 'session-other',
+      });
+      view.rerender(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      await act(async () => {
+        resolveStartSequence?.({ sessionId: 'sequence-3', shot: { id: 'shot-3' } });
+        await pendingContinue;
+      });
+
+      expect(navigate).not.toHaveBeenCalledWith('/session/sequence-3?originSessionId=session-current');
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
@@ -19,6 +19,7 @@ import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
 } from '../context/GenerationControlsStore';
+import { usePromptNavigation, usePromptSession } from '../context/PromptStateContext';
 import { logger } from '@/services/LoggingService';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
 import { useToast } from '@components/Toast';
@@ -74,7 +75,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   onCreateVersionIfNeeded,
 }: GenerationsPanelProps): React.ReactElement {
   const toast = useToast();
+  const { navigate, sessionId: currentSessionId } = usePromptNavigation();
+  const { currentPromptDocId } = usePromptSession();
   const {
+    session: workspaceSession,
     isSequenceMode,
     isStartingSequence,
     startSequence,
@@ -82,6 +86,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     generateShot,
     updateShot,
   } = useWorkspaceSession();
+  const currentRouteSessionIdRef = useRef<string | null>(currentSessionId ?? null);
+  useEffect(() => {
+    currentRouteSessionIdRef.current = currentSessionId ?? null;
+  }, [currentSessionId]);
   const {
     generations,
     activeGenerationId,
@@ -439,17 +447,74 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       );
       const sourceVideoId = assetId ?? storagePath;
       if (!sourceVideoId) {
+        log.warn('Cannot start sequence: missing source video ref', {
+          generationId: generation.id,
+          mediaUrl,
+          mediaAssetId: generation.mediaAssetIds?.[0] ?? null,
+          routeSessionId: currentSessionId ?? null,
+          currentPromptDocId,
+        });
         toast.warning('Unable to start a sequence from this generation.');
         return;
       }
+      const routeSessionIdAtStart = currentSessionId ?? null;
+      const originSessionId = routeSessionIdAtStart ?? currentPromptDocId ?? workspaceSession?.id ?? null;
+      log.info('Starting sequence', {
+        generationId: generation.id,
+        sourceVideoId,
+        routeSessionId: routeSessionIdAtStart,
+        currentPromptDocId,
+        originSessionId,
+      });
       try {
-        await startSequence({ sourceVideoId, prompt: generation.prompt });
+        const { sessionId: sequenceSessionId } = await startSequence({
+          sourceVideoId,
+          prompt: generation.prompt,
+          ...(originSessionId ? { originSessionId } : {}),
+        });
+        if (currentRouteSessionIdRef.current !== routeSessionIdAtStart) {
+          log.info('Skipping sequence navigation after route changed during startup', {
+            generationId: generation.id,
+            routeSessionIdAtStart,
+            routeSessionIdCurrent: currentRouteSessionIdRef.current ?? null,
+            sequenceSessionId,
+          });
+          return;
+        }
+        if (sequenceSessionId && sequenceSessionId !== originSessionId) {
+          const originParam = originSessionId
+            ? `?originSessionId=${encodeURIComponent(originSessionId)}`
+            : '';
+          navigate(`/session/${encodeURIComponent(sequenceSessionId)}${originParam}`);
+        }
+        log.info('Sequence started from generation', {
+          generationId: generation.id,
+          sequenceSessionId,
+          originSessionId,
+        });
         toast.success('Sequence mode enabled.');
       } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        log.error('Failed to start sequence from generation', err, {
+          generationId: generation.id,
+          sourceVideoId,
+          routeSessionId: currentSessionId ?? null,
+          currentPromptDocId,
+          originSessionId,
+        });
         toast.error(error instanceof Error ? error.message : 'Failed to start sequence');
       }
     },
-    [isSequenceMode, isStartingSequence, startSequence, toast]
+    [
+      currentPromptDocId,
+      currentSessionId,
+      isSequenceMode,
+      isStartingSequence,
+      navigate,
+      startSequence,
+      toast,
+      workspaceSession?.id,
+    ]
   );
 
   const versionsForTimeline = useMemo(() => {
