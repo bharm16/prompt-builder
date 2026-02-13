@@ -446,6 +446,10 @@ export const GenerationsPanel = memo(function GenerationsPanel({
         generation.mediaAssetIds?.[0] ?? null
       );
       const sourceVideoId = assetId ?? storagePath;
+      const sourceImageUrl =
+        typeof generation.thumbnailUrl === 'string' && generation.thumbnailUrl.trim()
+          ? generation.thumbnailUrl.trim()
+          : null;
       if (!sourceVideoId) {
         log.warn('Cannot start sequence: missing source video ref', {
           generationId: generation.id,
@@ -469,6 +473,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       try {
         const { sessionId: sequenceSessionId } = await startSequence({
           sourceVideoId,
+          ...(sourceImageUrl ? { sourceImageUrl } : {}),
           prompt: generation.prompt,
           ...(originSessionId ? { originSessionId } : {}),
         });

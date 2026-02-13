@@ -117,6 +117,30 @@ describe('WorkspaceSessionContext', () => {
     expect(sequenceResult).toMatchObject({ sessionId: 'continuity-1' });
   });
 
+  it('forwards source image URL when starting a sequence', async () => {
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/v2/sessions/session-1');
+    });
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
+
+    await act(async () => {
+      await result.current.startSequence({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+        sourceImageUrl: 'https://example.com/thumb.png',
+      });
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledWith({
+      name: 'Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+      sourceImageUrl: 'https://example.com/thumb.png',
+    });
+  });
+
   it('starts sequence from originSessionId when route has no active session', async () => {
     const { result } = renderHook(() => useWorkspaceSession(), { wrapper: wrapperWithoutSession });
 

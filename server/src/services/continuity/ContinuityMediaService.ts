@@ -3,6 +3,7 @@ import type { VideoGenerationService } from '@services/video-generation/VideoGen
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 import { getStorageService } from '@services/storage/StorageService';
 import { logger } from '@infrastructure/Logger';
+import { spawnSync } from 'node:child_process';
 import type { FrameBridgeService } from './FrameBridgeService';
 import type { StyleReferenceService } from './StyleReferenceService';
 import type { StyleAnalysisService } from './StyleAnalysisService';
@@ -10,6 +11,7 @@ import type { StyleReference } from './types';
 
 export class ContinuityMediaService {
   private readonly log = logger.child({ service: 'ContinuityMediaService' });
+  private static mediaBinaryProbeDone = false;
 
   constructor(
     private frameBridge: FrameBridgeService,
@@ -17,7 +19,9 @@ export class ContinuityMediaService {
     private styleAnalysis: StyleAnalysisService,
     private videoGenerator: VideoGenerationService,
     private assetService: AssetService
-  ) {}
+  ) {
+    this.probeMediaBinaries();
+  }
 
   async getVideoUrl(
     videoAssetId: string,
@@ -88,7 +92,8 @@ export class ContinuityMediaService {
     userId: string,
     videoId: string,
     videoUrl: string,
-    shotId: string
+    shotId: string,
+    fallbackImageUrl?: string
   ): Promise<StyleReference> {
     try {
       const frame = await this.extractRepresentativeFrame(userId, videoId, videoUrl, shotId);
@@ -104,6 +109,22 @@ export class ContinuityMediaService {
         shotId,
         error: error instanceof Error ? error.message : String(error),
       });
+
+      const trimmedFallbackImageUrl =
+        typeof fallbackImageUrl === 'string' ? fallbackImageUrl.trim() : '';
+      if (trimmedFallbackImageUrl) {
+        try {
+          return await this.createStyleReferenceFromImage(trimmedFallbackImageUrl);
+        } catch (fallbackError) {
+          this.log.warn('Source image fallback failed during style reference creation', {
+            userId,
+            videoId,
+            shotId,
+            sourceImageUrl: trimmedFallbackImageUrl,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+        }
+      }
 
       const fallbackFrame: Parameters<StyleReferenceService['createFromVideo']>[1] = {
         id: `frame_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -190,5 +211,31 @@ export class ContinuityMediaService {
     }
 
     return /\.(mp4|mov|webm|m4v|mkv|avi)(\?|#|$)/i.test(normalized);
+  }
+
+  private probeMediaBinaries(): void {
+    if (ContinuityMediaService.mediaBinaryProbeDone) {
+      return;
+    }
+    ContinuityMediaService.mediaBinaryProbeDone = true;
+
+    const ffprobeAvailable = this.hasExecutable('ffprobe');
+    const ffmpegAvailable = this.hasExecutable('ffmpeg');
+
+    if (ffprobeAvailable && ffmpegAvailable) {
+      return;
+    }
+
+    this.log.warn('Continuity media extraction binaries missing in runtime', {
+      ffprobeAvailable,
+      ffmpegAvailable,
+      environment: process.env.NODE_ENV || 'unknown',
+      guidance: 'Install ffmpeg package in the runtime image (includes ffprobe).',
+    });
+  }
+
+  private hasExecutable(command: string): boolean {
+    const result = spawnSync(command, ['-version'], { stdio: 'ignore' });
+    return !result.error && result.status === 0;
   }
 }

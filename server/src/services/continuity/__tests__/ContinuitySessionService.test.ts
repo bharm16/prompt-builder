@@ -516,6 +516,81 @@ describe('ContinuitySessionService', () => {
     expect(result.primaryStyleReference.frameUrl).toBe(videoUrl);
   });
 
+  it('uses sourceImageUrl fallback when ffprobe is unavailable during session creation', async () => {
+    const videoUrl = 'https://example.com/video.mp4';
+    const sourceImageUrl = 'https://example.com/thumb.png';
+    const ffprobeMissingError = Object.assign(new Error('spawn ffprobe ENOENT'), {
+      code: 'ENOENT',
+      syscall: 'spawn ffprobe',
+    });
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+0f4AAAAASUVORK5CYII=',
+      'base64'
+    );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(pngBuffer, {
+        status: 200,
+        headers: { 'content-type': 'image/png' },
+      })
+    );
+
+    const styleRefFromImage: StyleReference = {
+      id: 'style-from-image',
+      sourceVideoId: 'image-upload',
+      sourceFrameIndex: 0,
+      frameUrl: sourceImageUrl,
+      frameTimestamp: 0,
+      resolution: { width: 1, height: 1 },
+      aspectRatio: '1:1',
+      extractedAt: new Date(),
+    };
+
+    const { service, frameBridge, styleReference, styleAnalysis } = buildService(buildSession(), {
+      videoGenerator: {
+        getVideoUrl: vi.fn().mockResolvedValue(videoUrl),
+      },
+      frameBridge: {
+        extractRepresentativeFrame: vi.fn().mockRejectedValue(ffprobeMissingError),
+      },
+      styleReference: {
+        createFromVideo: vi.fn(),
+        createFromImage: vi.fn().mockResolvedValue(styleRefFromImage),
+      },
+      styleAnalysis: {
+        analyzeForDisplay: vi.fn().mockResolvedValue({
+          dominantColors: ['#111111'],
+          lightingDescription: 'Balanced',
+          moodDescription: 'Neutral',
+          confidence: 0.7,
+        }),
+      },
+    });
+
+    try {
+      const result = await service.createSession('user-1', {
+        name: 'Session',
+        sourceVideoId: 'video-asset-1',
+        sourceImageUrl,
+      });
+
+      expect(frameBridge.extractRepresentativeFrame).toHaveBeenCalledWith(
+        'user-1',
+        'video-asset-1',
+        videoUrl,
+        'initial'
+      );
+      expect(styleReference.createFromImage).toHaveBeenCalledWith(sourceImageUrl, {
+        width: 1,
+        height: 1,
+      });
+      expect(styleReference.createFromVideo).not.toHaveBeenCalled();
+      expect(styleAnalysis.analyzeForDisplay).toHaveBeenCalledWith(sourceImageUrl);
+      expect(result.primaryStyleReference.frameUrl).toBe(sourceImageUrl);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('skips style analysis when synthetic style reference points to a video URL', async () => {
     const videoUrl = 'https://example.com/video.mp4';
     const ffprobeMissingError = Object.assign(new Error('spawn ffprobe ENOENT'), {

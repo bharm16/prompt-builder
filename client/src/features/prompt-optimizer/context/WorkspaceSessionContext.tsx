@@ -16,6 +16,7 @@ import { logger } from '@/services/LoggingService';
 
 interface StartSequenceInput {
   sourceVideoId: string;
+  sourceImageUrl?: string;
   prompt?: string;
   name?: string;
   originSessionId?: string;
@@ -274,6 +275,7 @@ export function WorkspaceSessionProvider({
   const startSequence = useCallback(
     async ({
       sourceVideoId,
+      sourceImageUrl,
       prompt,
       name,
       originSessionId,
@@ -319,6 +321,9 @@ export function WorkspaceSessionProvider({
           const continuitySession = await continuityApi.createSession({
             name: safeName,
             sourceVideoId,
+            ...(typeof sourceImageUrl === 'string' && sourceImageUrl.trim()
+              ? { sourceImageUrl: sourceImageUrl.trim() }
+              : {}),
           });
           const createdContinuity = mapContinuityToSession(continuitySession);
           targetSessionId = continuitySession.id;

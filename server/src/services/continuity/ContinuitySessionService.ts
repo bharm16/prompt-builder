@@ -42,13 +42,24 @@ export class ContinuitySessionService {
 
     if (request.sourceVideoId) {
       const videoUrl = await this.mediaService.getVideoUrl(request.sourceVideoId, userId);
-      if (!videoUrl) throw new Error('Source video not found');
-      primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
-        userId,
-        request.sourceVideoId,
-        videoUrl,
-        'initial'
-      );
+      if (!videoUrl && request.sourceImageUrl) {
+        this.log.warn('Source video URL unavailable; falling back to provided source image', {
+          userId,
+          sourceVideoId: request.sourceVideoId,
+        });
+        primaryStyleReference = await this.mediaService.createStyleReferenceFromImage(
+          request.sourceImageUrl
+        );
+      } else {
+        if (!videoUrl) throw new Error('Source video not found');
+        primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
+          userId,
+          request.sourceVideoId,
+          videoUrl,
+          'initial',
+          request.sourceImageUrl
+        );
+      }
     } else if (request.sourceImageUrl) {
       primaryStyleReference = await this.mediaService.createStyleReferenceFromImage(
         request.sourceImageUrl
@@ -126,9 +137,9 @@ export class ContinuitySessionService {
 
     let frameBridge = previousShot?.frameBridge;
     if (!frameBridge && continuityMode === 'frame-bridge' && previousShot?.videoAssetId) {
-      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
-      if (videoUrl) {
-        try {
+      try {
+        const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
+        if (videoUrl) {
           frameBridge = await this.mediaService.extractBridgeFrame(
             session.userId,
             previousShot.videoAssetId,
@@ -136,14 +147,14 @@ export class ContinuitySessionService {
             previousShot.id,
             'last'
           );
-        } catch (error) {
-          this.log.warn('Frame bridge extraction failed during shot creation; continuing without frame bridge', {
-            sessionId: session.id,
-            previousShotId: previousShot.id,
-            previousShotVideoAssetId: previousShot.videoAssetId,
-            error: error instanceof Error ? error.message : String(error),
-          });
         }
+      } catch (error) {
+        this.log.warn('Frame bridge extraction failed during shot creation; continuing without frame bridge', {
+          sessionId: session.id,
+          previousShotId: previousShot.id,
+          previousShotVideoAssetId: previousShot.videoAssetId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

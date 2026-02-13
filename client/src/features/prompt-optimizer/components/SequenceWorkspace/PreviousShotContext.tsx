@@ -2,6 +2,7 @@ import React from 'react';
 import type { ContinuityShot } from '@/features/continuity/types';
 import type { SessionContinuityMode } from '@shared/types/session';
 import { cn } from '@/utils/cn';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 interface PreviousShotContextProps {
   previousShot: ContinuityShot;
@@ -53,6 +54,17 @@ function PaintbrushIcon({ className }: { className?: string }): React.ReactEleme
 const resolveImageUrl = (shot: ContinuityShot): string | null =>
   shot.frameBridge?.frameUrl ?? shot.styleReference?.frameUrl ?? shot.generatedKeyframeUrl ?? null;
 
+const resolveVideoReference = (
+  shot: ContinuityShot
+): { storagePath?: string; assetId?: string } => {
+  const videoAssetId = shot.videoAssetId?.trim();
+  if (!videoAssetId) return {};
+  if (videoAssetId.startsWith('users/')) {
+    return { storagePath: videoAssetId };
+  }
+  return { assetId: videoAssetId };
+};
+
 const resolvePlaceholderGradient = (sequenceIndex: number): string =>
   PLACEHOLDER_GRADIENTS[Math.abs(sequenceIndex) % PLACEHOLDER_GRADIENTS.length] ?? PLACEHOLDER_GRADIENTS[0]!;
 
@@ -85,6 +97,17 @@ export function PreviousShotContext({
   continuityMode,
 }: PreviousShotContextProps): React.ReactElement {
   const imageUrl = resolveImageUrl(previousShot);
+  const { storagePath, assetId } = React.useMemo(
+    () => resolveVideoReference(previousShot),
+    [previousShot]
+  );
+  const { url: resolvedVideoUrl } = useResolvedMediaUrl({
+    kind: 'video',
+    storagePath: storagePath ?? null,
+    assetId: assetId ?? null,
+    enabled: !imageUrl && Boolean(storagePath || assetId),
+    preferFresh: false,
+  });
   const badge = resolveBadge(continuityMode);
 
   return (
@@ -100,6 +123,16 @@ export function PreviousShotContext({
             src={imageUrl}
             alt={`Shot ${previousShot.sequenceIndex + 1} context frame`}
             className="h-full w-full object-cover"
+          />
+        ) : resolvedVideoUrl ? (
+          <video
+            src={resolvedVideoUrl}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+            data-testid="previous-shot-video"
+            aria-label={`Shot ${previousShot.sequenceIndex + 1} context video`}
           />
         ) : (
           <div

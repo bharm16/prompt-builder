@@ -1,8 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ContinuityShot } from '@/features/continuity/types';
 import { ShotVisualStrip } from '../ShotVisualStrip';
+
+const useResolvedMediaUrlMock = vi.fn();
+
+vi.mock('@/hooks/useResolvedMediaUrl', () => ({
+  useResolvedMediaUrl: (...args: unknown[]) => useResolvedMediaUrlMock(...args),
+}));
 
 const baseShot = (overrides: Partial<ContinuityShot>): ContinuityShot => ({
   id: 'shot-1',
@@ -19,6 +25,17 @@ const baseShot = (overrides: Partial<ContinuityShot>): ContinuityShot => ({
 });
 
 describe('ShotVisualStrip', () => {
+  beforeEach(() => {
+    useResolvedMediaUrlMock.mockReset();
+    useResolvedMediaUrlMock.mockReturnValue({
+      url: null,
+      expiresAt: null,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+  });
+
   it('uses thumbnail source priority and renders continuity connectors', async () => {
     const onShotSelect = vi.fn();
     const onAddShot = vi.fn();
@@ -115,5 +132,47 @@ describe('ShotVisualStrip', () => {
 
     expect(screen.getByTestId('shot-thumb-shot-1').className).toContain('animate-pulse');
     expect(screen.getByTestId('completed-badge-shot-2')).toBeInTheDocument();
+  });
+
+  it('renders video fallback when no thumbnail image exists', () => {
+    useResolvedMediaUrlMock.mockReturnValue({
+      url: 'https://cdn.example.com/shot-1.mp4',
+      expiresAt: null,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const shots: ContinuityShot[] = [
+      baseShot({
+        id: 'shot-1',
+        videoAssetId: 'users/user-1/generations/shot-1.mp4',
+        frameBridge: undefined,
+        styleReference: undefined,
+        generatedKeyframeUrl: undefined,
+      }),
+    ];
+
+    render(
+      <ShotVisualStrip
+        shots={shots}
+        currentShotId="shot-1"
+        onShotSelect={vi.fn()}
+        onAddShot={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('shot-video-shot-1')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/shot-1.mp4'
+    );
+    expect(useResolvedMediaUrlMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'video',
+        storagePath: 'users/user-1/generations/shot-1.mp4',
+        assetId: null,
+        enabled: true,
+      })
+    );
   });
 });

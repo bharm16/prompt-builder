@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Check, Plus } from '@promptstudio/system/components/ui';
 import type { ContinuityShot } from '@/features/continuity/types';
 import { cn } from '@/utils/cn';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 interface ShotVisualStripProps {
   shots: ContinuityShot[];
@@ -55,6 +56,17 @@ function PaintbrushIcon({ className }: { className?: string }): React.ReactEleme
 const resolveThumbnailUrl = (shot: ContinuityShot): string | null =>
   shot.frameBridge?.frameUrl ?? shot.styleReference?.frameUrl ?? shot.generatedKeyframeUrl ?? null;
 
+const resolveVideoReference = (
+  shot: ContinuityShot
+): { storagePath?: string; assetId?: string } => {
+  const videoAssetId = shot.videoAssetId?.trim();
+  if (!videoAssetId) return {};
+  if (videoAssetId.startsWith('users/')) {
+    return { storagePath: videoAssetId };
+  }
+  return { assetId: videoAssetId };
+};
+
 const resolvePlaceholderGradient = (sequenceIndex: number): string =>
   PLACEHOLDER_GRADIENTS[Math.abs(sequenceIndex) % PLACEHOLDER_GRADIENTS.length] ?? PLACEHOLDER_GRADIENTS[0]!;
 
@@ -65,6 +77,87 @@ const showConnector = (shot: ContinuityShot, index: number): boolean => {
   if (index === 0) return false;
   return shot.continuityMode === 'frame-bridge' || shot.continuityMode === 'style-match';
 };
+
+interface ShotVisualCardProps {
+  shot: ContinuityShot;
+  isActive: boolean;
+  isGenerating: boolean;
+  onShotSelect: (shotId: string) => void;
+}
+
+function ShotVisualCard({
+  shot,
+  isActive,
+  isGenerating,
+  onShotSelect,
+}: ShotVisualCardProps): React.ReactElement {
+  const thumbnailUrl = resolveThumbnailUrl(shot);
+  const { storagePath, assetId } = resolveVideoReference(shot);
+  const { url: resolvedVideoUrl } = useResolvedMediaUrl({
+    kind: 'video',
+    storagePath: storagePath ?? null,
+    assetId: assetId ?? null,
+    enabled: !thumbnailUrl && Boolean(storagePath || assetId),
+    preferFresh: false,
+  });
+  const shotLabel = `Shot ${shot.sequenceIndex + 1}`;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onShotSelect(shot.id)}
+      className={cn(
+        'relative h-[52px] w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+        isActive && 'border-accent',
+        !isActive && !isGenerating && 'border-border hover:border-border-strong',
+        isGenerating && 'animate-pulse border-[#FBBF24]'
+      )}
+      style={isActive ? { boxShadow: '0 0 12px rgba(108, 92, 231, 0.2)' } : undefined}
+      aria-label={shotLabel}
+      data-testid={`shot-thumb-${shot.id}`}
+    >
+      {thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt={`${shotLabel} thumbnail`}
+          className="h-full w-full object-cover"
+        />
+      ) : resolvedVideoUrl ? (
+        <video
+          src={resolvedVideoUrl}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          data-testid={`shot-video-${shot.id}`}
+          aria-label={`${shotLabel} video preview`}
+        />
+      ) : (
+        <div
+          className="flex h-full w-full items-center justify-center"
+          style={{ backgroundImage: resolvePlaceholderGradient(shot.sequenceIndex) }}
+          data-testid={`shot-placeholder-${shot.id}`}
+        >
+          <span className="text-xs font-semibold text-white/70">{shot.sequenceIndex + 1}</span>
+        </div>
+      )}
+
+      <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-[1px] text-[10px] font-semibold text-white">
+        {shot.sequenceIndex + 1}
+      </span>
+
+      {shot.status === 'completed' && (
+        <span
+          className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-success/40 bg-success/15 text-success"
+          aria-label={`${shotLabel} completed`}
+          data-testid={`completed-badge-${shot.id}`}
+        >
+          <Check className="h-2.5 w-2.5" />
+        </span>
+      )}
+    </button>
+  );
+}
 
 export function ShotVisualStrip({
   shots,
@@ -85,8 +178,6 @@ export function ShotVisualStrip({
         {orderedShots.map((shot, index) => {
           const isActive = currentShotId === shot.id;
           const isGenerating = isGeneratingStatus(shot.status);
-          const thumbnailUrl = resolveThumbnailUrl(shot);
-          const shotLabel = `Shot ${shot.sequenceIndex + 1}`;
 
           return (
             <React.Fragment key={shot.id}>
@@ -109,49 +200,12 @@ export function ShotVisualStrip({
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => onShotSelect(shot.id)}
-                className={cn(
-                  'relative h-[52px] w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
-                  isActive && 'border-accent',
-                  !isActive && !isGenerating && 'border-border hover:border-border-strong',
-                  isGenerating && 'animate-pulse border-[#FBBF24]'
-                )}
-                style={isActive ? { boxShadow: '0 0 12px rgba(108, 92, 231, 0.2)' } : undefined}
-                aria-label={shotLabel}
-                data-testid={`shot-thumb-${shot.id}`}
-              >
-                {thumbnailUrl ? (
-                  <img
-                    src={thumbnailUrl}
-                    alt={`${shotLabel} thumbnail`}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex h-full w-full items-center justify-center"
-                    style={{ backgroundImage: resolvePlaceholderGradient(shot.sequenceIndex) }}
-                    data-testid={`shot-placeholder-${shot.id}`}
-                  >
-                    <span className="text-xs font-semibold text-white/70">{shot.sequenceIndex + 1}</span>
-                  </div>
-                )}
-
-                <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-[1px] text-[10px] font-semibold text-white">
-                  {shot.sequenceIndex + 1}
-                </span>
-
-                {shot.status === 'completed' && (
-                  <span
-                    className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-success/40 bg-success/15 text-success"
-                    aria-label={`${shotLabel} completed`}
-                    data-testid={`completed-badge-${shot.id}`}
-                  >
-                    <Check className="h-2.5 w-2.5" />
-                  </span>
-                )}
-              </button>
+              <ShotVisualCard
+                shot={shot}
+                isActive={isActive}
+                isGenerating={isGenerating}
+                onShotSelect={onShotSelect}
+              />
             </React.Fragment>
           );
         })}
