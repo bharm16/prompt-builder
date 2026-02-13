@@ -159,29 +159,16 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
 - useUndoRedo is generic and reusable
 - useEnhancementSuggestions can be adapted for other suggestion systems
 
-## Backward Compatibility
+## Entrypoint Compatibility
 
-### Shim File
-- Original `PromptOptimizerContainer.jsx` replaced with export shim
-- Re-exports default from `PromptOptimizerContainer/PromptOptimizerContainer.jsx`
-- No breaking changes for existing imports
-
-### API Compatibility
-- Default export preserved
-- All props and context interactions unchanged
-- No breaking changes for parent components
-
-## Migration Path
-
-### Current Imports (Still Work)
+### Supported Imports
 ```javascript
 import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
 ```
 
-### Recommended New Imports
-```javascript
-import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer';
-```
+### Removed Deep Import
+- `./features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer` is intentionally unsupported.
+- Use the folder entrypoint above or import `PromptOptimizerWorkspace` directly.
 
 ### Advanced Usage (New Capability)
 ```javascript
@@ -259,4 +246,3 @@ import { useUndoRedo, useHighlightsPersistence } from './features/prompt-optimiz
 **Files Modified:** 1 (converted to shim)
 **Net Lines Added:** +402 (+56%)
 **Main Orchestrator:** 342 lines (52% reduction from 716)
-

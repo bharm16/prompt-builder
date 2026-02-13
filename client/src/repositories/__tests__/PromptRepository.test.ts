@@ -97,7 +97,7 @@ describe('PromptRepository', () => {
     const result = await repository.getUserPrompts('user-1', 25);
 
     expect(mockApiClient.get).toHaveBeenCalledWith(
-      '/v2/sessions?limit=25&includeContinuity=false&includePrompt=true'
+      '/v2/sessions?limit=25&includeContinuity=true&includePrompt=true'
     );
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -139,6 +139,60 @@ describe('PromptRepository', () => {
       uuid: '22222222-2222-4222-8222-222222222222',
       input: 'mixed input',
       output: 'mixed output',
+      versions: [],
+    });
+  });
+
+  it('getUserPrompts includes continuity-only sessions so sequence history survives reloads', async () => {
+    mockApiClient.get.mockResolvedValue({
+      data: [
+        {
+          id: 'session_prompt_1',
+          updatedAt: '2026-02-12T16:00:00.000Z',
+          prompt: {
+            uuid: '33333333-3333-4333-8333-333333333333',
+            input: 'prompt input',
+            output: 'prompt output',
+            versions: [],
+          },
+        },
+        {
+          id: 'session_continuity_1',
+          name: 'Continuity Session',
+          updatedAt: '2026-02-12T16:10:00.000Z',
+          continuity: {
+            shots: [{ id: 'shot-1' }],
+            settings: {
+              generationMode: 'continuity',
+              defaultContinuityMode: 'frame-bridge',
+              defaultStyleStrength: 0.6,
+              defaultModel: 'model-1',
+              autoExtractFrameBridge: false,
+              useCharacterConsistency: false,
+            },
+          },
+        },
+      ],
+    });
+
+    const result = await repository.getUserPrompts('user-1', 10);
+
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      '/v2/sessions?limit=10&includeContinuity=true&includePrompt=true'
+    );
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      id: 'session_prompt_1',
+      uuid: '33333333-3333-4333-8333-333333333333',
+      input: 'prompt input',
+      output: 'prompt output',
+    });
+    expect(result[1]).toMatchObject({
+      id: 'session_continuity_1',
+      uuid: 'session_continuity_1',
+      title: 'Continuity Session',
+      input: '',
+      output: '',
       versions: [],
     });
   });

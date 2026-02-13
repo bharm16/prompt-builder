@@ -53,8 +53,30 @@ function PaintbrushIcon({ className }: { className?: string }): React.ReactEleme
   );
 }
 
-const resolveThumbnailUrl = (shot: ContinuityShot): string | null =>
-  shot.frameBridge?.frameUrl ?? shot.styleReference?.frameUrl ?? shot.generatedKeyframeUrl ?? null;
+const normalizeCandidateUrl = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const resolveThumbnailCandidates = (
+  shot: ContinuityShot,
+  referencedShot: ContinuityShot | null
+): string[] => {
+  const candidates = [
+    shot.sceneProxyRenderUrl,
+    shot.frameBridge?.frameUrl,
+    shot.styleReference?.frameUrl,
+    referencedShot?.frameBridge?.frameUrl,
+    referencedShot?.styleReference?.frameUrl,
+    shot.generatedKeyframeUrl,
+    referencedShot?.generatedKeyframeUrl,
+  ]
+    .map((candidate) => normalizeCandidateUrl(candidate))
+    .filter((candidate): candidate is string => Boolean(candidate));
+
+  return [...new Set(candidates)];
+};
 
 const resolveVideoReference = (
   shot: ContinuityShot
@@ -80,6 +102,7 @@ const showConnector = (shot: ContinuityShot, index: number): boolean => {
 
 interface ShotVisualCardProps {
   shot: ContinuityShot;
+  referencedShot: ContinuityShot | null;
   isActive: boolean;
   isGenerating: boolean;
   onShotSelect: (shotId: string) => void;
@@ -87,11 +110,31 @@ interface ShotVisualCardProps {
 
 function ShotVisualCard({
   shot,
+  referencedShot,
   isActive,
   isGenerating,
   onShotSelect,
 }: ShotVisualCardProps): React.ReactElement {
-  const thumbnailUrl = resolveThumbnailUrl(shot);
+  const thumbnailCandidates = React.useMemo(
+    () => resolveThumbnailCandidates(shot, referencedShot),
+    [referencedShot, shot]
+  );
+  const thumbnailCandidateKey = thumbnailCandidates.join('|');
+  const [thumbnailIndex, setThumbnailIndex] = React.useState(0);
+  const thumbnailUrl =
+    thumbnailIndex >= 0 && thumbnailIndex < thumbnailCandidates.length
+      ? thumbnailCandidates[thumbnailIndex] ?? null
+      : null;
+  React.useEffect(() => {
+    setThumbnailIndex(0);
+  }, [thumbnailCandidateKey]);
+  const handleThumbnailError = React.useCallback((): void => {
+    setThumbnailIndex((current) => {
+      const next = current + 1;
+      return next < thumbnailCandidates.length ? next : thumbnailCandidates.length;
+    });
+  }, [thumbnailCandidates.length]);
+
   const { storagePath, assetId } = resolveVideoReference(shot);
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
     kind: 'video',
@@ -121,6 +164,7 @@ function ShotVisualCard({
           src={thumbnailUrl}
           alt={`${shotLabel} thumbnail`}
           className="h-full w-full object-cover"
+          onError={handleThumbnailError}
         />
       ) : resolvedVideoUrl ? (
         <video
@@ -169,6 +213,10 @@ export function ShotVisualStrip({
     () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
     [shots]
   );
+  const shotsById = useMemo(
+    () => new Map(orderedShots.map((shot) => [shot.id, shot])),
+    [orderedShots]
+  );
 
   if (!orderedShots.length) return null;
 
@@ -202,6 +250,11 @@ export function ShotVisualStrip({
 
               <ShotVisualCard
                 shot={shot}
+                referencedShot={
+                  shot.styleReferenceId
+                    ? (shotsById.get(shot.styleReferenceId) ?? null)
+                    : null
+                }
                 isActive={isActive}
                 isGenerating={isGenerating}
                 onShotSelect={onShotSelect}

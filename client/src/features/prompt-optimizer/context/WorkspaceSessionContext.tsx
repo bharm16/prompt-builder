@@ -27,6 +27,13 @@ interface StartSequenceResult {
   shot: ContinuityShot;
 }
 
+interface CreateSceneProxyInput {
+  sourceShotId?: string;
+  sourceVideoId?: string;
+}
+
+type SceneProxyCameraInput = NonNullable<UpdateShotInput['camera']>;
+
 interface WorkspaceSessionContextValue {
   session: SessionDto | null;
   loading: boolean;
@@ -42,6 +49,10 @@ interface WorkspaceSessionContextValue {
   updateShot: (shotId: string, updates: UpdateShotInput) => Promise<ContinuityShot>;
   updateShotStyleReference: (shotId: string, styleReferenceId: string | null) => Promise<ContinuityShot>;
   generateShot: (shotId: string) => Promise<ContinuityShot>;
+  createSceneProxy: (input?: CreateSceneProxyInput) => Promise<void>;
+  isCreatingSceneProxy: boolean;
+  previewSceneProxy: (shotId: string, camera?: SceneProxyCameraInput) => Promise<ContinuityShot>;
+  isPreviewingSceneProxy: boolean;
   startSequence: (input: StartSequenceInput) => Promise<StartSequenceResult>;
   isStartingSequence: boolean;
 }
@@ -78,6 +89,8 @@ export function WorkspaceSessionProvider({
   const [error, setError] = useState<string | null>(null);
   const [currentShotId, setCurrentShotId] = useState<string | null>(null);
   const [isStartingSequence, setIsStartingSequence] = useState(false);
+  const [isCreatingSceneProxy, setIsCreatingSceneProxy] = useState(false);
+  const [isPreviewingSceneProxy, setIsPreviewingSceneProxy] = useState(false);
   const routeSessionIdRef = useRef<string | undefined>(sessionId);
   const refreshRequestIdRef = useRef(0);
 
@@ -272,6 +285,66 @@ export function WorkspaceSessionProvider({
     [sessionId, patchShotInState, updateShotInState]
   );
 
+  const createSceneProxy = useCallback(
+    async (input?: CreateSceneProxyInput): Promise<void> => {
+      if (!sessionId) throw new Error('No active session');
+      if (isCreatingSceneProxy) {
+        throw new Error('Scene proxy creation in progress');
+      }
+
+      const normalizedSourceShotId = input?.sourceShotId?.trim() || null;
+      const normalizedSourceVideoId = input?.sourceVideoId?.trim() || null;
+      const fallbackShot = session?.continuity?.shots.find((shot) => Boolean(shot.videoAssetId));
+      const resolvedSourceShotId = normalizedSourceShotId ?? fallbackShot?.id ?? null;
+      const resolvedSourceVideoId = normalizedSourceVideoId ?? fallbackShot?.videoAssetId ?? null;
+
+      if (!resolvedSourceShotId && !resolvedSourceVideoId) {
+        throw new Error('Scene proxy requires a source shot or video');
+      }
+
+      setIsCreatingSceneProxy(true);
+      try {
+        const updatedSession = await continuityApi.createSceneProxy(sessionId, {
+          ...(resolvedSourceShotId ? { sourceShotId: resolvedSourceShotId } : {}),
+          ...(resolvedSourceVideoId ? { sourceVideoId: resolvedSourceVideoId } : {}),
+        });
+        const mapped = mapContinuityToSession(updatedSession);
+        setSession((prev) => {
+          if (!prev || prev.id !== sessionId) return prev;
+          return {
+            ...prev,
+            continuity: mapped,
+          };
+        });
+      } finally {
+        setIsCreatingSceneProxy(false);
+      }
+    },
+    [isCreatingSceneProxy, session?.continuity?.shots, sessionId]
+  );
+
+  const previewSceneProxy = useCallback(
+    async (shotId: string, camera?: SceneProxyCameraInput): Promise<ContinuityShot> => {
+      if (!sessionId) throw new Error('No active session');
+      if (!shotId.trim()) throw new Error('Shot id is required');
+      if (isPreviewingSceneProxy) {
+        throw new Error('Scene proxy preview in progress');
+      }
+
+      setIsPreviewingSceneProxy(true);
+      try {
+        const shot = (await continuityApi.previewSceneProxy(sessionId, shotId, {
+          ...(camera ? { camera } : {}),
+        })) as ContinuityShot;
+        updateShotInState(shot);
+        return shot;
+      } finally {
+        setIsPreviewingSceneProxy(false);
+      }
+    },
+    [isPreviewingSceneProxy, sessionId, updateShotInState]
+  );
+
   const startSequence = useCallback(
     async ({
       sourceVideoId,
@@ -347,6 +420,40 @@ export function WorkspaceSessionProvider({
           throw new Error('Failed to create continuity session');
         }
 
+        const hasReadySceneProxy = continuityPayload?.sceneProxy?.status === 'ready';
+        if (!hasReadySceneProxy) {
+          try {
+            const continuityWithSceneProxy = await continuityApi.createSceneProxy(targetSessionId, {
+              sourceVideoId,
+            });
+            continuityPayload = mapContinuityToSession(continuityWithSceneProxy);
+            if (
+              targetSessionId === routeSessionIdAtStart &&
+              routeSessionIdRef.current === routeSessionIdAtStart
+            ) {
+              setSession((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      continuity: continuityPayload ?? prev.continuity,
+                    }
+                  : prev
+              );
+            }
+          } catch (sceneProxyError) {
+            log.warn('Scene proxy creation failed during sequence startup; continuing without scene proxy', {
+              sourceVideoId,
+              targetSessionId,
+              routeSessionId: sessionId ?? null,
+              originSessionId: originSessionId ?? null,
+              error:
+                sceneProxyError instanceof Error
+                  ? sceneProxyError.message
+                  : String(sceneProxyError),
+            });
+          }
+        }
+
         const requestedPrompt = prompt?.trim();
         const sessionPrompt = isCurrentRouteSessionLoaded ? session?.prompt?.input?.trim() : null;
         const activeShotPrompt = isCurrentRouteSessionLoaded ? currentShot?.userPrompt?.trim() : null;
@@ -414,6 +521,10 @@ export function WorkspaceSessionProvider({
       updateShot,
       updateShotStyleReference,
       generateShot,
+      createSceneProxy,
+      isCreatingSceneProxy,
+      previewSceneProxy,
+      isPreviewingSceneProxy,
       startSequence,
       isStartingSequence,
     }),
@@ -432,6 +543,10 @@ export function WorkspaceSessionProvider({
       updateShot,
       updateShotStyleReference,
       generateShot,
+      createSceneProxy,
+      isCreatingSceneProxy,
+      previewSceneProxy,
+      isPreviewingSceneProxy,
       startSequence,
       isStartingSequence,
     ]

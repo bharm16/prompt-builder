@@ -29,6 +29,7 @@ import {
 import type { PromptHistoryEntry } from '@hooks/types';
 import { cn } from '@utils/cn';
 import { HistoryItem } from '@features/history/components/HistoryItem';
+import { useSidebarSessionsDomain } from '@/components/ToolSidebar/context';
 import { formatRelativeOrDate } from '@features/history/utils/historyDates';
 import {
   extractDisambiguator,
@@ -49,15 +50,15 @@ import {
 const INITIAL_HISTORY_LIMIT = 5;
 
 interface SessionsPanelProps {
-  history: PromptHistoryEntry[];
-  filteredHistory: PromptHistoryEntry[];
-  isLoading: boolean;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
+  history?: PromptHistoryEntry[];
+  filteredHistory?: PromptHistoryEntry[];
+  isLoading?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onBack?: (() => void) | undefined;
-  onLoadFromHistory: (entry: PromptHistoryEntry) => void;
-  onCreateNew: () => void;
-  onDelete: (id: string) => void;
+  onLoadFromHistory?: (entry: PromptHistoryEntry) => void;
+  onCreateNew?: () => void;
+  onDelete?: (id: string) => void;
   onDuplicate?: (entry: PromptHistoryEntry) => void;
   onRename?: (entry: PromptHistoryEntry, title: string) => void;
   currentPromptUuid?: string | null;
@@ -66,22 +67,28 @@ interface SessionsPanelProps {
   activeModelLabel?: string;
 }
 
-export function SessionsPanel({
-  filteredHistory,
-  isLoading,
-  searchQuery,
-  onSearchChange,
-  onBack,
-  onLoadFromHistory,
-  onCreateNew,
-  onDelete,
-  onDuplicate,
-  onRename,
-  currentPromptUuid,
-  currentPromptDocId,
-  activeStatusLabel,
-  activeModelLabel,
-}: SessionsPanelProps): ReactElement {
+const noop = (): void => {};
+const noopSearch = (_query: string): void => {};
+const noopLoad = (_entry: PromptHistoryEntry): void => {};
+const noopDelete = (_id: string): void => {};
+
+export function SessionsPanel(props: SessionsPanelProps): ReactElement {
+  const domain = useSidebarSessionsDomain();
+  const filteredHistory = props.filteredHistory ?? domain?.filteredHistory ?? [];
+  const isLoading = props.isLoading ?? domain?.isLoadingHistory ?? false;
+  const searchQuery = props.searchQuery ?? domain?.searchQuery ?? '';
+  const onSearchChange = props.onSearchChange ?? domain?.onSearchChange ?? noopSearch;
+  const onBack = props.onBack;
+  const onLoadFromHistory = props.onLoadFromHistory ?? domain?.onLoadFromHistory ?? noopLoad;
+  const onCreateNew = props.onCreateNew ?? domain?.onCreateNew ?? noop;
+  const onDelete = props.onDelete ?? domain?.onDelete ?? noopDelete;
+  const onDuplicate = props.onDuplicate ?? domain?.onDuplicate;
+  const onRename = props.onRename ?? domain?.onRename;
+  const currentPromptUuid = props.currentPromptUuid ?? domain?.currentPromptUuid;
+  const currentPromptDocId = props.currentPromptDocId ?? domain?.currentPromptDocId;
+  const activeStatusLabel = props.activeStatusLabel ?? domain?.activeStatusLabel;
+  const activeModelLabel = props.activeModelLabel ?? domain?.activeModelLabel;
+
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = useState<boolean>(false);
   const [focusedEntryKey, setFocusedEntryKey] = useState<string | null>(null);

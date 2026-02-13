@@ -7,6 +7,8 @@ import { WorkspaceSessionProvider, useWorkspaceSession } from '../WorkspaceSessi
 
 const mockApiGet = vi.hoisted(() => vi.fn());
 const mockCreateSession = vi.hoisted(() => vi.fn());
+const mockCreateSceneProxy = vi.hoisted(() => vi.fn());
+const mockPreviewSceneProxy = vi.hoisted(() => vi.fn());
 const mockAddShot = vi.hoisted(() => vi.fn());
 
 vi.mock('@/services/ApiClient', () => ({
@@ -18,6 +20,8 @@ vi.mock('@/services/ApiClient', () => ({
 vi.mock('@/features/continuity/api/continuityApi', () => ({
   continuityApi: {
     createSession: mockCreateSession,
+    createSceneProxy: mockCreateSceneProxy,
+    previewSceneProxy: mockPreviewSceneProxy,
     addShot: mockAddShot,
     updateShot: vi.fn(),
     updateShotStyleReference: vi.fn(),
@@ -58,6 +62,21 @@ const buildContinuitySession = (): ContinuitySession => ({
   updatedAt: '2026-02-12T00:00:00.000Z',
 });
 
+const buildContinuitySessionWithProxy = (): ContinuitySession => ({
+  ...buildContinuitySession(),
+  sceneProxy: {
+    id: 'scene-proxy-1',
+    proxyType: 'depth-and-style',
+    referenceFrameUrl: 'https://example.com/proxy-reference.png',
+    status: 'ready',
+    createdAt: '2026-02-12T00:00:00.000Z',
+  },
+  defaultSettings: {
+    ...buildContinuitySession().defaultSettings,
+    useSceneProxy: true,
+  },
+});
+
 const buildShot = (): ContinuityShot => ({
   id: 'shot-1',
   sessionId: 'session-1',
@@ -86,6 +105,12 @@ describe('WorkspaceSessionContext', () => {
     vi.clearAllMocks();
     mockApiGet.mockResolvedValue({ data: buildSession() });
     mockCreateSession.mockResolvedValue(buildContinuitySession());
+    mockCreateSceneProxy.mockResolvedValue(buildContinuitySessionWithProxy());
+    mockPreviewSceneProxy.mockResolvedValue({
+      ...buildShot(),
+      sceneProxyRenderUrl: 'https://example.com/preview.png',
+      continuityMechanismUsed: 'scene-proxy',
+    });
     mockAddShot.mockResolvedValue(buildShot());
   });
 
@@ -108,6 +133,9 @@ describe('WorkspaceSessionContext', () => {
 
     expect(mockCreateSession).toHaveBeenCalledWith({
       name: 'Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('continuity-1', {
       sourceVideoId: 'users/user-1/generations/video.mp4',
     });
     expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
@@ -139,6 +167,9 @@ describe('WorkspaceSessionContext', () => {
       sourceVideoId: 'users/user-1/generations/video.mp4',
       sourceImageUrl: 'https://example.com/thumb.png',
     });
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('continuity-1', {
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
   });
 
   it('starts sequence from originSessionId when route has no active session', async () => {
@@ -156,6 +187,9 @@ describe('WorkspaceSessionContext', () => {
     expect(mockApiGet).not.toHaveBeenCalled();
     expect(mockCreateSession).toHaveBeenCalledWith({
       name: 'Continuity Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('continuity-1', {
       sourceVideoId: 'users/user-1/generations/video.mp4',
     });
     expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
@@ -179,6 +213,9 @@ describe('WorkspaceSessionContext', () => {
     expect(mockApiGet).not.toHaveBeenCalled();
     expect(mockCreateSession).toHaveBeenCalledWith({
       name: 'Continuity Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('continuity-1', {
       sourceVideoId: 'users/user-1/generations/video.mp4',
     });
     expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
@@ -227,6 +264,9 @@ describe('WorkspaceSessionContext', () => {
 
     expect(mockCreateSession).toHaveBeenCalledWith({
       name: 'Session',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('continuity-1', {
       sourceVideoId: 'users/user-1/generations/video.mp4',
     });
     expect(mockAddShot).toHaveBeenCalledWith('continuity-1', {
@@ -304,6 +344,90 @@ describe('WorkspaceSessionContext', () => {
     await waitFor(() => {
       expect(result.current.session?.id).toBe('session-2');
       expect(result.current.isSequenceMode).toBe(false);
+    });
+  });
+
+  it('allows manual scene proxy creation in active continuity session', async () => {
+    const shot = buildShot();
+    mockApiGet.mockResolvedValue({
+      data: buildSession({
+        prompt: undefined,
+        continuity: {
+          shots: [shot],
+          primaryStyleReference: null,
+          sceneProxy: null,
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'frame-bridge',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
+
+    await act(async () => {
+      await result.current.createSceneProxy();
+    });
+
+    expect(mockCreateSceneProxy).toHaveBeenCalledWith('session-1', {
+      sourceShotId: 'shot-1',
+      sourceVideoId: 'users/user-1/generations/video.mp4',
+    });
+  });
+
+  it('previews scene proxy and updates shot state', async () => {
+    const shot = buildShot();
+    mockApiGet.mockResolvedValue({
+      data: buildSession({
+        prompt: undefined,
+        continuity: {
+          shots: [shot],
+          primaryStyleReference: null,
+          sceneProxy: {
+            id: 'proxy-1',
+            proxyType: 'depth-and-style',
+            referenceFrameUrl: 'https://example.com/proxy-reference.png',
+            status: 'ready',
+            createdAt: '2026-02-12T00:00:00.000Z',
+          },
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'style-match',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+            useSceneProxy: true,
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
+
+    await act(async () => {
+      await result.current.previewSceneProxy('shot-1', { yaw: 0.15, pitch: -0.2, roll: 0, dolly: -1 });
+    });
+
+    expect(mockPreviewSceneProxy).toHaveBeenCalledWith('session-1', 'shot-1', {
+      camera: { yaw: 0.15, pitch: -0.2, roll: 0, dolly: -1 },
+    });
+    await waitFor(() => {
+      expect(result.current.shots[0]?.sceneProxyRenderUrl).toBe('https://example.com/preview.png');
+      expect(result.current.shots[0]?.continuityMechanismUsed).toBe('scene-proxy');
     });
   });
 });

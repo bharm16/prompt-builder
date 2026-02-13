@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ContinuityShot } from '@/features/continuity/types';
 import { ShotVisualStrip } from '../ShotVisualStrip';
@@ -45,6 +45,7 @@ describe('ShotVisualStrip', () => {
         id: 'shot-1',
         sequenceIndex: 0,
         continuityMode: 'none',
+        sceneProxyRenderUrl: 'https://img/scene-proxy-shot-1.png',
         frameBridge: {
           id: 'fb-1',
           sourceVideoId: 'video-1',
@@ -99,7 +100,7 @@ describe('ShotVisualStrip', () => {
       />
     );
 
-    expect(screen.getByAltText('Shot 1 thumbnail')).toHaveAttribute('src', 'https://img/frame-bridge.png');
+    expect(screen.getByAltText('Shot 1 thumbnail')).toHaveAttribute('src', 'https://img/scene-proxy-shot-1.png');
     expect(screen.getByAltText('Shot 2 thumbnail')).toHaveAttribute('src', 'https://img/style-ref-2.png');
     expect(screen.getByAltText('Shot 3 thumbnail')).toHaveAttribute('src', 'https://img/keyframe-3.png');
     expect(screen.getByTestId('shot-placeholder-shot-4')).toBeInTheDocument();
@@ -132,6 +133,46 @@ describe('ShotVisualStrip', () => {
 
     expect(screen.getByTestId('shot-thumb-shot-1').className).toContain('animate-pulse');
     expect(screen.getByTestId('completed-badge-shot-2')).toBeInTheDocument();
+  });
+
+  it('falls back to next thumbnail source when primary image fails to load', () => {
+    const shots: ContinuityShot[] = [
+      baseShot({
+        id: 'shot-1',
+        sequenceIndex: 0,
+        sceneProxyRenderUrl: 'https://img/expired-scene-proxy.png',
+        frameBridge: {
+          id: 'fb-1',
+          sourceVideoId: 'video-1',
+          sourceShotId: 'shot-0',
+          frameUrl: 'https://img/frame-bridge.png',
+          framePosition: 'last',
+          frameTimestamp: 1,
+          resolution: { width: 1280, height: 720 },
+          aspectRatio: '16:9',
+          extractedAt: '2026-02-12T00:00:00.000Z',
+        },
+      }),
+    ];
+
+    render(
+      <ShotVisualStrip
+        shots={shots}
+        currentShotId="shot-1"
+        onShotSelect={vi.fn()}
+        onAddShot={vi.fn()}
+      />
+    );
+
+    const image = screen.getByAltText('Shot 1 thumbnail');
+    expect(image).toHaveAttribute('src', 'https://img/expired-scene-proxy.png');
+
+    fireEvent.error(image);
+
+    expect(screen.getByAltText('Shot 1 thumbnail')).toHaveAttribute(
+      'src',
+      'https://img/frame-bridge.png'
+    );
   });
 
   it('renders video fallback when no thumbnail image exists', () => {

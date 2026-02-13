@@ -14,6 +14,10 @@ const formatElapsed = (seconds: number): string => {
 };
 
 const resolveCompletedMessage = (shot: ContinuityShot): string => {
+  if (shot.continuityMechanismUsed === 'scene-proxy') {
+    return 'Scene proxy continuity applied';
+  }
+
   if (shot.continuityMechanismUsed === 'frame-bridge-keyframe') {
     return 'Connected via frame bridge';
   }

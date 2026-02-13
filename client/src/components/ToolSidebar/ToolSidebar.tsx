@@ -7,6 +7,16 @@ import { CharactersPanel } from './components/panels/CharactersPanel';
 import { StylesPanel } from './components/panels/StylesPanel';
 import { useToolSidebarState } from './hooks/useToolSidebarState';
 import type { ToolSidebarProps } from './types';
+import {
+  SidebarAssetsContextProvider,
+  SidebarGenerationContextProvider,
+  SidebarPromptEditingContextProvider,
+  SidebarSessionsContextProvider,
+  useSidebarAssetsDomain,
+  useSidebarGenerationDomain,
+  useSidebarPromptEditingDomain,
+  useSidebarSessionsDomain,
+} from './context';
 
 /**
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
@@ -16,117 +26,54 @@ import type { ToolSidebarProps } from './types';
  * Requirement 16.1-16.4: Tool panel integration with Create and Studio tools
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
-  const {
-    user,
-    history,
-    filteredHistory,
-    isLoadingHistory,
-    searchQuery,
-    onSearchChange,
-    onLoadFromHistory,
-    onCreateNew,
-    onDelete,
-    onDuplicate,
-    onRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    prompt,
-    onPromptChange,
-    onOptimize,
-    showResults,
-    isProcessing,
-    isRefining,
-    genericOptimizedPrompt,
-    promptInputRef,
-    onCreateFromTrigger,
-    onDraft,
-    onRender,
-    onImageUpload,
-    onStoryboard,
-    assets,
-    assetsByType,
-    isLoadingAssets,
-    onInsertTrigger,
-    onEditAsset,
-    onCreateAsset,
-  } = props;
+  const { user } = props;
+  const sessionsFromContext = useSidebarSessionsDomain();
+  const promptEditingFromContext = useSidebarPromptEditingDomain();
+  const generationFromContext = useSidebarGenerationDomain();
+  const assetsFromContext = useSidebarAssetsDomain();
+
+  const resolvedSessions = props.sessions ?? sessionsFromContext;
+  const resolvedPromptEditing = props.promptEditing ?? promptEditingFromContext;
+  const resolvedGeneration = props.generation ?? generationFromContext;
+  const resolvedAssets = props.assets ?? assetsFromContext;
 
   const { activePanel, setActivePanel } = useToolSidebarState('studio');
 
-  const characterAssets = assetsByType.character ?? assets.filter((asset) => asset.type === 'character');
-
   return (
-    <div className="flex h-full">
-      <ToolRail
-        activePanel={activePanel}
-        onPanelChange={setActivePanel}
-        user={user}
-        onCreateNew={onCreateNew}
-      />
-      <ToolPanel activePanel={activePanel}>
-        {activePanel === 'sessions' && (
-          <SessionsPanel
-            history={history}
-            filteredHistory={filteredHistory}
-            isLoading={isLoadingHistory}
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-            onBack={() => setActivePanel('studio')}
-            onLoadFromHistory={onLoadFromHistory}
-            onCreateNew={onCreateNew}
-            onDelete={onDelete}
-            {...(typeof onDuplicate === 'function' ? { onDuplicate } : {})}
-            {...(typeof onRename === 'function' ? { onRename } : {})}
-            {...(currentPromptUuid !== undefined ? { currentPromptUuid } : {})}
-            {...(currentPromptDocId !== undefined ? { currentPromptDocId } : {})}
-            {...(typeof activeStatusLabel === 'string' ? { activeStatusLabel } : {})}
-            {...(typeof activeModelLabel === 'string' ? { activeModelLabel } : {})}
-          />
-        )}
+    <SidebarSessionsContextProvider value={resolvedSessions}>
+      <SidebarPromptEditingContextProvider value={resolvedPromptEditing}>
+        <SidebarGenerationContextProvider value={resolvedGeneration}>
+          <SidebarAssetsContextProvider value={resolvedAssets}>
+            <div className="flex h-full">
+              <ToolRail
+                activePanel={activePanel}
+                onPanelChange={setActivePanel}
+                user={user}
+              />
+              <ToolPanel activePanel={activePanel}>
+                {activePanel === 'sessions' && (
+                  <SessionsPanel onBack={() => setActivePanel('studio')} />
+                )}
 
-        {activePanel === 'studio' && (
-          <GenerationControlsPanel
-            prompt={prompt}
-            {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
-            {...(typeof onOptimize === 'function' ? { onOptimize } : {})}
-            {...(typeof showResults === 'boolean' ? { showResults } : {})}
-            {...(typeof isProcessing === 'boolean' ? { isProcessing } : {})}
-            {...(typeof isRefining === 'boolean' ? { isRefining } : {})}
-            genericOptimizedPrompt={genericOptimizedPrompt ?? null}
-            {...(promptInputRef ? { promptInputRef } : {})}
-            {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
-            onDraft={onDraft}
-            onRender={onRender}
-            {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-            onStoryboard={onStoryboard}
-            assets={assets}
-            onInsertTrigger={onInsertTrigger}
-            onBack={() => setActivePanel('sessions')}
-          />
-        )}
+                {activePanel === 'studio' && (
+                  <GenerationControlsPanel onBack={() => setActivePanel('sessions')} />
+                )}
 
-        {activePanel === 'characters' && (
-          <CharactersPanel
-            assets={assets}
-            characterAssets={characterAssets}
-            isLoading={isLoadingAssets}
-            onInsertTrigger={onInsertTrigger}
-            onEditAsset={onEditAsset}
-            onCreateAsset={onCreateAsset}
-          />
-        )}
+                {activePanel === 'characters' && <CharactersPanel />}
 
-        {activePanel === 'apps' && (
-          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-            <div className="text-sm font-semibold text-[#8B92A5]">Apps</div>
-            <div className="mt-2 text-xs text-[#555B6E]">Third-party integrations coming soon.</div>
-          </div>
-        )}
+                {activePanel === 'apps' && (
+                  <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                    <div className="text-sm font-semibold text-[#8B92A5]">Apps</div>
+                    <div className="mt-2 text-xs text-[#555B6E]">Third-party integrations coming soon.</div>
+                  </div>
+                )}
 
-        {activePanel === 'styles' && <StylesPanel />}
-      </ToolPanel>
-    </div>
+                {activePanel === 'styles' && <StylesPanel />}
+              </ToolPanel>
+            </div>
+          </SidebarAssetsContextProvider>
+        </SidebarGenerationContextProvider>
+      </SidebarPromptEditingContextProvider>
+    </SidebarSessionsContextProvider>
   );
 }

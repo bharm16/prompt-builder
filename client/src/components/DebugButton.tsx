@@ -17,7 +17,7 @@ interface DebugButtonProps {
 /**
  * Debug Button Component
  *
- * Add this to PromptOptimizerContainer.jsx to enable one-click debugging:
+ * Add this to PromptOptimizerWorkspace.tsx to enable one-click debugging:
  *
  * import DebugButton from '../components/DebugButton';
  *

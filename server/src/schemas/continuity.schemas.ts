@@ -72,3 +72,18 @@ export const CreateSceneProxySchema = z
     sourceVideoId: z.string().optional(),
   })
   .strip();
+
+export const SceneProxyCameraSchema = z
+  .object({
+    yaw: z.number().optional(),
+    pitch: z.number().optional(),
+    roll: z.number().optional(),
+    dolly: z.number().optional(),
+  })
+  .partial();
+
+export const PreviewSceneProxySchema = z
+  .object({
+    camera: SceneProxyCameraSchema.optional(),
+  })
+  .strip();

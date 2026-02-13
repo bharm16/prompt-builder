@@ -8,6 +8,7 @@ import {
   handleCreateSceneProxy,
   handleCreateShot,
   handleGenerateShot,
+  handlePreviewSceneProxy,
   handleUpdatePrimaryStyleReference,
   handleUpdateSessionSettings,
   handleUpdateShot,
@@ -157,6 +158,20 @@ export function createContinuityRoutes(
       await handleCreateSceneProxy(service, req, res, {
         sessionId: authorizedSession.id,
         status: 201,
+      });
+    })
+  );
+
+  router.post(
+    '/sessions/:sessionId/shots/:shotId/scene-proxy-preview',
+    asyncHandler(async (req: Request, res: Response) => {
+      const authorizedSession = await requireSessionForUser(service, req, res);
+      if (!authorizedSession) return;
+      const shotId = requireShotId(req, res);
+      if (!shotId) return;
+      await handlePreviewSceneProxy(service, req, res, {
+        sessionId: authorizedSession.id,
+        shotId,
       });
     })
   );

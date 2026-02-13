@@ -7,6 +7,22 @@ import {
   ContinuityShotSchema,
 } from './schemas';
 
+interface CreateSceneProxyInput {
+  sourceShotId?: string;
+  sourceVideoId?: string;
+}
+
+interface SceneProxyCameraInput {
+  yaw?: number;
+  pitch?: number;
+  roll?: number;
+  dolly?: number;
+}
+
+interface PreviewSceneProxyInput {
+  camera?: SceneProxyCameraInput;
+}
+
 const SessionDtoSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -137,13 +153,23 @@ export const continuityApi = {
     return sessionToContinuity(session);
   },
 
-  createSceneProxy: async (sessionId: string, input: Record<string, unknown>) => {
+  createSceneProxy: async (sessionId: string, input: CreateSceneProxyInput) => {
     const session = await fetchWithAuth(`/v2/sessions/${sessionId}/scene-proxy`, SessionDtoSchema, {
       method: 'POST',
       body: JSON.stringify(input),
     });
     return sessionToContinuity(session);
   },
+
+  previewSceneProxy: (
+    sessionId: string,
+    shotId: string,
+    input?: PreviewSceneProxyInput
+  ) =>
+    fetchWithAuth(`/v2/sessions/${sessionId}/shots/${shotId}/scene-proxy-preview`, ContinuityShotSchema, {
+      method: 'POST',
+      body: JSON.stringify(input ?? {}),
+    }),
 };
 
 export default continuityApi;

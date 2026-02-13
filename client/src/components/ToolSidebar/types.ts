@@ -36,10 +36,7 @@ export interface GenerationOverrides {
   faceSwapUrl?: string | null;
 }
 
-export interface ToolSidebarProps {
-  user: User | null;
-
-  // Sessions panel
+export interface ToolSidebarSessionsDomain {
   history: PromptHistoryEntry[];
   filteredHistory: PromptHistoryEntry[];
   isLoadingHistory: boolean;
@@ -54,8 +51,9 @@ export interface ToolSidebarProps {
   currentPromptDocId?: string | null;
   activeStatusLabel?: string;
   activeModelLabel?: string;
+}
 
-  // Generation controls panel
+export interface ToolSidebarPromptEditingDomain {
   prompt: string;
   onPromptChange?: (prompt: string) => void;
   onOptimize?: (
@@ -68,25 +66,41 @@ export interface ToolSidebarProps {
   genericOptimizedPrompt?: string | null;
   promptInputRef?: RefObject<HTMLTextAreaElement>;
   onCreateFromTrigger?: (trigger: string) => void;
+  onInsertTrigger: (trigger: string, range?: { start: number; end: number }) => void;
+}
+
+export interface ToolSidebarGenerationDomain {
   onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
   onRender: (model: string, overrides?: GenerationOverrides) => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;
+}
 
-  // Characters panel
+export interface ToolSidebarAssetsDomain {
   assets: Asset[];
   assetsByType: Record<AssetType, Asset[]>;
   isLoadingAssets: boolean;
-  onInsertTrigger: (trigger: string, range?: { start: number; end: number }) => void;
   onEditAsset: (assetId: string) => void;
   onCreateAsset: (type: AssetType) => void;
+}
+
+export type OptionalToolSidebarSessionsDomain = ToolSidebarSessionsDomain | null;
+export type OptionalToolSidebarPromptEditingDomain = ToolSidebarPromptEditingDomain | null;
+export type OptionalToolSidebarGenerationDomain = ToolSidebarGenerationDomain | null;
+export type OptionalToolSidebarAssetsDomain = ToolSidebarAssetsDomain | null;
+
+export interface ToolSidebarProps {
+  user: User | null;
+  sessions?: OptionalToolSidebarSessionsDomain;
+  promptEditing?: OptionalToolSidebarPromptEditingDomain;
+  generation?: OptionalToolSidebarGenerationDomain;
+  assets?: OptionalToolSidebarAssetsDomain;
 }
 
 export interface ToolRailProps {
   activePanel: ToolPanelType;
   onPanelChange: (panel: ToolPanelType) => void;
   user: User | null;
-  onCreateNew: () => void;
 }
 
 export interface ToolPanelProps {

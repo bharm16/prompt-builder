@@ -74,6 +74,19 @@ const buildService = () => {
     updateSessionSettings: vi.fn(),
     updatePrimaryStyleReference: vi.fn(),
     createSceneProxy: vi.fn(),
+    previewSceneProxy: vi.fn().mockResolvedValue({
+      id: 'shot-1',
+      sessionId: 'session-1',
+      sequenceIndex: 0,
+      userPrompt: 'Prompt',
+      continuityMode: 'style-match',
+      styleStrength: 0.6,
+      styleReferenceId: null,
+      modelId: 'model-a',
+      status: 'draft',
+      sceneProxyRenderUrl: 'https://example.com/preview.png',
+      createdAt: new Date().toISOString(),
+    }),
   };
 };
 
@@ -145,5 +158,26 @@ describe('continuity.routes', () => {
     expect(service.addShot).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: 'session-1', prompt: 'new shot' })
     );
+  });
+
+  it('wires scene proxy preview route to service previewSceneProxy', async () => {
+    const service = buildService();
+    const app = createApp(service);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/continuity/sessions/session-1/shots/shot-1/scene-proxy-preview')
+        .set('x-user-id', 'user-1')
+        .send({ camera: { yaw: 0.2, pitch: -0.1, roll: 0, dolly: -1.5 } })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(200);
+    expect(service.previewSceneProxy).toHaveBeenCalledWith('session-1', 'shot-1', {
+      yaw: 0.2,
+      pitch: -0.1,
+      roll: 0,
+      dolly: -1.5,
+    });
   });
 });

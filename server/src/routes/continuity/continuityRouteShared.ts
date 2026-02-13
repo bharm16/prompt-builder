@@ -11,6 +11,7 @@ import { requireUserId, type RequestWithUser } from '@middleware/requireUserId';
 import {
   CreateSceneProxySchema,
   CreateShotSchema,
+  PreviewSceneProxySchema,
   UpdatePrimaryStyleReferenceSchema,
   UpdateSessionSettingsSchema,
   UpdateShotSchema,
@@ -21,6 +22,7 @@ export { requireUserId, type RequestWithUser };
 export {
   CreateSceneProxySchema,
   CreateShotSchema,
+  PreviewSceneProxySchema,
   UpdatePrimaryStyleReferenceSchema,
   UpdateSessionSettingsSchema,
   UpdateShotSchema,
@@ -456,4 +458,20 @@ export async function handleCreateSceneProxy(
     parsed.data.sourceVideoId
   );
   res.status(options.status ?? 201).json({ success: true, data: updatedSession });
+}
+
+export async function handlePreviewSceneProxy(
+  service: ContinuitySessionService,
+  req: Request,
+  res: Response,
+  options: { sessionId: string; shotId: string }
+): Promise<void> {
+  const parsed = PreviewSceneProxySchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error);
+    return;
+  }
+
+  const shot = await service.previewSceneProxy(options.sessionId, options.shotId, parsed.data.camera);
+  res.json({ success: true, data: shot });
 }

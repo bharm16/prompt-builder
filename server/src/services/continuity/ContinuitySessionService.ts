@@ -374,6 +374,39 @@ export class ContinuitySessionService {
     return session;
   }
 
+  async previewSceneProxy(
+    sessionId: string,
+    shotId: string,
+    camera?: ContinuityShot['camera']
+  ): Promise<ContinuityShot> {
+    const session = await this.sessionStore.get(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
+
+    if (!session.sceneProxy || session.sceneProxy.status !== 'ready') {
+      throw new Error('Scene proxy is not ready');
+    }
+
+    const shot = session.shots.find((candidate) => candidate.id === shotId);
+    if (!shot) throw new Error(`Shot not found: ${shotId}`);
+
+    const render = await this.postProcessingService.renderSceneProxy(
+      session.userId,
+      session.sceneProxy,
+      shot.id,
+      camera ?? shot.camera
+    );
+
+    shot.sceneProxyRenderUrl = render.renderUrl;
+    shot.continuityMechanismUsed = 'scene-proxy';
+    if (camera) {
+      shot.camera = camera;
+    }
+
+    session.updatedAt = new Date();
+    await this.sessionStore.save(session);
+    return shot;
+  }
+
   private defaultSettings() {
     return {
       generationMode: 'continuity' as const,

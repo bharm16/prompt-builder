@@ -75,12 +75,13 @@ vi.mock('@components/DebugButton', () => ({
 
 const buildProps = () =>
   ({
-    toolSidebarProps: {
-      prompt: 'Shot prompt',
+    sequenceWorkspaceProps: {
+      promptText: 'Shot prompt',
       onPromptChange: vi.fn(),
       onOptimize: vi.fn(),
-      isProcessing: false,
-      isRefining: false,
+      isOptimizing: false,
+      history: [],
+      currentPromptDocId: null,
     },
     showHistory: false,
     onToggleHistory: vi.fn(),
@@ -106,7 +107,6 @@ const buildProps = () =>
     detectedAssets: [],
     onEditAsset: vi.fn(),
     onCreateFromTrigger: vi.fn(),
-    promptResultsLayoutProps: {} as any,
     debugProps: {
       enabled: false,
       inputPrompt: '',
@@ -156,7 +156,7 @@ describe('PromptOptimizerWorkspaceView', () => {
   it('navigates to origin session when sequence workspace exits sequence mode', async () => {
     const user = userEvent.setup();
     const props = buildProps();
-    props.toolSidebarProps.history = [
+    props.sequenceWorkspaceProps.history = [
       {
         id: 'continuity-1',
         input: 'Current sequence session',
@@ -249,7 +249,7 @@ describe('PromptOptimizerWorkspaceView', () => {
   it('falls back to sidebar currentPromptDocId when query/history origin is unavailable', async () => {
     const user = userEvent.setup();
     const props = buildProps();
-    props.toolSidebarProps.currentPromptDocId = 'source-from-sidebar';
+    props.sequenceWorkspaceProps.currentPromptDocId = 'source-from-sidebar';
 
     useWorkspaceSessionMock.mockReturnValue({
       session: {
@@ -275,8 +275,8 @@ describe('PromptOptimizerWorkspaceView', () => {
     const user = userEvent.setup();
     const props = buildProps();
     const onOptimize = vi.fn(async () => undefined);
-    props.toolSidebarProps.onOptimize = onOptimize;
-    props.toolSidebarProps.prompt = 'Shot prompt';
+    props.sequenceWorkspaceProps.onOptimize = onOptimize;
+    props.sequenceWorkspaceProps.promptText = 'Shot prompt';
 
     useWorkspaceSessionMock.mockReturnValue({
       session: null,
@@ -297,8 +297,8 @@ describe('PromptOptimizerWorkspaceView', () => {
     const user = userEvent.setup();
     const props = buildProps();
     const onOptimize = vi.fn(async () => undefined);
-    props.toolSidebarProps.onOptimize = onOptimize;
-    props.toolSidebarProps.prompt = 'Shot 2 motion prompt';
+    props.sequenceWorkspaceProps.onOptimize = onOptimize;
+    props.sequenceWorkspaceProps.promptText = 'Shot 2 motion prompt';
 
     useWorkspaceSessionMock.mockReturnValue({
       session: {

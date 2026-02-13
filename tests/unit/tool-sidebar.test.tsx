@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 import { ToolSidebar } from '@components/ToolSidebar/ToolSidebar';
 import type { ToolSidebarProps, ToolPanelType } from '@components/ToolSidebar/types';
+import { useSidebarAssetsDomain, useSidebarSessionsDomain } from '@components/ToolSidebar/context';
 import type { Asset, AssetType } from '@shared/types/asset';
 
 vi.mock(
@@ -33,8 +34,8 @@ vi.mock('@components/ToolSidebar/components/ToolRail', () => ({
 }));
 
 vi.mock('@components/ToolSidebar/components/panels/SessionsPanel', () => ({
-  SessionsPanel: (props: { searchQuery: string }) => {
-    panelProps.sessions = props;
+  SessionsPanel: () => {
+    panelProps.sessions = useSidebarSessionsDomain();
     return <div data-testid="sessions-panel" />;
   },
 }));
@@ -48,8 +49,8 @@ vi.mock('@components/ToolSidebar/components/panels/GenerationControlsPanel', () 
 }));
 
 vi.mock('@components/ToolSidebar/components/panels/CharactersPanel', () => ({
-  CharactersPanel: (props: { characterAssets: Asset[] }) => {
-    panelProps.characters = props;
+  CharactersPanel: () => {
+    panelProps.characters = useSidebarAssetsDomain();
     return <div data-testid="characters-panel" />;
   },
 }));
@@ -82,31 +83,39 @@ const createAssetsByType = (characterAssets: Asset[]): Record<AssetType, Asset[]
 
 const createProps = (overrides: Partial<ToolSidebarProps> = {}): ToolSidebarProps => ({
   user: null,
-  history: [],
-  filteredHistory: [],
-  isLoadingHistory: false,
-  searchQuery: '',
-  onSearchChange: vi.fn(),
-  onLoadFromHistory: vi.fn(),
-  onCreateNew: vi.fn(),
-  onDelete: vi.fn(),
-  prompt: '',
-  onPromptChange: vi.fn(),
-  onOptimize: vi.fn(async () => undefined),
-  showResults: true,
-  isProcessing: false,
-  isRefining: false,
-  genericOptimizedPrompt: null,
-  onDraft: vi.fn(),
-  onRender: vi.fn(),
-  onImageUpload: vi.fn(),
-  onStoryboard: vi.fn(),
-  assets: [],
-  assetsByType: createAssetsByType([]),
-  isLoadingAssets: false,
-  onInsertTrigger: vi.fn(),
-  onEditAsset: vi.fn(),
-  onCreateAsset: vi.fn(),
+  sessions: {
+    history: [],
+    filteredHistory: [],
+    isLoadingHistory: false,
+    searchQuery: '',
+    onSearchChange: vi.fn(),
+    onLoadFromHistory: vi.fn(),
+    onCreateNew: vi.fn(),
+    onDelete: vi.fn(),
+  },
+  promptEditing: {
+    prompt: '',
+    onPromptChange: vi.fn(),
+    onOptimize: vi.fn(async () => undefined),
+    showResults: true,
+    isProcessing: false,
+    isRefining: false,
+    genericOptimizedPrompt: null,
+    onInsertTrigger: vi.fn(),
+  },
+  generation: {
+    onDraft: vi.fn(),
+    onRender: vi.fn(),
+    onImageUpload: vi.fn(),
+    onStoryboard: vi.fn(),
+  },
+  assets: {
+    assets: [],
+    assetsByType: createAssetsByType([]),
+    isLoadingAssets: false,
+    onEditAsset: vi.fn(),
+    onCreateAsset: vi.fn(),
+  },
   ...overrides,
 });
 
@@ -138,10 +147,25 @@ describe('ToolSidebar', () => {
   });
 
   describe('edge cases', () => {
-    it('renders sessions panel with search query props', () => {
+    it('resolves sessions domain from grouped props', () => {
       sidebarState.activePanel = 'sessions';
 
-      render(<ToolSidebar {...createProps({ searchQuery: 'find me' })} />);
+      render(
+        <ToolSidebar
+          {...createProps({
+            sessions: {
+              history: [],
+              filteredHistory: [],
+              isLoadingHistory: false,
+              searchQuery: 'find me',
+              onSearchChange: vi.fn(),
+              onLoadFromHistory: vi.fn(),
+              onCreateNew: vi.fn(),
+              onDelete: vi.fn(),
+            },
+          })}
+        />
+      );
 
       expect(screen.getByTestId('sessions-panel')).toBeInTheDocument();
       const sessionsProps = panelProps.sessions as { searchQuery: string } | null;
@@ -156,14 +180,19 @@ describe('ToolSidebar', () => {
       render(
         <ToolSidebar
           {...createProps({
-            assets: [hero],
-            assetsByType,
+            assets: {
+              assets: [hero],
+              assetsByType,
+              isLoadingAssets: false,
+              onEditAsset: vi.fn(),
+              onCreateAsset: vi.fn(),
+            },
           })}
         />
       );
 
-      const charactersProps = panelProps.characters as { characterAssets: Asset[] } | null;
-      expect(charactersProps?.characterAssets).toBe(assetsByType.character);
+      const charactersDomain = panelProps.characters as { assetsByType: Record<AssetType, Asset[]> } | null;
+      expect(charactersDomain?.assetsByType.character).toBe(assetsByType.character);
     });
   });
 

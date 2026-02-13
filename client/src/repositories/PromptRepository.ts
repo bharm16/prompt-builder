@@ -67,7 +67,7 @@ export class PromptRepository {
     try {
       void userId;
       const response = await apiClient.get(
-        `/v2/sessions?limit=${encodeURIComponent(String(limitCount))}&includeContinuity=false&includePrompt=true`
+        `/v2/sessions?limit=${encodeURIComponent(String(limitCount))}&includeContinuity=true&includePrompt=true`
       );
       const data = (response as { data?: SessionDto[] }).data ?? [];
       return data

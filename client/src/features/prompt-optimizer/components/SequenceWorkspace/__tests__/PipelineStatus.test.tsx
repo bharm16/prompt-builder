@@ -68,6 +68,20 @@ describe('PipelineStatus', () => {
     expect(screen.getByText('Style consistency dropped below threshold')).toBeInTheDocument();
   });
 
+  it('shows scene proxy completion copy when mechanism is scene-proxy', () => {
+    render(
+      <PipelineStatus
+        shot={baseShot({
+          status: 'completed',
+          continuityMechanismUsed: 'scene-proxy',
+        })}
+        isGenerating={false}
+      />
+    );
+
+    expect(screen.getByText('Scene proxy continuity applied')).toBeInTheDocument();
+  });
+
   it('returns null for idle draft state', () => {
     const { container } = render(<PipelineStatus shot={baseShot({ status: 'draft' })} isGenerating={false} />);
     expect(container).toBeEmptyDOMElement();

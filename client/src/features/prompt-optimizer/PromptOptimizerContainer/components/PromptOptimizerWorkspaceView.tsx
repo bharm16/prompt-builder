@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { AppShellProps } from '@components/navigation/AppShell/types';
 import { AppShell } from '@components/navigation/AppShell';
 import { useToast } from '@components/Toast';
 import DebugButton from '@components/DebugButton';
@@ -11,7 +10,6 @@ import type { ContinuityShot } from '@/features/continuity/types';
 import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
 import type { PromptModalsProps } from '../../types';
 import type { OptimizationOptions } from '../../types';
-import type { PromptResultsLayoutProps } from '../../layouts/PromptResultsLayout';
 import { PromptModals } from '../../components/PromptModals';
 import { QuickCharacterCreate } from '../../components/QuickCharacterCreate';
 import { DetectedAssets } from '../../components/DetectedAssets';
@@ -57,8 +55,19 @@ interface DebugProps {
   promptContext: Record<string, unknown> | null;
 }
 
+interface SequenceWorkspaceProps {
+  promptText: string;
+  isOptimizing: boolean;
+  onPromptChange?: (prompt: string) => void;
+  onOptimize?: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions
+  ) => Promise<void>;
+  history: PromptHistoryEntry[];
+  currentPromptDocId?: string | null;
+}
+
 interface PromptOptimizerWorkspaceViewProps {
-  toolSidebarProps: AppShellProps['toolSidebarProps'];
   showHistory: boolean;
   onToggleHistory: (show: boolean) => void;
   shouldShowLoading: boolean;
@@ -72,7 +81,7 @@ interface PromptOptimizerWorkspaceViewProps {
   detectedAssets: Asset[];
   onEditAsset: (assetId: string) => void;
   onCreateFromTrigger?: (trigger: string) => void;
-  promptResultsLayoutProps: PromptResultsLayoutProps;
+  sequenceWorkspaceProps: SequenceWorkspaceProps;
   debugProps: DebugProps;
 }
 
@@ -136,7 +145,6 @@ const resolveSequenceOriginSessionId = (
 };
 
 export function PromptOptimizerWorkspaceView({
-  toolSidebarProps,
   showHistory,
   onToggleHistory,
   shouldShowLoading,
@@ -150,15 +158,21 @@ export function PromptOptimizerWorkspaceView({
   detectedAssets,
   onEditAsset,
   onCreateFromTrigger,
-  promptResultsLayoutProps,
+  sequenceWorkspaceProps,
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
   const { session, shots, currentShotId, isSequenceMode, setCurrentShotId, addShot } = useWorkspaceSession();
-  const promptText = toolSidebarProps?.prompt ?? '';
-  const isOptimizing = Boolean(toolSidebarProps?.isProcessing || toolSidebarProps?.isRefining);
+  const {
+    promptText,
+    isOptimizing,
+    onPromptChange,
+    onOptimize,
+    history,
+    currentPromptDocId,
+  } = sequenceWorkspaceProps;
 
   const orderedShots = useMemo(
     () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
@@ -181,14 +195,14 @@ export function PromptOptimizerWorkspaceView({
   }, [currentShotId, orderedShots, session?.continuity?.primaryStyleReference?.frameUrl, session?.prompt?.input]);
 
   const handleAiEnhance = useCallback(() => {
-    if (typeof toolSidebarProps?.onOptimize !== 'function') return;
+    if (typeof onOptimize !== 'function') return;
     const optimizeOptions: OptimizationOptions = {
       preserveSessionView: true,
       ...(sequenceEnhanceContext.startImage ? { startImage: sequenceEnhanceContext.startImage } : {}),
       ...(sequenceEnhanceContext.sourcePrompt ? { sourcePrompt: sequenceEnhanceContext.sourcePrompt } : {}),
     };
-    void toolSidebarProps.onOptimize(promptText, optimizeOptions);
-  }, [promptText, sequenceEnhanceContext.sourcePrompt, sequenceEnhanceContext.startImage, toolSidebarProps]);
+    void onOptimize(promptText, optimizeOptions);
+  }, [onOptimize, promptText, sequenceEnhanceContext.sourcePrompt, sequenceEnhanceContext.startImage]);
 
   const handleAddShot = useCallback(async () => {
     try {
@@ -211,9 +225,8 @@ export function PromptOptimizerWorkspaceView({
   }, [orderedShots, session?.continuity?.primaryStyleReference?.sourceVideoId]);
 
   const sequenceOriginSessionId = useMemo(() => {
-    const history = Array.isArray(toolSidebarProps?.history) ? toolSidebarProps.history : [];
     return resolveSequenceOriginSessionId(history, normalizeRef(session?.id ?? null), sourceVideoRefs);
-  }, [session?.id, sourceVideoRefs, toolSidebarProps?.history]);
+  }, [history, session?.id, sourceVideoRefs]);
 
   const originSessionIdFromQuery = useMemo(() => {
     const value = normalizeRef(new URLSearchParams(location.search).get('originSessionId'));
@@ -223,11 +236,11 @@ export function PromptOptimizerWorkspaceView({
   }, [location.search, session?.id]);
 
   const originSessionIdFromSidebarState = useMemo(() => {
-    const candidate = normalizeRef(toolSidebarProps?.currentPromptDocId ?? null);
+    const candidate = normalizeRef(currentPromptDocId ?? null);
     if (!candidate) return null;
     if (candidate === normalizeRef(session?.id ?? null)) return null;
     return candidate;
-  }, [session?.id, toolSidebarProps?.currentPromptDocId]);
+  }, [currentPromptDocId, session?.id]);
 
   const handleExitSequence = useCallback((): void => {
     if (originSessionIdFromQuery) {
@@ -249,7 +262,6 @@ export function PromptOptimizerWorkspaceView({
     <AppShell
       showHistory={showHistory}
       onToggleHistory={onToggleHistory}
-      {...(toolSidebarProps ? { toolSidebarProps } : {})}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
         {/* Skip to main content */}
@@ -305,12 +317,10 @@ export function PromptOptimizerWorkspaceView({
                   onAiEnhance={handleAiEnhance}
                   onAddShot={handleAddShot}
                   onExitSequence={handleExitSequence}
-                  {...(toolSidebarProps?.onPromptChange
-                    ? { onPromptChange: toolSidebarProps.onPromptChange }
-                    : {})}
+                  {...(onPromptChange ? { onPromptChange } : {})}
                 />
               ) : (
-                <PromptResultsLayout {...promptResultsLayoutProps} />
+                <PromptResultsLayout />
               )}
             </div>
           )}

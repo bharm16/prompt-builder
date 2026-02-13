@@ -6,10 +6,11 @@ import {
   usePromptActions,
   usePromptConfig,
   usePromptHighlights,
+  usePromptUIStateContext,
   usePromptServices,
   usePromptSession,
-  usePromptUIStateContext,
 } from '@features/prompt-optimizer/context/PromptStateContext';
+import { usePromptResultsActionsContext } from '@features/prompt-optimizer/context/PromptResultsActionsContext';
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptActions: vi.fn(),
@@ -18,6 +19,10 @@ vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptServices: vi.fn(),
   usePromptSession: vi.fn(),
   usePromptUIStateContext: vi.fn(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/PromptResultsActionsContext', () => ({
+  usePromptResultsActionsContext: vi.fn(),
 }));
 
 vi.mock('@features/prompt-optimizer/PromptCanvas', () => ({
@@ -35,6 +40,7 @@ const mockUsePromptHighlights = vi.mocked(usePromptHighlights);
 const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUsePromptSession = vi.mocked(usePromptSession);
 const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
+const mockUsePromptResultsActionsContext = vi.mocked(usePromptResultsActionsContext);
 
 const buildPromptOptimizer = (overrides: Partial<ReturnType<typeof usePromptServices>['promptOptimizer']> = {}) => ({
   inputPrompt: 'input',
@@ -85,19 +91,20 @@ describe('PromptResultsSection', () => {
           isDraftReady: true,
         }),
       } as ReturnType<typeof usePromptServices>);
+      mockUsePromptResultsActionsContext.mockReturnValue({
+        user: null,
+        onDisplayedPromptChange: vi.fn(),
+        onReoptimize: vi.fn(async () => undefined),
+        onFetchSuggestions: vi.fn(),
+        onSuggestionClick: vi.fn(),
+        onHighlightsPersist: vi.fn(),
+        onUndo: vi.fn(),
+        onRedo: vi.fn(),
+        stablePromptContext: null,
+        suggestionsData: null,
+      } as any);
 
-      render(
-        <PromptResultsSection
-          user={null}
-          onDisplayedPromptChange={vi.fn()}
-          onReoptimize={vi.fn()}
-          onFetchSuggestions={vi.fn()}
-          onSuggestionClick={vi.fn()}
-          onHighlightsPersist={vi.fn()}
-          onUndo={vi.fn()}
-          onRedo={vi.fn()}
-        />
-      );
+      render(<PromptResultsSection />);
 
       expect(screen.getByText('Optimizing prompt...')).toBeInTheDocument();
     });
@@ -136,19 +143,20 @@ describe('PromptResultsSection', () => {
           isDraftReady: false,
         }),
       } as ReturnType<typeof usePromptServices>);
+      mockUsePromptResultsActionsContext.mockReturnValue({
+        user: null,
+        onDisplayedPromptChange: vi.fn(),
+        onReoptimize: vi.fn(async () => undefined),
+        onFetchSuggestions: vi.fn(),
+        onSuggestionClick: vi.fn(),
+        onHighlightsPersist: vi.fn(),
+        onUndo: vi.fn(),
+        onRedo: vi.fn(),
+        stablePromptContext: null,
+        suggestionsData: null,
+      } as any);
 
-      render(
-        <PromptResultsSection
-          user={null}
-          onDisplayedPromptChange={vi.fn()}
-          onReoptimize={vi.fn()}
-          onFetchSuggestions={vi.fn()}
-          onSuggestionClick={vi.fn()}
-          onHighlightsPersist={vi.fn()}
-          onUndo={vi.fn()}
-          onRedo={vi.fn()}
-        />
-      );
+      render(<PromptResultsSection />);
 
       expect(screen.getByText('Input: input prompt')).toBeInTheDocument();
       expect(screen.getByText('Output: displayed prompt')).toBeInTheDocument();

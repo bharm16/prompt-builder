@@ -839,4 +839,63 @@ describe('ContinuitySessionService', () => {
     expect(updated.defaultSettings.useSceneProxy).toBe(true);
     expect(sessionStore.save).toHaveBeenCalled();
   });
+
+  it('renders scene proxy preview for a shot with camera pose', async () => {
+    const session = buildSession({
+      sceneProxy: {
+        id: 'proxy-1',
+        sourceVideoId: 'video-1',
+        proxyType: 'depth-parallax',
+        referenceFrameUrl: 'https://example.com/proxy.png',
+        depthMapUrl: 'https://example.com/depth.png',
+        status: 'ready',
+        createdAt: new Date(),
+      },
+      shots: [
+        buildShot({
+          id: 'shot-2',
+          continuityMode: 'style-match',
+          camera: { yaw: 0.1, pitch: -0.2, roll: 0, dolly: -1 },
+        }),
+      ],
+    });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service, sceneProxy } = buildService(session, {
+      sessionStore,
+      sceneProxy: {
+        renderFromProxy: vi.fn().mockResolvedValue({
+          id: 'render-1',
+          proxyId: 'proxy-1',
+          shotId: 'shot-2',
+          renderUrl: 'https://example.com/render.png',
+          cameraPose: { yaw: 0.4, pitch: -0.1, roll: 0, dolly: -1.5 },
+          createdAt: new Date(),
+        }),
+      },
+    });
+
+    const updatedShot = await service.previewSceneProxy(session.id, 'shot-2', {
+      yaw: 0.4,
+      pitch: -0.1,
+      roll: 0,
+      dolly: -1.5,
+    });
+
+    expect(sceneProxy.renderFromProxy).toHaveBeenCalledWith(
+      session.userId,
+      expect.objectContaining({ id: 'proxy-1' }),
+      'shot-2',
+      { yaw: 0.4, pitch: -0.1, roll: 0, dolly: -1.5 }
+    );
+    expect(updatedShot.sceneProxyRenderUrl).toBe('https://example.com/render.png');
+    expect(updatedShot.continuityMechanismUsed).toBe('scene-proxy');
+    expect(updatedShot.camera).toEqual({ yaw: 0.4, pitch: -0.1, roll: 0, dolly: -1.5 });
+    expect(sessionStore.save).toHaveBeenCalled();
+  });
 });

@@ -8,7 +8,7 @@ import {
   usePromptSession,
   usePromptUIStateContext,
 } from '../context/PromptStateContext';
-import type { PromptResultsSectionProps } from '../types';
+import { usePromptResultsActionsContext } from '../context/PromptResultsActionsContext';
 
 /**
  * PromptResultsSection - Results/Canvas Section
@@ -16,34 +16,35 @@ import type { PromptResultsSectionProps } from '../types';
  * Handles the prompt canvas and results display
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
-export const PromptResultsSection = ({
-  user,
-  onDisplayedPromptChange,
-  onReoptimize,
-  onFetchSuggestions,
-  onSuggestionClick,
-  onHighlightsPersist,
-  onUndo,
-  onRedo,
-  stablePromptContext = null,
-  coherenceAffectedSpanIds,
-  coherenceSpanIssueMap,
-  coherenceIssues,
-  isCoherenceChecking,
-  isCoherencePanelExpanded,
-  onToggleCoherencePanelExpanded,
-  onDismissCoherenceIssue,
-  onDismissAllCoherenceIssues,
-  onApplyCoherenceFix,
-  onScrollToCoherenceSpan,
-  i2vContext,
-}: PromptResultsSectionProps): React.ReactElement => {
+export const PromptResultsSection = (): React.ReactElement => {
   const { showResults } = usePromptUIStateContext();
   const { currentPromptUuid, suggestionsData } = usePromptSession();
   const { currentMode } = usePromptConfig();
   const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
   const { handleCreateNew } = usePromptActions();
   const { promptOptimizer } = usePromptServices();
+  const {
+    user,
+    onDisplayedPromptChange,
+    onReoptimize,
+    onFetchSuggestions,
+    onSuggestionClick,
+    onHighlightsPersist,
+    onUndo,
+    onRedo,
+    stablePromptContext,
+    coherenceAffectedSpanIds,
+    coherenceSpanIssueMap,
+    coherenceIssues,
+    isCoherenceChecking,
+    isCoherencePanelExpanded,
+    onToggleCoherencePanelExpanded,
+    onDismissCoherenceIssue,
+    onDismissAllCoherenceIssues,
+    onApplyCoherenceFix,
+    onScrollToCoherenceSpan,
+    i2vContext,
+  } = usePromptResultsActionsContext();
 
   return (
     <>

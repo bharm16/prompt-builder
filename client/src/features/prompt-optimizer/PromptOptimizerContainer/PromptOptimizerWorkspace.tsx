@@ -9,25 +9,21 @@
  * - Conditional layout rendering
  */
 
-import React, { useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
 import { logger } from '@/services/LoggingService';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
 import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
 import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
-import type { OptimizationOptions } from '../types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
-import { useGenerationControlsContext } from '../context/GenerationControlsContext';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
 } from '../context/GenerationControlsStore';
-import { resolveActiveModelLabel, resolveActiveStatusLabel } from '../utils/activeStatusLabel';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import { uploadPreviewImage, validatePreviewImageFile } from '@/features/preview/api/previewApi';
 import {
@@ -39,16 +35,21 @@ import {
   useConceptBrainstorm,
   useEnhancementSuggestions,
   usePromptKeyframesSync,
-  usePromptHistoryActions,
   useStablePromptContext,
   usePromptCoherence,
-  useAutoSave,
   useAssetManagement,
   useSequenceShotPromptSync,
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
 import { WorkspaceSessionProvider, useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { PromptResultsActionsProvider } from '../context/PromptResultsActionsContext';
+import {
+  SidebarAssetsProvider,
+  SidebarGenerationProvider,
+  SidebarPromptEditingProvider,
+  SidebarSessionsProvider,
+} from './providers/sidebar';
 import { debounce } from '../utils/debounce';
 
 const log = logger.child('PromptOptimizerWorkspace');
@@ -117,7 +118,6 @@ function PromptOptimizerContent({
     selectedModel,
     setSelectedModel,
     generationParams,
-    setGenerationParams,
     showResults,
     showSettings,
     setShowSettings,
@@ -136,7 +136,6 @@ function PromptOptimizerContent({
     setPromptContext,
     currentPromptUuid,
     currentPromptDocId,
-    initialHighlights,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setShowResults,
@@ -162,7 +161,6 @@ function PromptOptimizerContent({
     resetEditStacks,
     setDisplayedPromptSilently,
     handleCreateNew,
-    loadFromHistory,
     setOutputSaveState,
     setOutputLastSavedAt,
 
@@ -179,13 +177,10 @@ function PromptOptimizerContent({
     assets: assetsSidebar.assets,
     refreshAssets: assetsSidebar.refresh,
   });
-  const { controls: generationControls } = useGenerationControlsContext();
   const { domain } = useGenerationControlsStoreState();
   const {
     setKeyframes,
     addKeyframe,
-    removeKeyframe,
-    clearKeyframes,
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsStoreActions();
@@ -342,28 +337,10 @@ function PromptOptimizerContent({
     setCanUndo,
     setCanRedo,
   });
-  const { handleDisplayedPromptChangeWithAutosave } = useAutoSave({
-    currentPromptUuid,
-    currentPromptDocId,
-    displayedPrompt: promptOptimizer.displayedPrompt,
-    isApplyingHistoryRef,
-    handleDisplayedPromptChange,
-    promptHistory,
-    setOutputSaveState,
-    setOutputLastSavedAt,
-  });
-
-  const {
-    handleLoadFromHistory,
-    handleCreateNewWithKeyframes,
-    handleDuplicate,
-    handleRename,
-  } = usePromptHistoryActions({
-    promptHistory,
-    setKeyframes,
-    loadFromHistory,
-    handleCreateNew,
-  });
+  const handleCreateNewWithKeyframes = useCallback((): void => {
+    setKeyframes([]);
+    handleCreateNew();
+  }, [handleCreateNew, setKeyframes]);
 
   const insertTriggerAtCursor = useCallback(
     (trigger: string, range?: { start: number; end: number }): void => {
@@ -428,18 +405,6 @@ function PromptOptimizerContent({
     [addKeyframe, toast]
   );
 
-  const activeStatusLabel = resolveActiveStatusLabel({
-    inputPrompt: promptOptimizer.inputPrompt,
-    displayedPrompt: promptOptimizer.displayedPrompt,
-    isProcessing: promptOptimizer.isProcessing,
-    isRefining: promptOptimizer.isRefining,
-    hasHighlights: Boolean(initialHighlights),
-  });
-  const activeModelLabel = resolveActiveModelLabel(selectedModel);
-  const promptForGeneration = promptOptimizer.inputPrompt;
-  const isGenerating = generationControls?.isGenerating ?? false;
-  const isGenerationReady = Boolean(generationControls);
-
   const debouncedShotPromptUpdate = useMemo(
     () =>
       debounce((shotId: string, nextPrompt: string) => {
@@ -487,24 +452,6 @@ function PromptOptimizerContent({
     [currentShotId, isSequenceMode, toast, updateShot]
   );
 
-  const handleDraft = useCallback(
-    (model: DraftModel, overrides?: GenerationOverrides): void => {
-      generationControls?.onDraft?.(model, overrides);
-    },
-    [generationControls]
-  );
-
-  const handleRender = useCallback(
-    (model: string, overrides?: GenerationOverrides): void => {
-      generationControls?.onRender?.(model, overrides);
-    },
-    [generationControls]
-  );
-
-  const handleStoryboard = useCallback((): void => {
-    generationControls?.onStoryboard?.();
-  }, [generationControls]);
-
   const promptForAssets = useMemo(() => {
     if (showResults && promptOptimizer.displayedPrompt) {
       return promptOptimizer.displayedPrompt;
@@ -545,16 +492,6 @@ function PromptOptimizerContent({
     navigate,
     onOptimizationApplied: handleSequenceOptimizationApplied,
   });
-  const handleSidebarOptimize = useCallback(
-    (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>
-      handleOptimize(promptToOptimize, undefined, options),
-    [handleOptimize]
-  );
-  const handleCanvasReoptimize = useCallback(
-    (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>
-      handleOptimize(promptToOptimize, undefined, options),
-    [handleOptimize]
-  );
 
   // Improvement flow
   const { handleImproveFirst, handleImprovementComplete } = useImprovementFlow({
@@ -667,168 +604,104 @@ function PromptOptimizerContent({
   // ============================================================================
   // Only show the blocking loading UI when we are actively loading a prompt.
   const shouldShowLoading = isLoading;
-  const toggleCoherencePanelExpanded = useCallback(() => {
-    setIsPanelExpanded((prev) => !prev);
-  }, []);
-
-  const toolSidebarProps = useMemo(() => ({
-    history: promptHistory.history,
-    filteredHistory: promptHistory.filteredHistory,
-    isLoadingHistory: promptHistory.isLoadingHistory,
-    searchQuery: promptHistory.searchQuery,
-    onSearchChange: promptHistory.setSearchQuery,
-    onLoadFromHistory: handleLoadFromHistory,
-    onCreateNew: handleCreateNewWithKeyframes,
-    onDelete: promptHistory.deleteFromHistory,
-    onDuplicate: handleDuplicate,
-    onRename: handleRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    prompt: promptForGeneration,
-    onPromptChange: handleSidebarPromptChange,
-    onOptimize: handleSidebarOptimize,
-    showResults,
-    isProcessing: promptOptimizer.isProcessing,
-    isRefining: promptOptimizer.isRefining,
-    genericOptimizedPrompt: promptOptimizer.genericOptimizedPrompt ?? null,
-    promptInputRef,
-    onCreateFromTrigger: assetManagement.onCreateFromTrigger,
-    onDraft: handleDraft,
-    onRender: handleRender,
-    onStoryboard: handleStoryboard,
-    onImageUpload: handleImageUpload,
-    assets: assetsSidebar.assets,
-    assetsByType: assetsSidebar.byType,
-    isLoadingAssets: assetsSidebar.isLoading,
-    onInsertTrigger: insertTriggerAtCursor,
-    onEditAsset: assetManagement.onEditAsset,
-    onCreateAsset: assetManagement.onCreateAsset,
-  }), [
-    promptHistory.history,
-    promptHistory.filteredHistory,
-    promptHistory.isLoadingHistory,
-    promptHistory.searchQuery,
-    promptHistory.setSearchQuery,
-    handleLoadFromHistory,
-    handleCreateNewWithKeyframes,
-    promptHistory.deleteFromHistory,
-    handleDuplicate,
-    handleRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    promptForGeneration,
-    handleSidebarPromptChange,
-    handleSidebarOptimize,
-    showResults,
-    promptOptimizer.isProcessing,
-    promptOptimizer.isRefining,
-    promptOptimizer.genericOptimizedPrompt,
-    promptInputRef,
-    assetManagement.onCreateFromTrigger,
-    handleDraft,
-    handleRender,
-    handleStoryboard,
-    handleImageUpload,
-    assetsSidebar.assets,
-    assetsSidebar.byType,
-    assetsSidebar.isLoading,
-    insertTriggerAtCursor,
-    assetManagement.onEditAsset,
-    assetManagement.onCreateAsset,
-  ]);
-
-  const promptResultsLayoutProps = useMemo(() => ({
-    user,
-    onDisplayedPromptChange: handleDisplayedPromptChangeWithAutosave,
-    onReoptimize: handleCanvasReoptimize,
-    onFetchSuggestions: fetchEnhancementSuggestions,
-    onSuggestionClick: handleSuggestionClick,
-    onHighlightsPersist: handleHighlightsPersist,
-    onUndo: handleUndo,
-    onRedo: handleRedo,
-    stablePromptContext,
-    suggestionsData,
-    displayedPrompt: promptOptimizer.displayedPrompt,
-    coherenceAffectedSpanIds: affectedSpanIds,
-    coherenceSpanIssueMap: spanIssueMap,
-    coherenceIssues,
-    isCoherenceChecking,
-    isCoherencePanelExpanded: isPanelExpanded,
-    onToggleCoherencePanelExpanded: toggleCoherencePanelExpanded,
-    onDismissCoherenceIssue: dismissIssue,
-    onDismissAllCoherenceIssues: dismissAll,
-    onApplyCoherenceFix: applyFix,
-    onScrollToCoherenceSpan: scrollToSpanById,
-    i2vContext,
-  }), [
-    user,
-    handleDisplayedPromptChangeWithAutosave,
-    handleCanvasReoptimize,
-    fetchEnhancementSuggestions,
-    handleSuggestionClick,
-    handleHighlightsPersist,
-    handleUndo,
-    handleRedo,
-    stablePromptContext,
-    suggestionsData,
-    promptOptimizer.displayedPrompt,
-    affectedSpanIds,
-    spanIssueMap,
-    coherenceIssues,
-    isCoherenceChecking,
-    isPanelExpanded,
-    toggleCoherencePanelExpanded,
-    dismissIssue,
-    dismissAll,
-    applyFix,
-    scrollToSpanById,
-    i2vContext,
-  ]);
 
   return (
-    <PromptOptimizerWorkspaceView
-      toolSidebarProps={toolSidebarProps}
-      showHistory={showHistory}
-      onToggleHistory={setShowHistory}
-      shouldShowLoading={shouldShowLoading}
-      promptModalsProps={{
-        onImprovementComplete: handleImprovementComplete,
-        onConceptComplete: handleConceptComplete,
-        onSkipBrainstorm: handleSkipBrainstorm,
-      }}
-      quickCreateState={quickCreateState}
-      onQuickCreateClose={assetManagement.onCloseQuickCreate}
-      onQuickCreateComplete={assetManagement.onQuickCreateComplete}
-      assetEditorState={assetEditorState}
-      assetEditorHandlers={{
-        onClose: assetManagement.onCloseAssetEditor,
-        onCreate: assetManagement.onCreate,
-        onUpdate: assetManagement.onUpdate,
-        onAddImage: assetManagement.onAddImage,
-        onDeleteImage: assetManagement.onDeleteImage,
-        onSetPrimaryImage: assetManagement.onSetPrimaryImage,
-      }}
-      detectedAssetsPrompt={promptForAssets}
-      detectedAssets={assetsSidebar.assets}
-      onEditAsset={assetManagement.onEditAsset}
-      onCreateFromTrigger={assetManagement.onCreateFromTrigger}
-      promptResultsLayoutProps={promptResultsLayoutProps}
-      debugProps={{
-        enabled:
-          false &&
-          (import.meta.env.DEV ||
-            new URLSearchParams(window.location.search).get('debug') === 'true'),
-        inputPrompt: promptOptimizer.inputPrompt,
-        displayedPrompt: promptOptimizer.displayedPrompt,
-        optimizedPrompt: promptOptimizer.optimizedPrompt,
-        selectedMode,
-        promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
-      }}
-    />
+    <SidebarSessionsProvider>
+      <SidebarAssetsProvider
+        assets={assetsSidebar.assets}
+        assetsByType={assetsSidebar.byType}
+        isLoadingAssets={assetsSidebar.isLoading}
+        onEditAsset={assetManagement.onEditAsset}
+        onCreateAsset={assetManagement.onCreateAsset}
+      >
+        <SidebarPromptEditingProvider
+          promptInputRef={promptInputRef}
+          onPromptChange={handleSidebarPromptChange}
+          onOptimize={handleOptimize}
+          onInsertTrigger={insertTriggerAtCursor}
+          onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+        >
+          <SidebarGenerationProvider onImageUpload={handleImageUpload}>
+            <PromptResultsActionsProvider
+              currentPromptUuid={currentPromptUuid}
+              currentPromptDocId={currentPromptDocId}
+              displayedPrompt={promptOptimizer.displayedPrompt}
+              isApplyingHistoryRef={isApplyingHistoryRef}
+              handleDisplayedPromptChange={handleDisplayedPromptChange}
+              promptHistory={promptHistory}
+              setOutputSaveState={setOutputSaveState}
+              setOutputLastSavedAt={setOutputLastSavedAt}
+              user={user}
+              onReoptimize={handleOptimize}
+              onFetchSuggestions={fetchEnhancementSuggestions}
+              onSuggestionClick={handleSuggestionClick}
+              onHighlightsPersist={handleHighlightsPersist}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              stablePromptContext={stablePromptContext}
+              suggestionsData={suggestionsData}
+              coherenceAffectedSpanIds={affectedSpanIds}
+              coherenceSpanIssueMap={spanIssueMap}
+              coherenceIssues={coherenceIssues}
+              isCoherenceChecking={isCoherenceChecking}
+              isCoherencePanelExpanded={isPanelExpanded}
+              onToggleCoherencePanelExpanded={() => setIsPanelExpanded((prev) => !prev)}
+              onDismissCoherenceIssue={dismissIssue}
+              onDismissAllCoherenceIssues={dismissAll}
+              onApplyCoherenceFix={applyFix}
+              onScrollToCoherenceSpan={scrollToSpanById}
+              i2vContext={i2vContext}
+            >
+              <PromptOptimizerWorkspaceView
+                showHistory={showHistory}
+                onToggleHistory={setShowHistory}
+                shouldShowLoading={shouldShowLoading}
+                promptModalsProps={{
+                  onImprovementComplete: handleImprovementComplete,
+                  onConceptComplete: handleConceptComplete,
+                  onSkipBrainstorm: handleSkipBrainstorm,
+                }}
+                quickCreateState={quickCreateState}
+                onQuickCreateClose={assetManagement.onCloseQuickCreate}
+                onQuickCreateComplete={assetManagement.onQuickCreateComplete}
+                assetEditorState={assetEditorState}
+                assetEditorHandlers={{
+                  onClose: assetManagement.onCloseAssetEditor,
+                  onCreate: assetManagement.onCreate,
+                  onUpdate: assetManagement.onUpdate,
+                  onAddImage: assetManagement.onAddImage,
+                  onDeleteImage: assetManagement.onDeleteImage,
+                  onSetPrimaryImage: assetManagement.onSetPrimaryImage,
+                }}
+                detectedAssetsPrompt={promptForAssets}
+                detectedAssets={assetsSidebar.assets}
+                onEditAsset={assetManagement.onEditAsset}
+                onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+                sequenceWorkspaceProps={{
+                  promptText: promptOptimizer.inputPrompt,
+                  isOptimizing: Boolean(promptOptimizer.isProcessing || promptOptimizer.isRefining),
+                  onPromptChange: handleSidebarPromptChange,
+                  onOptimize: handleOptimize,
+                  history: promptHistory.history,
+                  currentPromptDocId,
+                }}
+                debugProps={{
+                  enabled:
+                    false &&
+                    (import.meta.env.DEV ||
+                      new URLSearchParams(window.location.search).get('debug') === 'true'),
+                  inputPrompt: promptOptimizer.inputPrompt,
+                  displayedPrompt: promptOptimizer.displayedPrompt,
+                  optimizedPrompt: promptOptimizer.optimizedPrompt,
+                  selectedMode,
+                  promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
+                }}
+              />
+            </PromptResultsActionsProvider>
+          </SidebarGenerationProvider>
+        </SidebarPromptEditingProvider>
+      </SidebarAssetsProvider>
+    </SidebarSessionsProvider>
   );
 }
 

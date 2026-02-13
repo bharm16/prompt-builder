@@ -2,24 +2,35 @@ import type { ReactElement } from 'react';
 import { Plus, Users } from '@promptstudio/system/components/ui';
 import type { Asset, AssetType } from '@shared/types/asset';
 import { AssetThumbnail } from '@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail';
+import {
+  useSidebarAssetsDomain,
+  useSidebarPromptEditingDomain,
+} from '@/components/ToolSidebar/context';
 
 interface CharactersPanelProps {
-  assets: Asset[];
-  characterAssets: Asset[];
-  isLoading: boolean;
-  onInsertTrigger: (trigger: string) => void;
-  onEditAsset: (assetId: string) => void;
-  onCreateAsset: (type: AssetType) => void;
+  assets?: Asset[];
+  characterAssets?: Asset[];
+  isLoading?: boolean;
+  onInsertTrigger?: (trigger: string) => void;
+  onEditAsset?: (assetId: string) => void;
+  onCreateAsset?: (type: AssetType) => void;
 }
 
-export function CharactersPanel({
-  assets,
-  characterAssets,
-  isLoading,
-  onInsertTrigger,
-  onEditAsset,
-  onCreateAsset,
-}: CharactersPanelProps): ReactElement {
+const noopWithString = (_value: string): void => {};
+const noopCreate = (_type: AssetType): void => {};
+
+export function CharactersPanel(props: CharactersPanelProps): ReactElement {
+  const assetsDomain = useSidebarAssetsDomain();
+  const promptEditingDomain = useSidebarPromptEditingDomain();
+
+  const assets = props.assets ?? assetsDomain?.assets ?? [];
+  const characterAssets = props.characterAssets ?? assetsDomain?.assetsByType.character ?? [];
+  const isLoading = props.isLoading ?? assetsDomain?.isLoadingAssets ?? false;
+  const onInsertTrigger =
+    props.onInsertTrigger ?? promptEditingDomain?.onInsertTrigger ?? noopWithString;
+  const onEditAsset = props.onEditAsset ?? assetsDomain?.onEditAsset ?? noopWithString;
+  const onCreateAsset = props.onCreateAsset ?? assetsDomain?.onCreateAsset ?? noopCreate;
+
   const items = characterAssets.length
     ? characterAssets
     : assets.filter((asset) => asset.type === 'character');

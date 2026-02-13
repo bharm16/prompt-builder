@@ -71,6 +71,20 @@ export default [
       'no-unsafe-finally': 'warn',
       'no-constant-binary-expression': 'warn',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '@/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+              '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+              '**/PromptOptimizerContainer/PromptOptimizerContainer',
+              '**/PromptOptimizerContainer/PromptOptimizerContainer.tsx',
+            ],
+            message:
+              'Import from @/features/prompt-optimizer/PromptOptimizerContainer (folder entrypoint) or PromptOptimizerWorkspace directly.',
+          },
+        ],
+      }],
       'react/prop-types': 'off', // Turn off if not using prop-types
       // Security rules
       'no-secrets/no-secrets': 'warn',

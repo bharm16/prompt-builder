@@ -28,3 +28,5 @@ export interface GenerationControlsPanelProps {
   onImageUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;
 }
+
+export type GenerationControlsPanelInputProps = Partial<GenerationControlsPanelProps>;

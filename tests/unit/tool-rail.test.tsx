@@ -16,7 +16,7 @@ vi.mock(
 const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['activePanel']; user: User | null; onPanelChange: (panel: Parameters<typeof ToolRail>[0]['activePanel']) => void; }) =>
   render(
     <MemoryRouter initialEntries={[{ pathname: '/studio', search: '?tab=1' }]}>
-      <ToolRail {...props} onCreateNew={vi.fn()} />
+      <ToolRail {...props} />
     </MemoryRouter>
   );
 
