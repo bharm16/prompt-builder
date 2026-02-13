@@ -49,6 +49,7 @@ export function GenerationControlsPanel(
     assets: assetsFromProps,
     onInsertTrigger: onInsertTriggerFromProps,
     onImageUpload: onImageUploadFromProps,
+    onStartFrameUpload: onStartFrameUploadFromProps,
   } = props;
   const prompt = promptFromProps ?? promptEditingDomain?.prompt ?? "";
   const onPromptChange = onPromptChangeFromProps ?? promptEditingDomain?.onPromptChange;
@@ -67,6 +68,8 @@ export function GenerationControlsPanel(
   const onInsertTrigger =
     onInsertTriggerFromProps ?? promptEditingDomain?.onInsertTrigger ?? noopInsertTrigger;
   const onImageUpload = onImageUploadFromProps ?? generationDomain?.onImageUpload;
+  const onStartFrameUpload =
+    onStartFrameUploadFromProps ?? generationDomain?.onStartFrameUpload;
 
   const mergedProps: GenerationControlsPanelProps = {
     prompt,
@@ -85,6 +88,7 @@ export function GenerationControlsPanel(
     ...(onCreateFromTrigger ? { onCreateFromTrigger } : {}),
     ...(onBack ? { onBack } : {}),
     ...(onImageUpload ? { onImageUpload } : {}),
+    ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
   };
 
   const {
@@ -108,6 +112,7 @@ export function GenerationControlsPanel(
     selectedModel,
     tier,
     keyframes,
+    startFrame,
     cameraMotion,
   } = store;
   const showMotionControls = true;
@@ -258,13 +263,28 @@ export function GenerationControlsPanel(
         disabled={derived.isUploadDisabled}
       />
 
+      <input
+        ref={refs.startFrameFileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            void actions.handleStartFrameFile(file);
+          }
+          event.target.value = "";
+        }}
+        disabled={derived.isStartFrameUploadDisabled}
+      />
+
       {state.activeTab === "video" ? (
         <VideoTabContent
-          keyframes={keyframes}
-          isUploadDisabled={derived.isUploadDisabled}
-          onRequestUpload={actions.handleUploadRequest}
-          onUploadFile={actions.handleFile}
-          onRemoveKeyframe={actions.handleRemoveKeyframe}
+          startFrame={startFrame}
+          isUploadDisabled={derived.isStartFrameUploadDisabled}
+          onRequestUpload={actions.handleStartFrameUploadRequest}
+          onUploadFile={actions.handleStartFrameFile}
+          onClearStartFrame={actions.handleClearStartFrame}
           prompt={prompt}
           onPromptChange={onPromptChange}
           promptLabel={promptLabel}
@@ -341,7 +361,7 @@ export function GenerationControlsPanel(
             isDurationDisabled={capabilities.durationInfo?.state.disabled}
             onOpenMotion={actions.handleCameraMotionButtonClick}
             isMotionDisabled={
-              !showMotionControls || !derived.hasPrimaryKeyframe
+              !showMotionControls || !derived.hasStartFrame
             }
           />
 
@@ -349,13 +369,13 @@ export function GenerationControlsPanel(
         </>
       )}
 
-      {showMotionControls && keyframes[0] && (
+      {showMotionControls && startFrame && (
         <CameraMotionModal
           isOpen={state.showCameraMotionModal}
           onClose={actions.handleCloseCameraMotionModal}
-          imageUrl={keyframes[0].url}
-          imageStoragePath={keyframes[0].storagePath ?? null}
-          imageAssetId={keyframes[0].assetId ?? null}
+          imageUrl={startFrame.url}
+          imageStoragePath={startFrame.storagePath ?? null}
+          imageAssetId={startFrame.assetId ?? null}
           onSelect={actions.handleSelectCameraMotion}
           initialSelection={cameraMotion}
         />

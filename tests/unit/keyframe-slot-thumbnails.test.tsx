@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { KeyframeSlotsRow } from '@components/ToolSidebar/components/panels/KeyframeSlotsRow';
+import { StartFrameControl } from '@components/ToolSidebar/components/panels/StartFrameControl';
 import { ImageReferenceSlotsRow } from '@components/ToolSidebar/components/panels/ImageReferenceSlotsRow';
 import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
@@ -38,7 +38,7 @@ describe('keyframe slot thumbnails', () => {
     );
   });
 
-  it('uses resolved URL in KeyframeSlotsRow when available', () => {
+  it('uses resolved URL in StartFrameControl when available', () => {
     const tile = createKeyframe({
       url: 'https://expired.example/frame-1.webp?X-Goog-Signature=expired',
       storagePath: 'users/user-1/previews/images/frame-1.webp',
@@ -48,16 +48,16 @@ describe('keyframe slot thumbnails', () => {
     );
 
     render(
-      <KeyframeSlotsRow
-        keyframes={[tile]}
+      <StartFrameControl
+        startFrame={tile}
         isUploadDisabled={false}
         onRequestUpload={vi.fn()}
         onUploadFile={vi.fn()}
-        onRemoveKeyframe={vi.fn()}
+        onClear={vi.fn()}
       />
     );
 
-    const image = screen.getByAltText('Keyframe 1');
+    const image = screen.getByAltText('Start frame');
     expect(image).toHaveAttribute('src', 'https://signed.example/frame-1.webp');
     expect(mockUseResolvedMediaUrl).toHaveBeenCalledWith({
       kind: 'image',

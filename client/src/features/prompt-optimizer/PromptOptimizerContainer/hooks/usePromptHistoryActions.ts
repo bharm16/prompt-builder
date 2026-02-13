@@ -7,6 +7,7 @@ import { hydrateKeyframes } from '../../utils/keyframeTransforms';
 type UsePromptHistoryActionsParams = {
   promptHistory: Pick<PromptHistory, 'saveToHistory' | 'updateEntryPersisted'>;
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
+  setStartFrame: (tile: KeyframeTile | null) => void;
   loadFromHistory: (entry: PromptHistoryEntry) => void;
   handleCreateNew: () => void;
 };
@@ -21,21 +22,25 @@ export type UsePromptHistoryActionsResult = {
 export function usePromptHistoryActions({
   promptHistory,
   setKeyframes,
+  setStartFrame,
   loadFromHistory,
   handleCreateNew,
 }: UsePromptHistoryActionsParams): UsePromptHistoryActionsResult {
   const handleLoadFromHistory = useCallback(
     (entry: PromptHistoryEntry): void => {
-      setKeyframes(hydrateKeyframes(entry.keyframes ?? []));
+      const hydrated = hydrateKeyframes(entry.keyframes ?? []);
+      setKeyframes(hydrated);
+      setStartFrame(hydrated[0] ?? null);
       loadFromHistory(entry);
     },
-    [loadFromHistory, setKeyframes]
+    [loadFromHistory, setKeyframes, setStartFrame]
   );
 
   const handleCreateNewWithKeyframes = useCallback((): void => {
     setKeyframes([]);
+    setStartFrame(null);
     handleCreateNew();
-  }, [handleCreateNew, setKeyframes]);
+  }, [handleCreateNew, setKeyframes, setStartFrame]);
 
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {

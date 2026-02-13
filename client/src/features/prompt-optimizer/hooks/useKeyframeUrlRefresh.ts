@@ -40,16 +40,22 @@ const shouldRefreshUrl = (
 
 export function useKeyframeUrlRefresh(): void {
   const { domain } = useGenerationControlsStoreState();
-  const { setKeyframes } = useGenerationControlsStoreActions();
+  const { setKeyframes, setStartFrame } = useGenerationControlsStoreActions();
   const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
 
   const keyframesRef = useRef<KeyframeTile[]>(keyframes);
+  const startFrameRef = useRef<KeyframeTile | null>(startFrame);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
   const lastRefreshSignatureRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     keyframesRef.current = keyframes;
   }, [keyframes]);
+
+  useEffect(() => {
+    startFrameRef.current = startFrame;
+  }, [startFrame]);
 
   const updateKeyframe = useCallback(
     (frame: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string): void => {
@@ -80,55 +86,84 @@ export function useKeyframeUrlRefresh(): void {
     [setKeyframes]
   );
 
+  const updateStartFrame = useCallback(
+    (frame: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string): void => {
+      const current = startFrameRef.current;
+      if (!current || current.id !== frame.id) return;
+      const updated: KeyframeTile = {
+        ...current,
+        url: nextUrl,
+        storagePath,
+        ...(expiresAt ? { viewUrlExpiresAt: expiresAt } : {}),
+      };
+      if (
+        updated.url === current.url &&
+        updated.storagePath === current.storagePath &&
+        updated.viewUrlExpiresAt === current.viewUrlExpiresAt
+      ) {
+        return;
+      }
+      startFrameRef.current = updated;
+      setStartFrame(updated);
+    },
+    [setStartFrame]
+  );
+
   const refreshStaleKeyframes = useCallback(async () => {
+    const refreshFrame = async (
+      frame: KeyframeTile,
+      refreshKey: string,
+      onUpdate: (input: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string) => void
+    ): Promise<void> => {
+      const storagePath = frame.storagePath || extractStorageObjectPath(frame.url || '');
+      if (!storagePath) return;
+
+      const expiresAtMs =
+        parseExpiresAtMs(frame.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(frame.url || '');
+      const needsRefresh = shouldRefreshUrl(
+        frame.url ?? null,
+        expiresAtMs,
+        refreshKey,
+        lastRefreshSignatureRef.current
+      );
+      if (!needsRefresh) return;
+      if (refreshInFlightRef.current.has(refreshKey)) return;
+
+      refreshInFlightRef.current.add(refreshKey);
+      try {
+        const result = await resolveMediaUrl({
+          kind: 'image',
+          url: frame.url ?? null,
+          storagePath,
+          preferFresh: true,
+        });
+        const nextUrl = result.url;
+        if (!nextUrl) return;
+        onUpdate(frame, nextUrl, storagePath, result.expiresAt ?? undefined);
+        lastRefreshSignatureRef.current.set(refreshKey, nextUrl);
+      } catch (error) {
+        log.debug('Failed to refresh keyframe view URL', {
+          keyframeId: frame.id,
+          storagePath,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        refreshInFlightRef.current.delete(refreshKey);
+      }
+    };
+
     const frames = keyframesRef.current;
-    if (!frames.length) return;
+    if (frames.length) {
+      await Promise.all(
+        frames.map((frame) => refreshFrame(frame, frame.id, updateKeyframe))
+      );
+    }
 
-    await Promise.all(
-      frames.map(async (frame) => {
-        const storagePath = frame.storagePath || extractStorageObjectPath(frame.url || '');
-        if (!storagePath) return;
-
-        const expiresAtMs =
-          parseExpiresAtMs(frame.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(frame.url || '');
-        const refreshKey = frame.id;
-        const needsRefresh = shouldRefreshUrl(
-          frame.url ?? null,
-          expiresAtMs,
-          refreshKey,
-          lastRefreshSignatureRef.current
-        );
-
-        if (!needsRefresh) {
-          return;
-        }
-
-        if (refreshInFlightRef.current.has(refreshKey)) return;
-        refreshInFlightRef.current.add(refreshKey);
-
-        try {
-          const result = await resolveMediaUrl({
-            kind: 'image',
-            url: frame.url ?? null,
-            storagePath,
-            preferFresh: true,
-          });
-          const nextUrl = result.url;
-          if (!nextUrl) return;
-          updateKeyframe(frame, nextUrl, storagePath, result.expiresAt ?? undefined);
-          lastRefreshSignatureRef.current.set(refreshKey, nextUrl);
-        } catch (error) {
-          log.debug('Failed to refresh keyframe view URL', {
-            keyframeId: frame.id,
-            storagePath,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        } finally {
-          refreshInFlightRef.current.delete(refreshKey);
-        }
-      })
-    );
-  }, [updateKeyframe]);
+    const latestStartFrame = startFrameRef.current;
+    if (latestStartFrame) {
+      await refreshFrame(latestStartFrame, 'start-frame', updateStartFrame);
+    }
+  }, [updateKeyframe, updateStartFrame]);
 
   useEffect(() => {
     let isActive = true;
@@ -141,5 +176,5 @@ export function useKeyframeUrlRefresh(): void {
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [refreshStaleKeyframes, keyframes.length]);
+  }, [refreshStaleKeyframes, keyframes.length, startFrame?.id, startFrame?.url]);
 }

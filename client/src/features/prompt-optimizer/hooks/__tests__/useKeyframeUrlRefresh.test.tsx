@@ -120,4 +120,44 @@ describe('useKeyframeUrlRefresh', () => {
 
     expect(result.current.domain.keyframes[0]?.url).toBe('https://storage.example.com/original.png');
   });
+
+  it('refreshes stale start frame URL', async () => {
+    (resolveMediaUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
+      url: 'https://storage.example.com/start-updated.png',
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      storagePath: 'uploads/start-frame.png',
+      source: 'storage',
+    });
+
+    const initialState = buildInitialState({
+      domain: {
+        keyframes: [],
+        startFrame: {
+          id: 'start-frame',
+          url: 'https://storage.example.com/start-original.png',
+          source: 'upload',
+          storagePath: 'uploads/start-frame.png',
+          viewUrlExpiresAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      },
+    });
+
+    const { result } = renderHook(() => {
+      useKeyframeUrlRefresh();
+      return useGenerationControlsStoreState();
+    }, { wrapper: buildWrapper(initialState) });
+
+    await waitFor(() => {
+      expect(resolveMediaUrl).toHaveBeenCalledWith({
+        kind: 'image',
+        url: 'https://storage.example.com/start-original.png',
+        storagePath: 'uploads/start-frame.png',
+        preferFresh: true,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.domain.startFrame?.url).toBe('https://storage.example.com/start-updated.png');
+    });
+  });
 });

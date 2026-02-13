@@ -80,6 +80,7 @@ const createInitialStoreState = (
     },
     videoTier: props.tier,
     keyframes: props.keyframes,
+    startFrame: props.keyframes[0] ?? null,
     cameraMotion: null,
     subjectMotion: '',
   },

@@ -13,8 +13,8 @@ export type FaceSwapMode = 'direct' | 'face-swap';
 
 interface UseFaceSwapStateOptions {
   assets: Asset[];
-  primaryKeyframeUrl: string | null;
-  primaryKeyframeUrlHost: string | null;
+  startFrameUrl: string | null;
+  startFrameUrlHost: string | null;
   aspectRatio: string;
   draftModelId: string;
   renderModelId: string;
@@ -53,8 +53,8 @@ interface UseFaceSwapStateResult {
 
 export function useFaceSwapState({
   assets,
-  primaryKeyframeUrl,
-  primaryKeyframeUrlHost,
+  startFrameUrl,
+  startFrameUrlHost,
   aspectRatio,
   draftModelId,
   renderModelId,
@@ -112,20 +112,20 @@ export function useFaceSwapState({
       resetFaceSwapPreview();
       return;
     }
-    if (!primaryKeyframeUrl || faceSwapPreviewState.targetImageUrl !== primaryKeyframeUrl) {
+    if (!startFrameUrl || faceSwapPreviewState.targetImageUrl !== startFrameUrl) {
       resetFaceSwapPreview();
     }
   }, [
     faceSwapMode,
     faceSwapPreviewState,
     selectedCharacterId,
-    primaryKeyframeUrl,
+    startFrameUrl,
     resetFaceSwapPreview,
   ]);
 
-  const hasPrimaryKeyframe = Boolean(primaryKeyframeUrl);
+  const hasStartFrame = Boolean(startFrameUrl);
   const canPreviewFaceSwap =
-    faceSwapMode === 'face-swap' && hasPrimaryKeyframe && Boolean(selectedCharacterId);
+    faceSwapMode === 'face-swap' && hasStartFrame && Boolean(selectedCharacterId);
   const isFaceSwapPreviewDisabled = !canPreviewFaceSwap || isFaceSwapLoading;
 
   const videoCredits = useMemo(() => {
@@ -136,7 +136,7 @@ export function useFaceSwapState({
     videoCredits !== null ? videoCredits + FACE_SWAP_CREDIT_COST : null;
 
   const handleFaceSwapPreview = useCallback(async () => {
-    if (!canPreviewFaceSwap || !primaryKeyframeUrl) return;
+    if (!canPreviewFaceSwap || !startFrameUrl) return;
     setIsFaceSwapModalOpen(true);
     setIsFaceSwapLoading(true);
     setFaceSwapError(null);
@@ -145,7 +145,7 @@ export function useFaceSwapState({
     try {
       const response = await requestFaceSwapPreview({
         characterAssetId: selectedCharacterId,
-        targetImageUrl: primaryKeyframeUrl,
+        targetImageUrl: startFrameUrl,
         ...(aspectRatio ? { aspectRatio } : {}),
       });
       if (!response.success || !response.data?.faceSwapUrl) {
@@ -154,20 +154,20 @@ export function useFaceSwapState({
       setFaceSwapPreview({
         url: response.data.faceSwapUrl,
         characterAssetId: selectedCharacterId,
-        targetImageUrl: primaryKeyframeUrl,
+        targetImageUrl: startFrameUrl,
         createdAt: Date.now(),
       });
       setFaceSwapCreditsUsed(response.data.creditsDeducted ?? FACE_SWAP_CREDIT_COST);
       log.info('Face swap preview completed', {
         characterAssetId: selectedCharacterId,
-        targetImageUrlHost: primaryKeyframeUrlHost,
+        targetImageUrlHost: startFrameUrlHost,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setFaceSwapError(message);
       log.error('Face swap preview failed', error as Error, {
         characterAssetId: selectedCharacterId,
-        targetImageUrlHost: primaryKeyframeUrlHost,
+        targetImageUrlHost: startFrameUrlHost,
       });
     } finally {
       setIsFaceSwapLoading(false);
@@ -175,8 +175,8 @@ export function useFaceSwapState({
   }, [
     aspectRatio,
     canPreviewFaceSwap,
-    primaryKeyframeUrl,
-    primaryKeyframeUrlHost,
+    startFrameUrl,
+    startFrameUrlHost,
     selectedCharacterId,
     setFaceSwapPreview,
   ]);

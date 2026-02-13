@@ -21,6 +21,8 @@ type GenerationControlsAction =
   | { type: 'setGenerationParams'; value: CapabilityValues }
   | { type: 'mergeGenerationParams'; value: CapabilityValues }
   | { type: 'setVideoTier'; value: VideoTier }
+  | { type: 'setStartFrame'; value: KeyframeTile | null }
+  | { type: 'clearStartFrame' }
   | { type: 'setKeyframes'; value: KeyframeTile[] | null | undefined }
   | { type: 'addKeyframe'; value: Omit<KeyframeTile, 'id'> }
   | { type: 'removeKeyframe'; value: string }
@@ -37,6 +39,8 @@ export interface GenerationControlsActions {
   setGenerationParams: (params: CapabilityValues) => void;
   mergeGenerationParams: (params: CapabilityValues) => void;
   setVideoTier: (tier: VideoTier) => void;
+  setStartFrame: (tile: KeyframeTile | null) => void;
+  clearStartFrame: () => void;
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
   addKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
   removeKeyframe: (id: string) => void;
@@ -75,33 +79,69 @@ const areGenerationParamsEqual = (left: CapabilityValues, right: CapabilityValue
   return true;
 };
 
+const areKeyframeTilesEqual = (
+  left: KeyframeTile | null | undefined,
+  right: KeyframeTile | null | undefined
+): boolean => {
+  if (left === right) return true;
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  if (left.id !== right.id) return false;
+  if (left.url !== right.url) return false;
+  if (left.source !== right.source) return false;
+  if (left.assetId !== right.assetId) return false;
+  if (left.sourcePrompt !== right.sourcePrompt) return false;
+  if (left.storagePath !== right.storagePath) return false;
+  if (left.viewUrlExpiresAt !== right.viewUrlExpiresAt) return false;
+  return true;
+};
+
 const areKeyframesEqual = (left: KeyframeTile[], right: KeyframeTile[]): boolean => {
   if (left === right) return true;
   if (left.length !== right.length) return false;
   for (let index = 0; index < left.length; index += 1) {
     const leftFrame = left[index];
     const rightFrame = right[index];
-    if (!leftFrame || !rightFrame) return false;
-    if (leftFrame.id !== rightFrame.id) return false;
-    if (leftFrame.url !== rightFrame.url) return false;
-    if (leftFrame.source !== rightFrame.source) return false;
-    if (leftFrame.assetId !== rightFrame.assetId) return false;
-    if (leftFrame.sourcePrompt !== rightFrame.sourcePrompt) return false;
-    if (leftFrame.storagePath !== rightFrame.storagePath) return false;
-    if (leftFrame.viewUrlExpiresAt !== rightFrame.viewUrlExpiresAt) return false;
+    if (!areKeyframeTilesEqual(leftFrame, rightFrame)) return false;
   }
   return true;
 };
 
-const reconcileMotionAfterKeyframes = (
-  state: GenerationControlsState,
-  nextKeyframes: KeyframeTile[]
-): Pick<GenerationControlsState['domain'], 'cameraMotion' | 'subjectMotion'> => {
-  const previousPrimaryId = state.domain.keyframes[0]?.id ?? null;
-  const nextPrimaryId = nextKeyframes[0]?.id ?? null;
+const normalizeStartFrameIdentityUrl = (url: string | null | undefined): string | null => {
+  if (typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
 
-  if (!nextPrimaryId) {
-    if (!previousPrimaryId) {
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    const hashStripped = trimmed.split('#')[0] ?? trimmed;
+    return hashStripped.split('?')[0] ?? hashStripped;
+  }
+};
+
+const resolveStartFrameIdentity = (frame: KeyframeTile | null): string | null => {
+  if (!frame) return null;
+  const normalizedUrl = normalizeStartFrameIdentityUrl(frame.url);
+  if (normalizedUrl) return normalizedUrl;
+
+  const storagePath = frame.storagePath?.trim();
+  if (storagePath) return `storage:${storagePath}`;
+  const assetId = frame.assetId?.trim();
+  if (assetId) return `asset:${assetId}`;
+  return null;
+};
+
+const reconcileMotionAfterStartFrame = (
+  state: GenerationControlsState,
+  nextStartFrame: KeyframeTile | null
+): Pick<GenerationControlsState['domain'], 'cameraMotion' | 'subjectMotion'> => {
+  const previousIdentity = resolveStartFrameIdentity(state.domain.startFrame);
+  const nextIdentity = resolveStartFrameIdentity(nextStartFrame);
+
+  if (!nextIdentity) {
+    if (!previousIdentity) {
       return {
         cameraMotion: state.domain.cameraMotion,
         subjectMotion: state.domain.subjectMotion,
@@ -110,14 +150,14 @@ const reconcileMotionAfterKeyframes = (
     return { cameraMotion: null, subjectMotion: '' };
   }
 
-  if (!previousPrimaryId) {
+  if (!previousIdentity) {
     return {
       cameraMotion: state.domain.cameraMotion,
       subjectMotion: state.domain.subjectMotion,
     };
   }
 
-  if (previousPrimaryId !== nextPrimaryId) {
+  if (previousIdentity !== nextIdentity) {
     return { cameraMotion: null, subjectMotion: '' };
   }
 
@@ -163,16 +203,39 @@ const reducer = (
         ...state,
         domain: { ...state.domain, videoTier: action.value },
       };
+    case 'setStartFrame': {
+      const nextStartFrame = action.value;
+      if (areKeyframeTilesEqual(state.domain.startFrame, nextStartFrame)) return state;
+      const motion = reconcileMotionAfterStartFrame(state, nextStartFrame);
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          startFrame: nextStartFrame,
+          ...motion,
+        },
+      };
+    }
+    case 'clearStartFrame': {
+      if (!state.domain.startFrame) return state;
+      const motion = reconcileMotionAfterStartFrame(state, null);
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          startFrame: null,
+          ...motion,
+        },
+      };
+    }
     case 'setKeyframes': {
       const nextKeyframes = normalizeKeyframes(action.value);
       if (areKeyframesEqual(state.domain.keyframes, nextKeyframes)) return state;
-      const motion = reconcileMotionAfterKeyframes(state, nextKeyframes);
       return {
         ...state,
         domain: {
           ...state.domain,
           keyframes: nextKeyframes,
-          ...motion,
         },
       };
     }
@@ -182,38 +245,32 @@ const reducer = (
         ...state.domain.keyframes,
         { id: createKeyframeId(), ...action.value },
       ];
-      const motion = reconcileMotionAfterKeyframes(state, nextKeyframes);
       return {
         ...state,
         domain: {
           ...state.domain,
           keyframes: nextKeyframes,
-          ...motion,
         },
       };
     }
     case 'removeKeyframe': {
       const nextKeyframes = state.domain.keyframes.filter((tile) => tile.id !== action.value);
       if (nextKeyframes.length === state.domain.keyframes.length) return state;
-      const motion = reconcileMotionAfterKeyframes(state, nextKeyframes);
       return {
         ...state,
         domain: {
           ...state.domain,
           keyframes: nextKeyframes,
-          ...motion,
         },
       };
     }
     case 'clearKeyframes': {
       if (state.domain.keyframes.length === 0) return state;
-      const motion = reconcileMotionAfterKeyframes(state, []);
       return {
         ...state,
         domain: {
           ...state.domain,
           keyframes: [],
-          ...motion,
         },
       };
     }
@@ -277,6 +334,8 @@ export function GenerationControlsStoreProvider({
       setGenerationParams: (value) => dispatch({ type: 'setGenerationParams', value }),
       mergeGenerationParams: (value) => dispatch({ type: 'mergeGenerationParams', value }),
       setVideoTier: (value) => dispatch({ type: 'setVideoTier', value }),
+      setStartFrame: (value) => dispatch({ type: 'setStartFrame', value }),
+      clearStartFrame: () => dispatch({ type: 'clearStartFrame' }),
       setKeyframes: (value) => dispatch({ type: 'setKeyframes', value }),
       addKeyframe: (value) => dispatch({ type: 'addKeyframe', value }),
       removeKeyframe: (value) => dispatch({ type: 'removeKeyframe', value }),

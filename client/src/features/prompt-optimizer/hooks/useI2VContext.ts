@@ -36,11 +36,11 @@ const shouldRefreshObservationUrl = (url: string | null, expiresAtMs: number | n
 export function useI2VContext(): I2VContext {
   const { domain, ui } = useGenerationControlsStoreState();
   const { setConstraintMode } = useGenerationControlsStoreActions();
-  const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
   const cameraMotion = domain.cameraMotion;
-  const startImageUrl = keyframes[0]?.url ?? null;
-  const startImageSourcePrompt = keyframes[0]?.sourcePrompt ?? null;
-  const startImageViewUrlExpiresAt = keyframes[0]?.viewUrlExpiresAt ?? null;
+  const startImageUrl = startFrame?.url ?? null;
+  const startImageSourcePrompt = startFrame?.sourcePrompt ?? null;
+  const startImageViewUrlExpiresAt = startFrame?.viewUrlExpiresAt ?? null;
   const constraintMode = ui.constraintMode as I2VConstraintMode;
   const [observation, setObservation] = useState<ImageObservation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

@@ -172,7 +172,7 @@ export function SequenceWorkspace({
 
   const selectedModel = domain.selectedModel;
   const tier = domain.videoTier;
-  const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
   const aspectRatio = parseAspectRatio(domain.generationParams?.aspect_ratio);
   const duration = parseDuration(domain.generationParams?.duration_s);
 
@@ -187,13 +187,12 @@ export function SequenceWorkspace({
   );
 
   const motionSource = useMemo(() => {
-    const primaryKeyframe = keyframes[0];
-    const keyframeUrl = normalizeRef(primaryKeyframe?.url ?? null);
+    const keyframeUrl = normalizeRef(startFrame?.url ?? null);
     if (keyframeUrl) {
       return {
         imageUrl: keyframeUrl,
-        imageStoragePath: primaryKeyframe?.storagePath ?? null,
-        imageAssetId: primaryKeyframe?.assetId ?? null,
+        imageStoragePath: startFrame?.storagePath ?? null,
+        imageAssetId: startFrame?.assetId ?? null,
       };
     }
 
@@ -216,7 +215,7 @@ export function SequenceWorkspace({
     }
 
     return null;
-  }, [keyframes, previousShot, session?.continuity?.primaryStyleReference?.frameUrl]);
+  }, [previousShot, session?.continuity?.primaryStyleReference?.frameUrl, startFrame]);
 
   const sceneProxySource = useMemo(
     () => orderedShots.find((shot) => Boolean(shot.videoAssetId)) ?? null,
@@ -238,7 +237,7 @@ export function SequenceWorkspace({
   } = useModelSelectionRecommendation({
     prompt: promptText,
     activeTab: 'video',
-    keyframesCount: keyframes.length,
+    keyframesCount: startFrame ? 1 : 0,
     durationSeconds: duration,
     selectedModel,
     videoTier: tier,

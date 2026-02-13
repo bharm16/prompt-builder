@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronDown } from '@promptstudio/system/components/ui';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { KeyframeSlotsRow } from '@components/ToolSidebar/components/panels/KeyframeSlotsRow';
+import { StartFrameControl } from '@components/ToolSidebar/components/panels/StartFrameControl';
 import { PromptEditor } from './PromptEditor';
 import { VideoPromptToolbar } from './VideoPromptToolbar';
 import { type AutocompleteState } from './PromptTriggerAutocomplete';
@@ -9,11 +9,11 @@ import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
 import { formatCredits } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 
 interface VideoTabContentProps {
-  keyframes: KeyframeTile[];
+  startFrame: KeyframeTile | null;
   isUploadDisabled: boolean;
   onRequestUpload: () => void;
   onUploadFile: (file: File) => void | Promise<void>;
-  onRemoveKeyframe: (id: string) => void;
+  onClearStartFrame: () => void;
   prompt: string;
   onPromptChange?: ((prompt: string) => void) | undefined;
   promptLabel?: string;
@@ -47,11 +47,11 @@ interface VideoTabContentProps {
 }
 
 export function VideoTabContent({
-  keyframes,
+  startFrame,
   isUploadDisabled,
   onRequestUpload,
   onUploadFile,
-  onRemoveKeyframe,
+  onClearStartFrame,
   prompt,
   onPromptChange,
   promptLabel,
@@ -88,12 +88,12 @@ export function VideoTabContent({
       {/* ── Prompt card ── */}
       <div className="rounded-xl border border-[#22252C] bg-[#16181E] overflow-hidden transition-colors focus-within:border-[#6C5CE7]">
         <div className="px-3 pt-3">
-          <KeyframeSlotsRow
-            keyframes={keyframes}
+          <StartFrameControl
+            startFrame={startFrame}
             isUploadDisabled={isUploadDisabled}
             onRequestUpload={onRequestUpload}
             onUploadFile={onUploadFile}
-            onRemoveKeyframe={onRemoveKeyframe}
+            onClear={onClearStartFrame}
           />
         </div>
 

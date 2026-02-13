@@ -6,11 +6,13 @@ import { useGenerationControlsContext } from '@/features/prompt-optimizer/contex
 interface SidebarGenerationProviderProps {
   children: ReactNode;
   onImageUpload?: (file: File) => void | Promise<void>;
+  onStartFrameUpload?: (file: File) => void | Promise<void>;
 }
 
 export function SidebarGenerationProvider({
   children,
   onImageUpload,
+  onStartFrameUpload,
 }: SidebarGenerationProviderProps): React.ReactElement {
   const { controls } = useGenerationControlsContext();
 
@@ -25,6 +27,7 @@ export function SidebarGenerationProvider({
       controls?.onStoryboard?.();
     },
     ...(onImageUpload ? { onImageUpload } : {}),
+    ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
   };
 
   return <SidebarGenerationContextProvider value={value}>{children}</SidebarGenerationContextProvider>;

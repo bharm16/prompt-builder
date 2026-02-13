@@ -6,6 +6,7 @@ import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { applyOptimizationResult } from '../utils/persistOptimizationResult';
 import {
@@ -116,6 +117,7 @@ export interface UsePromptOptimizationParams {
   selectedModel?: string; // New: optional selected model
   generationParams: CapabilityValues;
   keyframes?: PromptHistoryEntry['keyframes'];
+  startFrame?: KeyframeTile | null;
   startImageUrl?: string | null;
   sourcePrompt?: string | null;
   constraintMode?: 'strict' | 'flexible' | 'transform';
@@ -158,6 +160,7 @@ export function usePromptOptimization({
   selectedModel, // Extract new param
   generationParams,
   keyframes = null,
+  startFrame,
   startImageUrl,
   sourcePrompt,
   constraintMode,
@@ -248,13 +251,12 @@ export function usePromptOptimization({
         setDisplayedPromptSilently('');
       }
 
-      const primaryKeyframe = Array.isArray(keyframes) ? keyframes[0] : null;
       const resolvedStartImageUrl = normalizedOptions?.startImage
         ? normalizedOptions.startImage
         : await resolveOptimizationStartImageUrl(
             startImageUrl ?? null,
-            primaryKeyframe?.storagePath ?? null,
-            primaryKeyframe?.viewUrlExpiresAt ?? null
+            startFrame?.storagePath ?? null,
+            startFrame?.viewUrlExpiresAt ?? null
           );
 
       const effectiveOptions: OptimizationOptions = {
@@ -376,6 +378,8 @@ export function usePromptOptimization({
       selectedModel, // Added dependency
       generationParams,
       keyframes,
+      startFrame?.storagePath,
+      startFrame?.viewUrlExpiresAt,
       startImageUrl,
       sourcePrompt,
       constraintMode,

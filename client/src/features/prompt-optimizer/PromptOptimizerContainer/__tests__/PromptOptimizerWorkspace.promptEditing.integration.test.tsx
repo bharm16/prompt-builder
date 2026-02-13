@@ -127,6 +127,7 @@ vi.mock('../../context/GenerationControlsStore', () => ({
   useGenerationControlsStoreState: () => ({
     domain: {
       keyframes: [],
+      startFrame: null,
       cameraMotion: null,
       subjectMotion: '',
     },
@@ -134,6 +135,8 @@ vi.mock('../../context/GenerationControlsStore', () => ({
   useGenerationControlsStoreActions: () => ({
     setKeyframes: vi.fn(),
     addKeyframe: vi.fn(),
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
     setCameraMotion: vi.fn(),
     setSubjectMotion: vi.fn(),
   }),

@@ -25,8 +25,9 @@ describe('useKeyframeWorkflow', () => {
       const { result } = renderHook(() =>
         useKeyframeWorkflow({
           prompt: '   ',
-          keyframes: [],
-          assetReferenceImages: [],
+          startFrame: null,
+          setStartFrame: vi.fn(),
+          clearStartFrame: vi.fn(),
           detectedCharacter: character,
           onCreateVersionIfNeeded: vi.fn().mockReturnValue('v1'),
           generateRender,
@@ -48,8 +49,9 @@ describe('useKeyframeWorkflow', () => {
       const { result } = renderHook(() =>
         useKeyframeWorkflow({
           prompt: 'Prompt',
-          keyframes: [],
-          assetReferenceImages: [],
+          startFrame: null,
+          setStartFrame: vi.fn(),
+          clearStartFrame: vi.fn(),
           detectedCharacter: character,
           onCreateVersionIfNeeded: vi.fn().mockReturnValue('v1'),
           generateRender,
@@ -72,11 +74,14 @@ describe('useKeyframeWorkflow', () => {
 
     it('selects and clears keyframes manually', () => {
       const generateRender = vi.fn();
+      const setStartFrame = vi.fn();
+      const clearStartFrame = vi.fn();
       const { result } = renderHook(() =>
         useKeyframeWorkflow({
           prompt: 'Prompt',
-          keyframes: [],
-          assetReferenceImages: [],
+          startFrame: null,
+          setStartFrame,
+          clearStartFrame,
           detectedCharacter: null,
           onCreateVersionIfNeeded: vi.fn().mockReturnValue('v1'),
           generateRender,
@@ -87,26 +92,31 @@ describe('useKeyframeWorkflow', () => {
         result.current.handleSelectFrame('https://cdn/frame.png', 2, 'gen-1');
       });
 
-      expect(result.current.selectedKeyframe?.url).toBe('https://cdn/frame.png');
+      expect(setStartFrame).toHaveBeenCalledWith({
+        id: 'frame-gen-1-2',
+        url: 'https://cdn/frame.png',
+        source: 'generation',
+      });
 
       act(() => {
         result.current.handleClearSelectedFrame();
       });
 
-      expect(result.current.selectedKeyframe).toBeNull();
+      expect(clearStartFrame).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('core behavior', () => {
-    it('uses the primary keyframe when available', () => {
+    it('uses start frame when available', () => {
       const generateRender = vi.fn();
-      const keyframes = [createKeyframe({ url: 'https://cdn/primary.png', assetId: 'asset-1' })];
+      const startFrame = createKeyframe({ url: 'https://cdn/primary.png', assetId: 'asset-1' });
 
       const { result } = renderHook(() =>
         useKeyframeWorkflow({
           prompt: 'Prompt',
-          keyframes,
-          assetReferenceImages: [],
+          startFrame,
+          setStartFrame: vi.fn(),
+          clearStartFrame: vi.fn(),
           detectedCharacter: null,
           onCreateVersionIfNeeded: vi.fn().mockReturnValue('v1'),
           generateRender,
@@ -125,7 +135,7 @@ describe('useKeyframeWorkflow', () => {
           assetId: 'asset-1',
         },
       });
-      expect(result.current.selectedKeyframe).toBeNull();
+      expect(result.current.selectedFrameUrl).toBe('https://cdn/primary.png');
     });
   });
 });

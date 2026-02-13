@@ -169,7 +169,7 @@ export const GenerationCard = memo(function GenerationCard({
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#16181E] px-3 py-2">
           <Check size={14} weight="bold" className="text-[#6C5CE7]" aria-hidden="true" />
           <span className="flex-1 text-xs font-medium text-[#8B92A5]">
-            Frame selected as keyframe
+            Frame selected as start frame
           </span>
           {onClearSelectedFrame && (
             <button

@@ -7,6 +7,7 @@ import { areKeyframesEqual, hydrateKeyframes, serializeKeyframes } from '../../u
 type UsePromptKeyframesSyncParams = {
   keyframes: KeyframeTile[];
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
+  setStartFrame: (tile: KeyframeTile | null) => void;
   currentPromptUuid: string | null | undefined;
   currentPromptDocId: string | null | undefined;
   promptHistory: Pick<PromptHistory, 'history' | 'updateEntryPersisted'>;
@@ -20,6 +21,7 @@ export type UsePromptKeyframesSyncResult = {
 export function usePromptKeyframesSync({
   keyframes,
   setKeyframes,
+  setStartFrame,
   currentPromptUuid,
   currentPromptDocId,
   promptHistory,
@@ -84,9 +86,11 @@ export function usePromptKeyframesSync({
 
   const onLoadKeyframes = useCallback(
     (stored: PromptKeyframe[] | null | undefined) => {
-      setKeyframes(hydrateKeyframes(stored));
+      const hydrated = hydrateKeyframes(stored);
+      setKeyframes(hydrated);
+      setStartFrame(hydrated[0] ?? null);
     },
-    [setKeyframes]
+    [setKeyframes, setStartFrame]
   );
 
   return { serializedKeyframes, onLoadKeyframes };

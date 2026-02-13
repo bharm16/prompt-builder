@@ -26,6 +26,7 @@ export interface GenerationControlsPanelProps {
   onRender: (model: string, overrides?: GenerationOverrides) => void;
   onBack?: () => void;
   onImageUpload?: (file: File) => void | Promise<void>;
+  onStartFrameUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;
 }
 

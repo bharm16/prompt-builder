@@ -7,9 +7,10 @@ const log = logger.child('GenerationControlsPanel');
 
 interface UseCameraMotionModalFlowOptions {
   showMotionControls: boolean;
-  hasPrimaryKeyframe: boolean;
-  keyframes: KeyframeTile[];
-  primaryKeyframeUrlHost: string | null;
+  hasStartFrame: boolean;
+  keyframesCount: number;
+  startFrame: KeyframeTile | null;
+  startFrameUrlHost: string | null;
   cameraMotion: CameraPath | null;
   onSelectCameraMotion: (path: CameraPath) => void;
 }
@@ -23,65 +24,66 @@ interface UseCameraMotionModalFlowResult {
 
 export function useCameraMotionModalFlow({
   showMotionControls,
-  hasPrimaryKeyframe,
-  keyframes,
-  primaryKeyframeUrlHost,
+  hasStartFrame,
+  keyframesCount,
+  startFrame,
+  startFrameUrlHost,
   cameraMotion,
   onSelectCameraMotion,
 }: UseCameraMotionModalFlowOptions): UseCameraMotionModalFlowResult {
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
 
   useEffect(() => {
-    if (keyframes[0]) return;
+    if (startFrame) return;
     if (!showCameraMotionModal) return;
-    log.info('Closing camera motion modal because primary keyframe is missing', {
-      keyframesCount: keyframes.length,
+    log.info('Closing camera motion modal because start frame is missing', {
+      keyframesCount,
     });
     setShowCameraMotionModal(false);
-  }, [keyframes, showCameraMotionModal]);
+  }, [keyframesCount, showCameraMotionModal, startFrame]);
 
   const handleCameraMotionButtonClick = useCallback(() => {
-    if (!hasPrimaryKeyframe) {
-      log.warn('Camera motion modal requested without a primary keyframe', {
+    if (!hasStartFrame) {
+      log.warn('Camera motion modal requested without a start frame', {
         showMotionControls,
-        keyframesCount: keyframes.length,
+        keyframesCount,
       });
       return;
     }
 
     log.info('Opening camera motion modal from generation controls panel', {
-      keyframesCount: keyframes.length,
-      primaryKeyframeUrlHost,
+      keyframesCount,
+      startFrameUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
     });
     setShowCameraMotionModal(true);
   }, [
-    hasPrimaryKeyframe,
+    hasStartFrame,
     showMotionControls,
-    keyframes.length,
-    primaryKeyframeUrlHost,
+    keyframesCount,
+    startFrameUrlHost,
     cameraMotion?.id,
   ]);
 
   const handleCloseCameraMotionModal = useCallback(() => {
     log.info('Camera motion modal closed from generation controls panel', {
-      primaryKeyframeUrlHost,
+      startFrameUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
     });
     setShowCameraMotionModal(false);
-  }, [cameraMotion?.id, primaryKeyframeUrlHost]);
+  }, [cameraMotion?.id, startFrameUrlHost]);
 
   const handleSelectCameraMotion = useCallback(
     (path: CameraPath) => {
       log.info('Camera motion selected from modal in generation controls panel', {
         cameraMotionId: path.id,
         cameraMotionLabel: path.label,
-        primaryKeyframeUrlHost,
+        startFrameUrlHost,
       });
       onSelectCameraMotion(path);
       setShowCameraMotionModal(false);
     },
-    [onSelectCameraMotion, primaryKeyframeUrlHost]
+    [onSelectCameraMotion, startFrameUrlHost]
   );
 
   return {

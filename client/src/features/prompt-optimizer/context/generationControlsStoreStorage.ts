@@ -74,6 +74,7 @@ const GenerationControlsStoreSchema = z.object({
     generationParams: CapabilityValuesSchema,
     videoTier: VideoTierSchema,
     keyframes: KeyframesArraySchema,
+    startFrame: KeyframeTileSchema.nullable().optional().default(null),
     cameraMotion: CameraPathSchema.nullable(),
     subjectMotion: z.string(),
   }),
@@ -93,20 +94,36 @@ const safeParseJson = (raw: string): unknown => {
 };
 
 const buildLegacyState = (): GenerationControlsState => ({
-  domain: {
-    selectedModel: loadSelectedModel(),
-    generationParams: loadGenerationParams(),
-    videoTier: loadVideoTier(),
-    keyframes: loadKeyframes(),
-    cameraMotion: loadCameraMotion(),
-    subjectMotion: loadSubjectMotion(),
-  },
+  domain: (() => {
+    const keyframes = loadKeyframes();
+    return {
+      selectedModel: loadSelectedModel(),
+      generationParams: loadGenerationParams(),
+      videoTier: loadVideoTier(),
+      keyframes,
+      startFrame: keyframes[0] ?? null,
+      cameraMotion: loadCameraMotion(),
+      subjectMotion: loadSubjectMotion(),
+    };
+  })(),
   ui: {
     activeTab: loadActiveTab(),
     imageSubTab: loadImageSubTab(),
     constraintMode: loadConstraintMode(),
   },
 });
+
+const migrateStartFrame = (state: GenerationControlsState): GenerationControlsState => {
+  if (state.domain.startFrame) return state;
+  if (!state.domain.keyframes[0]) return state;
+  return {
+    ...state,
+    domain: {
+      ...state.domain,
+      startFrame: state.domain.keyframes[0],
+    },
+  };
+};
 
 export const loadGenerationControlsStoreState = (): GenerationControlsState => {
   if (typeof window === 'undefined') {
@@ -118,14 +135,14 @@ export const loadGenerationControlsStoreState = (): GenerationControlsState => {
     if (raw) {
       const parsed = GenerationControlsStoreSchema.safeParse(safeParseJson(raw));
       if (parsed.success) {
-        return parsed.data as GenerationControlsState;
+        return migrateStartFrame(parsed.data as GenerationControlsState);
       }
     }
   } catch {
     // ignore
   }
 
-  return buildLegacyState();
+  return migrateStartFrame(buildLegacyState());
 };
 
 export const persistGenerationControlsStoreState = (

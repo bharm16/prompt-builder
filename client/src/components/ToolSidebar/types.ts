@@ -73,6 +73,7 @@ export interface ToolSidebarGenerationDomain {
   onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
   onRender: (model: string, overrides?: GenerationOverrides) => void;
   onImageUpload?: (file: File) => void | Promise<void>;
+  onStartFrameUpload?: (file: File) => void | Promise<void>;
   onStoryboard: () => void;
 }
 

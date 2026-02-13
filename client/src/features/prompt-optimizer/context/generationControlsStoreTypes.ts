@@ -11,6 +11,7 @@ export interface GenerationControlsDomainState {
   generationParams: CapabilityValues;
   videoTier: VideoTier;
   keyframes: KeyframeTile[];
+  startFrame: KeyframeTile | null;
   cameraMotion: CameraPath | null;
   subjectMotion: string;
 }
@@ -32,6 +33,7 @@ export const DEFAULT_GENERATION_CONTROLS_STATE: GenerationControlsState = {
     generationParams: {},
     videoTier: 'render',
     keyframes: [],
+    startFrame: null,
     cameraMotion: null,
     subjectMotion: '',
   },

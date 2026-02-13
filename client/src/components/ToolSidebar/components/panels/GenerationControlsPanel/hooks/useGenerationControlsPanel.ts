@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ChangeEvent,
   type KeyboardEvent,
   type RefObject,
@@ -37,6 +38,7 @@ import { useUploadAndAutocomplete } from "./useUploadAndAutocomplete";
 export interface UseGenerationControlsPanelResult {
   refs: {
     fileInputRef: RefObject<HTMLInputElement>;
+    startFrameFileInputRef: RefObject<HTMLInputElement>;
     resolvedPromptInputRef: RefObject<HTMLTextAreaElement>;
   };
   state: {
@@ -51,15 +53,17 @@ export interface UseGenerationControlsPanelResult {
     selectedModel: string;
     tier: VideoTier;
     keyframes: KeyframeTile[];
+    startFrame: KeyframeTile | null;
     cameraMotion: CameraPath | null;
   };
   derived: {
     canOptimize: boolean;
     isOptimizing: boolean;
-    hasPrimaryKeyframe: boolean;
+    hasStartFrame: boolean;
     isKeyframeLimitReached: boolean;
     isUploadDisabled: boolean;
-    primaryKeyframeUrlHost: string | null;
+    isStartFrameUploadDisabled: boolean;
+    startFrameUrlHost: string | null;
     hasPrompt: boolean;
     isImageGenerateDisabled: boolean;
     isVideoGenerateDisabled: boolean;
@@ -111,6 +115,9 @@ export interface UseGenerationControlsPanelResult {
     handleRemoveKeyframe: (id: string) => void;
     handleFile: (file: File) => Promise<void>;
     handleUploadRequest: () => void;
+    handleStartFrameFile: (file: File) => Promise<void>;
+    handleStartFrameUploadRequest: () => void;
+    handleClearStartFrame: () => void;
     handleCameraMotionButtonClick: () => void;
     handleCloseCameraMotionModal: () => void;
     handleSelectCameraMotion: (path: CameraPath) => void;
@@ -145,12 +152,15 @@ export const useGenerationControlsPanel = (
     assets = [],
     onInsertTrigger,
     onImageUpload,
+    onStartFrameUpload,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null!);
+  const startFrameFileInputRef = useRef<HTMLInputElement>(null!);
   const localPromptInputRef = useRef<HTMLTextAreaElement>(null!);
   const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
   const previousShotIdRef = useRef<string | null>(null);
+  const [isStartFrameUploading, setIsStartFrameUploading] = useState(false);
   const autocompleteKeyDownRef = useRef<(
     event: KeyboardEvent<HTMLTextAreaElement>,
   ) => boolean>(() => false);
@@ -171,6 +181,7 @@ export const useGenerationControlsPanel = (
   const generationParams = domain.generationParams;
   const tier = domain.videoTier;
   const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
   const cameraMotion = domain.cameraMotion;
   const showMotionControls = true;
 
@@ -255,10 +266,10 @@ export const useGenerationControlsPanel = (
     [storeActions],
   );
 
-  const hasPrimaryKeyframe = Boolean(keyframes[0]);
+  const hasStartFrame = Boolean(startFrame);
   const isKeyframeLimitReached = keyframes.length >= 3;
-  const primaryKeyframeUrl = keyframes[0]?.url ?? null;
-  const primaryKeyframeUrlHost = safeUrlHost(primaryKeyframeUrl);
+  const startFrameUrl = startFrame?.url ?? null;
+  const startFrameUrlHost = safeUrlHost(startFrameUrl);
 
   const {
     recommendationMode,
@@ -273,7 +284,7 @@ export const useGenerationControlsPanel = (
   } = useModelSelectionRecommendation({
     prompt,
     activeTab,
-    keyframesCount: keyframes.length,
+    keyframesCount: hasStartFrame ? 1 : 0,
     durationSeconds: duration,
     selectedModel,
     videoTier: tier,
@@ -359,8 +370,8 @@ export const useGenerationControlsPanel = (
     },
   } = useFaceSwapState({
     assets,
-    primaryKeyframeUrl,
-    primaryKeyframeUrlHost,
+    startFrameUrl,
+    startFrameUrlHost,
     aspectRatio,
     draftModelId: VIDEO_DRAFT_MODEL.id,
     renderModelId,
@@ -376,9 +387,10 @@ export const useGenerationControlsPanel = (
     handleSelectCameraMotion,
   } = useCameraMotionModalFlow({
     showMotionControls,
-    hasPrimaryKeyframe,
-    keyframes,
-    primaryKeyframeUrlHost,
+    hasStartFrame,
+    keyframesCount: keyframes.length,
+    startFrame,
+    startFrameUrlHost,
     cameraMotion,
     onSelectCameraMotion: storeActions.setCameraMotion,
   });
@@ -426,13 +438,40 @@ export const useGenerationControlsPanel = (
     }
   }, [prompt]);
 
+  const isStartFrameUploadDisabled = !onStartFrameUpload || isStartFrameUploading;
+
+  const handleStartFrameFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (isStartFrameUploadDisabled || !onStartFrameUpload) return;
+      const result = onStartFrameUpload(file);
+      if (result && typeof (result as Promise<void>).then === "function") {
+        setIsStartFrameUploading(true);
+        try {
+          await result;
+        } finally {
+          setIsStartFrameUploading(false);
+        }
+      }
+    },
+    [isStartFrameUploadDisabled, onStartFrameUpload]
+  );
+
+  const handleStartFrameUploadRequest = useCallback(() => {
+    if (isStartFrameUploadDisabled) return;
+    startFrameFileInputRef.current?.click();
+  }, [isStartFrameUploadDisabled]);
+
+  const handleClearStartFrame = useCallback(() => {
+    storeActions.clearStartFrame();
+  }, [storeActions]);
+
   const trimmedPrompt = prompt.trim();
   const hasPrompt = Boolean(trimmedPrompt);
   const isImageGenerateDisabled =
     activeTab === "image" && keyframes.length === 0;
   const isVideoGenerateDisabled =
-    activeTab === "video" && !hasPrompt && keyframes.length === 0;
-  const isStoryboardDisabled = !hasPrompt && keyframes.length === 0;
+    activeTab === "video" && !hasPrompt && !startFrame;
+  const isStoryboardDisabled = !hasPrompt && !startFrame;
   const isInputLocked =
     (canOptimize && showResults && !isEditing) || isOptimizing;
   const isOptimizeDisabled = !hasPrompt || isOptimizing;
@@ -447,6 +486,7 @@ export const useGenerationControlsPanel = (
   return {
     refs: {
       fileInputRef,
+      startFrameFileInputRef,
       resolvedPromptInputRef,
     },
     state: {
@@ -461,15 +501,17 @@ export const useGenerationControlsPanel = (
       selectedModel,
       tier,
       keyframes,
+      startFrame,
       cameraMotion,
     },
     derived: {
       canOptimize,
       isOptimizing,
-      hasPrimaryKeyframe,
+      hasStartFrame,
       isKeyframeLimitReached,
       isUploadDisabled,
-      primaryKeyframeUrlHost,
+      isStartFrameUploadDisabled,
+      startFrameUrlHost,
       hasPrompt,
       isImageGenerateDisabled,
       isVideoGenerateDisabled,
@@ -509,6 +551,9 @@ export const useGenerationControlsPanel = (
       handleRemoveKeyframe,
       handleFile,
       handleUploadRequest,
+      handleStartFrameFile,
+      handleStartFrameUploadRequest,
+      handleClearStartFrame,
       handleCameraMotionButtonClick,
       handleCloseCameraMotionModal,
       handleSelectCameraMotion,

@@ -17,7 +17,7 @@ export function SidebarSessionsProvider({ children }: { children: ReactNode }): 
   const { initialHighlights } = usePromptHighlights();
   const { currentPromptUuid, currentPromptDocId } = usePromptSession();
   const { handleCreateNew, loadFromHistory } = usePromptActions();
-  const { setKeyframes } = useGenerationControlsStoreActions();
+  const { setKeyframes, setStartFrame } = useGenerationControlsStoreActions();
 
   const {
     handleLoadFromHistory,
@@ -27,6 +27,7 @@ export function SidebarSessionsProvider({ children }: { children: ReactNode }): 
   } = usePromptHistoryActions({
     promptHistory,
     setKeyframes,
+    setStartFrame,
     loadFromHistory,
     handleCreateNew,
   });

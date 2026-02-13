@@ -15,6 +15,7 @@ const generationDomain = {
   selectedModel: 'wan-2.5',
   videoTier: 'render',
   keyframes: [],
+  startFrame: null,
   generationParams: {
     aspect_ratio: '16:9',
     duration_s: 5,

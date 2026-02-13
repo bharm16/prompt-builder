@@ -18,6 +18,12 @@ const SAMPLE_STATE: GenerationControlsState = {
         storagePath: 'uploads/frame1.png',
       },
     ],
+    startFrame: {
+      id: 'start-frame-1',
+      url: 'https://storage.example.com/frame1.png',
+      source: 'upload',
+      storagePath: 'uploads/frame1.png',
+    },
     cameraMotion: {
       id: 'pan_left',
       label: 'Pan Left',
@@ -86,6 +92,7 @@ describe('generationControlsStoreStorage', () => {
     expect(loaded.domain.generationParams).toEqual({ aspect_ratio: '9:16' });
     expect(loaded.domain.videoTier).toBe('render');
     expect(loaded.domain.keyframes).toHaveLength(1);
+    expect(loaded.domain.startFrame?.id).toBe('legacy-kf');
     expect(loaded.domain.cameraMotion?.id).toBe('static');
     expect(loaded.domain.subjectMotion).toBe('Legacy motion');
     expect(loaded.ui.activeTab).toBe('video');
@@ -99,6 +106,37 @@ describe('generationControlsStoreStorage', () => {
 
     const loaded = loadGenerationControlsStoreState();
     expect(loaded.domain.selectedModel).toBe('legacy-model');
+  });
+
+  it('migrates start frame from keyframes[0] when stored state has no startFrame', () => {
+    localStorage.setItem(
+      'prompt-optimizer:generationControlsStore',
+      JSON.stringify({
+        domain: {
+          selectedModel: 'model-legacy',
+          generationParams: {},
+          videoTier: 'render',
+          keyframes: [
+            {
+              id: 'legacy-start',
+              url: 'https://example.com/legacy-start.png',
+              source: 'upload',
+            },
+          ],
+          cameraMotion: null,
+          subjectMotion: '',
+        },
+        ui: {
+          activeTab: 'video',
+          imageSubTab: 'references',
+          constraintMode: 'strict',
+        },
+      })
+    );
+
+    const loaded = loadGenerationControlsStoreState();
+    expect(loaded.domain.startFrame?.id).toBe('legacy-start');
+    expect(loaded.domain.startFrame?.url).toBe('https://example.com/legacy-start.png');
   });
 
   it('persists to new key only', () => {

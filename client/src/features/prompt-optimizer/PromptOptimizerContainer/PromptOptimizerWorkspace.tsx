@@ -181,10 +181,13 @@ function PromptOptimizerContent({
   const {
     setKeyframes,
     addKeyframe,
+    setStartFrame,
+    clearStartFrame,
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsStoreActions();
   const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
   const cameraMotion = domain.cameraMotion;
   const subjectMotion = domain.subjectMotion;
   const i2vContext = useI2VContext();
@@ -198,6 +201,7 @@ function PromptOptimizerContent({
   const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
     keyframes,
     setKeyframes,
+    setStartFrame,
     currentPromptUuid,
     currentPromptDocId,
     promptHistory,
@@ -339,8 +343,9 @@ function PromptOptimizerContent({
   });
   const handleCreateNewWithKeyframes = useCallback((): void => {
     setKeyframes([]);
+    clearStartFrame();
     handleCreateNew();
-  }, [handleCreateNew, setKeyframes]);
+  }, [clearStartFrame, handleCreateNew, setKeyframes]);
 
   const insertTriggerAtCursor = useCallback(
     (trigger: string, range?: { start: number; end: number }): void => {
@@ -375,34 +380,72 @@ function PromptOptimizerContent({
     [promptOptimizer]
   );
 
-  const handleImageUpload = useCallback(
-    async (file: File): Promise<void> => {
+  const uploadSidebarImage = useCallback(
+    async (file: File): Promise<{
+      url: string;
+      storagePath?: string;
+      viewUrlExpiresAt?: string;
+    } | null> => {
       const validation = validatePreviewImageFile(file);
       if (!validation.valid) {
         toast.warning(validation.error);
-        return;
+        return null;
       }
 
+      const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
+      if (!response.success || !response.data) {
+        throw new Error(response.error || response.message || 'Failed to upload image');
+      }
+
+      const imageUrl = response.data.viewUrl || response.data.imageUrl;
+      if (!imageUrl) {
+        throw new Error('Upload did not return an image URL');
+      }
+
+      return {
+        url: imageUrl,
+        ...(response.data.storagePath ? { storagePath: response.data.storagePath } : {}),
+        ...(response.data.viewUrlExpiresAt ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt } : {}),
+      };
+    },
+    [toast]
+  );
+
+  const handleImageUpload = useCallback(
+    async (file: File): Promise<void> => {
       try {
-        const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
-        if (!response.success || !response.data) {
-          throw new Error(response.error || response.message || 'Failed to upload image');
-        }
-        const imageUrl = response.data.viewUrl || response.data.imageUrl;
-        if (!imageUrl) {
-          throw new Error('Upload did not return an image URL');
-        }
+        const uploaded = await uploadSidebarImage(file);
+        if (!uploaded) return;
         addKeyframe({
-          url: imageUrl,
+          url: uploaded.url,
           source: 'upload',
-          ...(response.data.storagePath ? { storagePath: response.data.storagePath } : {}),
-          ...(response.data.viewUrlExpiresAt ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt } : {}),
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
         });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Upload failed');
       }
     },
-    [addKeyframe, toast]
+    [addKeyframe, toast, uploadSidebarImage]
+  );
+
+  const handleStartFrameUpload = useCallback(
+    async (file: File): Promise<void> => {
+      try {
+        const uploaded = await uploadSidebarImage(file);
+        if (!uploaded) return;
+        setStartFrame({
+          id: `start-frame-upload-${Date.now()}`,
+          url: uploaded.url,
+          source: 'upload',
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
+      }
+    },
+    [setStartFrame, toast, uploadSidebarImage]
   );
 
   const debouncedShotPromptUpdate = useMemo(
@@ -477,6 +520,7 @@ function PromptOptimizerContent({
     selectedModel,
     generationParams: optimizationGenerationParams,
     keyframes: serializedKeyframesSync,
+    startFrame,
     startImageUrl: i2vContext.startImageUrl,
     sourcePrompt: i2vContext.startImageSourcePrompt,
     constraintMode: i2vContext.constraintMode,
@@ -621,7 +665,10 @@ function PromptOptimizerContent({
           onInsertTrigger={insertTriggerAtCursor}
           onCreateFromTrigger={assetManagement.onCreateFromTrigger}
         >
-          <SidebarGenerationProvider onImageUpload={handleImageUpload}>
+          <SidebarGenerationProvider
+            onImageUpload={handleImageUpload}
+            onStartFrameUpload={handleStartFrameUpload}
+          >
             <PromptResultsActionsProvider
               currentPromptUuid={currentPromptUuid}
               currentPromptDocId={currentPromptDocId}
