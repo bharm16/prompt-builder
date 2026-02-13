@@ -128,13 +128,22 @@ export class ContinuitySessionService {
     if (!frameBridge && continuityMode === 'frame-bridge' && previousShot?.videoAssetId) {
       const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
       if (videoUrl) {
-        frameBridge = await this.mediaService.extractBridgeFrame(
-          session.userId,
-          previousShot.videoAssetId,
-          videoUrl,
-          previousShot.id,
-          'last'
-        );
+        try {
+          frameBridge = await this.mediaService.extractBridgeFrame(
+            session.userId,
+            previousShot.videoAssetId,
+            videoUrl,
+            previousShot.id,
+            'last'
+          );
+        } catch (error) {
+          this.log.warn('Frame bridge extraction failed during shot creation; continuing without frame bridge', {
+            sessionId: session.id,
+            previousShotId: previousShot.id,
+            previousShotVideoAssetId: previousShot.videoAssetId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 

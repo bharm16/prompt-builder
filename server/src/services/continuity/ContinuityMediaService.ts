@@ -133,6 +133,16 @@ export class ContinuityMediaService {
   }
 
   async analyzeStyleReference(styleReference: StyleReference): Promise<StyleReference> {
+    if (this.isUnsupportedAnalysisUrl(styleReference.frameUrl)) {
+      styleReference.analysisMetadata = {
+        dominantColors: [],
+        lightingDescription: 'Unable to analyze',
+        moodDescription: 'Unable to analyze',
+        confidence: 0,
+      };
+      return styleReference;
+    }
+
     styleReference.analysisMetadata = await this.styleAnalysis.analyzeForDisplay(styleReference.frameUrl);
     return styleReference;
   }
@@ -167,5 +177,18 @@ export class ContinuityMediaService {
 
     const message = error.message.toLowerCase();
     return message.includes('spawn ffprobe enoent') || message.includes('spawn ffmpeg enoent');
+  }
+
+  private isUnsupportedAnalysisUrl(url: string): boolean {
+    const normalized = url.trim().toLowerCase();
+    if (!normalized) {
+      return true;
+    }
+
+    if (normalized.startsWith('data:video/')) {
+      return true;
+    }
+
+    return /\.(mp4|mov|webm|m4v|mkv|avi)(\?|#|$)/i.test(normalized);
   }
 }

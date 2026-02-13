@@ -212,6 +212,7 @@ const buildService = (
     seedService,
     frameBridge,
     styleReference,
+    styleAnalysis,
     sceneProxy,
   };
 };
@@ -515,6 +516,53 @@ describe('ContinuitySessionService', () => {
     expect(result.primaryStyleReference.frameUrl).toBe(videoUrl);
   });
 
+  it('skips style analysis when synthetic style reference points to a video URL', async () => {
+    const videoUrl = 'https://example.com/video.mp4';
+    const ffprobeMissingError = Object.assign(new Error('spawn ffprobe ENOENT'), {
+      code: 'ENOENT',
+      syscall: 'spawn ffprobe',
+    });
+
+    const { service, styleAnalysis } = buildService(buildSession(), {
+      videoGenerator: {
+        getVideoUrl: vi.fn().mockResolvedValue(videoUrl),
+      },
+      frameBridge: {
+        extractRepresentativeFrame: vi.fn().mockRejectedValue(ffprobeMissingError),
+      },
+      styleReference: {
+        createFromVideo: vi
+          .fn()
+          .mockImplementation(async (sourceVideoId: string, frame: { frameUrl: string }) => ({
+            id: 'style-fallback',
+            sourceVideoId,
+            sourceFrameIndex: 0,
+            frameUrl: frame.frameUrl,
+            frameTimestamp: 0,
+            resolution: { width: 1920, height: 1080 },
+            aspectRatio: '16:9',
+            extractedAt: new Date(),
+          })),
+      },
+      styleAnalysis: {
+        analyzeForDisplay: vi.fn(),
+      },
+    });
+
+    const result = await service.createSession('user-1', {
+      name: 'Session',
+      sourceVideoId: 'video-asset-1',
+    });
+
+    expect(styleAnalysis.analyzeForDisplay).not.toHaveBeenCalled();
+    expect(result.primaryStyleReference.analysisMetadata).toEqual({
+      dominantColors: [],
+      lightingDescription: 'Unable to analyze',
+      moodDescription: 'Unable to analyze',
+      confidence: 0,
+    });
+  });
+
   it('adds shots with inherited defaults and previous style reference', async () => {
     const previousShot = buildShot({
       id: 'shot-0',
@@ -556,6 +604,60 @@ describe('ContinuitySessionService', () => {
     expect(shot.continuityMode).toBe(session.defaultSettings.defaultContinuityMode);
     expect(shot.modelId).toBe(session.defaultSettings.defaultModel);
     expect(shot.frameBridge).toEqual(previousShot.frameBridge);
+    expect(shot.status).toBe('draft');
+    expect(sessionStore.save).toHaveBeenCalled();
+  });
+
+  it('adds shot without frame bridge when ffprobe is unavailable', async () => {
+    const ffprobeMissingError = Object.assign(new Error('spawn ffprobe ENOENT'), {
+      code: 'ENOENT',
+      syscall: 'spawn ffprobe',
+    });
+    const previousShot = buildShot({
+      id: 'shot-prev',
+      sequenceIndex: 0,
+      status: 'completed',
+      continuityMode: 'frame-bridge',
+      generationMode: 'continuity',
+      videoAssetId: 'video-prev',
+    });
+    const session = buildSession({
+      defaultSettings: {
+        ...buildSession().defaultSettings,
+        defaultContinuityMode: 'frame-bridge',
+      },
+      shots: [previousShot],
+    });
+    const sessionStore = {
+      save: vi.fn(),
+      saveWithVersion: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+      findByUser: vi.fn(),
+      delete: vi.fn(),
+    };
+    const { service, frameBridge } = buildService(session, {
+      sessionStore,
+      videoGenerator: {
+        getVideoUrl: vi.fn().mockResolvedValue('https://example.com/video-prev.mp4'),
+      },
+      frameBridge: {
+        extractBridgeFrame: vi.fn().mockRejectedValue(ffprobeMissingError),
+      },
+    });
+
+    const shot = await service.addShot({
+      sessionId: session.id,
+      prompt: 'Next shot',
+    });
+
+    expect(frameBridge.extractBridgeFrame).toHaveBeenCalledWith(
+      session.userId,
+      'video-prev',
+      'https://example.com/video-prev.mp4',
+      'shot-prev',
+      'last'
+    );
+    expect(shot.frameBridge).toBeUndefined();
     expect(shot.status).toBe('draft');
     expect(sessionStore.save).toHaveBeenCalled();
   });
