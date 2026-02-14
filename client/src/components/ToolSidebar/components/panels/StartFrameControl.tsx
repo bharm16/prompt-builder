@@ -1,5 +1,4 @@
 import React, { useCallback, useState, type ReactElement } from 'react';
-import { Plus } from '@promptstudio/system/components/ui';
 import { cn } from '@utils/cn';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
@@ -60,11 +59,8 @@ export function StartFrameControl({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[#8B92A5]">
-          Start frame
-        </span>
-        {startFrame && (
+      {startFrame && (
+        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={onClear}
@@ -72,12 +68,12 @@ export function StartFrameControl({
           >
             Clear
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <button
         type="button"
         className={cn(
-          'relative h-[66px] w-full rounded-lg border bg-[#16181E] transition-colors',
+          'relative h-9 w-[116.65px] rounded-lg border bg-[#16181E] px-3 py-2 transition-colors',
           startFrame ? 'border-[#3A3D46]' : 'border-dashed border-[#22252C]',
           isUploadDisabled && 'cursor-not-allowed opacity-60',
           !isUploadDisabled && 'cursor-pointer',
@@ -108,9 +104,8 @@ export function StartFrameControl({
             <div className="absolute inset-0 rounded-lg bg-black/15 pointer-events-none" />
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center gap-2 text-[#555B6E]">
-            <Plus className="h-3.5 w-3.5" />
-            <span className="text-[11px] font-medium">Upload start frame</span>
+          <div className="flex h-full w-full items-center justify-center text-white">
+            <span className="text-[11px] font-medium">Start frame</span>
           </div>
         )}
       </button>

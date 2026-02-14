@@ -20,7 +20,7 @@ describe('StartFrameControl', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Upload start frame'));
+    fireEvent.click(screen.getByText('Start frame'));
     expect(onRequestUpload).toHaveBeenCalledTimes(1);
   });
 

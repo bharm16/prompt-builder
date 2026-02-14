@@ -88,16 +88,6 @@ export function VideoTabContent({
       {/* ── Prompt card ── */}
       <div className="rounded-xl border border-[#22252C] bg-[#16181E] overflow-hidden transition-colors focus-within:border-[#6C5CE7]">
         <div className="px-3 pt-3">
-          <StartFrameControl
-            startFrame={startFrame}
-            isUploadDisabled={isUploadDisabled}
-            onRequestUpload={onRequestUpload}
-            onUploadFile={onUploadFile}
-            onClear={onClearStartFrame}
-          />
-        </div>
-
-        <div className="px-3 pt-2.5">
           <div className="relative rounded-xl">
             {promptLabel && (
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8B92A5]">
@@ -122,6 +112,16 @@ export function VideoTabContent({
               }
             />
           </div>
+        </div>
+
+        <div className="px-3 pt-2.5">
+          <StartFrameControl
+            startFrame={startFrame}
+            isUploadDisabled={isUploadDisabled}
+            onRequestUpload={onRequestUpload}
+            onUploadFile={onUploadFile}
+            onClear={onClearStartFrame}
+          />
         </div>
 
         <VideoPromptToolbar
