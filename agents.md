@@ -10,6 +10,87 @@ Do not replace existing `CLAUDE.md` / `GEMINI.md` files; use this as Codex-speci
 - Server: Express + TypeScript (`tsx`) with LLM/Firebase/Stripe integrations.
 - Shared imports: `#shared/*`.
 
+## Domain Glossary
+
+These terms have specific meanings in this codebase. Do not conflate them.
+
+| Term | Meaning | Server Path | Route |
+|------|---------|-------------|-------|
+| **Span labeling** | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/` | `/llm/label-spans` |
+| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance) | `server/src/services/enhancement/` | `/api/suggestions`, `/api/enhance` |
+| **Optimization** | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement) | `server/src/services/prompt-optimization/` | `/api/optimize-stream` (SSE) |
+| **Continuity** | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match) | `server/src/services/continuity/` | `/api/continuity` |
+| **Convergence** | Motion and visual convergence pipeline (iterative refinement toward target) | `server/src/services/convergence/` | `/api/motion` |
+| **Video Concept** | Guided wizard flow: subject → action → location → camera → lighting → style | `server/src/services/video-concept/` | via `/api` routes |
+| **Model Intelligence** | AI-powered model recommendation based on prompt analysis | `server/src/services/model-intelligence/` | `/api/model-intelligence` |
+| **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview` |
+| **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
+
+**Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. The canonical implementations live in the domain subdirectories (`enhancement/`, `video-concept/`). Do not import from the root-level files.
+
+See also: `docs/architecture/SERVICE_BOUNDARIES.md` for span-labeling vs. video-prompt-analysis boundary rules.
+
+## Service Architecture
+
+### DI Registration
+
+Services are registered via domain-scoped files in `server/src/config/services/`:
+
+| Registration File | Registers |
+|---|---|
+| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits |
+| `llm.services.ts` | aiService, claudeClient, groqClient, geminiClient |
+| `enhancement.services.ts` | enhancementService, sceneDetection, coherence, videoPromptAnalysis |
+| `generation.services.ts` | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts` | continuitySessionService (gated — see Feature Flags below) |
+| `session.services.ts` | sessionService, modelIntelligence |
+
+The container is created in `server/src/config/services.config.ts` and initialized in `services.initialize.ts`. Routes consume services via factory functions in `server/src/config/routes.config.ts`.
+
+### Dependency Rules
+
+- Services receive dependencies through **constructor injection** — never call `container.resolve()` outside of route factory functions or DI config files.
+- Services may depend on infrastructure services (cache, metrics, clients) and peer services within their domain.
+- Cross-domain dependencies should flow through the route layer or an orchestrator service, not via direct imports.
+- The `aiService` is the **only** LLM routing layer. Never call provider clients (claude, groq, gemini) directly from business services.
+
+## Feature Flags
+
+These environment variables gate entire subsystems. Code that doesn't account for them will silently not execute or will crash on null references.
+
+| Flag | Default | Effect When Set |
+|------|---------|----------------|
+| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. Server becomes prompt-optimization-only. Video-related DI registrations still happen but routes are never mounted. |
+| `ENABLE_CONVERGENCE=false` | `true` | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container. Any code consuming this service must null-check. |
+
+**Rule:** When adding code that depends on `continuitySessionService`, always handle the `null` case — the service is legitimately `null` when convergence is disabled.
+
+**Rule:** When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard pattern. Generation-related routes must be inside the `if (!promptOutputOnly)` block.
+
+## Route → Service → Client API Map
+
+Use this table to find the correct client-side file for a given backend route. If no client file exists, create one following the existing pattern (thin wrapper in `api/` or stateful client in `services/`).
+
+| Route | Server Route File | Client API/Service |
+|-------|-------------------|--------------------|
+| `POST /api/optimize-stream` | `optimize.routes.ts` | `services/PromptOptimizationApi.ts` |
+| `POST /api/enhance`, `POST /api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts` |
+| `POST /llm/label-spans` | `labelSpansRoute.ts` | `features/span-highlighting/api/spanLabelingApi.ts` |
+| `/api/preview/*` | `preview.routes.ts` | `features/preview/api/` |
+| `/api/payment/*` | `payment.routes.ts` | `api/billingApi.ts` |
+| `/api/motion/*` | `motion.routes.ts` | `api/motionApi.ts` |
+| `/api/storage/*` | `storage.routes.ts` | `api/storageApi.ts` |
+| `/api/capabilities` | `capabilities.routes.ts` | `services/CapabilitiesApi.ts` |
+| `/api/continuity/*` | `continuity.routes.ts` | `features/continuity/api/` |
+| `/api/model-intelligence/*` | `model-intelligence.routes.ts` | `features/model-intelligence/api/` |
+| `/api/sessions/*` | `sessions.routes.ts` | (no dedicated client — uses ApiClient directly) |
+| `/api/video/*` | `video.routes.ts` | `services/VideoConceptApi.ts` |
+| `/api/assets/*` | `asset.routes.ts` | `features/assets/` |
+| `/api/reference-images/*` | `reference-images.routes.ts` | `features/reference-images/` |
+| `/health` | `health.routes.ts` | (not called from client) |
+
+**Rule:** API calls never go directly in React components. Use `client/src/api/` for thin fetch wrappers or `client/src/services/` for stateful clients with caching/retry. Feature-scoped APIs live in `client/src/features/<name>/api/`.
+
 ## Primary Workflows
 
 ### 1) Feature Workflow

@@ -19,6 +19,77 @@
 - server/src/contracts/        Request/response contracts
 - server/src/utils/            Shared helpers
 
+## Domain Glossary
+
+These terms have specific meanings in this codebase. Do not conflate them.
+
+| Term | Meaning | Service Path | Route |
+|------|---------|--------------|-------|
+| **Span labeling** | ML categorization of prompt phrases into taxonomy categories | `llm/span-labeling/` | `/llm/label-spans` |
+| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span | `services/enhancement/` | `/api/suggestions`, `/api/enhance` |
+| **Optimization** | Two-stage prompt rewriting (Groq fast draft → OpenAI refinement) | `services/prompt-optimization/` | `/api/optimize-stream` (SSE) |
+| **Continuity** | Shot-to-shot visual consistency (frame-bridge, style-match) | `services/continuity/` | `/api/continuity` |
+| **Convergence** | Motion/visual convergence pipeline | `services/convergence/` | `/api/motion` |
+| **Video Concept** | Guided wizard: subject → action → location → camera → lighting → style | `services/video-concept/` | via `/api` routes |
+| **Model Intelligence** | AI-powered model recommendation | `services/model-intelligence/` | `/api/model-intelligence` |
+| **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation | `services/image-generation/`, `services/video-generation/` | `/api/preview` |
+| **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `services/video-generation/` | `/api/preview` (shared routes) |
+
+**Critical:** `EnhancementService.ts` and `VideoConceptService.ts` at root of `services/` are **legacy**. Import from domain subdirectories (`enhancement/`, `video-concept/`).
+
+See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
+
+## DI Registration
+
+Services are registered via domain-scoped files in `src/config/services/`:
+
+| Registration File | Registers |
+|---|---|
+| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits |
+| `llm.services.ts` | aiService, claudeClient, groqClient, geminiClient |
+| `enhancement.services.ts` | enhancementService, sceneDetection, coherence, videoPromptAnalysis |
+| `generation.services.ts` | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts` | continuitySessionService (gated — see Feature Flags) |
+| `session.services.ts` | sessionService, modelIntelligence |
+
+Container: `src/config/services.config.ts`. Initialization: `services.initialize.ts`. Routes consume via factories in `src/config/routes.config.ts`.
+
+Dependency rules:
+- **Constructor injection** only — never `container.resolve()` outside route factories or DI config.
+- `aiService` is the **only** LLM routing layer. Never call provider clients directly.
+- Cross-domain dependencies flow through route layer or orchestrator, not direct imports.
+
+## Feature Flags
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
+| `ENABLE_CONVERGENCE=false` | `true` | `continuitySessionService` resolves to **`null`**. Must null-check. |
+
+When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block.
+
+## Route → Client API Map
+
+Server route files map to client-side API files. Reference this when adding/modifying routes to ensure the client is updated.
+
+| Route | Server Route File | Client API/Service |
+|-------|-------------------|--------------------|
+| `POST /api/optimize-stream` | `optimize.routes.ts` | `services/PromptOptimizationApi.ts` |
+| `POST /api/enhance`, `/api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts` |
+| `POST /llm/label-spans` | `labelSpansRoute.ts` | `features/span-highlighting/api/spanLabelingApi.ts` |
+| `/api/preview/*` | `preview.routes.ts` | `features/preview/api/` |
+| `/api/payment/*` | `payment.routes.ts` | `api/billingApi.ts` |
+| `/api/motion/*` | `motion.routes.ts` | `api/motionApi.ts` |
+| `/api/storage/*` | `storage.routes.ts` | `api/storageApi.ts` |
+| `/api/capabilities` | `capabilities.routes.ts` | `services/CapabilitiesApi.ts` |
+| `/api/continuity/*` | `continuity.routes.ts` | `features/continuity/api/` |
+| `/api/model-intelligence/*` | `model-intelligence.routes.ts` | `features/model-intelligence/api/` |
+| `/api/sessions/*` | `sessions.routes.ts` | (uses ApiClient directly) |
+| `/api/video/*` | `video.routes.ts` | `services/VideoConceptApi.ts` |
+| `/api/assets/*` | `asset.routes.ts` | `features/assets/` |
+| `/api/reference-images/*` | `reference-images.routes.ts` | `features/reference-images/` |
+| `/health` | `health.routes.ts` | (not called from client) |
+
 ## Architecture pattern
 - Follow PromptOptimizationService pattern in server/src/services/prompt-optimization/.
   - Thin orchestrator + specialized services + templates/ (.md)
