@@ -4,7 +4,7 @@ import type { Asset, AssetType } from '@shared/types/asset';
 import { AssetThumbnail } from '@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail';
 import {
   useSidebarAssetsDomain,
-  useSidebarPromptEditingDomain,
+  useSidebarPromptInteractionDomain,
 } from '@/components/ToolSidebar/context';
 
 interface CharactersPanelProps {
@@ -21,13 +21,13 @@ const noopCreate = (_type: AssetType): void => {};
 
 export function CharactersPanel(props: CharactersPanelProps): ReactElement {
   const assetsDomain = useSidebarAssetsDomain();
-  const promptEditingDomain = useSidebarPromptEditingDomain();
+  const promptInteractionDomain = useSidebarPromptInteractionDomain();
 
   const assets = props.assets ?? assetsDomain?.assets ?? [];
   const characterAssets = props.characterAssets ?? assetsDomain?.assetsByType.character ?? [];
   const isLoading = props.isLoading ?? assetsDomain?.isLoadingAssets ?? false;
   const onInsertTrigger =
-    props.onInsertTrigger ?? promptEditingDomain?.onInsertTrigger ?? noopWithString;
+    props.onInsertTrigger ?? promptInteractionDomain?.onInsertTrigger ?? noopWithString;
   const onEditAsset = props.onEditAsset ?? assetsDomain?.onEditAsset ?? noopWithString;
   const onCreateAsset = props.onCreateAsset ?? assetsDomain?.onCreateAsset ?? noopCreate;
 

@@ -49,6 +49,12 @@ vi.mock('@/features/prompt-optimizer/components/TriggerAutocomplete', () => ({
 
 vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
   useOptionalPromptHighlights: () => null,
+  usePromptServices: () => ({
+    promptOptimizer: {
+      inputPrompt: 'Test prompt',
+      setInputPrompt: vi.fn(),
+    },
+  }),
 }));
 
 vi.mock('@/features/span-highlighting', () => ({
@@ -61,9 +67,12 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
     loading: false,
     error: null,
     isSequenceMode: false,
+    hasActiveContinuityShot: false,
     shots: [],
+    editorShots: [],
     currentShotId: null,
     currentShot: null,
+    currentEditorShot: null,
     currentShotIndex: -1,
     setCurrentShotId: vi.fn(),
     refreshSession: vi.fn(),
@@ -79,7 +88,6 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
 const buildBaseProps = (
   overrides: Partial<GenerationControlsPanelProps> = {}
 ): GenerationControlsPanelProps => ({
-  prompt: 'Test prompt',
   onDraft: vi.fn(),
   onRender: vi.fn(),
   onStoryboard: vi.fn(),

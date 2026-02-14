@@ -18,10 +18,10 @@ import {
 import { useClipboard } from '@/features/prompt-optimizer/hooks/useClipboard';
 import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
 import type { SessionContinuityMode } from '@shared/types/session';
-import { ContinuityIntentPicker } from './ContinuityIntentPicker';
-import { PipelineStatus } from './PipelineStatus';
-import { PreviousShotContext } from './PreviousShotContext';
-import { ShotVisualStrip } from './ShotVisualStrip';
+import { ContinuityIntentPicker } from '../sequence/ContinuityIntentPicker';
+import { PipelineStatus } from '../sequence/PipelineStatus';
+import { PreviousShotContext } from '../sequence/PreviousShotContext';
+import { ShotVisualStrip } from '../sequence/ShotVisualStrip';
 
 interface SequenceWorkspaceProps {
   promptText: string;

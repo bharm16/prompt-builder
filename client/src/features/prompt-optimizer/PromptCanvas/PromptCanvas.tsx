@@ -53,6 +53,7 @@ import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { usePromptInsertionBus } from '../context/PromptInsertionBusContext';
 import { AI_MODEL_IDS, AI_MODEL_LABELS } from '../components/constants';
 import {
   usePromptActions,
@@ -68,14 +69,16 @@ export function PromptCanvas({
   user = null,
   showResults = false,
   inputPrompt,
+  onInputPromptChange,
   onReoptimize,
+  onResetResultsForEditing,
   displayedPrompt,
   previewAspectRatio = null,
   qualityScore,
   selectedMode,
   promptUuid,
   promptContext,
-  onDisplayedPromptChange,
+  onDisplayedPromptChange: _onDisplayedPromptChange,
   suggestionsData,
   onFetchSuggestions,
   onSuggestionClick,
@@ -117,6 +120,7 @@ export function PromptCanvas({
   const outputLocklineRef = useRef<HTMLDivElement>(null!);
   const lockButtonRef = useRef<HTMLButtonElement>(null!);
   const outlineOverlayRef = useRef<HTMLDivElement>(null!);
+  const { registerInsertHandler } = usePromptInsertionBus();
   const toast = useToast();
   const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -133,8 +137,8 @@ export function PromptCanvas({
   const { promptOptimizer, promptHistory } = usePromptServices();
   const { domain } = useGenerationControlsStoreState();
   const keyframes = domain.keyframes;
-  const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
-  const hasShotContext = Boolean(isSequenceMode && currentShot);
+  const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
+  const hasShotContext = Boolean(hasActiveContinuityShot && currentShot);
   const {
     currentPromptUuid,
     currentPromptDocId,
@@ -213,7 +217,7 @@ export function PromptCanvas({
   const { copied, copy } = useClipboard();
   const { shared, share } = useShareLink();
 
-  const enableMLHighlighting = selectedMode === 'video';
+  const enableMLHighlighting = selectedMode === 'video' && showResults;
 
   // Span bento overlay (collapsed by default on desktop)
   const [outlineOverlayState, setOutlineOverlayState] = useState<
@@ -238,6 +242,10 @@ export function PromptCanvas({
     () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
     [displayedPrompt]
   );
+  const normalizedInputPrompt = useMemo(() => sanitizeText(inputPrompt ?? ''), [inputPrompt]);
+  const editorDisplayText = showResults
+    ? normalizedDisplayedPrompt ?? ''
+    : normalizedInputPrompt;
   const {
     isOpen: autocompleteOpen,
     suggestions: autocompleteSuggestions,
@@ -251,7 +259,7 @@ export function PromptCanvas({
   } = useTriggerAutocomplete();
 
   const validateTriggers = useTriggerValidation(500);
-  const hasCanvasContent = showResults || Boolean(normalizedDisplayedPrompt);
+  const hasCanvasContent = true;
 
   useEffect(() => {
     if (!hasCanvasContent) {
@@ -685,8 +693,9 @@ export function PromptCanvas({
   // Editor content hook
   useEditorContent({
     editorRef: editorRef as React.RefObject<HTMLElement>,
-    displayedPrompt: normalizedDisplayedPrompt,
+    editorText: editorDisplayText,
     formattedHTML,
+    renderHtml: showResults,
   });
 
   useSpanSelectionEffects({
@@ -763,10 +772,10 @@ export function PromptCanvas({
   // Event handlers
   const handleCopy = useCallback((): void => {
     debug.logAction('copy', {
-      promptLength: normalizedDisplayedPrompt?.length ?? 0,
+      promptLength: editorDisplayText.length,
     });
-    copy(normalizedDisplayedPrompt ?? '');
-  }, [copy, normalizedDisplayedPrompt, debug]);
+    copy(editorDisplayText);
+  }, [copy, editorDisplayText, debug]);
 
   const handleShare = useCallback((): void => {
     if (promptUuid) {
@@ -784,10 +793,10 @@ export function PromptCanvas({
         return;
       }
 
-      e.clipboardData.setData('text/plain', normalizedDisplayedPrompt ?? '');
+      e.clipboardData.setData('text/plain', editorDisplayText);
       e.preventDefault();
     },
-    [normalizedDisplayedPrompt]
+    [editorDisplayText]
   );
 
   const handleModelFormatChange = useCallback(
@@ -859,50 +868,109 @@ export function PromptCanvas({
     ]
   );
 
-  const handleInput = useCallback(
-    (e: React.FormEvent<HTMLDivElement>): void => {
-      const newText =
-        e.currentTarget.innerText || e.currentTarget.textContent || '';
-      const normalizedText = sanitizeText(newText);
-      debug.logAction('textEdit', {
-        newLength: normalizedText.length,
-        oldLength: normalizedDisplayedPrompt?.length ?? 0,
-      });
-      if (onDisplayedPromptChange) {
-        onDisplayedPromptChange(normalizedText);
-      }
-
+  const resolveCaretContext = useCallback(
+    (normalizedText: string): { cursorPosition: number; caretRect: DOMRect | null } => {
       const selection = window.getSelection();
       let cursorPosition = normalizedText.length;
       let caretRect: DOMRect | null = null;
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const offsets = getSelectionOffsets(editorRef.current, range);
-        if (offsets) {
-          cursorPosition = offsets.end;
-        }
-        const rect = range.getBoundingClientRect();
-        if (rect && rect.width + rect.height > 0) {
-          caretRect = rect;
-        } else {
-          const rects = range.getClientRects();
-          const firstRect = rects[0];
-          if (firstRect) {
-            caretRect = firstRect;
-          }
+
+      if (!selection || selection.rangeCount === 0) {
+        return { cursorPosition, caretRect };
+      }
+
+      const range = selection.getRangeAt(0);
+      const offsets = getSelectionOffsets(editorRef.current, range);
+      if (offsets) {
+        cursorPosition = offsets.end;
+      }
+
+      const rect = range.getBoundingClientRect();
+      if (rect && rect.width + rect.height > 0) {
+        caretRect = rect;
+      } else {
+        const rects = range.getClientRects();
+        const firstRect = rects[0];
+        if (firstRect) {
+          caretRect = firstRect;
         }
       }
 
-      handleAutocomplete(normalizedText, cursorPosition, editorRef.current || undefined, caretRect);
-      validateTriggers(normalizedText);
+      return { cursorPosition, caretRect };
     },
-    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, handleAutocomplete, validateTriggers]
+    []
   );
+
+  const syncEditorToPromptState = useCallback((): void => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const newText = editor.innerText || editor.textContent || '';
+    const normalizedText = sanitizeText(newText);
+
+    debug.logAction('textEdit', {
+      newLength: normalizedText.length,
+      oldLength: editorDisplayText.length,
+    });
+
+    onInputPromptChange(normalizedText);
+    if (showResults) {
+      onResetResultsForEditing?.();
+    }
+
+    const { cursorPosition, caretRect } = resolveCaretContext(normalizedText);
+    handleAutocomplete(normalizedText, cursorPosition, editor, caretRect);
+    validateTriggers(normalizedText);
+  }, [
+    debug,
+    editorDisplayText.length,
+    handleAutocomplete,
+    onInputPromptChange,
+    onResetResultsForEditing,
+    resolveCaretContext,
+    showResults,
+    validateTriggers,
+  ]);
+
+  const handleInput = useCallback((): void => {
+    syncEditorToPromptState();
+  }, [syncEditorToPromptState]);
+
+  const insertAtCanvasCaret = useCallback(
+    (text: string): boolean => {
+      const editor = editorRef.current;
+      const selection = window.getSelection();
+      if (!editor || !selection || selection.rangeCount === 0) {
+        return false;
+      }
+
+      const range = selection.getRangeAt(0);
+      if (!editor.contains(range.commonAncestorContainer)) {
+        return false;
+      }
+
+      range.deleteContents();
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      syncEditorToPromptState();
+      return true;
+    },
+    [syncEditorToPromptState]
+  );
+
+  useEffect(() => {
+    registerInsertHandler(insertAtCanvasCaret);
+    return () => registerInsertHandler(null);
+  }, [insertAtCanvasCaret, registerInsertHandler]);
 
   const insertTrigger = useCallback(
     (asset: { trigger: string }) => {
       const editor = editorRef.current;
-      const text = normalizedDisplayedPrompt ?? '';
+      const text = editor?.innerText || editor?.textContent || editorDisplayText;
       const selection = window.getSelection();
       if (!editor || !selection || selection.rangeCount === 0) {
         return;
@@ -919,17 +987,18 @@ export function PromptCanvas({
 
       const newText =
         text.slice(0, triggerStart) + asset.trigger + text.slice(cursorPos);
-      onDisplayedPromptChange?.(newText);
+      editor.textContent = newText;
 
       const newCursorPos = triggerStart + asset.trigger.length;
       setTimeout(() => {
         restoreSelectionFromOffsets(editor, newCursorPos, newCursorPos);
         editor.focus();
+        syncEditorToPromptState();
       }, 0);
 
       closeAutocomplete();
     },
-    [normalizedDisplayedPrompt, onDisplayedPromptChange, closeAutocomplete]
+    [closeAutocomplete, editorDisplayText, syncEditorToPromptState]
   );
 
   const handleEditorKeyDown = useCallback(
@@ -1063,7 +1132,7 @@ export function PromptCanvas({
 
   const generationsPanelProps = useMemo<GenerationsPanelProps>(
     () => ({
-      prompt: normalizedDisplayedPrompt ?? '',
+      prompt: showResults ? (normalizedDisplayedPrompt ?? '') : normalizedInputPrompt,
       promptVersionId,
       aspectRatio: effectiveAspectRatio ?? '16:9',
       duration: durationSeconds ?? undefined,
@@ -1077,6 +1146,8 @@ export function PromptCanvas({
     }),
     [
       normalizedDisplayedPrompt,
+      normalizedInputPrompt,
+      showResults,
       promptVersionId,
       effectiveAspectRatio,
       durationSeconds,

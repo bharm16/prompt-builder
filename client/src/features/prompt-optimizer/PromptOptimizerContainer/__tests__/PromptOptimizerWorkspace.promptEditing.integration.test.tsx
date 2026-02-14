@@ -1,31 +1,21 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import PromptOptimizerWorkspace from '../PromptOptimizerWorkspace';
 
 const capturedViewProps = vi.hoisted(() => ({ current: null as any }));
-const workspaceSessionState = vi.hoisted(() => ({
-  isSequenceMode: true,
-  currentShotId: 'shot-1',
-  currentShot: null,
-  updateShot: vi.fn(async () => undefined),
+const promptStateSetters = vi.hoisted(() => ({
+  setShowResults: vi.fn(),
+  setDisplayedPromptSilently: vi.fn(),
 }));
 const promptOptimizerState = vi.hoisted(() => ({
-  inputPrompt: 'initial prompt',
-  displayedPrompt: 'existing output',
-  optimizedPrompt: '',
+  inputPrompt: 'input prompt',
+  displayedPrompt: 'optimized output',
+  optimizedPrompt: 'optimized output',
   genericOptimizedPrompt: null,
   isProcessing: false,
   isRefining: false,
-  setInputPrompt: vi.fn((nextPrompt: string) => {
-    promptOptimizerState.inputPrompt = nextPrompt;
-  }),
-}));
-const promptStateSetters = vi.hoisted(() => ({
-  setShowResults: vi.fn(),
-  setDisplayedPromptSilently: vi.fn((nextPrompt: string) => {
-    promptOptimizerState.displayedPrompt = nextPrompt;
-  }),
+  setInputPrompt: vi.fn(),
 }));
 
 vi.mock('@hooks/useAuthUser', () => ({
@@ -144,7 +134,12 @@ vi.mock('../../context/GenerationControlsStore', () => ({
 
 vi.mock('../../context/WorkspaceSessionContext', () => ({
   WorkspaceSessionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useWorkspaceSession: () => workspaceSessionState,
+  useWorkspaceSession: () => ({
+    hasActiveContinuityShot: false,
+    currentShotId: null,
+    currentShot: null,
+    updateShot: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useI2VContext', () => ({
@@ -155,75 +150,76 @@ vi.mock('../../hooks/useI2VContext', () => ({
   }),
 }));
 
-vi.mock('../hooks', () => ({
-  usePromptLoader: () => ({ isLoading: false }),
-  useHighlightsPersistence: () => ({ handleHighlightsPersist: vi.fn() }),
-  useUndoRedo: () => ({
-    handleUndo: vi.fn(),
-    handleRedo: vi.fn(),
-    handleDisplayedPromptChange: vi.fn(),
-  }),
-  usePromptOptimization: () => ({
-    handleOptimize: vi.fn(async () => undefined),
-  }),
-  useImprovementFlow: () => ({
-    handleImproveFirst: vi.fn(),
-    handleImprovementComplete: vi.fn(),
-  }),
-  useConceptBrainstorm: () => ({
-    handleConceptComplete: vi.fn(),
-    handleSkipBrainstorm: vi.fn(),
-  }),
-  useEnhancementSuggestions: () => ({
-    fetchEnhancementSuggestions: vi.fn(),
-    handleSuggestionClick: vi.fn(),
-  }),
-  usePromptKeyframesSync: () => ({
-    serializedKeyframes: [],
-    onLoadKeyframes: vi.fn(),
-  }),
-  useStablePromptContext: () => null,
-  usePromptCoherence: () => ({
-    issues: [],
-    isChecking: false,
-    isPanelExpanded: false,
-    setIsPanelExpanded: vi.fn(),
-    affectedSpanIds: new Set<string>(),
-    spanIssueMap: new Map<string, 'conflict' | 'harmonization'>(),
-    runCheck: vi.fn(),
-    dismissIssue: vi.fn(),
-    dismissAll: vi.fn(),
-    applyFix: vi.fn(),
-  }),
-  useAssetManagement: () => ({
-    assetEditorState: null,
-    quickCreateState: { isOpen: false },
-    handlers: {
-      onEditAsset: vi.fn(),
-      onCreateAsset: vi.fn(),
-      onCreateFromTrigger: vi.fn(),
-      onCloseAssetEditor: vi.fn(),
-      onCloseQuickCreate: vi.fn(),
-      onQuickCreateComplete: vi.fn(async () => undefined),
-      onCreate: vi.fn(async () => ({})),
-      onUpdate: vi.fn(async () => ({})),
-      onAddImage: vi.fn(async () => undefined),
-      onDeleteImage: vi.fn(async () => undefined),
-      onSetPrimaryImage: vi.fn(async () => undefined),
-    },
-  }),
-  useSequenceShotPromptSync: vi.fn(),
-}));
+vi.mock('../hooks', async () => {
+  const actual = await vi.importActual<typeof import('../hooks')>('../hooks');
+  return {
+    ...actual,
+    usePromptLoader: () => ({ isLoading: false }),
+    useHighlightsPersistence: () => ({ handleHighlightsPersist: vi.fn() }),
+    useUndoRedo: () => ({
+      handleUndo: vi.fn(),
+      handleRedo: vi.fn(),
+      handleDisplayedPromptChange: vi.fn(),
+    }),
+    usePromptOptimization: () => ({
+      handleOptimize: vi.fn(async () => undefined),
+    }),
+    useImprovementFlow: () => ({
+      handleImproveFirst: vi.fn(),
+      handleImprovementComplete: vi.fn(),
+    }),
+    useConceptBrainstorm: () => ({
+      handleConceptComplete: vi.fn(),
+      handleSkipBrainstorm: vi.fn(),
+    }),
+    useEnhancementSuggestions: () => ({
+      fetchEnhancementSuggestions: vi.fn(),
+      handleSuggestionClick: vi.fn(),
+    }),
+    usePromptKeyframesSync: () => ({
+      serializedKeyframes: [],
+      onLoadKeyframes: vi.fn(),
+    }),
+    useStablePromptContext: () => null,
+    usePromptCoherence: () => ({
+      issues: [],
+      isChecking: false,
+      isPanelExpanded: false,
+      setIsPanelExpanded: vi.fn(),
+      affectedSpanIds: new Set<string>(),
+      spanIssueMap: new Map<string, 'conflict' | 'harmonization'>(),
+      runCheck: vi.fn(),
+      dismissIssue: vi.fn(),
+      dismissAll: vi.fn(),
+      applyFix: vi.fn(),
+    }),
+    useAssetManagement: () => ({
+      assetEditorState: null,
+      quickCreateState: { isOpen: false },
+      handlers: {
+        onEditAsset: vi.fn(),
+        onCreateAsset: vi.fn(),
+        onCreateFromTrigger: vi.fn(),
+        onCloseAssetEditor: vi.fn(),
+        onCloseQuickCreate: vi.fn(),
+        onQuickCreateComplete: vi.fn(async () => undefined),
+        onCreate: vi.fn(async () => ({})),
+        onUpdate: vi.fn(async () => ({})),
+        onAddImage: vi.fn(async () => undefined),
+        onDeleteImage: vi.fn(async () => undefined),
+        onSetPrimaryImage: vi.fn(async () => undefined),
+      },
+    }),
+    useEditorShotPromptBinding: vi.fn(),
+  };
+});
 
 vi.mock('../../context/PromptResultsActionsContext', () => ({
   PromptResultsActionsProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('../providers/sidebar', () => ({
-  SidebarSessionsProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SidebarAssetsProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SidebarPromptEditingProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SidebarGenerationProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SidebarDataProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('../components/PromptOptimizerWorkspaceView', () => ({
@@ -233,59 +229,23 @@ vi.mock('../components/PromptOptimizerWorkspaceView', () => ({
   },
 }));
 
-describe('PromptOptimizerWorkspace prompt editing integration', () => {
+describe('PromptOptimizerWorkspace prompt interaction integration', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     vi.clearAllMocks();
-    promptOptimizerState.inputPrompt = 'initial prompt';
-    promptOptimizerState.displayedPrompt = 'existing output';
-    workspaceSessionState.isSequenceMode = true;
-    workspaceSessionState.currentShotId = 'shot-1';
-    workspaceSessionState.updateShot.mockClear();
+    promptOptimizerState.inputPrompt = 'input prompt';
+    promptOptimizerState.displayedPrompt = 'optimized output';
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('updates input, clears displayed output/results, and debounces sequence shot sync', async () => {
+  it('does not pass legacy sequence workspace props to the view', () => {
     render(<PromptOptimizerWorkspace />);
 
-    const onPromptChange =
-      capturedViewProps.current.sequenceWorkspaceProps.onPromptChange;
-
-    act(() => {
-      onPromptChange('next prompt');
-    });
-
-    expect(promptOptimizerState.setInputPrompt).toHaveBeenCalledWith('next prompt');
-    expect(promptStateSetters.setDisplayedPromptSilently).toHaveBeenCalledWith('');
-    expect(promptStateSetters.setShowResults).toHaveBeenCalledWith(false);
-    expect(workspaceSessionState.updateShot).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(workspaceSessionState.updateShot).toHaveBeenCalledWith('shot-1', { prompt: 'next prompt' });
+    expect(capturedViewProps.current).toBeTruthy();
+    expect(capturedViewProps.current.sequenceWorkspaceProps).toBeUndefined();
   });
 
-  it('cancels pending sequence sync on unmount', async () => {
-    const { unmount } = render(<PromptOptimizerWorkspace />);
+  it('uses displayed prompt for detected assets while results are visible', () => {
+    render(<PromptOptimizerWorkspace />);
 
-    const onPromptChange =
-      capturedViewProps.current.sequenceWorkspaceProps.onPromptChange;
-
-    act(() => {
-      onPromptChange('unmount prompt');
-    });
-
-    unmount();
-
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(workspaceSessionState.updateShot).not.toHaveBeenCalled();
+    expect(capturedViewProps.current.detectedAssetsPrompt).toBe('optimized output');
   });
 });

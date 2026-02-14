@@ -38,19 +38,16 @@ import {
   useStablePromptContext,
   usePromptCoherence,
   useAssetManagement,
-  useSequenceShotPromptSync,
+  useEditorShotPromptBinding,
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
 import { WorkspaceSessionProvider, useWorkspaceSession } from '../context/WorkspaceSessionContext';
 import { PromptResultsActionsProvider } from '../context/PromptResultsActionsContext';
+import { PromptInsertionBusProvider } from '../context/PromptInsertionBusContext';
 import {
-  SidebarAssetsProvider,
-  SidebarGenerationProvider,
-  SidebarPromptEditingProvider,
-  SidebarSessionsProvider,
+  SidebarDataProvider,
 } from './providers/sidebar';
-import { debounce } from '../utils/debounce';
 
 const log = logger.child('PromptOptimizerWorkspace');
 const buildDefaultCameraTransform = (): CameraPath['start'] => ({
@@ -107,7 +104,6 @@ function PromptOptimizerContent({
   convergenceHandoff,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
-  const promptInputRef = React.useRef<HTMLTextAreaElement>(null!);
   // Track if we've already applied the handoff to prevent re-applying
   const handoffAppliedRef = React.useRef<string | null>(null);
 
@@ -192,7 +188,7 @@ function PromptOptimizerContent({
   const subjectMotion = domain.subjectMotion;
   const i2vContext = useI2VContext();
   const {
-    isSequenceMode,
+    hasActiveContinuityShot,
     currentShotId,
     currentShot,
     updateShot,
@@ -272,21 +268,22 @@ function PromptOptimizerContent({
     toast,
   ]);
 
-  useSequenceShotPromptSync({
-    isSequenceMode,
-    currentShot,
+  useEditorShotPromptBinding({
+    currentEditorShot: currentShot,
+    hasActiveContinuityShot,
     promptOptimizer,
+    updateShot,
     setDisplayedPromptSilently,
     setShowResults,
   });
 
   useEffect(() => {
-    if (!isSequenceMode || !currentShot) return;
+    if (!hasActiveContinuityShot || !currentShot) return;
     const shotModelId = currentShot.modelId?.trim();
     if (!shotModelId) return;
     if (selectedModel === shotModelId) return;
     setSelectedModel(shotModelId);
-  }, [currentShot?.id, currentShot?.modelId, isSequenceMode, selectedModel, setSelectedModel]);
+  }, [currentShot?.id, currentShot?.modelId, hasActiveContinuityShot, selectedModel, setSelectedModel]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
 
@@ -346,39 +343,6 @@ function PromptOptimizerContent({
     clearStartFrame();
     handleCreateNew();
   }, [clearStartFrame, handleCreateNew, setKeyframes]);
-
-  const insertTriggerAtCursor = useCallback(
-    (trigger: string, range?: { start: number; end: number }): void => {
-      const input = promptInputRef.current;
-      const currentText = promptOptimizer.inputPrompt;
-      const normalizedTrigger = trigger.startsWith('@') ? trigger : `@${trigger}`;
-
-      if (!input) {
-        promptOptimizer.setInputPrompt(`${currentText}${normalizedTrigger}`);
-        return;
-      }
-
-      const isFocused = document.activeElement === input;
-      const start = range?.start ?? (isFocused ? input.selectionStart ?? currentText.length : currentText.length);
-      const end = range?.end ?? (isFocused ? input.selectionEnd ?? currentText.length : currentText.length);
-      const before = currentText.slice(0, start);
-      const after = currentText.slice(end);
-      const needsSpaceBefore = before.length > 0 && !/\s$/.test(before);
-      const needsSpaceAfter = after.length > 0 && !/^\s/.test(after);
-      const insertion = `${needsSpaceBefore ? ' ' : ''}${normalizedTrigger}${
-        needsSpaceAfter ? ' ' : ''
-      }`;
-      const nextText = `${before}${insertion}${after}`;
-
-      promptOptimizer.setInputPrompt(nextText);
-      const nextCursor = before.length + insertion.length;
-      requestAnimationFrame(() => {
-        input.focus();
-        input.setSelectionRange(nextCursor, nextCursor);
-      });
-    },
-    [promptOptimizer]
-  );
 
   const uploadSidebarImage = useCallback(
     async (file: File): Promise<{
@@ -448,40 +412,16 @@ function PromptOptimizerContent({
     [setStartFrame, toast, uploadSidebarImage]
   );
 
-  const debouncedShotPromptUpdate = useMemo(
-    () =>
-      debounce((shotId: string, nextPrompt: string) => {
-        void updateShot(shotId, { prompt: nextPrompt });
-      }, 500),
-    [updateShot]
-  );
-
-  useEffect(() => () => debouncedShotPromptUpdate.cancel(), [debouncedShotPromptUpdate]);
-
-  const handleSidebarPromptChange = useCallback(
-    (nextPrompt: string): void => {
-      promptOptimizer.setInputPrompt(nextPrompt);
-      if (promptOptimizer.displayedPrompt?.trim()) {
-        setDisplayedPromptSilently('');
-        setShowResults(false);
-      }
-      if (isSequenceMode && currentShotId) {
-        debouncedShotPromptUpdate(currentShotId, nextPrompt);
-      }
-    },
-    [
-      promptOptimizer,
-      setDisplayedPromptSilently,
-      setShowResults,
-      isSequenceMode,
-      currentShotId,
-      debouncedShotPromptUpdate,
-    ]
-  );
+  const clearResultsView = useCallback((): void => {
+    if (promptOptimizer.displayedPrompt?.trim()) {
+      setDisplayedPromptSilently('');
+    }
+    setShowResults(false);
+  }, [promptOptimizer.displayedPrompt, setDisplayedPromptSilently, setShowResults]);
 
   const handleSequenceOptimizationApplied = useCallback(
     async (optimizedPrompt: string): Promise<void> => {
-      if (!isSequenceMode || !currentShotId) return;
+      if (!hasActiveContinuityShot || !currentShotId) return;
       try {
         await updateShot(currentShotId, { prompt: optimizedPrompt });
       } catch (error) {
@@ -492,7 +432,7 @@ function PromptOptimizerContent({
         toast.error('Failed to save optimized shot prompt');
       }
     },
-    [currentShotId, isSequenceMode, toast, updateShot]
+    [currentShotId, hasActiveContinuityShot, toast, updateShot]
   );
 
   const promptForAssets = useMemo(() => {
@@ -650,105 +590,91 @@ function PromptOptimizerContent({
   const shouldShowLoading = isLoading;
 
   return (
-    <SidebarSessionsProvider>
-      <SidebarAssetsProvider
+    <PromptInsertionBusProvider
+      inputPrompt={promptOptimizer.inputPrompt}
+      setInputPrompt={promptOptimizer.setInputPrompt}
+      clearResultsView={clearResultsView}
+    >
+      <SidebarDataProvider
         assets={assetsSidebar.assets}
         assetsByType={assetsSidebar.byType}
         isLoadingAssets={assetsSidebar.isLoading}
         onEditAsset={assetManagement.onEditAsset}
         onCreateAsset={assetManagement.onCreateAsset}
+        onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+        onImageUpload={handleImageUpload}
+        onStartFrameUpload={handleStartFrameUpload}
       >
-        <SidebarPromptEditingProvider
-          promptInputRef={promptInputRef}
-          onPromptChange={handleSidebarPromptChange}
-          onOptimize={handleOptimize}
-          onInsertTrigger={insertTriggerAtCursor}
-          onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+        <PromptResultsActionsProvider
+          currentPromptUuid={currentPromptUuid}
+          currentPromptDocId={currentPromptDocId}
+          displayedPrompt={promptOptimizer.displayedPrompt}
+          isApplyingHistoryRef={isApplyingHistoryRef}
+          handleDisplayedPromptChange={handleDisplayedPromptChange}
+          promptHistory={promptHistory}
+          setOutputSaveState={setOutputSaveState}
+          setOutputLastSavedAt={setOutputLastSavedAt}
+          user={user}
+          onReoptimize={handleOptimize}
+          onFetchSuggestions={fetchEnhancementSuggestions}
+          onSuggestionClick={handleSuggestionClick}
+          onHighlightsPersist={handleHighlightsPersist}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          stablePromptContext={stablePromptContext}
+          suggestionsData={suggestionsData}
+          coherenceAffectedSpanIds={affectedSpanIds}
+          coherenceSpanIssueMap={spanIssueMap}
+          coherenceIssues={coherenceIssues}
+          isCoherenceChecking={isCoherenceChecking}
+          isCoherencePanelExpanded={isPanelExpanded}
+          onToggleCoherencePanelExpanded={() => setIsPanelExpanded((prev) => !prev)}
+          onDismissCoherenceIssue={dismissIssue}
+          onDismissAllCoherenceIssues={dismissAll}
+          onApplyCoherenceFix={applyFix}
+          onScrollToCoherenceSpan={scrollToSpanById}
+          i2vContext={i2vContext}
         >
-          <SidebarGenerationProvider
-            onImageUpload={handleImageUpload}
-            onStartFrameUpload={handleStartFrameUpload}
-          >
-            <PromptResultsActionsProvider
-              currentPromptUuid={currentPromptUuid}
-              currentPromptDocId={currentPromptDocId}
-              displayedPrompt={promptOptimizer.displayedPrompt}
-              isApplyingHistoryRef={isApplyingHistoryRef}
-              handleDisplayedPromptChange={handleDisplayedPromptChange}
-              promptHistory={promptHistory}
-              setOutputSaveState={setOutputSaveState}
-              setOutputLastSavedAt={setOutputLastSavedAt}
-              user={user}
-              onReoptimize={handleOptimize}
-              onFetchSuggestions={fetchEnhancementSuggestions}
-              onSuggestionClick={handleSuggestionClick}
-              onHighlightsPersist={handleHighlightsPersist}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              stablePromptContext={stablePromptContext}
-              suggestionsData={suggestionsData}
-              coherenceAffectedSpanIds={affectedSpanIds}
-              coherenceSpanIssueMap={spanIssueMap}
-              coherenceIssues={coherenceIssues}
-              isCoherenceChecking={isCoherenceChecking}
-              isCoherencePanelExpanded={isPanelExpanded}
-              onToggleCoherencePanelExpanded={() => setIsPanelExpanded((prev) => !prev)}
-              onDismissCoherenceIssue={dismissIssue}
-              onDismissAllCoherenceIssues={dismissAll}
-              onApplyCoherenceFix={applyFix}
-              onScrollToCoherenceSpan={scrollToSpanById}
-              i2vContext={i2vContext}
-            >
-              <PromptOptimizerWorkspaceView
-                showHistory={showHistory}
-                onToggleHistory={setShowHistory}
-                shouldShowLoading={shouldShowLoading}
-                promptModalsProps={{
-                  onImprovementComplete: handleImprovementComplete,
-                  onConceptComplete: handleConceptComplete,
-                  onSkipBrainstorm: handleSkipBrainstorm,
-                }}
-                quickCreateState={quickCreateState}
-                onQuickCreateClose={assetManagement.onCloseQuickCreate}
-                onQuickCreateComplete={assetManagement.onQuickCreateComplete}
-                assetEditorState={assetEditorState}
-                assetEditorHandlers={{
-                  onClose: assetManagement.onCloseAssetEditor,
-                  onCreate: assetManagement.onCreate,
-                  onUpdate: assetManagement.onUpdate,
-                  onAddImage: assetManagement.onAddImage,
-                  onDeleteImage: assetManagement.onDeleteImage,
-                  onSetPrimaryImage: assetManagement.onSetPrimaryImage,
-                }}
-                detectedAssetsPrompt={promptForAssets}
-                detectedAssets={assetsSidebar.assets}
-                onEditAsset={assetManagement.onEditAsset}
-                onCreateFromTrigger={assetManagement.onCreateFromTrigger}
-                sequenceWorkspaceProps={{
-                  promptText: promptOptimizer.inputPrompt,
-                  isOptimizing: Boolean(promptOptimizer.isProcessing || promptOptimizer.isRefining),
-                  onPromptChange: handleSidebarPromptChange,
-                  onOptimize: handleOptimize,
-                  history: promptHistory.history,
-                  currentPromptDocId,
-                }}
-                debugProps={{
-                  enabled:
-                    false &&
-                    (import.meta.env.DEV ||
-                      new URLSearchParams(window.location.search).get('debug') === 'true'),
-                  inputPrompt: promptOptimizer.inputPrompt,
-                  displayedPrompt: promptOptimizer.displayedPrompt,
-                  optimizedPrompt: promptOptimizer.optimizedPrompt,
-                  selectedMode,
-                  promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
-                }}
-              />
-            </PromptResultsActionsProvider>
-          </SidebarGenerationProvider>
-        </SidebarPromptEditingProvider>
-      </SidebarAssetsProvider>
-    </SidebarSessionsProvider>
+          <PromptOptimizerWorkspaceView
+            showHistory={showHistory}
+            onToggleHistory={setShowHistory}
+            shouldShowLoading={shouldShowLoading}
+            promptModalsProps={{
+              onImprovementComplete: handleImprovementComplete,
+              onConceptComplete: handleConceptComplete,
+              onSkipBrainstorm: handleSkipBrainstorm,
+            }}
+            quickCreateState={quickCreateState}
+            onQuickCreateClose={assetManagement.onCloseQuickCreate}
+            onQuickCreateComplete={assetManagement.onQuickCreateComplete}
+            assetEditorState={assetEditorState}
+            assetEditorHandlers={{
+              onClose: assetManagement.onCloseAssetEditor,
+              onCreate: assetManagement.onCreate,
+              onUpdate: assetManagement.onUpdate,
+              onAddImage: assetManagement.onAddImage,
+              onDeleteImage: assetManagement.onDeleteImage,
+              onSetPrimaryImage: assetManagement.onSetPrimaryImage,
+            }}
+            detectedAssetsPrompt={promptForAssets}
+            detectedAssets={assetsSidebar.assets}
+            onEditAsset={assetManagement.onEditAsset}
+            onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+            debugProps={{
+              enabled:
+                false &&
+                (import.meta.env.DEV ||
+                  new URLSearchParams(window.location.search).get('debug') === 'true'),
+              inputPrompt: promptOptimizer.inputPrompt,
+              displayedPrompt: promptOptimizer.displayedPrompt,
+              optimizedPrompt: promptOptimizer.optimizedPrompt,
+              selectedMode,
+              promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
+            }}
+          />
+        </PromptResultsActionsProvider>
+      </SidebarDataProvider>
+    </PromptInsertionBusProvider>
   );
 }
 

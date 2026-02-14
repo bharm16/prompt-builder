@@ -2,9 +2,7 @@ import React from 'react';
 import { ChevronDown } from '@promptstudio/system/components/ui';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { StartFrameControl } from '@components/ToolSidebar/components/panels/StartFrameControl';
-import { PromptEditor } from './PromptEditor';
 import { VideoPromptToolbar } from './VideoPromptToolbar';
-import { type AutocompleteState } from './PromptTriggerAutocomplete';
 import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
 import { formatCredits } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 
@@ -14,17 +12,7 @@ interface VideoTabContentProps {
   onRequestUpload: () => void;
   onUploadFile: (file: File) => void | Promise<void>;
   onClearStartFrame: () => void;
-  prompt: string;
-  onPromptChange?: ((prompt: string) => void) | undefined;
-  promptLabel?: string;
-  isInputLocked: boolean;
-  isOptimizing: boolean;
-  promptInputRef: React.RefObject<HTMLTextAreaElement>;
-  onPromptInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onPromptKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCreateFromTrigger?: ((trigger: string) => void) | undefined;
-  autocomplete: AutocompleteState;
-  afterPrompt?: React.ReactNode;
+  promptLength: number;
   faceSwapMode: 'direct' | 'face-swap';
   faceSwapCharacterOptions: Array<{ id: string; label: string }>;
   selectedCharacterId: string;
@@ -52,17 +40,7 @@ export function VideoTabContent({
   onRequestUpload,
   onUploadFile,
   onClearStartFrame,
-  prompt,
-  onPromptChange,
-  promptLabel,
-  isInputLocked,
-  isOptimizing,
-  promptInputRef,
-  onPromptInputChange,
-  onPromptKeyDown,
-  onCreateFromTrigger,
-  autocomplete,
-  afterPrompt,
+  promptLength,
   faceSwapMode,
   faceSwapCharacterOptions,
   selectedCharacterId,
@@ -85,36 +63,8 @@ export function VideoTabContent({
 }: VideoTabContentProps): React.ReactElement {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-3 flex flex-col gap-2.5">
-      {/* ── Prompt card ── */}
       <div className="rounded-xl border border-[#22252C] bg-[#16181E] overflow-hidden transition-colors focus-within:border-[#6C5CE7]">
-        <div className="px-3 pt-3">
-          <div className="relative rounded-xl">
-            {promptLabel && (
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8B92A5]">
-                {promptLabel}
-              </div>
-            )}
-            <PromptEditor
-              prompt={prompt}
-              onPromptChange={onPromptChange}
-              isInputLocked={isInputLocked}
-              isOptimizing={isOptimizing}
-              promptInputRef={promptInputRef}
-              onPromptInputChange={onPromptInputChange}
-              onPromptKeyDown={onPromptKeyDown}
-              onCreateFromTrigger={onCreateFromTrigger}
-              autocomplete={autocomplete}
-              placeholder="Describe your shot..."
-              rows={6}
-              containerClassName="relative"
-              textareaClassName={
-                'min-h-[130px] p-0 text-[#E2E6EF] text-[13px] leading-[1.65] whitespace-pre-wrap outline-none resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0'
-              }
-            />
-          </div>
-        </div>
-
-        <div className="px-3 pt-2.5">
+        <div className="px-3 py-3">
           <StartFrameControl
             startFrame={startFrame}
             isUploadDisabled={isUploadDisabled}
@@ -132,7 +82,7 @@ export function VideoTabContent({
           onClear={onClear}
           onGenerateSinglePreview={onGenerateSinglePreview}
           onGenerateFourPreviews={onGenerateFourPreviews}
-          promptLength={prompt.length}
+          promptLength={promptLength}
         />
       </div>
 
@@ -187,8 +137,6 @@ export function VideoTabContent({
           )}
         </div>
       )}
-
-      {afterPrompt && <div>{afterPrompt}</div>}
 
       {/* ── References section ── */}
       <div>

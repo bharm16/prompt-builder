@@ -14,78 +14,50 @@ import { VideoTabContent } from "./components/VideoTabContent";
 import { useGenerationControlsPanel } from "./hooks/useGenerationControlsPanel";
 import type { GenerationControlsPanelInputProps, GenerationControlsPanelProps } from "./types";
 import type { DraftModel, GenerationOverrides } from "@components/ToolSidebar/types";
-import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import {
   useSidebarAssetsDomain,
   useSidebarGenerationDomain,
-  useSidebarPromptEditingDomain,
+  useSidebarPromptInteractionDomain,
 } from "@/components/ToolSidebar/context";
 
 const noopDraft = (_model: DraftModel, _overrides?: GenerationOverrides): void => {};
 const noopRender = (_model: string, _overrides?: GenerationOverrides): void => {};
 const noopStoryboard = (): void => {};
-const noopInsertTrigger = (_trigger: string, _range?: { start: number; end: number }): void => {};
 
 export function GenerationControlsPanel(
   props: GenerationControlsPanelInputProps,
 ): ReactElement {
-  const promptEditingDomain = useSidebarPromptEditingDomain();
+  const promptInteractionDomain = useSidebarPromptInteractionDomain();
   const generationDomain = useSidebarGenerationDomain();
   const assetsDomain = useSidebarAssetsDomain();
   const {
-    prompt: promptFromProps,
-    onPromptChange: onPromptChangeFromProps,
     onDraft: onDraftFromProps,
     onRender: onRenderFromProps,
     onStoryboard: onStoryboardFromProps,
     onBack,
-    onCreateFromTrigger: onCreateFromTriggerFromProps,
-    onOptimize: onOptimizeFromProps,
-    showResults: showResultsFromProps,
     isProcessing: isProcessingFromProps,
     isRefining: isRefiningFromProps,
-    genericOptimizedPrompt: genericOptimizedPromptFromProps,
-    promptInputRef: promptInputRefFromProps,
     assets: assetsFromProps,
-    onInsertTrigger: onInsertTriggerFromProps,
     onImageUpload: onImageUploadFromProps,
     onStartFrameUpload: onStartFrameUploadFromProps,
   } = props;
-  const prompt = promptFromProps ?? promptEditingDomain?.prompt ?? "";
-  const onPromptChange = onPromptChangeFromProps ?? promptEditingDomain?.onPromptChange;
   const onDraft = onDraftFromProps ?? generationDomain?.onDraft ?? noopDraft;
   const onRender = onRenderFromProps ?? generationDomain?.onRender ?? noopRender;
   const onStoryboard = onStoryboardFromProps ?? generationDomain?.onStoryboard ?? noopStoryboard;
-  const onCreateFromTrigger = onCreateFromTriggerFromProps ?? promptEditingDomain?.onCreateFromTrigger;
-  const onOptimize = onOptimizeFromProps ?? promptEditingDomain?.onOptimize;
-  const showResults = showResultsFromProps ?? promptEditingDomain?.showResults;
-  const isProcessing = isProcessingFromProps ?? promptEditingDomain?.isProcessing;
-  const isRefining = isRefiningFromProps ?? promptEditingDomain?.isRefining;
-  const genericOptimizedPrompt =
-    genericOptimizedPromptFromProps ?? promptEditingDomain?.genericOptimizedPrompt ?? null;
-  const promptInputRef = promptInputRefFromProps ?? promptEditingDomain?.promptInputRef;
+  const isProcessing = isProcessingFromProps ?? promptInteractionDomain?.isProcessing;
+  const isRefining = isRefiningFromProps ?? promptInteractionDomain?.isRefining;
   const assets = assetsFromProps ?? assetsDomain?.assets ?? [];
-  const onInsertTrigger =
-    onInsertTriggerFromProps ?? promptEditingDomain?.onInsertTrigger ?? noopInsertTrigger;
   const onImageUpload = onImageUploadFromProps ?? generationDomain?.onImageUpload;
   const onStartFrameUpload =
     onStartFrameUploadFromProps ?? generationDomain?.onStartFrameUpload;
 
   const mergedProps: GenerationControlsPanelProps = {
-    prompt,
     onDraft,
     onRender,
     onStoryboard,
-    ...(onPromptChange ? { onPromptChange } : {}),
-    ...(onOptimize ? { onOptimize } : {}),
-    ...(typeof showResults === "boolean" ? { showResults } : {}),
     ...(typeof isProcessing === "boolean" ? { isProcessing } : {}),
     ...(typeof isRefining === "boolean" ? { isRefining } : {}),
-    genericOptimizedPrompt,
-    ...(promptInputRef ? { promptInputRef } : {}),
     assets,
-    onInsertTrigger,
-    ...(onCreateFromTrigger ? { onCreateFromTrigger } : {}),
     ...(onBack ? { onBack } : {}),
     ...(onImageUpload ? { onImageUpload } : {}),
     ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
@@ -99,13 +71,8 @@ export function GenerationControlsPanel(
     derived,
     recommendation,
     capabilities,
-    autocomplete,
     actions,
   } = useGenerationControlsPanel(mergedProps);
-  const {
-    isSequenceMode,
-    currentShotIndex,
-  } = useWorkspaceSession();
   const {
     aspectRatio,
     duration,
@@ -118,10 +85,6 @@ export function GenerationControlsPanel(
   const showMotionControls = true;
   const isFaceSwapMode = faceSwap.mode === "face-swap";
   const isFaceSwapFlow = isFaceSwapMode && state.activeTab === "video";
-  const promptLabel =
-    isSequenceMode && currentShotIndex >= 0
-      ? `Shot ${currentShotIndex + 1} Prompt`
-      : "Prompt";
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
@@ -285,16 +248,6 @@ export function GenerationControlsPanel(
           onRequestUpload={actions.handleStartFrameUploadRequest}
           onUploadFile={actions.handleStartFrameFile}
           onClearStartFrame={actions.handleClearStartFrame}
-          prompt={prompt}
-          onPromptChange={onPromptChange}
-          promptLabel={promptLabel}
-          isInputLocked={derived.isInputLocked}
-          isOptimizing={derived.isOptimizing}
-          promptInputRef={refs.resolvedPromptInputRef}
-          onPromptInputChange={actions.handleInputPromptChange}
-          onPromptKeyDown={actions.handlePromptKeyDown}
-          onCreateFromTrigger={onCreateFromTrigger}
-          autocomplete={autocomplete}
           faceSwapMode={faceSwap.mode}
           faceSwapCharacterOptions={faceSwap.characterOptions}
           selectedCharacterId={faceSwap.selectedCharacterId}
@@ -313,10 +266,11 @@ export function GenerationControlsPanel(
           faceSwapCredits={faceSwap.faceSwapCredits}
           videoCredits={faceSwap.videoCredits}
           totalCredits={faceSwap.totalCredits}
-          canCopy={Boolean(prompt.trim())}
-          canClear={Boolean(onPromptChange && prompt.trim())}
+          canCopy={derived.hasPrompt}
+          canClear={derived.hasPrompt}
           onCopy={() => void actions.handleCopy()}
-          onClear={() => onPromptChange?.("")}
+          onClear={actions.handleClearPrompt}
+          promptLength={derived.promptLength}
           canGeneratePreviews={!derived.isStoryboardDisabled}
           onGenerateSinglePreview={onStoryboard}
           onGenerateFourPreviews={onStoryboard}
@@ -327,23 +281,9 @@ export function GenerationControlsPanel(
           isUploadDisabled={derived.isUploadDisabled}
           onRequestUpload={actions.handleUploadRequest}
           onRemoveKeyframe={actions.handleRemoveKeyframe}
-          prompt={prompt}
-          onPromptChange={onPromptChange}
-          promptLabel={promptLabel}
-          isInputLocked={derived.isInputLocked}
-          isOptimizing={derived.isOptimizing}
-          promptInputRef={refs.resolvedPromptInputRef}
-          onPromptInputChange={actions.handleInputPromptChange}
-          onPromptKeyDown={actions.handlePromptKeyDown}
-          onCreateFromTrigger={onCreateFromTrigger}
-          autocomplete={autocomplete}
           imageSubTab={state.imageSubTab}
           onImageSubTabChange={actions.setImageSubTab}
           onBack={onBack}
-          onCopy={() => void actions.handleCopy()}
-          onClear={() => onPromptChange?.("")}
-          canCopy={Boolean(prompt.trim())}
-          canClear={Boolean(onPromptChange && prompt.trim())}
           footer={generationFooter}
         />
       )}

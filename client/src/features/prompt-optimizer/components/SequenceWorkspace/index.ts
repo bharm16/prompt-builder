@@ -1,5 +1,6 @@
 export { SequenceWorkspace } from './SequenceWorkspace';
-export { ShotVisualStrip } from './ShotVisualStrip';
-export { PreviousShotContext } from './PreviousShotContext';
-export { ContinuityIntentPicker } from './ContinuityIntentPicker';
-export { PipelineStatus } from './PipelineStatus';
+export { ShotVisualStrip } from '../sequence/ShotVisualStrip';
+export { PreviousShotContext } from '../sequence/PreviousShotContext';
+export { ContinuityIntentPicker } from '../sequence/ContinuityIntentPicker';
+export { PipelineStatus } from '../sequence/PipelineStatus';
+export { SceneProxyPreviewPanel } from '../sequence/SceneProxyPreviewPanel';

@@ -1,7 +1,6 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ReactNode } from 'react';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 import type { AppIcon } from '@/types';
 
 export type ToolPanelType = 'sessions' | 'studio' | 'apps' | 'characters' | 'styles';
@@ -53,20 +52,11 @@ export interface ToolSidebarSessionsDomain {
   activeModelLabel?: string;
 }
 
-export interface ToolSidebarPromptEditingDomain {
-  prompt: string;
-  onPromptChange?: (prompt: string) => void;
-  onOptimize?: (
-    promptToOptimize?: string,
-    options?: OptimizationOptions
-  ) => Promise<void>;
-  showResults?: boolean;
+export interface ToolSidebarPromptInteractionDomain {
+  onInsertTrigger: (trigger: string) => void;
+  onCreateFromTrigger?: (trigger: string) => void;
   isProcessing?: boolean;
   isRefining?: boolean;
-  genericOptimizedPrompt?: string | null;
-  promptInputRef?: RefObject<HTMLTextAreaElement>;
-  onCreateFromTrigger?: (trigger: string) => void;
-  onInsertTrigger: (trigger: string, range?: { start: number; end: number }) => void;
 }
 
 export interface ToolSidebarGenerationDomain {
@@ -86,14 +76,14 @@ export interface ToolSidebarAssetsDomain {
 }
 
 export type OptionalToolSidebarSessionsDomain = ToolSidebarSessionsDomain | null;
-export type OptionalToolSidebarPromptEditingDomain = ToolSidebarPromptEditingDomain | null;
+export type OptionalToolSidebarPromptInteractionDomain = ToolSidebarPromptInteractionDomain | null;
 export type OptionalToolSidebarGenerationDomain = ToolSidebarGenerationDomain | null;
 export type OptionalToolSidebarAssetsDomain = ToolSidebarAssetsDomain | null;
 
 export interface ToolSidebarProps {
   user: User | null;
   sessions?: OptionalToolSidebarSessionsDomain;
-  promptEditing?: OptionalToolSidebarPromptEditingDomain;
+  promptInteraction?: OptionalToolSidebarPromptInteractionDomain;
   generation?: OptionalToolSidebarGenerationDomain;
   assets?: OptionalToolSidebarAssetsDomain;
 }

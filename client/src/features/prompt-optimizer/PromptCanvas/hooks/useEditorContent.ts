@@ -10,8 +10,9 @@ import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prom
 
 export interface UseEditorContentOptions {
   editorRef: RefObject<HTMLElement>;
-  displayedPrompt: string | null;
+  editorText: string;
   formattedHTML: string;
+  renderHtml: boolean;
 }
 
 /**
@@ -19,59 +20,56 @@ export interface UseEditorContentOptions {
  */
 export function useEditorContent({
   editorRef,
-  displayedPrompt,
+  editorText,
   formattedHTML,
+  renderHtml,
 }: UseEditorContentOptions): void {
   useLayoutEffect(() => {
-    if (editorRef.current && displayedPrompt) {
-      const newHTML = formattedHTML || displayedPrompt;
-
-      // Only update if content has actually changed to preserve cursor position
-      const currentText = editorRef.current.innerText || editorRef.current.textContent || '';
-      const newText = displayedPrompt;
-
-      if (currentText !== newText) {
-        const selection = window.getSelection();
-        const hadFocus = document.activeElement === editorRef.current;
-        let savedOffsets: { start: number; end: number } | null = null;
-
-        // Try to save cursor selection offsets when focus is within the editor
-        if (hadFocus && selection && selection.rangeCount > 0) {
-          try {
-            const range = selection.getRangeAt(0);
-            if (
-              editorRef.current.contains(range.startContainer) &&
-              editorRef.current.contains(range.endContainer)
-            ) {
-              savedOffsets = getSelectionOffsets(editorRef.current, range);
-            }
-          } catch {
-            savedOffsets = null;
-          }
-        }
-
-        // Set the HTML content
-        editorRef.current.innerHTML = newHTML;
-
-        // Restore focus and cursor if it had focus before
-        if (hadFocus) {
-          try {
-            editorRef.current.focus();
-            if (savedOffsets) {
-              restoreSelectionFromOffsets(
-                editorRef.current,
-                savedOffsets.start,
-                savedOffsets.end
-              );
-            }
-          } catch {
-            // Ignore focus errors
-          }
-        }
-      }
-    } else if (editorRef.current && !displayedPrompt) {
-      editorRef.current.innerHTML =
-        '<p style="color: var(--text-muted); font-size: var(--fs-14); line-height: var(--lh-relaxed); font-family: var(--font-sans);">Your optimized prompt will appear here…</p>';
+    if (!editorRef.current) {
+      return;
     }
-  }, [editorRef, displayedPrompt, formattedHTML]);
+
+    const currentText = editorRef.current.innerText || editorRef.current.textContent || '';
+    const newText = editorText ?? '';
+    if (currentText === newText) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    const hadFocus = document.activeElement === editorRef.current;
+    let savedOffsets: { start: number; end: number } | null = null;
+
+    if (hadFocus && selection && selection.rangeCount > 0) {
+      try {
+        const range = selection.getRangeAt(0);
+        if (
+          editorRef.current.contains(range.startContainer) &&
+          editorRef.current.contains(range.endContainer)
+        ) {
+          savedOffsets = getSelectionOffsets(editorRef.current, range);
+        }
+      } catch {
+        savedOffsets = null;
+      }
+    }
+
+    if (renderHtml) {
+      editorRef.current.innerHTML = formattedHTML || newText;
+    } else {
+      editorRef.current.textContent = newText;
+    }
+
+    if (!hadFocus) {
+      return;
+    }
+
+    try {
+      editorRef.current.focus();
+      if (savedOffsets) {
+        restoreSelectionFromOffsets(editorRef.current, savedOffsets.start, savedOffsets.end);
+      }
+    } catch {
+      // Ignore focus restoration errors.
+    }
+  }, [editorRef, editorText, formattedHTML, renderHtml]);
 }

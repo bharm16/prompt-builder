@@ -93,14 +93,9 @@ const createProps = (overrides: Partial<ToolSidebarProps> = {}): ToolSidebarProp
     onCreateNew: vi.fn(),
     onDelete: vi.fn(),
   },
-  promptEditing: {
-    prompt: '',
-    onPromptChange: vi.fn(),
-    onOptimize: vi.fn(async () => undefined),
-    showResults: true,
+  promptInteraction: {
     isProcessing: false,
     isRefining: false,
-    genericOptimizedPrompt: null,
     onInsertTrigger: vi.fn(),
   },
   generation: {

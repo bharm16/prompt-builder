@@ -39,9 +39,12 @@ interface WorkspaceSessionContextValue {
   loading: boolean;
   error: string | null;
   isSequenceMode: boolean;
+  hasActiveContinuityShot: boolean;
   shots: ContinuityShot[];
+  editorShots: ContinuityShot[];
   currentShotId: string | null;
   currentShot: ContinuityShot | null;
+  currentEditorShot: ContinuityShot | null;
   currentShotIndex: number;
   setCurrentShotId: (shotId: string | null) => void;
   refreshSession: () => Promise<void>;
@@ -59,6 +62,7 @@ interface WorkspaceSessionContextValue {
 
 const WorkspaceSessionContext = createContext<WorkspaceSessionContextValue | null>(null);
 const log = logger.child('WorkspaceSessionContext');
+const VIRTUAL_SINGLE_SHOT_ID = '__single__';
 
 const mapContinuityToSession = (
   continuity: ContinuitySession
@@ -67,6 +71,20 @@ const mapContinuityToSession = (
   primaryStyleReference: continuity.primaryStyleReference ?? null,
   sceneProxy: continuity.sceneProxy ?? null,
   settings: continuity.defaultSettings,
+});
+
+const buildVirtualSingleShot = (session: SessionDto): ContinuityShot => ({
+  id: VIRTUAL_SINGLE_SHOT_ID,
+  sessionId: session.id,
+  sequenceIndex: 0,
+  userPrompt: session.prompt?.input ?? '',
+  continuityMode: 'none',
+  styleStrength: 0.6,
+  styleReferenceId: null,
+  modelId: typeof session.prompt?.targetModel === 'string' ? session.prompt.targetModel : '',
+  status: 'draft',
+  createdAt: session.updatedAt ?? session.createdAt ?? '1970-01-01T00:00:00.000Z',
+  ...(Array.isArray(session.prompt?.versions) ? { versions: session.prompt.versions } : {}),
 });
 
 export function useWorkspaceSession(): WorkspaceSessionContextValue {
@@ -152,41 +170,57 @@ export function WorkspaceSessionProvider({
     setCurrentShotId(null);
   }, [sessionId]);
 
-  const shots = useMemo<ContinuityShot[]>(
+  const realShots = useMemo<ContinuityShot[]>(
     () => session?.continuity?.shots ?? [],
     [session?.continuity?.shots]
   );
 
-  const orderedShots = useMemo(
-    () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
-    [shots]
+  const orderedRealShots = useMemo(
+    () => [...realShots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
+    [realShots]
   );
 
-  // A session can contain continuity data and still be a prompt workspace.
-  // Only continuity-only sessions should force sequence UI mode.
-  const isSequenceMode = orderedShots.length > 0 && !session?.prompt;
+  const editorShots = useMemo<ContinuityShot[]>(() => {
+    if (!session) return [];
+    if (orderedRealShots.length > 0) {
+      return orderedRealShots;
+    }
+    return [buildVirtualSingleShot(session)];
+  }, [orderedRealShots, session]);
 
-  const currentShot = useMemo(() => {
+  // Sequence mode is purely a UI condition: two or more real continuity shots.
+  const isSequenceMode = orderedRealShots.length > 1;
+
+  const currentEditorShot = useMemo(() => {
     if (!currentShotId) return null;
-    return orderedShots.find((shot) => shot.id === currentShotId) ?? null;
-  }, [currentShotId, orderedShots]);
+    return editorShots.find((shot) => shot.id === currentShotId) ?? null;
+  }, [currentShotId, editorShots]);
+
+  const currentRealShot = useMemo(() => {
+    if (!currentShotId) return null;
+    return orderedRealShots.find((shot) => shot.id === currentShotId) ?? null;
+  }, [currentShotId, orderedRealShots]);
+
+  const hasActiveContinuityShot = Boolean(currentRealShot);
 
   const currentShotIndex = useMemo(() => {
     if (!currentShotId) return -1;
-    return orderedShots.findIndex((shot) => shot.id === currentShotId);
-  }, [currentShotId, orderedShots]);
+    return editorShots.findIndex((shot) => shot.id === currentShotId);
+  }, [currentShotId, editorShots]);
 
   useEffect(() => {
-    if (!isSequenceMode) {
-      if (currentShotId) setCurrentShotId(null);
+    if (editorShots.length === 0) {
+      if (currentShotId !== null) {
+        setCurrentShotId(null);
+      }
       return;
     }
-    if (currentShotId && orderedShots.some((shot) => shot.id === currentShotId)) {
+    if (currentShotId && editorShots.some((shot) => shot.id === currentShotId)) {
       return;
     }
-    const lastShot = orderedShots[orderedShots.length - 1];
-    setCurrentShotId(lastShot?.id ?? null);
-  }, [currentShotId, isSequenceMode, orderedShots]);
+    const firstShot = editorShots[0];
+    setCurrentShotId(firstShot?.id ?? null);
+  }, [currentShotId, editorShots]);
 
   const updateShotInState = useCallback((shot: ContinuityShot) => {
     setSession((prev) => {
@@ -456,7 +490,7 @@ export function WorkspaceSessionProvider({
 
         const requestedPrompt = prompt?.trim();
         const sessionPrompt = isCurrentRouteSessionLoaded ? session?.prompt?.input?.trim() : null;
-        const activeShotPrompt = isCurrentRouteSessionLoaded ? currentShot?.userPrompt?.trim() : null;
+        const activeShotPrompt = isCurrentRouteSessionLoaded ? currentEditorShot?.userPrompt?.trim() : null;
         const shotPrompt =
           requestedPrompt || sessionPrompt || activeShotPrompt || 'Continue the scene';
         const shot = (await continuityApi.addShot(targetSessionId, {
@@ -502,7 +536,7 @@ export function WorkspaceSessionProvider({
         setIsStartingSequence(false);
       }
     },
-    [currentShot, isStartingSequence, session, sessionId]
+    [currentEditorShot, isStartingSequence, session, sessionId]
   );
 
   const value = useMemo(
@@ -511,9 +545,12 @@ export function WorkspaceSessionProvider({
       loading,
       error,
       isSequenceMode,
-      shots: orderedShots,
+      hasActiveContinuityShot,
+      shots: editorShots,
+      editorShots,
       currentShotId,
-      currentShot,
+      currentShot: currentEditorShot,
+      currentEditorShot,
       currentShotIndex,
       setCurrentShotId,
       refreshSession,
@@ -533,9 +570,10 @@ export function WorkspaceSessionProvider({
       loading,
       error,
       isSequenceMode,
-      orderedShots,
+      hasActiveContinuityShot,
+      editorShots,
       currentShotId,
-      currentShot,
+      currentEditorShot,
       currentShotIndex,
       setCurrentShotId,
       refreshSession,

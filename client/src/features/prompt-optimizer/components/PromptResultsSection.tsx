@@ -17,11 +17,11 @@ import { usePromptResultsActionsContext } from '../context/PromptResultsActionsC
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
 export const PromptResultsSection = (): React.ReactElement => {
-  const { showResults } = usePromptUIStateContext();
+  const { showResults, setShowResults } = usePromptUIStateContext();
   const { currentPromptUuid, suggestionsData } = usePromptSession();
   const { currentMode } = usePromptConfig();
   const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
-  const { handleCreateNew } = usePromptActions();
+  const { handleCreateNew, setDisplayedPromptSilently } = usePromptActions();
   const { promptOptimizer } = usePromptServices();
   const {
     user,
@@ -45,6 +45,11 @@ export const PromptResultsSection = (): React.ReactElement => {
     onScrollToCoherenceSpan,
     i2vContext,
   } = usePromptResultsActionsContext();
+
+  const handleResetResultsForEditing = React.useCallback((): void => {
+    setDisplayedPromptSilently('');
+    setShowResults(false);
+  }, [setDisplayedPromptSilently, setShowResults]);
 
   return (
     <>
@@ -77,6 +82,7 @@ export const PromptResultsSection = (): React.ReactElement => {
         user={user}
         inputPrompt={promptOptimizer.inputPrompt}
         onInputPromptChange={promptOptimizer.setInputPrompt}
+        onResetResultsForEditing={handleResetResultsForEditing}
         onReoptimize={onReoptimize}
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}

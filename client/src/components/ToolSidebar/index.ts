@@ -1,22 +1,25 @@
 export { ToolSidebar } from './ToolSidebar';
 export {
+  SidebarDataContextProvider,
   SidebarSessionsContextProvider,
-  SidebarPromptEditingContextProvider,
+  SidebarPromptInteractionContextProvider,
   SidebarGenerationContextProvider,
   SidebarAssetsContextProvider,
+  useSidebarData,
   useSidebarSessionsDomain,
-  useSidebarPromptEditingDomain,
+  useSidebarPromptInteractionDomain,
   useSidebarGenerationDomain,
   useSidebarAssetsDomain,
 } from './context';
+export type { SidebarDataContextValue } from './context';
 export type {
   ToolSidebarProps,
   ToolSidebarSessionsDomain,
-  ToolSidebarPromptEditingDomain,
+  ToolSidebarPromptInteractionDomain,
   ToolSidebarGenerationDomain,
   ToolSidebarAssetsDomain,
   OptionalToolSidebarSessionsDomain,
-  OptionalToolSidebarPromptEditingDomain,
+  OptionalToolSidebarPromptInteractionDomain,
   OptionalToolSidebarGenerationDomain,
   OptionalToolSidebarAssetsDomain,
   ToolPanelType,

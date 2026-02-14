@@ -77,7 +77,7 @@ const buildContinuitySessionWithProxy = (): ContinuitySession => ({
   },
 });
 
-const buildShot = (): ContinuityShot => ({
+const buildShot = (overrides: Partial<ContinuityShot> = {}): ContinuityShot => ({
   id: 'shot-1',
   sessionId: 'session-1',
   sequenceIndex: 0,
@@ -90,6 +90,7 @@ const buildShot = (): ContinuityShot => ({
   createdAt: '2026-02-12T00:00:01.000Z',
   generatedAt: '2026-02-12T00:00:02.000Z',
   videoAssetId: 'users/user-1/generations/video.mp4',
+  ...overrides,
 });
 
 const wrapper =
@@ -112,6 +113,92 @@ describe('WorkspaceSessionContext', () => {
       continuityMechanismUsed: 'scene-proxy',
     });
     mockAddShot.mockResolvedValue(buildShot());
+  });
+
+  it('synthesizes a virtual editor shot for prompt-only sessions', async () => {
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.session?.id).toBe('session-1');
+    });
+
+    expect(result.current.isSequenceMode).toBe(false);
+    expect(result.current.hasActiveContinuityShot).toBe(false);
+    expect(result.current.editorShots).toHaveLength(1);
+    expect(result.current.shots).toHaveLength(1);
+    expect(result.current.currentShotId).toBe('__single__');
+    expect(result.current.currentShot?.id).toBe('__single__');
+    expect(result.current.currentShot?.userPrompt).toBe('Keep this prompt');
+  });
+
+  it('keeps single real continuity shots in single-shot mode while retaining continuity routing', async () => {
+    const singleShot = buildShot();
+    mockApiGet.mockResolvedValue({
+      data: buildSession({
+        prompt: undefined,
+        continuity: {
+          shots: [singleShot],
+          primaryStyleReference: null,
+          sceneProxy: null,
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'frame-bridge',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.currentShotId).toBe('shot-1');
+    });
+
+    expect(result.current.isSequenceMode).toBe(false);
+    expect(result.current.hasActiveContinuityShot).toBe(true);
+    expect(result.current.currentShot?.id).toBe('shot-1');
+  });
+
+  it('enables sequence mode only when two or more real continuity shots exist', async () => {
+    const firstShot = buildShot();
+    const secondShot = buildShot({
+      id: 'shot-2',
+      sequenceIndex: 1,
+      userPrompt: 'Second shot prompt',
+      createdAt: '2026-02-12T00:00:03.000Z',
+    });
+    mockApiGet.mockResolvedValue({
+      data: buildSession({
+        prompt: undefined,
+        continuity: {
+          shots: [firstShot, secondShot],
+          primaryStyleReference: null,
+          sceneProxy: null,
+          settings: {
+            generationMode: 'continuity',
+            defaultContinuityMode: 'frame-bridge',
+            defaultStyleStrength: 0.6,
+            defaultModel: 'model-1',
+            autoExtractFrameBridge: false,
+            useCharacterConsistency: false,
+          },
+        },
+      }),
+    });
+
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.currentShotId).toBe('shot-1');
+    });
+
+    expect(result.current.isSequenceMode).toBe(true);
+    expect(result.current.hasActiveContinuityShot).toBe(true);
+    expect(result.current.shots).toHaveLength(2);
   });
 
   it('uses the existing project prompt when starting sequence without an explicit prompt', async () => {

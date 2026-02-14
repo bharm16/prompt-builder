@@ -22,6 +22,7 @@ vi.mock(
 const useCapabilitiesMock = vi.hoisted(() => vi.fn());
 const useWorkspaceSessionMock = vi.hoisted(() => vi.fn());
 const useGenerationControlsContextMock = vi.hoisted(() => vi.fn());
+const usePromptServicesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@features/prompt-optimizer/hooks/useCapabilities', () => ({
   useCapabilities: (...args: unknown[]) => useCapabilitiesMock(...args),
@@ -34,6 +35,11 @@ vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
 
 vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   useWorkspaceSession: (...args: unknown[]) => useWorkspaceSessionMock(...args),
+}));
+
+vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+  usePromptServices: (...args: unknown[]) => usePromptServicesMock(...args),
+  useOptionalPromptHighlights: () => null,
 }));
 
 const createKeyframe = (overrides: Partial<KeyframeTile> = {}): KeyframeTile => ({
@@ -94,6 +100,12 @@ const createInitialStoreState = (
 const renderPanel = (overrides: Parameters<typeof createProps>[0] = {}) => {
   const props = createProps(overrides);
   const initialState = createInitialStoreState(props);
+  usePromptServicesMock.mockReturnValue({
+    promptOptimizer: {
+      inputPrompt: props.prompt,
+      setInputPrompt: vi.fn(),
+    },
+  });
 
   const rendered = render(
     <GenerationControlsStoreProvider initialState={initialState}>
@@ -106,6 +118,7 @@ const renderPanel = (overrides: Parameters<typeof createProps>[0] = {}) => {
 
 describe('GenerationControlsPanel', () => {
   beforeEach(() => {
+    usePromptServicesMock.mockReset();
     useCapabilitiesMock.mockReturnValue({
       schema: null,
       isLoading: false,

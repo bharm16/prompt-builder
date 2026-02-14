@@ -72,6 +72,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   const {
     session: workspaceSession,
     isSequenceMode,
+    hasActiveContinuityShot,
     isStartingSequence,
     startSequence,
     currentShot,
@@ -237,7 +238,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   const handleDraft = useCallback(
     (model: DraftModel, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
-      if (isSequenceMode) {
+      if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
         return;
@@ -271,7 +272,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       faceSwapOverride,
       generateDraft,
       generateSequenceShot,
-      isSequenceMode,
+      hasActiveContinuityShot,
       startFrame,
       mergedGenerationParams,
       detectedCharacter?.id,
@@ -332,7 +333,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   const handleRenderWithFaceSwap = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
-      if (isSequenceMode) {
+      if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
         return;
@@ -343,43 +344,43 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       }
       handleRender(model, overrides);
     },
-    [faceSwapOverride, generateSequenceShot, handleRender, isSequenceMode, onCreateVersionIfNeeded]
+    [faceSwapOverride, generateSequenceShot, handleRender, hasActiveContinuityShot, onCreateVersionIfNeeded]
   );
 
   const handleStoryboard = useCallback(() => {
-    if (isSequenceMode) return;
+    if (hasActiveContinuityShot) return;
     const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
     const versionId = onCreateVersionIfNeeded();
     const seedImageUrl = startFrame?.url ?? null;
     generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
-  }, [generateStoryboard, isSequenceMode, onCreateVersionIfNeeded, prompt, startFrame?.url]);
+  }, [generateStoryboard, hasActiveContinuityShot, onCreateVersionIfNeeded, prompt, startFrame?.url]);
 
   const handleDelete = useCallback(
     (generation: Generation) => {
-      if (isSequenceMode) return;
+      if (hasActiveContinuityShot) return;
       removeGeneration(generation.id);
     },
-    [isSequenceMode, removeGeneration]
+    [hasActiveContinuityShot, removeGeneration]
   );
 
   const handleRetry = useCallback(
     (generation: Generation) => {
-      if (isSequenceMode) {
+      if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(generation.model);
         return;
       }
       retryGeneration(generation.id);
     },
-    [generateSequenceShot, isSequenceMode, onCreateVersionIfNeeded, retryGeneration]
+    [generateSequenceShot, hasActiveContinuityShot, onCreateVersionIfNeeded, retryGeneration]
   );
 
   const handleCancel = useCallback(
     (generation: Generation) => {
-      if (isSequenceMode) return;
+      if (hasActiveContinuityShot) return;
       cancelGeneration(generation.id);
     },
-    [cancelGeneration, isSequenceMode]
+    [cancelGeneration, hasActiveContinuityShot]
   );
 
   const handleDownload = useCallback((generation: Generation) => {
@@ -391,7 +392,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
 
   const handleContinueSequence = useCallback(
     async (generation: Generation) => {
-      if (isSequenceMode || isStartingSequence) return;
+      if (hasActiveContinuityShot || isStartingSequence) return;
       const mediaUrl = generation.mediaUrls[0] ?? null;
       const { assetId, storagePath } = resolvePrimaryVideoSource(
         mediaUrl,
@@ -465,7 +466,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     [
       currentPromptDocId,
       currentSessionId,
-      isSequenceMode,
+      hasActiveContinuityShot,
       isStartingSequence,
       navigate,
       startSequence,
@@ -558,7 +559,7 @@ export const GenerationsPanel = memo(function GenerationsPanel({
                 onDownload={handleDownload}
                 onCancel={handleCancel}
                 onContinueSequence={handleContinueSequence}
-                isSequenceMode={isSequenceMode}
+                isSequenceMode={isSequenceMode || hasActiveContinuityShot}
                 isStartingSequence={isStartingSequence}
                 onSelectFrame={handleSelectFrame}
                 onClearSelectedFrame={handleClearSelectedFrame}

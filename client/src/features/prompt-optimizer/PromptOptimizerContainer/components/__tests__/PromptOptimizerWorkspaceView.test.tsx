@@ -1,22 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
+import type { Asset } from '@shared/types/asset';
 import { PromptOptimizerWorkspaceView } from '../PromptOptimizerWorkspaceView';
-
-const useWorkspaceSessionMock = vi.hoisted(() => vi.fn());
-const toastErrorMock = vi.hoisted(() => vi.fn());
-const navigateMock = vi.hoisted(() => vi.fn());
-const locationMock = vi.hoisted(() => vi.fn(() => ({ search: '' })));
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-    useLocation: () => locationMock(),
-  };
-});
 
 vi.mock('@components/navigation/AppShell', () => ({
   AppShell: ({ children }: { children: ReactNode }) => <div data-testid="app-shell">{children}</div>,
@@ -24,25 +10,6 @@ vi.mock('@components/navigation/AppShell', () => ({
 
 vi.mock('../../../layouts/PromptResultsLayout', () => ({
   PromptResultsLayout: () => <div data-testid="prompt-results-layout" />,
-}));
-
-vi.mock('../../../components/SequenceWorkspace', () => ({
-  SequenceWorkspace: ({
-    onExitSequence,
-    onAiEnhance,
-  }: {
-    onExitSequence?: () => void;
-    onAiEnhance?: () => void;
-  }) => (
-    <div>
-      <button type="button" data-testid="sequence-workspace" onClick={onExitSequence}>
-        Sequence workspace
-      </button>
-      <button type="button" data-testid="sequence-ai-enhance" onClick={onAiEnhance}>
-        AI Enhance
-      </button>
-    </div>
-  ),
 }));
 
 vi.mock('../../../components/PromptModals', () => ({
@@ -61,28 +28,26 @@ vi.mock('@features/assets/components/AssetEditor', () => ({
   default: () => null,
 }));
 
-vi.mock('../../../context/WorkspaceSessionContext', () => ({
-  useWorkspaceSession: () => useWorkspaceSessionMock(),
-}));
-
-vi.mock('@components/Toast', () => ({
-  useToast: () => ({ error: toastErrorMock }),
-}));
-
 vi.mock('@components/DebugButton', () => ({
-  default: () => null,
+  default: () => <div data-testid="debug-button" />,
 }));
+
+const createAsset = (id: string): Asset => ({
+  id,
+  userId: 'user-1',
+  type: 'character',
+  trigger: '@hero',
+  name: 'Hero',
+  textDefinition: 'hero',
+  referenceImages: [],
+  usageCount: 0,
+  lastUsedAt: null,
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+});
 
 const buildProps = () =>
   ({
-    sequenceWorkspaceProps: {
-      promptText: 'Shot prompt',
-      onPromptChange: vi.fn(),
-      onOptimize: vi.fn(),
-      isOptimizing: false,
-      history: [],
-      currentPromptDocId: null,
-    },
     showHistory: false,
     onToggleHistory: vi.fn(),
     shouldShowLoading: false,
@@ -97,8 +62,8 @@ const buildProps = () =>
     assetEditorState: null,
     assetEditorHandlers: {
       onClose: vi.fn(),
-      onCreate: vi.fn(async () => ({ id: 'asset-1' })),
-      onUpdate: vi.fn(async () => ({ id: 'asset-1' })),
+      onCreate: vi.fn(async () => createAsset('asset-1')),
+      onUpdate: vi.fn(async () => createAsset('asset-1')),
       onAddImage: vi.fn(async () => undefined),
       onDeleteImage: vi.fn(async () => undefined),
       onSetPrimaryImage: vi.fn(async () => undefined),
@@ -115,227 +80,34 @@ const buildProps = () =>
       selectedMode: 'video',
       promptContext: null,
     },
-  }) as any;
-
-describe('PromptOptimizerWorkspaceView', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    locationMock.mockReturnValue({ search: '' });
   });
 
-  it('renders sequence workspace when sequence mode is active with shots', () => {
-    useWorkspaceSessionMock.mockReturnValue({
-      session: null,
-      shots: [{ id: 'shot-1', sequenceIndex: 0 }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
+describe('PromptOptimizerWorkspaceView', () => {
+  it('always renders prompt results layout when not loading', () => {
     render(<PromptOptimizerWorkspaceView {...buildProps()} />);
 
-    expect(screen.getByTestId('sequence-workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('prompt-results-layout')).toBeInTheDocument();
+    expect(screen.queryByText('Loading prompt...')).not.toBeInTheDocument();
+  });
+
+  it('renders loading state while prompt is loading', () => {
+    const props = buildProps();
+    render(<PromptOptimizerWorkspaceView {...props} shouldShowLoading />);
+
+    expect(screen.getByText('Loading prompt...')).toBeInTheDocument();
     expect(screen.queryByTestId('prompt-results-layout')).not.toBeInTheDocument();
   });
 
-  it('renders prompt results layout when sequence mode is disabled', () => {
-    useWorkspaceSessionMock.mockReturnValue({
-      session: null,
-      shots: [],
-      isSequenceMode: false,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...buildProps()} />);
-
-    expect(screen.getByTestId('prompt-results-layout')).toBeInTheDocument();
-    expect(screen.queryByTestId('sequence-workspace')).not.toBeInTheDocument();
-  });
-
-  it('navigates to origin session when sequence workspace exits sequence mode', async () => {
-    const user = userEvent.setup();
+  it('renders debug button when debug mode is enabled', () => {
     const props = buildProps();
-    props.sequenceWorkspaceProps.history = [
-      {
-        id: 'continuity-1',
-        input: 'Current sequence session',
-        output: '',
-        versions: [{ versionId: 'v-1', signature: 'sig-1', prompt: '', timestamp: '2026-02-12T00:00:00.000Z' }],
-      },
-      {
-        id: 'source-1',
-        input: 'Source session',
-        output: '',
-        versions: [
-          {
-            versionId: 'v-2',
-            signature: 'sig-2',
-            prompt: '',
-            timestamp: '2026-02-12T00:00:00.000Z',
-            video: { generatedAt: '2026-02-12T00:00:00.000Z', assetId: 'asset-video-1' },
-          },
-        ],
-      },
-    ];
+    render(
+      <PromptOptimizerWorkspaceView
+        {...props}
+        debugProps={{ ...props.debugProps, enabled: true }}
+      />
+    );
 
-    useWorkspaceSessionMock.mockReturnValue({
-      session: {
-        id: 'continuity-1',
-        continuity: {
-          primaryStyleReference: null,
-        },
-      },
-      shots: [{ id: 'shot-1', sequenceIndex: 0, videoAssetId: 'asset-video-1' }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...props} />);
-
-    await user.click(screen.getByTestId('sequence-workspace'));
-
-    expect(navigateMock).toHaveBeenCalledWith('/session/source-1');
-  });
-
-  it('falls back to root when no origin session can be resolved', async () => {
-    const user = userEvent.setup();
-
-    useWorkspaceSessionMock.mockReturnValue({
-      session: {
-        id: 'continuity-1',
-        continuity: {
-          primaryStyleReference: null,
-        },
-      },
-      shots: [{ id: 'shot-1', sequenceIndex: 0, videoAssetId: 'asset-video-1' }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...buildProps()} />);
-
-    await user.click(screen.getByTestId('sequence-workspace'));
-
-    expect(navigateMock).toHaveBeenCalledWith('/');
-  });
-
-  it('uses originSessionId query param when exiting sequence', async () => {
-    const user = userEvent.setup();
-    locationMock.mockReturnValue({ search: '?originSessionId=source-from-query' });
-
-    useWorkspaceSessionMock.mockReturnValue({
-      session: {
-        id: 'continuity-1',
-        continuity: {
-          primaryStyleReference: null,
-        },
-      },
-      shots: [{ id: 'shot-1', sequenceIndex: 0, videoAssetId: 'asset-video-1' }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...buildProps()} />);
-
-    await user.click(screen.getByTestId('sequence-workspace'));
-
-    expect(navigateMock).toHaveBeenCalledWith('/session/source-from-query');
-  });
-
-  it('falls back to sidebar currentPromptDocId when query/history origin is unavailable', async () => {
-    const user = userEvent.setup();
-    const props = buildProps();
-    props.sequenceWorkspaceProps.currentPromptDocId = 'source-from-sidebar';
-
-    useWorkspaceSessionMock.mockReturnValue({
-      session: {
-        id: 'continuity-1',
-        continuity: {
-          primaryStyleReference: null,
-        },
-      },
-      shots: [{ id: 'shot-1', sequenceIndex: 0, videoAssetId: 'asset-video-1' }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...props} />);
-
-    await user.click(screen.getByTestId('sequence-workspace'));
-
-    expect(navigateMock).toHaveBeenCalledWith('/session/source-from-sidebar');
-  });
-
-  it('passes preserveSessionView when enhancing prompt in sequence workspace', async () => {
-    const user = userEvent.setup();
-    const props = buildProps();
-    const onOptimize = vi.fn(async () => undefined);
-    props.sequenceWorkspaceProps.onOptimize = onOptimize;
-    props.sequenceWorkspaceProps.promptText = 'Shot prompt';
-
-    useWorkspaceSessionMock.mockReturnValue({
-      session: null,
-      shots: [{ id: 'shot-1', sequenceIndex: 0 }],
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-2' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...props} />);
-
-    await user.click(screen.getByTestId('sequence-ai-enhance'));
-
-    expect(onOptimize).toHaveBeenCalledWith('Shot prompt', { preserveSessionView: true });
-  });
-
-  it('passes previous-shot image context when enhancing in sequence workspace', async () => {
-    const user = userEvent.setup();
-    const props = buildProps();
-    const onOptimize = vi.fn(async () => undefined);
-    props.sequenceWorkspaceProps.onOptimize = onOptimize;
-    props.sequenceWorkspaceProps.promptText = 'Shot 2 motion prompt';
-
-    useWorkspaceSessionMock.mockReturnValue({
-      session: {
-        id: 'continuity-1',
-        continuity: {
-          primaryStyleReference: {
-            frameUrl: 'https://img/primary-style.png',
-          },
-        },
-      },
-      shots: [
-        {
-          id: 'shot-1',
-          sequenceIndex: 0,
-          userPrompt: 'Shot 1 prompt',
-          styleReference: { frameUrl: 'https://img/shot-1-style.png' },
-        },
-        {
-          id: 'shot-2',
-          sequenceIndex: 1,
-          userPrompt: '',
-        },
-      ],
-      currentShotId: 'shot-2',
-      isSequenceMode: true,
-      setCurrentShotId: vi.fn(),
-      addShot: vi.fn(async () => ({ id: 'shot-3' })),
-    });
-
-    render(<PromptOptimizerWorkspaceView {...props} />);
-
-    await user.click(screen.getByTestId('sequence-ai-enhance'));
-
-    expect(onOptimize).toHaveBeenCalledWith('Shot 2 motion prompt', {
-      preserveSessionView: true,
-      startImage: 'https://img/shot-1-style.png',
-      sourcePrompt: 'Shot 1 prompt',
-    });
+    expect(screen.getByTestId('debug-button')).toBeInTheDocument();
   });
 });

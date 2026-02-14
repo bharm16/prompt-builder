@@ -2,29 +2,59 @@ import React, { createContext, useContext, type ReactNode } from 'react';
 import type {
   OptionalToolSidebarAssetsDomain,
   OptionalToolSidebarGenerationDomain,
-  OptionalToolSidebarPromptEditingDomain,
+  OptionalToolSidebarPromptInteractionDomain,
   OptionalToolSidebarSessionsDomain,
 } from '../types';
 
+export interface SidebarDataContextValue {
+  sessions: OptionalToolSidebarSessionsDomain;
+  promptInteraction: OptionalToolSidebarPromptInteractionDomain;
+  generation: OptionalToolSidebarGenerationDomain;
+  assets: OptionalToolSidebarAssetsDomain;
+}
+
+const SidebarDataContext = createContext<SidebarDataContextValue | null>(null);
 const SidebarSessionsContext = createContext<OptionalToolSidebarSessionsDomain>(null);
-const SidebarPromptEditingContext = createContext<OptionalToolSidebarPromptEditingDomain>(null);
+const SidebarPromptInteractionContext = createContext<OptionalToolSidebarPromptInteractionDomain>(null);
 const SidebarGenerationContext = createContext<OptionalToolSidebarGenerationDomain>(null);
 const SidebarAssetsContext = createContext<OptionalToolSidebarAssetsDomain>(null);
 
-export function useSidebarSessionsDomain(): OptionalToolSidebarSessionsDomain {
-  return useContext(SidebarSessionsContext);
+export function useSidebarData(): SidebarDataContextValue | null {
+  return useContext(SidebarDataContext);
 }
 
-export function useSidebarPromptEditingDomain(): OptionalToolSidebarPromptEditingDomain {
-  return useContext(SidebarPromptEditingContext);
+export function useSidebarSessionsDomain(): OptionalToolSidebarSessionsDomain {
+  const sidebarData = useContext(SidebarDataContext);
+  const legacy = useContext(SidebarSessionsContext);
+  return sidebarData?.sessions ?? legacy;
+}
+
+export function useSidebarPromptInteractionDomain(): OptionalToolSidebarPromptInteractionDomain {
+  const sidebarData = useContext(SidebarDataContext);
+  const legacy = useContext(SidebarPromptInteractionContext);
+  return sidebarData?.promptInteraction ?? legacy;
 }
 
 export function useSidebarGenerationDomain(): OptionalToolSidebarGenerationDomain {
-  return useContext(SidebarGenerationContext);
+  const sidebarData = useContext(SidebarDataContext);
+  const legacy = useContext(SidebarGenerationContext);
+  return sidebarData?.generation ?? legacy;
 }
 
 export function useSidebarAssetsDomain(): OptionalToolSidebarAssetsDomain {
-  return useContext(SidebarAssetsContext);
+  const sidebarData = useContext(SidebarDataContext);
+  const legacy = useContext(SidebarAssetsContext);
+  return sidebarData?.assets ?? legacy;
+}
+
+export function SidebarDataContextProvider({
+  value,
+  children,
+}: {
+  value: SidebarDataContextValue | null;
+  children: ReactNode;
+}): React.ReactElement {
+  return <SidebarDataContext.Provider value={value}>{children}</SidebarDataContext.Provider>;
 }
 
 export function SidebarSessionsContextProvider({
@@ -37,14 +67,18 @@ export function SidebarSessionsContextProvider({
   return <SidebarSessionsContext.Provider value={value}>{children}</SidebarSessionsContext.Provider>;
 }
 
-export function SidebarPromptEditingContextProvider({
+export function SidebarPromptInteractionContextProvider({
   value,
   children,
 }: {
-  value: OptionalToolSidebarPromptEditingDomain;
+  value: OptionalToolSidebarPromptInteractionDomain;
   children: ReactNode;
 }): React.ReactElement {
-  return <SidebarPromptEditingContext.Provider value={value}>{children}</SidebarPromptEditingContext.Provider>;
+  return (
+    <SidebarPromptInteractionContext.Provider value={value}>
+      {children}
+    </SidebarPromptInteractionContext.Provider>
+  );
 }
 
 export function SidebarGenerationContextProvider({

@@ -175,6 +175,7 @@ export interface PromptCanvasProps {
   showResults?: boolean | undefined;
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
+  onResetResultsForEditing?: (() => void) | undefined;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   displayedPrompt: string | null;
   optimizedPrompt: string;

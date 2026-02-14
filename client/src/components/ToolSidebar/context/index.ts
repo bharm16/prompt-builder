@@ -1,10 +1,13 @@
 export {
+  SidebarDataContextProvider,
   SidebarSessionsContextProvider,
-  SidebarPromptEditingContextProvider,
+  SidebarPromptInteractionContextProvider,
   SidebarGenerationContextProvider,
   SidebarAssetsContextProvider,
+  useSidebarData,
   useSidebarSessionsDomain,
-  useSidebarPromptEditingDomain,
+  useSidebarPromptInteractionDomain,
   useSidebarGenerationDomain,
   useSidebarAssetsDomain,
 } from './SidebarDomainContexts';
+export type { SidebarDataContextValue } from './SidebarDomainContexts';

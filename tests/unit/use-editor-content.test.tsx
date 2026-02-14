@@ -22,20 +22,22 @@ describe('useEditorContent', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders placeholder text when no prompt is available', () => {
+  it('clears editor content in plain-text mode when prompt is empty', () => {
     const editor = document.createElement('div');
+    editor.textContent = 'Existing text';
     document.body.appendChild(editor);
     const editorRef = { current: editor } as unknown as RefObject<HTMLElement>;
 
     renderHook(() =>
       useEditorContent({
         editorRef,
-        displayedPrompt: null,
+        editorText: '',
         formattedHTML: '',
+        renderHtml: false,
       })
     );
 
-    expect(editor.innerHTML).toContain('Your optimized prompt will appear here');
+    expect(editor.textContent).toBe('');
   });
 
   it('updates HTML and restores selection when editor is focused', () => {
@@ -61,8 +63,9 @@ describe('useEditorContent', () => {
     renderHook(() =>
       useEditorContent({
         editorRef,
-        displayedPrompt: 'New text',
+        editorText: 'New text',
         formattedHTML: '<p>New text</p>',
+        renderHtml: true,
       })
     );
 

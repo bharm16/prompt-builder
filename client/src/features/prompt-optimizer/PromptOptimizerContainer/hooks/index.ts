@@ -16,4 +16,4 @@ export { useStablePromptContext } from './useStablePromptContext';
 export { usePromptCoherence } from './usePromptCoherence';
 export { useAutoSave } from './useAutoSave';
 export { useAssetManagement } from './useAssetManagement';
-export { useSequenceShotPromptSync } from './useSequenceShotPromptSync';
+export { useEditorShotPromptBinding } from './useEditorShotPromptBinding';

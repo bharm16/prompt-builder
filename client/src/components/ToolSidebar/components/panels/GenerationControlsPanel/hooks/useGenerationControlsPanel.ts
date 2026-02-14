@@ -4,14 +4,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
-  type KeyboardEvent,
   type RefObject,
 } from "react";
-import { sanitizeText } from "@/features/span-highlighting";
 import { safeUrlHost } from "@/utils/url";
 import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
-import type { AutocompleteState } from "../components/PromptTriggerAutocomplete";
 import type {
   GenerationControlsPanelProps,
   GenerationControlsTab,
@@ -27,25 +23,24 @@ import {
   useGenerationControlsStoreState,
 } from "@/features/prompt-optimizer/context/GenerationControlsStore";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
-import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
+import {
+  useOptionalPromptHighlights,
+  usePromptServices,
+} from "@/features/prompt-optimizer/context/PromptStateContext";
 import { useModelSelectionRecommendation } from "./useModelSelectionRecommendation";
 import { useFaceSwapState, type FaceSwapMode } from "./useFaceSwapState";
 import { useCapabilitiesClamping } from "./useCapabilitiesClamping";
 import { useCameraMotionModalFlow } from "./useCameraMotionModalFlow";
-import { usePromptEditingLifecycle } from "./usePromptEditingLifecycle";
-import { useUploadAndAutocomplete } from "./useUploadAndAutocomplete";
 
 export interface UseGenerationControlsPanelResult {
   refs: {
     fileInputRef: RefObject<HTMLInputElement>;
     startFrameFileInputRef: RefObject<HTMLInputElement>;
-    resolvedPromptInputRef: RefObject<HTMLTextAreaElement>;
   };
   state: {
     activeTab: GenerationControlsTab;
     imageSubTab: ImageSubTab;
     showCameraMotionModal: boolean;
-    isEditing: boolean;
   };
   store: {
     aspectRatio: string;
@@ -57,7 +52,6 @@ export interface UseGenerationControlsPanelResult {
     cameraMotion: CameraPath | null;
   };
   derived: {
-    canOptimize: boolean;
     isOptimizing: boolean;
     hasStartFrame: boolean;
     isKeyframeLimitReached: boolean;
@@ -65,11 +59,10 @@ export interface UseGenerationControlsPanelResult {
     isStartFrameUploadDisabled: boolean;
     startFrameUrlHost: string | null;
     hasPrompt: boolean;
+    promptLength: number;
     isImageGenerateDisabled: boolean;
     isVideoGenerateDisabled: boolean;
     isStoryboardDisabled: boolean;
-    isInputLocked: boolean;
-    isOptimizeDisabled: boolean;
     isGenerateDisabled: boolean;
     canPreviewFaceSwap: boolean;
     isFaceSwapPreviewDisabled: boolean;
@@ -104,7 +97,6 @@ export interface UseGenerationControlsPanelResult {
     aspectRatioOptions: string[];
     durationOptions: number[];
   };
-  autocomplete: AutocompleteState;
   actions: {
     setActiveTab: (tab: GenerationControlsTab) => void;
     setImageSubTab: (tab: ImageSubTab) => void;
@@ -121,13 +113,8 @@ export interface UseGenerationControlsPanelResult {
     handleCameraMotionButtonClick: () => void;
     handleCloseCameraMotionModal: () => void;
     handleSelectCameraMotion: (path: CameraPath) => void;
-    handleInputPromptChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
-    handleEditClick: () => void;
-    handleCancelEdit: () => void;
-    handleUpdate: () => void;
-    handleReoptimize: () => void;
-    handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
     handleCopy: () => Promise<void>;
+    handleClearPrompt: () => void;
     setFaceSwapMode: (mode: FaceSwapMode) => void;
     setFaceSwapCharacterId: (assetId: string) => void;
     handleFaceSwapPreview: () => Promise<void>;
@@ -141,37 +128,28 @@ export const useGenerationControlsPanel = (
   props: GenerationControlsPanelProps,
 ): UseGenerationControlsPanelResult => {
   const {
-    prompt,
-    onPromptChange,
-    onOptimize,
-    showResults = false,
     isProcessing = false,
     isRefining = false,
-    genericOptimizedPrompt = null,
-    promptInputRef,
     assets = [],
-    onInsertTrigger,
     onImageUpload,
     onStartFrameUpload,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null!);
   const startFrameFileInputRef = useRef<HTMLInputElement>(null!);
-  const localPromptInputRef = useRef<HTMLTextAreaElement>(null!);
-  const resolvedPromptInputRef = promptInputRef ?? localPromptInputRef;
   const previousShotIdRef = useRef<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isStartFrameUploading, setIsStartFrameUploading] = useState(false);
-  const autocompleteKeyDownRef = useRef<(
-    event: KeyboardEvent<HTMLTextAreaElement>,
-  ) => boolean>(() => false);
 
   const promptHighlights = useOptionalPromptHighlights();
+  const { promptOptimizer } = usePromptServices();
+  const prompt = promptOptimizer.inputPrompt;
   const {
     controls,
     faceSwapPreview: faceSwapPreviewState,
     setFaceSwapPreview,
   } = useGenerationControlsContext();
-  const { isSequenceMode, currentShot, updateShot } = useWorkspaceSession();
+  const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
   const { domain, ui } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -215,11 +193,11 @@ export const useGenerationControlsPanel = (
         storeActions.setVideoTier(nextTier);
       }
 
-      if (isSequenceMode && currentShot && currentShot.modelId !== model) {
+      if (hasActiveContinuityShot && currentShot && currentShot.modelId !== model) {
         void updateShot(currentShot.id, { modelId: model });
       }
     },
-    [currentShot, isSequenceMode, storeActions, tier, updateShot],
+    [currentShot, hasActiveContinuityShot, storeActions, tier, updateShot],
   );
 
   const handleAspectRatioChange = useCallback(
@@ -291,7 +269,6 @@ export const useGenerationControlsPanel = (
     promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
 
-  const canOptimize = typeof onOptimize === "function";
   const isOptimizing = Boolean(isProcessing || isRefining);
   const isGenerating = controls?.isGenerating ?? false;
   const isGenerationReady = Boolean(controls);
@@ -313,49 +290,29 @@ export const useGenerationControlsPanel = (
     onDurationChange: handleDurationChange,
   });
 
-  const {
-    isEditing,
-    resetEditingState,
-    handleEditClick,
-    handleCancelEdit,
-    handleUpdate,
-    handleReoptimize,
-    handlePromptKeyDown,
-  } = usePromptEditingLifecycle({
-    prompt,
-    selectedModel,
-    canOptimize,
-    isOptimizing,
-    showResults,
-    genericOptimizedPrompt,
-    onOptimize,
-    onPromptChange,
-    resolvedPromptInputRef,
-    handleModelChange,
-    handleAutocompleteKeyDown: (event) => autocompleteKeyDownRef.current(event),
-  });
+  const isUploadDisabled =
+    !onImageUpload || isUploading || isKeyframeLimitReached;
 
-  const {
-    isUploadDisabled,
-    handleFile,
-    handleUploadRequest,
-    handleAutocompleteKeyDown,
-    autocomplete,
-  } = useUploadAndAutocomplete({
-    fileInputRef,
-    inputRef: resolvedPromptInputRef,
-    prompt,
-    assets,
-    onPromptChange,
-    isOptimizing,
-    showResults,
-    isEditing,
-    onInsertTrigger,
-    onImageUpload,
-    isKeyframeLimitReached,
-  });
+  const handleFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (isUploadDisabled || !onImageUpload) return;
+      const result = onImageUpload(file);
+      if (result && typeof (result as Promise<void>).then === "function") {
+        setIsUploading(true);
+        try {
+          await result;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    },
+    [isUploadDisabled, onImageUpload]
+  );
 
-  autocompleteKeyDownRef.current = handleAutocompleteKeyDown;
+  const handleUploadRequest = useCallback(() => {
+    if (isUploadDisabled) return;
+    fileInputRef.current?.click();
+  }, [isUploadDisabled]);
 
   const {
     faceSwap,
@@ -396,38 +353,19 @@ export const useGenerationControlsPanel = (
   });
 
   useEffect(() => {
-    const nextShotId = isSequenceMode ? (currentShot?.id ?? null) : null;
+    const nextShotId = hasActiveContinuityShot ? (currentShot?.id ?? null) : null;
     if (previousShotIdRef.current === nextShotId) return;
     previousShotIdRef.current = nextShotId;
-
-    resetEditingState();
     setFaceSwapMode("direct");
     setFaceSwapCharacterId("");
     handleFaceSwapTryDifferent();
   }, [
     currentShot?.id,
-    isSequenceMode,
-    resetEditingState,
+    hasActiveContinuityShot,
     setFaceSwapMode,
     setFaceSwapCharacterId,
     handleFaceSwapTryDifferent,
   ]);
-
-  useEffect(() => {
-    if (!canOptimize) return;
-    if (!showResults && resolvedPromptInputRef.current) {
-      resolvedPromptInputRef.current.focus();
-    }
-  }, [canOptimize, showResults, resolvedPromptInputRef]);
-
-  const handleInputPromptChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>): void => {
-      if (!onPromptChange) return;
-      const updatedPrompt = sanitizeText(event.target.value);
-      onPromptChange(updatedPrompt);
-    },
-    [onPromptChange],
-  );
 
   const handleCopy = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -437,6 +375,10 @@ export const useGenerationControlsPanel = (
       // ignore
     }
   }, [prompt]);
+
+  const handleClearPrompt = useCallback(() => {
+    promptOptimizer.setInputPrompt("");
+  }, [promptOptimizer]);
 
   const isStartFrameUploadDisabled = !onStartFrameUpload || isStartFrameUploading;
 
@@ -472,9 +414,6 @@ export const useGenerationControlsPanel = (
   const isVideoGenerateDisabled =
     activeTab === "video" && !hasPrompt && !startFrame;
   const isStoryboardDisabled = !hasPrompt && !startFrame;
-  const isInputLocked =
-    (canOptimize && showResults && !isEditing) || isOptimizing;
-  const isOptimizeDisabled = !hasPrompt || isOptimizing;
   const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerating;
   const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerating;
   const isGenerateDisabled =
@@ -487,13 +426,11 @@ export const useGenerationControlsPanel = (
     refs: {
       fileInputRef,
       startFrameFileInputRef,
-      resolvedPromptInputRef,
     },
     state: {
       activeTab,
       imageSubTab,
       showCameraMotionModal,
-      isEditing,
     },
     store: {
       aspectRatio,
@@ -505,7 +442,6 @@ export const useGenerationControlsPanel = (
       cameraMotion,
     },
     derived: {
-      canOptimize,
       isOptimizing,
       hasStartFrame,
       isKeyframeLimitReached,
@@ -513,11 +449,10 @@ export const useGenerationControlsPanel = (
       isStartFrameUploadDisabled,
       startFrameUrlHost,
       hasPrompt,
+      promptLength: trimmedPrompt.length,
       isImageGenerateDisabled,
       isVideoGenerateDisabled,
       isStoryboardDisabled,
-      isInputLocked,
-      isOptimizeDisabled,
       isGenerateDisabled,
       canPreviewFaceSwap,
       isFaceSwapPreviewDisabled,
@@ -540,7 +475,6 @@ export const useGenerationControlsPanel = (
       aspectRatioOptions,
       durationOptions,
     },
-    autocomplete,
     actions: {
       setActiveTab,
       setImageSubTab,
@@ -557,13 +491,8 @@ export const useGenerationControlsPanel = (
       handleCameraMotionButtonClick,
       handleCloseCameraMotionModal,
       handleSelectCameraMotion,
-      handleInputPromptChange,
-      handleEditClick,
-      handleCancelEdit,
-      handleUpdate,
-      handleReoptimize,
-      handlePromptKeyDown,
       handleCopy,
+      handleClearPrompt,
       setFaceSwapMode,
       setFaceSwapCharacterId,
       handleFaceSwapPreview,
