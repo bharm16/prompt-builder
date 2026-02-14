@@ -414,15 +414,15 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * - XML tagging for data segmentation
    */
   span_labeling: {
-    client: process.env.SPAN_PROVIDER || 'qwen',
-    model: process.env.SPAN_MODEL || 'qwen/qwen3-32b',
+    client: process.env.SPAN_PROVIDER || 'gemini',
+    model: process.env.SPAN_MODEL || 'gemini-2.5-flash',
     temperature: 0.1, // Low temperature for reliable JSON
     maxTokens: 4096,
     timeout: 30000,
     responseFormat: 'json_object',
-    fallbackTo: 'gemini',
+    fallbackTo: 'qwen',
     fallbackConfig: {
-      model: 'gemini-2.5-flash',
+      model: 'qwen/qwen3-32b',
       timeout: 45000,
     },
     useSeed: true, // Same text should label identically

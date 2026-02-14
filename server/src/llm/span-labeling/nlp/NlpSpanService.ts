@@ -45,8 +45,12 @@ export async function extractSemanticSpans(
   const operation = 'extractSemanticSpans';
   const startTime = performance.now();
   const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const glinerConfigured =
+    (NEURO_SYMBOLIC?.ENABLED ?? false) &&
+    (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false);
   const useGliner = !promptOutputOnly &&
-    (options.useGliner ?? (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false));
+    glinerConfigured &&
+    (options.useGliner ?? true);
   const useCompromise = COMPROMISE?.ENABLED ?? true;
   const useLighting = LIGHTING?.ENABLED ?? true;
 

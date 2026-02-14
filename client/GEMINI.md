@@ -54,7 +54,7 @@ Know this when debugging API responses or adding new client→server integration
 Use this to find the correct client file for a given backend route. Do not create duplicate API clients.
 
 | Route | Server Route File | Client API/Service |
-|-------|-------------------|--------------------||
+|-------|-------------------|--------------------|
 | `POST /api/optimize-stream` | `optimize.routes.ts` | `services/PromptOptimizationApi.ts` |
 | `POST /api/enhance`, `/api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts` |
 | `POST /llm/label-spans` | `labelSpansRoute.ts` | `features/span-highlighting/api/spanLabelingApi.ts` |

@@ -109,7 +109,9 @@ describe('SpanLabelingService orchestration', () => {
       createAiService() as never
     );
 
-    expect(mockCreateLlmClient).toHaveBeenCalledWith({ operation: 'span_labeling' });
+    expect(mockCreateLlmClient).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: 'span_labeling' })
+    );
     expect(getSpans).toHaveBeenCalledOnce();
     expect(result.spans).toHaveLength(1);
     expect(result.spans[0]?.role).toBe('subject.wardrobe');

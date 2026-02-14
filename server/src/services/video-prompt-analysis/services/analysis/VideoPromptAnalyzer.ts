@@ -1,4 +1,5 @@
 import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
+import SpanLabelingConfig from '../../../../llm/span-labeling/config/SpanLabelingConfig';
 import type { VideoPromptIR } from '../../types';
 import { createEmptyIR } from './IrFactory';
 import { LlmIrExtractor } from './LlmIrExtractor';
@@ -24,7 +25,9 @@ export class VideoPromptAnalyzer {
    */
   async analyze(text: string): Promise<VideoPromptIR> {
     const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
-    const useGliner = !promptOutputOnly;
+    const useGliner = !promptOutputOnly &&
+      (SpanLabelingConfig.NEURO_SYMBOLIC?.ENABLED ?? false) &&
+      (SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false);
     const llmParsed = promptOutputOnly ? null : await this.llmExtractor.tryAnalyze(text);
 
     if (llmParsed) {
