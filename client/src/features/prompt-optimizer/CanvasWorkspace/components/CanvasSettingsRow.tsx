@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
+import { Sparkles, Folder } from '@promptstudio/system/components/ui';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, STORYBOARD_COST } from '@/components/ToolSidebar/config/modelConfig';
-import { useSidebarGenerationDomain } from '@/components/ToolSidebar/context';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import {
   useGenerationControlsStoreActions,
@@ -12,27 +12,26 @@ import { StartFramePopover } from './StartFramePopover';
 
 interface CanvasSettingsRowProps {
   prompt: string;
+  charCount: number;
   renderModelId: string;
   recommendedModelId?: string | undefined;
   recommendationPromptId?: string | undefined;
   recommendationMode?: 't2v' | 'i2v' | undefined;
   recommendationAgeMs?: number | null | undefined;
   onOpenMotion: () => void;
+  onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
+  onEnhance?: () => void;
 }
 
 const parseAspectRatio = (generationParams: Record<string, unknown>): string => {
   const ratio = generationParams.aspect_ratio;
-  if (typeof ratio === 'string' && ratio.trim()) {
-    return ratio.trim();
-  }
+  if (typeof ratio === 'string' && ratio.trim()) return ratio.trim();
   return '16:9';
 };
 
 const parseDuration = (generationParams: Record<string, unknown>): number => {
   const durationValue = generationParams.duration_s;
-  if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
-    return durationValue;
-  }
+  if (typeof durationValue === 'number' && Number.isFinite(durationValue)) return durationValue;
   if (typeof durationValue === 'string') {
     const parsed = Number.parseFloat(durationValue);
     if (Number.isFinite(parsed)) return parsed;
@@ -40,16 +39,49 @@ const parseDuration = (generationParams: Record<string, unknown>): number => {
   return 5;
 };
 
+/* Ghost button used across the settings row — matches mockup BarBtn exactly */
+function BarBtn({
+  children,
+  active,
+  accent,
+  onClick,
+  className,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  accent?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-lg border-none px-2.5 text-xs transition-colors ${
+        accent
+          ? 'font-semibold text-[#6C5CE7] hover:bg-[#1C1E26]'
+          : active
+            ? 'bg-[#1C1E26] font-medium text-[#E2E6EF]'
+            : 'bg-transparent font-medium text-[#555B6E] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
+      } ${className ?? ''}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function CanvasSettingsRow({
   prompt,
+  charCount,
   renderModelId,
   recommendedModelId,
   recommendationPromptId,
   recommendationMode,
   recommendationAgeMs,
   onOpenMotion,
+  onStartFrameUpload,
+  onEnhance,
 }: CanvasSettingsRowProps): React.ReactElement {
-  const generationDomain = useSidebarGenerationDomain();
   const { controls } = useGenerationControlsContext();
   const { domain } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
@@ -81,12 +113,7 @@ export function CanvasSettingsRow({
     [storeActions]
   );
 
-  const {
-    aspectRatioInfo,
-    durationInfo,
-    aspectRatioOptions,
-    durationOptions,
-  } = useCapabilitiesClamping({
+  const { aspectRatioOptions, durationOptions } = useCapabilitiesClamping({
     activeTab: 'video',
     selectedModel: domain.selectedModel,
     videoTier: domain.videoTier,
@@ -103,138 +130,154 @@ export function CanvasSettingsRow({
     VIDEO_RENDER_MODELS[0]?.cost ??
     0;
 
-  const previewDisabled =
-    !controls?.onStoryboard || isGenerating || (!hasPrompt && !hasStartFrame);
-  const draftDisabled = !controls?.onDraft || isGenerating || !hasPrompt;
-  const renderDisabled = !controls?.onRender || isGenerating || !hasPrompt;
+  const isWan = domain.selectedModel === VIDEO_DRAFT_MODEL.id;
+
+  const previewDisabled = !controls?.onStoryboard || isGenerating || (!hasPrompt && !hasStartFrame);
+  const generateDisabled = isWan
+    ? !controls?.onDraft || isGenerating || !hasPrompt
+    : !controls?.onRender || isGenerating || !hasPrompt;
 
   const trackGenerationStart = useCallback(
     (selectedModelId: string) => {
       void trackModelRecommendationEvent({
         event: 'generation_started',
-        ...(recommendationPromptId ? { recommendationId: recommendationPromptId } : {}),
-        ...(recommendationPromptId ? { promptId: recommendationPromptId } : {}),
+        ...(recommendationPromptId ? { recommendationId: recommendationPromptId, promptId: recommendationPromptId } : {}),
         ...(recommendedModelId ? { recommendedModelId } : {}),
         selectedModelId,
         ...(recommendationMode ? { mode: recommendationMode } : {}),
         durationSeconds: duration,
         ...(typeof recommendationAgeMs === 'number'
-          ? {
-              timeSinceRecommendationMs: Math.max(
-                0,
-                Math.round(recommendationAgeMs)
-              ),
-            }
+          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
           : {}),
       });
     },
-    [
-      duration,
-      recommendationAgeMs,
-      recommendationMode,
-      recommendationPromptId,
-      recommendedModelId,
-    ]
+    [duration, recommendationAgeMs, recommendationMode, recommendationPromptId, recommendedModelId]
   );
+
+  const handleGenerate = useCallback(() => {
+    if (isWan) {
+      trackGenerationStart(VIDEO_DRAFT_MODEL.id);
+      controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+    } else {
+      trackGenerationStart(renderModelId);
+      controls?.onRender?.(renderModelId);
+    }
+  }, [controls, isWan, renderModelId, trackGenerationStart]);
+
+  /* Cycle through aspect ratio options on click */
+  const handleAspectRatioClick = useCallback(() => {
+    if (!aspectRatioOptions.length) return;
+    const currentIndex = aspectRatioOptions.indexOf(aspectRatio);
+    const nextIndex = (currentIndex + 1) % aspectRatioOptions.length;
+    const nextAspectRatio = aspectRatioOptions[nextIndex];
+    if (!nextAspectRatio) return;
+    handleAspectRatioChange(nextAspectRatio);
+  }, [aspectRatio, aspectRatioOptions, handleAspectRatioChange]);
+
+  /* Cycle through duration options on click */
+  const handleDurationClick = useCallback(() => {
+    if (!durationOptions.length) return;
+    const currentIndex = durationOptions.indexOf(duration);
+    const nextIndex = (currentIndex + 1) % durationOptions.length;
+    const nextDuration = durationOptions[nextIndex];
+    if (typeof nextDuration !== 'number') return;
+    handleDurationChange(nextDuration);
+  }, [duration, durationOptions, handleDurationChange]);
+
+  const creditCost = isWan ? VIDEO_DRAFT_MODEL.cost : renderModelCost;
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 border-t border-[#1A1C22] bg-[#0F1117] px-3 py-2"
+      className="flex items-center gap-1 border-t border-[#181A20] pt-2.5 mt-2.5"
       data-testid="canvas-settings-row"
     >
+      {/* Start frame (with popover) */}
       <StartFramePopover
         startFrame={domain.startFrame}
         cameraMotion={domain.cameraMotion}
         onSetStartFrame={storeActions.setStartFrame}
         onClearStartFrame={storeActions.clearStartFrame}
         onOpenMotion={onOpenMotion}
-        onStartFrameUpload={generationDomain?.onStartFrameUpload}
+        onStartFrameUpload={onStartFrameUpload}
         disabled={isGenerating}
       />
 
-      {hasStartFrame ? (
-        <button
-          type="button"
-          className="inline-flex h-8 items-center rounded-lg border border-[#2F254B] bg-[#1A1530] px-2.5 text-[11px] font-semibold text-[#C4B5FD] transition-colors hover:bg-[#201A3A]"
-          onClick={onOpenMotion}
-          data-testid="canvas-motion-button"
-        >
-          {domain.cameraMotion?.label
-            ? `Motion: ${domain.cameraMotion.label}`
-            : 'Add motion'}
-        </button>
-      ) : null}
+      {/* Assets */}
+      <BarBtn onClick={(e) => e.stopPropagation()}>
+        <span className="flex opacity-60"><Folder size={13} /></span>
+        Assets
+      </BarBtn>
 
-      <label className="inline-flex items-center gap-1 rounded-lg border border-[#22252C] bg-[#111318] px-2 text-[11px] text-[#8B92A5]">
-        <span>Aspect</span>
-        <select
-          data-testid="canvas-aspect-ratio-select"
-          className="h-7 bg-transparent text-[11px] font-semibold text-[#E2E6EF] outline-none"
-          value={aspectRatio}
-          onChange={(event) => handleAspectRatioChange(event.target.value)}
-          disabled={Boolean(aspectRatioInfo?.state.disabled)}
-        >
-          {aspectRatioOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Aspect ratio — cycle on click */}
+      <BarBtn onClick={handleAspectRatioClick}>
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>
+        {aspectRatio}
+      </BarBtn>
 
-      <label className="inline-flex items-center gap-1 rounded-lg border border-[#22252C] bg-[#111318] px-2 text-[11px] text-[#8B92A5]">
-        <span>Duration</span>
-        <select
-          data-testid="canvas-duration-select"
-          className="h-7 bg-transparent text-[11px] font-semibold text-[#E2E6EF] outline-none"
-          value={duration}
-          onChange={(event) => handleDurationChange(Number(event.target.value))}
-          disabled={Boolean(durationInfo?.state.disabled)}
-        >
-          {durationOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}s
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Duration — cycle on click */}
+      <BarBtn onClick={handleDurationClick}>
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>
+        {duration}s
+      </BarBtn>
+
+      {/* AI Enhance */}
+      <BarBtn
+        accent
+        {...(onEnhance
+          ? {
+              onClick: (event: React.MouseEvent) => {
+                event.stopPropagation();
+                onEnhance();
+              },
+            }
+          : {})}
+      >
+        <Sparkles size={13} />
+        Enhance
+      </BarBtn>
 
       <div className="flex-1" />
 
+      {/* Character count */}
+      <span className="mr-1 text-[10px] tabular-nums text-[#3A3E4C]">
+        {charCount}
+      </span>
+
+      {/* Preview button (secondary) */}
       <button
         type="button"
         data-testid="canvas-preview-button"
-        className="h-8 rounded-lg border border-[#22252C] bg-[#111318] px-3 text-[11px] font-semibold text-[#E2E6EF] transition-colors hover:border-[#3A3D46] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-[34px] items-center gap-1.5 rounded-[9px] border border-[#22252C] bg-transparent px-3.5 text-xs font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C]"
         onClick={() => controls?.onStoryboard?.()}
         disabled={previewDisabled}
       >
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="5" height="4" rx="0.8"/><rect x="7" y="2.5" width="5" height="4" rx="0.8"/><rect x="1" y="7.5" width="5" height="4" rx="0.8"/><rect x="7" y="7.5" width="5" height="4" rx="0.8"/></svg>
         Preview · {STORYBOARD_COST} cr
       </button>
 
+      {/* Generate button (primary) */}
       <button
         type="button"
-        data-testid="canvas-draft-button"
-        className="h-8 rounded-lg border border-[#2B4130] bg-[#17271D] px-3 text-[11px] font-semibold text-[#86EFAC] transition-colors hover:bg-[#1C3124] disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={() => {
-          trackGenerationStart(VIDEO_DRAFT_MODEL.id);
-          controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
-        }}
-        disabled={draftDisabled}
+        data-testid="canvas-generate-button"
+        className={`inline-flex h-[34px] items-center gap-1.5 rounded-[9px] px-[18px] text-xs font-bold tracking-[0.01em] transition-opacity hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-60 ${
+          isWan
+            ? 'border border-[#E2E6EF] bg-transparent text-[#E2E6EF]'
+            : 'border-none bg-[#E2E6EF] text-[#0D0E12]'
+        }`}
+        onClick={handleGenerate}
+        disabled={generateDisabled}
       >
-        Draft · {VIDEO_DRAFT_MODEL.cost} cr
-      </button>
-
-      <button
-        type="button"
-        data-testid="canvas-render-button"
-        className="h-8 rounded-lg border border-[#6C5CE7] bg-[#6C5CE7] px-3 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={() => {
-          trackGenerationStart(renderModelId);
-          controls?.onRender?.(renderModelId);
-        }}
-        disabled={renderDisabled}
-      >
-        Generate · {renderModelCost} cr
+        {isWan ? (
+          <>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 1v3M6 8v3M9 3L7.5 5.5M4.5 6.5L3 9M3 3l1.5 2.5M7.5 6.5L9 9"/></svg>
+            Draft · {creditCost} cr
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 2l-1 3.5L1 6.5l3.5 1L5.5 11l1-3.5L10 6.5 6.5 5.5z"/><path d="M10.5 1l-.5 1.5L8.5 3l1.5.5.5 1.5.5-1.5L13 3l-1.5-.5z"/></svg>
+            Generate · {creditCost} cr
+          </>
+        )}
       </button>
     </div>
   );

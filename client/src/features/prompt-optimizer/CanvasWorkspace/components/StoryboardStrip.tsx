@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { X } from '@promptstudio/system/components/ui';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type {
   Generation,
@@ -79,77 +80,76 @@ export function StoryboardStrip({
 
   return (
     <div
-      className="border-t border-[#1A1C22] bg-[#0F1117] px-3 py-2.5"
+      className="flex items-center gap-2 px-4 py-2"
       data-testid="storyboard-strip"
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[12px] font-semibold text-[#E2E6EF]">
-            Storyboard Preview
-          </p>
-          <p className="text-[11px] text-[#8B92A5]">
-            Select a frame and use it as your start frame.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="h-7 rounded-md border border-[#22252C] bg-[#111318] px-2 text-[11px] font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46]"
-          onClick={onDismiss}
-          data-testid="storyboard-dismiss"
-        >
-          Dismiss
-        </button>
-      </div>
+      {/* Label */}
+      <span className="flex-shrink-0 text-[10px] font-semibold tracking-[0.05em] text-[#3A3E4C]">
+        PREVIEW
+      </span>
 
-      <div className="grid grid-cols-4 gap-2">
+      {/* Frame thumbnails */}
+      <div className="flex gap-1.5">
         {frames.map((frame, index) => (
           <button
             key={frame.id}
             type="button"
             onClick={() => setSelectedIndex(index)}
             className={cn(
-              'overflow-hidden rounded-lg border transition-colors',
+              'h-11 w-[72px] flex-shrink-0 overflow-hidden rounded-lg border-2 outline-none transition-all',
               selectedIndex === index
-                ? 'border-[#6C5CE7]'
-                : 'border-[#22252C] hover:border-[#3A3D46]'
+                ? 'border-[#6C5CE7] opacity-100 shadow-[0_0_12px_#6C5CE744]'
+                : 'border-transparent opacity-70 hover:opacity-100'
             )}
             data-testid={`storyboard-frame-${index}`}
           >
             <img
               src={frame.url}
-              alt={`Storyboard frame ${index + 1}`}
-              className="h-16 w-full object-cover"
+              alt={`Frame ${index + 1}`}
+              className="h-full w-full object-cover"
               loading="lazy"
             />
           </button>
         ))}
       </div>
 
-      <div className="mt-2 flex justify-end">
-        <button
-          type="button"
-          className="h-8 rounded-lg border border-[#6C5CE7] bg-[#6C5CE7] px-3 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!selectedFrame}
-          data-testid="storyboard-use-start-frame"
-          onClick={() => {
-            if (!selectedFrame) return;
-            onUseAsStartFrame({
-              id: `storyboard-${selectedFrame.id}`,
-              url: selectedFrame.url,
-              source: 'generation',
-              ...(selectedFrame.sourcePrompt
-                ? { sourcePrompt: selectedFrame.sourcePrompt }
-                : {}),
-              ...(selectedFrame.assetId ? { assetId: selectedFrame.assetId } : {}),
-              ...(selectedFrame.storagePath
-                ? { storagePath: selectedFrame.storagePath }
-                : {}),
-            });
-          }}
-        >
-          Use as start frame
-        </button>
-      </div>
+      {/* Use as start frame */}
+      <button
+        type="button"
+        className="h-[26px] flex-shrink-0 rounded-md border border-[#6C5CE744] bg-[#6C5CE711] px-2.5 text-[11px] font-semibold text-[#6C5CE7] transition-colors hover:bg-[#6C5CE71A] disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={!selectedFrame}
+        data-testid="storyboard-use-start-frame"
+        onClick={() => {
+          if (!selectedFrame) return;
+          onUseAsStartFrame({
+            id: `storyboard-${selectedFrame.id}`,
+            url: selectedFrame.url,
+            source: 'generation',
+            ...(selectedFrame.sourcePrompt
+              ? { sourcePrompt: selectedFrame.sourcePrompt }
+              : {}),
+            ...(selectedFrame.assetId ? { assetId: selectedFrame.assetId } : {}),
+            ...(selectedFrame.storagePath
+              ? { storagePath: selectedFrame.storagePath }
+              : {}),
+          });
+        }}
+      >
+        Use as start frame
+      </button>
+
+      <div className="flex-1" />
+
+      {/* Dismiss */}
+      <button
+        type="button"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-[#3A3E4C] transition-colors hover:text-[#555B6E]"
+        onClick={onDismiss}
+        data-testid="storyboard-dismiss"
+        aria-label="Dismiss storyboard"
+      >
+        <X size={10} />
+      </button>
     </div>
   );
 }

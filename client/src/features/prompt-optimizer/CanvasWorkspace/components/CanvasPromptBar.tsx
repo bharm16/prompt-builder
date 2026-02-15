@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TriggerAutocomplete } from '@/features/assets/components/TriggerAutocomplete';
 import type { AssetSuggestion } from '@/features/assets/hooks/useTriggerAutocomplete';
 import { PromptEditor } from '@/features/prompt-optimizer/components/PromptEditor';
 import { addPromptFocusIntentListener } from '@/features/prompt-optimizer/CanvasWorkspace/events';
+import { CanvasSettingsRow } from './CanvasSettingsRow';
 
 interface CanvasPromptBarProps {
   editorRef: React.RefObject<HTMLDivElement>;
+  prompt: string;
   onTextSelection: (event: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -23,10 +25,20 @@ interface CanvasPromptBarProps {
   onAutocompleteSelect: (asset: AssetSuggestion) => void;
   onAutocompleteClose: () => void;
   onAutocompleteIndexChange: (index: number) => void;
+  /* Settings row props */
+  renderModelId: string;
+  recommendedModelId?: string;
+  recommendationPromptId?: string;
+  recommendationMode?: 't2v' | 'i2v';
+  recommendationAgeMs?: number | null;
+  onOpenMotion: () => void;
+  onStartFrameUpload?: (file: File) => void | Promise<void>;
+  onEnhance?: () => void;
 }
 
 export function CanvasPromptBar({
   editorRef,
+  prompt,
   onTextSelection,
   onHighlightClick,
   onHighlightMouseDown,
@@ -44,7 +56,19 @@ export function CanvasPromptBar({
   onAutocompleteSelect,
   onAutocompleteClose,
   onAutocompleteIndexChange,
+  renderModelId,
+  recommendedModelId,
+  recommendationPromptId,
+  recommendationMode,
+  recommendationAgeMs,
+  onOpenMotion,
+  onStartFrameUpload,
+  onEnhance,
 }: CanvasPromptBarProps): React.ReactElement {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const charCount = useMemo(() => prompt.length, [prompt]);
+
   useEffect(() => {
     return addPromptFocusIntentListener(() => {
       editorRef.current?.focus();
@@ -52,37 +76,66 @@ export function CanvasPromptBar({
   }, [editorRef]);
 
   return (
-    <div className="relative border-t border-[#1A1C22] bg-[#10121A] px-3 py-3">
-      <div className="relative overflow-hidden rounded-xl border border-[#22252C] bg-[#0D0F16]">
-        <PromptEditor
-          ref={editorRef}
-          className="min-h-[108px] max-h-[220px] overflow-y-auto px-4 py-3 text-[14px] leading-relaxed text-[#E2E6EF] outline-none"
-          onTextSelection={onTextSelection}
-          onHighlightClick={onHighlightClick}
-          onHighlightMouseDown={onHighlightMouseDown}
-          onHighlightMouseEnter={onHighlightMouseEnter}
-          onHighlightMouseLeave={onHighlightMouseLeave}
-          onCopyEvent={onCopyEvent}
-          onInput={onInput}
-          onKeyDown={onEditorKeyDown}
-          onBlur={onEditorBlur}
-        />
-        {autocompleteOpen ? (
-          <TriggerAutocomplete
-            isOpen={autocompleteOpen}
-            suggestions={autocompleteSuggestions}
-            selectedIndex={autocompleteSelectedIndex}
-            position={autocompletePosition}
-            isLoading={autocompleteLoading}
-            onSelect={onAutocompleteSelect}
-            onClose={onAutocompleteClose}
-            setSelectedIndex={onAutocompleteIndexChange}
+    <div className="flex-shrink-0 px-4 pb-4 pt-1">
+      {/* Single prompt container card — text + settings inside */}
+      <div
+        className={`rounded-[14px] border bg-[#141519] px-4 py-3.5 transition-colors ${
+          isFocused ? 'border-[#6C5CE744]' : 'border-[#22252C]'
+        }`}
+        onClick={() => {
+          editorRef.current?.focus();
+          setIsFocused(true);
+        }}
+      >
+        {/* Prompt editor */}
+        <div className="relative">
+          <PromptEditor
+            ref={editorRef}
+            className="min-h-[56px] max-h-[180px] overflow-y-auto text-sm leading-[1.75] text-[#8B92A5] outline-none"
+            onTextSelection={onTextSelection}
+            onHighlightClick={onHighlightClick}
+            onHighlightMouseDown={onHighlightMouseDown}
+            onHighlightMouseEnter={onHighlightMouseEnter}
+            onHighlightMouseLeave={onHighlightMouseLeave}
+            onCopyEvent={onCopyEvent}
+            onInput={onInput}
+            onKeyDown={onEditorKeyDown}
+            onBlur={(e) => {
+              setIsFocused(false);
+              onEditorBlur(e);
+            }}
+            onFocus={() => setIsFocused(true)}
           />
-        ) : null}
+          {autocompleteOpen ? (
+            <TriggerAutocomplete
+              isOpen={autocompleteOpen}
+              suggestions={autocompleteSuggestions}
+              selectedIndex={autocompleteSelectedIndex}
+              position={autocompletePosition}
+              isLoading={autocompleteLoading}
+              onSelect={onAutocompleteSelect}
+              onClose={onAutocompleteClose}
+              setSelectedIndex={onAutocompleteIndexChange}
+            />
+          ) : null}
+        </div>
+
+        {/* Settings row — inside the prompt card, below a subtle separator */}
+        <CanvasSettingsRow
+          prompt={prompt}
+          charCount={charCount}
+          renderModelId={renderModelId}
+          {...(recommendedModelId ? { recommendedModelId } : {})}
+          {...(recommendationPromptId ? { recommendationPromptId } : {})}
+          {...(recommendationMode ? { recommendationMode } : {})}
+          {...(typeof recommendationAgeMs === 'number'
+            ? { recommendationAgeMs }
+            : {})}
+          onOpenMotion={onOpenMotion}
+          {...(onStartFrameUpload ? { onStartFrameUpload } : {})}
+          {...(onEnhance ? { onEnhance } : {})}
+        />
       </div>
-      <p className="mt-1.5 text-[11px] text-[#5F6577]">
-        Press Cmd/Ctrl + Enter to optimize. Use @ to insert assets.
-      </p>
     </div>
   );
 }

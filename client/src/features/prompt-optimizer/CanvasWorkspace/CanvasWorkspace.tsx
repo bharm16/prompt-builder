@@ -16,11 +16,11 @@ import type {
 import { GenerationsPanel } from '@/features/prompt-optimizer/GenerationsPanel';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { useModelSelectionRecommendation } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
+import { useSidebarGenerationDomain } from '@/components/ToolSidebar/context';
 import type { PromptVersionEntry } from '@/hooks/types';
 import { CanvasTopBar } from './components/CanvasTopBar';
 import { CanvasVersionStrip } from './components/CanvasVersionStrip';
 import { CanvasPromptBar } from './components/CanvasPromptBar';
-import { CanvasSettingsRow } from './components/CanvasSettingsRow';
 import { StoryboardStrip } from './components/StoryboardStrip';
 import { ModelCornerSelector } from './components/ModelCornerSelector';
 
@@ -83,11 +83,6 @@ const resolveLatestStoryboardId = (snapshot: GenerationsPanelStateSnapshot | nul
   })[0]?.id ?? null;
 };
 
-const resolveModelLabel = (selectedModelId: string): string => {
-  if (selectedModelId === VIDEO_DRAFT_MODEL.id) return VIDEO_DRAFT_MODEL.label;
-  return VIDEO_RENDER_MODELS.find((model) => model.id === selectedModelId)?.label ?? selectedModelId;
-};
-
 export function CanvasWorkspace({
   versionsPanelProps,
   generationsPanelProps,
@@ -121,6 +116,7 @@ export function CanvasWorkspace({
   const { domain } = useGenerationControlsStoreState();
   const promptHighlights = useOptionalPromptHighlights();
   const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
+  const generationDomain = useSidebarGenerationDomain();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [snapshot, setSnapshot] = useState<GenerationsPanelStateSnapshot | null>(null);
   const [isStoryboardDismissed, setIsStoryboardDismissed] = useState(false);
@@ -172,41 +168,24 @@ export function CanvasWorkspace({
         mode: recommendationMode,
         durationSeconds,
         ...(typeof recommendationAgeMs === 'number'
-          ? {
-              timeSinceRecommendationMs: Math.max(
-                0,
-                Math.round(recommendationAgeMs)
-              ),
-            }
+          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
           : {}),
       });
 
       storeActions.setSelectedModel(modelId);
-      if (nextTier !== domain.videoTier) {
-        storeActions.setVideoTier(nextTier);
-      }
+      if (nextTier !== domain.videoTier) storeActions.setVideoTier(nextTier);
 
       if (hasActiveContinuityShot && currentShot && currentShot.modelId !== modelId) {
         void updateShot(currentShot.id, { modelId });
       }
     },
     [
-      currentShot,
-      domain.selectedModel,
-      domain.videoTier,
-      durationSeconds,
-      hasActiveContinuityShot,
-      modelRecommendation?.promptId,
-      recommendationAgeMs,
-      recommendationMode,
-      recommendedModelId,
-      storeActions,
-      updateShot,
+      currentShot, domain.selectedModel, domain.videoTier, durationSeconds,
+      hasActiveContinuityShot, modelRecommendation?.promptId,
+      recommendationAgeMs, recommendationMode, recommendedModelId,
+      storeActions, updateShot,
     ]
   );
-
-  const selectedModelLabel = resolveModelLabel(domain.selectedModel);
-  const subtitle = `${selectedModelLabel} · ${durationSeconds}s`;
 
   const handleSnapshot = useCallback(
     (nextSnapshot: GenerationsPanelStateSnapshot) => {
@@ -223,28 +202,26 @@ export function CanvasWorkspace({
     [storeActions]
   );
 
-  return (
-    <div className="flex min-h-0 flex-1 overflow-hidden bg-[#0A0C11]">
-      <CanvasVersionStrip
-        versions={versionsPanelProps.versions}
-        selectedVersionId={versionsPanelProps.selectedVersionId}
-        onSelectVersion={versionsPanelProps.onSelectVersion}
-      />
+  /* Action row buttons below canvas */
+  const actionLabels = ['Reuse', 'Extend', 'Copy prompt', 'Share', 'Download'];
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <CanvasTopBar
-          title="Canvas Workspace"
-          subtitle={subtitle}
-          copied={copied}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onCopy={onCopy}
-          onShare={onShare}
-          onUndo={onUndo}
-          onRedo={onRedo}
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
+      {/* Top bar */}
+      <CanvasTopBar />
+
+      {/* Main canvas area — uses horizontal padding for version strip space */}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-24">
+
+        {/* Floating version strip on left edge */}
+        <CanvasVersionStrip
+          versions={versionsPanelProps.versions}
+          selectedVersionId={versionsPanelProps.selectedVersionId}
+          onSelectVersion={versionsPanelProps.onSelectVersion}
         />
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        {/* Video canvas */}
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl">
           <GenerationsPanel
             {...generationsPanelProps}
             presentation="hero"
@@ -252,6 +229,7 @@ export function CanvasWorkspace({
             className="h-full"
           />
 
+          {/* Model selector — bottom-left of canvas */}
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}
             renderModelId={renderModelId}
@@ -263,6 +241,24 @@ export function CanvasWorkspace({
           />
         </div>
 
+        {/* Action row below canvas */}
+        <div className="flex gap-4 px-1 py-2">
+          {actionLabels.map((label) => (
+            <button
+              key={label}
+              type="button"
+              className="border-none bg-transparent p-0 text-xs text-[#3A3E4C] transition-colors hover:text-[#8B92A5]"
+              onClick={() => {
+                if (label === 'Copy prompt') onCopy();
+                else if (label === 'Share') onShare();
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Storyboard strip */}
         {!isStoryboardDismissed ? (
           <StoryboardStrip
             snapshot={snapshot}
@@ -271,21 +267,10 @@ export function CanvasWorkspace({
           />
         ) : null}
 
-        <CanvasSettingsRow
-          prompt={prompt}
-          renderModelId={renderModelId}
-          recommendationPromptId={modelRecommendation?.promptId}
-          recommendedModelId={recommendedModelId}
-          recommendationMode={recommendationMode}
-          recommendationAgeMs={recommendationAgeMs}
-          onOpenMotion={() => {
-            if (!domain.startFrame) return;
-            setShowCameraMotionModal(true);
-          }}
-        />
-
+        {/* Prompt bar (includes settings row inside) */}
         <CanvasPromptBar
           editorRef={editorRef}
+          prompt={prompt}
           onTextSelection={onTextSelection}
           onHighlightClick={onHighlightClick}
           onHighlightMouseDown={onHighlightMouseDown}
@@ -303,6 +288,22 @@ export function CanvasWorkspace({
           onAutocompleteSelect={onAutocompleteSelect}
           onAutocompleteClose={onAutocompleteClose}
           onAutocompleteIndexChange={onAutocompleteIndexChange}
+          renderModelId={renderModelId}
+          {...(recommendedModelId ? { recommendedModelId } : {})}
+          {...(modelRecommendation?.promptId
+            ? { recommendationPromptId: modelRecommendation.promptId }
+            : {})}
+          {...(recommendationMode ? { recommendationMode } : {})}
+          {...(typeof recommendationAgeMs === 'number'
+            ? { recommendationAgeMs }
+            : {})}
+          onOpenMotion={() => {
+            if (!domain.startFrame) return;
+            setShowCameraMotionModal(true);
+          }}
+          {...(generationDomain?.onStartFrameUpload
+            ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+            : {})}
         />
       </div>
 

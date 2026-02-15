@@ -73,6 +73,7 @@ function renderRow(options: {
         <ControlsBridge controls={controls} />
         <CanvasSettingsRow
           prompt={prompt}
+          charCount={prompt.length}
           renderModelId="sora-2"
           onOpenMotion={vi.fn()}
         />
@@ -82,7 +83,7 @@ function renderRow(options: {
 }
 
 describe('CanvasSettingsRow', () => {
-  it('uses GenerationControlsContext controls for preview, draft, and render actions', () => {
+  it('uses GenerationControlsContext controls for preview and render actions', () => {
     const onStoryboard = vi.fn();
     const onDraft = vi.fn();
     const onRender = vi.fn();
@@ -98,23 +99,42 @@ describe('CanvasSettingsRow', () => {
     });
 
     fireEvent.click(screen.getByTestId('canvas-preview-button'));
-    fireEvent.click(screen.getByTestId('canvas-draft-button'));
-    fireEvent.click(screen.getByTestId('canvas-render-button'));
+    fireEvent.click(screen.getByTestId('canvas-generate-button'));
 
     expect(onStoryboard).toHaveBeenCalledTimes(1);
-    expect(onDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id);
     expect(onRender).toHaveBeenCalledWith('sora-2');
+    expect(onDraft).not.toHaveBeenCalled();
   });
 
-  it('disables preview/draft/render buttons when controls are unavailable', () => {
+  it('uses draft action when Wan draft model is selected', () => {
+    const onDraft = vi.fn();
+    const onRender = vi.fn();
+
+    renderRow({
+      controls: {
+        onStoryboard: vi.fn(),
+        onDraft,
+        onRender,
+        isGenerating: false,
+        activeDraftModel: null,
+      },
+      state: buildState({ selectedModel: VIDEO_DRAFT_MODEL.id }),
+    });
+
+    fireEvent.click(screen.getByTestId('canvas-generate-button'));
+
+    expect(onDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id);
+    expect(onRender).not.toHaveBeenCalled();
+  });
+
+  it('disables preview/generate buttons when controls are unavailable', () => {
     renderRow({ controls: null });
 
     expect(screen.getByTestId('canvas-preview-button')).toBeDisabled();
-    expect(screen.getByTestId('canvas-draft-button')).toBeDisabled();
-    expect(screen.getByTestId('canvas-render-button')).toBeDisabled();
+    expect(screen.getByTestId('canvas-generate-button')).toBeDisabled();
   });
 
-  it('disables preview/draft/render buttons while generation is in progress', () => {
+  it('disables preview/generate buttons while generation is in progress', () => {
     renderRow({
       controls: {
         onStoryboard: vi.fn(),
@@ -126,7 +146,6 @@ describe('CanvasSettingsRow', () => {
     });
 
     expect(screen.getByTestId('canvas-preview-button')).toBeDisabled();
-    expect(screen.getByTestId('canvas-draft-button')).toBeDisabled();
-    expect(screen.getByTestId('canvas-render-button')).toBeDisabled();
+    expect(screen.getByTestId('canvas-generate-button')).toBeDisabled();
   });
 });
