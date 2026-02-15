@@ -4,12 +4,28 @@ import type { ReactNode } from 'react';
 import type { Asset } from '@shared/types/asset';
 import { PromptOptimizerWorkspaceView } from '../PromptOptimizerWorkspaceView';
 
+const mockFeatures = vi.hoisted(() => ({
+  CANVAS_FIRST_LAYOUT: true,
+}));
+
+vi.mock('@/config/features.config', () => ({
+  FEATURES: mockFeatures,
+}));
+
 vi.mock('@components/navigation/AppShell', () => ({
   AppShell: ({ children }: { children: ReactNode }) => <div data-testid="app-shell">{children}</div>,
 }));
 
 vi.mock('../../../layouts/PromptResultsLayout', () => ({
-  PromptResultsLayout: () => <div data-testid="prompt-results-layout" />,
+  PromptResultsLayout: () => (
+    <div
+      data-testid={
+        mockFeatures.CANVAS_FIRST_LAYOUT
+          ? 'prompt-results-layout-canvas-first'
+          : 'prompt-results-layout-legacy'
+      }
+    />
+  ),
 }));
 
 vi.mock('../../../components/PromptModals', () => ({
@@ -83,20 +99,36 @@ const buildProps = () =>
   });
 
 describe('PromptOptimizerWorkspaceView', () => {
+  it('renders canvas-first layout path when feature flag is enabled', () => {
+    mockFeatures.CANVAS_FIRST_LAYOUT = true;
+    render(<PromptOptimizerWorkspaceView {...buildProps()} />);
+
+    expect(screen.getByTestId('prompt-results-layout-canvas-first')).toBeInTheDocument();
+  });
+
+  it('renders legacy fallback path when feature flag is disabled', () => {
+    mockFeatures.CANVAS_FIRST_LAYOUT = false;
+    render(<PromptOptimizerWorkspaceView {...buildProps()} />);
+
+    expect(screen.getByTestId('prompt-results-layout-legacy')).toBeInTheDocument();
+  });
+
   it('always renders prompt results layout when not loading', () => {
+    mockFeatures.CANVAS_FIRST_LAYOUT = true;
     render(<PromptOptimizerWorkspaceView {...buildProps()} />);
 
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
-    expect(screen.getByTestId('prompt-results-layout')).toBeInTheDocument();
+    expect(screen.getByTestId('prompt-results-layout-canvas-first')).toBeInTheDocument();
     expect(screen.queryByText('Loading prompt...')).not.toBeInTheDocument();
   });
 
   it('renders loading state while prompt is loading', () => {
+    mockFeatures.CANVAS_FIRST_LAYOUT = true;
     const props = buildProps();
     render(<PromptOptimizerWorkspaceView {...props} shouldShowLoading />);
 
     expect(screen.getByText('Loading prompt...')).toBeInTheDocument();
-    expect(screen.queryByTestId('prompt-results-layout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('prompt-results-layout-canvas-first')).not.toBeInTheDocument();
   });
 
   it('renders debug button when debug mode is enabled', () => {

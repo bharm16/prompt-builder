@@ -25,6 +25,7 @@ import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { CollapsibleDrawer, type DrawerDisplayMode } from '@components/CollapsibleDrawer';
 import { LoadingDots } from '@components/LoadingDots';
 import { MAX_REQUEST_LENGTH } from '@components/SuggestionsPanel/config/panelConfig';
+import { FEATURES } from '@/config/features.config';
 import { cn } from '@/utils/cn';
 import { TriggerAutocomplete } from '@features/assets/components/TriggerAutocomplete';
 import type { AssetSuggestion } from '@features/assets/hooks/useTriggerAutocomplete';
@@ -46,6 +47,7 @@ import { GenerationsPanel } from '../../GenerationsPanel';
 import { SpanBentoGrid } from '../../SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../../../span-highlighting/components/HighlightingErrorBoundary';
 import { CoherencePanel } from '../../components/coherence/CoherencePanel';
+import { CanvasWorkspace } from '../../CanvasWorkspace/CanvasWorkspace';
 
 const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant, ...props }, ref) => (
@@ -289,6 +291,40 @@ export function PromptCanvasView({
   onExport,
   onShare,
 }: PromptCanvasViewProps): React.ReactElement {
+  if (FEATURES.CANVAS_FIRST_LAYOUT) {
+    return (
+      <CanvasWorkspace
+        versionsPanelProps={versionsPanelProps}
+        generationsPanelProps={generationsPanelProps}
+        copied={copied}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onCopy={onCopy}
+        onShare={onShare}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        editorRef={editorRef as React.RefObject<HTMLDivElement>}
+        onTextSelection={onTextSelection}
+        onHighlightClick={onHighlightClick}
+        onHighlightMouseDown={onHighlightMouseDown}
+        onHighlightMouseEnter={onHighlightMouseEnter}
+        onHighlightMouseLeave={onHighlightMouseLeave}
+        onCopyEvent={onCopyEvent}
+        onInput={onInput}
+        onEditorKeyDown={onEditorKeyDown}
+        onEditorBlur={onEditorBlur}
+        autocompleteOpen={autocompleteOpen}
+        autocompleteSuggestions={autocompleteSuggestions}
+        autocompleteSelectedIndex={autocompleteSelectedIndex}
+        autocompletePosition={autocompletePosition}
+        autocompleteLoading={autocompleteLoading}
+        onAutocompleteSelect={onAutocompleteSelect}
+        onAutocompleteClose={onAutocompleteClose}
+        onAutocompleteIndexChange={onAutocompleteIndexChange}
+      />
+    );
+  }
+
   return (
     <div
       className={cn('relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0')}

@@ -46,6 +46,13 @@ export interface GenerationParams {
   faceSwapUrl?: string | null | undefined;
 }
 
+export interface GenerationsPanelStateSnapshot {
+  generations: Generation[];
+  activeGenerationId: string | null;
+  isGenerating: boolean;
+  selectedFrameUrl: string | null;
+}
+
 export interface GenerationsPanelProps {
   prompt: string;
   promptVersionId: string;
@@ -55,6 +62,8 @@ export interface GenerationsPanelProps {
   generationParams?: Record<string, unknown> | undefined;
   initialGenerations?: Generation[] | undefined;
   onGenerationsChange?: (generations: Generation[]) => void;
+  presentation?: 'timeline' | 'hero' | undefined;
+  onStateSnapshot?: ((snapshot: GenerationsPanelStateSnapshot) => void) | undefined;
   className?: string;
   versions: PromptVersionEntry[];
   onRestoreVersion: (versionId: string) => void;

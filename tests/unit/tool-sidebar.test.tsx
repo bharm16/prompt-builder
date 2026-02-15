@@ -1,18 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { ToolSidebar } from '@components/ToolSidebar/ToolSidebar';
 import type { ToolSidebarProps, ToolPanelType } from '@components/ToolSidebar/types';
 import { useSidebarAssetsDomain, useSidebarSessionsDomain } from '@components/ToolSidebar/context';
 import type { Asset, AssetType } from '@shared/types/asset';
+import { PROMPT_FOCUS_INTENT } from '@/features/prompt-optimizer/CanvasWorkspace/events';
 
-vi.mock(
-  '@utils/cn',
-  () => ({
-    cn: (...classes: Array<string | false | null | undefined>) =>
-      classes.filter(Boolean).join(' '),
-  })
-);
+const mockFeatures = vi.hoisted(() => ({
+  CANVAS_FIRST_LAYOUT: true,
+}));
+
+vi.mock('@/config/features.config', () => ({
+  FEATURES: mockFeatures,
+}));
+
+vi.mock('@utils/cn', () => ({
+  cn: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(' '),
+}));
+
+vi.mock('@promptstudio/system/components/ui/sheet', () => ({
+  Sheet: ({
+    open,
+    children,
+  }: {
+    open: boolean;
+    children: ReactNode;
+  }) => (
+    <div data-testid="sheet" data-open={open ? 'true' : 'false'}>
+      {open ? children : null}
+    </div>
+  ),
+  SheetContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="sheet-content">{children}</div>
+  ),
+}));
 
 const sidebarState = vi.hoisted(() => ({
   activePanel: 'sessions' as ToolPanelType,
@@ -21,7 +44,6 @@ const sidebarState = vi.hoisted(() => ({
 
 const panelProps = vi.hoisted(() => ({
   sessions: null as unknown,
-  generation: null as unknown,
   characters: null as unknown,
 }));
 
@@ -30,7 +52,31 @@ vi.mock('@components/ToolSidebar/hooks/useToolSidebarState', () => ({
 }));
 
 vi.mock('@components/ToolSidebar/components/ToolRail', () => ({
-  ToolRail: () => <div data-testid="tool-rail" />,
+  ToolRail: ({ onPanelChange }: { onPanelChange: (panel: ToolPanelType) => void }) => (
+    <div data-testid="tool-rail">
+      <button type="button" data-testid="rail-sessions" onClick={() => onPanelChange('sessions')}>
+        sessions
+      </button>
+      <button type="button" data-testid="rail-studio" onClick={() => onPanelChange('studio')}>
+        studio
+      </button>
+      <button type="button" data-testid="rail-characters" onClick={() => onPanelChange('characters')}>
+        characters
+      </button>
+      <button type="button" data-testid="rail-styles" onClick={() => onPanelChange('styles')}>
+        styles
+      </button>
+      <button type="button" data-testid="rail-apps" onClick={() => onPanelChange('apps')}>
+        apps
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('@components/ToolSidebar/components/ToolPanel', () => ({
+  ToolPanel: ({ children }: { children: ReactNode }) => (
+    <div data-testid="tool-panel">{children}</div>
+  ),
 }));
 
 vi.mock('@components/ToolSidebar/components/panels/SessionsPanel', () => ({
@@ -41,11 +87,7 @@ vi.mock('@components/ToolSidebar/components/panels/SessionsPanel', () => ({
 }));
 
 vi.mock('@components/ToolSidebar/components/panels/GenerationControlsPanel', () => ({
-  GenerationControlsPanel: (props: { onBack?: () => void }) => (
-    <button type="button" data-testid="generation-panel" onClick={props.onBack}>
-      Back
-    </button>
-  ),
+  GenerationControlsPanel: () => <div data-testid="generation-panel" />,
 }));
 
 vi.mock('@components/ToolSidebar/components/panels/CharactersPanel', () => ({
@@ -119,88 +161,93 @@ describe('ToolSidebar', () => {
     sidebarState.activePanel = 'sessions';
     sidebarState.setActivePanel.mockClear();
     panelProps.sessions = null;
-    panelProps.generation = null;
     panelProps.characters = null;
+    mockFeatures.CANVAS_FIRST_LAYOUT = true;
   });
 
-  describe('error handling', () => {
-    it('renders generation controls when activePanel is studio', () => {
-      sidebarState.activePanel = 'studio';
+  it('renders rail-only flow without inline tool panel when canvas-first layout is enabled', () => {
+    sidebarState.activePanel = 'studio';
 
-      render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar {...createProps()} />);
 
-      expect(screen.getByTestId('generation-panel')).toBeInTheDocument();
-    });
-
-    it('renders styles panel when activePanel is styles', () => {
-      sidebarState.activePanel = 'styles';
-
-      render(<ToolSidebar {...createProps()} />);
-
-      expect(screen.getByTestId('styles-panel')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('tool-rail')).toBeInTheDocument();
+    expect(screen.queryByTestId('tool-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('generation-panel')).not.toBeInTheDocument();
   });
 
-  describe('edge cases', () => {
-    it('resolves sessions domain from grouped props', () => {
-      sidebarState.activePanel = 'sessions';
-
-      render(
-        <ToolSidebar
-          {...createProps({
-            sessions: {
-              history: [],
-              filteredHistory: [],
-              isLoadingHistory: false,
-              searchQuery: 'find me',
-              onSearchChange: vi.fn(),
-              onLoadFromHistory: vi.fn(),
-              onCreateNew: vi.fn(),
-              onDelete: vi.fn(),
-            },
-          })}
-        />
-      );
-
-      expect(screen.getByTestId('sessions-panel')).toBeInTheDocument();
-      const sessionsProps = panelProps.sessions as { searchQuery: string } | null;
-      expect(sessionsProps?.searchQuery).toBe('find me');
+  it('opens sessions, characters, and styles as sheet overlays in canvas-first mode', () => {
+    const hero = createAsset({ id: 'asset-hero' });
+    const assetsByType = createAssetsByType([hero]);
+    const props = createProps({
+      assets: {
+        assets: [hero],
+        assetsByType,
+        isLoadingAssets: false,
+        onEditAsset: vi.fn(),
+        onCreateAsset: vi.fn(),
+      },
     });
 
-    it('passes core character assets to CharactersPanel', () => {
-      sidebarState.activePanel = 'characters';
-      const hero = createAsset({ id: 'asset-hero' });
-      const assetsByType = createAssetsByType([hero]);
+    sidebarState.activePanel = 'sessions';
+    const { rerender } = render(<ToolSidebar {...props} />);
+    expect(screen.getByTestId('sessions-panel')).toBeInTheDocument();
 
-      render(
-        <ToolSidebar
-          {...createProps({
-            assets: {
-              assets: [hero],
-              assetsByType,
-              isLoadingAssets: false,
-              onEditAsset: vi.fn(),
-              onCreateAsset: vi.fn(),
-            },
-          })}
-        />
-      );
+    sidebarState.activePanel = 'characters';
+    rerender(<ToolSidebar {...props} />);
+    expect(screen.getByTestId('characters-panel')).toBeInTheDocument();
+    const charactersDomain = panelProps.characters as { assetsByType: Record<AssetType, Asset[]> } | null;
+    expect(charactersDomain?.assetsByType.character).toBeTruthy();
 
-      const charactersDomain = panelProps.characters as { assetsByType: Record<AssetType, Asset[]> } | null;
-      expect(charactersDomain?.assetsByType.character).toBe(assetsByType.character);
-    });
+    sidebarState.activePanel = 'styles';
+    rerender(<ToolSidebar {...props} />);
+    expect(screen.getByTestId('styles-panel')).toBeInTheDocument();
   });
 
-  describe('core behavior', () => {
-    it('returns to sessions when GenerationControlsPanel back is triggered', () => {
-      sidebarState.activePanel = 'studio';
+  it('dispatches prompt focus intent when studio is selected from the rail in canvas-first mode', () => {
+    sidebarState.activePanel = 'sessions';
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
-      render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar {...createProps()} />);
+    fireEvent.click(screen.getByTestId('rail-studio'));
 
-      const backButton = screen.getByTestId('generation-panel');
-      backButton.click();
+    expect(sidebarState.setActivePanel).toHaveBeenCalledWith('studio');
+    const eventTypes = dispatchEventSpy.mock.calls.map(
+      ([event]) => (event as Event).type
+    );
+    expect(eventTypes).toContain(PROMPT_FOCUS_INTENT);
+  });
 
-      expect(sidebarState.setActivePanel).toHaveBeenCalledWith('sessions');
-    });
+  it('keeps legacy inline panel path when canvas-first layout is disabled', () => {
+    mockFeatures.CANVAS_FIRST_LAYOUT = false;
+    sidebarState.activePanel = 'studio';
+
+    render(<ToolSidebar {...createProps()} />);
+
+    expect(screen.getByTestId('tool-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('generation-panel')).toBeInTheDocument();
+  });
+
+  it('resolves sessions domain from grouped props', () => {
+    sidebarState.activePanel = 'sessions';
+
+    render(
+      <ToolSidebar
+        {...createProps({
+          sessions: {
+            history: [],
+            filteredHistory: [],
+            isLoadingHistory: false,
+            searchQuery: 'find me',
+            onSearchChange: vi.fn(),
+            onLoadFromHistory: vi.fn(),
+            onCreateNew: vi.fn(),
+            onDelete: vi.fn(),
+          },
+        })}
+      />
+    );
+
+    const sessionsProps = panelProps.sessions as { searchQuery: string } | null;
+    expect(sessionsProps?.searchQuery).toBe('find me');
   });
 });

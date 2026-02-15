@@ -2,7 +2,11 @@ import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Icon, Play } from '@promptstudio/system/components/ui';
-import type { Generation, GenerationsPanelProps } from './types';
+import type {
+  Generation,
+  GenerationsPanelProps,
+  GenerationsPanelStateSnapshot,
+} from './types';
 import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 import { GenerationCard } from './components/GenerationCard';
@@ -61,6 +65,8 @@ export const GenerationsPanel = memo(function GenerationsPanel({
   generationParams,
   initialGenerations,
   onGenerationsChange,
+  presentation = 'timeline',
+  onStateSnapshot,
   className,
   versions,
   onRestoreVersion,
@@ -509,6 +515,67 @@ export const GenerationsPanel = memo(function GenerationsPanel({
     setControls(controlsPayload);
     return () => setControls(null);
   }, [controlsPayload, setControls]);
+
+  const activeGeneration = useMemo(() => {
+    if (generations.length === 0) return null;
+    if (activeGenerationId) {
+      const matched = generations.find((generation) => generation.id === activeGenerationId);
+      if (matched) return matched;
+    }
+    return generations[generations.length - 1] ?? null;
+  }, [activeGenerationId, generations]);
+
+  useEffect(() => {
+    if (!onStateSnapshot) return;
+    const snapshot: GenerationsPanelStateSnapshot = {
+      generations,
+      activeGenerationId,
+      isGenerating,
+      selectedFrameUrl: selectedFrameUrl ?? null,
+    };
+    onStateSnapshot(snapshot);
+  }, [activeGenerationId, generations, isGenerating, onStateSnapshot, selectedFrameUrl]);
+
+  if (presentation === 'hero') {
+    return (
+      <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
+        {keyframeStep.isActive && keyframeStep.character ? (
+          <KeyframeStep
+            prompt={prompt}
+            character={keyframeStep.character}
+            aspectRatio={aspectRatio}
+            onApprove={handleApproveKeyframe}
+            onSkip={handleSkipKeyframe}
+          />
+        ) : null}
+
+        <div className="flex flex-1 flex-col overflow-y-auto p-3">
+          {activeGeneration ? (
+            <GenerationCard
+              generation={activeGeneration}
+              onRetry={handleRetry}
+              onDelete={handleDelete}
+              onDownload={handleDownload}
+              onCancel={handleCancel}
+              onContinueSequence={handleContinueSequence}
+              isSequenceMode={isSequenceMode || hasActiveContinuityShot}
+              isStartingSequence={isStartingSequence}
+              onSelectFrame={handleSelectFrame}
+              onClearSelectedFrame={handleClearSelectedFrame}
+              selectedFrameUrl={selectedFrameUrl}
+              isActive
+              className="h-full"
+            />
+          ) : (
+            <EmptyState
+              onRunDraft={() => handleDraft(defaultDraftModel)}
+              isRunDraftDisabled={!prompt.trim() || isGenerating}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
