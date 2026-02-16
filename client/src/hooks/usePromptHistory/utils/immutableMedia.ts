@@ -150,6 +150,15 @@ const mergeGeneration = (
   if (!incoming.thumbnailUrl && existing.thumbnailUrl) {
     next.thumbnailUrl = existing.thumbnailUrl;
   }
+  if (
+    typeof incoming.isFavorite !== 'boolean' &&
+    typeof existing.isFavorite === 'boolean'
+  ) {
+    next.isFavorite = existing.isFavorite;
+  }
+  if (!incoming.generationSettings && existing.generationSettings) {
+    next.generationSettings = existing.generationSettings;
+  }
 
   const existingIds = normalizeStringList(existing.mediaAssetIds);
   const incomingIds = normalizeStringList(incoming.mediaAssetIds);

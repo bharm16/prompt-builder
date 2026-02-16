@@ -75,10 +75,17 @@ export interface ToolSidebarAssetsDomain {
   onCreateAsset: (type: AssetType) => void;
 }
 
+export interface ToolSidebarWorkspaceDomain {
+  galleryOpen: boolean;
+  setGalleryOpen: (open: boolean) => void;
+  toggleGallery: () => void;
+}
+
 export type OptionalToolSidebarSessionsDomain = ToolSidebarSessionsDomain | null;
 export type OptionalToolSidebarPromptInteractionDomain = ToolSidebarPromptInteractionDomain | null;
 export type OptionalToolSidebarGenerationDomain = ToolSidebarGenerationDomain | null;
 export type OptionalToolSidebarAssetsDomain = ToolSidebarAssetsDomain | null;
+export type OptionalToolSidebarWorkspaceDomain = ToolSidebarWorkspaceDomain | null;
 
 export interface ToolSidebarProps {
   user: User | null;
@@ -86,6 +93,7 @@ export interface ToolSidebarProps {
   promptInteraction?: OptionalToolSidebarPromptInteractionDomain;
   generation?: OptionalToolSidebarGenerationDomain;
   assets?: OptionalToolSidebarAssetsDomain;
+  workspace?: OptionalToolSidebarWorkspaceDomain;
 }
 
 export interface ToolRailProps {

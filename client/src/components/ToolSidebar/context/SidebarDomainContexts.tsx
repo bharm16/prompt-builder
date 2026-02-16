@@ -4,6 +4,7 @@ import type {
   OptionalToolSidebarGenerationDomain,
   OptionalToolSidebarPromptInteractionDomain,
   OptionalToolSidebarSessionsDomain,
+  OptionalToolSidebarWorkspaceDomain,
 } from '../types';
 
 export interface SidebarDataContextValue {
@@ -11,6 +12,7 @@ export interface SidebarDataContextValue {
   promptInteraction: OptionalToolSidebarPromptInteractionDomain;
   generation: OptionalToolSidebarGenerationDomain;
   assets: OptionalToolSidebarAssetsDomain;
+  workspace: OptionalToolSidebarWorkspaceDomain;
 }
 
 const SidebarDataContext = createContext<SidebarDataContextValue | null>(null);
@@ -18,6 +20,7 @@ const SidebarSessionsContext = createContext<OptionalToolSidebarSessionsDomain>(
 const SidebarPromptInteractionContext = createContext<OptionalToolSidebarPromptInteractionDomain>(null);
 const SidebarGenerationContext = createContext<OptionalToolSidebarGenerationDomain>(null);
 const SidebarAssetsContext = createContext<OptionalToolSidebarAssetsDomain>(null);
+const SidebarWorkspaceContext = createContext<OptionalToolSidebarWorkspaceDomain>(null);
 
 export function useSidebarData(): SidebarDataContextValue | null {
   return useContext(SidebarDataContext);
@@ -45,6 +48,12 @@ export function useSidebarAssetsDomain(): OptionalToolSidebarAssetsDomain {
   const sidebarData = useContext(SidebarDataContext);
   const legacy = useContext(SidebarAssetsContext);
   return sidebarData?.assets ?? legacy;
+}
+
+export function useSidebarWorkspaceDomain(): OptionalToolSidebarWorkspaceDomain {
+  const sidebarData = useContext(SidebarDataContext);
+  const legacy = useContext(SidebarWorkspaceContext);
+  return sidebarData?.workspace ?? legacy;
 }
 
 export function SidebarDataContextProvider({
@@ -99,4 +108,14 @@ export function SidebarAssetsContextProvider({
   children: ReactNode;
 }): React.ReactElement {
   return <SidebarAssetsContext.Provider value={value}>{children}</SidebarAssetsContext.Provider>;
+}
+
+export function SidebarWorkspaceContextProvider({
+  value,
+  children,
+}: {
+  value: OptionalToolSidebarWorkspaceDomain;
+  children: ReactNode;
+}): React.ReactElement {
+  return <SidebarWorkspaceContext.Provider value={value}>{children}</SidebarWorkspaceContext.Provider>;
 }

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
-import { Home } from '@promptstudio/system/components/ui';
+import { GridFour, Home } from '@promptstudio/system/components/ui';
 import { Link, useLocation } from 'react-router-dom';
 import { useCreditBalance } from '@/contexts/CreditBalanceContext';
 import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
 import { cn } from '@/utils/cn';
+import { useSidebarWorkspaceDomain } from '../context';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
@@ -16,6 +17,7 @@ export function ToolRail({
   const location = useLocation();
   const { balance, isLoading } = useCreditBalance();
   const { status, isLoading: isLoadingStatus } = useBillingStatus();
+  const workspace = useSidebarWorkspaceDomain();
   const [showRailHint, setShowRailHint] = useState(false);
   const headerItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
@@ -92,6 +94,14 @@ export function ToolRail({
             onClick={() => handlePanelChange(item.id)}
           />
         ))}
+        {workspace ? (
+          <ToolNavButton
+            icon={GridFour}
+            label="Gallery"
+            isActive={workspace.galleryOpen}
+            onClick={workspace.toggleGallery}
+          />
+        ) : null}
       </nav>
 
       <div className="flex-1" />

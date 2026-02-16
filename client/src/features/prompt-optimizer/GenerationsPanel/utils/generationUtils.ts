@@ -48,6 +48,15 @@ export const buildGeneration = (
     characterAssetId: params.characterAssetId ?? null,
     faceSwapApplied: Boolean(resolvedFaceSwapUrl),
     faceSwapUrl: resolvedFaceSwapUrl,
+    isFavorite: false,
+    generationSettings: {
+      selectedModel: model,
+      videoTier: tier,
+      aspectRatio: params.aspectRatio ?? null,
+      duration: params.duration ?? null,
+      fps: params.fps ?? null,
+      generationParams: params.generationParams ?? null,
+    },
     error: null,
   };
 };

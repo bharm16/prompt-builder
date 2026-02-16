@@ -33,7 +33,7 @@ import type { PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { InlineSuggestion, SuggestionItem } from '../types';
 import type { ExportFormat } from '../../types';
-import type { GenerationsPanelProps } from '../../GenerationsPanel/types';
+import type { Generation, GenerationsPanelProps } from '../../GenerationsPanel/types';
 import type { Span } from '../../SpanBentoGrid/components/types';
 import type { CoherenceIssue } from '../../components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from '../../types/coherence';
@@ -162,6 +162,8 @@ export interface PromptCanvasViewProps {
   versionsDrawer: VersionsDrawerState;
   versionsPanelProps: VersionsPanelPropsBase;
   generationsPanelProps: GenerationsPanelProps;
+  onReuseGeneration: (generation: Generation) => void;
+  onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
   generationsSheetOpen: boolean;
   onGenerationsSheetOpenChange: (open: boolean) => void;
   showDiff: boolean;
@@ -267,6 +269,8 @@ export function PromptCanvasView({
   versionsDrawer,
   versionsPanelProps,
   generationsPanelProps,
+  onReuseGeneration,
+  onToggleGenerationFavorite,
   generationsSheetOpen,
   onGenerationsSheetOpenChange,
   showDiff,
@@ -294,8 +298,9 @@ export function PromptCanvasView({
   if (FEATURES.CANVAS_FIRST_LAYOUT) {
     return (
       <CanvasWorkspace
-        versionsPanelProps={versionsPanelProps}
         generationsPanelProps={generationsPanelProps}
+        onReuseGeneration={onReuseGeneration}
+        onToggleGenerationFavorite={onToggleGenerationFavorite}
         copied={copied}
         canUndo={canUndo}
         canRedo={canRedo}

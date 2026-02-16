@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
-import type { KeyframeTile } from '@/components/ToolSidebar/types';
 import type { AssetSuggestion } from '@/features/assets/hooks/useTriggerAutocomplete';
 import {
   useGenerationControlsStoreActions,
@@ -9,7 +8,7 @@ import {
 } from '@/features/prompt-optimizer/context/GenerationControlsStore';
 import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
 import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
-import { GenerationsPanel, useGenerationsRuntime } from '@/features/prompt-optimizer/GenerationsPanel';
+import { useGenerationsRuntime } from '@/features/prompt-optimizer/GenerationsPanel';
 import type {
   Generation,
   GenerationsPanelProps,
@@ -21,23 +20,19 @@ import type {
 } from '@/features/prompt-optimizer/PromptCanvas/types';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { useModelSelectionRecommendation } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
-import { useSidebarGenerationDomain } from '@/components/ToolSidebar/context';
-import type { PromptVersionEntry } from '@/hooks/types';
+import {
+  useSidebarGenerationDomain,
+  useSidebarWorkspaceDomain,
+} from '@/components/ToolSidebar/context';
+import { GalleryPanel } from '@/features/prompt-optimizer/components/GalleryPanel';
+import { GenerationPopover } from '@/features/prompt-optimizer/components/GenerationPopover';
+import { buildGalleryGenerationEntries } from './utils/galleryGeneration';
 import { CanvasTopBar } from './components/CanvasTopBar';
-import { CanvasGenerationStrip } from './components/CanvasGenerationStrip';
 import { CanvasPromptBar } from './components/CanvasPromptBar';
-import { StoryboardHeroView } from './components/StoryboardHeroView';
 import { ModelCornerSelector } from './components/ModelCornerSelector';
-
-interface VersionsPanelPropsBase {
-  versions: PromptVersionEntry[];
-  selectedVersionId: string;
-  onSelectVersion: (versionId: string) => void;
-  onCreateVersion: () => void;
-}
+import { CanvasHeroViewer } from './components/CanvasHeroViewer';
 
 interface CanvasWorkspaceProps {
-  versionsPanelProps: VersionsPanelPropsBase;
   generationsPanelProps: GenerationsPanelProps;
   copied: boolean;
   canUndo: boolean;
@@ -90,6 +85,8 @@ interface CanvasWorkspaceProps {
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
   onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
+  onReuseGeneration: (generation: Generation) => void;
+  onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
 }
 
 const parseDurationSeconds = (generationParams: Record<string, unknown>): number => {
@@ -106,7 +103,6 @@ const resolveGenerationTimestamp = (generation: Generation): number =>
   generation.completedAt ?? generation.createdAt ?? 0;
 
 export function CanvasWorkspace({
-  versionsPanelProps,
   generationsPanelProps,
   copied,
   canUndo,
@@ -159,15 +155,17 @@ export function CanvasWorkspace({
   resolvedI2VReason,
   i2vMotionAlternatives,
   onLockedAlternativeClick,
+  onReuseGeneration,
+  onToggleGenerationFavorite,
 }: CanvasWorkspaceProps): React.ReactElement {
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
   const promptHighlights = useOptionalPromptHighlights();
   const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
   const generationDomain = useSidebarGenerationDomain();
+  const workspaceDomain = useSidebarWorkspaceDomain();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
-  const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(null);
-  const previousGenerationStatusRef = useRef<Map<string, Generation['status']>>(new Map());
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const prompt = generationsPanelProps.prompt;
   const durationSeconds = parseDurationSeconds(
@@ -243,20 +241,10 @@ export function CanvasWorkspace({
     ...generationsPanelProps,
     presentation: 'hero',
     onStateSnapshot: handleSnapshot,
-    heroOverrideGenerationId: selectedGenerationId,
   });
 
-  const handleSelectGeneration = useCallback(
-    (generationId: string): void => {
-      setSelectedGenerationId(generationId);
-      generationsRuntime.setActiveGeneration(generationId);
-    },
-    [generationsRuntime]
-  );
-
   useEffect(() => {
-    setSelectedGenerationId(null);
-    previousGenerationStatusRef.current = new Map();
+    setViewingId(null);
   }, [generationsPanelProps.promptVersionId]);
 
   const orderedGenerations = useMemo(
@@ -267,200 +255,161 @@ export function CanvasWorkspace({
     [generationsRuntime.generations]
   );
 
-  useEffect(() => {
-    if (orderedGenerations.length === 0) {
-      previousGenerationStatusRef.current = new Map();
-      if (selectedGenerationId !== null) {
-        setSelectedGenerationId(null);
-      }
-      return;
-    }
-
-    const previousStatuses = previousGenerationStatusRef.current;
-    const nextStatuses = new Map<string, Generation['status']>();
-    const completedTransitions: Generation[] = [];
-
-    for (const generation of orderedGenerations) {
-      const previousStatus = previousStatuses.get(generation.id);
-      if (generation.status === 'completed' && previousStatus !== 'completed') {
-        completedTransitions.push(generation);
-      }
-      nextStatuses.set(generation.id, generation.status);
-    }
-
-    previousGenerationStatusRef.current = nextStatuses;
-
-    if (completedTransitions.length > 0) {
-      const latestCompleted = [...completedTransitions].sort(
-        (left, right) => resolveGenerationTimestamp(right) - resolveGenerationTimestamp(left)
-      )[0];
-      if (latestCompleted && latestCompleted.id !== selectedGenerationId) {
-        setSelectedGenerationId(latestCompleted.id);
-      }
-      return;
-    }
-
-    if (
-      selectedGenerationId &&
-      !orderedGenerations.some((generation) => generation.id === selectedGenerationId)
-    ) {
-      setSelectedGenerationId(null);
-    }
-  }, [orderedGenerations, selectedGenerationId]);
-
-  const selectedGeneration = useMemo(() => {
+  const heroGeneration = useMemo(() => {
     if (orderedGenerations.length === 0) return null;
-
-    if (selectedGenerationId) {
-      const selected = orderedGenerations.find(
-        (generation) => generation.id === selectedGenerationId
-      );
-      if (selected) return selected;
-    }
-
     const latestCompleted = orderedGenerations.find(
       (generation) => generation.status === 'completed'
     );
-    if (latestCompleted) return latestCompleted;
+    return latestCompleted ?? orderedGenerations[0] ?? null;
+  }, [orderedGenerations]);
 
-    return orderedGenerations[0] ?? null;
-  }, [orderedGenerations, selectedGenerationId]);
-
-  const handleUseStoryboardFrame = useCallback(
-    (frame: KeyframeTile) => {
-      storeActions.setStartFrame(frame);
-    },
-    [storeActions]
+  const galleryEntries = useMemo(
+    () =>
+      buildGalleryGenerationEntries({
+        versions: generationsPanelProps.versions,
+        runtimeGenerations: generationsRuntime.generations,
+      }),
+    [generationsPanelProps.versions, generationsRuntime.generations]
   );
 
-  const actionLabels = ['Reuse', 'Extend', 'Copy prompt', 'Share', 'Download'];
+  const galleryGenerations = useMemo(
+    () => galleryEntries.map((entry) => entry.gallery),
+    [galleryEntries]
+  );
+
+  const generationLookup = useMemo(() => {
+    const lookup = new Map<string, Generation>();
+    for (const entry of galleryEntries) {
+      lookup.set(entry.generation.id, entry.generation);
+    }
+    return lookup;
+  }, [galleryEntries]);
+
+  const galleryOpen = workspaceDomain?.galleryOpen ?? true;
+
+  const handleSelectGeneration = useCallback((generationId: string): void => {
+    setViewingId(generationId);
+  }, []);
+
+  const handleCloseGallery = useCallback((): void => {
+    workspaceDomain?.setGalleryOpen(false);
+  }, [workspaceDomain]);
+
+  const handleReuse = useCallback(
+    (generationId: string): void => {
+      const generation = generationLookup.get(generationId);
+      if (!generation) return;
+      onReuseGeneration(generation);
+      setViewingId(null);
+    },
+    [generationLookup, onReuseGeneration]
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
-      <CanvasTopBar
-        versions={versionsPanelProps.versions}
-        selectedVersionId={versionsPanelProps.selectedVersionId}
-        onSelectVersion={versionsPanelProps.onSelectVersion}
-      />
+      <CanvasTopBar />
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-24">
-        <CanvasGenerationStrip
-          generations={generationsRuntime.generations}
-          selectedGenerationId={selectedGenerationId}
-          onSelectGeneration={handleSelectGeneration}
-        />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-1">
+          <ModelCornerSelector
+            renderModelOptions={renderModelOptions}
+            renderModelId={renderModelId}
+            modelRecommendation={modelRecommendation}
+            recommendedModelId={recommendedModelId}
+            efficientModelId={efficientModelId}
+            onModelChange={handleModelChange}
+            className="bottom-6 left-5"
+          />
 
-        <ModelCornerSelector
-          renderModelOptions={renderModelOptions}
-          renderModelId={renderModelId}
-          modelRecommendation={modelRecommendation}
-          recommendedModelId={recommendedModelId}
-          efficientModelId={efficientModelId}
-          onModelChange={handleModelChange}
-          className="bottom-6 left-5"
-        />
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-4">
+            <CanvasHeroViewer generation={heroGeneration} />
 
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="relative mx-auto w-[55%]">
-            {selectedGeneration?.mediaType === 'image-sequence' ? (
-              <StoryboardHeroView
-                generation={selectedGeneration}
-                onUseAsStartFrame={handleUseStoryboardFrame}
-              />
-            ) : (
-              <GenerationsPanel
-                {...generationsPanelProps}
-                presentation="hero"
-                runtime={generationsRuntime}
-                heroOverrideGenerationId={selectedGenerationId}
-                className="h-auto"
-              />
-            )}
+            <CanvasPromptBar
+              editorRef={editorRef}
+              prompt={prompt}
+              onTextSelection={onTextSelection}
+              onHighlightClick={onHighlightClick}
+              onHighlightMouseDown={onHighlightMouseDown}
+              onHighlightMouseEnter={onHighlightMouseEnter}
+              onHighlightMouseLeave={onHighlightMouseLeave}
+              onCopyEvent={onCopyEvent}
+              onInput={onInput}
+              onEditorKeyDown={onEditorKeyDown}
+              onEditorBlur={onEditorBlur}
+              autocompleteOpen={autocompleteOpen}
+              autocompleteSuggestions={autocompleteSuggestions}
+              autocompleteSelectedIndex={autocompleteSelectedIndex}
+              autocompletePosition={autocompletePosition}
+              autocompleteLoading={autocompleteLoading}
+              onAutocompleteSelect={onAutocompleteSelect}
+              onAutocompleteClose={onAutocompleteClose}
+              onAutocompleteIndexChange={onAutocompleteIndexChange}
+              selectedSpanId={selectedSpanId}
+              suggestionCount={suggestionCount}
+              suggestionsListRef={suggestionsListRef}
+              inlineSuggestions={inlineSuggestions}
+              activeSuggestionIndex={activeSuggestionIndex}
+              onActiveSuggestionChange={onActiveSuggestionChange}
+              interactionSourceRef={interactionSourceRef}
+              onSuggestionClick={onSuggestionClick}
+              onCloseInlinePopover={onCloseInlinePopover}
+              selectionLabel={selectionLabel}
+              onApplyActiveSuggestion={onApplyActiveSuggestion}
+              isInlineLoading={isInlineLoading}
+              isInlineError={isInlineError}
+              inlineErrorMessage={inlineErrorMessage}
+              isInlineEmpty={isInlineEmpty}
+              customRequest={customRequest}
+              onCustomRequestChange={onCustomRequestChange}
+              customRequestError={customRequestError}
+              onCustomRequestErrorChange={onCustomRequestErrorChange}
+              onCustomRequestSubmit={onCustomRequestSubmit}
+              isCustomRequestDisabled={isCustomRequestDisabled}
+              isCustomLoading={isCustomLoading}
+              showI2VLockIndicator={showI2VLockIndicator}
+              resolvedI2VReason={resolvedI2VReason}
+              i2vMotionAlternatives={i2vMotionAlternatives}
+              onLockedAlternativeClick={onLockedAlternativeClick}
+              renderModelId={renderModelId}
+              {...(recommendedModelId ? { recommendedModelId } : {})}
+              {...(modelRecommendation?.promptId
+                ? { recommendationPromptId: modelRecommendation.promptId }
+                : {})}
+              {...(recommendationMode ? { recommendationMode } : {})}
+              {...(typeof recommendationAgeMs === 'number'
+                ? { recommendationAgeMs }
+                : {})}
+              onOpenMotion={() => {
+                if (!domain.startFrame) return;
+                setShowCameraMotionModal(true);
+              }}
+              {...(generationDomain?.onStartFrameUpload
+                ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+                : {})}
+            />
           </div>
         </div>
 
-        <div className="relative mx-auto -top-4 w-[55%] px-1 pb-1 pt-0">
-          <div className="flex gap-4">
-            {actionLabels.map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="border-none bg-transparent p-0 text-xs text-[#3A3E4C] transition-colors hover:text-[#8B92A5]"
-                onClick={() => {
-                  if (label === 'Copy prompt') onCopy();
-                  else if (label === 'Share') onShare();
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <CanvasPromptBar
-          editorRef={editorRef}
-          prompt={prompt}
-          onTextSelection={onTextSelection}
-          onHighlightClick={onHighlightClick}
-          onHighlightMouseDown={onHighlightMouseDown}
-          onHighlightMouseEnter={onHighlightMouseEnter}
-          onHighlightMouseLeave={onHighlightMouseLeave}
-          onCopyEvent={onCopyEvent}
-          onInput={onInput}
-          onEditorKeyDown={onEditorKeyDown}
-          onEditorBlur={onEditorBlur}
-          autocompleteOpen={autocompleteOpen}
-          autocompleteSuggestions={autocompleteSuggestions}
-          autocompleteSelectedIndex={autocompleteSelectedIndex}
-          autocompletePosition={autocompletePosition}
-          autocompleteLoading={autocompleteLoading}
-          onAutocompleteSelect={onAutocompleteSelect}
-          onAutocompleteClose={onAutocompleteClose}
-          onAutocompleteIndexChange={onAutocompleteIndexChange}
-          selectedSpanId={selectedSpanId}
-          suggestionCount={suggestionCount}
-          suggestionsListRef={suggestionsListRef}
-          inlineSuggestions={inlineSuggestions}
-          activeSuggestionIndex={activeSuggestionIndex}
-          onActiveSuggestionChange={onActiveSuggestionChange}
-          interactionSourceRef={interactionSourceRef}
-          onSuggestionClick={onSuggestionClick}
-          onCloseInlinePopover={onCloseInlinePopover}
-          selectionLabel={selectionLabel}
-          onApplyActiveSuggestion={onApplyActiveSuggestion}
-          isInlineLoading={isInlineLoading}
-          isInlineError={isInlineError}
-          inlineErrorMessage={inlineErrorMessage}
-          isInlineEmpty={isInlineEmpty}
-          customRequest={customRequest}
-          onCustomRequestChange={onCustomRequestChange}
-          customRequestError={customRequestError}
-          onCustomRequestErrorChange={onCustomRequestErrorChange}
-          onCustomRequestSubmit={onCustomRequestSubmit}
-          isCustomRequestDisabled={isCustomRequestDisabled}
-          isCustomLoading={isCustomLoading}
-          showI2VLockIndicator={showI2VLockIndicator}
-          resolvedI2VReason={resolvedI2VReason}
-          i2vMotionAlternatives={i2vMotionAlternatives}
-          onLockedAlternativeClick={onLockedAlternativeClick}
-          renderModelId={renderModelId}
-          {...(recommendedModelId ? { recommendedModelId } : {})}
-          {...(modelRecommendation?.promptId
-            ? { recommendationPromptId: modelRecommendation.promptId }
-            : {})}
-          {...(recommendationMode ? { recommendationMode } : {})}
-          {...(typeof recommendationAgeMs === 'number'
-            ? { recommendationAgeMs }
-            : {})}
-          onOpenMotion={() => {
-            if (!domain.startFrame) return;
-            setShowCameraMotionModal(true);
-          }}
-          {...(generationDomain?.onStartFrameUpload
-            ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
-            : {})}
-        />
+        {galleryOpen ? (
+          <GalleryPanel
+            generations={galleryGenerations}
+            activeGenerationId={viewingId}
+            onSelectGeneration={handleSelectGeneration}
+            onClose={handleCloseGallery}
+          />
+        ) : null}
       </div>
+
+      {viewingId ? (
+        <GenerationPopover
+          generations={galleryGenerations}
+          activeId={viewingId}
+          onChange={setViewingId}
+          onClose={() => setViewingId(null)}
+          onReuse={handleReuse}
+          onToggleFavorite={onToggleGenerationFavorite}
+        />
+      ) : null}
 
       {domain.startFrame ? (
         <CameraMotionModal

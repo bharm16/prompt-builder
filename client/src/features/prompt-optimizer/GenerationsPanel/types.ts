@@ -1,11 +1,24 @@
 import type { PromptVersionEntry } from '@hooks/types';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
+import type {
+  DraftModel,
+  GenerationOverrides,
+  VideoTier,
+} from '@components/ToolSidebar/types';
 import type { Asset } from '@shared/types/asset';
 import type { TimelineItem } from './hooks/useGenerationsTimeline';
 
 export type GenerationTier = 'draft' | 'render';
 export type GenerationStatus = 'pending' | 'generating' | 'completed' | 'failed';
 export type GenerationMediaType = 'image' | 'video' | 'image-sequence';
+
+export interface GenerationSettingsSnapshot {
+  selectedModel?: string | null | undefined;
+  videoTier?: VideoTier | null | undefined;
+  aspectRatio?: string | null | undefined;
+  duration?: number | null | undefined;
+  fps?: number | null | undefined;
+  generationParams?: Record<string, unknown> | null | undefined;
+}
 
 export interface Generation {
   id: string;
@@ -28,6 +41,8 @@ export interface Generation {
   characterAssetId?: string | null | undefined;
   faceSwapApplied?: boolean | null | undefined;
   faceSwapUrl?: string | null | undefined;
+  isFavorite?: boolean | undefined;
+  generationSettings?: GenerationSettingsSnapshot | null | undefined;
   error?: string | null | undefined;
 }
 

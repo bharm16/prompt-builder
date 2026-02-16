@@ -1,4 +1,4 @@
-import React, { useMemo, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { DraftModel, GenerationOverrides } from '@/components/ToolSidebar/types';
 import { SidebarDataContextProvider } from '@/components/ToolSidebar/context';
@@ -9,6 +9,7 @@ import {
   usePromptActions,
   usePromptConfig,
   usePromptHighlights,
+  usePromptNavigation,
   usePromptServices,
   usePromptSession,
 } from '@/features/prompt-optimizer/context/PromptStateContext';
@@ -43,6 +44,7 @@ export function SidebarDataProvider({
 }: SidebarDataProviderProps): React.ReactElement {
   const { promptHistory, promptOptimizer } = usePromptServices();
   const { selectedModel } = usePromptConfig();
+  const { sessionId: routeSessionId } = usePromptNavigation();
   const { initialHighlights } = usePromptHighlights();
   const { currentPromptUuid, currentPromptDocId } = usePromptSession();
   const { handleCreateNew, loadFromHistory } = usePromptActions();
@@ -71,6 +73,40 @@ export function SidebarDataProvider({
     hasHighlights: Boolean(initialHighlights),
   });
   const activeModelLabel = resolveActiveModelLabel(selectedModel);
+  const sessionScopeId =
+    routeSessionId?.trim() || currentPromptUuid?.trim() || 'draft';
+  const galleryStorageKey = useMemo(
+    () => `prompt-optimizer:gallery-open:${sessionScopeId}`,
+    [sessionScopeId]
+  );
+  const [galleryOpen, setGalleryOpen] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(galleryStorageKey);
+      if (stored === null) {
+        setGalleryOpen(true);
+        return;
+      }
+      setGalleryOpen(stored !== 'false');
+    } catch {
+      setGalleryOpen(true);
+    }
+  }, [galleryStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(galleryStorageKey, String(galleryOpen));
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, [galleryOpen, galleryStorageKey]);
+
+  const toggleGallery = useCallback(() => {
+    setGalleryOpen((previous) => !previous);
+  }, []);
 
   const sessions = useMemo(
     () => ({
@@ -150,14 +186,24 @@ export function SidebarDataProvider({
     [assets, assetsByType, isLoadingAssets, onCreateAsset, onEditAsset]
   );
 
+  const workspace = useMemo(
+    () => ({
+      galleryOpen,
+      setGalleryOpen,
+      toggleGallery,
+    }),
+    [galleryOpen, toggleGallery]
+  );
+
   const value = useMemo(
     () => ({
       sessions,
       promptInteraction,
       generation,
       assets: assetsDomain,
+      workspace,
     }),
-    [assetsDomain, generation, promptInteraction, sessions]
+    [assetsDomain, generation, promptInteraction, sessions, workspace]
   );
 
   return <SidebarDataContextProvider value={value}>{children}</SidebarDataContextProvider>;

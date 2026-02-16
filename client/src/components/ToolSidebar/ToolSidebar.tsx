@@ -17,6 +17,7 @@ import {
   useSidebarGenerationDomain,
   useSidebarPromptInteractionDomain,
   useSidebarSessionsDomain,
+  useSidebarWorkspaceDomain,
 } from './context';
 
 /**
@@ -33,6 +34,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const promptInteractionFromContext = useSidebarPromptInteractionDomain();
   const generationFromContext = useSidebarGenerationDomain();
   const assetsFromContext = useSidebarAssetsDomain();
+  const workspaceFromContext = useSidebarWorkspaceDomain();
 
   const resolvedSessions = props.sessions ?? sessionsFromContext ?? sidebarDataFromContext?.sessions ?? null;
   const resolvedPromptInteraction =
@@ -43,6 +45,8 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const resolvedGeneration =
     props.generation ?? generationFromContext ?? sidebarDataFromContext?.generation ?? null;
   const resolvedAssets = props.assets ?? assetsFromContext ?? sidebarDataFromContext?.assets ?? null;
+  const resolvedWorkspace =
+    props.workspace ?? workspaceFromContext ?? sidebarDataFromContext?.workspace ?? null;
 
   const { activePanel, setActivePanel } = useToolSidebarState('studio');
   const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
@@ -99,6 +103,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
         promptInteraction: resolvedPromptInteraction,
         generation: resolvedGeneration,
         assets: resolvedAssets,
+        workspace: resolvedWorkspace,
       }}
     >
       <div className="flex h-full">

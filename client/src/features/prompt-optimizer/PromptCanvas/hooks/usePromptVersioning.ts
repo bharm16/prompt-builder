@@ -161,7 +161,21 @@ const mergeGenerationsById = (
     // Pick the more complete record
     const incomingScore = generationCompleteness(incomingGen);
     const persistedScore = generationCompleteness(persistedGen);
-    return incomingScore >= persistedScore ? incomingGen : persistedGen;
+    const preferred =
+      incomingScore >= persistedScore ? incomingGen : persistedGen;
+    return {
+      ...preferred,
+      isFavorite:
+        typeof incomingGen.isFavorite === 'boolean'
+          ? incomingGen.isFavorite
+          : typeof persistedGen.isFavorite === 'boolean'
+            ? persistedGen.isFavorite
+            : undefined,
+      generationSettings:
+        incomingGen.generationSettings ??
+        persistedGen.generationSettings ??
+        undefined,
+    };
   });
 
   // Append any persisted generations not present in the incoming array.

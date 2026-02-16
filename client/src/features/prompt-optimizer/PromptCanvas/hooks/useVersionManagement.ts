@@ -69,6 +69,7 @@ interface UseVersionManagementResult {
   handleCreateVersion: () => void;
   createVersionIfNeeded: () => string;
   handleGenerationsChange: (nextGenerations: Generation[]) => void;
+  setGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
   syncVersionHighlights: (snapshot: HighlightSnapshot, promptText: string) => void;
   versioningPromptUuid: string | null;
 }
@@ -418,6 +419,45 @@ export function useVersionManagement({
     [syncVersionGenerations]
   );
 
+  const setGenerationFavorite = useCallback(
+    (generationId: string, isFavorite: boolean): void => {
+      const trimmedGenerationId = generationId.trim();
+      if (!trimmedGenerationId) return;
+      if (!currentVersions.length) return;
+
+      const { uuid, docId } = ensureDraftEntry();
+      let hasChanges = false;
+
+      const nextVersions = currentVersions.map((version) => {
+        if (!Array.isArray(version.generations) || version.generations.length === 0) {
+          return version;
+        }
+
+        let didChangeVersion = false;
+        const nextGenerations = version.generations.map((generation) => {
+          if (generation.id !== trimmedGenerationId) return generation;
+          if (generation.isFavorite === isFavorite) return generation;
+          didChangeVersion = true;
+          hasChanges = true;
+          return {
+            ...generation,
+            isFavorite,
+          };
+        });
+
+        if (!didChangeVersion) return version;
+        return {
+          ...version,
+          generations: nextGenerations,
+        };
+      });
+
+      if (!hasChanges) return;
+      persistVersions(nextVersions, { uuid, docId });
+    },
+    [currentVersions, ensureDraftEntry, persistVersions]
+  );
+
   return {
     currentVersions,
     orderedVersions,
@@ -429,6 +469,7 @@ export function useVersionManagement({
     handleCreateVersion,
     createVersionIfNeeded,
     handleGenerationsChange,
+    setGenerationFavorite,
     syncVersionHighlights,
     versioningPromptUuid,
   };

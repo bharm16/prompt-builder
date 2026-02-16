@@ -24,7 +24,7 @@ import type {
   PromptCanvasProps,
   HighlightSnapshot,
 } from './types';
-import type { GenerationsPanelProps } from '../GenerationsPanel/types';
+import type { Generation, GenerationsPanelProps } from '../GenerationsPanel/types';
 
 import { useClipboard } from '../hooks/useClipboard';
 import { useShareLink } from '../hooks/useShareLink';
@@ -49,6 +49,7 @@ import { useShotGenerations } from './hooks/useShotGenerations';
 import { useTriggerValidation } from './hooks/useTriggerValidation';
 import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
 import { useVersionManagement } from './hooks/useVersionManagement';
+import { applyGenerationReuse } from './utils/reuseGeneration';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
@@ -133,7 +134,13 @@ export function PromptCanvas({
   });
 
   // Get model + layout state from context
-  const { selectedModel, generationParams } = usePromptConfig();
+  const {
+    selectedModel,
+    generationParams,
+    setSelectedModel,
+    setGenerationParams,
+    setVideoTier,
+  } = usePromptConfig();
   const { promptOptimizer, promptHistory } = usePromptServices();
   const { domain } = useGenerationControlsStoreState();
   const keyframes = domain.keyframes;
@@ -285,6 +292,7 @@ export function PromptCanvas({
     handleCreateVersion,
     createVersionIfNeeded,
     handleGenerationsChange,
+    setGenerationFavorite,
     syncVersionHighlights,
     versioningPromptUuid,
   } = useVersionManagement({
@@ -465,6 +473,32 @@ export function PromptCanvas({
       normalizedDisplayedPrompt,
       syncVersionHighlights,
     ]
+  );
+
+  const handleReuseGeneration = useCallback(
+    (generation: Generation): void => {
+      applyGenerationReuse(generation, {
+        onInputPromptChange,
+        onResetResultsForEditing,
+        setSelectedModel,
+        setVideoTier,
+        setGenerationParams,
+      });
+    },
+    [
+      onInputPromptChange,
+      onResetResultsForEditing,
+      setGenerationParams,
+      setSelectedModel,
+      setVideoTier,
+    ]
+  );
+
+  const handleToggleGenerationFavorite = useCallback(
+    (generationId: string, isFavorite: boolean): void => {
+      setGenerationFavorite(generationId, isFavorite);
+    },
+    [setGenerationFavorite]
   );
 
   // Track if this is the first time seeing this text (skip debounce for initial optimization)
@@ -1242,6 +1276,8 @@ export function PromptCanvas({
       versionsDrawer={versionsDrawer}
       versionsPanelProps={versionsPanelProps}
       generationsPanelProps={generationsPanelProps}
+      onReuseGeneration={handleReuseGeneration}
+      onToggleGenerationFavorite={handleToggleGenerationFavorite}
       generationsSheetOpen={generationsSheetOpen}
       onGenerationsSheetOpenChange={setGenerationsSheetOpen}
       showDiff={showDiff}

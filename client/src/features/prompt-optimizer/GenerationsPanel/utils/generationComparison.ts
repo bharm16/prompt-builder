@@ -24,6 +24,8 @@ export function serializeGeneration(gen: Generation): string {
     characterAssetId: gen.characterAssetId ?? null,
     faceSwapApplied: gen.faceSwapApplied ?? null,
     faceSwapUrl: gen.faceSwapUrl ?? null,
+    isFavorite: gen.isFavorite ?? false,
+    generationSettings: gen.generationSettings ?? null,
     error: gen.error ?? null,
     mediaUrls: gen.mediaUrls ?? [],
     mediaAssetIds: gen.mediaAssetIds ?? [],
