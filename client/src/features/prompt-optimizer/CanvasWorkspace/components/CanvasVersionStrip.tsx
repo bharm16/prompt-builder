@@ -29,6 +29,7 @@ const resolveThumbnail = (entry: PromptVersionEntry): string | null => {
 /**
  * Floating version strip — absolutely positioned on the left edge of the canvas.
  * Parent must be `position: relative`.
+ * @deprecated Canvas-first now uses CanvasGenerationStrip. Kept for legacy paths.
  */
 export function CanvasVersionStrip({
   versions,
@@ -43,7 +44,7 @@ export function CanvasVersionStrip({
       {/* New version button */}
       <button
         type="button"
-        className="flex h-[52px] w-[52px] items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#22252C] bg-[#141519]/50 text-[#3A3E4C] backdrop-blur-xl transition-colors hover:border-[#3A3E4C] hover:text-[#555B6E]"
+        className="flex h-[57px] w-[57px] items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#22252C] bg-[#141519]/50 text-[#3A3E4C] backdrop-blur-xl transition-colors hover:border-[#3A3E4C] hover:text-[#555B6E]"
         aria-label="New version"
       >
         <Plus size={14} />
@@ -62,7 +63,7 @@ export function CanvasVersionStrip({
             key={key}
             type="button"
             className={cn(
-              'relative h-[52px] w-[52px] overflow-hidden rounded-[10px] border-2 outline-none transition-all',
+              'relative h-[57px] w-[57px] overflow-hidden rounded-[10px] border-2 outline-none transition-all',
               isActive
                 ? 'border-[#E2E6EF] opacity-100'
                 : 'border-transparent opacity-60 hover:opacity-[0.85]'

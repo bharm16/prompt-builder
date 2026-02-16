@@ -73,7 +73,6 @@ function renderRow(options: {
         <ControlsBridge controls={controls} />
         <CanvasSettingsRow
           prompt={prompt}
-          charCount={prompt.length}
           renderModelId="sora-2"
           onOpenMotion={vi.fn()}
         />

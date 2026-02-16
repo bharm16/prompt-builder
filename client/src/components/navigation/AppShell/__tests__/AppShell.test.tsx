@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AppShell } from '../AppShell';
+import { useCreditBalance } from '@/contexts/CreditBalanceContext';
 import type { NavItemsByVariant } from '../types';
 
 const unsubscribeMock = vi.fn();
 const onAuthStateChangedMock = vi.fn(() => unsubscribeMock);
 const useNavigationConfigMock = vi.fn();
+const useUserCreditBalanceMock = vi.hoisted(() => vi.fn());
 let lastToolSidebarProps: any;
 
 vi.mock('@repositories/index', () => ({
@@ -16,6 +18,10 @@ vi.mock('@repositories/index', () => ({
 
 vi.mock('../hooks/useNavigationConfig', () => ({
   useNavigationConfig: () => useNavigationConfigMock(),
+}));
+
+vi.mock('@/hooks/useUserCreditBalance', () => ({
+  useUserCreditBalance: (...args: unknown[]) => useUserCreditBalanceMock(...args),
 }));
 
 vi.mock('@components/ToolSidebar', () => ({
@@ -39,12 +45,22 @@ describe('AppShell', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useUserCreditBalanceMock.mockReturnValue({
+      balance: 42,
+      isLoading: false,
+      error: null,
+    });
     useNavigationConfigMock.mockReturnValue({
       variant: 'sidebar',
       navItems,
       currentPath: '/assets',
     });
   });
+
+  const CreditProbe = () => {
+    const { balance } = useCreditBalance();
+    return <span data-testid="credit-probe">{balance ?? 'none'}</span>;
+  };
 
   describe('error handling', () => {
     it('cleans up auth subscription on unmount', () => {
@@ -141,6 +157,23 @@ describe('AppShell', () => {
 
       expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
       expect(screen.getByText('Workspace')).toBeInTheDocument();
+    });
+
+    it('provides credit context to both sidebar and workspace children in sidebar variant', () => {
+      useNavigationConfigMock.mockReturnValue({
+        variant: 'sidebar',
+        navItems,
+        currentPath: '/assets',
+      });
+
+      render(
+        <AppShell>
+          <CreditProbe />
+        </AppShell>
+      );
+
+      expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
+      expect(screen.getByTestId('credit-probe')).toHaveTextContent('42');
     });
   });
 });

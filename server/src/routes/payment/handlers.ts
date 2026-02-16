@@ -4,6 +4,8 @@ import type { PaymentRouteDeps } from './types';
 import { resolveUserId } from './auth';
 
 export interface PaymentHandlers {
+  getStatus: (req: Request, res: Response) => Promise<Response | void>;
+  listCreditHistory: (req: Request, res: Response) => Promise<Response | void>;
   listInvoices: (req: Request, res: Response) => Promise<Response | void>;
   createPortalSession: (req: Request, res: Response) => Promise<Response | void>;
   createCheckoutSession: (req: Request, res: Response) => Promise<Response | void>;
@@ -12,7 +14,61 @@ export interface PaymentHandlers {
 export const createPaymentHandlers = ({
   paymentService,
   billingProfileStore,
+  userCreditService,
 }: PaymentRouteDeps): PaymentHandlers => ({
+  async getStatus(req, res) {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+      const [profile, starterGrantInfo] = await Promise.all([
+        billingProfileStore.getProfile(userId),
+        userCreditService.getStarterGrantInfo(userId),
+      ]);
+      const isSubscribed = Boolean(
+        profile?.stripeSubscriptionId || profile?.subscriptionPriceId || profile?.planTier
+      );
+
+      return res.json({
+        planTier: profile?.planTier ?? null,
+        isSubscribed,
+        starterGrantCredits: starterGrantInfo.starterGrantCredits,
+        starterGrantGrantedAtMs: starterGrantInfo.starterGrantGrantedAtMs,
+      });
+    } catch (error: unknown) {
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to load billing status', errorInstance, { userId });
+      return res.status(500).json({ error: 'Failed to load billing status' });
+    }
+  },
+
+  async listCreditHistory(req, res) {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const rawLimit = req.query?.limit;
+    const parsedLimit =
+      typeof rawLimit === 'string'
+        ? Number.parseInt(rawLimit, 10)
+        : Array.isArray(rawLimit) && typeof rawLimit[0] === 'string'
+          ? Number.parseInt(rawLimit[0], 10)
+          : Number.NaN;
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
+
+    try {
+      const transactions = await userCreditService.listCreditTransactions(userId, limit);
+      return res.json({ transactions });
+    } catch (error: unknown) {
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to load credit history', errorInstance, { userId, limit });
+      return res.status(500).json({ error: 'Failed to load credit history' });
+    }
+  },
+
   async listInvoices(req, res) {
     const userId = await resolveUserId(req);
     if (!userId) {

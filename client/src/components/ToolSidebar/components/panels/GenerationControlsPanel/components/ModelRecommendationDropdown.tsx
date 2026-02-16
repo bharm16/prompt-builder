@@ -49,6 +49,9 @@ export interface ModelRecommendationDropdownProps {
   recommendedModelId?: string | undefined;
   efficientModelId?: string | undefined;
   filteredOut?: Array<{ modelId: string; reason: string }> | undefined;
+  triggerClassName?: string | undefined;
+  triggerPrefixLabel?: string | undefined;
+  triggerAriaLabel?: string | undefined;
 }
 
 /* ── Match bar ── */
@@ -183,6 +186,9 @@ export function ModelRecommendationDropdown({
   recommendedModelId,
   efficientModelId,
   filteredOut,
+  triggerClassName,
+  triggerPrefixLabel,
+  triggerAriaLabel,
 }: ModelRecommendationDropdownProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -251,11 +257,15 @@ export function ModelRecommendationDropdown({
           "flex h-9 items-center gap-1.5 rounded-lg border border-[#22252C] bg-[#16181E] px-3 text-xs font-semibold text-[#E2E6EF] transition-colors",
           "hover:border-[#3A3D46]",
           isOpen && "border-[#6C5CE7]",
+          triggerClassName,
         )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-label="Video model"
+        aria-label={triggerAriaLabel ?? "Video model"}
       >
+        {triggerPrefixLabel ? (
+          <span className="text-[11px] font-medium text-[#555B6E]">{triggerPrefixLabel}</span>
+        ) : null}
         {currentModel.label}
         <CaretDown
           className={cn(

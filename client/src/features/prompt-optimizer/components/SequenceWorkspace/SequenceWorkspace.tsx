@@ -10,14 +10,19 @@ import { useModelSelectionRecommendation } from '@components/ToolSidebar/compone
 import type { VideoTier } from '@components/ToolSidebar/types';
 import type { CameraPath } from '@/features/convergence/types';
 import type { ContinuityShot } from '@/features/continuity/types';
+import { useAuthUser } from '@/hooks/useAuthUser';
 import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
+import { useCreditBalance } from '@/contexts/CreditBalanceContext';
+import { useLowBalanceWarning } from '@/features/billing/hooks/useLowBalanceWarning';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
 } from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import { useClipboard } from '@/features/prompt-optimizer/hooks/useClipboard';
 import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
 import type { SessionContinuityMode } from '@shared/types/session';
+import { getModelConfig } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 import { ContinuityIntentPicker } from '../sequence/ContinuityIntentPicker';
 import { PipelineStatus } from '../sequence/PipelineStatus';
 import { PreviousShotContext } from '../sequence/PreviousShotContext';
@@ -148,8 +153,11 @@ export function SequenceWorkspace({
 }: SequenceWorkspaceProps): React.ReactElement {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCameraMotionModalOpen, setIsCameraMotionModalOpen] = useState(false);
+  const authUser = useAuthUser();
   const { copy } = useClipboard();
   const toast = useToast();
+  const { balance } = useCreditBalance();
+  const { onInsufficientCredits } = useGenerationControlsContext();
 
   const {
     session,
@@ -304,13 +312,27 @@ export function SequenceWorkspace({
 
   const handleGenerate = useCallback(async (): Promise<void> => {
     if (!currentShot || isGenerating) return;
+    const modelId = currentShot.modelId || selectedModel;
+    const modelConfig = getModelConfig(modelId);
+    const requiredCredits = modelConfig?.credits ?? 0;
+    if (balance !== null && balance < requiredCredits) {
+      onInsufficientCredits?.(requiredCredits, `${modelConfig?.label ?? 'Video'} render`);
+      return;
+    }
     setIsGenerating(true);
     try {
       await generateShot(currentShot.id);
     } finally {
       setIsGenerating(false);
     }
-  }, [currentShot, generateShot, isGenerating]);
+  }, [
+    balance,
+    currentShot,
+    generateShot,
+    isGenerating,
+    onInsufficientCredits,
+    selectedModel,
+  ]);
 
   const handleCopyPrompt = useCallback(async (): Promise<void> => {
     if (!promptText.trim()) return;
@@ -403,6 +425,19 @@ export function SequenceWorkspace({
     currentShot.status === 'generating-video';
 
   const generateLabel = currentShotIndex >= 0 ? `Generate Shot ${currentShotIndex + 1}` : 'Generate';
+  const selectedShotModelId = currentShot?.modelId || selectedModel;
+  const selectedShotModelConfig = getModelConfig(selectedShotModelId);
+  const selectedShotCost = selectedShotModelConfig?.credits ?? 0;
+  const selectedShotOperation = `${selectedShotModelConfig?.label ?? 'Video'} render`;
+
+  useLowBalanceWarning({
+    userId: authUser?.uid ?? null,
+    balance,
+    requiredCredits: selectedShotCost,
+    operation: selectedShotOperation,
+    enabled: Boolean(currentShot) && !isGenerateDisabled,
+  });
+
   const shouldShowSceneProxyPreview =
     Boolean(currentShot) &&
     currentShotIndex > 0 &&
@@ -635,6 +670,7 @@ export function SequenceWorkspace({
         modelRecommendation={modelRecommendation}
         recommendedModelId={recommendedModelId}
         efficientModelId={efficientModelId}
+        creditBalance={balance}
       />
     </main>
   );

@@ -21,6 +21,10 @@ interface GenerationControlsContextValue {
   controls: GenerationControlsHandlers | null;
   setControls: (controls: GenerationControlsHandlers | null) => void;
   onStoryboard: (() => void) | null;
+  onInsufficientCredits: ((required: number, operation: string) => void) | null;
+  setOnInsufficientCredits: (
+    handler: ((required: number, operation: string) => void) | null
+  ) => void;
   faceSwapPreview: FaceSwapPreviewState | null;
   setFaceSwapPreview: (preview: FaceSwapPreviewState | null) => void;
 }
@@ -29,6 +33,9 @@ const GenerationControlsContext = createContext<GenerationControlsContextValue |
 
 export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
+  const [onInsufficientCredits, setOnInsufficientCredits] = useState<(
+    (required: number, operation: string) => void
+  ) | null>(null);
   const [faceSwapPreview, setFaceSwapPreview] = useState<FaceSwapPreviewState | null>(null);
 
   useKeyframeUrlRefresh();
@@ -39,9 +46,11 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
     controls,
     setControls,
     onStoryboard,
+    onInsufficientCredits,
+    setOnInsufficientCredits,
     faceSwapPreview,
     setFaceSwapPreview,
-  }), [controls, faceSwapPreview, onStoryboard]);
+  }), [controls, faceSwapPreview, onInsufficientCredits, onStoryboard]);
 
   return (
     <GenerationControlsContext.Provider value={contextValue}>

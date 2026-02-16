@@ -23,6 +23,8 @@ const useCapabilitiesMock = vi.hoisted(() => vi.fn());
 const useWorkspaceSessionMock = vi.hoisted(() => vi.fn());
 const useGenerationControlsContextMock = vi.hoisted(() => vi.fn());
 const usePromptServicesMock = vi.hoisted(() => vi.fn());
+const useCreditBalanceMock = vi.hoisted(() => vi.fn());
+const useLowBalanceWarningMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@features/prompt-optimizer/hooks/useCapabilities', () => ({
   useCapabilities: (...args: unknown[]) => useCapabilitiesMock(...args),
@@ -40,6 +42,18 @@ vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptServices: (...args: unknown[]) => usePromptServicesMock(...args),
   useOptionalPromptHighlights: () => null,
+}));
+
+vi.mock('@/contexts/CreditBalanceContext', () => ({
+  useCreditBalance: (...args: unknown[]) => useCreditBalanceMock(...args),
+}));
+
+vi.mock('@/features/billing/hooks/useLowBalanceWarning', () => ({
+  useLowBalanceWarning: (...args: unknown[]) => useLowBalanceWarningMock(...args),
+}));
+
+vi.mock('@/hooks/useAuthUser', () => ({
+  useAuthUser: () => ({ uid: 'user-1' }),
 }));
 
 const createKeyframe = (overrides: Partial<KeyframeTile> = {}): KeyframeTile => ({
@@ -119,6 +133,12 @@ const renderPanel = (overrides: Parameters<typeof createProps>[0] = {}) => {
 describe('GenerationControlsPanel', () => {
   beforeEach(() => {
     usePromptServicesMock.mockReset();
+    useLowBalanceWarningMock.mockReset();
+    useCreditBalanceMock.mockReturnValue({
+      balance: 1000,
+      isLoading: false,
+      error: null,
+    });
     useCapabilitiesMock.mockReturnValue({
       schema: null,
       isLoading: false,
@@ -153,6 +173,8 @@ describe('GenerationControlsPanel', () => {
       },
       setControls: vi.fn(),
       onStoryboard: vi.fn(),
+      onInsufficientCredits: null,
+      setOnInsufficientCredits: vi.fn(),
       faceSwapPreview: null,
       setFaceSwapPreview: vi.fn(),
     });

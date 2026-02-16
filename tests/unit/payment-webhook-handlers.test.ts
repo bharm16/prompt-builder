@@ -101,7 +101,11 @@ describe('createWebhookEventHandlers', () => {
         client_reference_id: null,
       } as any);
 
-      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-2', 120);
+      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-2', 120, {
+        source: 'stripe_checkout',
+        reason: 'one_time_credit_pack',
+        referenceId: 'cs_2',
+      });
     });
 
     it('does not grant credits when one-time checkout metadata is invalid', async () => {
@@ -271,7 +275,11 @@ describe('createWebhookEventHandlers', () => {
         subscriptionPriceId: 'price_creator_monthly',
         stripeLivemode: false,
       });
-      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-1', 250);
+      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-1', 250, {
+        source: 'stripe_invoice',
+        reason: 'subscription_invoice_paid',
+        referenceId: 'in_5',
+      });
     });
 
     it('logs invoice profile persistence error but still grants credits', async () => {
@@ -314,7 +322,11 @@ describe('createWebhookEventHandlers', () => {
           eventId: 'evt_6',
         })
       );
-      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-1', 250);
+      expect(userCreditService.addCredits).toHaveBeenCalledWith('user-1', 250, {
+        source: 'stripe_invoice',
+        reason: 'subscription_invoice_paid',
+        referenceId: 'in_6',
+      });
     });
   });
 });

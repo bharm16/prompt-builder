@@ -6,9 +6,9 @@ import type { UserCreditService } from '@services/credits/UserCreditService';
 export interface PaymentRouteDeps {
   paymentService: PaymentService;
   billingProfileStore: BillingProfileStore;
+  userCreditService: UserCreditService;
 }
 
 export interface WebhookHandlerDeps extends PaymentRouteDeps {
   webhookEventStore: StripeWebhookEventStore;
-  userCreditService: UserCreditService;
 }

@@ -11,3 +11,4 @@ export {
   type AppShellContextValue,
   type AppShellProviderProps,
 } from './AppShellContext';
+export { CreditBalanceProvider, useCreditBalance } from './CreditBalanceContext';

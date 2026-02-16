@@ -30,7 +30,9 @@ function Spinner(): React.ReactElement {
   );
 }
 
-function mapAuthError(error: unknown): string {
+type AuthFlow = 'google' | 'email';
+
+function mapAuthError(error: unknown, flow: AuthFlow): string {
   if (!error || typeof error !== 'object') return 'Something went wrong. Please try again.';
   const code = 'code' in error && typeof error.code === 'string' ? error.code : null;
 
@@ -45,6 +47,21 @@ function mapAuthError(error: unknown): string {
       return 'Incorrect email or password.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Try again in a bit.';
+    case 'auth/operation-not-allowed':
+      return flow === 'google'
+        ? 'Google sign-in is disabled in Firebase Auth. Enable the Google provider in the Firebase console.'
+        : 'Email/password sign-in is disabled in Firebase Auth.';
+    case 'auth/popup-blocked':
+      return 'Google popup was blocked. Allow popups for this tab and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Google popup was closed before sign-in completed.';
+    case 'auth/cancelled-popup-request':
+      return 'Google sign-in popup request was cancelled. Try again.';
+    case 'auth/unauthorized-domain':
+      return 'This localhost domain is not authorized in Firebase Auth settings.';
+    case 'auth/operation-not-supported-in-this-environment':
+    case 'auth/web-storage-unsupported':
+      return 'Google sign-in is not supported in this embedded browser. Use email sign-in here or open the app in a regular browser.';
     default:
       return 'Failed to sign in. Please try again.';
   }
@@ -85,7 +102,7 @@ export function SignInPage(): React.ReactElement {
       toast.success(`Welcome, ${displayName}!`);
       navigate(redirect ?? '/', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'google'));
       toast.error('Failed to sign in. Please try again.');
     } finally {
       setIsBusy(false);
@@ -109,7 +126,7 @@ export function SignInPage(): React.ReactElement {
       toast.success(`Welcome back, ${displayName}!`);
       navigate(redirect ?? '/', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'email'));
     } finally {
       setIsBusy(false);
     }

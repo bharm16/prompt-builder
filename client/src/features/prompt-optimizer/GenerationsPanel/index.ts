@@ -12,8 +12,10 @@ export type {
   GenerationStatus,
   GenerationTier,
   GenerationsPanelProps,
+  GenerationsPanelRuntime,
 } from './types';
 export { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
+export { useGenerationsRuntime } from './hooks/useGenerationsRuntime';
 export type {
   TimelineDivider,
   TimelineGenerationItem,

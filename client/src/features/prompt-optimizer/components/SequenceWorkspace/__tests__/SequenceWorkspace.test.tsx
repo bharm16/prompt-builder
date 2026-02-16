@@ -8,6 +8,8 @@ import { SequenceWorkspace } from '../SequenceWorkspace';
 const setCameraMotionMock = vi.fn();
 const createSceneProxyMock = vi.fn();
 const previewSceneProxyMock = vi.fn();
+const onInsufficientCreditsMock = vi.fn();
+const lowBalanceWarningMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const toastWarningMock = vi.fn();
@@ -127,6 +129,20 @@ vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
   useOptionalPromptHighlights: () => null,
 }));
 
+vi.mock('@/features/billing/hooks/useLowBalanceWarning', () => ({
+  useLowBalanceWarning: (...args: unknown[]) => lowBalanceWarningMock(...args),
+}));
+
+vi.mock('@/hooks/useAuthUser', () => ({
+  useAuthUser: () => ({ uid: 'user-1' }),
+}));
+
+vi.mock('@/features/prompt-optimizer/context/GenerationControlsContext', () => ({
+  useGenerationControlsContext: () => ({
+    onInsufficientCredits: onInsufficientCreditsMock,
+  }),
+}));
+
 vi.mock('@components/Toast', () => ({
   useToast: () => ({
     success: toastSuccessMock,
@@ -194,6 +210,8 @@ describe('SequenceWorkspace', () => {
     setCameraMotionMock.mockReset();
     createSceneProxyMock.mockReset();
     previewSceneProxyMock.mockReset();
+    onInsufficientCreditsMock.mockReset();
+    lowBalanceWarningMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
     toastWarningMock.mockReset();

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 
 import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel/GenerationsPanel';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
@@ -135,9 +135,8 @@ describe('GenerationsPanel', () => {
     });
     mockUseGenerationControlsContext.mockReturnValue({
       setControls: vi.fn(),
-      keyframes: [],
-      cameraMotion: null,
-      subjectMotion: '',
+      faceSwapPreview: null,
+      onInsufficientCredits: null,
     });
     mockUseWorkspaceSession.mockReturnValue({
       session: { id: 'session-current' },
@@ -168,7 +167,22 @@ describe('GenerationsPanel', () => {
   });
 
   describe('error handling', () => {
-    it('disables the run draft action when prompt is empty', () => {
+    it('does not trigger draft generation when prompt is empty', () => {
+      const generateDraft = vi.fn();
+      mockUseGenerationActions.mockReturnValue({
+        generateDraft,
+        generateRender: vi.fn(),
+        generateStoryboard: vi.fn(),
+        retryGeneration: vi.fn(),
+        cancelGeneration: vi.fn(),
+      });
+      const setControls = vi.fn();
+      mockUseGenerationControlsContext.mockReturnValue({
+        setControls,
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
+      });
+
       render(
         <GenerationsPanel
           prompt="   "
@@ -180,13 +194,21 @@ describe('GenerationsPanel', () => {
         />
       );
 
-      const runDraftButton = screen.getByRole('button', { name: /run draft/i });
-      expect(runDraftButton).toBeDisabled();
+      const controls = setControls.mock.calls[0]?.[0] as
+        | { onDraft?: (model: string) => void }
+        | null;
+      expect(controls?.onDraft).toBeTypeOf('function');
+
+      act(() => {
+        controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+      });
+
+      expect(generateDraft).not.toHaveBeenCalled();
     });
   });
 
   describe('edge cases', () => {
-    it('triggers draft generation from empty state', () => {
+    it('triggers draft generation through registered controls', () => {
       const generateDraft = vi.fn();
       mockUseGenerationActions.mockReturnValue({
         generateDraft,
@@ -197,6 +219,12 @@ describe('GenerationsPanel', () => {
       });
 
       const onCreateVersionIfNeeded = vi.fn().mockReturnValue('version-2');
+      const setControls = vi.fn();
+      mockUseGenerationControlsContext.mockReturnValue({
+        setControls,
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
+      });
 
       render(
         <GenerationsPanel
@@ -209,7 +237,14 @@ describe('GenerationsPanel', () => {
         />
       );
 
-      fireEvent.click(screen.getByRole('button', { name: /run draft/i }));
+      const controls = setControls.mock.calls[0]?.[0] as
+        | { onDraft?: (model: string) => void }
+        | null;
+      expect(controls?.onDraft).toBeTypeOf('function');
+
+      act(() => {
+        controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+      });
       expect(generateDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id, 'New prompt', {
         promptVersionId: 'version-2',
       });
@@ -226,9 +261,8 @@ describe('GenerationsPanel', () => {
       const setControls = vi.fn();
       mockUseGenerationControlsContext.mockReturnValue({
         setControls,
-        keyframes: [],
-        cameraMotion: null,
-        subjectMotion: '',
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
       });
 
       const { unmount } = render(

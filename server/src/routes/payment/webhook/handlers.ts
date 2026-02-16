@@ -69,7 +69,11 @@ export const createWebhookEventHandlers = ({
       return;
     }
 
-    await userCreditService.addCredits(userId, credits);
+    await userCreditService.addCredits(userId, credits, {
+      source: 'stripe_checkout',
+      reason: 'one_time_credit_pack',
+      referenceId: session.id,
+    });
     logger.info('Credits funded via Stripe checkout', { userId, credits, sessionId: session.id });
   },
 
@@ -141,7 +145,11 @@ export const createWebhookEventHandlers = ({
       throw new Error(`Invoice ${invoice.id} paid but credits resolved to 0`);
     }
 
-    await userCreditService.addCredits(userId, credits);
+    await userCreditService.addCredits(userId, credits, {
+      source: 'stripe_invoice',
+      reason: 'subscription_invoice_paid',
+      referenceId: invoice.id,
+    });
     logger.info('Credits funded via Stripe invoice', { userId, credits, invoiceId: invoice.id, eventId });
   },
 });

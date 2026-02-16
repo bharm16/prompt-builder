@@ -12,7 +12,6 @@ import { StartFramePopover } from './StartFramePopover';
 
 interface CanvasSettingsRowProps {
   prompt: string;
-  charCount: number;
   renderModelId: string;
   recommendedModelId?: string | undefined;
   recommendationPromptId?: string | undefined;
@@ -72,7 +71,6 @@ function BarBtn({
 
 export function CanvasSettingsRow({
   prompt,
-  charCount,
   renderModelId,
   recommendedModelId,
   recommendationPromptId,
@@ -188,97 +186,94 @@ export function CanvasSettingsRow({
 
   return (
     <div
-      className="flex items-center gap-1 border-t border-[#181A20] pt-2.5 mt-2.5"
+      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-[#181A20] pt-2.5"
       data-testid="canvas-settings-row"
     >
-      {/* Start frame (with popover) */}
-      <StartFramePopover
-        startFrame={domain.startFrame}
-        cameraMotion={domain.cameraMotion}
-        onSetStartFrame={storeActions.setStartFrame}
-        onClearStartFrame={storeActions.clearStartFrame}
-        onOpenMotion={onOpenMotion}
-        onStartFrameUpload={onStartFrameUpload}
-        disabled={isGenerating}
-      />
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        {/* Start frame (with popover) */}
+        <StartFramePopover
+          startFrame={domain.startFrame}
+          cameraMotion={domain.cameraMotion}
+          onSetStartFrame={storeActions.setStartFrame}
+          onClearStartFrame={storeActions.clearStartFrame}
+          onOpenMotion={onOpenMotion}
+          onStartFrameUpload={onStartFrameUpload}
+          disabled={isGenerating}
+        />
 
-      {/* Assets */}
-      <BarBtn onClick={(e) => e.stopPropagation()}>
-        <span className="flex opacity-60"><Folder size={13} /></span>
-        Assets
-      </BarBtn>
+        {/* Assets */}
+        <BarBtn onClick={(e) => e.stopPropagation()}>
+          <span className="flex opacity-60"><Folder size={13} /></span>
+          Assets
+        </BarBtn>
 
-      {/* Aspect ratio — cycle on click */}
-      <BarBtn onClick={handleAspectRatioClick}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>
-        {aspectRatio}
-      </BarBtn>
+        {/* Aspect ratio — cycle on click */}
+        <BarBtn onClick={handleAspectRatioClick}>
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>
+          {aspectRatio}
+        </BarBtn>
 
-      {/* Duration — cycle on click */}
-      <BarBtn onClick={handleDurationClick}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>
-        {duration}s
-      </BarBtn>
+        {/* Duration — cycle on click */}
+        <BarBtn onClick={handleDurationClick}>
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>
+          {duration}s
+        </BarBtn>
 
-      {/* AI Enhance */}
-      <BarBtn
-        accent
-        {...(onEnhance
-          ? {
-              onClick: (event: React.MouseEvent) => {
-                event.stopPropagation();
-                onEnhance();
-              },
-            }
-          : {})}
-      >
-        <Sparkles size={13} />
-        Enhance
-      </BarBtn>
+        {/* AI Enhance */}
+        <BarBtn
+          accent
+          {...(onEnhance
+            ? {
+                onClick: (event: React.MouseEvent) => {
+                  event.stopPropagation();
+                  onEnhance();
+                },
+              }
+            : {})}
+        >
+          <Sparkles size={13} />
+          Enhance
+        </BarBtn>
+      </div>
 
-      <div className="flex-1" />
+      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
+        {/* Preview button (secondary) */}
+        <button
+          type="button"
+          data-testid="canvas-preview-button"
+          className="inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-[9px] border border-[#22252C] bg-transparent px-2.5 text-[11px] font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C] sm:px-3.5 sm:text-xs"
+          onClick={() => controls?.onStoryboard?.()}
+          disabled={previewDisabled}
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="5" height="4" rx="0.8"/><rect x="7" y="2.5" width="5" height="4" rx="0.8"/><rect x="1" y="7.5" width="5" height="4" rx="0.8"/><rect x="7" y="7.5" width="5" height="4" rx="0.8"/></svg>
+          Preview · {STORYBOARD_COST} cr
+        </button>
 
-      {/* Character count */}
-      <span className="mr-1 text-[10px] tabular-nums text-[#3A3E4C]">
-        {charCount}
-      </span>
-
-      {/* Preview button (secondary) */}
-      <button
-        type="button"
-        data-testid="canvas-preview-button"
-        className="inline-flex h-[34px] items-center gap-1.5 rounded-[9px] border border-[#22252C] bg-transparent px-3.5 text-xs font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C]"
-        onClick={() => controls?.onStoryboard?.()}
-        disabled={previewDisabled}
-      >
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="5" height="4" rx="0.8"/><rect x="7" y="2.5" width="5" height="4" rx="0.8"/><rect x="1" y="7.5" width="5" height="4" rx="0.8"/><rect x="7" y="7.5" width="5" height="4" rx="0.8"/></svg>
-        Preview · {STORYBOARD_COST} cr
-      </button>
-
-      {/* Generate button (primary) */}
-      <button
-        type="button"
-        data-testid="canvas-generate-button"
-        className={`inline-flex h-[34px] items-center gap-1.5 rounded-[9px] px-[18px] text-xs font-bold tracking-[0.01em] transition-opacity hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-60 ${
-          isWan
-            ? 'border border-[#E2E6EF] bg-transparent text-[#E2E6EF]'
-            : 'border-none bg-[#E2E6EF] text-[#0D0E12]'
-        }`}
-        onClick={handleGenerate}
-        disabled={generateDisabled}
-      >
-        {isWan ? (
-          <>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 1v3M6 8v3M9 3L7.5 5.5M4.5 6.5L3 9M3 3l1.5 2.5M7.5 6.5L9 9"/></svg>
-            Draft · {creditCost} cr
-          </>
-        ) : (
-          <>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 2l-1 3.5L1 6.5l3.5 1L5.5 11l1-3.5L10 6.5 6.5 5.5z"/><path d="M10.5 1l-.5 1.5L8.5 3l1.5.5.5 1.5.5-1.5L13 3l-1.5-.5z"/></svg>
-            Generate · {creditCost} cr
-          </>
-        )}
-      </button>
+        {/* Generate button (primary) */}
+        <button
+          type="button"
+          data-testid="canvas-generate-button"
+          className={`inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-[9px] px-3 text-[11px] font-bold tracking-[0.01em] transition-opacity hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-60 sm:px-[18px] sm:text-xs ${
+            isWan
+              ? 'border border-[#E2E6EF] bg-transparent text-[#E2E6EF]'
+              : 'border-none bg-[#E2E6EF] text-[#0D0E12]'
+          }`}
+          onClick={handleGenerate}
+          disabled={generateDisabled}
+        >
+          {isWan ? (
+            <>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 1v3M6 8v3M9 3L7.5 5.5M4.5 6.5L3 9M3 3l1.5 2.5M7.5 6.5L9 9"/></svg>
+              Draft · {creditCost} cr
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 2l-1 3.5L1 6.5l3.5 1L5.5 11l1-3.5L10 6.5 6.5 5.5z"/><path d="M10.5 1l-.5 1.5L8.5 3l1.5.5.5 1.5.5-1.5L13 3l-1.5-.5z"/></svg>
+              Generate · {creditCost} cr
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

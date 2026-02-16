@@ -1,577 +1,61 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/utils/cn';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Icon, Play } from '@promptstudio/system/components/ui';
-import type {
-  Generation,
-  GenerationsPanelProps,
-  GenerationsPanelStateSnapshot,
-} from './types';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
-import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
+import type { GenerationsPanelProps, GenerationsPanelRuntime } from './types';
 import { GenerationCard } from './components/GenerationCard';
 import { VersionDivider } from './components/VersionDivider';
 import { KeyframeStep } from './components/KeyframeStep';
-import { useGenerationsState } from './hooks/useGenerationsState';
-import { useGenerationActions } from './hooks/useGenerationActions';
-import { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
-import { useAssetReferenceImages } from './hooks/useAssetReferenceImages';
-import { useGenerationMediaRefresh } from './hooks/useGenerationMediaRefresh';
-import { useKeyframeWorkflow } from './hooks/useKeyframeWorkflow';
-import { useGenerationControlsContext } from '../context/GenerationControlsContext';
-import {
-  useGenerationControlsStoreActions,
-  useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
-import { usePromptNavigation, usePromptSession } from '../context/PromptStateContext';
-import { logger } from '@/services/LoggingService';
-import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
-import { useToast } from '@components/Toast';
-import { resolvePrimaryVideoSource } from './utils/videoSource';
+import { useGenerationsRuntime } from './hooks/useGenerationsRuntime';
 
-const log = logger.child('GenerationsPanel');
+interface GenerationsPanelViewProps {
+  runtime: GenerationsPanelRuntime;
+  presentation: 'timeline' | 'hero';
+  prompt: string;
+  aspectRatio: string;
+  className?: string | undefined;
+  onRestoreVersion: (versionId: string) => void;
+}
 
-const EmptyState = ({
-  onRunDraft,
-  isRunDraftDisabled,
-}: {
-  onRunDraft: () => void;
-  isRunDraftDisabled: boolean;
-}): React.ReactElement => (
-  <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
-    <Icon icon={Play} size="xl" className="mb-3.5 text-[#3A3E4C] opacity-40" aria-hidden="true" />
-    <div className="mb-1 text-[13px] font-semibold text-[#8B92A5]">No outputs yet</div>
-    <div className="text-[12px] leading-relaxed text-[#555B6E]">
-      Run a draft or render to see outputs here.
-    </div>
-    <Button
-      type="button"
-      variant="outline"
-      className="mt-5 h-8 rounded-lg border border-[#22252C] bg-transparent px-3 text-[12px] font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF]"
-      onClick={onRunDraft}
-      disabled={isRunDraftDisabled}
-    >
-      Run Draft
-    </Button>
-  </div>
-);
-
-export const GenerationsPanel = memo(function GenerationsPanel({
+function GenerationsPanelView({
+  runtime,
+  presentation,
   prompt,
-  promptVersionId,
   aspectRatio,
-  duration,
-  fps,
-  generationParams,
-  initialGenerations,
-  onGenerationsChange,
-  presentation = 'timeline',
-  onStateSnapshot,
   className,
-  versions,
   onRestoreVersion,
-  onCreateVersionIfNeeded,
-}: GenerationsPanelProps): React.ReactElement {
-  const toast = useToast();
-  const { navigate, sessionId: currentSessionId } = usePromptNavigation();
-  const { currentPromptDocId } = usePromptSession();
-  const {
-    session: workspaceSession,
-    isSequenceMode,
-    hasActiveContinuityShot,
-    isStartingSequence,
-    startSequence,
-    currentShot,
-    generateShot,
-    updateShot,
-  } = useWorkspaceSession();
-  const currentRouteSessionIdRef = useRef<string | null>(currentSessionId ?? null);
-  useEffect(() => {
-    currentRouteSessionIdRef.current = currentSessionId ?? null;
-  }, [currentSessionId]);
-  const {
-    generations,
-    activeGenerationId,
-    isGenerating,
-    dispatch,
-    getLatestByTier,
-    removeGeneration,
-  } = useGenerationsState({
-    initialGenerations,
-    onGenerationsChange,
-    promptVersionId,
-  });
-
-  useGenerationMediaRefresh(generations, dispatch);
-
-  const { setControls, faceSwapPreview } = useGenerationControlsContext();
-  const { domain } = useGenerationControlsStoreState();
-  const { setStartFrame, clearStartFrame } = useGenerationControlsStoreActions();
-  const keyframes = domain.keyframes;
-  const startFrame = domain.startFrame;
-  const cameraMotion = domain.cameraMotion;
-  const subjectMotion = domain.subjectMotion;
-
-  const mergedGenerationParams = useMemo(() => {
-    const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;
-
-    if (keyframes.length > 0) {
-      baseParams.keyframes = keyframes;
-    }
-
-    if (cameraMotion?.id) {
-      baseParams.camera_motion_id = cameraMotion.id;
-    }
-
-    const subjectMotionValue = subjectMotion.trim();
-    if (subjectMotionValue) {
-      baseParams.subject_motion = subjectMotionValue;
-    }
-
-    if (Object.keys(baseParams).length === 0) {
-      return generationParams;
-    }
-
-    return baseParams;
-  }, [generationParams, keyframes, cameraMotion?.id, subjectMotion]);
-
-  const motionMergeMeta = useMemo(() => {
-    const mergedKeys =
-      mergedGenerationParams && typeof mergedGenerationParams === 'object'
-        ? Object.keys(mergedGenerationParams as Record<string, unknown>)
-        : [];
-    const cameraMotionId =
-      mergedGenerationParams &&
-      typeof mergedGenerationParams === 'object' &&
-      typeof (mergedGenerationParams as Record<string, unknown>).camera_motion_id === 'string'
-        ? String((mergedGenerationParams as Record<string, unknown>).camera_motion_id)
-        : null;
-    const subjectMotionLength = subjectMotion.trim().length;
-
-    return {
-      keyframesCount: keyframes.length,
-      hasCameraMotion: Boolean(cameraMotionId),
-      cameraMotionId,
-      hasSubjectMotion: subjectMotionLength > 0,
-      subjectMotionLength,
-      mergedKeysCount: mergedKeys.length,
-      mergedKeys,
-    } as const;
-  }, [mergedGenerationParams, keyframes.length, subjectMotion]);
-
-  useEffect(() => {
-    if (!motionMergeMeta.keyframesCount && !motionMergeMeta.hasCameraMotion && !motionMergeMeta.hasSubjectMotion) {
-      return;
-    }
-
-    log.info('Merged generation params include motion/keyframe context', {
-      ...motionMergeMeta,
-      hasCameraMotionFieldInMergedParams: motionMergeMeta.mergedKeys.includes('camera_motion_id'),
-      hasSubjectMotionFieldInMergedParams: motionMergeMeta.mergedKeys.includes('subject_motion'),
-      hasKeyframesFieldInMergedParams: motionMergeMeta.mergedKeys.includes('keyframes'),
-    });
-  }, [motionMergeMeta]);
-
-  const generationActionsOptions = useMemo(
-    () => ({
-      aspectRatio,
-      duration,
-      fps,
-      generationParams: mergedGenerationParams,
-      promptVersionId,
-      generations,
-    }),
-    [aspectRatio, duration, fps, mergedGenerationParams, promptVersionId, generations]
-  );
-
-  const {
-    generateDraft,
-    generateRender,
-    generateStoryboard,
-    retryGeneration,
-    cancelGeneration,
-  } = useGenerationActions(dispatch, generationActionsOptions);
-
-  const { resolvedPrompt } = useAssetReferenceImages(prompt);
-  const detectedCharacter = useMemo(
-    () => resolvedPrompt?.characters?.[0] ?? null,
-    [resolvedPrompt]
-  );
-
-  const activeDraftModel = useMemo(
-    () => getLatestByTier('draft')?.model ?? null,
-    [getLatestByTier]
-  );
-
-  const defaultDraftModel: DraftModel = useMemo(() => {
-    if (
-      activeDraftModel === 'flux-kontext' ||
-      activeDraftModel === 'wan-2.2' ||
-      activeDraftModel === 'wan-2.5'
-    ) {
-      return activeDraftModel;
-    }
-    return VIDEO_DRAFT_MODEL.id;
-  }, [activeDraftModel]);
-
-  const faceSwapOverride = useMemo<GenerationOverrides | null>(() => {
-    if (!faceSwapPreview?.url) return null;
-    return {
-      startImage: {
-        url: faceSwapPreview.url,
-        source: 'face-swap',
-      },
-      characterAssetId: faceSwapPreview.characterAssetId,
-      faceSwapAlreadyApplied: true,
-      faceSwapUrl: faceSwapPreview.url,
-    };
-  }, [faceSwapPreview?.characterAssetId, faceSwapPreview?.url]);
-
-  const generateSequenceShot = useCallback(
-    async (modelId?: string) => {
-      if (!currentShot) return;
-      if (currentShot.status === 'generating-keyframe' || currentShot.status === 'generating-video') {
-        return;
-      }
-      if (modelId && currentShot.modelId !== modelId) {
-        await updateShot(currentShot.id, { modelId });
-      }
-      await generateShot(currentShot.id);
-    },
-    [currentShot, generateShot, updateShot]
-  );
-
-  const handleDraft = useCallback(
-    (model: DraftModel, overrides?: GenerationOverrides) => {
-      if (!prompt.trim()) return;
-      if (hasActiveContinuityShot) {
-        onCreateVersionIfNeeded();
-        void generateSequenceShot(model);
-        return;
-      }
-      const resolvedOverrides = overrides ?? faceSwapOverride ?? undefined;
-      const versionId = onCreateVersionIfNeeded();
-      const startImage = resolvedOverrides?.startImage ?? (startFrame
-        ? {
-            url: startFrame.url,
-            source: startFrame.source,
-            ...(startFrame.assetId ? { assetId: startFrame.assetId } : {}),
-            ...(startFrame.storagePath ? { storagePath: startFrame.storagePath } : {}),
-            ...(startFrame.viewUrlExpiresAt ? { viewUrlExpiresAt: startFrame.viewUrlExpiresAt } : {}),
-          }
-        : null);
-      const autoCharacterAssetId =
-        resolvedOverrides?.characterAssetId ??
-        (!startImage ? detectedCharacter?.id : undefined);
-
-      generateDraft(model, prompt, {
-        promptVersionId: versionId,
-        ...(startImage ? { startImage } : {}),
-        ...(autoCharacterAssetId ? { characterAssetId: autoCharacterAssetId } : {}),
-        ...(resolvedOverrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
-        ...(resolvedOverrides?.faceSwapUrl ? { faceSwapUrl: resolvedOverrides.faceSwapUrl } : {}),
-        ...(mergedGenerationParams ? { generationParams: mergedGenerationParams } : {}),
-        ...(resolvedOverrides?.generationParams ? { generationParams: resolvedOverrides.generationParams } : {}),
-      });
-    },
-    [
-      faceSwapOverride,
-      generateDraft,
-      generateSequenceShot,
-      hasActiveContinuityShot,
-      startFrame,
-      mergedGenerationParams,
-      detectedCharacter?.id,
-      onCreateVersionIfNeeded,
-      prompt,
-    ]
-  );
-
-  const {
-    keyframeStep,
-    selectedFrameUrl,
-    handleRender,
-    handleApproveKeyframe: approveKeyframeFromWorkflow,
-    handleSkipKeyframe,
-    handleSelectFrame: selectFrameInWorkflow,
-    handleClearSelectedFrame: clearSelectedFrameInWorkflow,
-  } = useKeyframeWorkflow({
-    prompt,
-    startFrame,
-    setStartFrame,
-    clearStartFrame,
-    detectedCharacter,
-    onCreateVersionIfNeeded,
-    generateRender,
-  });
-
-  const handleApproveKeyframe = useCallback(
-    (keyframeUrl: string) => {
-      setStartFrame({
-        id: `keyframe-step-${Date.now()}`,
-        url: keyframeUrl,
-        source: 'generation',
-        ...(prompt.trim() ? { sourcePrompt: prompt.trim() } : {}),
-      });
-      approveKeyframeFromWorkflow(keyframeUrl);
-    },
-    [approveKeyframeFromWorkflow, prompt, setStartFrame]
-  );
-
-  const handleSelectFrame = useCallback(
-    (url: string, frameIndex: number, generationId: string) => {
-      const generation = generations.find((item) => item.id === generationId);
-      const storagePath = generation?.mediaAssetIds?.[frameIndex];
-      selectFrameInWorkflow(
-        url,
-        frameIndex,
-        generationId,
-        storagePath,
-        generation?.prompt ?? prompt
-      );
-    },
-    [generations, prompt, selectFrameInWorkflow]
-  );
-
-  const handleClearSelectedFrame = useCallback(() => {
-    clearSelectedFrameInWorkflow();
-  }, [clearSelectedFrameInWorkflow]);
-
-  const handleRenderWithFaceSwap = useCallback(
-    (model: string, overrides?: GenerationOverrides) => {
-      if (hasActiveContinuityShot) {
-        onCreateVersionIfNeeded();
-        void generateSequenceShot(model);
-        return;
-      }
-      if (!overrides && faceSwapOverride) {
-        handleRender(model, faceSwapOverride);
-        return;
-      }
-      handleRender(model, overrides);
-    },
-    [faceSwapOverride, generateSequenceShot, handleRender, hasActiveContinuityShot, onCreateVersionIfNeeded]
-  );
-
-  const handleStoryboard = useCallback(() => {
-    if (hasActiveContinuityShot) return;
-    const resolvedPrompt = prompt.trim() || 'Generate a storyboard based on the reference image.';
-    const versionId = onCreateVersionIfNeeded();
-    const seedImageUrl = startFrame?.url ?? null;
-    generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
-  }, [generateStoryboard, hasActiveContinuityShot, onCreateVersionIfNeeded, prompt, startFrame?.url]);
-
-  const handleDelete = useCallback(
-    (generation: Generation) => {
-      if (hasActiveContinuityShot) return;
-      removeGeneration(generation.id);
-    },
-    [hasActiveContinuityShot, removeGeneration]
-  );
-
-  const handleRetry = useCallback(
-    (generation: Generation) => {
-      if (hasActiveContinuityShot) {
-        onCreateVersionIfNeeded();
-        void generateSequenceShot(generation.model);
-        return;
-      }
-      retryGeneration(generation.id);
-    },
-    [generateSequenceShot, hasActiveContinuityShot, onCreateVersionIfNeeded, retryGeneration]
-  );
-
-  const handleCancel = useCallback(
-    (generation: Generation) => {
-      if (hasActiveContinuityShot) return;
-      cancelGeneration(generation.id);
-    },
-    [cancelGeneration, hasActiveContinuityShot]
-  );
-
-  const handleDownload = useCallback((generation: Generation) => {
-    const url = generation.mediaUrls[0];
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }, []);
-
-  const handleContinueSequence = useCallback(
-    async (generation: Generation) => {
-      if (hasActiveContinuityShot || isStartingSequence) return;
-      const mediaUrl = generation.mediaUrls[0] ?? null;
-      const { assetId, storagePath } = resolvePrimaryVideoSource(
-        mediaUrl,
-        generation.mediaAssetIds?.[0] ?? null
-      );
-      const sourceVideoId = assetId ?? storagePath;
-      const sourceImageUrl =
-        typeof generation.thumbnailUrl === 'string' && generation.thumbnailUrl.trim()
-          ? generation.thumbnailUrl.trim()
-          : null;
-      if (!sourceVideoId) {
-        log.warn('Cannot start sequence: missing source video ref', {
-          generationId: generation.id,
-          mediaUrl,
-          mediaAssetId: generation.mediaAssetIds?.[0] ?? null,
-          routeSessionId: currentSessionId ?? null,
-          currentPromptDocId,
-        });
-        toast.warning('Unable to start a sequence from this generation.');
-        return;
-      }
-      const routeSessionIdAtStart = currentSessionId ?? null;
-      const originSessionId = routeSessionIdAtStart ?? currentPromptDocId ?? workspaceSession?.id ?? null;
-      log.info('Starting sequence', {
-        generationId: generation.id,
-        sourceVideoId,
-        routeSessionId: routeSessionIdAtStart,
-        currentPromptDocId,
-        originSessionId,
-      });
-      try {
-        const { sessionId: sequenceSessionId } = await startSequence({
-          sourceVideoId,
-          ...(sourceImageUrl ? { sourceImageUrl } : {}),
-          prompt: generation.prompt,
-          ...(originSessionId ? { originSessionId } : {}),
-        });
-        if (currentRouteSessionIdRef.current !== routeSessionIdAtStart) {
-          log.info('Skipping sequence navigation after route changed during startup', {
-            generationId: generation.id,
-            routeSessionIdAtStart,
-            routeSessionIdCurrent: currentRouteSessionIdRef.current ?? null,
-            sequenceSessionId,
-          });
-          return;
-        }
-        if (sequenceSessionId && sequenceSessionId !== originSessionId) {
-          const originParam = originSessionId
-            ? `?originSessionId=${encodeURIComponent(originSessionId)}`
-            : '';
-          navigate(`/session/${encodeURIComponent(sequenceSessionId)}${originParam}`);
-        }
-        log.info('Sequence started from generation', {
-          generationId: generation.id,
-          sequenceSessionId,
-          originSessionId,
-        });
-        toast.success('Sequence mode enabled.');
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        log.error('Failed to start sequence from generation', err, {
-          generationId: generation.id,
-          sourceVideoId,
-          routeSessionId: currentSessionId ?? null,
-          currentPromptDocId,
-          originSessionId,
-        });
-        toast.error(error instanceof Error ? error.message : 'Failed to start sequence');
-      }
-    },
-    [
-      currentPromptDocId,
-      currentSessionId,
-      hasActiveContinuityShot,
-      isStartingSequence,
-      navigate,
-      startSequence,
-      toast,
-      workspaceSession?.id,
-    ]
-  );
-
-  const versionsForTimeline = useMemo(() => {
-    if (!versions.length || !promptVersionId) return versions;
-    const index = versions.findIndex(
-      (version) => version.versionId === promptVersionId
-    );
-    if (index < 0) return versions;
-    const target = versions[index];
-    if (!target || target.generations === generations) return versions;
-    const next = [...versions];
-    next[index] = { ...target, generations };
-    return next;
-  }, [generations, promptVersionId, versions]);
-
-  const timeline = useGenerationsTimeline({ versions: versionsForTimeline });
-  const totalVisibleGenerations = useMemo(
-    () => timeline.filter((item) => item.type === 'generation').length,
-    [timeline]
-  );
-
-  const controlsPayload = useMemo(
-    () => ({
-      onDraft: handleDraft,
-      onRender: handleRenderWithFaceSwap,
-      onStoryboard: handleStoryboard,
-      isGenerating,
-      activeDraftModel,
-    }),
-    [handleDraft, handleRenderWithFaceSwap, handleStoryboard, isGenerating, activeDraftModel]
-  );
-
-  useEffect(() => {
-    setControls(controlsPayload);
-    return () => setControls(null);
-  }, [controlsPayload, setControls]);
-
-  const activeGeneration = useMemo(() => {
-    if (generations.length === 0) return null;
-    if (activeGenerationId) {
-      const matched = generations.find((generation) => generation.id === activeGenerationId);
-      if (matched) return matched;
-    }
-    return generations[generations.length - 1] ?? null;
-  }, [activeGenerationId, generations]);
-
-  useEffect(() => {
-    if (!onStateSnapshot) return;
-    const snapshot: GenerationsPanelStateSnapshot = {
-      generations,
-      activeGenerationId,
-      isGenerating,
-      selectedFrameUrl: selectedFrameUrl ?? null,
-    };
-    onStateSnapshot(snapshot);
-  }, [activeGenerationId, generations, isGenerating, onStateSnapshot, selectedFrameUrl]);
+}: GenerationsPanelViewProps): React.ReactElement {
+  const isSequenceContext = runtime.isSequenceMode || runtime.hasActiveContinuityShot;
 
   if (presentation === 'hero') {
     return (
       <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
-        {keyframeStep.isActive && keyframeStep.character ? (
+        {runtime.keyframeStep.isActive && runtime.keyframeStep.character ? (
           <KeyframeStep
             prompt={prompt}
-            character={keyframeStep.character}
+            character={runtime.keyframeStep.character}
             aspectRatio={aspectRatio}
-            onApprove={handleApproveKeyframe}
-            onSkip={handleSkipKeyframe}
+            onApprove={runtime.handleApproveKeyframe}
+            onSkip={runtime.handleSkipKeyframe}
           />
         ) : null}
 
-        <div className="flex flex-1 flex-col overflow-y-auto p-3">
-          {activeGeneration ? (
+        <div className="flex flex-1 flex-col overflow-y-auto bg-[#0D0E12] p-3">
+          {runtime.heroGeneration ? (
             <GenerationCard
-              generation={activeGeneration}
-              onRetry={handleRetry}
-              onDelete={handleDelete}
-              onDownload={handleDownload}
-              onCancel={handleCancel}
-              onContinueSequence={handleContinueSequence}
-              isSequenceMode={isSequenceMode || hasActiveContinuityShot}
-              isStartingSequence={isStartingSequence}
-              onSelectFrame={handleSelectFrame}
-              onClearSelectedFrame={handleClearSelectedFrame}
-              selectedFrameUrl={selectedFrameUrl}
+              generation={runtime.heroGeneration}
+              onRetry={runtime.handleRetry}
+              onDelete={runtime.handleDelete}
+              onDownload={runtime.handleDownload}
+              onCancel={runtime.handleCancel}
+              onContinueSequence={runtime.handleContinueSequence}
+              isSequenceMode={isSequenceContext}
+              isStartingSequence={runtime.isStartingSequence}
+              onSelectFrame={runtime.handleSelectFrame}
+              onClearSelectedFrame={runtime.handleClearSelectedFrame}
+              selectedFrameUrl={runtime.selectedFrameUrl}
               isActive
               className="h-full"
             />
-          ) : (
-            <EmptyState
-              onRunDraft={() => handleDraft(defaultDraftModel)}
-              isRunDraftDisabled={!prompt.trim() || isGenerating}
-            />
-          )}
+          ) : null}
         </div>
       </div>
     );
@@ -582,62 +66,120 @@ export const GenerationsPanel = memo(function GenerationsPanel({
       <div className="flex items-center justify-between border-b border-[#1A1C22] px-4 py-3.5">
         <span className="text-[13px] font-semibold text-[#E2E6EF]">Generations</span>
         <span className="text-[10px] text-[#3A3E4C]">
-          {totalVisibleGenerations > 0
-            ? `${totalVisibleGenerations} output${totalVisibleGenerations !== 1 ? 's' : ''}`
+          {runtime.totalVisibleGenerations > 0
+            ? `${runtime.totalVisibleGenerations} output${runtime.totalVisibleGenerations !== 1 ? 's' : ''}`
             : ''}
         </span>
       </div>
 
-      {keyframeStep.isActive && keyframeStep.character ? (
+      {runtime.keyframeStep.isActive && runtime.keyframeStep.character ? (
         <KeyframeStep
           prompt={prompt}
-          character={keyframeStep.character}
+          character={runtime.keyframeStep.character}
           aspectRatio={aspectRatio}
-          onApprove={handleApproveKeyframe}
-          onSkip={handleSkipKeyframe}
+          onApprove={runtime.handleApproveKeyframe}
+          onSkip={runtime.handleSkipKeyframe}
         />
       ) : null}
 
       <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-3 py-2.5">
-        {timeline.length === 0 ? (
-          <EmptyState
-            onRunDraft={() => handleDraft(defaultDraftModel)}
-            isRunDraftDisabled={!prompt.trim() || isGenerating}
-          />
-        ) : (
-          timeline.map((item, index) => {
-            if (item.type === 'divider') {
+        {runtime.timeline.length === 0
+          ? null
+          : runtime.timeline.map((item, index) => {
+              if (item.type === 'divider') {
+                return (
+                  <VersionDivider
+                    key={`divider-${item.versionId}-${index}`}
+                    versionLabel={item.versionLabel}
+                    promptChanged={item.promptChanged}
+                  />
+                );
+              }
+
               return (
-                <VersionDivider
-                  key={`divider-${item.versionId}-${index}`}
-                  versionLabel={item.versionLabel}
-                  promptChanged={item.promptChanged}
+                <GenerationCard
+                  key={item.generation.id}
+                  generation={item.generation}
+                  isActive={item.generation.id === runtime.activeGenerationId}
+                  onRetry={runtime.handleRetry}
+                  onDelete={runtime.handleDelete}
+                  onDownload={runtime.handleDownload}
+                  onCancel={runtime.handleCancel}
+                  onContinueSequence={runtime.handleContinueSequence}
+                  isSequenceMode={isSequenceContext}
+                  isStartingSequence={runtime.isStartingSequence}
+                  onSelectFrame={runtime.handleSelectFrame}
+                  onClearSelectedFrame={runtime.handleClearSelectedFrame}
+                  selectedFrameUrl={runtime.selectedFrameUrl}
+                  onClick={() => onRestoreVersion(item.generation._versionId)}
                 />
               );
-            }
-
-            return (
-              <GenerationCard
-                key={item.generation.id}
-                generation={item.generation}
-                isActive={item.generation.id === activeGenerationId}
-                onRetry={handleRetry}
-                onDelete={handleDelete}
-                onDownload={handleDownload}
-                onCancel={handleCancel}
-                onContinueSequence={handleContinueSequence}
-                isSequenceMode={isSequenceMode || hasActiveContinuityShot}
-                isStartingSequence={isStartingSequence}
-                onSelectFrame={handleSelectFrame}
-                onClearSelectedFrame={handleClearSelectedFrame}
-                selectedFrameUrl={selectedFrameUrl}
-                onClick={() => onRestoreVersion(item.generation._versionId)}
-              />
-            );
-          })
-        )}
+            })}
       </div>
     </div>
+  );
+}
+
+type GenerationsPanelWithInternalRuntimeProps = Omit<GenerationsPanelProps, 'runtime'>;
+
+function GenerationsPanelWithInternalRuntime({
+  className,
+  onRestoreVersion,
+  prompt,
+  aspectRatio,
+  presentation = 'timeline',
+  ...runtimeOptions
+}: GenerationsPanelWithInternalRuntimeProps): React.ReactElement {
+  const runtime = useGenerationsRuntime({
+    prompt,
+    aspectRatio,
+    ...runtimeOptions,
+    presentation,
+  });
+
+  return (
+    <GenerationsPanelView
+      runtime={runtime}
+      presentation={presentation}
+      prompt={prompt}
+      aspectRatio={aspectRatio}
+      className={className}
+      onRestoreVersion={onRestoreVersion}
+    />
+  );
+}
+
+export const GenerationsPanel = memo(function GenerationsPanel({
+  runtime,
+  className,
+  prompt,
+  aspectRatio,
+  onRestoreVersion,
+  presentation = 'timeline',
+  ...props
+}: GenerationsPanelProps): React.ReactElement {
+  if (runtime) {
+    return (
+      <GenerationsPanelView
+        runtime={runtime}
+        presentation={presentation}
+        prompt={prompt}
+        aspectRatio={aspectRatio}
+        className={className}
+        onRestoreVersion={onRestoreVersion}
+      />
+    );
+  }
+
+  return (
+    <GenerationsPanelWithInternalRuntime
+      {...props}
+      prompt={prompt}
+      aspectRatio={aspectRatio}
+      presentation={presentation}
+      onRestoreVersion={onRestoreVersion}
+      {...(className !== undefined ? { className } : {})}
+    />
   );
 });
 

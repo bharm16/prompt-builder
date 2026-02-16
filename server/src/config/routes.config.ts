@@ -17,6 +17,7 @@ import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { errorHandler } from '@middleware/errorHandler';
 import { createBatchMiddleware } from '@middleware/requestBatching';
+import { starterCreditsMiddleware } from '@middleware/starterCredits';
 
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
@@ -148,7 +149,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       faceSwapService: container.resolve('faceSwapService'),
       assetService: container.resolve('assetService'),
     });
-    app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+    app.use('/api/preview', apiAuthMiddleware, starterCreditsMiddleware, previewRoutes);
   }
 
   // ============================================================================
@@ -156,7 +157,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   const paymentRoutes = createPaymentRoutes();
-  app.use('/api/payment', apiAuthMiddleware, paymentRoutes);
+  app.use('/api/payment', apiAuthMiddleware, starterCreditsMiddleware, paymentRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)

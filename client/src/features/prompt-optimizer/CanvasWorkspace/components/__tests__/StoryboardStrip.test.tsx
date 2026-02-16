@@ -62,6 +62,35 @@ describe('StoryboardStrip', () => {
     );
   });
 
+  it('renders as an absolute frosted-glass overlay', () => {
+    render(
+      <StoryboardStrip
+        snapshot={buildSnapshot()}
+        onUseAsStartFrame={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    const strip = screen.getByTestId('storyboard-strip');
+    expect(strip).toHaveClass('absolute');
+    expect(strip).toHaveClass('bottom-4');
+    expect(strip).toHaveClass('left-1/2');
+    expect(strip).toHaveClass('-translate-x-1/2');
+    expect(strip).toHaveClass('backdrop-blur-xl');
+  });
+
+  it('uses absolute positioning so it does not participate in normal layout flow', () => {
+    render(
+      <StoryboardStrip
+        snapshot={buildSnapshot()}
+        onUseAsStartFrame={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('storyboard-strip')).toHaveClass('absolute');
+  });
+
   it('calls onDismiss when dismiss action is used', () => {
     const onDismiss = vi.fn();
 

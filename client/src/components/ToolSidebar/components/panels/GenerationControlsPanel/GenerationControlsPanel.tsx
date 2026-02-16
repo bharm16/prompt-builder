@@ -1,8 +1,10 @@
-import React, { type ReactElement, useCallback } from "react";
+import React, { type ReactElement, useCallback, useEffect } from "react";
 import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
 import { FaceSwapPreviewModal } from "@/components/modals/FaceSwapPreviewModal";
+import { InsufficientCreditsModal } from "@/components/modals/InsufficientCreditsModal";
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
 import {
+  STORYBOARD_COST,
   VIDEO_DRAFT_MODEL,
   VIDEO_RENDER_MODELS,
 } from "@components/ToolSidebar/config/modelConfig";
@@ -19,6 +21,10 @@ import {
   useSidebarGenerationDomain,
   useSidebarPromptInteractionDomain,
 } from "@/components/ToolSidebar/context";
+import { useLowBalanceWarning } from "@/features/billing/hooks/useLowBalanceWarning";
+import { useCreditGate } from "@/hooks/useCreditGate";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 
 const noopDraft = (_model: DraftModel, _overrides?: GenerationOverrides): void => {};
 const noopRender = (_model: string, _overrides?: GenerationOverrides): void => {};
@@ -30,6 +36,15 @@ export function GenerationControlsPanel(
   const promptInteractionDomain = useSidebarPromptInteractionDomain();
   const generationDomain = useSidebarGenerationDomain();
   const assetsDomain = useSidebarAssetsDomain();
+  const { setOnInsufficientCredits } = useGenerationControlsContext();
+  const {
+    checkCredits,
+    openInsufficientCredits,
+    insufficientCreditsModal,
+    dismissModal,
+    balance,
+  } = useCreditGate();
+  const authUser = useAuthUser();
   const {
     onDraft: onDraftFromProps,
     onRender: onRenderFromProps,
@@ -85,17 +100,39 @@ export function GenerationControlsPanel(
   const showMotionControls = true;
   const isFaceSwapMode = faceSwap.mode === "face-swap";
   const isFaceSwapFlow = isFaceSwapMode && state.activeTab === "video";
+  const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? "";
+  const selectedModelIdForGeneration =
+    tier === "draft"
+      ? VIDEO_DRAFT_MODEL.id
+      : recommendation.renderModelId || selectedModel || fallbackRenderModelId;
+  const selectedRenderModel =
+    VIDEO_RENDER_MODELS.find((model) => model.id === selectedModelIdForGeneration) ??
+    VIDEO_RENDER_MODELS[0];
+  const selectedOperationCost =
+    tier === "draft" ? VIDEO_DRAFT_MODEL.cost : selectedRenderModel?.cost ?? 0;
+  const selectedOperationLabel =
+    tier === "draft"
+      ? `${VIDEO_DRAFT_MODEL.label} preview`
+      : `${selectedRenderModel?.label ?? "Video"} render`;
+
+  useLowBalanceWarning({
+    userId: authUser?.uid ?? null,
+    balance,
+    requiredCredits: selectedOperationCost,
+    operation: selectedOperationLabel,
+    enabled: state.activeTab === "video",
+  });
+
+  useEffect(() => {
+    setOnInsufficientCredits(() => openInsufficientCredits);
+    return () => setOnInsufficientCredits(null);
+  }, [openInsufficientCredits, setOnInsufficientCredits]);
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
-      const fallbackRenderModelId =
-        VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? "";
-      const selectedModelIdForGeneration =
-        tier === "draft"
-          ? VIDEO_DRAFT_MODEL.id
-          : recommendation.renderModelId ||
-            selectedModel ||
-            fallbackRenderModelId;
+      if (!checkCredits(selectedOperationCost, selectedOperationLabel)) {
+        return;
+      }
 
       void trackModelRecommendationEvent({
         event: "generation_started",
@@ -129,7 +166,10 @@ export function GenerationControlsPanel(
       recommendation.recommendationMode,
       recommendation.recommendedModelId,
       recommendation.renderModelId,
-      selectedModel,
+      selectedOperationCost,
+      selectedOperationLabel,
+      selectedModelIdForGeneration,
+      checkCredits,
       tier,
     ],
   );
@@ -200,6 +240,7 @@ export function GenerationControlsPanel(
             : "Preview Face Swap"
           : "Generate"
       }
+      creditBalance={balance}
     />
   );
 
@@ -272,8 +313,14 @@ export function GenerationControlsPanel(
           onClear={actions.handleClearPrompt}
           promptLength={derived.promptLength}
           canGeneratePreviews={!derived.isStoryboardDisabled}
-          onGenerateSinglePreview={onStoryboard}
-          onGenerateFourPreviews={onStoryboard}
+          onGenerateSinglePreview={() => {
+            if (!checkCredits(STORYBOARD_COST, "Storyboard")) return;
+            onStoryboard();
+          }}
+          onGenerateFourPreviews={() => {
+            if (!checkCredits(STORYBOARD_COST, "Storyboard")) return;
+            onStoryboard();
+          }}
         />
       ) : (
         <ImageTabContent
@@ -344,6 +391,13 @@ export function GenerationControlsPanel(
             faceSwapUrl: faceSwap.previewUrl,
           });
         }}
+      />
+      <InsufficientCreditsModal
+        open={insufficientCreditsModal !== null}
+        onClose={dismissModal}
+        required={insufficientCreditsModal?.required ?? 0}
+        available={insufficientCreditsModal?.available ?? 0}
+        operation={insufficientCreditsModal?.operation ?? ""}
       />
     </div>
   );

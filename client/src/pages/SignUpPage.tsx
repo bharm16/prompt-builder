@@ -30,7 +30,9 @@ function Spinner(): React.ReactElement {
   );
 }
 
-function mapAuthError(error: unknown): string {
+type AuthFlow = 'google' | 'email';
+
+function mapAuthError(error: unknown, flow: AuthFlow): string {
   if (!error || typeof error !== 'object') return 'Something went wrong. Please try again.';
   const code = 'code' in error && typeof error.code === 'string' ? error.code : null;
 
@@ -42,7 +44,20 @@ function mapAuthError(error: unknown): string {
     case 'auth/weak-password':
       return 'Password is too weak. Use at least 6 characters.';
     case 'auth/operation-not-allowed':
-      return 'Email/password sign-up is disabled in Firebase Auth.';
+      return flow === 'google'
+        ? 'Google sign-in is disabled in Firebase Auth. Enable the Google provider in the Firebase console.'
+        : 'Email/password sign-up is disabled in Firebase Auth.';
+    case 'auth/popup-blocked':
+      return 'Google popup was blocked. Allow popups for this tab and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Google popup was closed before sign-up completed.';
+    case 'auth/cancelled-popup-request':
+      return 'Google sign-up popup request was cancelled. Try again.';
+    case 'auth/unauthorized-domain':
+      return 'This localhost domain is not authorized in Firebase Auth settings.';
+    case 'auth/operation-not-supported-in-this-environment':
+    case 'auth/web-storage-unsupported':
+      return 'Google sign-in is not supported in this embedded browser. Use email sign-up here or open the app in a regular browser.';
     default:
       return 'Failed to create account. Please try again.';
   }
@@ -102,7 +117,7 @@ export function SignUpPage(): React.ReactElement {
       toast.success(`Welcome, ${name}!`);
       navigate(redirect ?? '/', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'google'));
       toast.error('Failed to create account. Please try again.');
     } finally {
       setIsBusy(false);
@@ -144,7 +159,7 @@ export function SignUpPage(): React.ReactElement {
       const query = params.toString();
       navigate(query ? `/email-verification?${query}` : '/email-verification', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'email'));
     } finally {
       setIsBusy(false);
     }

@@ -12,8 +12,10 @@ const billingProfileStore = new BillingProfileStore();
 
 export const createPaymentRoutes = (): express.Router => {
   const router = express.Router();
-  const handlers = createPaymentHandlers({ paymentService, billingProfileStore });
+  const handlers = createPaymentHandlers({ paymentService, billingProfileStore, userCreditService });
 
+  router.get('/status', handlers.getStatus);
+  router.get('/credits/history', handlers.listCreditHistory);
   router.get('/invoices', handlers.listInvoices);
   router.post('/portal', handlers.createPortalSession);
   router.post('/checkout', handlers.createCheckoutSession);

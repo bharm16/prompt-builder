@@ -12,6 +12,7 @@ const {
   paymentServiceMock,
   billingProfileStoreMock,
   webhookEventStoreMock,
+  userCreditServiceMock,
 } = vi.hoisted(() => {
   const paymentServiceMock = {
     listInvoices: vi.fn(),
@@ -35,10 +36,18 @@ const {
     markFailed: vi.fn(),
   };
 
+  const userCreditServiceMock = {
+    addCredits: vi.fn(),
+    getStarterGrantInfo: vi.fn(),
+    listCreditTransactions: vi.fn(),
+    ensureStarterGrant: vi.fn(),
+  };
+
   return {
     paymentServiceMock,
     billingProfileStoreMock,
     webhookEventStoreMock,
+    userCreditServiceMock,
   };
 });
 
@@ -52,6 +61,10 @@ vi.mock('@services/payment/BillingProfileStore', () => ({
 
 vi.mock('@services/payment/StripeWebhookEventStore', () => ({
   StripeWebhookEventStore: vi.fn(() => webhookEventStoreMock),
+}));
+
+vi.mock('@services/credits/UserCreditService', () => ({
+  userCreditService: userCreditServiceMock,
 }));
 
 describe('Payment Routes (full-stack integration)', () => {
@@ -130,6 +143,14 @@ describe('Payment Routes (full-stack integration)', () => {
     webhookEventStoreMock.claimEvent.mockResolvedValue({ state: 'claimed' });
     webhookEventStoreMock.markProcessed.mockResolvedValue(undefined);
     webhookEventStoreMock.markFailed.mockResolvedValue(undefined);
+
+    userCreditServiceMock.addCredits.mockResolvedValue(undefined);
+    userCreditServiceMock.ensureStarterGrant.mockResolvedValue(false);
+    userCreditServiceMock.getStarterGrantInfo.mockResolvedValue({
+      starterGrantCredits: null,
+      starterGrantGrantedAtMs: null,
+    });
+    userCreditServiceMock.listCreditTransactions.mockResolvedValue([]);
   });
 
   it('GET /api/payment/invoices rejects unauthenticated requests', async () => {
@@ -162,6 +183,61 @@ describe('Payment Routes (full-stack integration)', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.error).toBe('Failed to load invoices');
+  });
+
+  it('GET /api/payment/status returns billing status payload', async () => {
+    billingProfileStoreMock.getProfile.mockResolvedValueOnce({
+      planTier: 'explorer',
+      stripeSubscriptionId: 'sub_123',
+    });
+    userCreditServiceMock.getStarterGrantInfo.mockResolvedValueOnce({
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
+    });
+
+    const response = await request(app)
+      .get('/api/payment/status')
+      .set('x-api-key', TEST_API_KEY);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      planTier: 'explorer',
+      isSubscribed: true,
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
+    });
+  });
+
+  it('GET /api/payment/credits/history returns transaction list', async () => {
+    userCreditServiceMock.listCreditTransactions.mockResolvedValueOnce([
+      {
+        id: 'txn_1',
+        type: 'add',
+        amount: 25,
+        source: 'starter-grant',
+        reason: null,
+        referenceId: null,
+        createdAtMs: 1700000000000,
+      },
+    ]);
+
+    const response = await request(app)
+      .get('/api/payment/credits/history?limit=10')
+      .set('x-api-key', TEST_API_KEY);
+
+    expect(response.status).toBe(200);
+    expect(response.body.transactions).toEqual([
+      {
+        id: 'txn_1',
+        type: 'add',
+        amount: 25,
+        source: 'starter-grant',
+        reason: null,
+        referenceId: null,
+        createdAtMs: 1700000000000,
+      },
+    ]);
+    expect(userCreditServiceMock.listCreditTransactions).toHaveBeenCalledWith(TEST_USER_ID, 10);
   });
 
   it('POST /api/payment/portal rejects unauthenticated requests', async () => {

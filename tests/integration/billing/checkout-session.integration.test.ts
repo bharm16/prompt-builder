@@ -18,7 +18,16 @@ type BillingProfileStoreMock = {
   upsertProfile: ReturnType<typeof vi.fn>;
 };
 
-function createCheckoutApp(paymentService: PaymentServiceMock, billingProfileStore: BillingProfileStoreMock) {
+type UserCreditServiceMock = {
+  getStarterGrantInfo: ReturnType<typeof vi.fn>;
+  listCreditTransactions: ReturnType<typeof vi.fn>;
+};
+
+function createCheckoutApp(
+  paymentService: PaymentServiceMock,
+  billingProfileStore: BillingProfileStoreMock,
+  userCreditService: UserCreditServiceMock
+) {
   const app = express();
   app.use(express.json());
 
@@ -26,6 +35,7 @@ function createCheckoutApp(paymentService: PaymentServiceMock, billingProfileSto
   const handlers = createPaymentHandlers({
     paymentService: paymentService as never,
     billingProfileStore: billingProfileStore as never,
+    userCreditService: userCreditService as never,
   });
 
   router.post('/checkout', handlers.createCheckoutSession);
@@ -67,7 +77,10 @@ describe('Checkout Session Creation (integration)', () => {
       upsertProfile: vi.fn().mockResolvedValue(undefined),
     };
 
-    const app = createCheckoutApp(paymentService, billingProfileStore);
+    const app = createCheckoutApp(paymentService, billingProfileStore, {
+      getStarterGrantInfo: vi.fn(),
+      listCreditTransactions: vi.fn(),
+    });
 
     const response = await request(app)
       .post('/api/payment/checkout')
@@ -105,7 +118,10 @@ describe('Checkout Session Creation (integration)', () => {
       upsertProfile: vi.fn(),
     };
 
-    const app = createCheckoutApp(paymentService, billingProfileStore);
+    const app = createCheckoutApp(paymentService, billingProfileStore, {
+      getStarterGrantInfo: vi.fn(),
+      listCreditTransactions: vi.fn(),
+    });
 
     const response = await request(app)
       .post('/api/payment/checkout')
@@ -130,7 +146,10 @@ describe('Checkout Session Creation (integration)', () => {
       upsertProfile: vi.fn(),
     };
 
-    const app = createCheckoutApp(paymentService, billingProfileStore);
+    const app = createCheckoutApp(paymentService, billingProfileStore, {
+      getStarterGrantInfo: vi.fn(),
+      listCreditTransactions: vi.fn(),
+    });
 
     const response = await request(app)
       .post('/api/payment/checkout')
@@ -157,7 +176,10 @@ describe('Checkout Session Creation (integration)', () => {
       upsertProfile: vi.fn(),
     };
 
-    const app = createCheckoutApp(paymentService, billingProfileStore);
+    const app = createCheckoutApp(paymentService, billingProfileStore, {
+      getStarterGrantInfo: vi.fn(),
+      listCreditTransactions: vi.fn(),
+    });
 
     const response = await request(app)
       .post('/api/payment/checkout')

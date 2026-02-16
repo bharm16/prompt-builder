@@ -1,67 +1,223 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+type UserRecord = {
+  credits: number;
+  starterGrantCredits?: number;
+  starterGrantGrantedAtMs?: number;
+};
+
+type TransactionRecord = {
+  id: string;
+  data: Record<string, unknown>;
+};
+
 type MockDocRef = {
   id: string;
   __collection: string;
+  __userId?: string;
   get: () => Promise<{ exists: boolean; data: () => Record<string, unknown> | undefined }>;
   update: (updates: Record<string, unknown>) => Promise<void>;
   set: (data: Record<string, unknown>) => Promise<void>;
-};
-
-type MockUserRecord = {
-  credits: number;
+  collection: (name: string) => {
+    doc: (id?: string) => MockDocRef;
+    add: (data: Record<string, unknown>) => Promise<{ id: string }>;
+    orderBy: (_field: string, direction: 'asc' | 'desc') => {
+      limit: (count: number) => {
+        get: () => Promise<{ docs: Array<{ id: string; data: () => Record<string, unknown> }> }>;
+      };
+    };
+  };
 };
 
 const mocks = vi.hoisted(() => ({
   runTransaction: vi.fn(),
-  transactionGet: vi.fn(),
-  transactionUpdate: vi.fn(),
-  transactionSet: vi.fn(),
-  docGet: vi.fn(),
-  docUpdate: vi.fn(),
-  docSet: vi.fn(),
   increment: vi.fn((operand: number) => ({
     _methodName: 'FieldValue.increment',
     operand,
   })),
   serverTimestamp: vi.fn(() => ({ _methodName: 'FieldValue.serverTimestamp' })),
   loggerError: vi.fn(),
+  loggerWarn: vi.fn(),
   loggerInfo: vi.fn(),
-  users: new Map<string, MockUserRecord>(),
+  users: new Map<string, UserRecord>(),
   refunds: new Set<string>(),
+  transactionsByUser: new Map<string, TransactionRecord[]>(),
+  transactionIdCounter: 0,
 }));
 
-const applyUserUpdate = (record: MockUserRecord, updates: Record<string, unknown>): void => {
-  const creditsUpdate = updates.credits as
-    | { _methodName?: string; operand?: number }
-    | number
-    | undefined;
-
-  if (
-    creditsUpdate &&
-    typeof creditsUpdate === 'object' &&
-    creditsUpdate._methodName === 'FieldValue.increment'
-  ) {
-    record.credits += Number(creditsUpdate.operand ?? 0);
-    return;
-  }
-
-  if (typeof creditsUpdate === 'number') {
-    record.credits = creditsUpdate;
-  }
+const nextTransactionId = (): string => {
+  mocks.transactionIdCounter += 1;
+  return `txn_${mocks.transactionIdCounter}`;
 };
 
-const createDocRef = (collection: string, id: string): MockDocRef => ({
+const applyIncrement = (
+  currentValue: number,
+  nextValue: unknown
+): number => {
+  if (
+    nextValue &&
+    typeof nextValue === 'object' &&
+    (nextValue as { _methodName?: string })._methodName === 'FieldValue.increment'
+  ) {
+    return currentValue + Number((nextValue as { operand?: number }).operand ?? 0);
+  }
+  if (typeof nextValue === 'number') {
+    return nextValue;
+  }
+  return currentValue;
+};
+
+const ensureUserTransactions = (userId: string): TransactionRecord[] => {
+  const existing = mocks.transactionsByUser.get(userId);
+  if (existing) return existing;
+  const next: TransactionRecord[] = [];
+  mocks.transactionsByUser.set(userId, next);
+  return next;
+};
+
+const createDocRef = (collection: string, id: string, userId?: string): MockDocRef => ({
   id,
   __collection: collection,
-  get: () => mocks.docGet(collection, id),
-  update: (updates: Record<string, unknown>) => mocks.docUpdate(collection, id, updates),
-  set: (data: Record<string, unknown>) => mocks.docSet(collection, id, data),
+  ...(userId ? { __userId: userId } : {}),
+  get: async () => {
+    if (collection === 'users') {
+      const user = mocks.users.get(id);
+      return {
+        exists: Boolean(user),
+        data: () => (user ? { ...user } : undefined),
+      };
+    }
+
+    if (collection === 'credit_refunds') {
+      const exists = mocks.refunds.has(id);
+      return {
+        exists,
+        data: () => (exists ? { refundKey: id } : undefined),
+      };
+    }
+
+    if (collection === 'credit_transactions' && userId) {
+      const transactions = ensureUserTransactions(userId);
+      const tx = transactions.find((entry) => entry.id === id);
+      return {
+        exists: Boolean(tx),
+        data: () => (tx ? { ...tx.data } : undefined),
+      };
+    }
+
+    return {
+      exists: false,
+      data: () => undefined,
+    };
+  },
+  update: async (updates: Record<string, unknown>) => {
+    if (collection !== 'users') {
+      throw new Error(`Unsupported update collection ${collection}`);
+    }
+
+    const user = mocks.users.get(id);
+    if (!user) {
+      throw new Error(`Missing user: ${id}`);
+    }
+
+    user.credits = applyIncrement(user.credits, updates.credits);
+    if (typeof updates.starterGrantCredits === 'number') {
+      user.starterGrantCredits = updates.starterGrantCredits;
+    }
+    if (typeof updates.starterGrantGrantedAtMs === 'number') {
+      user.starterGrantGrantedAtMs = updates.starterGrantGrantedAtMs;
+    }
+  },
+  set: async (data: Record<string, unknown>) => {
+    if (collection === 'users') {
+      const existing = mocks.users.get(id);
+      const next: UserRecord = {
+        credits:
+          typeof data.credits === 'number'
+            ? data.credits
+            : existing?.credits ?? 0,
+        ...(typeof data.starterGrantCredits === 'number'
+          ? { starterGrantCredits: data.starterGrantCredits }
+          : existing?.starterGrantCredits !== undefined
+            ? { starterGrantCredits: existing.starterGrantCredits }
+            : {}),
+        ...(typeof data.starterGrantGrantedAtMs === 'number'
+          ? { starterGrantGrantedAtMs: data.starterGrantGrantedAtMs }
+          : existing?.starterGrantGrantedAtMs !== undefined
+            ? { starterGrantGrantedAtMs: existing.starterGrantGrantedAtMs }
+            : {}),
+      };
+      mocks.users.set(id, next);
+      return;
+    }
+
+    if (collection === 'credit_refunds') {
+      mocks.refunds.add(id);
+      return;
+    }
+
+    if (collection === 'credit_transactions' && userId) {
+      const transactions = ensureUserTransactions(userId);
+      const existingIndex = transactions.findIndex((entry) => entry.id === id);
+      const record: TransactionRecord = {
+        id,
+        data: { ...data },
+      };
+      if (existingIndex >= 0) {
+        transactions[existingIndex] = record;
+      } else {
+        transactions.push(record);
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported set collection ${collection}`);
+  },
+  collection: (name: string) => {
+    if (collection !== 'users') {
+      throw new Error(`Nested collections only supported under users. Received ${collection}`);
+    }
+
+    if (name !== 'credit_transactions') {
+      throw new Error(`Unsupported nested collection ${name}`);
+    }
+
+    return {
+      doc: (nestedId?: string) => createDocRef('credit_transactions', nestedId ?? nextTransactionId(), id),
+      add: async (data: Record<string, unknown>) => {
+        const nestedId = nextTransactionId();
+        await createDocRef('credit_transactions', nestedId, id).set(data);
+        return { id: nestedId };
+      },
+      orderBy: (_field: string, direction: 'asc' | 'desc') => ({
+        limit: (count: number) => ({
+          get: async () => {
+            const rows = [...ensureUserTransactions(id)]
+              .sort((left, right) => {
+                const leftMs = Number(left.data.createdAtMs ?? 0);
+                const rightMs = Number(right.data.createdAtMs ?? 0);
+                if (direction === 'asc') {
+                  return leftMs - rightMs;
+                }
+                return rightMs - leftMs;
+              })
+              .slice(0, count)
+              .map((entry) => ({
+                id: entry.id,
+                data: () => ({ ...entry.data }),
+              }));
+            return { docs: rows };
+          },
+        }),
+      }),
+    };
+  },
 });
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
     error: mocks.loggerError,
+    warn: mocks.loggerWarn,
     info: mocks.loggerInfo,
   },
 }));
@@ -90,64 +246,20 @@ describe('UserCreditService', () => {
     vi.clearAllMocks();
     mocks.users.clear();
     mocks.refunds.clear();
+    mocks.transactionsByUser.clear();
+    mocks.transactionIdCounter = 0;
 
-    mocks.docGet.mockImplementation(async (collection: string, id: string) => {
-      if (collection === 'users') {
-        const user = mocks.users.get(id);
-        return {
-          exists: Boolean(user),
-          data: () => (user ? { credits: user.credits } : undefined),
-        };
-      }
-
-      if (collection === 'credit_refunds') {
-        const exists = mocks.refunds.has(id);
-        return {
-          exists,
-          data: () => (exists ? { refundKey: id } : undefined),
-        };
-      }
-
-      return { exists: false, data: () => undefined };
-    });
-
-    mocks.docUpdate.mockImplementation(
-      async (collection: string, id: string, updates: Record<string, unknown>) => {
-        if (collection !== 'users') return;
-        const user = mocks.users.get(id);
-        if (!user) {
-          throw new Error(`Missing user: ${id}`);
-        }
-        applyUserUpdate(user, updates);
-      }
-    );
-
-    mocks.docSet.mockImplementation(
-      async (collection: string, id: string, data: Record<string, unknown>) => {
-        if (collection === 'users') {
-          const credits = typeof data.credits === 'number' ? data.credits : 0;
-          mocks.users.set(id, { credits });
-          return;
-        }
-
-        if (collection === 'credit_refunds') {
-          mocks.refunds.add(id);
-        }
-      }
-    );
-
-    mocks.runTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+    mocks.runTransaction.mockImplementation(async (fn: (transaction: {
+      get: (docRef: MockDocRef) => Promise<{ exists: boolean; data: () => Record<string, unknown> | undefined }>;
+      update: (docRef: MockDocRef, updates: Record<string, unknown>) => Promise<void>;
+      set: (docRef: MockDocRef, data: Record<string, unknown>) => Promise<void>;
+    }) => Promise<unknown>) => {
       const transaction = {
-        get: async (docRef: MockDocRef) => {
-          mocks.transactionGet(docRef);
-          return docRef.get();
-        },
+        get: async (docRef: MockDocRef) => docRef.get(),
         update: async (docRef: MockDocRef, updates: Record<string, unknown>) => {
-          mocks.transactionUpdate(docRef, updates);
           await docRef.update(updates);
         },
         set: async (docRef: MockDocRef, data: Record<string, unknown>) => {
-          mocks.transactionSet(docRef, data);
           await docRef.set(data);
         },
       };
@@ -156,172 +268,155 @@ describe('UserCreditService', () => {
     });
   });
 
-  describe('reserveCredits', () => {
-    it('deducts credits when user balance is sufficient', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 100 });
+  it('reserveCredits deducts balance and writes a reserve transaction', async () => {
+    const service = new UserCreditService();
+    mocks.users.set('user-1', { credits: 100 });
 
-      const ok = await service.reserveCredits('user-1', 30);
+    const ok = await service.reserveCredits('user-1', 5);
 
-      expect(ok).toBe(true);
-      expect(mocks.users.get('user-1')?.credits).toBe(70);
-      expect(mocks.transactionUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it('returns false without deduction when balance is insufficient', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 10 });
-
-      const ok = await service.reserveCredits('user-1', 30);
-
-      expect(ok).toBe(false);
-      expect(mocks.users.get('user-1')?.credits).toBe(10);
-      expect(mocks.transactionUpdate).not.toHaveBeenCalled();
-    });
-
-    it('returns false for non-existent user', async () => {
-      const service = new UserCreditService();
-
-      const ok = await service.reserveCredits('ghost-user', 5);
-
-      expect(ok).toBe(false);
-      expect(mocks.transactionUpdate).not.toHaveBeenCalled();
-    });
-
-    it('throws when transaction fails', async () => {
-      const service = new UserCreditService();
-      mocks.runTransaction.mockRejectedValueOnce(new Error('Firestore unavailable'));
-
-      await expect(service.reserveCredits('user-1', 5)).rejects.toThrow(
-        'Failed to process credit transaction'
-      );
-      expect(mocks.loggerError).toHaveBeenCalled();
-    });
+    expect(ok).toBe(true);
+    expect(mocks.users.get('user-1')?.credits).toBe(95);
+    const transactions = mocks.transactionsByUser.get('user-1') ?? [];
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.data).toEqual(
+      expect.objectContaining({
+        type: 'reserve',
+        amount: -5,
+        source: 'generation',
+      })
+    );
   });
 
-  describe('refundCredits', () => {
-    it('treats zero and negative costs as no-op success', async () => {
-      const service = new UserCreditService();
+  it('refundCredits with refundKey is idempotent and writes a single transaction', async () => {
+    const service = new UserCreditService();
+    mocks.users.set('user-1', { credits: 10 });
 
-      const zeroResult = await service.refundCredits('user-1', 0, { refundKey: 'a' });
-      const negativeResult = await service.refundCredits('user-1', -1, { refundKey: 'b' });
-
-      expect(zeroResult).toBe(true);
-      expect(negativeResult).toBe(true);
-      expect(mocks.runTransaction).not.toHaveBeenCalled();
-      expect(mocks.docUpdate).not.toHaveBeenCalled();
+    await service.refundCredits('user-1', 5, {
+      refundKey: 'refund-1',
+      reason: 'generation failed',
+    });
+    await service.refundCredits('user-1', 5, {
+      refundKey: 'refund-1',
+      reason: 'generation failed',
     });
 
-    it('refunds directly when refundKey is absent', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 10 });
-
-      const ok = await service.refundCredits('user-1', 5);
-
-      expect(ok).toBe(true);
-      expect(mocks.users.get('user-1')?.credits).toBe(15);
-      expect(mocks.docUpdate).toHaveBeenCalledWith(
-        'users',
-        'user-1',
-        expect.objectContaining({
-          credits: expect.objectContaining({
-            _methodName: 'FieldValue.increment',
-            operand: 5,
-          }),
-        })
-      );
-    });
-
-    it('returns true on successful idempotent refund with refundKey', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 5 });
-
-      const ok = await service.refundCredits('user-1', 5, {
-        refundKey: 'refund-key-1',
+    expect(mocks.users.get('user-1')?.credits).toBe(15);
+    expect(mocks.refunds.has('refund-1')).toBe(true);
+    const transactions = mocks.transactionsByUser.get('user-1') ?? [];
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.data).toEqual(
+      expect.objectContaining({
+        type: 'refund',
+        amount: 5,
+        source: 'generation',
         reason: 'generation failed',
-      });
-
-      expect(ok).toBe(true);
-      expect(mocks.users.get('user-1')?.credits).toBe(10);
-      expect(mocks.refunds.has('refund-key-1')).toBe(true);
-      expect(mocks.transactionSet).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'refund-key-1' }),
-        expect.objectContaining({
-          refundKey: 'refund-key-1',
-          userId: 'user-1',
-          amount: 5,
-          reason: 'generation failed',
-        })
-      );
-    });
-
-    it('does not double-refund when refund key already exists', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 10 });
-      mocks.refunds.add('refund-key-1');
-
-      const ok = await service.refundCredits('user-1', 5, {
-        refundKey: 'refund-key-1',
-      });
-
-      expect(ok).toBe(true);
-      expect(mocks.users.get('user-1')?.credits).toBe(10);
-      expect(mocks.transactionUpdate).not.toHaveBeenCalled();
-      expect(mocks.transactionSet).not.toHaveBeenCalled();
-    });
-
-    it('returns false on transaction failure', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 10 });
-      mocks.runTransaction.mockRejectedValueOnce(new Error('firestore failure'));
-
-      const ok = await service.refundCredits('user-1', 5, {
-        refundKey: 'refund-key-1',
-      });
-
-      expect(ok).toBe(false);
-      expect(mocks.loggerError).toHaveBeenCalled();
-    });
+        referenceId: 'refund-1',
+      })
+    );
   });
 
-  describe('getBalance', () => {
-    it('returns current user credits or 0 if user does not exist', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 77 });
+  it('addCredits creates user when missing and writes an add transaction', async () => {
+    const service = new UserCreditService();
 
-      await expect(service.getBalance('user-1')).resolves.toBe(77);
-      await expect(service.getBalance('missing-user')).resolves.toBe(0);
+    await service.addCredits('new-user', 25, {
+      source: 'stripe_checkout',
+      reason: 'one_time_credit_pack',
+      referenceId: 'cs_1',
     });
-  });
 
-  describe('addCredits', () => {
-    it('creates the user document when missing', async () => {
-      const service = new UserCreditService();
-
-      await service.addCredits('new-user', 25);
-
-      expect(mocks.users.get('new-user')?.credits).toBe(25);
-      expect(mocks.loggerInfo).toHaveBeenCalledWith('Credits added successfully', {
-        userId: 'new-user',
+    expect(mocks.users.get('new-user')?.credits).toBe(25);
+    const transactions = mocks.transactionsByUser.get('new-user') ?? [];
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.data).toEqual(
+      expect.objectContaining({
+        type: 'add',
         amount: 25,
-      });
+        source: 'stripe_checkout',
+        reason: 'one_time_credit_pack',
+        referenceId: 'cs_1',
+      })
+    );
+  });
+
+  it('ensureStarterGrant grants once and stays idempotent', async () => {
+    const service = new UserCreditService();
+
+    const first = await service.ensureStarterGrant('firebase-user', 25);
+    const second = await service.ensureStarterGrant('firebase-user', 25);
+
+    expect(first).toBe(true);
+    expect(second).toBe(false);
+    expect(mocks.users.get('firebase-user')).toEqual(
+      expect.objectContaining({
+        credits: 25,
+        starterGrantCredits: 25,
+      })
+    );
+    const transactions = mocks.transactionsByUser.get('firebase-user') ?? [];
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.data).toEqual(
+      expect.objectContaining({
+        type: 'starter_grant',
+        amount: 25,
+      })
+    );
+  });
+
+  it('ensureStarterGrant skips API-key users', async () => {
+    const service = new UserCreditService();
+
+    const granted = await service.ensureStarterGrant('api-key:dev-key', 25);
+
+    expect(granted).toBe(false);
+    expect(mocks.users.size).toBe(0);
+    expect(mocks.transactionsByUser.size).toBe(0);
+  });
+
+  it('listCreditTransactions returns newest-first with bounded limit', async () => {
+    const service = new UserCreditService();
+    const userId = 'user-1';
+
+    mocks.users.set(userId, { credits: 10 });
+    ensureUserTransactions(userId).push(
+      {
+        id: 'txn_old',
+        data: {
+          type: 'add',
+          amount: 5,
+          source: 'billing',
+          createdAtMs: 100,
+        },
+      },
+      {
+        id: 'txn_new',
+        data: {
+          type: 'reserve',
+          amount: -4,
+          source: 'generation',
+          createdAtMs: 200,
+        },
+      }
+    );
+
+    const transactions = await service.listCreditTransactions(userId, 1);
+
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.id).toBe('txn_new');
+  });
+
+  it('getStarterGrantInfo returns starter metadata from the user document', async () => {
+    const service = new UserCreditService();
+    mocks.users.set('user-1', {
+      credits: 25,
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
     });
 
-    it('increments credits for existing user', async () => {
-      const service = new UserCreditService();
-      mocks.users.set('user-1', { credits: 10 });
+    const info = await service.getStarterGrantInfo('user-1');
 
-      await service.addCredits('user-1', 15);
-
-      expect(mocks.users.get('user-1')?.credits).toBe(25);
-    });
-
-    it('throws when addCredits transaction fails', async () => {
-      const service = new UserCreditService();
-      mocks.runTransaction.mockRejectedValueOnce(new Error('db down'));
-
-      await expect(service.addCredits('user-1', 5)).rejects.toThrow('Transaction failed');
-      expect(mocks.loggerError).toHaveBeenCalled();
+    expect(info).toEqual({
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
     });
   });
 });

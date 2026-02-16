@@ -15,6 +15,8 @@ vi.mock('@/services/ApiClient', () => ({
 import {
   createBillingPortalSession,
   createCheckoutSession,
+  fetchBillingStatus,
+  fetchCreditHistory,
   fetchInvoices,
 } from '@/api/billingApi';
 
@@ -85,5 +87,46 @@ describe('billingApi', () => {
     });
 
     await expect(fetchInvoices()).rejects.toThrow();
+  });
+
+  it('gets billing status and validates schema', async () => {
+    mocks.get.mockResolvedValue({
+      planTier: 'explorer',
+      isSubscribed: true,
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
+    });
+
+    const status = await fetchBillingStatus();
+
+    expect(mocks.get).toHaveBeenCalledWith('/api/payment/status');
+    expect(status).toEqual({
+      planTier: 'explorer',
+      isSubscribed: true,
+      starterGrantCredits: 25,
+      starterGrantGrantedAtMs: 1700000000000,
+    });
+  });
+
+  it('gets credit history with limit and validates schema', async () => {
+    mocks.get.mockResolvedValue({
+      transactions: [
+        {
+          id: 'txn_1',
+          type: 'add',
+          amount: 25,
+          source: 'starter-grant',
+          reason: null,
+          referenceId: null,
+          createdAtMs: 1700000000000,
+        },
+      ],
+    });
+
+    const history = await fetchCreditHistory(10);
+
+    expect(mocks.get).toHaveBeenCalledWith('/api/payment/credits/history?limit=10');
+    expect(history).toHaveLength(1);
+    expect(history[0]?.id).toBe('txn_1');
   });
 });

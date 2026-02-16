@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { ToolRail } from '@components/ToolSidebar/components/ToolRail';
@@ -13,6 +13,17 @@ vi.mock(
   })
 );
 
+const useCreditBalanceMock = vi.hoisted(() => vi.fn());
+const useBillingStatusMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/contexts/CreditBalanceContext', () => ({
+  useCreditBalance: (...args: unknown[]) => useCreditBalanceMock(...args),
+}));
+
+vi.mock('@/features/billing/hooks/useBillingStatus', () => ({
+  useBillingStatus: (...args: unknown[]) => useBillingStatusMock(...args),
+}));
+
 const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['activePanel']; user: User | null; onPanelChange: (panel: Parameters<typeof ToolRail>[0]['activePanel']) => void; }) =>
   render(
     <MemoryRouter initialEntries={[{ pathname: '/studio', search: '?tab=1' }]}>
@@ -23,6 +34,23 @@ const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['ac
 describe('ToolRail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    useCreditBalanceMock.mockReturnValue({
+      balance: 12,
+      isLoading: false,
+      error: null,
+    });
+    useBillingStatusMock.mockReturnValue({
+      status: {
+        isSubscribed: false,
+        planTier: null,
+        starterGrantCredits: 25,
+        starterGrantGrantedAtMs: 123,
+      },
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
   });
 
   describe('error handling', () => {
@@ -97,6 +125,50 @@ describe('ToolRail', () => {
       toolButton.click();
 
       expect(onPanelChange).toHaveBeenCalledWith('studio');
+    });
+
+    it('shows sub badge when billing status is subscribed', () => {
+      useBillingStatusMock.mockReturnValue({
+        status: {
+          isSubscribed: true,
+          planTier: 'explorer',
+          starterGrantCredits: 25,
+          starterGrantGrantedAtMs: 123,
+        },
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      renderToolRail({
+        activePanel: 'studio',
+        user: {
+          uid: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User',
+        },
+        onPanelChange: vi.fn(),
+      });
+
+      expect(screen.getByText('cr · sub')).toBeInTheDocument();
+    });
+
+    it('shows one-time rail hint and persists dismissal by user id', () => {
+      renderToolRail({
+        activePanel: 'studio',
+        user: {
+          uid: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User',
+        },
+        onPanelChange: vi.fn(),
+      });
+
+      const hintButton = screen.getByRole('button', { name: 'Credits' });
+      fireEvent.click(hintButton);
+
+      expect(localStorage.getItem('credit-onboarding-dismissed:user-1')).toBe('1');
+      expect(screen.queryByRole('button', { name: 'Credits' })).toBeNull();
     });
   });
 });

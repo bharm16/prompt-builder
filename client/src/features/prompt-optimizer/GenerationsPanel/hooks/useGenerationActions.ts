@@ -10,11 +10,13 @@ import { sanitizeError } from '@/utils/logging';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { assetApi } from '@/features/assets/api/assetApi';
 import { safeUrlHost } from '@/utils/url';
+import { ApiError } from '@/services/http/ApiError';
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
 } from '@/utils/storageUrl';
+import { getModelConfig } from '../config/generationConfig';
 
 interface UseGenerationActionsOptions {
   aspectRatio?: string | undefined;
@@ -23,6 +25,7 @@ interface UseGenerationActionsOptions {
   generationParams?: Record<string, unknown> | undefined;
   promptVersionId?: string | null | undefined;
   generations?: Generation[] | undefined;
+  onInsufficientCredits?: ((required: number, operation: string) => void) | undefined;
 }
 
 interface StoryboardParams extends GenerationParams {
@@ -86,6 +89,19 @@ const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null)
     return Date.now() >= expiresAtMs - START_IMAGE_REFRESH_BUFFER_MS;
   }
   return hasGcsSignedUrlParams(url);
+};
+
+const isInsufficientCreditsError = (error: unknown): error is ApiError => {
+  if (!(error instanceof ApiError) || error.status !== 402) {
+    return false;
+  }
+  if (!error.response || typeof error.response !== 'object') {
+    return false;
+  }
+  if (!('code' in error.response)) {
+    return false;
+  }
+  return (error.response as { code?: unknown }).code === 'INSUFFICIENT_CREDITS';
 };
 
 const resolveStartImageUrl = async (
@@ -218,6 +234,9 @@ export function useGenerationActions(
     async (model: DraftModel, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('draft', model, prompt, resolved);
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = modelConfig?.credits ?? 0;
+      const operationLabel = `${modelConfig?.label ?? 'Video'} preview`;
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
@@ -418,6 +437,12 @@ export function useGenerationActions(
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
@@ -444,6 +469,9 @@ export function useGenerationActions(
       const { seedImageUrl, ...baseParams } = params;
       const resolved = resolveGenerationOptions(optionsRef.current, baseParams);
       const generation = buildGeneration('draft', 'flux-kontext', prompt, resolved);
+      const modelConfig = getModelConfig('flux-kontext');
+      const requiredCredits = modelConfig?.credits ?? 4;
+      const operationLabel = 'Storyboard';
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
@@ -498,6 +526,12 @@ export function useGenerationActions(
         finalizeGeneration(generation.id, finalizationPayload);
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
@@ -522,6 +556,9 @@ export function useGenerationActions(
     async (model: string, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('render', model, prompt, resolved);
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = modelConfig?.credits ?? 0;
+      const operationLabel = `${modelConfig?.label ?? 'Video'} render`;
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
@@ -658,6 +695,12 @@ export function useGenerationActions(
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);

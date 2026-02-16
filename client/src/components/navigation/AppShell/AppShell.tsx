@@ -11,6 +11,7 @@ import { memo, type ReactElement } from 'react';
 
 import { ToolSidebar } from '@components/ToolSidebar';
 import { useAuthUser } from '@hooks/useAuthUser';
+import { CreditBalanceProvider } from '@/contexts/CreditBalanceContext';
 
 import type { AppShellProps } from './types';
 import { useNavigationConfig } from './hooks/useNavigationConfig';
@@ -36,10 +37,12 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
 
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
-      <ToolSidebar {...(toolSidebarProps ?? {})} user={user} />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
-        {children}
-      </div>
+      <CreditBalanceProvider userId={user?.uid ?? null}>
+        <ToolSidebar {...(toolSidebarProps ?? {})} user={user} />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
+          {children}
+        </div>
+      </CreditBalanceProvider>
     </div>
   );
 });

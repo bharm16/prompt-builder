@@ -48,6 +48,10 @@ const resolveFrameAssetMetadata = (
   return { assetId: value };
 };
 
+/**
+ * @deprecated Canvas-first renders storyboard selections in StoryboardHeroView.
+ * This strip is retained for compatibility and cleanup follow-up.
+ */
 export function StoryboardStrip({
   snapshot,
   onUseAsStartFrame,
@@ -80,7 +84,7 @@ export function StoryboardStrip({
 
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2"
+      className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#22252C] bg-[#16181E]/85 px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl animate-fade-in"
       data-testid="storyboard-strip"
     >
       {/* Label */}

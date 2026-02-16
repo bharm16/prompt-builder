@@ -1,5 +1,8 @@
 import React from 'react';
 import { useToast } from '@components/Toast';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
+import { CreditOnboardingBanner } from '@/features/billing/components/CreditOnboardingBanner';
 import type { ContinuityShot } from '@/features/continuity/types';
 import { PromptResultsSection } from '../components/PromptResultsSection';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
@@ -20,6 +23,8 @@ import {
  */
 export const PromptResultsLayout = (): React.ReactElement => {
   const toast = useToast();
+  const user = useAuthUser();
+  const { status } = useBillingStatus();
   const {
     session,
     isSequenceMode,
@@ -175,6 +180,11 @@ export const PromptResultsLayout = (): React.ReactElement => {
       id="main-content"
       className="relative flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden bg-app transition-colors duration-300"
     >
+      <CreditOnboardingBanner
+        userId={user?.uid ?? null}
+        starterGrantCredits={status?.starterGrantCredits ?? null}
+      />
+
       {isSequenceMode && orderedShots.length > 1 && (
         <ShotVisualStrip
           shots={orderedShots}
@@ -216,7 +226,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
       )}
 
       <PromptResultsSection />
-      <div className="border-t border-border bg-surface-1 px-3 py-2">
+      <div className="bg-[#0D0E12] px-3 py-2">
         <PipelineStatus shot={currentShot} isGenerating={isGeneratingShot} />
       </div>
     </main>

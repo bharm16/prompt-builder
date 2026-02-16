@@ -11,6 +11,7 @@ export { usePromptOptimizerState } from './usePromptOptimizerState';
 export { usePromptHistory } from './usePromptHistory/index';
 export { useAuthUser } from './useAuthUser';
 export { useUserCreditBalance } from './useUserCreditBalance';
+export { useCreditGate } from './useCreditGate';
 
 // Re-export types
 export type * from './types';

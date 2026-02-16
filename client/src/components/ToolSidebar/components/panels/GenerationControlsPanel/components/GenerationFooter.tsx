@@ -3,6 +3,7 @@ import { Sparkles } from '@promptstudio/system/components/ui';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import { ModelRecommendationDropdown } from './ModelRecommendationDropdown';
 import type { ModelRecommendation } from '@/features/model-intelligence/types';
+import { cn } from '@/utils/cn';
 
 interface ModelOption {
   id: string;
@@ -15,6 +16,7 @@ interface GenerationFooterProps {
   onModelChange: (model: string) => void;
   onGenerate: () => void;
   isGenerateDisabled: boolean;
+  creditBalance?: number | null | undefined;
   generateLabel?: string | undefined;
   /** Model recommendation data — enables the rich dropdown with match %, capabilities, etc. */
   modelRecommendation?: ModelRecommendation | null | undefined;
@@ -35,6 +37,7 @@ export function GenerationFooter({
   onModelChange,
   onGenerate,
   isGenerateDisabled,
+  creditBalance,
   generateLabel = 'Generate',
   modelRecommendation,
   recommendedModelId,
@@ -46,6 +49,12 @@ export function GenerationFooter({
     : VIDEO_RENDER_MODELS.find((m) => m.id === renderModelId) ?? VIDEO_RENDER_MODELS[0];
 
   const creditCost = currentModel?.cost ?? null;
+  const hasSufficientCredits =
+    creditBalance !== null && creditBalance !== undefined
+      ? creditBalance >= (creditCost ?? 0)
+      : true;
+  const isDisabled = isGenerateDisabled || !hasSufficientCredits;
+  const disabledForCredits = !hasSufficientCredits;
 
   return (
     <footer className="flex h-16 items-center gap-2.5 border-t border-[#1A1C22] bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
@@ -63,6 +72,16 @@ export function GenerationFooter({
       {/* ── Credit cost ── */}
       <span className="whitespace-nowrap text-[11px] tabular-nums text-[#555B6E]">
         {creditCost !== null ? `· ${creditCost} cr` : ''}
+        {creditBalance !== null && creditBalance !== undefined ? (
+          <span
+            className={cn(
+              'ml-1',
+              creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-[#555B6E]'
+            )}
+          >
+            · {creditBalance} bal
+          </span>
+        ) : null}
       </span>
 
       <div className="flex-1" />
@@ -72,7 +91,12 @@ export function GenerationFooter({
         type="button"
         className="flex h-[38px] items-center gap-[7px] rounded-[10px] bg-[linear-gradient(135deg,#6C5CE7_0%,#8B5CF6_100%)] px-5 text-[13px] font-bold tracking-[0.02em] text-white shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_rgba(108,92,231,0.47),0_0_0_1px_rgba(108,92,231,0.33)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_12px_rgba(108,92,231,0.33),0_0_0_1px_rgba(108,92,231,0.2)]"
         onClick={onGenerate}
-        disabled={isGenerateDisabled}
+        disabled={isDisabled}
+        title={
+          disabledForCredits
+            ? `Need ${creditCost ?? 0} credits (you have ${creditBalance ?? 0})`
+            : undefined
+        }
       >
         <Sparkles className="h-3.5 w-3.5" />
         {generateLabel}
