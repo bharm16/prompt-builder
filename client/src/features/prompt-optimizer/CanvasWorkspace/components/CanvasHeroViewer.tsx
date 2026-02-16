@@ -60,7 +60,7 @@ export function CanvasHeroViewer({
   return (
     <div className="relative overflow-hidden rounded-2xl bg-[#0D0E12]">
       <div
-        className="mx-auto w-full max-w-[780px]"
+        className="relative mx-auto w-full max-w-[780px]"
         style={{ aspectRatio }}
       >
         {previewUrl ? (
@@ -83,10 +83,9 @@ export function CanvasHeroViewer({
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-[#1A1C22] to-[#0D0E12]" />
         )}
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
-        <p className="text-[12px] text-[#8B92A5]">{metadata}</p>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
+          <p className="text-[12px] text-[#8B92A5]">{metadata}</p>
+        </div>
       </div>
     </div>
   );

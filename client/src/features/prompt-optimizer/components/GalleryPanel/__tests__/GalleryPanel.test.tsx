@@ -39,7 +39,9 @@ describe('GalleryPanel', () => {
       />
     );
 
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByTestId('gallery-thumbnail-g-1')).toBeInTheDocument();
+    expect(screen.getByTestId('gallery-thumbnail-g-2')).toBeInTheDocument();
+    expect(screen.getByTestId('gallery-thumbnail-g-3')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('gallery-thumbnail-g-2'));
     expect(onSelectGeneration).toHaveBeenCalledWith('g-2');
   });

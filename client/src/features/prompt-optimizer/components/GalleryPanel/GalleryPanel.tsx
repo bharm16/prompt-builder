@@ -33,13 +33,7 @@ export function GalleryPanel({
       aria-label="Generations gallery"
       data-testid="gallery-panel"
     >
-      <div className="flex h-12 items-center border-b border-[#1A1C22] px-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-bold text-[#E2E6EF]">Generations</span>
-          <span className="text-[10px] text-[#3A3E4C]">
-            {generations.length}
-          </span>
-        </div>
+      <div className="flex h-12 items-center px-3">
         <div className="flex-1" />
         <button
           type="button"
