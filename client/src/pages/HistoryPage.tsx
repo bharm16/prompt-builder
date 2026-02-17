@@ -4,7 +4,7 @@ import { Search, X } from '@promptstudio/system/components/ui';
 import { Container, Section } from '@components/layout';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { usePromptHistory } from '@hooks/usePromptHistory';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Card } from '@promptstudio/system/components/ui/card';
 import { Input } from '@promptstudio/system/components/ui/input';

@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { useVersionManagement } from '../useVersionManagement';
 
 const syncVersionHighlights = vi.fn();

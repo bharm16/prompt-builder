@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
-import type { PromptHistoryEntry, Toast } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { CapabilityValues } from '@shared/capabilities';
 import { logger } from '@/services/LoggingService';

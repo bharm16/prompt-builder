@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { ToolRail } from '@components/ToolSidebar/components/ToolRail';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 vi.mock(
   '@utils/cn',

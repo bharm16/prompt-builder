@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@promptstudio/system/components/ui/tooltip';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { cn } from '@utils/cn';
 import { HistoryItem } from '@features/history/components/HistoryItem';
 import { useSidebarSessionsDomain } from '@/components/ToolSidebar/context';

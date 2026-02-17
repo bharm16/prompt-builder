@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { PromptHistory } from '../../context/types';
 import { hydrateKeyframes } from '../../utils/keyframeTransforms';
 

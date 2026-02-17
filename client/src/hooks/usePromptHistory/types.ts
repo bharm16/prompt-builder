@@ -1,10 +1,7 @@
 /**
  * Types for usePromptHistory hook
- *
- * Re-exports shared types from @hooks/types and defines hook-specific types.
  */
 
-// Re-export shared types to maintain backward compatibility
 export type {
   User,
   PromptKeyframe,
@@ -13,10 +10,10 @@ export type {
   PromptVersionPreview,
   PromptVersionVideo,
   PromptVersionEntry,
-  Toast,
-} from '@hooks/types';
+} from '@features/prompt-optimizer/types/domain/prompt-session';
 
-import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Toast } from '@hooks/types';
 
 export interface HistoryState {
   history: PromptHistoryEntry[];
@@ -43,3 +40,5 @@ export interface SaveResult {
   uuid: string;
   id: string;
 }
+
+export type { Toast };

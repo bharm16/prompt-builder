@@ -5,7 +5,7 @@ import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { useAuthUser } from '@hooks/useAuthUser';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { AuthShell } from './auth/AuthShell';
 
 function formatUserLabel(user: User): { title: string; subtitle: string } {

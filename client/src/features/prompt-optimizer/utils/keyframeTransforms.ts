@@ -1,5 +1,5 @@
 import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { PromptKeyframe } from '@hooks/types';
+import type { PromptKeyframe } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const MAX_KEYFRAMES = 3;
 

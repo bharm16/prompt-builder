@@ -41,7 +41,7 @@ import {
   updateOutput,
   updateVersions,
 } from '@hooks/usePromptHistory/api/historyRepository';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 describe('normalizeEntries', () => {
   describe('error and edge cases', () => {

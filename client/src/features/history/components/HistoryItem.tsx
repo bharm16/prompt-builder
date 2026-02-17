@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@promptstudio/system/components/ui/dropdown-menu';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { cn } from '@/utils/cn';
 import type { PromptRowStage } from '../types';
 import { HistoryThumbnail } from './HistoryThumbnail';

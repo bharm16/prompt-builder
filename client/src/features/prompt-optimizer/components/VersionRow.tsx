@@ -3,7 +3,7 @@ import { Icon, Image, Play } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
 import { cn } from '@/utils/cn';
-import type { PromptVersionEdit } from '@hooks/types';
+import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 
 type VersionPreview = {

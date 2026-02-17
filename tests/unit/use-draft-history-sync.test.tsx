@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 
 import { useDraftHistorySync } from '@features/prompt-optimizer/context/hooks/useDraftHistorySync';
 import type { PromptHistory, PromptOptimizer } from '@features/prompt-optimizer/context/types';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { CapabilityValues } from '@shared/capabilities';
 
 type UpdatePayload = Parameters<PromptHistory['updateEntryPersisted']>[2];

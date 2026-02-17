@@ -1,7 +1,7 @@
 import { useCallback, useMemo, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import type { HighlightSnapshot } from '../types';
 import { usePromptVersioning } from './usePromptVersioning';

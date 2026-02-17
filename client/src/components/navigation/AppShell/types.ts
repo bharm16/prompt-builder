@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { ToolSidebarProps } from '@components/ToolSidebar/types';
 
 // -----------------------------------------------------------------------------

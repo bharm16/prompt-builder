@@ -5,7 +5,7 @@ import type { MutableRefObject } from 'react';
 import { usePromptVersioning } from '@features/prompt-optimizer/PromptCanvas/hooks/usePromptVersioning';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { PromptHistory } from '@features/prompt-optimizer/context/types';
-import type { PromptVersionEntry, PromptVersionEdit } from '@hooks/types';
+import type { PromptVersionEntry, PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/PromptCanvas/types';
 
 vi.mock('@/features/span-highlighting', () => ({

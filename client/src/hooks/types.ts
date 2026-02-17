@@ -1,4 +1,4 @@
-import type { Generation } from '@/features/prompt-optimizer/types/domain/generation';
+import type { Generation } from '@features/prompt-optimizer/types/domain/generation';
 import type {
   PromptHistoryEntry,
   PromptKeyframe,
@@ -8,7 +8,7 @@ import type {
   PromptVersionPreview,
   PromptVersionVideo,
   User,
-} from '@/features/prompt-optimizer/types/domain/prompt-session';
+} from '@features/prompt-optimizer/types/domain/prompt-session';
 
 export interface Span {
   text: string;
@@ -70,6 +70,13 @@ export interface Highlight {
   confidence?: number;
 }
 
+export interface Toast {
+  success: (message: string, duration?: number) => void;
+  error: (message: string, duration?: number) => void;
+  warning: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number) => void;
+}
+
 export type {
   Generation,
   PromptHistoryEntry,
@@ -81,10 +88,3 @@ export type {
   PromptVersionVideo,
   User,
 };
-
-export interface Toast {
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
-  warning: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
-}

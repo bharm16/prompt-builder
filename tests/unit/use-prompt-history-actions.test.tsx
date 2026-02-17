@@ -4,7 +4,7 @@ import { renderHook, act } from '@testing-library/react';
 import { usePromptHistoryActions } from '@features/prompt-optimizer/context/usePromptHistoryActions';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import { createHighlightSignature } from '@features/span-highlighting';

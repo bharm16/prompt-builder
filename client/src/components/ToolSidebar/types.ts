@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { User, PromptHistoryEntry } from '@hooks/types';
+import type { User, PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { AppIcon } from '@/types';
 

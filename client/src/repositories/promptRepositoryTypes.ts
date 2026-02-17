@@ -1,4 +1,4 @@
-import type { PromptKeyframe, PromptVersionEntry } from '@hooks/types';
+import type { PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 export type PromptData = {
   uuid?: string;

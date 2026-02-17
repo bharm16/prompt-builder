@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { createHighlightSignature } from '@features/span-highlighting';
 import type { NavigateFunction } from 'react-router-dom';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';

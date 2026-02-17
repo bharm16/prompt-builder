@@ -4,7 +4,7 @@ import {
   hydrateKeyframes,
   areKeyframesEqual,
 } from '../keyframeTransforms';
-import type { PromptKeyframeSource } from '@hooks/types';
+import type { PromptKeyframeSource } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const tile = (id: string, url: string, source: PromptKeyframeSource = 'upload', assetId?: string) => ({
   id,

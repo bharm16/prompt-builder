@@ -1,5 +1,5 @@
 import type { IconProps } from '@promptstudio/system/components/ui';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';

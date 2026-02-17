@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { getPromptRepository } from '@repositories/index';
-import type { Toast, User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import { logger } from '@/services/LoggingService';

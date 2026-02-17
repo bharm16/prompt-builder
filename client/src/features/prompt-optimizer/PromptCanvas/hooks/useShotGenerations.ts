@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { ContinuityShot, UpdateShotInput } from '@/features/continuity/types';
 import { createHighlightSignature } from '@/features/span-highlighting';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import {
   mapShotStatusToGenerationStatus,

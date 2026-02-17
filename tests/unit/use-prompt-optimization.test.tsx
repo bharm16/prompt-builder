@@ -8,7 +8,7 @@ import {
 } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/usePromptOptimization';
 import { PromptContext } from '@/utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { createHighlightSignature } from '@features/span-highlighting';
 
 vi.mock('@features/span-highlighting', () => ({
