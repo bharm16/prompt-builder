@@ -26,8 +26,6 @@ import type {
 } from './types';
 import type { Generation } from '../GenerationsPanel/types';
 
-import { useClipboard } from '../hooks/useClipboard';
-import { useShareLink } from '../hooks/useShareLink';
 import {
   escapeHTMLForMLHighlighting,
   formatTextToHTML,
@@ -49,6 +47,7 @@ import { useShotGenerations } from './hooks/useShotGenerations';
 import { useTriggerValidation } from './hooks/useTriggerValidation';
 import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
 import { useVersionManagement } from './hooks/useVersionManagement';
+import { useCanvasEditorState } from './hooks/useCanvasEditorState';
 import { usePromptCanvasPanelProps } from './hooks/usePromptCanvasPanelProps';
 import { applyGenerationReuse } from './utils/reuseGeneration';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
@@ -56,7 +55,6 @@ import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
 import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
 import { usePromptInsertionBus } from '../context/PromptInsertionBusContext';
-import { AI_MODEL_IDS, AI_MODEL_LABELS } from '../components/constants';
 import {
   usePromptActions,
   usePromptConfig,
@@ -116,17 +114,9 @@ export function PromptCanvas({
   });
 
   // Refs
-  const editorRef = useRef<HTMLDivElement>(null!);
-  const editorWrapperRef = useRef<HTMLDivElement>(null!);
-  const editorColumnRef = useRef<HTMLDivElement>(null!);
-  const outputLocklineRef = useRef<HTMLDivElement>(null!);
-  const lockButtonRef = useRef<HTMLButtonElement>(null!);
   const outlineOverlayRef = useRef<HTMLDivElement>(null!);
   const { registerInsertHandler } = usePromptInsertionBus();
   const toast = useToast();
-  const [generationsSheetOpen, setGenerationsSheetOpen] = useState(false);
-  const [showDiff, setShowDiff] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null!);
   const versionsDrawer = useDrawerState({
     defaultOpen: true,
     storageKey: 'prompt-optimizer:versions-drawer',
@@ -196,34 +186,10 @@ export function PromptCanvas({
       : null;
   }, [generationParams?.fps]);
 
-  const modelFormatOptions = useMemo(
-    () =>
-      [...AI_MODEL_IDS]
-        .map((id) => ({ id, label: AI_MODEL_LABELS[id] }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    []
-  );
-
-  const [modelFormatValue, setModelFormatValue] = useState<string>('auto');
-
-  const modelFormatLabel = useMemo(() => {
-    if (modelFormatValue === 'auto') {
-      return 'Auto';
-    }
-    return (
-      modelFormatOptions.find((option) => option.id === modelFormatValue)?.label ??
-      modelFormatValue
-    );
-  }, [modelFormatOptions, modelFormatValue]);
-
   const { shotId, shotPromptEntry, updateShotVersions } = useShotGenerations({
     currentShot,
     updateShot,
   });
-
-  // Custom hooks for clipboard and sharing
-  const { copied, copy } = useClipboard();
-  const { shared, share } = useShareLink();
 
   const enableMLHighlighting = selectedMode === 'video' && showResults;
 
@@ -235,7 +201,6 @@ export function PromptCanvas({
 
   const { state, setState } = usePromptCanvasState();
   const {
-    showExportMenu,
     showLegend,
     selectedSpanId,
     lastAppliedSpanId,
@@ -254,6 +219,39 @@ export function PromptCanvas({
   const editorDisplayText = showResults
     ? normalizedDisplayedPrompt ?? ''
     : normalizedInputPrompt;
+  const isOptimizing = Boolean(isProcessing || isRefining);
+
+  const {
+    editorRef,
+    editorWrapperRef,
+    editorColumnRef,
+    outputLocklineRef,
+    lockButtonRef,
+    exportMenuRef,
+    generationsSheetOpen,
+    setGenerationsSheetOpen,
+    showDiff,
+    setShowDiff,
+    copied,
+    handleCopy,
+    handleCopyEvent,
+    handleShare,
+    showExportMenu,
+    setShowExportMenu,
+    modelFormatOptions,
+    modelFormatValue,
+    modelFormatLabel,
+    handleModelFormatChange,
+  } = useCanvasEditorState({
+    showResults,
+    displayedPrompt: editorDisplayText,
+    inputPrompt,
+    promptUuid,
+    isOptimizing,
+    genericOptimizedPrompt: promptOptimizer.genericOptimizedPrompt,
+    onReoptimize,
+    logAction: debug.logAction,
+  });
   const {
     isOpen: autocompleteOpen,
     suggestions: autocompleteSuggestions,
@@ -325,35 +323,6 @@ export function PromptCanvas({
     effectiveAspectRatio,
   });
 
-  const setShowExportMenu = useCallback(
-    (value: boolean) => setState({ showExportMenu: value }),
-    [setState]
-  );
-
-  useEffect(() => {
-    if (!showExportMenu) return;
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (
-        exportMenuRef.current &&
-        !exportMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowExportMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showExportMenu, setShowExportMenu]);
-
-  useEffect(() => {
-    if (!showDiff) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setShowDiff(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showDiff]);
   const setShowLegend = useCallback(
     (value: boolean) => setState({ showLegend: value }),
     [setState]
@@ -602,7 +571,6 @@ export function PromptCanvas({
     }
   }, [normalizedDisplayedPrompt, enableMLHighlighting, debug]);
 
-  const isOptimizing = Boolean(isProcessing || isRefining);
   const isOutputLoading = Boolean(isProcessing || isRefining);
 
   const escapeAttr = (value: string): string => {
@@ -804,105 +772,6 @@ export function PromptCanvas({
     debug,
   });
 
-  // Event handlers
-  const handleCopy = useCallback((): void => {
-    debug.logAction('copy', {
-      promptLength: editorDisplayText.length,
-    });
-    copy(editorDisplayText);
-  }, [copy, editorDisplayText, debug]);
-
-  const handleShare = useCallback((): void => {
-    if (promptUuid) {
-      debug.logAction('share', { promptUuid });
-      share(promptUuid);
-    }
-  }, [share, promptUuid, debug]);
-
-  const handleCopyEvent = useCallback(
-    (e: React.ClipboardEvent): void => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim() ?? '';
-
-      if (selectedText) {
-        return;
-      }
-
-      e.clipboardData.setData('text/plain', editorDisplayText);
-      e.preventDefault();
-    },
-    [editorDisplayText]
-  );
-
-  const handleModelFormatChange = useCallback(
-    (nextValue: string): void => {
-      if (isOptimizing) {
-        return;
-      }
-
-      const nextModel = nextValue === 'auto' ? '' : nextValue.trim();
-      const previousModel = modelFormatValue === 'auto' ? '' : modelFormatValue.trim();
-      if (nextModel === previousModel) {
-        return;
-      }
-
-      setModelFormatValue(nextValue === 'auto' ? 'auto' : nextModel);
-
-      const genericPrompt =
-        typeof promptOptimizer.genericOptimizedPrompt === 'string' &&
-        promptOptimizer.genericOptimizedPrompt.trim()
-          ? promptOptimizer.genericOptimizedPrompt
-          : null;
-      const hasGenericPrompt = Boolean(genericPrompt && genericPrompt.trim());
-
-      debug.logAction('compileForModel', {
-        targetModel: nextModel || 'generic-auto',
-        source: nextValue === 'auto' ? 'auto' : 'manual',
-        genericPromptAvailable: hasGenericPrompt,
-      });
-
-      if (!nextModel) {
-        if (!hasGenericPrompt) {
-          // Re-run optimization in model-agnostic mode so Auto remains truly generic.
-          void onReoptimize(inputPrompt, { forceGenericTarget: true });
-          return;
-        }
-
-        void onReoptimize(inputPrompt, {
-          compileOnly: true,
-          ...(genericPrompt ? { compilePrompt: genericPrompt } : {}),
-          createVersion: true,
-        });
-        return;
-      }
-
-      if (hasGenericPrompt && genericPrompt) {
-        void onReoptimize(inputPrompt, {
-          compileOnly: true,
-          compilePrompt: genericPrompt,
-          createVersion: true,
-          targetModel: nextModel,
-        });
-        return;
-      }
-
-      // Older sessions may not have a generic baseline yet; regenerate directly for this model.
-      void onReoptimize(inputPrompt, {
-        createVersion: true,
-        targetModel: nextModel,
-      });
-    },
-    [
-      debug,
-      inputPrompt,
-      isOptimizing,
-      onReoptimize,
-      modelFormatValue,
-      promptOptimizer.genericOptimizedPrompt,
-      setModelFormatValue,
-    ]
-  );
-
   const resolveCaretContext = useCallback(
     (normalizedText: string): { cursorPosition: number; caretRect: DOMRect | null } => {
       const selection = window.getSelection();
@@ -959,8 +828,6 @@ export function PromptCanvas({
     debug,
     editorDisplayText.length,
     handleAutocomplete,
-    onInputPromptChange,
-    onResetResultsForEditing,
     resolveCaretContext,
     showResults,
     validateTriggers,
