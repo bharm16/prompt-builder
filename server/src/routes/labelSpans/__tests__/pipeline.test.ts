@@ -113,10 +113,6 @@ vi.mock('@infrastructure/Logger', () => ({
   logger: loggerMock,
 }));
 
-vi.mock('@services/cache/SpanLabelingCacheService', () => ({
-  spanLabelingCache: spanLabelingCacheMock,
-}));
-
 import { createLabelSpansCoordinator } from '../coordinator';
 import { handleLabelSpansStreamRequest } from '../streamingHandler';
 import { toPublicLabelSpansResult, toPublicSpan } from '../transform';
@@ -314,7 +310,7 @@ describe('labelSpans coordinator', () => {
     };
     spanLabelingCacheMock.get.mockResolvedValueOnce(cachedResult);
 
-    const coordinator = createLabelSpansCoordinator({} as never);
+    const coordinator = createLabelSpansCoordinator({} as never, spanLabelingCacheMock as never);
     const response = await coordinator.resolve({
       payload: { text: 'hero runs' },
       text: 'hero runs',
@@ -342,7 +338,7 @@ describe('labelSpans coordinator', () => {
     };
     labelSpansMock.mockResolvedValueOnce(computedResult);
 
-    const coordinator = createLabelSpansCoordinator({} as never);
+    const coordinator = createLabelSpansCoordinator({} as never, spanLabelingCacheMock as never);
     const response = await coordinator.resolve({
       payload: { text: 'hero runs' },
       text: 'hero runs',
@@ -381,7 +377,7 @@ describe('labelSpans coordinator', () => {
     });
     labelSpansMock.mockReturnValueOnce(firstPromise);
 
-    const coordinator = createLabelSpansCoordinator({} as never);
+    const coordinator = createLabelSpansCoordinator({} as never, spanLabelingCacheMock as never);
     const input = {
       payload: { text: 'hero runs' },
       text: 'hero runs',

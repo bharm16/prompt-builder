@@ -13,6 +13,7 @@ import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { getGCSStorageService } from '@services/convergence/storage';
+import type { GCSStorageService } from '@services/convergence/storage';
 
 const STORAGE_HOST = 'storage.googleapis.com';
 const STORAGE_HOST_SUFFIX = '.storage.googleapis.com';
@@ -64,7 +65,7 @@ const extractObjectPath = (url: URL, bucketName: string): string | null => {
 const sanitizeFilename = (value: string): string =>
   value.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export function createConvergenceMediaRoutes(): Router {
+export function createConvergenceMediaRoutes(getStorageService: () => GCSStorageService = getGCSStorageService): Router {
   const router = express.Router();
 
   router.post(
@@ -93,7 +94,7 @@ export function createConvergenceMediaRoutes(): Router {
 
       const safeName = sanitizeFilename(file.originalname || 'upload.png');
       const destination = `convergence/${userId}/uploads/${Date.now()}-${safeName}`;
-      const storageService = getGCSStorageService();
+      const storageService = getStorageService();
 
       let url: string;
       try {
@@ -177,7 +178,7 @@ export function createConvergenceMediaRoutes(): Router {
         host: parsedUrl.hostname,
       });
 
-      const storageService = getGCSStorageService();
+      const storageService = getStorageService();
       let upstreamUrl = parsedUrl.toString();
       try {
         const refreshedUrl = await storageService.refreshSignedUrl(upstreamUrl);

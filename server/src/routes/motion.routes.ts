@@ -54,11 +54,27 @@ interface ApiResponse<T> {
   details?: unknown;
 }
 
-const buildFallbackResponse = (): ApiResponse<DepthEstimationSuccessPayload> => ({
+export interface MotionRouteServices {
+  cameraPaths: typeof CAMERA_PATHS;
+  createDepthEstimationServiceForUser: typeof createDepthEstimationServiceForUser;
+  getDepthWarmupStatus: typeof getDepthWarmupStatus;
+  getStartupWarmupPromise: typeof getStartupWarmupPromise;
+  getStorageService: typeof getGCSStorageService;
+}
+
+const defaultServices: MotionRouteServices = {
+  cameraPaths: CAMERA_PATHS,
+  createDepthEstimationServiceForUser,
+  getDepthWarmupStatus,
+  getStartupWarmupPromise,
+  getStorageService: getGCSStorageService,
+};
+
+const buildFallbackResponse = (cameraPaths: typeof CAMERA_PATHS): ApiResponse<DepthEstimationSuccessPayload> => ({
   success: true,
   data: {
     depthMapUrl: null,
-    cameraPaths: CAMERA_PATHS,
+    cameraPaths,
     fallbackMode: true,
   },
 });
@@ -79,7 +95,7 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 };
 
-export function createMotionRoutes(): Router {
+export function createMotionRoutes(services: MotionRouteServices = defaultServices): Router {
   const router = express.Router();
 
   /**
@@ -139,7 +155,7 @@ export function createMotionRoutes(): Router {
 
       let storageService;
       try {
-        storageService = getGCSStorageService();
+        storageService = services.getStorageService();
       } catch (error) {
         log.warn('Storage service unavailable; returning fallback motion options', {
           operation: OPERATION,
@@ -149,10 +165,10 @@ export function createMotionRoutes(): Router {
           imageUrlHost,
           error: error instanceof Error ? error.message : String(error),
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
 
-      const depthService = createDepthEstimationServiceForUser(storageService, userId);
+      const depthService = services.createDepthEstimationServiceForUser(storageService, userId);
       if (!depthService.isAvailable()) {
         log.warn('Depth estimation service not available; returning fallback mode', {
           operation: OPERATION,
@@ -161,15 +177,15 @@ export function createMotionRoutes(): Router {
           depthRequestId,
           imageUrlHost,
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
 
       try {
         // If startup warmup is still in-flight, wait for it so the model is warm
         // before making the user's depth estimation call.
-        const pendingWarmup = getStartupWarmupPromise();
+        const pendingWarmup = services.getStartupWarmupPromise();
         if (pendingWarmup) {
-          const { warmupInFlight: wif } = getDepthWarmupStatus();
+          const { warmupInFlight: wif } = services.getDepthWarmupStatus();
           if (wif) {
             log.debug('Waiting for startup warmup to complete before depth estimation', {
               operation: OPERATION,
@@ -183,7 +199,7 @@ export function createMotionRoutes(): Router {
           }
         }
 
-        const { warmupInFlight, lastWarmupAt } = getDepthWarmupStatus();
+        const { warmupInFlight, lastWarmupAt } = services.getDepthWarmupStatus();
         const coldStart = warmupInFlight || lastWarmupAt === 0;
         const timeoutMs = coldStart
           ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
@@ -219,7 +235,7 @@ export function createMotionRoutes(): Router {
           success: true,
           data: {
             depthMapUrl,
-            cameraPaths: CAMERA_PATHS,
+            cameraPaths: services.cameraPaths,
             fallbackMode: false,
           },
         } satisfies ApiResponse<DepthEstimationSuccessPayload>);
@@ -227,7 +243,7 @@ export function createMotionRoutes(): Router {
         const duration = Date.now() - startedAt;
         const errorMessage = error instanceof Error ? error.message : String(error);
         const timedOut = errorMessage.includes('timed out');
-        const { warmupInFlight, lastWarmupAt } = getDepthWarmupStatus();
+        const { warmupInFlight, lastWarmupAt } = services.getDepthWarmupStatus();
         const coldStart = warmupInFlight || lastWarmupAt === 0;
         const timeoutMs = coldStart
           ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
@@ -244,7 +260,7 @@ export function createMotionRoutes(): Router {
           timeoutMs,
           coldStart,
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
     })
   );

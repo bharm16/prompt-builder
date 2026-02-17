@@ -31,6 +31,9 @@ import { createPaymentRoutes } from '@routes/payment.routes';
 import type { PaymentRouteServices } from '@routes/payment/types';
 import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
 import { createMotionRoutes } from '@routes/motion.routes';
+import { CAMERA_PATHS } from '@services/convergence/constants';
+import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
+import { getGCSStorageService } from '@services/convergence/storage';
 import type { VideoConceptServiceContract } from '@routes/video/types';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
@@ -132,7 +135,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     });
     app.use('/api/preview', publicPreviewRoutes);
 
-    const motionMediaRoutes = createConvergenceMediaRoutes();
+    const motionMediaRoutes = createConvergenceMediaRoutes(getGCSStorageService);
     app.use('/api/motion/media', motionMediaRoutes);
   }
 
@@ -165,7 +168,13 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   if (!promptOutputOnly) {
-    const motionRoutes = createMotionRoutes();
+    const motionRoutes = createMotionRoutes({
+      cameraPaths: CAMERA_PATHS,
+      createDepthEstimationServiceForUser,
+      getDepthWarmupStatus,
+      getStartupWarmupPromise,
+      getStorageService: getGCSStorageService,
+    });
     app.use('/api/motion', apiAuthMiddleware, motionRoutes);
   }
 
@@ -174,7 +183,10 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   // Span labeling endpoint (with DI)
-  const labelSpansRoute = createLabelSpansRoute(container.resolve('aiService'));
+  const labelSpansRoute = createLabelSpansRoute(
+    container.resolve('aiService'),
+    container.resolve('spanLabelingCacheService')
+  );
   app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
 
   // Batch endpoint for processing multiple span labeling requests
