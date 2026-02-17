@@ -4,7 +4,7 @@ import type { LLMClient } from '@clients/LLMClient';
 import { AIModelService } from '@services/ai-model/index';
 import AssetService from '@services/asset/AssetService';
 import { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
-import { userCreditService } from '@services/credits/UserCreditService';
+import type { UserCreditService } from '@services/credits/UserCreditService';
 import ConsistentVideoService from '@services/generation/ConsistentVideoService';
 import FaceSwapService from '@services/generation/FaceSwapService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
@@ -193,7 +193,7 @@ export function registerGenerationServices(container: DIContainer): void {
     (
       aiService: AIModelService,
       videoGenerationService: VideoGenerationService | null,
-      creditService: typeof userCreditService,
+      creditService: UserCreditService,
       billingProfileStore: BillingProfileStore
     ) =>
       new ModelIntelligenceService({
@@ -298,7 +298,7 @@ export function registerGenerationServices(container: DIContainer): void {
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
-      creditService: typeof userCreditService,
+      creditService: UserCreditService,
       storageService: StorageService
     ) => {
       if (!videoGenerationService) {
@@ -320,7 +320,7 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'videoJobSweeper',
-    (videoJobStore: VideoJobStore, creditService: typeof userCreditService) =>
+    (videoJobStore: VideoJobStore, creditService: UserCreditService) =>
       createVideoJobSweeper(videoJobStore, creditService),
     ['videoJobStore', 'userCreditService'],
     { singleton: true }

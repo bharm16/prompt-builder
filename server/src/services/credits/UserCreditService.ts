@@ -381,4 +381,3 @@ export class UserCreditService {
   }
 }
 
-export const userCreditService = new UserCreditService();
