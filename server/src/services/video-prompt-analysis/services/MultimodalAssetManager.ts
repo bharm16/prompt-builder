@@ -560,4 +560,3 @@ export class MultimodalAssetManager {
 /**
  * Singleton instance for convenience
  */
-export const multimodalAssetManager = new MultimodalAssetManager();

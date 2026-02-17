@@ -19,10 +19,7 @@ export { FallbackStrategyService } from './services/guidance/FallbackStrategySer
 export { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService';
 
 // Export Multimodal Asset Manager
-export {
-  MultimodalAssetManager,
-  multimodalAssetManager,
-} from './services/MultimodalAssetManager';
+export { MultimodalAssetManager } from './services/MultimodalAssetManager';
 export type {
   AssetType,
   ProviderType,

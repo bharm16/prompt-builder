@@ -117,6 +117,4 @@ export class TemplateService {
   }
 }
 
-export const templateService = new TemplateService();
-export default templateService;
 

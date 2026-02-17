@@ -10,7 +10,7 @@ import { ShotInterpreterService } from './services/ShotInterpreterService';
 import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
-import { templateService } from './services/TemplateService';
+import { TemplateService } from './services/TemplateService';
 import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
 import { ImageObservationService } from '@services/image-observation';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
@@ -56,7 +56,8 @@ export class PromptOptimizationService {
     aiService: AIService,
     cacheService: CacheService,
     videoPromptService: VideoPromptService | null = null,
-    imageObservationService?: ImageObservationService
+    imageObservationService?: ImageObservationService,
+    templateService: TemplateService = new TemplateService()
   ) {
     this.ai = aiService;
     this.videoPromptService = videoPromptService;

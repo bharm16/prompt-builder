@@ -13,16 +13,20 @@ import { SuggestionDiversityEnforcer } from '@services/enhancement/services/Sugg
 import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
 import { ImageObservationService } from '@services/image-observation';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import { TemplateService } from '@services/prompt-optimization/services/TemplateService';
 import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
 import type { CacheService } from '@services/cache/CacheService';
 import { VideoPromptService } from '@services/video-prompt-analysis/index';
+import { MultimodalAssetManager } from '@services/video-prompt-analysis/services/MultimodalAssetManager';
 import { VideoConceptService } from '@services/video-concept/VideoConceptService';
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register('videoService', () => new VideoPromptService(), []);
+  container.register('multimodalAssetManager', () => new MultimodalAssetManager(), []);
   container.register('brainstormBuilder', () => new BrainstormContextBuilder(), []);
   container.register('promptBuilder', () => new CleanPromptBuilder(), []);
+  container.register('templateService', () => new TemplateService(), []);
 
   container.register(
     'validationService',
@@ -48,10 +52,11 @@ export function registerEnhancementServices(container: DIContainer): void {
       aiService: AIModelService,
       cacheService: CacheService,
       videoService: VideoPromptService,
-      imageObservationService: ImageObservationService
+      imageObservationService: ImageObservationService,
+      templateService: TemplateService
     ) =>
-      new PromptOptimizationService(aiService, cacheService, videoService, imageObservationService),
-    ['aiService', 'cacheService', 'videoService', 'imageObservationService']
+      new PromptOptimizationService(aiService, cacheService, videoService, imageObservationService, templateService),
+    ['aiService', 'cacheService', 'videoService', 'imageObservationService', 'templateService']
   );
 
   container.register(
