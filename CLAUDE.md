@@ -198,21 +198,20 @@ Reference: `server/src/services/prompt-optimization/`
 
 ### SRP/SoC (Critical)
 
-**Line counts are heuristics, NOT splitting triggers.**
 
 Before modifying code, ask:
 1. How many distinct responsibilities does this file have?
 2. How many reasons to change? (different stakeholders, different triggers)
 3. If only 1 responsibility → Don't split, even if over line threshold
 
-### File Size Guidelines (Warnings Only)
+### File Splitting Guidelines
 
-| Type | Threshold | When to Actually Split |
-|------|-----------|------------------------|
-| Components | ~200 lines | Mixed presentation + business logic |
-| Hooks | ~150 lines | Managing unrelated state domains |
-| Services | ~300-500 lines | Multiple reasons to change |
-| Utils | ~100 lines | Functions with different concerns |
+| Type | When to Actually Split |
+|------|------------------------|
+| Components | Mixed presentation + business logic |
+| Hooks | Managing unrelated state domains |
+| Services | Multiple reasons to change |
+| Utils | Functions with different concerns |
 
 ### TypeScript Rules
 

@@ -212,6 +212,15 @@ npm run migrate:backfill
 - Avoid splitting files purely by line count; split by responsibility/reason-to-change.
 - Preserve existing architecture conventions unless task explicitly requires refactor.
 
+### File Splitting Guidelines
+
+| Type | When to Actually Split |
+|------|------------------------|
+| Components | Mixed presentation + business logic |
+| Hooks | Managing unrelated state domains |
+| Services | Multiple reasons to change |
+| Utils | Functions with different concerns |
+
 ## Writing Integration Tests
 
 Read `docs/architecture/typescript/TEST_GUIDE.md` Part 3 before writing ANY integration test.
