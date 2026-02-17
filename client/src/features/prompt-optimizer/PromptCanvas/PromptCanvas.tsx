@@ -47,6 +47,7 @@ import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
 import { useCanvasEditorState } from './hooks/useCanvasEditorState';
 import { useCanvasGenerations } from './hooks/useCanvasGenerations';
 import { useCanvasI2V } from './hooks/useCanvasI2V';
+import { useCanvasCoherence } from './hooks/useCanvasCoherence';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
@@ -938,6 +939,17 @@ export function PromptCanvas({
     handleLockedAlternativeClick,
   });
 
+  const coherence = useCanvasCoherence({
+    coherenceIssues,
+    isCoherenceChecking,
+    isCoherencePanelExpanded,
+    onToggleCoherencePanelExpanded,
+    onDismissCoherenceIssue,
+    onDismissAllCoherenceIssues,
+    onApplyCoherenceFix,
+    onScrollToCoherenceSpan,
+  });
+
   const focusSpan = useCallback(
     (spanId: string | null): void => {
       if (!spanId) return;
@@ -1077,14 +1089,14 @@ export function PromptCanvas({
       i2vMotionAlternatives={i2v.motionAlternatives}
       onLockedAlternativeClick={i2v.handleLockedAlternativeClick}
       i2vContext={i2v.i2vContext}
-      coherenceIssues={coherenceIssues}
-      isCoherenceChecking={isCoherenceChecking}
-      isCoherencePanelExpanded={isCoherencePanelExpanded}
-      onToggleCoherencePanelExpanded={onToggleCoherencePanelExpanded}
-      onDismissCoherenceIssue={onDismissCoherenceIssue}
-      onDismissAllCoherenceIssues={onDismissAllCoherenceIssues}
-      onApplyCoherenceFix={onApplyCoherenceFix}
-      onScrollToCoherenceSpan={onScrollToCoherenceSpan}
+      coherenceIssues={coherence.coherenceIssues}
+      isCoherenceChecking={coherence.isCoherenceChecking}
+      isCoherencePanelExpanded={coherence.isCoherencePanelExpanded}
+      onToggleCoherencePanelExpanded={coherence.onToggleCoherencePanelExpanded}
+      onDismissCoherenceIssue={coherence.onDismissCoherenceIssue}
+      onDismissAllCoherenceIssues={coherence.onDismissAllCoherenceIssues}
+      onApplyCoherenceFix={coherence.onApplyCoherenceFix}
+      onScrollToCoherenceSpan={coherence.onScrollToCoherenceSpan}
       versionsDrawer={versionsDrawer}
       versionsPanelProps={versionsPanelProps}
       generationsPanelProps={generationsPanelProps}
