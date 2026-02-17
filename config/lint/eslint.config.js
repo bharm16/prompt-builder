@@ -75,6 +75,14 @@ export default [
         patterns: [
           {
             group: [
+              '@services/EnhancementService',
+              '@services/VideoConceptService',
+            ],
+            message:
+              'Use canonical domain imports instead of legacy root service shims.',
+          },
+          {
+            group: [
               '@/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
               '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
               '**/PromptOptimizerContainer/PromptOptimizerContainer',
@@ -127,6 +135,30 @@ export default [
       'no-undef': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: [
+      'server/src/routes/**/*.{js,ts,jsx,tsx}',
+      'server/src/middleware/**/*.{js,ts,jsx,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: '@services/credits/UserCreditService',
+            importNames: ['userCreditService'],
+            message:
+              'Inject credit services through DI or route factory parameters instead of singleton imports.',
+          },
+          {
+            name: '@services/storage/StorageService',
+            importNames: ['getStorageService'],
+            message:
+              'Inject storage services through DI or route factory parameters instead of singleton imports.',
+          },
+        ],
+      }],
     },
   },
   // Server-side configuration

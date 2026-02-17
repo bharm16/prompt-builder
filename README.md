@@ -246,7 +246,8 @@ prompt-builder/
 │   └── src/
 │       ├── features/
 │       │   └── prompt-optimizer/
-│       │       ├── PromptCanvas.tsx      # Main editor
+│       │       ├── PromptCanvas/         # Canvas orchestration + view sections
+│       │       ├── PromptOptimizerContainer/  # Workspace orchestration
 │       │       └── SpanBentoGrid/        # Element overview
 │       └── components/
 │           ├── SuggestionsPanel/         # AI suggestions
@@ -256,12 +257,20 @@ prompt-builder/
 │       ├── services/
 │       │   ├── prompt-optimization/      # Core optimization
 │       │   ├── enhancement/              # Suggestions
+│       │   ├── video-concept/            # Video concept orchestration
 │       │   └── ai-model/                 # LLM routing
 │       └── llm/
 │           └── span-labeling/            # Semantic labeling
 └── shared/
     └── taxonomy.ts            # 30+ video categories
 ```
+
+### Architecture Notes
+
+- Canonical service imports are domain-scoped (`server/src/services/enhancement/*`, `server/src/services/video-concept/*`).
+- Legacy root shims (`server/src/services/EnhancementService.ts`, `server/src/services/VideoConceptService.ts`) are removed.
+- Composition is DI-first through `server/src/config/services*.ts` and `server/src/config/routes.config.ts`.
+- Architecture gates run via `npm run arch:check` (client/server cycle checks + forbidden import checks).
 
 ---
 
@@ -332,6 +341,7 @@ npm run test        # Unit tests (Vitest)
 npm run test:e2e    # E2E tests (Playwright)
 npm run lint        # ESLint
 npm run build       # Production build
+npm run arch:check  # Architecture gates (cycles + forbidden imports)
 ```
 
 ---

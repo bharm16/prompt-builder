@@ -40,6 +40,15 @@ services it should (and should not) be paired with.
 - Outputs: `NlpSpan[]` with lower-level spans that may be incomplete.
 - Avoid: not a standalone API route and not suitable as a general span labeling API.
 
+## Canonical import and composition rules
+- Import service implementations from domain paths only (`server/src/services/enhancement/*`,
+  `server/src/services/video-concept/*`).
+- Root-level compatibility shims are retired. Do not add or reintroduce
+  `server/src/services/EnhancementService.ts` or `server/src/services/VideoConceptService.ts`.
+- Runtime feature-flag decisions belong at composition boundaries:
+  `server/src/config/runtime-flags.ts` and `server/src/config/routes.config.ts`.
+- Route handlers and middleware should consume DI-injected services, not singleton imports.
+
 ## Decision guide
 Use this quick checklist before wiring a new flow:
 

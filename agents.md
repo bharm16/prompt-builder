@@ -26,7 +26,11 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview` |
 | **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
 
-**Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. The canonical implementations live in the domain subdirectories (`enhancement/`, `video-concept/`). Do not import from the root-level files.
+**Critical distinction:** root-level compatibility shims have been retired. Import only from canonical domain paths:
+- `@services/enhancement/*`
+- `@services/video-concept/*`
+
+`@services/EnhancementService` and `@services/VideoConceptService` are forbidden imports.
 
 See also: `docs/architecture/SERVICE_BOUNDARIES.md` for span-labeling vs. video-prompt-analysis boundary rules.
 
@@ -165,6 +169,14 @@ npm run eval:suggestions
 npm run eval:optimization
 npm run eval:regression
 npm run quality:gate
+```
+
+### Architecture Gates
+```bash
+npm run arch:check
+npm run arch:cycles:client
+npm run arch:cycles:server
+npm run arch:forbidden-imports
 ```
 
 ### Performance / Diagnostics
