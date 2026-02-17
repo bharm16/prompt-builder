@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   buildRefundKey: vi.fn((parts: Array<string | number>) => `refund-${parts.join('-')}`),
   refundWithGuard: vi.fn().mockResolvedValue(true),
   saveFromUrl: vi.fn(),
-  getStorageService: vi.fn(),
 }));
 
 vi.mock(
@@ -31,13 +30,6 @@ vi.mock(
   () => ({
     buildRefundKey: mocks.buildRefundKey,
     refundWithGuard: mocks.refundWithGuard,
-  })
-);
-
-vi.mock(
-  '@services/storage/StorageService',
-  () => ({
-    getStorageService: mocks.getStorageService,
   })
 );
 
@@ -69,6 +61,7 @@ const createWorker = (
     jobStore as never,
     { generateVideo } as never,
     { refundCredits: vi.fn() } as never,
+    { saveFromUrl: mocks.saveFromUrl } as never,
     {
       workerId: 'worker-a',
       pollIntervalMs: 1_000,
@@ -83,9 +76,6 @@ const runProcessJob = (worker: VideoJobWorker, job: VideoJobRecord) =>
 describe('VideoJobWorker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getStorageService.mockReturnValue({
-      saveFromUrl: mocks.saveFromUrl,
-    });
   });
 
   it('marks job completed with storage metadata when generation succeeds', async () => {

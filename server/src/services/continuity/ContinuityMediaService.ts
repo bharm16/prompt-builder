@@ -1,7 +1,7 @@
 import type { AssetService } from '@services/asset/AssetService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
-import { getStorageService } from '@services/storage/StorageService';
+import type { StorageService } from '@services/storage/StorageService';
 import { logger } from '@infrastructure/Logger';
 import { spawnSync } from 'node:child_process';
 import type { FrameBridgeService } from './FrameBridgeService';
@@ -18,7 +18,8 @@ export class ContinuityMediaService {
     private styleReference: StyleReferenceService,
     private styleAnalysis: StyleAnalysisService,
     private videoGenerator: VideoGenerationService,
-    private assetService: AssetService
+    private assetService: AssetService,
+    private storageService: StorageService
   ) {
     this.probeMediaBinaries();
   }
@@ -42,8 +43,7 @@ export class ContinuityMediaService {
     }
 
     try {
-      const storage = getStorageService();
-      const signed = await storage.getViewUrl(userId, trimmedId);
+      const signed = await this.storageService.getViewUrl(userId, trimmedId);
       return signed.viewUrl || null;
     } catch (error) {
       this.log.warn('Failed to resolve continuity source from storage path', {

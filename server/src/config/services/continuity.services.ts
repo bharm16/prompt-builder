@@ -125,7 +125,8 @@ export function registerContinuityServices(container: DIContainer): void {
       sceneProxyService: SceneProxyService,
       videoGenerationService: VideoGenerationService | null,
       assetService: AssetService | null,
-      continuitySessionStore: ContinuitySessionStore
+      continuitySessionStore: ContinuitySessionStore,
+      storageService: ReturnType<typeof getStorageService>
     ) => {
       if (!videoGenerationService || !assetService) {
         logger.warn('ContinuitySessionService disabled', {
@@ -149,7 +150,8 @@ export function registerContinuityServices(container: DIContainer): void {
         styleReferenceService,
         styleAnalysisService,
         videoGenerationService,
-        assetService
+        assetService,
+        storageService
       );
       const postProcessingService = new ContinuityPostProcessingService(
         gradingService,
@@ -186,6 +188,7 @@ export function registerContinuityServices(container: DIContainer): void {
       'videoGenerationService',
       'assetService',
       'continuitySessionStore',
+      'storageService',
     ]
   );
 }

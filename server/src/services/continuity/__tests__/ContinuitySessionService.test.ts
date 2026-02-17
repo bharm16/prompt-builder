@@ -183,7 +183,8 @@ const buildService = (
     styleReference as any,
     styleAnalysis as any,
     videoGenerator as any,
-    assetService as any
+    assetService as any,
+    { getViewUrl: mockStorageGetViewUrl } as any
   );
   const postProcessingService = new ContinuityPostProcessingService(
     grading as any,

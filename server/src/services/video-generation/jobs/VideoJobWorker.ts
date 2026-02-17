@@ -3,7 +3,7 @@ import { logger } from '@infrastructure/Logger';
 import type { VideoGenerationService } from '../VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { getStorageService } from '@services/storage/StorageService';
+import type { StorageService } from '@services/storage/StorageService';
 import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 
@@ -20,6 +20,7 @@ export class VideoJobWorker {
   private readonly jobStore: VideoJobStore;
   private readonly videoGenerationService: VideoGenerationService;
   private readonly userCreditService: UserCreditService;
+  private readonly storageService: StorageService;
   private readonly basePollIntervalMs: number;
   private readonly maxPollIntervalMs: number;
   private readonly pollBackoffFactor: number;
@@ -37,11 +38,13 @@ export class VideoJobWorker {
     jobStore: VideoJobStore,
     videoGenerationService: VideoGenerationService,
     userCreditService: UserCreditService,
+    storageService: StorageService,
     options: VideoJobWorkerOptions
   ) {
     this.jobStore = jobStore;
     this.videoGenerationService = videoGenerationService;
     this.userCreditService = userCreditService;
+    this.storageService = storageService;
     this.basePollIntervalMs = options.pollIntervalMs;
     this.maxPollIntervalMs = options.maxPollIntervalMs ?? Math.max(this.basePollIntervalMs * 5, 10000);
     this.pollBackoffFactor = options.backoffFactor ?? 1.5;
@@ -148,8 +151,7 @@ export class VideoJobWorker {
       } | null = null;
 
       try {
-        const storage = getStorageService();
-        storageResult = await storage.saveFromUrl(job.userId, result.videoUrl, 'generation', {
+        storageResult = await this.storageService.saveFromUrl(job.userId, result.videoUrl, 'generation', {
           model: job.request.options?.model,
           creditsUsed: job.creditsReserved,
         });

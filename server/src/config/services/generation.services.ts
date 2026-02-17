@@ -28,6 +28,7 @@ import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import { createVideoAssetStore } from '@services/video-generation/storage';
 import { resolveFalApiKey } from '@utils/falApiKey';
+import type { StorageService } from '@services/storage/StorageService';
 
 export function registerGenerationServices(container: DIContainer): void {
   container.register(
@@ -297,7 +298,8 @@ export function registerGenerationServices(container: DIContainer): void {
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
-      creditService: typeof userCreditService
+      creditService: typeof userCreditService,
+      storageService: StorageService
     ) => {
       if (!videoGenerationService) {
         return null;
@@ -307,13 +309,13 @@ export function registerGenerationServices(container: DIContainer): void {
       const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
       const maxConcurrent = Number.parseInt(process.env.VIDEO_JOB_MAX_CONCURRENT || '2', 10);
 
-      return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, {
+      return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, storageService, {
         pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
         leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 900000,
         maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
       });
     },
-    ['videoJobStore', 'videoGenerationService', 'userCreditService']
+    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService']
   );
 
   container.register(
