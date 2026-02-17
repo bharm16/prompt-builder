@@ -46,7 +46,7 @@ describe('ImageObservationService', () => {
 
   it('uses sourcePrompt fast-path and derives basic observations', async () => {
     const { ai, executeMock } = createAIStub();
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
 
     const result = await service.observe({
       image: 'https://example.com/image.jpg',
@@ -65,7 +65,7 @@ describe('ImageObservationService', () => {
 
   it('returns cached result and skips AI execution on cache hit', async () => {
     const { ai, executeMock } = createAIStub();
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
     const request = {
       image: 'https://example.com/cached-image.jpg',
       sourcePrompt: 'A landscape at noon',
@@ -83,7 +83,7 @@ describe('ImageObservationService', () => {
 
   it('bypasses cache when skipCache is true', async () => {
     const { ai } = createAIStub();
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
     const image = 'https://example.com/skip-cache-image.jpg';
 
     const first = await service.observe({
@@ -115,7 +115,7 @@ describe('ImageObservationService', () => {
   "confidence": 0.91
 }
 \`\`\``);
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
 
     const result = await service.observe({
       image: 'https://example.com/vision-image.jpg',
@@ -159,7 +159,7 @@ describe('ImageObservationService', () => {
     setFetchOk();
     vi.spyOn(fs, 'readFile').mockRejectedValueOnce(new Error('template missing'));
     const { ai, executeMock } = createAIStub('{}');
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
 
     await service.observe({
       image: 'https://example.com/fallback-template.jpg',
@@ -175,7 +175,7 @@ describe('ImageObservationService', () => {
   it('returns low-confidence fallback observation when vision analysis fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, statusText: 'Down' })));
     const { ai, executeMock } = createAIStub();
-    const service = new ImageObservationService(ai);
+    const service = new ImageObservationService(ai, { get: vi.fn(), set: vi.fn() } as never);
 
     const result = await service.observe({
       image: 'https://example.com/vision-failure.jpg',

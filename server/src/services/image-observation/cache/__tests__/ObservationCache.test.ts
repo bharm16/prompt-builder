@@ -6,12 +6,6 @@ const { cacheGetMock, cacheSetMock } = vi.hoisted(() => ({
   cacheSetMock: vi.fn(),
 }));
 
-vi.mock('@services/cache/CacheService', () => ({
-  cacheService: {
-    get: cacheGetMock,
-    set: cacheSetMock,
-  },
-}));
 
 import { ObservationCache } from '../ObservationCache';
 
@@ -48,7 +42,7 @@ describe('ObservationCache', () => {
   });
 
   it('returns memory hit without calling redis', async () => {
-    const cache = new ObservationCache();
+    const cache = new ObservationCache({ get: cacheGetMock, set: cacheSetMock } as never);
     const observation = buildObservation();
     await cache.set('hash-memory', observation);
 
@@ -60,7 +54,7 @@ describe('ObservationCache', () => {
 
   it('returns null on cache miss when redis has no value', async () => {
     cacheGetMock.mockResolvedValueOnce(null);
-    const cache = new ObservationCache();
+    const cache = new ObservationCache({ get: cacheGetMock, set: cacheSetMock } as never);
 
     const result = await cache.get('hash-miss');
 
@@ -71,7 +65,7 @@ describe('ObservationCache', () => {
   it('hydrates memory cache from redis hit', async () => {
     const observation = buildObservation();
     cacheGetMock.mockResolvedValueOnce(observation);
-    const cache = new ObservationCache();
+    const cache = new ObservationCache({ get: cacheGetMock, set: cacheSetMock } as never);
 
     const first = await cache.get('hash-redis-hit');
     const second = await cache.get('hash-redis-hit');
@@ -85,7 +79,7 @@ describe('ObservationCache', () => {
   it('swallows redis errors on get and set', async () => {
     cacheGetMock.mockRejectedValueOnce(new Error('redis unavailable'));
     cacheSetMock.mockRejectedValueOnce(new Error('redis unavailable'));
-    const cache = new ObservationCache();
+    const cache = new ObservationCache({ get: cacheGetMock, set: cacheSetMock } as never);
     const observation = buildObservation();
 
     await expect(cache.get('hash-error')).resolves.toBeNull();

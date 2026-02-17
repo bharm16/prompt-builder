@@ -15,6 +15,7 @@ import { ImageObservationService } from '@services/image-observation';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
 import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
+import type { CacheService } from '@services/cache/CacheService';
 import { VideoPromptService } from '@services/video-prompt-analysis/index';
 import { VideoConceptService } from '@services/video-concept/VideoConceptService';
 
@@ -45,17 +46,21 @@ export function registerEnhancementServices(container: DIContainer): void {
     'promptOptimizationService',
     (
       aiService: AIModelService,
+      cacheService: CacheService,
       videoService: VideoPromptService,
       imageObservationService: ImageObservationService
     ) =>
-      new PromptOptimizationService(aiService, videoService, imageObservationService),
-    ['aiService', 'videoService', 'imageObservationService']
+      new PromptOptimizationService(aiService, cacheService, videoService, imageObservationService),
+    ['aiService', 'cacheService', 'videoService', 'imageObservationService']
   );
 
   container.register(
     'imageObservationService',
-    (aiService: AIModelService) => new ImageObservationService(aiService),
-    ['aiService']
+    (
+      aiService: AIModelService,
+      cacheService: CacheService
+    ) => new ImageObservationService(aiService, cacheService),
+    ['aiService', 'cacheService']
   );
 
   container.register(
@@ -68,7 +73,8 @@ export function registerEnhancementServices(container: DIContainer): void {
       validationService: SuggestionValidationService,
       diversityEnforcer: SuggestionDiversityEnforcer,
       categoryAligner: CategoryAlignmentService,
-      metrics: EnhancementMetricsService
+      metrics: EnhancementMetricsService,
+      cacheService: CacheService
     ) =>
       new EnhancementService({
         aiService,
@@ -79,6 +85,7 @@ export function registerEnhancementServices(container: DIContainer): void {
         diversityEnforcer,
         categoryAligner,
         metricsService: metrics,
+        cacheService,
       }),
     [
       'aiService',
@@ -89,13 +96,14 @@ export function registerEnhancementServices(container: DIContainer): void {
       'diversityEnforcer',
       'categoryAligner',
       'metricsService',
+      'cacheService',
     ]
   );
 
   container.register(
     'sceneDetectionService',
-    (aiService: AIModelService) => new SceneChangeDetectionService(aiService),
-    ['aiService']
+    (aiService: AIModelService, cacheService: CacheService) => new SceneChangeDetectionService(aiService, cacheService),
+    ['aiService', 'cacheService']
   );
 
   container.register(
@@ -106,8 +114,8 @@ export function registerEnhancementServices(container: DIContainer): void {
 
   container.register(
     'videoConceptService',
-    (aiService: AIModelService) => new VideoConceptService(aiService),
-    ['aiService']
+    (aiService: AIModelService, cacheService: CacheService) => new VideoConceptService(aiService, cacheService),
+    ['aiService', 'cacheService']
   );
 
   container.register(

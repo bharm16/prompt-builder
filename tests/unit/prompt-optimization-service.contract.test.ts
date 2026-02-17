@@ -36,7 +36,14 @@ const createService = (): PromptOptimizationService => {
     getAvailableClients: vi.fn(() => ['mock']),
   };
 
-  return new PromptOptimizationService(aiService, null);
+  const cacheService = {
+    getConfig: vi.fn(() => ({ ttl: 60, namespace: 'test' })),
+    get: vi.fn(async () => null),
+    set: vi.fn(async () => true),
+    generateKey: vi.fn(() => 'cache-key'),
+  } as never;
+
+  return new PromptOptimizationService(aiService, cacheService, null);
 };
 
 describe('PromptOptimizationService contract', () => {

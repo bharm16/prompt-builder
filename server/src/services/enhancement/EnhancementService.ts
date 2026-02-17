@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '@services/cache/CacheService';
+import type { CacheService } from '@services/cache/CacheService';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas';
@@ -48,6 +48,7 @@ interface EnhancementServiceDependencies {
   diversityEnforcer: DiversityEnforcer;
   categoryAligner: CategoryAligner;
   metricsService?: MetricsService | null;
+  cacheService: CacheService;
 }
 
 interface EnhancementCoreServices {
@@ -85,6 +86,7 @@ export class EnhancementService {
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log: ILogger;
   private readonly i2vConstraints: I2VConstrainedSuggestions;
+  private readonly cacheService: CacheService;
 
   constructor(dependencies: EnhancementServiceDependencies) {
     const {
@@ -96,6 +98,7 @@ export class EnhancementService {
       diversityEnforcer,
       categoryAligner,
       metricsService = null,
+      cacheService,
     } = dependencies;
 
     this.core = {
@@ -110,7 +113,8 @@ export class EnhancementService {
     };
 
     this.log = logger.child({ service: 'EnhancementService' });
-    this.cacheConfig = cacheService.getConfig('enhancement') || {
+    this.cacheService = cacheService;
+    this.cacheConfig = this.cacheService.getConfig('enhancement') || {
       ttl: 3600,
       namespace: 'enhancement',
     };
@@ -275,9 +279,9 @@ export class EnhancementService {
         modelTarget,
         promptSection,
         spanFingerprint: spanContext.spanFingerprint,
-      });
+      }, this.cacheService);
 
-      const cached = await cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
+      const cached = await this.cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
       metrics.cacheCheck = Date.now() - cacheStart;
 
       if (cached) {
@@ -431,7 +435,7 @@ export class EnhancementService {
         suggestions ?? []
       );
 
-      await cacheService.set(cacheKey, result, {
+      await this.cacheService.set(cacheKey, result, {
         ttl: this.cacheConfig.ttl,
       });
 
@@ -505,7 +509,7 @@ export class EnhancementService {
     });
 
     // Check cache
-    const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
+    const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
       highlightedText,
       customRequest,
       fullPrompt: fullPrompt.substring(0, 500),
@@ -516,7 +520,7 @@ export class EnhancementService {
         ?? null,
     });
 
-    const cached = await cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
+    const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
     if (cached) {
       this.log.debug('Cache hit for custom suggestions', {
         operation,
@@ -564,7 +568,7 @@ export class EnhancementService {
     const result = { suggestions: diverseSuggestions };
 
     // Cache result
-    await cacheService.set(cacheKey, result, {
+    await this.cacheService.set(cacheKey, result, {
       ttl: this.cacheConfig.ttl,
     });
 

@@ -21,15 +21,6 @@ vi.mock('@utils/StructuredOutputEnforcer', () => ({
   },
 }));
 
-vi.mock('@services/cache/CacheService', () => ({
-  cacheService: {
-    getConfig: () => ({ ttl: 60, namespace: 'enhancement' }),
-    get: mockCacheGet,
-    set: mockCacheSet,
-    generateKey: vi.fn(() => 'custom-key'),
-  },
-}));
-
 function createService() {
   const aiService = {
     getOperationConfig: vi.fn(() => ({
@@ -108,6 +99,13 @@ function createService() {
     ),
   } as unknown as CategoryAligner;
 
+  const cacheService = {
+    getConfig: vi.fn(() => ({ ttl: 60, namespace: 'enhancement' })),
+    get: mockCacheGet,
+    set: mockCacheSet,
+    generateKey: vi.fn(() => 'custom-key'),
+  } as any;
+
   const service = new EnhancementService({
     aiService,
     videoService,
@@ -117,6 +115,7 @@ function createService() {
     diversityEnforcer,
     categoryAligner,
     metricsService: null,
+    cacheService,
   });
 
   return {

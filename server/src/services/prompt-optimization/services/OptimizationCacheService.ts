@@ -1,4 +1,4 @@
-import { cacheService } from '@services/cache/CacheService';
+import type { CacheService } from '@services/cache/CacheService';
 import OptimizationConfig from '@config/OptimizationConfig';
 import { OptimizationMode, InferredContext } from '../types';
 import crypto from 'crypto';
@@ -8,24 +8,24 @@ export class OptimizationCacheService {
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log = logger.child({ service: 'OptimizationCacheService' });
 
-  constructor() {
-    this.cacheConfig = cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
+  constructor(private readonly cacheService: CacheService) {
+    this.cacheConfig = this.cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
   }
 
   async getCachedResult(key: string): Promise<string | null> {
-    return cacheService.get<string>(key);
+    return this.cacheService.get<string>(key);
   }
 
   async getCachedMetadata(key: string): Promise<Record<string, unknown> | null> {
     const metaKey = this.buildMetadataCacheKey(key);
-    return cacheService.get<Record<string, unknown>>(metaKey);
+    return this.cacheService.get<Record<string, unknown>>(metaKey);
   }
 
   async cacheResult(key: string, result: string, metadata?: Record<string, unknown> | null): Promise<void> {
-    await cacheService.set(key, result, this.cacheConfig);
+    await this.cacheService.set(key, result, this.cacheConfig);
     if (metadata) {
       const metaKey = this.buildMetadataCacheKey(key);
-      await cacheService.set(metaKey, metadata, this.cacheConfig);
+      await this.cacheService.set(metaKey, metadata, this.cacheConfig);
     }
   }
 

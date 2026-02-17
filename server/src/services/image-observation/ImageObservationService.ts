@@ -19,6 +19,7 @@ import {
 } from '@shared/cinematography';
 import type { AIService } from '@services/prompt-optimization/types';
 import { z } from 'zod';
+import type { CacheService } from '@services/cache/CacheService';
 import {
   deriveMotionCompatibility,
   detectAngle,
@@ -127,9 +128,9 @@ export class ImageObservationService {
   private readonly cache: ObservationCache;
   private readonly log = logger.child({ service: 'ImageObservationService' });
 
-  constructor(aiService: AIService) {
+  constructor(aiService: AIService, cacheService: CacheService) {
     this.ai = aiService;
-    this.cache = new ObservationCache();
+    this.cache = new ObservationCache(cacheService);
   }
 
   /**

@@ -15,6 +15,7 @@ import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
 import { ImageObservationService } from '@services/image-observation';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { CacheService } from '@services/cache/CacheService';
 import type {
   AIService,
   OptimizationMode,
@@ -53,6 +54,7 @@ export class PromptOptimizationService {
 
   constructor(
     aiService: AIService,
+    cacheService: CacheService,
     videoPromptService: VideoPromptService | null = null,
     imageObservationService?: ImageObservationService
   ) {
@@ -66,11 +68,11 @@ export class PromptOptimizationService {
     this.strategyFactory = new StrategyFactory(aiService, templateService);
     this.shotInterpreter = new ShotInterpreterService(aiService);
     this.draftService = new DraftGenerationService(aiService);
-    this.optimizationCache = new OptimizationCacheService();
+    this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService
       ? new VideoPromptCompilationService(videoPromptService, this.qualityAssessment)
       : null;
-    this.imageObservation = imageObservationService ?? new ImageObservationService(aiService);
+    this.imageObservation = imageObservationService ?? new ImageObservationService(aiService, cacheService);
     this.i2vStrategy = new I2VMotionStrategy(aiService);
 
     this.templateVersions = OptimizationConfig.templateVersions;

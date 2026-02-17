@@ -1,4 +1,4 @@
-import { cacheService } from '@services/cache/CacheService';
+import type { CacheService } from '@services/cache/CacheService';
 import type { VideoConstraints, BrainstormSignature, EditHistoryEntry } from '../services/types.js';
 import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
 
@@ -35,7 +35,11 @@ export class CacheKeyFactory {
    * @param params - Enhancement cache parameters
    * @returns Cache key string
    */
-  static generateKey(namespace: string, params: EnhancementCacheParams): string {
+  static generateKey(
+    namespace: string,
+    params: EnhancementCacheParams,
+    cacheService: Pick<CacheService, 'generateKey'>
+  ): string {
     let editFingerprint: string | null = null;
     if (Array.isArray(params.editHistory) && params.editHistory.length > 0) {
       // Create compact fingerprint from recent edit patterns

@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { cacheService } from '@services/cache/CacheService';
+import type { CacheService } from '@services/cache/CacheService';
 
 // Import specialized services
 import {
@@ -77,9 +77,11 @@ export class VideoConceptService {
   private readonly technicalParameter: TechnicalParameterService;
   private readonly promptValidation: PromptValidationService;
   private readonly conflictDetection: ConflictDetectionService;
+  private readonly cacheService: CacheService;
 
-  constructor(aiService: AIService, options: VideoConceptServiceOptions = {}) {
+  constructor(aiService: AIService, cacheService: CacheService, options: VideoConceptServiceOptions = {}) {
     this.ai = aiService;
+    this.cacheService = cacheService;
 
     // Initialize repository with optional storage adapter
     this.preferenceRepository = options.preferenceRepository ||
@@ -89,12 +91,12 @@ export class VideoConceptService {
       new VideoTemplateRepository(options.templateRepositoryOptions);
 
     // Initialize compatibility service (needs cache for semantic scoring)
-    this.compatibilityService = new CompatibilityService(aiService, cacheService);
+    this.compatibilityService = new CompatibilityService(aiService, this.cacheService);
 
     // Initialize suggestion generator (depends on preference repository and compatibility service)
     this.suggestionGenerator = new SuggestionGeneratorService(
       aiService,
-      cacheService,
+      this.cacheService,
       this.preferenceRepository,
       this.compatibilityService
     );
