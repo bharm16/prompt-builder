@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useClipboard } from '../../hooks/useClipboard';
-import { useShareLink } from '../../hooks/useShareLink';
-import { AI_MODEL_IDS, AI_MODEL_LABELS } from '../../components/constants';
+import { useClipboard } from '@features/prompt-optimizer/hooks/useClipboard';
+import { useShareLink } from '@features/prompt-optimizer/hooks/useShareLink';
+import { AI_MODEL_IDS, AI_MODEL_LABELS } from '@features/prompt-optimizer/components/constants';
 
 type ReoptimizeOptions = {
   forceGenericTarget?: boolean;

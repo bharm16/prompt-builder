@@ -24,7 +24,6 @@ import type {
   PromptCanvasProps,
   HighlightSnapshot,
 } from './types';
-import type { Generation } from '../GenerationsPanel/types';
 
 import {
   escapeHTMLForMLHighlighting,
@@ -43,13 +42,10 @@ import { useEditorContent } from './hooks/useEditorContent';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePromptExport } from './hooks/usePromptExport';
 import { useLockedSpanInteractions } from './hooks/useLockedSpanInteractions';
-import { useShotGenerations } from './hooks/useShotGenerations';
 import { useTriggerValidation } from './hooks/useTriggerValidation';
 import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
-import { useVersionManagement } from './hooks/useVersionManagement';
 import { useCanvasEditorState } from './hooks/useCanvasEditorState';
-import { usePromptCanvasPanelProps } from './hooks/usePromptCanvasPanelProps';
-import { applyGenerationReuse } from './utils/reuseGeneration';
+import { useCanvasGenerations } from './hooks/useCanvasGenerations';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
@@ -186,11 +182,6 @@ export function PromptCanvas({
       : null;
   }, [generationParams?.fps]);
 
-  const { shotId, shotPromptEntry, updateShotVersions } = useShotGenerations({
-    currentShot,
-    updateShot,
-  });
-
   const enableMLHighlighting = selectedMode === 'video' && showResults;
 
   // Span bento overlay (collapsed by default on desktop)
@@ -283,22 +274,22 @@ export function PromptCanvas({
   const {
     currentVersions,
     orderedVersions,
-    versionsForPanel,
     selectedVersionId,
-    activeVersion,
     promptVersionId,
     handleSelectVersion,
     handleCreateVersion,
     createVersionIfNeeded,
     handleGenerationsChange,
-    setGenerationFavorite,
     syncVersionHighlights,
     versioningPromptUuid,
-  } = useVersionManagement({
+    versionsPanelProps,
+    generationsPanelProps,
+    handleReuseGeneration,
+    handleToggleGenerationFavorite,
+  } = useCanvasGenerations({
     hasShotContext,
-    shotId,
-    shotPromptEntry,
-    updateShotVersions,
+    currentShot,
+    updateShot,
     promptHistory,
     currentPromptUuid,
     currentPromptDocId,
@@ -321,6 +312,16 @@ export function PromptCanvas({
     versionEditsRef,
     resetVersionEdits,
     effectiveAspectRatio,
+    showResults,
+    normalizedInputPrompt,
+    promptVersionId: activeVersionId,
+    durationSeconds,
+    fpsNumber,
+    onInputPromptChange,
+    onResetResultsForEditing,
+    setSelectedModel,
+    setVideoTier,
+    setGenerationParams,
   });
 
   const setShowLegend = useCallback(
@@ -443,32 +444,6 @@ export function PromptCanvas({
       normalizedDisplayedPrompt,
       syncVersionHighlights,
     ]
-  );
-
-  const handleReuseGeneration = useCallback(
-    (generation: Generation): void => {
-      applyGenerationReuse(generation, {
-        onInputPromptChange,
-        onResetResultsForEditing,
-        setSelectedModel,
-        setVideoTier,
-        setGenerationParams,
-      });
-    },
-    [
-      onInputPromptChange,
-      onResetResultsForEditing,
-      setGenerationParams,
-      setSelectedModel,
-      setVideoTier,
-    ]
-  );
-
-  const handleToggleGenerationFavorite = useCallback(
-    (generationId: string, isFavorite: boolean): void => {
-      setGenerationFavorite(generationId, isFavorite);
-    },
-    [setGenerationFavorite]
   );
 
   // Track if this is the first time seeing this text (skip debounce for initial optimization)
@@ -1022,25 +997,6 @@ export function PromptCanvas({
 
   // Render the component
 
-  const { versionsPanelProps, generationsPanelProps } = usePromptCanvasPanelProps({
-    versionsForPanel,
-    selectedVersionId,
-    onSelectVersion: handleSelectVersion,
-    onCreateVersion: handleCreateVersion,
-    showResults,
-    normalizedDisplayedPrompt,
-    normalizedInputPrompt,
-    promptVersionId,
-    effectiveAspectRatio,
-    durationSeconds,
-    fpsNumber,
-    generationParams,
-    initialGenerations: activeVersion?.generations ?? undefined,
-    onGenerationsChange: handleGenerationsChange,
-    currentVersions,
-    onRestoreVersion: handleSelectVersion,
-    onCreateVersionIfNeeded: createVersionIfNeeded,
-  });
 
   return (
     <PromptCanvasView
