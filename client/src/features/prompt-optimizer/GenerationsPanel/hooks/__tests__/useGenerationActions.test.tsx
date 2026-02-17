@@ -20,6 +20,11 @@ const getAction = (dispatch: ReturnType<typeof vi.fn>, type: string) =>
     .map((call) => call[0] as { type: string })
     .find((action) => action.type === type);
 
+const getActions = (dispatch: ReturnType<typeof vi.fn>, type: string) =>
+  dispatch.mock.calls
+    .map((call) => call[0] as { type: string; payload?: unknown })
+    .filter((action) => action.type === type);
+
 describe('useGenerationActions insufficient credits handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,5 +133,62 @@ describe('useGenerationActions insufficient credits handling', () => {
     expect(updateActions.some((action) => action.payload?.updates?.status === 'failed')).toBe(
       true
     );
+  });
+});
+
+describe('useGenerationActions cancellation behavior', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('marks in-flight draft generation as cancelled and aborts compile work', async () => {
+    const dispatch = vi.fn();
+
+    compileWanPromptMock.mockImplementation(
+      (_prompt: string, signal: AbortSignal) =>
+        new Promise<string>((_resolve, reject) => {
+          signal.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        })
+    );
+
+    const { result } = renderHook(() => useGenerationActions(dispatch));
+
+    let draftPromise: Promise<void> | undefined;
+    act(() => {
+      draftPromise = result.current.generateDraft('wan-2.2', 'A cinematic test prompt', {});
+    });
+
+    const addAction = getAction(dispatch, 'ADD_GENERATION') as
+      | { payload: { id: string } }
+      | undefined;
+    expect(addAction?.payload.id).toBeDefined();
+
+    const generationId = addAction?.payload.id;
+    if (!generationId) {
+      throw new Error('Expected generation id to be present');
+    }
+
+    await act(async () => {
+      result.current.cancelGeneration(generationId);
+      await draftPromise;
+    });
+
+    const updateActions = getActions(dispatch, 'UPDATE_GENERATION') as Array<{
+      payload?: { id?: string; updates?: { status?: string; error?: string } };
+    }>;
+
+    expect(
+      updateActions.some(
+        (action) =>
+          action.payload?.id === generationId &&
+          action.payload?.updates?.status === 'failed' &&
+          action.payload?.updates?.error === 'Cancelled'
+      )
+    ).toBe(true);
+    expect(compileWanPromptMock).toHaveBeenCalled();
+    expect((compileWanPromptMock.mock.calls[0]?.[1] as AbortSignal).aborted).toBe(true);
+    expect(generateVideoPreviewMock).not.toHaveBeenCalled();
   });
 });

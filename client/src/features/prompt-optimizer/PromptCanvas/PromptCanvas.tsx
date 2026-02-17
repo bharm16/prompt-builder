@@ -24,7 +24,7 @@ import type {
   PromptCanvasProps,
   HighlightSnapshot,
 } from './types';
-import type { Generation, GenerationsPanelProps } from '../GenerationsPanel/types';
+import type { Generation } from '../GenerationsPanel/types';
 
 import { useClipboard } from '../hooks/useClipboard';
 import { useShareLink } from '../hooks/useShareLink';
@@ -49,6 +49,7 @@ import { useShotGenerations } from './hooks/useShotGenerations';
 import { useTriggerValidation } from './hooks/useTriggerValidation';
 import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
 import { useVersionManagement } from './hooks/useVersionManagement';
+import { usePromptCanvasPanelProps } from './hooks/usePromptCanvasPanelProps';
 import { applyGenerationReuse } from './utils/reuseGeneration';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
@@ -1154,46 +1155,25 @@ export function PromptCanvas({
 
   // Render the component
 
-  const versionsPanelProps = useMemo(
-    () => ({
-      versions: versionsForPanel,
-      selectedVersionId,
-      onSelectVersion: handleSelectVersion,
-      onCreateVersion: handleCreateVersion,
-    }),
-    [versionsForPanel, selectedVersionId, handleSelectVersion, handleCreateVersion]
-  );
-
-  const generationsPanelProps = useMemo<GenerationsPanelProps>(
-    () => ({
-      prompt: showResults ? (normalizedDisplayedPrompt ?? '') : normalizedInputPrompt,
-      promptVersionId,
-      aspectRatio: effectiveAspectRatio ?? '16:9',
-      duration: durationSeconds ?? undefined,
-      fps: fpsNumber ?? undefined,
-      generationParams: generationParams ?? undefined,
-      initialGenerations: activeVersion?.generations ?? undefined,
-      onGenerationsChange: handleGenerationsChange,
-      versions: currentVersions,
-      onRestoreVersion: handleSelectVersion,
-      onCreateVersionIfNeeded: createVersionIfNeeded,
-    }),
-    [
-      normalizedDisplayedPrompt,
-      normalizedInputPrompt,
-      showResults,
-      promptVersionId,
-      effectiveAspectRatio,
-      durationSeconds,
-      fpsNumber,
-      generationParams,
-      activeVersion?.generations,
-      handleGenerationsChange,
-      currentVersions,
-      handleSelectVersion,
-      createVersionIfNeeded,
-    ]
-  );
+  const { versionsPanelProps, generationsPanelProps } = usePromptCanvasPanelProps({
+    versionsForPanel,
+    selectedVersionId,
+    onSelectVersion: handleSelectVersion,
+    onCreateVersion: handleCreateVersion,
+    showResults,
+    normalizedDisplayedPrompt,
+    normalizedInputPrompt,
+    promptVersionId,
+    effectiveAspectRatio,
+    durationSeconds,
+    fpsNumber,
+    generationParams,
+    initialGenerations: activeVersion?.generations ?? undefined,
+    onGenerationsChange: handleGenerationsChange,
+    currentVersions,
+    onRestoreVersion: handleSelectVersion,
+    onCreateVersionIfNeeded: createVersionIfNeeded,
+  });
 
   return (
     <PromptCanvasView
