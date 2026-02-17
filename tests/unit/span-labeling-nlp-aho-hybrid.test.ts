@@ -110,7 +110,10 @@ describe('Aho-Corasick + hybrid NLP/LLM coordination', () => {
     );
 
     expect(getSpans).toHaveBeenCalledOnce();
-    expect(mockCreateLlmClient).toHaveBeenCalledWith({ operation: 'span_labeling' });
+    expect(mockCreateLlmClient).toHaveBeenCalledWith({
+      operation: 'span_labeling',
+      model: 'gpt-4o-mini',
+    });
     expect(result.meta.notes).toContain('llm fallback');
   });
 });

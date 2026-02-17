@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { cacheService } from './cache/CacheService';
+import { cacheService } from '@services/cache/CacheService';
 
 // Import specialized services
 import {
@@ -14,9 +14,9 @@ import {
   PromptValidationService,
   ConflictDetectionService,
   VideoTemplateRepository,
-} from './video-concept/index';
-import type { AIService } from './prompt-optimization/types';
-import type { VideoTemplate, StorageAdapter, TemplateStorageAdapter } from './video-concept/types';
+} from '@services/video-concept/index.js';
+import type { AIService } from '@services/prompt-optimization/types';
+import type { VideoTemplate, StorageAdapter, TemplateStorageAdapter } from '@services/video-concept/types';
 
 /**
  * Video concept service options
@@ -349,4 +349,3 @@ export class VideoConceptService {
     logger.info('All caches cleared');
   }
 }
-

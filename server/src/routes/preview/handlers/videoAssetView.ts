@@ -1,16 +1,16 @@
 import type { Request, Response } from 'express';
 import type { PreviewRoutesServices } from '@routes/types';
-import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 
 type VideoAssetViewServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore'
+  'videoGenerationService' | 'videoJobStore' | 'storageService'
 >;
 
 export const createVideoAssetViewHandler = ({
   videoGenerationService,
   videoJobStore,
+  storageService,
 }: VideoAssetViewServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService) {
@@ -57,8 +57,10 @@ export const createVideoAssetViewHandler = ({
         }
 
         try {
-          const storage = getStorageService();
-          const { viewUrl, expiresAt, storagePath } = await storage.getViewUrl(
+          if (!storageService) {
+            throw new Error('storage unavailable');
+          }
+          const { viewUrl, expiresAt, storagePath } = await storageService.getViewUrl(
             userId,
             job.result.storagePath
           );

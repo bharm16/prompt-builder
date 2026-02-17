@@ -8,6 +8,7 @@ import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSw
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import type { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
+import { getRuntimeFlags } from './runtime-flags';
 
 interface HealthCheckResult {
   healthy: boolean;
@@ -23,6 +24,7 @@ interface HealthCheckResult {
  */
 export async function initializeServices(container: DIContainer): Promise<DIContainer> {
   logger.info('Initializing services...');
+  const runtimeFlags = getRuntimeFlags();
 
   // Resolve OpenAI client and validate (optional)
   const claudeClient = container.resolve<LLMClient | null>('claudeClient');
@@ -127,7 +129,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   const geminiClient = container.resolve<LLMClient | null>('geminiClient');
   if (geminiClient) {
     logger.info('Gemini client initialized for adapter-based routing');
-    const allowUnhealthyGemini = process.env.GEMINI_ALLOW_UNHEALTHY === 'true';
+    const allowUnhealthyGemini = runtimeFlags.allowUnhealthyGemini;
 
     try {
       const geminiHealth = await geminiClient.healthCheck() as HealthCheckResult;
@@ -205,7 +207,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   }
 
   logger.info('All services initialized and validated successfully');
-  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const { promptOutputOnly } = runtimeFlags;
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
 
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
@@ -290,7 +292,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     }
 
     const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
-    const workerDisabled = process.env.VIDEO_JOB_WORKER_DISABLED === 'true';
+    const workerDisabled = runtimeFlags.videoWorkerDisabled;
     if (videoJobWorker && !workerDisabled) {
       videoJobWorker.start();
       logger.info('✅ Video job worker started');

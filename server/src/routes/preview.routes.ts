@@ -8,7 +8,6 @@ import type { Router } from 'express';
 import express from 'express';
 import { createDiskUpload } from '@utils/upload';
 import { asyncHandler } from '@middleware/asyncHandler';
-import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import type { PreviewRoutesServices } from './types';
 import { createImageGenerateHandler } from './preview/handlers/imageGenerate';
 import { createImageStoryboardGenerateHandler } from './preview/handlers/imageStoryboardGenerate';
@@ -35,10 +34,10 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
   const resolvedServices: PreviewRoutesServices = {
     ...services,
-    userCreditService: services.userCreditService ?? defaultUserCreditService,
     ...(services.keyframeService !== undefined ? { keyframeService: services.keyframeService } : {}),
     ...(services.faceSwapService !== undefined ? { faceSwapService: services.faceSwapService } : {}),
     ...(services.assetService !== undefined ? { assetService: services.assetService } : {}),
+    ...(services.storageService !== undefined ? { storageService: services.storageService } : {}),
   };
 
   const imageGenerateHandler = createImageGenerateHandler(resolvedServices);
@@ -48,7 +47,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const videoJobsHandler = createVideoJobsHandler(resolvedServices);
   const videoContentHandler = createVideoContentHandler(resolvedServices);
   const imageContentHandler = createImageContentHandler();
-  const imageUploadHandler = createImageUploadHandler();
+  const imageUploadHandler = createImageUploadHandler(resolvedServices);
   const imageAssetViewHandler = createImageAssetViewHandler(resolvedServices);
   const videoAssetViewHandler = createVideoAssetViewHandler(resolvedServices);
   const faceSwapPreviewHandler = createFaceSwapPreviewHandler(resolvedServices);

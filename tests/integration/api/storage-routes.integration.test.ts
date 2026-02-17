@@ -2,7 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getStorageServiceMock, storageServiceMock } = vi.hoisted(() => {
+const { storageServiceMock } = vi.hoisted(() => {
   const storageServiceMock = {
     getUploadUrl: vi.fn(),
     saveFromUrl: vi.fn(),
@@ -17,13 +17,8 @@ const { getStorageServiceMock, storageServiceMock } = vi.hoisted(() => {
 
   return {
     storageServiceMock,
-    getStorageServiceMock: vi.fn(() => storageServiceMock),
   };
 });
-
-vi.mock('@services/storage/StorageService', () => ({
-  getStorageService: getStorageServiceMock,
-}));
 
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { createStorageRoutes } from '@routes/storage.routes';
@@ -34,7 +29,7 @@ const TEST_USER_ID = `api-key:${TEST_API_KEY}`;
 function createApp() {
   const app = express();
   app.use(express.json());
-  app.use('/api/storage', apiAuthMiddleware, createStorageRoutes());
+  app.use('/api/storage', apiAuthMiddleware, createStorageRoutes(storageServiceMock as never));
   return app;
 }
 
@@ -226,4 +221,3 @@ describe('Storage Routes (integration)', () => {
     expect(noAuthResponse.body.error).toBe('Authentication required');
   });
 });
-

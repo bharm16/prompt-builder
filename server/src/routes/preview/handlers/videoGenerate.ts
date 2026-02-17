@@ -35,6 +35,7 @@ export const createVideoGenerateHandler = ({
   videoGenerationService,
   videoJobStore,
   userCreditService,
+  storageService,
   keyframeService,
   faceSwapService,
   assetService,
@@ -351,6 +352,7 @@ export const createVideoGenerateHandler = ({
         videoJobStore,
         videoGenerationService,
         userCreditService,
+        storageService: storageService ?? null,
       });
 
       const responsePayload = {

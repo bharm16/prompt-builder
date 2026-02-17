@@ -9,12 +9,11 @@ import type {
   ImagePreviewSpeedMode,
 } from '@services/image-generation/providers/types';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageGenerateServices = Pick<
   PreviewRoutesServices,
-  'imageGenerationService' | 'userCreditService' | 'assetService'
+  'imageGenerationService' | 'userCreditService' | 'assetService' | 'storageService'
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
@@ -34,6 +33,7 @@ export const createImageGenerateHandler = ({
   imageGenerationService,
   userCreditService,
   assetService,
+  storageService,
 }: ImageGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!imageGenerationService) {
@@ -243,22 +243,23 @@ export const createImageGenerateHandler = ({
         sizeBytes: number;
       } | null = null;
 
-      try {
-        const storage = getStorageService();
-        storageResult = await storage.saveFromUrl(userId, result.imageUrl, 'preview-image', {
-          model: result.metadata.model,
-          promptId: (req.body as { promptId?: string })?.promptId,
-          aspectRatio: result.metadata.aspectRatio,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('Failed to persist preview image to storage', {
-          userId,
-          error: errorMessage,
-          shouldResolvePrompt,
-          resolvedAssetCount,
-          resolvedCharacterCount,
-        });
+      if (storageService) {
+        try {
+          storageResult = await storageService.saveFromUrl(userId, result.imageUrl, 'preview-image', {
+            model: result.metadata.model,
+            promptId: (req.body as { promptId?: string })?.promptId,
+            aspectRatio: result.metadata.aspectRatio,
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.warn('Failed to persist preview image to storage', {
+            userId,
+            error: errorMessage,
+            shouldResolvePrompt,
+            resolvedAssetCount,
+            resolvedCharacterCount,
+          });
+        }
       }
 
       const responseData = storageResult

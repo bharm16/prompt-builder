@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import fs from 'fs';
 import { logger } from '@infrastructure/Logger';
-import { getStorageService } from '@services/storage/StorageService';
+import type { PreviewRoutesServices } from '@routes/types';
 import { cleanupUploadFile, readUploadBuffer } from '@utils/upload';
 import { getAuthenticatedUserId } from '../auth';
 
@@ -29,7 +29,9 @@ function normalizeOptionalString(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-export const createImageUploadHandler = () =>
+type ImageUploadServices = Pick<PreviewRoutesServices, 'storageService'>;
+
+export const createImageUploadHandler = ({ storageService }: ImageUploadServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const userId = await getAuthenticatedUserId(req);
     if (!userId) {
@@ -61,7 +63,13 @@ export const createImageUploadHandler = () =>
     const source = normalizeOptionalString((req as Request & { body?: { source?: unknown } }).body?.source);
     const label = normalizeOptionalString((req as Request & { body?: { label?: unknown } }).body?.label);
 
-    const storage = getStorageService();
+    if (!storageService) {
+      return res.status(503).json({
+        success: false,
+        error: 'Storage service unavailable',
+        message: 'Storage service is not configured for preview uploads.',
+      });
+    }
 
     try {
       const uploadMetadata = {
@@ -72,8 +80,8 @@ export const createImageUploadHandler = () =>
       };
 
       const result =
-        file.path && typeof storage.uploadStream === 'function'
-          ? await storage.uploadStream(
+        file.path
+          ? await storageService.uploadStream(
               userId,
               'preview-image',
               fs.createReadStream(file.path),
@@ -81,7 +89,7 @@ export const createImageUploadHandler = () =>
               file.mimetype,
               uploadMetadata
             )
-          : await storage.uploadBuffer(
+          : await storageService.uploadBuffer(
               userId,
               'preview-image',
               await readUploadBuffer(file),

@@ -56,6 +56,7 @@ import { createHealthRoutes } from '@routes/health.routes';
 import { createAPIRoutes } from '@routes/api.routes';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import type { AIModelService } from '@services/ai-model/AIModelService';
+import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import { isSocketPermissionError, runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 const createApiServices = (
@@ -65,6 +66,17 @@ const createApiServices = (
     optimize,
     optimizeTwoStage: vi.fn(async () => ({ optimizedPrompt: 'optimized prompt' })),
     compilePrompt: vi.fn(async () => ({ compiledPrompt: 'compiled prompt' })),
+  } as never,
+  storageService: {
+    getUploadUrl: vi.fn(),
+    saveFromUrl: vi.fn(),
+    confirmUpload: vi.fn(),
+    getViewUrl: vi.fn(),
+    getDownloadUrl: vi.fn(),
+    listFiles: vi.fn(),
+    getStorageUsage: vi.fn(),
+    deleteFile: vi.fn(),
+    deleteFiles: vi.fn(),
   } as never,
   enhancementService: {
     getEnhancementSuggestions: vi.fn(async () => ({})),
@@ -348,7 +360,8 @@ describe('suggestions.routes', () => {
     const app = express();
     app.use(express.json());
     const aiService = {} as AIModelService;
-    app.use(createSuggestionsRoute(aiService));
+    const llmJudgeService = new LLMJudgeService(aiService);
+    app.use(createSuggestionsRoute({ llmJudgeService }));
 
     const invalid = await runSupertestOrSkip(() =>
       request(app).post('/evaluate').send({
@@ -366,7 +379,8 @@ describe('suggestions.routes', () => {
     const app = express();
     app.use(express.json());
     const aiService = {} as AIModelService;
-    app.use(createSuggestionsRoute(aiService));
+    const llmJudgeService = new LLMJudgeService(aiService);
+    app.use(createSuggestionsRoute({ llmJudgeService }));
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/evaluate').send({
@@ -385,7 +399,8 @@ describe('suggestions.routes', () => {
     const app = express();
     app.use(express.json());
     const aiService = {} as AIModelService;
-    app.use(createSuggestionsRoute(aiService));
+    const llmJudgeService = new LLMJudgeService(aiService);
+    app.use(createSuggestionsRoute({ llmJudgeService }));
 
     const single = await runSupertestOrSkip(() =>
       request(app).post('/evaluate/single').send({
@@ -414,7 +429,8 @@ describe('suggestions.routes', () => {
   it('exposes rubric definitions', async () => {
     const app = express();
     const aiService = {} as AIModelService;
-    app.use(createSuggestionsRoute(aiService));
+    const llmJudgeService = new LLMJudgeService(aiService);
+    app.use(createSuggestionsRoute({ llmJudgeService }));
 
     const response = await runSupertestOrSkip(() => request(app).get('/rubrics'));
     if (!response) return;

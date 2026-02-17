@@ -4,7 +4,7 @@ import type {
   VideoService,
 } from '@services/enhancement/services/types';
 import { AIModelService } from '@services/ai-model/index';
-import { EnhancementService } from '@services/EnhancementService';
+import { EnhancementService } from '@services/enhancement/index';
 import { BrainstormContextBuilder } from '@services/enhancement/services/BrainstormContextBuilder';
 import { CategoryAlignmentService } from '@services/enhancement/services/CategoryAlignmentService';
 import { CleanPromptBuilder } from '@services/enhancement/services/CleanPromptBuilder';
@@ -13,9 +13,10 @@ import { SuggestionDiversityEnforcer } from '@services/enhancement/services/Sugg
 import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
 import { ImageObservationService } from '@services/image-observation';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
 import { VideoPromptService } from '@services/video-prompt-analysis/index';
-import { VideoConceptService } from '@services/VideoConceptService';
+import { VideoConceptService } from '@services/video-concept/VideoConceptService';
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register('videoService', () => new VideoPromptService(), []);
@@ -107,5 +108,12 @@ export function registerEnhancementServices(container: DIContainer): void {
     'videoConceptService',
     (aiService: AIModelService) => new VideoConceptService(aiService),
     ['aiService']
+  );
+
+  container.register(
+    'llmJudgeService',
+    (aiService: AIModelService) => new LLMJudgeService(aiService),
+    ['aiService'],
+    { singleton: true }
   );
 }

@@ -6,19 +6,13 @@ const mocks = vi.hoisted(() => ({
   loggerWarn: vi.fn(),
 }));
 
-vi.mock('@services/credits/UserCreditService', () => ({
-  userCreditService: {
-    ensureStarterGrant: mocks.ensureStarterGrant,
-  },
-}));
-
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
     warn: mocks.loggerWarn,
   },
 }));
 
-import { __resetStarterCreditsCacheForTests, starterCreditsMiddleware } from '../starterCredits';
+import { __resetStarterCreditsCacheForTests, createStarterCreditsMiddleware } from '../starterCredits';
 
 type StarterReq = Request & {
   user?: {
@@ -32,6 +26,9 @@ const createReq = (uid?: string): StarterReq =>
   }) as StarterReq;
 
 describe('starterCreditsMiddleware', () => {
+  const starterCreditsMiddleware = createStarterCreditsMiddleware({
+    ensureStarterGrant: mocks.ensureStarterGrant,
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     __resetStarterCreditsCacheForTests();

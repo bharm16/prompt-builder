@@ -17,29 +17,91 @@ import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { errorHandler } from '@middleware/errorHandler';
 import { createBatchMiddleware } from '@middleware/requestBatching';
-import { starterCreditsMiddleware } from '@middleware/starterCredits';
+import { createStarterCreditsMiddleware } from '@middleware/starterCredits';
 
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
 import { createHealthRoutes } from '@routes/health.routes';
 import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
+import type { StorageRoutesService } from '@routes/storage.routes';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
+import type { PaymentRouteServices } from '@routes/payment/types';
 import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
 import { createMotionRoutes } from '@routes/motion.routes';
-import { userCreditService } from '@services/credits/UserCreditService';
+import type { VideoConceptServiceContract } from '@routes/video/types';
+import type { UserCreditService } from '@services/credits/UserCreditService';
+import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
+import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
+import type { PreviewRoutesServices } from '@routes/types';
+import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
+import { getRuntimeFlags } from './runtime-flags';
 
 type RequestWithId = Request & {
   id?: string;
 };
 
+function resolveOptionalService<T>(
+  container: DIContainer,
+  serviceName: string,
+  routeContext: string
+): T | null {
+  try {
+    return container.resolve<T>(serviceName);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.warn('Optional route dependency unavailable; route behavior will be degraded', {
+      serviceName,
+      routeContext,
+      error: errorMessage,
+    });
+    return null;
+  }
+}
+
 /**
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
-  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const { promptOutputOnly } = getRuntimeFlags();
+  const userCreditService = container.resolve<UserCreditService>('userCreditService');
+  const videoGenerationService = promptOutputOnly
+    ? null
+    : resolveOptionalService<PreviewRoutesServices['videoGenerationService']>(
+        container,
+        'videoGenerationService',
+        'preview'
+      );
+  const continuitySessionService = resolveOptionalService<ContinuitySessionService | null>(
+    container,
+    'continuitySessionService',
+    'continuity'
+  );
+  const modelIntelligenceService = resolveOptionalService<ModelIntelligenceService | null>(
+    container,
+    'modelIntelligenceService',
+    'model-intelligence'
+  );
+  const consistentVideoService: ConsistentVideoService | null =
+    promptOutputOnly || !videoGenerationService
+      ? null
+      : resolveOptionalService<ConsistentVideoService | null>(
+          container,
+          'consistentVideoService',
+          'consistent-generation'
+        );
+  const videoConceptService: VideoConceptServiceContract | null = promptOutputOnly
+    ? null
+    : resolveOptionalService<VideoConceptServiceContract | null>(
+        container,
+        'videoConceptService',
+        'video-concept'
+      );
+  const starterCreditsMiddleware = createStarterCreditsMiddleware(userCreditService);
 
   // ============================================================================
   // Health Routes (no auth required)
@@ -61,8 +123,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
 
   if (!promptOutputOnly) {
     const publicPreviewRoutes = createPublicPreviewRoutes({
-      videoGenerationService: container.resolve('videoGenerationService'),
-      videoContentAccessService: container.resolve('videoContentAccessService'),
+      videoGenerationService,
+      videoContentAccessService: resolveOptionalService<VideoContentAccessService | null>(
+        container,
+        'videoContentAccessService',
+        'public-preview'
+      ),
     });
     app.use('/api/preview', publicPreviewRoutes);
 
@@ -80,15 +146,16 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
     promptCoherenceService: container.resolve('promptCoherenceService'),
-    videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
+    storageService: container.resolve<StorageRoutesService>('storageService'),
+    videoConceptService,
     assetService: container.resolve('assetService'),
-    consistentVideoService: container.resolve('consistentVideoService'),
+    ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService: container.resolve('userCreditService'),
     referenceImageService: container.resolve('referenceImageService'),
     imageObservationService: container.resolve('imageObservationService'),
-    continuitySessionService: container.resolve('continuitySessionService'),
+    continuitySessionService,
     sessionService: container.resolve('sessionService'),
-    modelIntelligenceService: container.resolve('modelIntelligenceService'),
+    modelIntelligenceService,
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
@@ -130,7 +197,9 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   // Optional quality evaluation endpoints (with DI)
-  const suggestionsRoute = createSuggestionsRoute(container.resolve('aiService'));
+  const suggestionsRoute = createSuggestionsRoute({
+    llmJudgeService: container.resolve<LLMJudgeService>('llmJudgeService'),
+  });
   app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
 
   // ============================================================================
@@ -141,10 +210,11 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     const previewRoutes = createPreviewRoutes({
       imageGenerationService: container.resolve('imageGenerationService'),
       storyboardPreviewService: container.resolve('storyboardPreviewService'),
-      videoGenerationService: container.resolve('videoGenerationService'),
+      videoGenerationService,
       videoJobStore: container.resolve('videoJobStore'),
       videoContentAccessService: container.resolve('videoContentAccessService'),
       userCreditService,
+      storageService: container.resolve('storageService'),
       keyframeService: container.resolve('keyframeService'),
       faceSwapService: container.resolve('faceSwapService'),
       assetService: container.resolve('assetService'),
@@ -156,7 +226,13 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Payment Routes (auth required)
   // ============================================================================
 
-  const paymentRoutes = createPaymentRoutes();
+  const paymentRouteServices: PaymentRouteServices = {
+    paymentService: container.resolve<PaymentRouteServices['paymentService']>('paymentService'),
+    webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
+    billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
+    userCreditService,
+  };
+  const paymentRoutes = createPaymentRoutes(paymentRouteServices);
   app.use('/api/payment', apiAuthMiddleware, starterCreditsMiddleware, paymentRoutes);
 
   // ============================================================================

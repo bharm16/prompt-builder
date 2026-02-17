@@ -9,6 +9,7 @@ export type VideoGenerateServices = Pick<
   | 'videoGenerationService'
   | 'videoJobStore'
   | 'userCreditService'
+  | 'storageService'
   | 'keyframeService'
   | 'faceSwapService'
   | 'assetService'

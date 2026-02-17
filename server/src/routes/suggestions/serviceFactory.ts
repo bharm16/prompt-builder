@@ -1,14 +1,17 @@
-import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
-import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
+
+export interface SuggestionsRouteServices {
+  llmJudgeService: LLMJudgeService;
+}
 
 export interface SuggestionsServices {
   llmJudge: LLMJudgeService;
 }
 
 export function createSuggestionsServices(
-  aiService: AIModelService
+  services: SuggestionsRouteServices
 ): SuggestionsServices {
   return {
-    llmJudge: new LLMJudgeService(aiService),
+    llmJudge: services.llmJudgeService,
   };
 }

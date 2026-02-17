@@ -1,19 +1,19 @@
 import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
-import { getStorageService } from '@services/storage/StorageService';
 import { getAuthenticatedUserId } from '../auth';
 import { buildVideoContentUrl } from '../content';
 
 type VideoJobsServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService'
+  'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService' | 'storageService'
 >;
 
 export const createVideoJobsHandler = ({
   videoGenerationService,
   videoJobStore,
   videoContentAccessService,
+  storageService,
 }: VideoJobsServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -75,8 +75,12 @@ export const createVideoJobsHandler = ({
 
       if (job.result.storagePath) {
         try {
-          const storage = getStorageService();
-          const signed = await storage.getViewUrl(userId, job.result.storagePath);
+          const signed = storageService
+            ? await storageService.getViewUrl(userId, job.result.storagePath)
+            : null;
+          if (!signed) {
+            throw new Error('storage unavailable');
+          }
           viewUrl = signed.viewUrl;
           rawUrl = signed.viewUrl;
           response.storagePath = job.result.storagePath;

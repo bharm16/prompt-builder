@@ -15,7 +15,7 @@ import { createOptimizeRoutes } from './optimize.routes';
 import { createVideoRoutes } from './video.routes';
 import { createCapabilitiesRoutes } from './capabilities.routes';
 import { createEnhancementRoutes, type EnhancementServices } from './enhancement.routes';
-import { createStorageRoutes } from './storage.routes';
+import { createStorageRoutes, type StorageRoutesService } from './storage.routes';
 import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 import { createReferenceImagesRoutes } from './reference-images.routes';
@@ -35,6 +35,7 @@ import type { ModelIntelligenceService } from '@services/model-intelligence/Mode
 import type { SessionService } from '@services/sessions/SessionService';
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
+  storageService: StorageRoutesService;
   videoConceptService?: VideoServices['videoConceptService'] | null;
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
@@ -69,6 +70,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     continuitySessionService,
     modelIntelligenceService,
     sessionService,
+    storageService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -97,7 +99,7 @@ export function createAPIRoutes(services: ApiServices): Router {
   );
 
   // Mount storage routes under /storage
-  router.use('/storage', createStorageRoutes());
+  router.use('/storage', createStorageRoutes(storageService));
 
   if (assetService) {
     router.use('/assets', createAssetRoutes(assetService));

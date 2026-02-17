@@ -1,7 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
-import { getStorageService } from '@services/storage/StorageService';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 
 interface InlinePreviewProcessorParams {
@@ -10,6 +9,7 @@ interface InlinePreviewProcessorParams {
   videoJobStore: VideoJobStore;
   videoGenerationService: NonNullable<PreviewRoutesServices['videoGenerationService']>;
   userCreditService: NonNullable<PreviewRoutesServices['userCreditService']>;
+  storageService?: NonNullable<PreviewRoutesServices['storageService']> | null;
 }
 
 function getVideoJobLeaseMs(): number {
@@ -26,6 +26,7 @@ export function scheduleInlineVideoPreviewProcessing({
   videoJobStore,
   videoGenerationService,
   userCreditService,
+  storageService,
 }: InlinePreviewProcessorParams): void {
   const leaseMs = getVideoJobLeaseMs();
   const workerId = `inline-preview-${requestId || Date.now()}`;
@@ -59,20 +60,21 @@ export function scheduleInlineVideoPreviewProcessing({
           sizeBytes: number;
         } | null = null;
 
-        try {
-          const storage = getStorageService();
-          storageResult = await storage.saveFromUrl(claimed.userId, result.videoUrl, 'generation', {
-            model: claimed.request.options?.model,
-            creditsUsed: claimed.creditsReserved,
-          });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.warn('Failed to persist inline preview video to storage', {
-            jobId,
-            workerId,
-            userId: claimed.userId,
-            error: errorMessage,
-          });
+        if (storageService) {
+          try {
+            storageResult = await storageService.saveFromUrl(claimed.userId, result.videoUrl, 'generation', {
+              model: claimed.request.options?.model,
+              creditsUsed: claimed.creditsReserved,
+            });
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.warn('Failed to persist inline preview video to storage', {
+              jobId,
+              workerId,
+              userId: claimed.userId,
+              error: errorMessage,
+            });
+          }
         }
 
         const resultWithStorage = storageResult

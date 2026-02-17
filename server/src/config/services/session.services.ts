@@ -2,12 +2,16 @@ import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import AssetService from '@services/asset/AssetService';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
+import { PaymentService } from '@services/payment/PaymentService';
+import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
 import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import { SessionService } from '@services/sessions/SessionService';
 import { SessionStore } from '@services/sessions/SessionStore';
 
 export function registerSessionServices(container: DIContainer): void {
   container.registerValue('billingProfileStore', new BillingProfileStore());
+  container.register('paymentService', () => new PaymentService(), [], { singleton: true });
+  container.register('stripeWebhookEventStore', () => new StripeWebhookEventStore(), [], { singleton: true });
   container.register('sessionStore', () => new SessionStore(), [], { singleton: true });
 
   container.register(

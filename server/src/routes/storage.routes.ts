@@ -1,13 +1,37 @@
 import express, { type Request, type Router } from 'express';
 import { isIP } from 'node:net';
 import { asyncHandler } from '@middleware/asyncHandler';
-import { getStorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES, type StorageType } from '@services/storage/config/storageConfig';
 import { getAuthenticatedUserId } from '@routes/preview/auth';
 
 type RequestWithUser = Request & { user?: { uid?: string } };
 
 const STORAGE_TYPE_SET = new Set<StorageType>(Object.values(STORAGE_TYPES));
+
+export interface StorageRoutesService {
+  getUploadUrl: (
+    userId: string,
+    type: StorageType,
+    contentType: string,
+    metadata?: Record<string, unknown>
+  ) => Promise<unknown>;
+  saveFromUrl: (
+    userId: string,
+    sourceUrl: string,
+    type: StorageType,
+    metadata?: Record<string, unknown>
+  ) => Promise<unknown>;
+  confirmUpload: (userId: string, storagePath: string) => Promise<unknown>;
+  getViewUrl: (userId: string, path: string) => Promise<unknown>;
+  getDownloadUrl: (userId: string, path: string, filename?: string) => Promise<unknown>;
+  listFiles: (
+    userId: string,
+    options: { limit: number; type?: StorageType; pageToken?: string }
+  ) => Promise<unknown>;
+  getStorageUsage: (userId: string) => Promise<unknown>;
+  deleteFile: (userId: string, path: string) => Promise<unknown>;
+  deleteFiles: (userId: string, paths: unknown[]) => Promise<unknown>;
+}
 
 async function resolveUserId(req: RequestWithUser): Promise<string | null> {
   if (req.user?.uid) {
@@ -38,7 +62,7 @@ function normalizeMetadata(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function createStorageRoutes(): Router {
+export function createStorageRoutes(storageService: StorageRoutesService): Router {
   const router = express.Router();
 
   router.post(
@@ -66,10 +90,8 @@ export function createStorageRoutes(): Router {
           error: 'Missing required fields: type, contentType',
         });
       }
-
-      const storage = getStorageService();
       const normalizedContentType = contentType.trim();
-      const result = await storage.getUploadUrl(
+      const result = await storageService.getUploadUrl(
         userId,
         normalizedType,
         normalizedContentType,
@@ -105,10 +127,8 @@ export function createStorageRoutes(): Router {
           error: 'Missing required fields: sourceUrl, type',
         });
       }
-
-      const storage = getStorageService();
       const normalizedSourceUrl = sourceUrl.trim();
-      const result = await storage.saveFromUrl(
+      const result = await storageService.saveFromUrl(
         userId,
         normalizedSourceUrl,
         normalizedType,
@@ -139,9 +159,7 @@ export function createStorageRoutes(): Router {
           error: 'Missing required field: storagePath',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.confirmUpload(userId, storagePath.trim());
+      const result = await storageService.confirmUpload(userId, storagePath.trim());
 
       return res.json({ success: true, data: result });
     })
@@ -167,9 +185,7 @@ export function createStorageRoutes(): Router {
           error: 'Missing required query parameter: path',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.getViewUrl(userId, path);
+      const result = await storageService.getViewUrl(userId, path);
 
       return res.json({ success: true, data: result });
     })
@@ -196,9 +212,7 @@ export function createStorageRoutes(): Router {
           error: 'Missing required query parameter: path',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.getDownloadUrl(userId, path, filename || undefined);
+      const result = await storageService.getDownloadUrl(userId, path, filename || undefined);
 
       return res.json({ success: true, data: result });
     })
@@ -226,14 +240,12 @@ export function createStorageRoutes(): Router {
           error: `Invalid type. Expected one of: ${Object.values(STORAGE_TYPES).join(', ')}`,
         });
       }
-
-      const storage = getStorageService();
       const listOptions = {
         limit: Number.isFinite(limitValue) ? limitValue : 50,
         ...(type ? { type } : {}),
         ...(cursor ? { pageToken: cursor } : {}),
       };
-      const result = await storage.listFiles(userId, listOptions);
+      const result = await storageService.listFiles(userId, listOptions);
 
       return res.json({ success: true, data: result });
     })
@@ -251,9 +263,7 @@ export function createStorageRoutes(): Router {
           message: 'You must be logged in to view storage usage.',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.getStorageUsage(userId);
+      const result = await storageService.getStorageUsage(userId);
 
       return res.json({ success: true, data: result });
     })
@@ -279,9 +289,7 @@ export function createStorageRoutes(): Router {
           error: 'Missing required parameter: path',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.deleteFile(userId, path.trim());
+      const result = await storageService.deleteFile(userId, path.trim());
 
       return res.json({ success: true, data: result });
     })
@@ -307,9 +315,7 @@ export function createStorageRoutes(): Router {
           error: 'Missing required field: paths (array)',
         });
       }
-
-      const storage = getStorageService();
-      const result = await storage.deleteFiles(userId, paths);
+      const result = await storageService.deleteFiles(userId, paths);
 
       return res.json({ success: true, data: result });
     })
