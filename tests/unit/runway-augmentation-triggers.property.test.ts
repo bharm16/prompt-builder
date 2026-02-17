@@ -14,10 +14,18 @@
  * **Validates: Requirements 3.5, 3.6, 3.7**
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as fc from 'fast-check';
 
 import { RunwayStrategy } from '@services/video-prompt-analysis/strategies/RunwayStrategy';
+
+vi.mock('@services/video-prompt-analysis/services/rewriter/VideoPromptLLMRewriter', () => ({
+  VideoPromptLLMRewriter: class {
+    async rewrite(ir: { raw?: string }) {
+      return typeof ir?.raw === 'string' ? ir.raw : '';
+    }
+  },
+}));
 
 /**
  * Required stability triggers for Runway A2D architecture

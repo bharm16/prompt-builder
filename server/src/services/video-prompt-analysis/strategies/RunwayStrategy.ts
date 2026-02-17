@@ -486,8 +486,16 @@ export class RunwayStrategy extends BaseStrategy {
       selected.push('volumetric lighting');
     }
 
-    // Default: add at least one trigger if none selected
-    if (selected.length === 0) {
+    // Baseline: keep a lighting-style trigger present even when subject-only cues matched.
+    // Subject focus (depth of field) alone can under-specify the lighting profile.
+    const hasLightingStyleTrigger =
+      selected.includes('anamorphic lens flare') ||
+      selected.includes('film grain') ||
+      selected.includes('volumetric lighting') ||
+      selected.includes('cinematic lighting') ||
+      lowerPrompt.includes('cinematic lighting');
+
+    if (!hasLightingStyleTrigger) {
       selected.push('cinematic lighting');
     }
 
@@ -495,4 +503,3 @@ export class RunwayStrategy extends BaseStrategy {
     return selected.slice(0, 3);
   }
 }
-
