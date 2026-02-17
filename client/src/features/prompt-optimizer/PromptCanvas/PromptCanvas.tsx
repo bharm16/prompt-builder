@@ -46,6 +46,7 @@ import { useTriggerValidation } from './hooks/useTriggerValidation';
 import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
 import { useCanvasEditorState } from './hooks/useCanvasEditorState';
 import { useCanvasGenerations } from './hooks/useCanvasGenerations';
+import { useCanvasI2V } from './hooks/useCanvasI2V';
 import { scrollToSpan } from '../SpanBentoGrid/utils/spanFormatting';
 import { PromptCanvasView } from './components/PromptCanvasView';
 import { useGenerationControlsStoreState } from '../context/GenerationControlsStore';
@@ -929,6 +930,14 @@ export function PromptCanvas({
     setState,
   });
 
+  const i2v = useCanvasI2V({
+    i2vContext,
+    showI2VLockIndicator,
+    resolvedI2VReason,
+    i2vMotionAlternatives,
+    handleLockedAlternativeClick,
+  });
+
   const focusSpan = useCallback(
     (spanId: string | null): void => {
       if (!spanId) return;
@@ -1063,11 +1072,11 @@ export function PromptCanvas({
       isInlineError={isInlineError}
       inlineErrorMessage={inlineErrorMessage}
       isInlineEmpty={isInlineEmpty}
-      showI2VLockIndicator={showI2VLockIndicator}
-      resolvedI2VReason={resolvedI2VReason}
-      i2vMotionAlternatives={i2vMotionAlternatives}
-      onLockedAlternativeClick={handleLockedAlternativeClick}
-      i2vContext={i2vContext}
+      showI2VLockIndicator={i2v.lockedSpanIndicators.showI2VLockIndicator}
+      resolvedI2VReason={i2v.lockedSpanIndicators.reason}
+      i2vMotionAlternatives={i2v.motionAlternatives}
+      onLockedAlternativeClick={i2v.handleLockedAlternativeClick}
+      i2vContext={i2v.i2vContext}
       coherenceIssues={coherenceIssues}
       isCoherenceChecking={isCoherenceChecking}
       isCoherencePanelExpanded={isCoherencePanelExpanded}
