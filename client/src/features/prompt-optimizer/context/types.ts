@@ -4,8 +4,12 @@
 
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import type { IconProps } from '@promptstudio/system/components/ui';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry, User } from '@hooks/types';
+import type {
+  PromptHistoryEntry,
+  PromptVersionEdit,
+  PromptVersionEntry,
+} from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/types/domain/workspace';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
@@ -15,13 +19,7 @@ import type { VideoTier } from '@components/ToolSidebar/types';
 
 export type { PromptHistoryEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
-
-export interface Mode {
-  id: string;
-  name: string;
-  icon: IconProps['icon'];
-  description: string;
-}
+export type { Mode };
 
 export interface PromptOptimizer {
   inputPrompt: string;

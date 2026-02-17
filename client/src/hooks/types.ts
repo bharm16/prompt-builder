@@ -1,4 +1,14 @@
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@/features/prompt-optimizer/types/domain/generation';
+import type {
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptKeyframeSource,
+  PromptVersionEdit,
+  PromptVersionEntry,
+  PromptVersionPreview,
+  PromptVersionVideo,
+  User,
+} from '@/features/prompt-optimizer/types/domain/prompt-session';
 
 export interface Span {
   text: string;
@@ -60,81 +70,17 @@ export interface Highlight {
   confidence?: number;
 }
 
-export interface User {
-  uid: string;
-  email?: string;
-  displayName?: string;
-  photoURL?: string | null;
-  emailVerified?: boolean;
-  isAnonymous?: boolean;
-}
-
-export type PromptKeyframeSource = 'upload' | 'library' | 'generation' | 'asset';
-
-export interface PromptKeyframe {
-  id?: string;
-  url: string;
-  source?: PromptKeyframeSource;
-  assetId?: string;
-  storagePath?: string;
-  viewUrlExpiresAt?: string;
-}
-
-export interface PromptHistoryEntry {
-  id?: string;
-  uuid?: string;
-  timestamp?: string;
-  title?: string | null;
-  input: string;
-  output: string;
-  score?: number | null;
-  mode?: string;
-  targetModel?: string | null;
-  generationParams?: Record<string, unknown> | null;
-  keyframes?: PromptKeyframe[] | null;
-  brainstormContext?: Record<string, unknown> | null;
-  highlightCache?: Record<string, unknown> | null;
-  versions?: PromptVersionEntry[];
-}
-
-export interface PromptVersionEdit {
-  timestamp: string;
-  delta?: number;
-  source?: 'manual' | 'suggestion' | 'unknown';
-}
-
-export interface PromptVersionPreview {
-  generatedAt: string;
-  imageUrl?: string | null;
-  aspectRatio?: string | null;
-  storagePath?: string | null;
-  assetId?: string | null;
-  viewUrlExpiresAt?: string | null;
-}
-
-export interface PromptVersionVideo {
-  generatedAt: string;
-  videoUrl?: string | null;
-  model?: string | null;
-  generationParams?: Record<string, unknown> | null;
-  storagePath?: string | null;
-  assetId?: string | null;
-  viewUrlExpiresAt?: string | null;
-}
-
-export interface PromptVersionEntry {
-  versionId: string;
-  label?: string;
-  signature: string;
-  prompt: string;
-  timestamp: string;
-  highlights?: Record<string, unknown>;
-  editCount?: number;
-  edits?: PromptVersionEdit[];
-  preview?: PromptVersionPreview;
-  video?: PromptVersionVideo;
-  generations?: Generation[];
-}
+export type {
+  Generation,
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptKeyframeSource,
+  PromptVersionEdit,
+  PromptVersionEntry,
+  PromptVersionPreview,
+  PromptVersionVideo,
+  User,
+};
 
 export interface Toast {
   success: (message: string, duration?: number) => void;

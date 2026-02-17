@@ -3,7 +3,7 @@ import type { User } from '@hooks/types';
 import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
+import type { SuggestionItem, SuggestionPayload } from './types/domain/suggestions';
 import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from './types/coherence';
 import type { I2VContext } from './types/i2v';

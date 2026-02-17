@@ -2,13 +2,16 @@
  * Types for PromptCanvas component
  */
 
-import type { Mode } from '../context/types';
-import type { User } from '../context/types';
 import type { OptimizationOptions } from '../types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
+import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/types/domain/workspace';
+import type {
+  SuggestionItem,
+  SuggestionPayload,
+} from '@features/prompt-optimizer/types/domain/suggestions';
 
 import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
@@ -50,17 +53,6 @@ export interface ParseResult {
   displayText: string;
 }
 
-export interface SuggestionPayload {
-  highlightedText?: string;
-  originalText?: string;
-  displayedPrompt?: string;
-  range?: Range | null;
-  offsets?: { start?: number; end?: number } | null;
-  metadata?: Record<string, unknown> | null;
-  trigger?: 'selection' | 'highlight' | 'bento-grid';
-  allLabeledSpans?: HighlightSpan[];
-}
-
 export interface SpanClickPayload {
   quote: string;
   start: number;
@@ -76,16 +68,6 @@ export interface SpanClickPayload {
   rightCtx?: string;
   idempotencyKey?: string;
   id?: string;
-}
-
-export interface SuggestionItem {
-  id?: string | undefined;
-  text?: string | undefined;
-  category?: string | undefined;
-  suggestions?: SuggestionItem[] | undefined;
-  compatibility?: number | undefined;
-  explanation?: string | undefined;
-  [key: string]: unknown;
 }
 
 export interface InlineSuggestion {
@@ -220,3 +202,5 @@ export interface PromptCanvasProps {
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
   i2vContext?: I2VContext | null | undefined;
 }
+
+export type { SuggestionItem, SuggestionPayload };
