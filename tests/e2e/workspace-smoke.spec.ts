@@ -1,10 +1,5 @@
 import { expect, test } from '@playwright/test';
-
-const jsonResponse = (body: unknown, status = 200) => ({
-  status,
-  contentType: 'application/json',
-  body: JSON.stringify(body),
-});
+import { jsonResponse } from './helpers/responses';
 
 test('workspace smoke: optimize, preview, and session persistence flow', async ({ page }) => {
   let optimizeCalls = 0;

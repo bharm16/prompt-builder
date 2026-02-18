@@ -47,31 +47,31 @@ export type BillingStatus = z.infer<typeof BillingStatusResponseSchema>;
 export type CreditTransaction = z.infer<typeof CreditTransactionSchema>;
 
 export async function createCheckoutSession(priceId: string): Promise<{ url: string }> {
-  const response = await apiClient.post('/api/payment/checkout', { priceId });
+  const response = await apiClient.post('/payment/checkout', { priceId });
   return BillingSessionResponseSchema.parse(response);
 }
 
 export async function createBillingPortalSession(): Promise<{ url: string }> {
-  const response = await apiClient.post('/api/payment/portal', {});
+  const response = await apiClient.post('/payment/portal', {});
   return BillingSessionResponseSchema.parse(response);
 }
 
 export async function fetchInvoices(): Promise<InvoiceSummary[]> {
-  const response = await apiClient.get('/api/payment/invoices');
+  const response = await apiClient.get('/payment/invoices');
   const parsed = InvoicesResponseSchema.parse(response);
   return parsed.invoices;
 }
 
 export async function fetchBillingStatus(): Promise<BillingStatus> {
-  const response = await apiClient.get('/api/payment/status');
+  const response = await apiClient.get('/payment/status');
   return BillingStatusResponseSchema.parse(response);
 }
 
 export async function fetchCreditHistory(limit?: number): Promise<CreditTransaction[]> {
   const endpoint =
     typeof limit === 'number' && Number.isFinite(limit)
-      ? `/api/payment/credits/history?limit=${Math.trunc(limit)}`
-      : '/api/payment/credits/history';
+      ? `/payment/credits/history?limit=${Math.trunc(limit)}`
+      : '/payment/credits/history';
   const response = await apiClient.get(endpoint);
   const parsed = CreditHistoryResponseSchema.parse(response);
   return parsed.transactions;

@@ -12,6 +12,7 @@
 import type { Application, Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
+import { getFirestore } from '@infrastructure/firebaseAdmin';
 
 // Import middleware
 import { apiAuthMiddleware } from '@middleware/apiAuth';
@@ -116,6 +117,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     geminiClient: container.resolve('geminiClient'),
     cacheService: container.resolve('cacheService'),
     metricsService: container.resolve('metricsService'),
+    checkFirestore: async () => { await getFirestore().listCollections(); },
   });
 
   app.use('/', healthRoutes);

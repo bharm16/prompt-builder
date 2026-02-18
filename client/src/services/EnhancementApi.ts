@@ -9,6 +9,7 @@ import { SpanLabelingApi } from '@features/span-highlighting/api/spanLabelingApi
 import { extractSceneContext } from '@/utils/sceneChange/sceneContextParser';
 import { detectSceneChange as detectSceneChangeRequest } from '@/utils/sceneChange/sceneChangeApi';
 import { ApiClient } from './ApiClient';
+import { trackSuggestionRequest } from './analytics';
 
 interface GetSuggestionsParams {
   highlightedText: string;
@@ -81,6 +82,7 @@ export class EnhancementApi {
     highlightedCategoryConfidence = null,
     highlightedPhrase = null,
   }: GetSuggestionsParams): Promise<SuggestionsResponse> {
+    trackSuggestionRequest(highlightedCategory || 'unknown');
     const data = await postEnhancementSuggestions({
       highlightedText,
       contextBefore,

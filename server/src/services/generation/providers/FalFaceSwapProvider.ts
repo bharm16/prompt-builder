@@ -161,11 +161,6 @@ export class FalFaceSwapProvider {
         preserveHair,
         upscale,
       });
-      // TODO: Remove after debugging Fal 500 — temporary diagnostic URLs
-      this.log.warn('Face swap debug: input URLs on failure', {
-        faceImageUrl: options.faceImageUrl,
-        targetImageUrl: options.targetImageUrl,
-      });
       throw new Error(`Face swap failed: ${errorMessage}`);
     }
   }

@@ -26,6 +26,13 @@ export function useUserCreditBalance(userId: string | null): CreditBalanceState 
       return;
     }
 
+    // E2E test hook: bypass Firestore when test global is set
+    const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
+    if (win?.__E2E_CREDIT_BALANCE__ !== undefined) {
+      setState({ balance: win.__E2E_CREDIT_BALANCE__ as number, isLoading: false, error: null });
+      return;
+    }
+
     setState((prev) => ({ balance: prev.balance, isLoading: true, error: null }));
 
     const userRef = doc(db, 'users', userId);

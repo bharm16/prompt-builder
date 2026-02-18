@@ -1,16 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { jsonResponse, ONE_PIXEL_PNG } from './helpers/responses';
 
 const MAX_DEPTH_ERROR = 'Maximum update depth exceeded';
-const ONE_PIXEL_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+Q5dbWQAAAABJRU5ErkJggg==',
-  'base64'
-);
-
-const jsonResponse = (body: unknown, status = 200) => ({
-  status,
-  contentType: 'application/json',
-  body: JSON.stringify(body),
-});
 
 type TestAsset = {
   id: string;

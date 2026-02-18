@@ -72,10 +72,12 @@ export function KontextFrameStrip({
   }, [slots]);
 
   const handleImageError = async (index: number) => {
-    console.warn('[KontextFrameStrip] Image failed to load:', {
-      index,
-      url: resolvedSlots[index]?.slice(0, 100),
-    });
+    if (import.meta.env.DEV) {
+      console.warn('[KontextFrameStrip] Image failed to load:', {
+        index,
+        url: resolvedSlots[index]?.slice(0, 100),
+      });
+    }
     if (refreshAttemptedRef.current.get(index)) {
       setFailedIndices((prev) => {
         const next = new Set(prev);

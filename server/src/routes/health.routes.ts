@@ -15,6 +15,8 @@ interface HealthDependencies {
     register: { contentType: string };
     getMetrics: () => Promise<string>;
   };
+  /** Optional Firestore connectivity check. Skipped when not provided (e.g. tests). */
+  checkFirestore?: () => Promise<void>;
 }
 
 /**
@@ -24,7 +26,7 @@ interface HealthDependencies {
  */
 export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
-  const { claudeClient, groqClient, geminiClient, cacheService, metricsService } = dependencies;
+  const { claudeClient, groqClient, geminiClient, cacheService, metricsService, checkFirestore } = dependencies;
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
@@ -54,15 +56,33 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         requestId,
       });
       
-      // Avoid external network calls on readiness to prevent abuse/DoS
-      // Use internal indicators only (cache health and circuit breaker state)
+      // Use lightweight internal indicators where possible (cache, circuit breakers).
+      // Firestore is the exception: it has no local state, so a metadata-only call
+      // with a tight timeout verifies connectivity without reading documents.
       const cacheHealth = cacheService.isHealthy();
       const claudeStats = claudeClient?.getStats();
       const groqStats = groqClient?.getStats();
       const geminiStats = geminiClient?.getStats();
 
+      let firestoreHealthy = true;
+      let firestoreMessage: string | undefined;
+      if (checkFirestore) {
+        try {
+          await Promise.race([
+            checkFirestore(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+          ]);
+        } catch (err) {
+          firestoreHealthy = false;
+          firestoreMessage = err instanceof Error ? err.message : 'unknown error';
+        }
+      }
+
       const checks = {
         cache: { healthy: cacheHealth },
+        firestore: checkFirestore
+          ? (firestoreHealthy ? { healthy: true } : { healthy: false, message: `Firestore unreachable: ${firestoreMessage}` })
+          : { healthy: true, enabled: false, message: 'Firestore check not configured' },
         openAI: claudeStats ? {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,

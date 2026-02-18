@@ -75,9 +75,22 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --port 3001 \
-            --set-env-vars NODE_ENV=production
-          # Tip: After creating Secret Manager secrets, use --set-secrets to wire them at deploy time
-          # e.g. --set-secrets ALLOWED_API_KEYS=projects/${PROJECT_ID}/secrets/ALLOWED_API_KEYS:latest
+            --set-env-vars "NODE_ENV=production,\
+          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }},\
+          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }},\
+          ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }},\
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }},\
+          GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},\
+          IMAGE_STORAGE_BUCKET=${{ secrets.IMAGE_STORAGE_BUCKET }},\
+          VIDEO_STORAGE_BUCKET=${{ secrets.VIDEO_STORAGE_BUCKET }}" \
+            --set-secrets "ALLOWED_API_KEYS=ALLOWED_API_KEYS:latest,\
+          METRICS_TOKEN=METRICS_TOKEN:latest,\
+          OPENAI_API_KEY=OPENAI_API_KEY:latest,\
+          GROQ_API_KEY=GROQ_API_KEY:latest"
+          # Note: GOOGLE_APPLICATION_CREDENTIALS is not needed on Cloud Run.
+          # Cloud Run uses Application Default Credentials (ADC) from the
+          # attached service account. Grant the Cloud Run service account
+          # the roles it needs (e.g. storage.objectAdmin, firestore.user).
 
       - name: Install Firebase CLI
         run: npm i -g firebase-tools

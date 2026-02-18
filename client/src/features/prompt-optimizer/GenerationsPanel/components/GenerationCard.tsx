@@ -113,7 +113,7 @@ export const GenerationCard = memo(function GenerationCard({
     >
       {generation.mediaType === 'image-sequence' ? (
         (() => {
-          if (generation.status === 'completed' && generation.mediaUrls.length === 0) {
+          if (import.meta.env.DEV && generation.status === 'completed' && generation.mediaUrls.length === 0) {
             console.warn('[GenerationCard] Image-sequence generation completed but no mediaUrls:', {
               id: generation.id,
               model: generation.model,

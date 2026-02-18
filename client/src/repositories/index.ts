@@ -7,7 +7,7 @@
 
 import { auth } from '../config/firebase';
 import { setSentryUser, addSentryBreadcrumb } from '../config/sentry';
-import { AuthRepository } from './AuthRepository';
+import { AuthRepository, MockAuthRepository } from './AuthRepository';
 import { PromptRepository } from './PromptRepository';
 import { LocalStoragePromptRepository } from './LocalStoragePromptRepository';
 import type { SentryIntegration } from './AuthRepository';
@@ -28,6 +28,18 @@ let localPromptRepository: LocalStoragePromptRepository | null = null;
  */
 export function getAuthRepository(): AuthRepository {
   if (!authRepository) {
+    // E2E test hook: use MockAuthRepository when test global is set
+    const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
+    if (win?.__E2E_AUTH_USER__) {
+      const mockRepo = new MockAuthRepository();
+      const user = win.__E2E_AUTH_USER__ as Record<string, unknown>;
+      void mockRepo.signInWithEmail(
+        (user.email as string) ?? 'test@example.com',
+        'e2e-password'
+      );
+      authRepository = mockRepo as unknown as AuthRepository;
+      return authRepository;
+    }
     authRepository = new AuthRepository(auth, sentryAdapter);
   }
   return authRepository;

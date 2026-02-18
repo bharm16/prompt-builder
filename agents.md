@@ -244,6 +244,14 @@ npm run migrate:backfill
 - Avoid splitting files purely by line count; split by responsibility/reason-to-change.
 - Preserve existing architecture conventions unless task explicitly requires refactor.
 
+### UX Behavioral Rules
+
+These are architectural constraints, not styling opinions. They affect how components wire state and handle user interactions.
+
+1. **Browsing is read-only. Editing is explicit.** Viewing past state (gallery, history, popovers) never mutates the current working prompt or settings. Any state restoration requires a deliberate, labeled action (e.g., "Reuse prompt and settings"). If clicking something can lose the user's work, the design is wrong.
+
+2. **Tools persist. Navigation interrupts.** Panels the user checks repeatedly (generation history, credits, session info) must remain visible while switching contexts. Opening one panel should not close an unrelated panel. If the user has to click away and click back to see something, they'll stop checking it.
+
 ### File Splitting Guidelines
 
 | Type | When to Actually Split |

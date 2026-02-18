@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import { ToastProvider } from './components/Toast';
@@ -7,6 +7,7 @@ import { AppShellProvider } from './contexts/AppShellContext';
 import { LoadingDots } from './components/LoadingDots';
 import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
 import { apiClient } from './services/ApiClient';
+import { trackPageView } from './services/analytics';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
@@ -27,6 +28,7 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({
 const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
 const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
 const MainWorkspace = lazy(() => import('./components/layout/MainWorkspace').then((module) => ({ default: module.MainWorkspace })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 
 function RouteFallback(): React.ReactElement {
   return (
@@ -84,6 +86,14 @@ function PromptRedirect(): React.ReactElement {
   }, [navigate, uuid]);
 
   return <RouteFallback />;
+}
+
+function RouteTracker(): React.ReactElement | null {
+  const location = useLocation();
+  useEffect(() => {
+    void trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
 }
 
 function AppRoutes(): React.ReactElement {
@@ -174,6 +184,11 @@ function AppRoutes(): React.ReactElement {
         path="/prompt/:uuid"
         element={<PromptRedirect />}
       />
+
+      {/* Catch-all 404 — wrapped in MarketingShell for nav/footer */}
+      <Route element={<MarketingShell />}>
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
   );
 }
@@ -188,6 +203,7 @@ function App(): React.ReactElement {
         <GenerationControlsStoreProvider>
           <AppShellProvider>
             <Router>
+              <RouteTracker />
               <Suspense fallback={<RouteFallback />}>
                 <AppRoutes />
               </Suspense>

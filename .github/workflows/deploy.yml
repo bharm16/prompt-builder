@@ -28,7 +28,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment:
       name: staging
-      url: https://staging.prompt-builder.example.com
+      url: ${{ vars.STAGING_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
         run: |
           max_attempts=30
           attempt=0
-          until curl -f https://staging.prompt-builder.example.com/health || [ $attempt -eq $max_attempts ]; do
+          until curl -f ${{ vars.STAGING_URL }}/health || [ $attempt -eq $max_attempts ]; do
             attempt=$((attempt + 1))
             echo "Health check attempt $attempt/$max_attempts..."
             sleep 10
@@ -78,8 +78,8 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          curl -f https://staging.prompt-builder.example.com/health
-          curl -f https://staging.prompt-builder.example.com/metrics
+          curl -f ${{ vars.STAGING_URL }}/health
+          curl -f ${{ vars.STAGING_URL }}/metrics
 
       - name: Notify Slack
         uses: 8398a7/action-slack@v3
@@ -96,7 +96,7 @@ jobs:
     needs: [deploy-staging]
     environment:
       name: production
-      url: https://prompt-builder.example.com
+      url: ${{ vars.PRODUCTION_URL }}
 
     steps:
       - uses: actions/checkout@v4

@@ -205,6 +205,14 @@ When fixing a bug, follow this sequence exactly:
 - **A failing existing test after a bugfix is information, not a problem to silence.** Investigate why it fails. If your fix changed observable behavior that other consumers depend on, you need to assess the blast radius — not just make the test green.
 - **Add tests, don't modify them.** The default action for a bugfix is to _add_ a new test case, not _edit_ existing ones.
 
+## UX Behavioral Rules
+
+These are architectural constraints, not styling opinions. They affect how components wire state and handle user interactions.
+
+1. **Browsing is read-only. Editing is explicit.** Viewing past state (gallery, history, popovers) never mutates the current working prompt or settings. Any state restoration requires a deliberate, labeled action (e.g., "Reuse prompt and settings"). If clicking something can lose the user's work, the design is wrong.
+
+2. **Tools persist. Navigation interrupts.** Panels the user checks repeatedly (generation history, credits, session info) must remain visible while switching contexts. Opening one panel should not close an unrelated panel. If the user has to click away and click back to see something, they'll stop checking it.
+
 ## Architecture Patterns
 
 ### Frontend Pattern: VideoConceptBuilder
