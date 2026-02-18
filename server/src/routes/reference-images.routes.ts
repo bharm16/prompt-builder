@@ -1,10 +1,18 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
+import { validateImageBuffer } from '@utils/validateFileType';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
 
 const upload = createDiskUpload({
   fileSizeBytes: 10 * 1024 * 1024,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only image files allowed'));
+  },
 });
 
 type RequestWithUser = Request & { user?: { uid?: string } };
@@ -76,6 +84,7 @@ export function createReferenceImagesRoutes(
 
       try {
         const buffer = await readUploadBuffer(file);
+        await validateImageBuffer(buffer, 'file');
         const image = await referenceImageService.createFromBuffer(userId, buffer, createInput);
 
         res.status(201).json(image);

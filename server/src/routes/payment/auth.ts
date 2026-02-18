@@ -6,7 +6,6 @@ import { extractFirebaseToken } from '@utils/auth';
 interface PaymentRequestWithAuth extends Request {
   user?: { uid?: string };
   apiKey?: string;
-  body: { userId?: string };
 }
 
 export async function resolveUserId(req: Request): Promise<string | null> {
@@ -29,10 +28,6 @@ export async function resolveUserId(req: Request): Promise<string | null> {
         error: (error as Error).message,
       });
     }
-  }
-
-  if (reqWithAuth.body?.userId) {
-    return reqWithAuth.body.userId;
   }
 
   if (reqWithAuth.apiKey) {

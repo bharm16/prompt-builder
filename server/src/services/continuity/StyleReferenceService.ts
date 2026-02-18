@@ -2,6 +2,7 @@ import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import type { FrameBridge, StyleMatchOptions, StyleReference } from './types';
 
 const DEFAULT_IP_ADAPTER_MODEL =
@@ -86,6 +87,7 @@ export class StyleReferenceService {
   }
 
   private async storeKeyframe(userId: string, sourceUrl: string, options: StyleMatchOptions): Promise<string> {
+    assertUrlSafe(sourceUrl, 'styleReferenceUrl');
     const response = await fetch(sourceUrl);
     if (!response.ok) {
       throw new Error(`Failed to download keyframe (${response.status})`);

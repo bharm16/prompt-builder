@@ -1,11 +1,19 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
+import { validateImageBuffer } from '@utils/validateFileType';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { AssetType } from '@shared/types/asset';
 import type { AssetService } from '@services/asset/AssetService';
 
 const upload = createDiskUpload({
   fileSizeBytes: 5 * 1024 * 1024,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only image files allowed'));
+  },
 });
 
 type RequestWithUser = Request & { user?: { uid?: string } };
@@ -206,6 +214,7 @@ export function createAssetRoutes(assetService: AssetService): Router {
 
       try {
         const buffer = await readUploadBuffer(req.file);
+        await validateImageBuffer(buffer, 'image');
         const result = await assetService.addReferenceImage(
           userId,
           assetId,

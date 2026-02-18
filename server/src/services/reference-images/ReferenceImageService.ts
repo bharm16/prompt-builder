@@ -3,6 +3,7 @@ import type { Bucket } from '@google-cloud/storage';
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 import { ReferenceImageService as ReferenceImageProcessor } from '@services/asset/ReferenceImageService';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 
 interface ReferenceImageServiceOptions {
   db?: FirebaseFirestore.Firestore;
@@ -252,6 +253,8 @@ export class ReferenceImageService {
       userId,
       ...(sourceHost ? { sourceHost } : {}),
     });
+
+    assertUrlSafe(sourceUrl, 'sourceUrl');
 
     const response = await fetch(sourceUrl);
     if (!response.ok) {

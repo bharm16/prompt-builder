@@ -2,6 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { ReadableStream } from 'node:stream/web';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import {
   STORAGE_CONFIG,
   STORAGE_TYPES,
@@ -75,6 +76,7 @@ export class UploadService {
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     try {
+      assertUrlSafe(sourceUrl, 'sourceUrl');
       const response = await fetch(sourceUrl, { signal: controller.signal, redirect: 'follow' });
 
       if (!response.ok) {

@@ -5,8 +5,8 @@ import { logger } from '@infrastructure/Logger';
 /**
  * API Key Authentication Middleware
  *
- * Validates API keys from either the X-API-Key header, Authorization: Bearer header,
- * or apiKey query parameter. Requires ALLOWED_API_KEYS (preferred) or API_KEY.
+ * Validates API keys from either the X-API-Key header or Authorization: Bearer header.
+ * Requires ALLOWED_API_KEYS (preferred) or API_KEY.
  *
  * @param req - Express request object
  * @param res - Express response object
@@ -19,7 +19,6 @@ type ApiAuthRequest = Request & {
   apiKey?: string;
   user?: { uid: string };
   id?: string;
-  query: Request['query'] & { apiKey?: string };
 };
 
 function normalizeHeaderValue(
@@ -50,8 +49,16 @@ export async function apiAuthMiddleware(
 ): Promise<void> {
   const headerApiKey = normalizeHeaderValue(req.headers['x-api-key']);
   const authBearer = extractBearerToken(req.headers.authorization);
-  const queryApiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : null;
-  const apiKeyCandidate = headerApiKey || queryApiKey || authBearer;
+  const apiKeyCandidate = headerApiKey || authBearer;
+
+  if (typeof req.query.apiKey === 'string') {
+    logger.warn('API key passed via query parameter (rejected — use X-API-Key header instead)', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method,
+      requestId: req.id,
+    });
+  }
 
   const firebaseTokenHeader = normalizeHeaderValue(req.headers['x-firebase-token']);
   const firebaseToken = firebaseTokenHeader || authBearer;

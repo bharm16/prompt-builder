@@ -1,4 +1,4 @@
-import { useCallback, type ReactElement } from 'react';
+import { useCallback, useMemo, type ReactElement } from 'react';
 import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
 import { FEATURES } from '@/config/features.config';
 import { dispatchPromptFocusIntent } from '@/features/prompt-optimizer/CanvasWorkspace/events';
@@ -29,6 +29,12 @@ import {
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const { user } = props;
+  const hasDomainOverrides =
+    props.sessions !== undefined ||
+    props.promptInteraction !== undefined ||
+    props.generation !== undefined ||
+    props.assets !== undefined ||
+    props.workspace !== undefined;
   const sidebarDataFromContext = useSidebarData();
   const sessionsFromContext = useSidebarSessionsDomain();
   const promptInteractionFromContext = useSidebarPromptInteractionDomain();
@@ -47,6 +53,22 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const resolvedAssets = props.assets ?? assetsFromContext ?? sidebarDataFromContext?.assets ?? null;
   const resolvedWorkspace =
     props.workspace ?? workspaceFromContext ?? sidebarDataFromContext?.workspace ?? null;
+  const sidebarContextValue = useMemo(
+    () => ({
+      sessions: resolvedSessions,
+      promptInteraction: resolvedPromptInteraction,
+      generation: resolvedGeneration,
+      assets: resolvedAssets,
+      workspace: resolvedWorkspace,
+    }),
+    [
+      resolvedAssets,
+      resolvedGeneration,
+      resolvedPromptInteraction,
+      resolvedSessions,
+      resolvedWorkspace,
+    ]
+  );
 
   const { activePanel, setActivePanel } = useToolSidebarState('studio');
   const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
@@ -61,6 +83,14 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       }
     },
     [activePanel, isCanvasFirstLayout, setActivePanel]
+  );
+  const handleSheetOpenChange = useCallback(
+    (open: boolean): void => {
+      if (!open && activePanel !== 'studio') {
+        setActivePanel('studio');
+      }
+    },
+    [activePanel, setActivePanel]
   );
 
   const renderPanelContent = (panel: ToolPanelType): ReactElement | null => {
@@ -95,47 +125,42 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   };
 
   const isSheetPanelActive = activePanel !== 'studio';
-
-  return (
-    <SidebarDataContextProvider
-      value={{
-        sessions: resolvedSessions,
-        promptInteraction: resolvedPromptInteraction,
-        generation: resolvedGeneration,
-        assets: resolvedAssets,
-        workspace: resolvedWorkspace,
-      }}
-    >
-      <div className="flex h-full">
-        <ToolRail
-          activePanel={activePanel}
-          onPanelChange={handlePanelChange}
-          user={user}
-        />
-        {isCanvasFirstLayout ? (
-          <Sheet
-            open={isSheetPanelActive}
-            onOpenChange={(open) => {
-              if (!open) {
-                setActivePanel('studio');
-              }
-            }}
+  const sidebarContent = (
+    <div className="flex h-full">
+      <ToolRail
+        activePanel={activePanel}
+        onPanelChange={handlePanelChange}
+        user={user}
+      />
+      {isCanvasFirstLayout ? (
+        <Sheet
+          open={isSheetPanelActive}
+          onOpenChange={handleSheetOpenChange}
+        >
+          <SheetContent
+            side="left"
+            className="w-[400px] border-l border-r border-[#1A1C22] bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
           >
-            <SheetContent
-              side="left"
-              className="w-[400px] border-l border-r border-[#1A1C22] bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
-            >
-              <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
-                {renderPanelContent(activePanel)}
-              </div>
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <ToolPanel activePanel={activePanel}>
-            {renderPanelContent(activePanel)}
-          </ToolPanel>
-        )}
-      </div>
-    </SidebarDataContextProvider>
+            <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
+              {renderPanelContent(activePanel)}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <ToolPanel activePanel={activePanel}>
+          {renderPanelContent(activePanel)}
+        </ToolPanel>
+      )}
+    </div>
   );
+
+  if (hasDomainOverrides) {
+    return (
+      <SidebarDataContextProvider value={sidebarContextValue}>
+        {sidebarContent}
+      </SidebarDataContextProvider>
+    );
+  }
+
+  return sidebarContent;
 }

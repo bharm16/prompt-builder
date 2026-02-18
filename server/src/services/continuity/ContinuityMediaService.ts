@@ -4,6 +4,7 @@ import type { VideoGenerationOptions } from '@services/video-generation/types';
 import type { StorageService } from '@services/storage/StorageService';
 import { logger } from '@infrastructure/Logger';
 import { spawnSync } from 'node:child_process';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import type { FrameBridgeService } from './FrameBridgeService';
 import type { StyleReferenceService } from './StyleReferenceService';
 import type { StyleAnalysisService } from './StyleAnalysisService';
@@ -177,6 +178,7 @@ export class ContinuityMediaService {
   }
 
   private async resolveImageResolution(imageUrl: string): Promise<{ width: number; height: number }> {
+    assertUrlSafe(imageUrl, 'sourceImageUrl');
     const response = await fetch(imageUrl);
     if (!response.ok) {
       return { width: 1920, height: 1080 };

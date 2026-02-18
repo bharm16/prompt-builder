@@ -41,13 +41,23 @@ export function useToolSidebarState(
   const [isPanelCollapsed, setIsPanelCollapsedState] = useState(() => loadIsPanelCollapsed());
 
   const setActivePanel = useCallback((panel: ToolPanelType) => {
-    setActivePanelState(panel);
-    try { window.localStorage.setItem(PANEL_STORAGE_KEY, panel); } catch { /* ignore */ }
+    setActivePanelState((previousPanel) => {
+      if (previousPanel === panel) {
+        return previousPanel;
+      }
+      try { window.localStorage.setItem(PANEL_STORAGE_KEY, panel); } catch { /* ignore */ }
+      return panel;
+    });
   }, []);
 
   const setIsPanelCollapsed = useCallback((collapsed: boolean) => {
-    setIsPanelCollapsedState(collapsed);
-    try { window.sessionStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed)); } catch { /* ignore */ }
+    setIsPanelCollapsedState((previous) => {
+      if (previous === collapsed) {
+        return previous;
+      }
+      try { window.sessionStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed)); } catch { /* ignore */ }
+      return collapsed;
+    });
   }, []);
 
   return {

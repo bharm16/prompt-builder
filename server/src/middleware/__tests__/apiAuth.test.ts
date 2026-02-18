@@ -119,19 +119,19 @@ describe('apiAuthMiddleware', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('authenticates with apiKey query parameter', async () => {
+  it('rejects API key passed via query parameter', async () => {
     process.env.API_KEY = 'query-key';
     const req = createRequest({
-      query: { apiKey: 'query-key' } as ApiAuthRequest['query'],
+      query: { apiKey: 'query-key' },
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
     await apiAuthMiddleware(req, res, next);
 
-    expect(req.apiKey).toBe('query-key');
-    expect(req.user).toEqual({ uid: 'api-key:query-key' });
-    expect(next).toHaveBeenCalledTimes(1);
+    expect(req.apiKey).toBeUndefined();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
   });
 
   it('authenticates with bearer API key when Firebase token validation fails', async () => {

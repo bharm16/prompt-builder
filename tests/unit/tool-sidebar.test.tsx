@@ -23,12 +23,17 @@ vi.mock('@utils/cn', () => ({
 vi.mock('@promptstudio/system/components/ui/sheet', () => ({
   Sheet: ({
     open,
+    onOpenChange,
     children,
   }: {
     open: boolean;
+    onOpenChange?: (open: boolean) => void;
     children: ReactNode;
   }) => (
     <div data-testid="sheet" data-open={open ? 'true' : 'false'}>
+      <button type="button" data-testid="sheet-close" onClick={() => onOpenChange?.(false)}>
+        close
+      </button>
       {open ? children : null}
     </div>
   ),
@@ -215,6 +220,15 @@ describe('ToolSidebar', () => {
       ([event]) => (event as Event).type
     );
     expect(eventTypes).toContain(PROMPT_FOCUS_INTENT);
+  });
+
+  it('ignores sheet close events when studio is already active', () => {
+    sidebarState.activePanel = 'studio';
+
+    render(<ToolSidebar {...createProps()} />);
+    fireEvent.click(screen.getByTestId('sheet-close'));
+
+    expect(sidebarState.setActivePanel).not.toHaveBeenCalled();
   });
 
   it('keeps legacy inline panel path when canvas-first layout is disabled', () => {

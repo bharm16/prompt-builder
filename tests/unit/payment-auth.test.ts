@@ -56,17 +56,29 @@ describe('resolveUserId', () => {
     expect(req.user).toEqual({ uid: 'user-from-token' });
   });
 
-  it('falls back to body userId when token verification fails', async () => {
+  it('does not trust body.userId — prevents IDOR via request body', async () => {
     const req = {
       path: '/api/payment/checkout',
-      body: { userId: 'user-from-body' },
+      body: { userId: 'victim-uid' },
+    };
+    mocks.extractFirebaseToken.mockReturnValue(null);
+
+    const result = await resolveUserId(req as any);
+
+    expect(result).toBeNull();
+  });
+
+  it('does not fall back to body.userId when token verification fails', async () => {
+    const req = {
+      path: '/api/payment/checkout',
+      body: { userId: 'victim-uid' },
     };
     mocks.extractFirebaseToken.mockReturnValue('token-123');
     mocks.verifyIdToken.mockRejectedValue(new Error('bad token'));
 
     const result = await resolveUserId(req as any);
 
-    expect(result).toBe('user-from-body');
+    expect(result).toBeNull();
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
       'Failed to verify auth token for payment request',
       expect.objectContaining({
@@ -76,7 +88,7 @@ describe('resolveUserId', () => {
     );
   });
 
-  it('falls back to apiKey when no auth user/token/body userId exists', async () => {
+  it('falls back to apiKey when no auth user or token exists', async () => {
     const req = {
       path: '/api/payment/checkout',
       body: {},
