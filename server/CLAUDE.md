@@ -76,6 +76,26 @@ export class ServiceNameService {
 
 ## Conventions
 
+### Frontend-Backend Boundary Rules
+
+The server is **strictly decoupled** from the client. Server changes should never require UI changes (and vice versa).
+
+**Import rules:**
+
+- **NEVER** import from `client/src/` — only from `#shared/*` or server-local code
+- Shared types live in `shared/` — if a type is server-only, keep it in the service's `types.ts`
+
+**Route response contracts:**
+
+- Routes return **general-purpose DTOs**, not shapes tailored to a specific UI component
+- If the client needs a different shape, the client's feature `api/` layer transforms it — that is not the server's concern
+- Changes to response shapes are contract changes — if you rename or remove a field, the client's Zod validation will catch it at runtime, but coordinate the change across both layers
+
+**When a server change seems to require a `shared/` type change:**
+
+1. STOP — ask whether the server really needs the shared contract to change, or whether a server-local type would suffice
+2. If the contract genuinely needs to change, treat it as a cross-layer change: update `shared/`, run `tsc --noEmit`, fix both sides before committing
+
 ### Routes
 
 - Keep route handlers thin

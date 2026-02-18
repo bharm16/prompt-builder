@@ -70,6 +70,32 @@ FeatureName/
 - Never fetch inline in components
 - Use Zod to validate API responses
 
+### Frontend-Backend Boundary Rules
+
+The client is **strictly decoupled** from the server. UI changes should never require server changes (and vice versa).
+
+**Import rules:**
+
+- **NEVER** import from `server/src/` — only from `@shared/*`, `#shared/*`, or client-local code
+- Shared types live in `shared/` — if a type is client-only, put it in the feature's `types/` directory
+
+**The anti-corruption layer (feature `api/` directories):**
+
+Each feature's `api/` folder transforms server DTOs into client-friendly shapes. This insulates UI components from server contract changes.
+
+```text
+Server Response → feature/api/schemas.ts (Zod validate) → feature/api/*.ts (transform) → hook → component
+```
+
+- Components and hooks consume **transformed client types**, never raw server DTOs
+- If a server response field is renamed, only the feature's `api/` files should need to change
+- If a UI-only concern (display formatting, derived state) needs a new type, create it in the feature's `types/` — do not add it to `shared/`
+
+**When a UI change seems to require a `shared/` type change:**
+
+1. STOP — ask whether the UI really needs the server contract to change, or whether a client-side display type would suffice
+2. If the contract genuinely needs to change, treat it as a cross-layer change: update `shared/`, run `tsc --noEmit`, fix both sides before committing
+
 ### Styling
 
 - Tailwind CSS for all styling

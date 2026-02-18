@@ -117,7 +117,52 @@ Flag violations of:
 | **Primitive Obsession** | Passing 5+ related strings instead of an object | Create a type/object |
 | **Inappropriate Intimacy** | Module reaches into another's internals | Define a proper interface |
 
-### 6. Anti-Patterns to Flag
+### 6. Frontend-Backend Decoupling
+
+The frontend and backend are **strictly decoupled**. Review changes for violations of the layer boundary:
+
+#### The Dependency Rule
+
+Dependencies flow in one direction only:
+
+```
+UI Components → Hooks → Feature API Layer → shared/ contracts → Server Routes → Services
+     ↑                        ↑                    ↑
+  NEVER imports from      NEVER imports from    NEVER imports from
+  server/src/ or          server/src/           client/src/
+  shared/ directly
+```
+
+#### What to Flag
+
+| Violation | Severity | Fix |
+|-----------|----------|-----|
+| Client file imports from `server/src/` | **CRITICAL** | Move shared type to `shared/`, consume via `@shared/*` or `#shared/*` |
+| Server file imports from `client/src/` | **CRITICAL** | Extract shared logic to `shared/` or duplicate with a service-specific type |
+| React component directly uses a type from `shared/` for rendering | **WARNING** | Component should consume a client-side type; the feature `api/` layer transforms DTOs into client shapes |
+| UI change requires modifying a `shared/` type | **WARNING** | Add a display-specific type in the feature's `types/` directory instead of widening the shared contract |
+| Feature hook calls `fetch()` directly | **CRITICAL** | HTTP calls belong in the feature's `api/` layer, not hooks or components |
+| Server route handler contains response-shape logic tailored to a specific UI component | **WARNING** | Route should return a general DTO; client `api/` layer transforms it |
+
+#### The Anti-Corruption Layer
+
+Each feature's `api/` directory is an **anti-corruption layer**. It:
+
+1. Validates server responses with Zod schemas
+2. Transforms server DTOs into client-friendly shapes
+3. Isolates the UI from server contract changes
+
+**Test**: If a server response field is renamed and only the feature's `api/` files need to change (not components or hooks), the anti-corruption layer is working correctly. If components break, the layer is leaking.
+
+#### Shared Contract Rules
+
+The `shared/` directory defines the **API contract** between client and server:
+
+- Only types, constants, and Zod schemas belong in `shared/` — never runtime logic
+- Changes to `shared/` files affect both layers — treat them as contract changes requiring `tsc --noEmit` immediately
+- If a type is only used by one side, it does not belong in `shared/`
+
+### 7. Anti-Patterns to Flag
 
 - Splitting files solely because they exceed a line threshold
 - Creating components only used in one place
@@ -127,6 +172,9 @@ Flag violations of:
 - Inline fetch calls in components (must be in `api/` layer)
 - Business logic in orchestrator components or route handlers
 - LLM prompt strings inline in code (should be external `.md` template files)
+- Client code importing directly from `server/src/` or vice versa
+- Widening a `shared/` type to accommodate a UI-only concern
+- Skipping the feature `api/` transformation layer (component directly consuming server DTO shapes)
 
 ---
 

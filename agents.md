@@ -58,6 +58,38 @@ The container is created in `server/src/config/services.config.ts` and initializ
 - Cross-domain dependencies should flow through the route layer or an orchestrator service, not via direct imports.
 - The `aiService` is the **only** LLM routing layer. Never call provider clients (claude, groq, gemini) directly from business services.
 
+### Frontend-Backend Decoupling
+
+The client and server are **strictly decoupled**. Neither side may import from the other.
+
+**Hard rules:**
+
+- `client/src/` **NEVER** imports from `server/src/` — and vice versa.
+- The only shared code lives in `shared/` (types, constants, Zod schemas — never runtime logic).
+- Changes to `shared/` are **contract changes** that affect both sides — run `tsc --noEmit` immediately after modifying.
+
+**The anti-corruption layer:**
+
+Each client feature's `api/` directory insulates UI components from server response shapes:
+
+```text
+Server DTO → feature/api/schemas.ts (Zod) → feature/api/*.ts (transform) → hook → component
+```
+
+- UI components consume **transformed client types**, never raw server DTOs.
+- If a server response field changes, only the feature's `api/` files should need updating — not components or hooks.
+- If a UI-only concern needs a new type, create it in the feature's `types/` directory — do not add it to `shared/`.
+
+**Cross-layer change protocol:**
+
+When a change genuinely requires updating both client and server:
+
+1. Update the `shared/` contract first.
+2. Run `tsc --noEmit` — fix compilation errors on both sides.
+3. Update the server route/service.
+4. Update the client feature `api/` layer (schemas + transforms).
+5. UI components should not need changes if the anti-corruption layer is working correctly.
+
 ## Feature Flags
 
 These environment variables gate entire subsystems. Code that doesn't account for them will silently not execute or will crash on null references.
