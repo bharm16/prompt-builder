@@ -1,5 +1,6 @@
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
+import type { MetricsService } from '@infrastructure/MetricsService';
 import type { LLMClient } from '@clients/LLMClient';
 import { AIModelService } from '@services/ai-model/index';
 import AssetService from '@services/asset/AssetService';
@@ -29,8 +30,11 @@ import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobS
 import { createVideoAssetStore } from '@services/video-generation/storage';
 import { resolveFalApiKey } from '@utils/falApiKey';
 import type { StorageService } from '@services/storage/StorageService';
+import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 
 export function registerGenerationServices(container: DIContainer): void {
+  container.register('videoPromptDetector', () => new VideoPromptDetectionService(), []);
+
   container.register(
     'videoToImageTransformer',
     (geminiClient: LLMClient | null) => {
@@ -70,20 +74,20 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'replicateFluxSchnellProvider',
-    (transformer: VideoToImagePromptTransformer | null) => {
+    (transformer: VideoToImagePromptTransformer | null, videoPromptDetector: VideoPromptDetectionService) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       if (!apiToken) {
         logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
         return null;
       }
-      return new ReplicateFluxSchnellProvider({ apiToken, promptTransformer: transformer });
+      return new ReplicateFluxSchnellProvider({ apiToken, promptTransformer: transformer, videoPromptDetector });
     },
-    ['videoToImageTransformer']
+    ['videoToImageTransformer', 'videoPromptDetector']
   );
 
   container.register(
     'replicateFluxKontextFastProvider',
-    (transformer: VideoToImagePromptTransformer | null) => {
+    (transformer: VideoToImagePromptTransformer | null, videoPromptDetector: VideoPromptDetectionService) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       if (!apiToken) {
         logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
@@ -92,9 +96,10 @@ export function registerGenerationServices(container: DIContainer): void {
       return new ReplicateFluxKontextFastProvider({
         apiToken,
         promptTransformer: transformer,
+        videoPromptDetector,
       });
     },
-    ['videoToImageTransformer']
+    ['videoToImageTransformer', 'videoPromptDetector']
   );
 
   container.register(
@@ -194,15 +199,17 @@ export function registerGenerationServices(container: DIContainer): void {
       aiService: AIModelService,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
-      billingProfileStore: BillingProfileStore
+      billingProfileStore: BillingProfileStore,
+      metricsService: MetricsService
     ) =>
       new ModelIntelligenceService({
         aiService,
         videoGenerationService,
         userCreditService: creditService,
         billingProfileStore,
+        metricsService,
       }),
-    ['aiService', 'videoGenerationService', 'userCreditService', 'billingProfileStore'],
+    ['aiService', 'videoGenerationService', 'userCreditService', 'billingProfileStore', 'metricsService'],
     { singleton: true }
   );
 

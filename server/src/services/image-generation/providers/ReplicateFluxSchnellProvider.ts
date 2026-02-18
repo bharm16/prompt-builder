@@ -8,7 +8,6 @@
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { sleep as sleepForMs } from '@utils/sleep';
-import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 import type { ImagePreviewProvider, ImagePreviewRequest, ImagePreviewResult } from './types';
 import { VideoToImagePromptTransformer } from './VideoToImagePromptTransformer';
 
@@ -70,9 +69,14 @@ const normalizeAspectRatio = (value?: string): FluxAspectRatio => {
   return isFluxAspectRatio(trimmed) ? trimmed : DEFAULT_ASPECT_RATIO;
 };
 
+interface VideoPromptDetector {
+  isVideoPrompt(prompt: string | null | undefined): boolean;
+}
+
 export interface ReplicateFluxSchnellProviderOptions {
   apiToken?: string;
   promptTransformer?: VideoToImagePromptTransformer | null;
+  videoPromptDetector?: VideoPromptDetector;
 }
 
 export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
@@ -81,7 +85,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
 
   private readonly replicate: ReplicateClient | null;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
-  private readonly videoPromptDetector: VideoPromptDetectionService;
+  private readonly videoPromptDetector: VideoPromptDetector;
   private readonly log = logger.child({ service: 'ReplicateFluxSchnellProvider' });
 
   constructor(options: ReplicateFluxSchnellProviderOptions = {}) {
@@ -93,7 +97,10 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
       : null;
 
     this.promptTransformer = options.promptTransformer ?? null;
-    this.videoPromptDetector = new VideoPromptDetectionService();
+    if (!options.videoPromptDetector) {
+      throw new Error('ReplicateFluxSchnellProvider requires a videoPromptDetector');
+    }
+    this.videoPromptDetector = options.videoPromptDetector;
   }
 
   public isAvailable(): boolean {

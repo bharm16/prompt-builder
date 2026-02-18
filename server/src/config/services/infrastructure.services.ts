@@ -1,7 +1,7 @@
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
-import { cacheService } from '@services/cache/CacheService';
+import { MetricsService } from '@infrastructure/MetricsService';
+import { CacheService } from '@services/cache/CacheService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { RedisClient } from '@services/cache/types';
 import { UserCreditService } from '@services/credits/UserCreditService';
@@ -18,17 +18,22 @@ import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerInfrastructureServices(container: DIContainer): void {
   container.registerValue('logger', logger);
-  container.registerValue('metricsService', metricsService);
-  container.registerValue('cacheService', cacheService);
+  container.register('metricsService', () => new MetricsService(), [], { singleton: true });
+  container.register(
+    'cacheService',
+    (metricsService: MetricsService) => new CacheService({}, metricsService),
+    ['metricsService'],
+    { singleton: true }
+  );
   container.register('userCreditService', () => new UserCreditService(), [], { singleton: true });
   container.register('refundFailureStore', () => getRefundFailureStore(), [], { singleton: true });
 
   container.register(
     'creditRefundSweeper',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DI container values are untyped at registration boundary
-    (refundFailureStore: any, creditService: UserCreditService) =>
-      createCreditRefundSweeper(refundFailureStore, creditService),
-    ['refundFailureStore', 'userCreditService'],
+    (refundFailureStore: any, creditService: UserCreditService, metricsService: MetricsService) =>
+      createCreditRefundSweeper(refundFailureStore, creditService, metricsService),
+    ['refundFailureStore', 'userCreditService', 'metricsService'],
     { singleton: true }
   );
 
@@ -97,12 +102,12 @@ export function registerInfrastructureServices(container: DIContainer): void {
 
   container.register(
     'spanLabelingCacheService',
-    (redisClient: ReturnType<typeof createRedisClient>, config: ServiceConfig) => initSpanLabelingCache({
+    (redisClient: ReturnType<typeof createRedisClient>, config: ServiceConfig, metricsService: MetricsService) => initSpanLabelingCache({
       redis: redisClient as RedisClient | null,
       defaultTTL: config.redis.defaultTTL,
       shortTTL: config.redis.shortTTL,
       maxMemoryCacheSize: config.redis.maxMemoryCacheSize,
-    }),
-    ['redisClient', 'config']
+    }, metricsService),
+    ['redisClient', 'config', 'metricsService']
   );
 }

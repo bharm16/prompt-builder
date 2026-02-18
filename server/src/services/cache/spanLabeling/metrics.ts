@@ -1,12 +1,17 @@
-import { metricsService } from '@infrastructure/MetricsService';
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+export interface SpanLabelingCacheMetrics {
+  recordCacheHit(cacheType: string): void;
+  recordCacheMiss(cacheType: string): void;
+  recordHistogram(name: string, value: number): void;
+}
 
-export function recordCacheHit(cacheType: string, durationMs?: number): void {
-  metricsService.recordCacheHit(cacheType);
+export function recordCacheHit(metrics: SpanLabelingCacheMetrics | undefined, cacheType: string, durationMs?: number): void {
+  metrics?.recordCacheHit(cacheType);
   if (durationMs !== undefined) {
-    metricsService.recordHistogram('cache_retrieval_time_ms', durationMs);
+    metrics?.recordHistogram('cache_retrieval_time_ms', durationMs);
   }
 }
 
-export function recordCacheMiss(cacheType: string): void {
-  metricsService.recordCacheMiss(cacheType);
+export function recordCacheMiss(metrics: SpanLabelingCacheMetrics | undefined, cacheType: string): void {
+  metrics?.recordCacheMiss(cacheType);
 }

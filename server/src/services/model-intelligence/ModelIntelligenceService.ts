@@ -1,5 +1,8 @@
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface ModelIntelligenceMetrics {
+  recordModelRecommendationRequest(mode: string, availabilityState: string): void;
+}
 import { getVideoCost } from '@config/modelCosts';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
@@ -20,6 +23,7 @@ interface ModelIntelligenceDependencies {
   videoGenerationService: VideoGenerationService | null;
   userCreditService: UserCreditService | null;
   billingProfileStore?: BillingProfileStore | null;
+  metricsService?: ModelIntelligenceMetrics;
   requirementsService?: PromptRequirementsService;
   registry?: ModelCapabilityRegistry;
   scoringService?: ModelScoringService;
@@ -42,8 +46,10 @@ export class ModelIntelligenceService {
   private readonly scoringService: ModelScoringService;
   private readonly explainerService: RecommendationExplainerService;
   private readonly availabilityGate: AvailabilityGateService;
+  private readonly metrics: ModelIntelligenceMetrics | undefined;
 
   constructor(private readonly deps: ModelIntelligenceDependencies) {
+    this.metrics = deps.metricsService;
     this.requirementsService = deps.requirementsService ?? new PromptRequirementsService();
     this.registry = deps.registry ?? new ModelCapabilityRegistry();
     this.scoringService = deps.scoringService ?? new ModelScoringService();
@@ -92,7 +98,7 @@ export class ModelIntelligenceService {
           ? 'unknown'
           : 'unavailable';
 
-    metricsService.recordModelRecommendationRequest(mode, availabilityState);
+    this.metrics?.recordModelRecommendationRequest(mode, availabilityState);
 
     const candidateIds =
       availability.availableModelIds.length > 0

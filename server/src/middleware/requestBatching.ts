@@ -1,7 +1,12 @@
 import type { RequestHandler } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface BatchMetrics {
+  recordHistogram(name: string, value: number): void;
+  recordCounter(name: string): void;
+}
 import type { LabelSpansParams, LabelSpansResult } from '@llm/span-labeling/types';
 import type { AIService as BaseAIService } from '@services/enhancement/services/types';
 import { toPublicLabelSpansResult, type PublicLabelSpansResult } from '../routes/labelSpans/transform';
@@ -56,7 +61,10 @@ export class RequestBatchingService {
     batchSavings: number;
   };
 
-  constructor(options: { batchWindow?: number; maxBatchSize?: number; maxConcurrency?: number } = {}) {
+  private readonly metrics: BatchMetrics | undefined;
+
+  constructor(options: { batchWindow?: number; maxBatchSize?: number; maxConcurrency?: number; metricsService?: BatchMetrics } = {}) {
+    this.metrics = options.metricsService;
     this.batchWindow = options.batchWindow || 50; // 50ms collection window
     this.maxBatchSize = options.maxBatchSize || 10; // Max requests per batch
     this.maxConcurrency = options.maxConcurrency || 5; // Max parallel processing
@@ -153,8 +161,8 @@ export class RequestBatchingService {
         }
 
         // Record metrics
-        metricsService.recordHistogram('batch_size', requests.length);
-        metricsService.recordCounter('batched_requests_total');
+        this.metrics?.recordHistogram('batch_size', requests.length);
+        this.metrics?.recordCounter('batched_requests_total');
 
         res.json(results);
         return;
@@ -236,7 +244,7 @@ export class RequestBatchingService {
       errorCount: results.filter(r => !r.success).length,
     });
 
-    metricsService.recordHistogram('batch_processing_duration_ms', duration);
+    this.metrics?.recordHistogram('batch_processing_duration_ms', duration);
 
     // Return results in original order, transforming role → category for frontend
     return results.map((result) =>
@@ -326,16 +334,16 @@ export class RequestBatchingService {
   }
 }
 
-// Singleton instance
-export const requestBatchingService = new RequestBatchingService({
-  batchWindow: 50,
-  maxBatchSize: 10,
-  maxConcurrency: 5,
-});
-
 /**
- * Express middleware for batch endpoint
+ * Express middleware factory for batch endpoint.
+ * Accepts metricsService for recording batch-level histograms/counters.
  */
-export function createBatchMiddleware(aiService: BaseAIService): RequestHandler {
-  return requestBatchingService.middleware(aiService);
+export function createBatchMiddleware(aiService: BaseAIService, metricsService?: BatchMetrics): RequestHandler {
+  const service = new RequestBatchingService({
+    batchWindow: 50,
+    maxBatchSize: 10,
+    maxConcurrency: 5,
+    ...(metricsService ? { metricsService } : {}),
+  });
+  return service.middleware(aiService);
 }

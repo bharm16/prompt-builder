@@ -1,7 +1,11 @@
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
 import type { UserCreditService } from './UserCreditService';
 import type { RefundFailureStore } from './RefundFailureStore';
+
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface SweeperMetrics {
+  recordAlert(name: string, labels: Record<string, unknown>): void;
+}
 
 const DEFAULT_SWEEP_INTERVAL_SECONDS = 60;
 const DEFAULT_SWEEP_MAX = 25;
@@ -20,19 +24,22 @@ export class CreditRefundSweeper {
   private readonly sweepIntervalMs: number;
   private readonly maxPerRun: number;
   private readonly maxAttempts: number;
+  private readonly metrics: SweeperMetrics | undefined;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
   constructor(
     failureStore: RefundFailureStore,
     userCreditService: UserCreditService,
-    options: CreditRefundSweeperOptions
+    options: CreditRefundSweeperOptions,
+    metricsService?: SweeperMetrics,
   ) {
     this.failureStore = failureStore;
     this.userCreditService = userCreditService;
     this.sweepIntervalMs = options.sweepIntervalMs;
     this.maxPerRun = options.maxPerRun;
     this.maxAttempts = options.maxAttempts;
+    this.metrics = metricsService;
   }
 
   start(): void {
@@ -97,7 +104,7 @@ export class CreditRefundSweeper {
               attempts: nextAttempts,
               severity: 'critical',
             });
-            metricsService.recordAlert('credit_refund_escalated', {
+            this.metrics?.recordAlert('credit_refund_escalated', {
               refundKey: next.refundKey,
               userId: next.userId,
               amount: next.amount,
@@ -120,7 +127,8 @@ export class CreditRefundSweeper {
 
 export function createCreditRefundSweeper(
   failureStore: RefundFailureStore,
-  userCreditService: UserCreditService
+  userCreditService: UserCreditService,
+  metricsService?: SweeperMetrics,
 ): CreditRefundSweeper | null {
   if (process.env.CREDIT_REFUND_SWEEPER_DISABLED === 'true') {
     return null;
@@ -148,5 +156,5 @@ export function createCreditRefundSweeper(
     sweepIntervalMs,
     maxPerRun: sweepMax,
     maxAttempts,
-  });
+  }, metricsService);
 }

@@ -8,7 +8,7 @@ import type {
 import { MemoryLruCache } from './spanLabeling/memoryLru';
 import { generateCacheKey, buildTextPattern, buildTextPrefix } from './spanLabeling/key';
 import { deleteRedisKey, deleteRedisPattern, getRedisValue, setRedisValue } from './spanLabeling/redisStore';
-import { recordCacheHit, recordCacheMiss } from './spanLabeling/metrics';
+import { recordCacheHit, recordCacheMiss, type SpanLabelingCacheMetrics } from './spanLabeling/metrics';
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -37,6 +37,7 @@ export class SpanLabelingCacheService {
   private readonly shortTTL: number;
   private readonly maxMemoryCacheSize: number;
   private readonly memoryCache: MemoryLruCache;
+  private readonly metrics: SpanLabelingCacheMetrics | undefined;
   private readonly stats: {
     hits: number;
     misses: number;
@@ -45,7 +46,8 @@ export class SpanLabelingCacheService {
   };
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(options: SpanLabelingCacheServiceOptions = {}) {
+  constructor(options: SpanLabelingCacheServiceOptions = {}, metricsService?: SpanLabelingCacheMetrics) {
+    this.metrics = metricsService;
     this.redis = options.redis || null;
     this.defaultTTL = options.defaultTTL || 3600; // 1 hour
     this.shortTTL = options.shortTTL || 300; // 5 minutes
@@ -97,7 +99,7 @@ export class SpanLabelingCacheService {
           textLength: text.length,
         });
 
-        recordCacheHit('span_labeling_redis', duration);
+        recordCacheHit(this.metrics, 'span_labeling_redis', duration);
 
         return result;
       }
@@ -114,14 +116,14 @@ export class SpanLabelingCacheService {
           textLength: text.length,
         });
 
-        recordCacheHit('span_labeling_memory', duration);
+        recordCacheHit(this.metrics, 'span_labeling_memory', duration);
 
         return cacheEntry.data;
       }
 
       // Cache miss
       this.stats.misses++;
-      recordCacheMiss('span_labeling');
+      recordCacheMiss(this.metrics, 'span_labeling');
 
       const duration = Date.now() - startTime;
       logger.debug('Cache miss', {
@@ -314,8 +316,8 @@ export let spanLabelingCache: SpanLabelingCacheService | null = null;
 /**
  * Initialize the span labeling cache service
  */
-export function initSpanLabelingCache(options: SpanLabelingCacheServiceOptions = {}): SpanLabelingCacheService {
-  spanLabelingCache = new SpanLabelingCacheService(options);
+export function initSpanLabelingCache(options: SpanLabelingCacheServiceOptions = {}, metricsService?: SpanLabelingCacheMetrics): SpanLabelingCacheService {
+  spanLabelingCache = new SpanLabelingCacheService(options, metricsService);
   spanLabelingCache.startPeriodicCleanup();
   return spanLabelingCache;
 }

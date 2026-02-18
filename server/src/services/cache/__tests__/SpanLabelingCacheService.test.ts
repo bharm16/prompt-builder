@@ -10,14 +10,6 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: {
-    recordCacheHit: vi.fn(),
-    recordCacheMiss: vi.fn(),
-    recordHistogram: vi.fn(),
-  },
-}));
-
 function createRedisMock() {
   return {
     status: 'ready' as const,

@@ -9,13 +9,6 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: {
-    recordGauge: vi.fn(),
-    recordHistogram: vi.fn(),
-  },
-}));
-
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;

@@ -43,7 +43,11 @@ const createService = (): PromptOptimizationService => {
     generateKey: vi.fn(() => 'cache-key'),
   } as never;
 
-  return new PromptOptimizationService(aiService, cacheService, null);
+  const imageObservationService = {
+    observeImage: vi.fn(async () => ({ description: '', tags: [] })),
+  } as never;
+
+  return new PromptOptimizationService(aiService, cacheService, null, imageObservationService);
 };
 
 describe('PromptOptimizationService contract', () => {

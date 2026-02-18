@@ -22,12 +22,24 @@ import type { ModelCapabilities } from './services/detection/ModelDetectionServi
 import type { SectionConstraints } from './services/detection/SectionDetectionService';
 import type { PromptOptimizationResult, PromptContext, PhaseResult } from './strategies/types';
 
+export interface VideoPromptServiceDeps {
+  detector?: VideoPromptDetectionService;
+  phraseRoleAnalyzer?: PhraseRoleAnalysisService;
+  constraintGenerator?: ConstraintGenerationService;
+  fallbackStrategy?: FallbackStrategyService;
+  categoryGuidance?: CategoryGuidanceService;
+  modelDetector?: ModelDetectionService;
+  sectionDetector?: SectionDetectionService;
+  taxonomyValidator?: TaxonomyValidationService;
+  strategyRegistry?: StrategyRegistry;
+}
+
 /**
  * VideoPromptService - Main Orchestrator
- * 
+ *
  * Responsible for coordinating video prompt detection, analysis, and constraint management.
  * Delegates to specialized services for each concern.
- * 
+ *
  * Single Responsibility: Orchestrate video prompt logic
  */
 export class VideoPromptService {
@@ -46,26 +58,29 @@ export class VideoPromptService {
   private static readonly PIPELINE_VERSION = '1.0.0';
   private static readonly MAX_CONCURRENT_MODEL_OPTIMIZATIONS = 3;
 
+  constructor(deps: VideoPromptServiceDeps = {}) {
+    this.detector = deps.detector ?? new VideoPromptDetectionService();
+    this.phraseRoleAnalyzer = deps.phraseRoleAnalyzer ?? new PhraseRoleAnalysisService();
+    this.constraintGenerator = deps.constraintGenerator ?? new ConstraintGenerationService();
+    this.fallbackStrategy = deps.fallbackStrategy ?? new FallbackStrategyService();
+    this.categoryGuidance = deps.categoryGuidance ?? new CategoryGuidanceService();
+    this.modelDetector = deps.modelDetector ?? new ModelDetectionService();
+    this.sectionDetector = deps.sectionDetector ?? new SectionDetectionService();
+    this.taxonomyValidator = deps.taxonomyValidator ?? new TaxonomyValidationService();
 
-  constructor() {
-    this.detector = new VideoPromptDetectionService();
-    this.phraseRoleAnalyzer = new PhraseRoleAnalysisService();
-    this.constraintGenerator = new ConstraintGenerationService();
-    this.fallbackStrategy = new FallbackStrategyService();
-    this.categoryGuidance = new CategoryGuidanceService();
-    this.modelDetector = new ModelDetectionService();
-    this.sectionDetector = new SectionDetectionService();
-    this.taxonomyValidator = new TaxonomyValidationService();
-    
-    // Register strategy factories — each get() call creates a fresh instance
-    // to prevent shared mutable state across concurrent requests
-    this.strategyRegistry = new StrategyRegistry();
-    this.strategyRegistry.register('runway-gen45', () => new RunwayStrategy());
-    this.strategyRegistry.register('luma-ray3', () => new LumaStrategy());
-    this.strategyRegistry.register('kling-26', () => new KlingStrategy());
-    this.strategyRegistry.register('sora-2', () => new SoraStrategy());
-    this.strategyRegistry.register('veo-4', () => new VeoStrategy());
-    this.strategyRegistry.register('wan-2.2', () => new WanStrategy());
+    if (deps.strategyRegistry) {
+      this.strategyRegistry = deps.strategyRegistry;
+    } else {
+      // Register strategy factories — each get() call creates a fresh instance
+      // to prevent shared mutable state across concurrent requests
+      this.strategyRegistry = new StrategyRegistry();
+      this.strategyRegistry.register('runway-gen45', () => new RunwayStrategy());
+      this.strategyRegistry.register('luma-ray3', () => new LumaStrategy());
+      this.strategyRegistry.register('kling-26', () => new KlingStrategy());
+      this.strategyRegistry.register('sora-2', () => new SoraStrategy());
+      this.strategyRegistry.register('veo-4', () => new VeoStrategy());
+      this.strategyRegistry.register('wan-2.2', () => new WanStrategy());
+    }
   }
 
   /**

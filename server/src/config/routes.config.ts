@@ -159,6 +159,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     continuitySessionService,
     sessionService: container.resolve('sessionService'),
     modelIntelligenceService,
+    modelIntelligenceMetrics: container.resolve('metricsService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
@@ -194,7 +195,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   app.post(
     '/llm/label-spans-batch',
     apiAuthMiddleware,
-    createBatchMiddleware(container.resolve('aiService'))
+    createBatchMiddleware(container.resolve('aiService'), container.resolve('metricsService'))
   );
 
   // ============================================================================

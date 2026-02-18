@@ -1,16 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 
-const { labelSpansMock, loggerMock, metricsMock } = vi.hoisted(() => ({
+const { labelSpansMock, loggerMock } = vi.hoisted(() => ({
   labelSpansMock: vi.fn(),
   loggerMock: {
     info: vi.fn(),
     debug: vi.fn(),
     error: vi.fn(),
-  },
-  metricsMock: {
-    recordHistogram: vi.fn(),
-    recordCounter: vi.fn(),
   },
 }));
 
@@ -20,10 +16,6 @@ vi.mock('@llm/span-labeling/SpanLabelingService', () => ({
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: loggerMock,
-}));
-
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: metricsMock,
 }));
 
 import { RequestBatchingService } from '../requestBatching';

@@ -3,7 +3,6 @@ import React, {
   useMemo,
   useCallback,
   useEffect,
-  useState,
 } from 'react';
 import { useDrawerState } from '@components/CollapsibleDrawer';
 import { useToast } from '@components/Toast';
@@ -18,7 +17,8 @@ import { useHighlightRendering } from '@/features/span-highlighting';
 import { useHighlightFingerprint } from '@/features/span-highlighting';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import { useTriggerAutocomplete } from '@features/assets/hooks/useTriggerAutocomplete';
-import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
+import { useOutlineOverlay } from './hooks/useOutlineOverlay';
+import { useEditorInput } from './hooks/useEditorInput';
 
 import type {
   PromptCanvasProps,
@@ -186,12 +186,6 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video' && showResults;
 
-  // Span bento overlay (collapsed by default on desktop)
-  const [outlineOverlayState, setOutlineOverlayState] = useState<
-    'closed' | 'opening' | 'open' | 'closing'
-  >('closed');
-  const outlineOverlayActive = outlineOverlayState !== 'closed';
-
   const { state, setState } = usePromptCanvasState();
   const {
     showLegend,
@@ -357,47 +351,19 @@ export function PromptCanvas({
     [setState]
   );
 
-  const closeOutlineOverlay = useCallback((): void => {
-    setHoveredSpanId(null);
-    setOutlineOverlayState('closing');
-    window.setTimeout(() => {
-      setOutlineOverlayState('closed');
-    }, 160);
-  }, [setHoveredSpanId]);
-
-  const openOutlineOverlay = useCallback((): void => {
-    setOutlineOverlayState('opening');
-    requestAnimationFrame(() => setOutlineOverlayState('open'));
-  }, []);
-
-  // On small screens, avoid a skinny rail and show the outline content by default.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia('(max-width: 768px)');
-    if (mql.matches) openOutlineOverlay();
-  }, [openOutlineOverlay]);
-
-  useEffect(() => {
-    if (!outlineOverlayActive) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        closeOutlineOverlay();
-      }
-    };
-    const handleMouseDown = (event: MouseEvent): void => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (!outlineOverlayRef.current) return;
-      if (outlineOverlayRef.current.contains(target)) return;
-      closeOutlineOverlay();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [closeOutlineOverlay, outlineOverlayActive]);
+  // Span bento overlay (state machine, dismissal, hover brightness)
+  const {
+    outlineOverlayState,
+    outlineOverlayActive,
+    openOutlineOverlay,
+  } = useOutlineOverlay({
+    outlineOverlayRef,
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    enableMLHighlighting,
+    showHighlights,
+    hoveredSpanId,
+    setHoveredSpanId,
+  });
 
   // Span data conversion hook
   const { memoizedInitialHighlights } = useSpanDataConversion({
@@ -550,57 +516,6 @@ export function PromptCanvas({
 
   const isOutputLoading = Boolean(isProcessing || isRefining);
 
-  const escapeAttr = (value: string): string => {
-    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
-      return CSS.escape(value);
-    }
-    return value.replace(/["\\]/g, '\\$&');
-  };
-
-  const inspectedSpanElementRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const root = editorRef.current;
-    if (
-      !root ||
-      !enableMLHighlighting ||
-      !showHighlights ||
-      !outlineOverlayActive
-    ) {
-      if (inspectedSpanElementRef.current) {
-        inspectedSpanElementRef.current.classList.remove('brightness-90');
-        inspectedSpanElementRef.current = null;
-      }
-      return;
-    }
-
-    if (inspectedSpanElementRef.current) {
-      inspectedSpanElementRef.current.classList.remove('brightness-90');
-      inspectedSpanElementRef.current = null;
-    }
-
-    if (!hoveredSpanId) {
-      return;
-    }
-
-    const el = root.querySelector(
-      `[data-span-id="${escapeAttr(hoveredSpanId)}"]`
-    ) as HTMLElement | null;
-    if (!el) return;
-    el.classList.add('brightness-90');
-    inspectedSpanElementRef.current = el;
-    return () => {
-      el.classList.remove('brightness-90');
-      if (inspectedSpanElementRef.current === el) {
-        inspectedSpanElementRef.current = null;
-      }
-    };
-  }, [
-    enableMLHighlighting,
-    hoveredSpanId,
-    showHighlights,
-    outlineOverlayActive,
-  ]);
-
 
 
   // Ambient motion: every ~6s, momentarily fade a random token
@@ -749,150 +664,23 @@ export function PromptCanvas({
     debug,
   });
 
-  const resolveCaretContext = useCallback(
-    (normalizedText: string): { cursorPosition: number; caretRect: DOMRect | null } => {
-      const selection = window.getSelection();
-      let cursorPosition = normalizedText.length;
-      let caretRect: DOMRect | null = null;
-
-      if (!selection || selection.rangeCount === 0) {
-        return { cursorPosition, caretRect };
-      }
-
-      const range = selection.getRangeAt(0);
-      const offsets = getSelectionOffsets(editorRef.current, range);
-      if (offsets) {
-        cursorPosition = offsets.end;
-      }
-
-      const rect = range.getBoundingClientRect();
-      if (rect && rect.width + rect.height > 0) {
-        caretRect = rect;
-      } else {
-        const rects = range.getClientRects();
-        const firstRect = rects[0];
-        if (firstRect) {
-          caretRect = firstRect;
-        }
-      }
-
-      return { cursorPosition, caretRect };
-    },
-    []
-  );
-
-  const syncEditorToPromptState = useCallback((): void => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    const newText = editor.innerText || editor.textContent || '';
-    const normalizedText = sanitizeText(newText);
-
-    debug.logAction('textEdit', {
-      newLength: normalizedText.length,
-      oldLength: editorDisplayText.length,
-    });
-
-    onInputPromptChange(normalizedText);
-    if (showResults) {
-      onResetResultsForEditing?.();
-    }
-
-    const { cursorPosition, caretRect } = resolveCaretContext(normalizedText);
-    handleAutocomplete(normalizedText, cursorPosition, editor, caretRect);
-    validateTriggers(normalizedText);
-  }, [
-    debug,
-    editorDisplayText.length,
-    handleAutocomplete,
-    resolveCaretContext,
+  const {
+    handleInput,
+    handleEditorKeyDown,
+    insertTrigger,
+  } = useEditorInput({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    editorDisplayText,
     showResults,
+    onInputPromptChange,
+    onResetResultsForEditing,
+    handleAutocomplete,
+    handleAutocompleteKeyDown,
+    closeAutocomplete,
     validateTriggers,
-  ]);
-
-  const handleInput = useCallback((): void => {
-    syncEditorToPromptState();
-  }, [syncEditorToPromptState]);
-
-  const insertAtCanvasCaret = useCallback(
-    (text: string): boolean => {
-      const editor = editorRef.current;
-      const selection = window.getSelection();
-      if (!editor || !selection || selection.rangeCount === 0) {
-        return false;
-      }
-
-      const range = selection.getRangeAt(0);
-      if (!editor.contains(range.commonAncestorContainer)) {
-        return false;
-      }
-
-      range.deleteContents();
-      const textNode = document.createTextNode(text);
-      range.insertNode(textNode);
-      range.setStartAfter(textNode);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-
-      syncEditorToPromptState();
-      return true;
-    },
-    [syncEditorToPromptState]
-  );
-
-  useEffect(() => {
-    registerInsertHandler(insertAtCanvasCaret);
-    return () => registerInsertHandler(null);
-  }, [insertAtCanvasCaret, registerInsertHandler]);
-
-  const insertTrigger = useCallback(
-    (asset: { trigger: string }) => {
-      const editor = editorRef.current;
-      const text = editor?.innerText || editor?.textContent || editorDisplayText;
-      const selection = window.getSelection();
-      if (!editor || !selection || selection.rangeCount === 0) {
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
-      const offsets = getSelectionOffsets(editor, range);
-      const cursorPos = offsets?.end ?? text.length;
-      const beforeCursor = text.slice(0, cursorPos);
-      const triggerStart = beforeCursor.lastIndexOf('@');
-      if (triggerStart === -1) {
-        return;
-      }
-
-      const newText =
-        text.slice(0, triggerStart) + asset.trigger + text.slice(cursorPos);
-      editor.textContent = newText;
-
-      const newCursorPos = triggerStart + asset.trigger.length;
-      setTimeout(() => {
-        restoreSelectionFromOffsets(editor, newCursorPos, newCursorPos);
-        editor.focus();
-        syncEditorToPromptState();
-      }, 0);
-
-      closeAutocomplete();
-    },
-    [closeAutocomplete, editorDisplayText, syncEditorToPromptState]
-  );
-
-  const handleEditorKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      const result = handleAutocompleteKeyDown(event);
-      if (result && typeof result === 'object' && 'selected' in result) {
-        insertTrigger(result.selected);
-        return;
-      }
-      if (result === true) {
-        return;
-      }
-    },
-    [handleAutocompleteKeyDown, insertTrigger]
-  );
+    registerInsertHandler,
+    logAction: debug.logAction,
+  });
 
   const {
     suggestionCount,

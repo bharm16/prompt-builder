@@ -7,7 +7,11 @@ import {
   ModelRecommendationRequestSchema,
   ModelRecommendationEventSchema,
 } from '@services/model-intelligence/schemas/requests';
-import { metricsService } from '@infrastructure/MetricsService';
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+export interface ModelIntelligenceRouteMetrics {
+  recordModelRecommendationEvent(event: string, mode: string, followed: boolean): void;
+  recordModelRecommendationTimeToGeneration(timeMs: number, followed: boolean): void;
+}
 
 interface RequestWithUser extends Request {
   user?: { uid?: string };
@@ -44,7 +48,8 @@ const normalizeRecommendationSpans = (
 const log = logger.child({ routes: 'model-intelligence' });
 
 export function createModelIntelligenceRoutes(
-  modelIntelligenceService: ModelIntelligenceService | null
+  modelIntelligenceService: ModelIntelligenceService | null,
+  metricsService?: ModelIntelligenceRouteMetrics
 ): Router {
   const router = express.Router();
 
@@ -137,9 +142,9 @@ export function createModelIntelligenceRoutes(
         Boolean(selectedModelId) &&
         recommendedModelId === selectedModelId;
 
-      metricsService.recordModelRecommendationEvent(event, mode, followed);
+      metricsService?.recordModelRecommendationEvent(event, mode, followed);
       if (event === 'generation_started' && typeof timeSinceRecommendationMs === 'number') {
-        metricsService.recordModelRecommendationTimeToGeneration(timeSinceRecommendationMs, followed);
+        metricsService?.recordModelRecommendationTimeToGeneration(timeSinceRecommendationMs, followed);
       }
 
       log.info('Model intelligence telemetry event', {

@@ -22,7 +22,7 @@ import { createReferenceImagesRoutes } from './reference-images.routes';
 import { createImageObservationRoutes } from './image-observation.routes';
 import { createContinuityRoutes } from './continuity.routes';
 import { createSessionRoutes } from './sessions.routes';
-import { createModelIntelligenceRoutes } from './model-intelligence.routes';
+import { createModelIntelligenceRoutes, type ModelIntelligenceRouteMetrics } from './model-intelligence.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
@@ -44,6 +44,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;
+  modelIntelligenceMetrics?: ModelIntelligenceRouteMetrics;
   sessionService?: SessionService | null;
 }
 
@@ -69,6 +70,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     imageObservationService,
     continuitySessionService,
     modelIntelligenceService,
+    modelIntelligenceMetrics,
     sessionService,
     storageService,
   } = services;
@@ -129,7 +131,7 @@ export function createAPIRoutes(services: ApiServices): Router {
   }
 
   if (modelIntelligenceService) {
-    router.use('/', createModelIntelligenceRoutes(modelIntelligenceService));
+    router.use('/', createModelIntelligenceRoutes(modelIntelligenceService, modelIntelligenceMetrics));
   }
 
   // Capabilities registry routes (schema-driven UI)

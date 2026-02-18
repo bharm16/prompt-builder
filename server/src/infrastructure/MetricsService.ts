@@ -578,5 +578,5 @@ export class MetricsService implements IMetricsCollector {
   }
 }
 
-// Export singleton instance
-export const metricsService = new MetricsService();
+// MetricsService instances should be created via the DI container
+// (see server/src/config/services/infrastructure.services.ts)

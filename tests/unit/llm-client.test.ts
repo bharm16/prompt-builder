@@ -52,10 +52,6 @@ vi.mock('@infrastructure/Logger', () => ({
   logger: mockLogger,
 }));
 
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: mockMetricsService,
-}));
-
 import { LLMClient, ClientAbortError, TimeoutError } from '@clients/LLMClient';
 
 const createAdapter = (overrides: Record<string, unknown> = {}) => ({
@@ -132,6 +128,7 @@ describe('LLMClient', () => {
         providerName: 'test',
         defaultModel: 'model-a',
         defaultTimeout: 1234,
+        metricsService: mockMetricsService,
       });
 
       const response = await client.complete('Prompt', {});

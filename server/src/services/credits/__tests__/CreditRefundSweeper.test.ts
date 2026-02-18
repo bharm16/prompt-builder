@@ -17,13 +17,9 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: {
-    recordAlert: mocks.recordAlert,
-  },
-}));
-
 import { CreditRefundSweeper, createCreditRefundSweeper } from '../CreditRefundSweeper';
+
+const mockMetricsService = { recordAlert: mocks.recordAlert };
 
 describe('CreditRefundSweeper', () => {
   beforeEach(() => {
@@ -101,7 +97,8 @@ describe('CreditRefundSweeper', () => {
         sweepIntervalMs: 60_000,
         maxPerRun: 10,
         maxAttempts: 20,
-      }
+      },
+      mockMetricsService
     );
 
     await (sweeper as unknown as { runOnce: () => Promise<void> }).runOnce();

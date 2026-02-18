@@ -4,6 +4,7 @@
  */
 
 export { VideoPromptService } from './VideoPromptService';
+export type { VideoPromptServiceDeps } from './VideoPromptService';
 
 // Export detection services for advanced usage
 export { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService';

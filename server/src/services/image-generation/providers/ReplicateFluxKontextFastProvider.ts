@@ -8,7 +8,6 @@
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { sleep as sleepForMs } from '@utils/sleep';
-import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 import { stripPreviewSections } from '@services/image-generation/promptSanitization';
 import type {
   ImagePreviewProvider,
@@ -121,9 +120,14 @@ const normalizeSeed = (value?: number): number | undefined => {
   return Math.round(value);
 };
 
+interface VideoPromptDetector {
+  isVideoPrompt(prompt: string | null | undefined): boolean;
+}
+
 export interface ReplicateFluxKontextFastProviderOptions {
   apiToken?: string;
   promptTransformer?: VideoToImagePromptTransformer | null;
+  videoPromptDetector?: VideoPromptDetector;
 }
 
 export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
@@ -132,7 +136,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
 
   private readonly replicate: ReplicateClient | null;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
-  private readonly videoPromptDetector: VideoPromptDetectionService;
+  private readonly videoPromptDetector: VideoPromptDetector;
   private readonly log = logger.child({ service: 'ReplicateFluxKontextFastProvider' });
 
   constructor(options: ReplicateFluxKontextFastProviderOptions = {}) {
@@ -144,7 +148,10 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
       : null;
 
     this.promptTransformer = options.promptTransformer ?? null;
-    this.videoPromptDetector = new VideoPromptDetectionService();
+    if (!options.videoPromptDetector) {
+      throw new Error('ReplicateFluxKontextFastProvider requires a videoPromptDetector');
+    }
+    this.videoPromptDetector = options.videoPromptDetector;
   }
 
   public isAvailable(): boolean {

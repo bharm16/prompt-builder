@@ -31,15 +31,6 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-// Mock metrics service
-vi.mock('@infrastructure/MetricsService', () => ({
-  metricsService: {
-    recordCacheHit: vi.fn(),
-    recordCacheMiss: vi.fn(),
-    updateCacheHitRate: vi.fn(),
-  },
-}));
-
 // Mock semantic cache enhancer
 vi.mock('../SemanticCacheService.js', () => ({
   SemanticCacheEnhancer: {
@@ -47,7 +38,11 @@ vi.mock('../SemanticCacheService.js', () => ({
   },
 }));
 
-import { metricsService } from '@infrastructure/MetricsService';
+const createMockMetrics = () => ({
+  recordCacheHit: vi.fn(),
+  recordCacheMiss: vi.fn(),
+  updateCacheHitRate: vi.fn(),
+});
 
 describe('CacheService', () => {
   beforeEach(() => {
@@ -127,7 +122,8 @@ describe('CacheService', () => {
 
   describe('cache operations', () => {
     it('records cache hit and updates metrics', async () => {
-      const service = new CacheService();
+      const mockMetrics = createMockMetrics();
+      const service = new CacheService({}, mockMetrics);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue({ data: 'cached' });
@@ -135,12 +131,13 @@ describe('CacheService', () => {
       const result = await service.get<{ data: string }>('key', 'test-type');
 
       expect(result).toEqual({ data: 'cached' });
-      expect(metricsService.recordCacheHit).toHaveBeenCalledWith('test-type');
-      expect(metricsService.updateCacheHitRate).toHaveBeenCalled();
+      expect(mockMetrics.recordCacheHit).toHaveBeenCalledWith('test-type');
+      expect(mockMetrics.updateCacheHitRate).toHaveBeenCalled();
     });
 
     it('records cache miss and updates metrics', async () => {
-      const service = new CacheService();
+      const mockMetrics = createMockMetrics();
+      const service = new CacheService({}, mockMetrics);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue(undefined);
@@ -148,7 +145,7 @@ describe('CacheService', () => {
       const result = await service.get<string>('key', 'test-type');
 
       expect(result).toBeNull();
-      expect(metricsService.recordCacheMiss).toHaveBeenCalledWith('test-type');
+      expect(mockMetrics.recordCacheMiss).toHaveBeenCalledWith('test-type');
     });
 
     it('sets value with custom TTL', async () => {
