@@ -186,7 +186,7 @@ export function CameraMotionModal({
       onSelect(selectedPath);
       onClose();
     },
-    [state.cameraPaths, onClose, onSelect]
+    [state.cameraPaths, state.fallbackMode, onClose, onSelect]
   );
 
   if (!isOpen) {

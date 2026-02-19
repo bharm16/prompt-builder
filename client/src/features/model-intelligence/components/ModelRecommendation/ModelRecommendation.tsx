@@ -26,6 +26,7 @@ const reasonLabels: Record<string, string> = {
 };
 
 const formatReason = (reason: string): string => reasonLabels[reason] ?? 'Unavailable';
+const EMPTY_FILTERED_OUT: Array<{ modelId: string; reason: string }> = [];
 
 export function ModelRecommendation({
   prompt,
@@ -61,7 +62,7 @@ export function ModelRecommendation({
 
   const summary = recommendation?.recommended;
   const efficient = recommendation?.alsoConsider;
-  const filteredOut = recommendation?.filteredOut ?? [];
+  const filteredOut = recommendation?.filteredOut ?? EMPTY_FILTERED_OUT;
   const comparisonModels = recommendation?.suggestComparison ? recommendation?.comparisonModels : undefined;
   const comparisonOptions = useMemo(
     () => ({

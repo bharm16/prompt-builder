@@ -71,8 +71,9 @@ export function useCustomRequest({
 
   // Cleanup on unmount
   useEffect(() => {
+    const requestManager = requestManagerRef.current;
     return () => {
-      requestManagerRef.current.dispose();
+      requestManager.dispose();
     };
   }, []);
 

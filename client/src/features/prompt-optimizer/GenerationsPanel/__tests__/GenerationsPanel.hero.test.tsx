@@ -300,4 +300,55 @@ describe('GenerationsPanel hero presentation', () => {
       expect(latestControls?.isGenerating).toBe(false);
     });
   });
+
+  it('does not re-register controls when prompt text changes without control-state changes', async () => {
+    const videoGeneration = createGeneration({
+      id: 'video-stable-1',
+      mediaType: 'video',
+      model: 'wan-2.5',
+    });
+
+    mockedGenerationsState.generations = [videoGeneration];
+    mockedGenerationsState.activeGenerationId = videoGeneration.id;
+    mockedGenerationsState.isGenerating = false;
+    mockedGenerationsState.latestModel = videoGeneration.model;
+
+    const { rerender } = render(
+      <GenerationsPanel
+        prompt="A cinematic sunset"
+        promptVersionId="version-1"
+        aspectRatio="16:9"
+        versions={[]}
+        onRestoreVersion={vi.fn()}
+        onCreateVersionIfNeeded={() => 'version-1'}
+        presentation="hero"
+      />
+    );
+
+    await waitFor(() => {
+      const nonNullCalls = setControlsSpy.mock.calls
+        .map((call) => call[0])
+        .filter((value) => value !== null);
+      expect(nonNullCalls).toHaveLength(1);
+    });
+
+    rerender(
+      <GenerationsPanel
+        prompt="A different prompt text"
+        promptVersionId="version-1"
+        aspectRatio="16:9"
+        versions={[]}
+        onRestoreVersion={vi.fn()}
+        onCreateVersionIfNeeded={() => 'version-1'}
+        presentation="hero"
+      />
+    );
+
+    await waitFor(() => {
+      const nonNullCalls = setControlsSpy.mock.calls
+        .map((call) => call[0])
+        .filter((value) => value !== null);
+      expect(nonNullCalls).toHaveLength(1);
+    });
+  });
 });

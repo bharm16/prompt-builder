@@ -275,8 +275,7 @@ export function useInlineSuggestionState({
   useEffect(() => {
     setCustomRequest('');
     setCustomRequestError('');
-    // Note: setCustomRequest is stable (from useState) so not needed in deps
-  }, [selectedSpanId]);
+  }, [selectedSpanId, setCustomRequest]);
 
   useEffect(() => {
     const justOpened =

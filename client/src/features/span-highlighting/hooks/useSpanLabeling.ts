@@ -524,7 +524,8 @@ export function useSpanLabeling({
     initialDataVersion,
     emitResult,
     immediate,
-    log
+    log,
+    setCacheForPayload,
   ]);
 
   const refresh = useCallback((): void => {
@@ -532,7 +533,7 @@ export function useSpanLabeling({
     schedule(lastPayloadRef.current, true);
   }, [schedule]);
 
-  useEffect(() => () => cancelPending(), []);
+  useEffect(() => () => cancelPending(), [cancelPending]);
 
   return {
     spans: state.spans,

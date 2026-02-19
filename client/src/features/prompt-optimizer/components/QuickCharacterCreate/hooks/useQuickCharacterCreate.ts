@@ -28,8 +28,10 @@ export function useQuickCharacterCreate({
 
   useEffect(() => {
     if (!isOpen) {
-      images.forEach((image) => URL.revokeObjectURL(image.preview));
-      setImages([]);
+      setImages((prev) => {
+        prev.forEach((image) => URL.revokeObjectURL(image.preview));
+        return [];
+      });
       setError(null);
       return;
     }

@@ -65,7 +65,7 @@ export function useEditorInput({
 
       return { cursorPosition, caretRect };
     },
-    []
+    [editorRef]
   );
 
   const syncEditorToPromptState = useCallback((): void => {
@@ -91,7 +91,10 @@ export function useEditorInput({
   }, [
     logAction,
     editorDisplayText.length,
+    editorRef,
     handleAutocomplete,
+    onInputPromptChange,
+    onResetResultsForEditing,
     resolveCaretContext,
     showResults,
     validateTriggers,
@@ -125,7 +128,7 @@ export function useEditorInput({
       syncEditorToPromptState();
       return true;
     },
-    [syncEditorToPromptState]
+    [editorRef, syncEditorToPromptState]
   );
 
   useEffect(() => {
@@ -164,7 +167,7 @@ export function useEditorInput({
 
       closeAutocomplete();
     },
-    [closeAutocomplete, editorDisplayText, syncEditorToPromptState]
+    [closeAutocomplete, editorDisplayText, editorRef, syncEditorToPromptState]
   );
 
   const handleEditorKeyDown = useCallback(

@@ -8,7 +8,6 @@ import type { SuggestionsData } from '@/features/prompt-optimizer/PromptCanvas/t
 import type { OptimizationOptions } from '@/features/prompt-optimizer/types';
 import type { I2VContext } from '@/features/prompt-optimizer/types/i2v';
 import type { User } from './types';
-import type { PromptHistory } from './types';
 import { useAutoSave } from '@/features/prompt-optimizer/PromptOptimizerContainer/hooks/useAutoSave';
 
 interface PromptResultsActionsContextValue {
@@ -46,7 +45,7 @@ interface PromptResultsActionsProviderProps
   displayedPrompt: string | null;
   isApplyingHistoryRef: MutableRefObject<boolean>;
   handleDisplayedPromptChange: (text: string) => void;
-  promptHistory: Pick<PromptHistory, 'updateEntryOutput'>;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
 }
@@ -60,7 +59,7 @@ export function PromptResultsActionsProvider({
   displayedPrompt,
   isApplyingHistoryRef,
   handleDisplayedPromptChange,
-  promptHistory,
+  updateEntryOutput,
   setOutputSaveState,
   setOutputLastSavedAt,
   user,
@@ -90,7 +89,7 @@ export function PromptResultsActionsProvider({
     displayedPrompt,
     isApplyingHistoryRef,
     handleDisplayedPromptChange,
-    promptHistory,
+    updateEntryOutput,
     setOutputSaveState,
     setOutputLastSavedAt,
   });

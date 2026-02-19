@@ -10,6 +10,21 @@ interface CanvasGenerationsParams {
 }
 
 export function useCanvasGenerations(params: CanvasGenerationsParams) {
+  const {
+    onInputPromptChange,
+    onResetResultsForEditing,
+    setSelectedModel,
+    setVideoTier,
+    setGenerationParams,
+    showResults,
+    normalizedDisplayedPrompt,
+    normalizedInputPrompt,
+    effectiveAspectRatio,
+    durationSeconds,
+    fpsNumber,
+    generationParams,
+  } = params;
+
   const { shotId, shotPromptEntry, updateShotVersions } = useShotGenerations({
     currentShot: params.currentShot,
     updateShot: params.updateShot,
@@ -47,21 +62,28 @@ export function useCanvasGenerations(params: CanvasGenerationsParams) {
   const handleReuseGeneration = useCallback(
     (generation: Generation): void => {
       applyGenerationReuse(generation, {
-        onInputPromptChange: params.onInputPromptChange,
-        onResetResultsForEditing: params.onResetResultsForEditing,
-        setSelectedModel: params.setSelectedModel,
-        setVideoTier: params.setVideoTier,
-        setGenerationParams: params.setGenerationParams,
+        onInputPromptChange,
+        onResetResultsForEditing,
+        setSelectedModel,
+        setVideoTier,
+        setGenerationParams,
       });
     },
-    [params]
+    [
+      onInputPromptChange,
+      onResetResultsForEditing,
+      setGenerationParams,
+      setSelectedModel,
+      setVideoTier,
+    ]
   );
 
+  const setGenerationFavorite = versioning.setGenerationFavorite;
   const handleToggleGenerationFavorite = useCallback(
     (generationId: string, isFavorite: boolean): void => {
-      versioning.setGenerationFavorite(generationId, isFavorite);
+      setGenerationFavorite(generationId, isFavorite);
     },
-    [versioning]
+    [setGenerationFavorite]
   );
 
   const { versionsPanelProps, generationsPanelProps } = usePromptCanvasPanelProps({
@@ -69,14 +91,14 @@ export function useCanvasGenerations(params: CanvasGenerationsParams) {
     selectedVersionId: versioning.selectedVersionId,
     onSelectVersion: versioning.handleSelectVersion,
     onCreateVersion: versioning.handleCreateVersion,
-    showResults: params.showResults,
-    normalizedDisplayedPrompt: params.normalizedDisplayedPrompt,
-    normalizedInputPrompt: params.normalizedInputPrompt,
+    showResults,
+    normalizedDisplayedPrompt,
+    normalizedInputPrompt,
     promptVersionId: versioning.promptVersionId,
-    effectiveAspectRatio: params.effectiveAspectRatio,
-    durationSeconds: params.durationSeconds,
-    fpsNumber: params.fpsNumber,
-    generationParams: params.generationParams,
+    effectiveAspectRatio,
+    durationSeconds,
+    fpsNumber,
+    generationParams,
     initialGenerations: versioning.activeVersion?.generations ?? undefined,
     onGenerationsChange: versioning.handleGenerationsChange,
     currentVersions: versioning.currentVersions,

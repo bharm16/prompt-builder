@@ -26,6 +26,9 @@ export function useAssetReferenceImages(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const cancelPendingRequest = useCallback(() => {
+    requestIdRef.current += 1;
+  }, []);
 
   const fetchReferenceImages = useCallback(async () => {
     if (!prompt || !/@[a-zA-Z]/.test(prompt)) {
@@ -67,9 +70,9 @@ export function useAssetReferenceImages(
     const debounceTimer = setTimeout(fetchReferenceImages, 500);
     return () => {
       clearTimeout(debounceTimer);
-      requestIdRef.current++;
+      cancelPendingRequest();
     };
-  }, [fetchReferenceImages]);
+  }, [cancelPendingRequest, fetchReferenceImages]);
 
   return {
     referenceImages,

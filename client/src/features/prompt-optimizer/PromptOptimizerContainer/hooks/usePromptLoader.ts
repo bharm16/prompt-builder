@@ -10,6 +10,10 @@ import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 
 const log = logger.child('usePromptLoader');
+const isRemoteSessionId = (value: string): boolean => {
+  const normalized = value.trim();
+  return normalized.length > 0 && !normalized.startsWith('draft-');
+};
 
 interface PromptData {
   id?: string;
@@ -81,6 +85,7 @@ export function usePromptLoader({
   onLoadKeyframes,
   skipLoadFromUrlRef,
 }: UsePromptLoaderParams): { isLoading: boolean } {
+  const isAuthenticated = Boolean(user?.uid);
   const {
     setInputPrompt,
     setOptimizedPrompt,
@@ -94,12 +99,15 @@ export function usePromptLoader({
     return true;
   });
   const lastLoadedSessionKeyRef = useRef<string | null>(null);
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   useEffect(() => {
     let cancelled = false;
 
     const loadPromptFromSession = async (): Promise<void> => {
-      if (!sessionId) {
+      const normalizedSessionId = sessionId?.trim() ?? '';
+      if (!normalizedSessionId) {
         setIsLoading(false);
         return;
       }
@@ -109,17 +117,25 @@ export function usePromptLoader({
         return;
       }
 
-      const sessionKey = `${sessionId}::${user?.uid ?? 'anonymous'}`;
+      const sessionKey = `${normalizedSessionId}::${user?.uid ?? 'anonymous'}`;
+      if (!isRemoteSessionId(normalizedSessionId)) {
+        lastLoadedSessionKeyRef.current = sessionKey;
+        setIsLoading(false);
+        return;
+      }
+
       if (lastLoadedSessionKeyRef.current === sessionKey) {
         setIsLoading(false);
         return;
       }
 
+      // Dedupe repeated effect reruns while a load is in-flight or after a failure.
+      lastLoadedSessionKeyRef.current = sessionKey;
       setIsLoading(true);
 
       try {
-        const promptRepository = getPromptRepositoryForUser(Boolean(user));
-        const promptData = (await promptRepository.getById(sessionId)) as
+        const promptRepository = getPromptRepositoryForUser(isAuthenticated);
+        const promptData = (await promptRepository.getById(normalizedSessionId)) as
           | PromptData
           | null;
 
@@ -170,11 +186,11 @@ export function usePromptLoader({
               const info = sanitizeError(contextError);
               log.warn('Failed to restore prompt context from session', {
                 operation: 'restorePromptContext',
-                sessionId,
+                sessionId: normalizedSessionId,
                 error: info.message,
                 errorName: info.name,
               });
-              toast.warning(
+              toastRef.current.warning(
                 'Could not restore video context. The prompt will still load.'
               );
               setPromptContext(null);
@@ -183,15 +199,14 @@ export function usePromptLoader({
             setPromptContext(null);
           }
         } else {
-          log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId });
+          log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
           navigate('/', { replace: true });
         }
-        lastLoadedSessionKeyRef.current = sessionKey;
       } catch (error) {
         if (cancelled) return;
         const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
-        log.error('Error loading prompt from session', err, { operation: 'loadPromptFromSession', sessionId });
-        toast.error('Failed to load prompt');
+        log.error('Error loading prompt from session', err, { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
+        toastRef.current.error('Failed to load prompt');
         navigate('/', { replace: true });
       } finally {
         if (!cancelled) {
@@ -208,8 +223,8 @@ export function usePromptLoader({
   }, [
     sessionId,
     navigate,
-    toast,
     user?.uid,
+    isAuthenticated,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
@@ -221,7 +236,6 @@ export function usePromptLoader({
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,
-    user,
     setInputPrompt,
     setOptimizedPrompt,
     setGenericOptimizedPrompt,

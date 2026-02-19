@@ -55,6 +55,8 @@ export function useUndoRedo({
   setCanUndo,
   setCanRedo,
 }: UseUndoRedoParams): UseUndoRedoReturn {
+  const promptOptimizerRef = useRef(promptOptimizer);
+  promptOptimizerRef.current = promptOptimizer;
   // Track setTimeout IDs for cleanup
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const redoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,12 +94,12 @@ export function useUndoRedo({
    */
   const createSnapshot = useCallback(
     (text: string | null = null, highlight: HighlightSnapshot | null = null): StateSnapshot => ({
-      text: text ?? promptOptimizer.displayedPrompt,
+      text: text ?? promptOptimizerRef.current.displayedPrompt,
       highlight: highlight ?? latestHighlightRef.current,
       timestamp: Date.now(),
       version: versionCounter,
     }),
-    [promptOptimizer.displayedPrompt, latestHighlightRef, versionCounter]
+    [latestHighlightRef, versionCounter]
   );
 
   /**
@@ -179,7 +181,7 @@ export function useUndoRedo({
     // Apply the previous state
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(previous.text);
-    promptOptimizer.setOptimizedPrompt(previous.text);
+    promptOptimizerRef.current.setOptimizedPrompt(previous.text);
     applyInitialHighlightSnapshot(previous.highlight ?? null, { 
       bumpVersion: true, 
       markPersisted: false 
@@ -198,7 +200,6 @@ export function useUndoRedo({
   }, [
     createSnapshot,
     applyInitialHighlightSnapshot,
-    promptOptimizer,
     setDisplayedPromptSilently,
     undoStackRef,
     redoStackRef,
@@ -221,7 +222,7 @@ export function useUndoRedo({
     // Apply the next state
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(next.text);
-    promptOptimizer.setOptimizedPrompt(next.text);
+    promptOptimizerRef.current.setOptimizedPrompt(next.text);
     applyInitialHighlightSnapshot(next.highlight ?? null, { 
       bumpVersion: true, 
       markPersisted: false 
@@ -239,7 +240,6 @@ export function useUndoRedo({
     createSnapshot,
     pushToUndoStack,
     applyInitialHighlightSnapshot,
-    promptOptimizer,
     setDisplayedPromptSilently,
     redoStackRef,
     isApplyingHistoryRef,
@@ -252,11 +252,11 @@ export function useUndoRedo({
    */
   const handleDisplayedPromptChange = useCallback(
     (newText: string, cursorPosition: number | null = null): void => {
-      const currentText = promptOptimizer.displayedPrompt;
+      const currentText = promptOptimizerRef.current.displayedPrompt;
 
       // Skip if applying from history
       if (isApplyingHistoryRef.current) {
-        promptOptimizer.setDisplayedPrompt(newText);
+        promptOptimizerRef.current.setDisplayedPrompt(newText);
         return;
       }
 
@@ -264,8 +264,8 @@ export function useUndoRedo({
       if (currentText === newText) return;
 
       // Clear preview prompt once the user edits the output
-      promptOptimizer.setPreviewPrompt?.(null);
-      promptOptimizer.setPreviewAspectRatio?.(null);
+      promptOptimizerRef.current.setPreviewPrompt?.(null);
+      promptOptimizerRef.current.setPreviewAspectRatio?.(null);
 
       // Detect type of change for grouping logic
       const changeType: ChangeType = newText.length > currentText.length ? 'adding' : 'deleting';
@@ -296,11 +296,10 @@ export function useUndoRedo({
       pendingChangeRef.current = changeType;
 
       // Apply the change
-      promptOptimizer.setDisplayedPrompt(newText);
+      promptOptimizerRef.current.setDisplayedPrompt(newText);
       updateUIState();
     },
     [
-      promptOptimizer,
       onEdit,
       isApplyingHistoryRef,
       shouldCreateUndoPoint,

@@ -176,6 +176,20 @@ export function usePromptOptimization({
   navigate,
   onOptimizationApplied,
 }: UsePromptOptimizationParams): UsePromptOptimizationReturn {
+  const {
+    inputPrompt,
+    genericOptimizedPrompt,
+    improvementContext,
+    qualityScore,
+    setInputPrompt,
+    optimize,
+    compile,
+  } = promptOptimizer;
+  const {
+    history,
+    saveToHistory,
+    updateEntryVersions,
+  } = promptHistory;
   /**
    * Handle prompt optimization
    */
@@ -195,10 +209,10 @@ export function usePromptOptimization({
         }
       }
 
-      const prompt = promptToOptimize || promptOptimizer.inputPrompt;
+      const prompt = promptToOptimize || inputPrompt;
       const ctx =
         (normalizedContext as Record<string, unknown> | null | undefined) ||
-        promptOptimizer.improvementContext;
+        improvementContext;
       const optimizationContext = (ctx as Record<string, unknown> | null | undefined) ?? null;
 
       // Serialize prompt context
@@ -221,8 +235,8 @@ export function usePromptOptimization({
       const isCompileOnly = normalizedOptions?.compileOnly === true;
       const compilePrompt =
         normalizedOptions?.compilePrompt ||
-        (typeof promptOptimizer.genericOptimizedPrompt === 'string'
-          ? promptOptimizer.genericOptimizedPrompt
+        (typeof genericOptimizedPrompt === 'string'
+          ? genericOptimizedPrompt
           : null);
       const overrideTargetModel =
         typeof normalizedOptions?.targetModel === 'string' && normalizedOptions.targetModel.trim()
@@ -268,15 +282,15 @@ export function usePromptOptimization({
 
       const result = isCompileOnly
         ? effectiveTargetModel
-          ? await promptOptimizer.compile(
+          ? await compile(
               resolvedCompilePrompt,
               effectiveTargetModel,
               optimizationContext
             )
           : resolvedCompilePrompt
-            ? { optimized: resolvedCompilePrompt, score: promptOptimizer.qualityScore }
+            ? { optimized: resolvedCompilePrompt, score: qualityScore }
             : null
-        : await promptOptimizer.optimize(
+        : await optimize(
             prompt,
             optimizationContext,
             brainstormContextData,
@@ -290,8 +304,8 @@ export function usePromptOptimization({
       if (result) {
         const preserveSessionView = normalizedOptions?.preserveSessionView === true;
         if (preserveSessionView) {
-          if (typeof promptOptimizer.setInputPrompt === 'function') {
-            promptOptimizer.setInputPrompt(result.optimized);
+          if (typeof setInputPrompt === 'function') {
+            setInputPrompt(result.optimized);
             setDisplayedPromptSilently('');
             setShowResults(false);
           } else {
@@ -308,7 +322,7 @@ export function usePromptOptimization({
         }
 
         // Save to history
-        const saveResult = await promptHistory.saveToHistory(
+        const saveResult = await saveToHistory(
           prompt,
           result.optimized,
           result.score,
@@ -341,9 +355,9 @@ export function usePromptOptimization({
           const promptText = result.optimized.trim();
           if (promptText) {
             const uuidForVersions = saveResult.uuid;
-            const history = Array.isArray(promptHistory.history) ? promptHistory.history : [];
+            const promptEntries = Array.isArray(history) ? history : [];
             const existingEntry =
-              history.find((entry) => entry.uuid === uuidForVersions) ?? null;
+              promptEntries.find((entry) => entry.uuid === uuidForVersions) ?? null;
             const currentVersions = Array.isArray(existingEntry?.versions)
               ? existingEntry.versions
               : [];
@@ -360,7 +374,7 @@ export function usePromptOptimization({
                 timestamp: new Date().toISOString(),
               };
 
-              promptHistory.updateEntryVersions(
+              updateEntryVersions(
                 uuidForVersions,
                 saveResult.id ?? null,
                 [...currentVersions, nextVersion]
@@ -371,11 +385,19 @@ export function usePromptOptimization({
       }
     },
     [
-      promptOptimizer,
-      promptHistory,
+      inputPrompt,
+      genericOptimizedPrompt,
+      improvementContext,
+      qualityScore,
+      setInputPrompt,
+      optimize,
+      compile,
+      history,
+      saveToHistory,
+      updateEntryVersions,
       promptContext,
       selectedMode,
-      selectedModel, // Added dependency
+      selectedModel,
       generationParams,
       keyframes,
       startFrame?.storagePath,

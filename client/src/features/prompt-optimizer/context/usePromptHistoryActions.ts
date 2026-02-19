@@ -53,6 +53,12 @@ interface PromptHistoryActionsResult {
   loadFromHistory: (entry: PromptHistoryEntry) => void;
 }
 
+const isRemoteSessionId = (value: string | null | undefined): value is string => {
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim();
+  return normalized.length > 0 && !normalized.startsWith('draft-');
+};
+
 export const usePromptHistoryActions = ({
   debug,
   navigate,
@@ -77,27 +83,37 @@ export const usePromptHistoryActions = ({
   isApplyingHistoryRef,
   skipLoadFromUrlRef,
 }: PromptHistoryActionsOptions): PromptHistoryActionsResult => {
+  const {
+    setDisplayedPrompt,
+    resetPrompt,
+    setInputPrompt,
+    setOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
+  } = promptOptimizer;
+  const { createDraft } = promptHistory;
+
   const setDisplayedPromptSilently = useCallback(
     (text: string): void => {
       isApplyingHistoryRef.current = true;
-      promptOptimizer.setDisplayedPrompt(text);
+      setDisplayedPrompt(text);
       setTimeout(() => {
         isApplyingHistoryRef.current = false;
       }, 0);
     },
-    [promptOptimizer, isApplyingHistoryRef]
+    [setDisplayedPrompt, isApplyingHistoryRef]
   );
 
   const handleCreateNew = useCallback((): void => {
     debug.logAction('createNew');
     skipLoadFromUrlRef.current = true;
-    promptOptimizer.resetPrompt();
+    resetPrompt();
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
     setPromptContext(null);
     resetVersionEdits();
-    const draft = promptHistory.createDraft({
+    const draft = createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
       generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
@@ -107,7 +123,7 @@ export const usePromptHistoryActions = ({
     applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
     persistedSignatureRef.current = null;
     resetEditStacks();
-    if (draft.id) {
+    if (isRemoteSessionId(draft.id)) {
       navigate(`/session/${draft.id}`, { replace: true });
     } else {
       navigate('/', { replace: true });
@@ -126,8 +142,8 @@ export const usePromptHistoryActions = ({
   }, [
     debug,
     skipLoadFromUrlRef,
-    promptOptimizer,
-    promptHistory,
+    resetPrompt,
+    createDraft,
     selectedMode,
     selectedModel,
     generationParams,
@@ -158,14 +174,14 @@ export const usePromptHistoryActions = ({
       setCurrentPromptUuid(entry.uuid || null);
       setCurrentPromptDocId(entry.id || null);
 
-      promptOptimizer.setInputPrompt(entry.input);
-      promptOptimizer.setOptimizedPrompt(entry.output);
+      setInputPrompt(entry.input);
+      setOptimizedPrompt(entry.output);
       setDisplayedPromptSilently(entry.output);
-      if (promptOptimizer.setPreviewPrompt) {
-        promptOptimizer.setPreviewPrompt(null);
+      if (setPreviewPrompt) {
+        setPreviewPrompt(null);
       }
-      if (promptOptimizer.setPreviewAspectRatio) {
-        promptOptimizer.setPreviewAspectRatio(null);
+      if (setPreviewAspectRatio) {
+        setPreviewAspectRatio(null);
       }
       setSelectedMode('video');
       setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
@@ -209,7 +225,7 @@ export const usePromptHistoryActions = ({
         setPromptContext(null);
       }
 
-      if (entry.id) {
+      if (isRemoteSessionId(entry.id)) {
         navigate(`/session/${entry.id}`, { replace: true });
       } else if (entry.uuid) {
         navigate('/', { replace: true });
@@ -229,7 +245,10 @@ export const usePromptHistoryActions = ({
       skipLoadFromUrlRef,
       setCurrentPromptUuid,
       setCurrentPromptDocId,
-      promptOptimizer,
+      setInputPrompt,
+      setOptimizedPrompt,
+      setPreviewPrompt,
+      setPreviewAspectRatio,
       setDisplayedPromptSilently,
       setSelectedMode,
       setSelectedModel,

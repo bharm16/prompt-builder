@@ -143,6 +143,7 @@ export const useGenerationControlsPanel = (
 
   const promptHighlights = useOptionalPromptHighlights();
   const { promptOptimizer } = usePromptServices();
+  const { setInputPrompt } = promptOptimizer;
   const prompt = promptOptimizer.inputPrompt;
   const {
     controls,
@@ -377,8 +378,8 @@ export const useGenerationControlsPanel = (
   }, [prompt]);
 
   const handleClearPrompt = useCallback(() => {
-    promptOptimizer.setInputPrompt("");
-  }, [promptOptimizer]);
+    setInputPrompt("");
+  }, [setInputPrompt]);
 
   const isStartFrameUploadDisabled = !onStartFrameUpload || isStartFrameUploading;
 

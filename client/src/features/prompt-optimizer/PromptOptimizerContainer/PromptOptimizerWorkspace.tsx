@@ -186,6 +186,7 @@ function PromptOptimizerContent({
   const startFrame = domain.startFrame;
   const cameraMotion = domain.cameraMotion;
   const subjectMotion = domain.subjectMotion;
+  const setInputPrompt = promptOptimizer.setInputPrompt;
   const i2vContext = useI2VContext();
   const {
     hasActiveContinuityShot,
@@ -233,7 +234,7 @@ function PromptOptimizerContent({
     handoffAppliedRef.current = handoffKey;
     
     // Pre-fill the input prompt with the converged prompt
-    promptOptimizer.setInputPrompt(convergenceHandoff.prompt);
+    setInputPrompt(convergenceHandoff.prompt);
 
     const handoffCameraMotionId = convergenceHandoff.cameraMotion?.trim();
     if (handoffCameraMotionId) {
@@ -260,7 +261,7 @@ function PromptOptimizerContent({
     });
   }, [
     convergenceHandoff,
-    promptOptimizer,
+    setInputPrompt,
     setCameraMotion,
     setSubjectMotion,
     setDisplayedPromptSilently,
@@ -283,7 +284,14 @@ function PromptOptimizerContent({
     if (!shotModelId) return;
     if (selectedModel === shotModelId) return;
     setSelectedModel(shotModelId);
-  }, [currentShot?.id, currentShot?.modelId, hasActiveContinuityShot, selectedModel, setSelectedModel]);
+  }, [
+    currentShot,
+    currentShot?.id,
+    currentShot?.modelId,
+    hasActiveContinuityShot,
+    selectedModel,
+    setSelectedModel,
+  ]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
 
@@ -611,7 +619,7 @@ function PromptOptimizerContent({
           displayedPrompt={promptOptimizer.displayedPrompt}
           isApplyingHistoryRef={isApplyingHistoryRef}
           handleDisplayedPromptChange={handleDisplayedPromptChange}
-          promptHistory={promptHistory}
+          updateEntryOutput={promptHistory.updateEntryOutput}
           setOutputSaveState={setOutputSaveState}
           setOutputLastSavedAt={setOutputLastSavedAt}
           user={user}

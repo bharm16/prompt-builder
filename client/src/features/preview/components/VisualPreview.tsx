@@ -156,9 +156,10 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
+    const copyTimeoutId = copyTimeoutRef.current;
     return () => {
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
+      if (copyTimeoutId !== null) {
+        window.clearTimeout(copyTimeoutId);
       }
     };
   }, []);

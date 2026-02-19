@@ -58,6 +58,16 @@ export default [
       'react/display-name': 'warn',
       'react/no-unescaped-entities': 'warn',
       'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/exhaustive-deps': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ArrayExpression[parent.type='CallExpression'][parent.callee.name=/^use(?:Effect|LayoutEffect|Memo|Callback)$/] > Identifier[name=/^(params|options|props|promptOptimizer|promptHistory|workspaceDomain|versioning)$/]",
+          message:
+            'Do not use whole-object dependencies in hook arrays. Depend on specific stable members/functions instead.',
+        },
+      ],
       // Keep baseline signal useful while this branch is being stabilized.
       'no-console': 'warn',
       'no-eval': 'error',

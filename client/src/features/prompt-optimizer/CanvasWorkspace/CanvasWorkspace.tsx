@@ -294,14 +294,15 @@ export function CanvasWorkspace({
   }, [galleryEntries.length, heroGeneration, domain.startFrame]);
 
   const galleryOpen = workspaceDomain?.galleryOpen ?? true;
+  const setGalleryOpen = workspaceDomain?.setGalleryOpen;
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
   }, []);
 
   const handleCloseGallery = useCallback((): void => {
-    workspaceDomain?.setGalleryOpen(false);
-  }, [workspaceDomain]);
+    setGalleryOpen?.(false);
+  }, [setGalleryOpen]);
 
   const handleReuse = useCallback(
     (generationId: string): void => {

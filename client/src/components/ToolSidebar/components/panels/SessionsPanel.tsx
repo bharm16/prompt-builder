@@ -48,6 +48,7 @@ import {
 } from '@features/history/utils/historyMedia';
 
 const INITIAL_HISTORY_LIMIT = 5;
+const EMPTY_HISTORY: PromptHistoryEntry[] = [];
 
 interface SessionsPanelProps {
   history?: PromptHistoryEntry[];
@@ -74,7 +75,8 @@ const noopDelete = (_id: string): void => {};
 
 export function SessionsPanel(props: SessionsPanelProps): ReactElement {
   const domain = useSidebarSessionsDomain();
-  const filteredHistory = props.filteredHistory ?? domain?.filteredHistory ?? [];
+  const filteredHistory =
+    props.filteredHistory ?? domain?.filteredHistory ?? EMPTY_HISTORY;
   const isLoading = props.isLoading ?? domain?.isLoadingHistory ?? false;
   const searchQuery = props.searchQuery ?? domain?.searchQuery ?? '';
   const onSearchChange = props.onSearchChange ?? domain?.onSearchChange ?? noopSearch;

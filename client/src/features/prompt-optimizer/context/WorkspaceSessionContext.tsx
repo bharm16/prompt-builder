@@ -63,6 +63,10 @@ interface WorkspaceSessionContextValue {
 const WorkspaceSessionContext = createContext<WorkspaceSessionContextValue | null>(null);
 const log = logger.child('WorkspaceSessionContext');
 const VIRTUAL_SINGLE_SHOT_ID = '__single__';
+const isRemoteSessionId = (value: string): boolean => {
+  const normalized = value.trim();
+  return normalized.length > 0 && !normalized.startsWith('draft-');
+};
 
 const mapContinuityToSession = (
   continuity: ContinuitySession
@@ -122,6 +126,12 @@ export function WorkspaceSessionProvider({
     refreshRequestIdRef.current = requestId;
 
     if (!requestedSessionId) {
+      setSession(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+    if (!isRemoteSessionId(requestedSessionId)) {
       setSession(null);
       setError(null);
       setLoading(false);

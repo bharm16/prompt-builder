@@ -26,6 +26,7 @@ export function usePromptHistoryActions({
   loadFromHistory,
   handleCreateNew,
 }: UsePromptHistoryActionsParams): UsePromptHistoryActionsResult {
+  const { saveToHistory, updateEntryPersisted } = promptHistory;
   const handleLoadFromHistory = useCallback(
     (entry: PromptHistoryEntry): void => {
       const hydrated = hydrateKeyframes(entry.keyframes ?? []);
@@ -48,7 +49,7 @@ export function usePromptHistoryActions({
         typeof entry.mode === 'string' && entry.mode.trim()
           ? entry.mode.trim()
           : 'video';
-      const result = await promptHistory.saveToHistory(
+      const result = await saveToHistory(
         entry.input,
         entry.output,
         entry.score ?? null,
@@ -81,15 +82,15 @@ export function usePromptHistoryActions({
         });
       }
     },
-    [handleLoadFromHistory, promptHistory]
+    [handleLoadFromHistory, saveToHistory]
   );
 
   const handleRename = useCallback(
     (entry: PromptHistoryEntry, title: string): void => {
       if (!entry.uuid) return;
-      promptHistory.updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
+      updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
     },
-    [promptHistory]
+    [updateEntryPersisted]
   );
 
   return {

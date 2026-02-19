@@ -1,10 +1,14 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import {
+  GenerationControlsProvider,
+  useGenerationControlsContext,
+} from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import { GenerationControlsStoreProvider } from '@/features/prompt-optimizer/context/GenerationControlsStore';
 import { GenerationControlsPanel } from '../GenerationControlsPanel';
+import * as creditGateHook from '@/hooks/useCreditGate';
 
 const useCreditBalanceMock = vi.fn();
 const useGenerationControlsPanelMock = vi.fn();
@@ -121,6 +125,20 @@ const buildHookResult = () => ({
   },
 });
 
+function OnInsufficientCreditsObserver({
+  onChange,
+}: {
+  onChange: (handler: ((required: number, operation: string) => void) | null) => void;
+}): React.ReactElement {
+  const { onInsufficientCredits } = useGenerationControlsContext();
+
+  React.useEffect(() => {
+    onChange(onInsufficientCredits);
+  }, [onChange, onInsufficientCredits]);
+
+  return <></>;
+}
+
 const renderPanel = (props: {
   onDraft?: ReturnType<typeof vi.fn>;
   onRender?: ReturnType<typeof vi.fn>;
@@ -182,5 +200,60 @@ describe('GenerationControlsPanel credit gating', () => {
 
     expect(onStoryboard).not.toHaveBeenCalled();
     expect(screen.getByText(/This Storyboard costs/i)).toBeInTheDocument();
+  });
+
+  it('does not churn insufficient-credit registration when open callback identity changes', async () => {
+    const useCreditGateSpy = vi.spyOn(creditGateHook, 'useCreditGate');
+    const onInsufficientCreditsChange = vi.fn();
+    const onDraft = vi.fn();
+    const onRender = vi.fn();
+    const onStoryboard = vi.fn();
+
+    useCreditGateSpy.mockImplementation(() => ({
+      checkCredits: vi.fn(() => true),
+      openInsufficientCredits: vi.fn(),
+      insufficientCreditsModal: null,
+      dismissModal: vi.fn(),
+      balance: 200,
+      isLoading: false,
+    }));
+
+    const renderTree = (): React.ReactElement => (
+      <MemoryRouter>
+        <GenerationControlsStoreProvider>
+          <GenerationControlsProvider>
+            <OnInsufficientCreditsObserver onChange={onInsufficientCreditsChange} />
+            <GenerationControlsPanel
+              onDraft={onDraft}
+              onRender={onRender}
+              onStoryboard={onStoryboard}
+              isProcessing={false}
+              isRefining={false}
+              assets={[]}
+              onBack={() => undefined}
+            />
+          </GenerationControlsProvider>
+        </GenerationControlsStoreProvider>
+      </MemoryRouter>
+    );
+
+    const { rerender } = render(renderTree());
+
+    rerender(renderTree());
+    rerender(renderTree());
+
+    await waitFor(() => {
+      const nonNullHandlers = onInsufficientCreditsChange.mock.calls
+        .map((call) => call[0] as ((required: number, operation: string) => void) | null)
+        .filter((handler): handler is (required: number, operation: string) => void => Boolean(handler));
+
+      expect(nonNullHandlers.length).toBeGreaterThanOrEqual(1);
+
+      const firstHandler = nonNullHandlers[0];
+      const hasIdentityChurn = nonNullHandlers.some((handler) => handler !== firstHandler);
+      expect(hasIdentityChurn).toBe(false);
+    });
+
+    useCreditGateSpy.mockRestore();
   });
 });

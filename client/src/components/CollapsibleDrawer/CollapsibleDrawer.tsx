@@ -58,7 +58,7 @@ export function CollapsibleDrawer({
     return position === 'left'
       ? `translateX(calc(-1 * ${delta}))`
       : `translateX(calc(${delta}))`;
-  }, [collapsedHeight, collapsedWidth, drawerHeight, drawerWidth, isBottom, position]);
+  }, [collapsedWidth, drawerWidth, isBottom, position]);
 
   const wrapperStyle = useMemo(() => {
     if (isBottom) {

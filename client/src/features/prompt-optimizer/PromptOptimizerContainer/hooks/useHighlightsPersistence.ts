@@ -45,6 +45,7 @@ export function useHighlightsPersistence({
 }: UseHighlightsPersistenceParams): {
   handleHighlightsPersist: (result: PersistenceResult) => void;
 } {
+  const updateEntryHighlight = promptHistory.updateEntryHighlight;
   const handleHighlightsPersist = useCallback(
     (result: PersistenceResult): void => {
       if (!result || !Array.isArray(result.spans) || !result.signature) {
@@ -85,7 +86,7 @@ export function useHighlightsPersistence({
 
       // Update history for network-sourced highlights
       if (result.source === 'network' || result.source === 'cache-fallback') {
-        promptHistory.updateEntryHighlight(currentPromptUuid, snapshot);
+        updateEntryHighlight(currentPromptUuid, snapshot);
       }
 
       // Early return if can't persist remotely
@@ -127,7 +128,7 @@ export function useHighlightsPersistence({
       applyInitialHighlightSnapshot,
       currentPromptDocId,
       currentPromptUuid,
-      promptHistory,
+      updateEntryHighlight,
       user,
       latestHighlightRef,
       persistedSignatureRef,

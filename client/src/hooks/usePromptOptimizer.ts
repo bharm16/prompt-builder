@@ -378,7 +378,6 @@ export const usePromptOptimizer = (
       setPreviewPrompt,
       setPreviewAspectRatio,
       toast,
-      log,
     ]
   );
 

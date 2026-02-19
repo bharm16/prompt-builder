@@ -102,6 +102,8 @@ export function useVersionManagement({
   resetVersionEdits,
   effectiveAspectRatio,
 }: UseVersionManagementOptions): UseVersionManagementResult {
+  const { history, createDraft, updateEntryVersions } = promptHistory;
+  const { setOptimizedPrompt } = promptOptimizer;
   const versionHistory = useMemo(
     () => {
       if (hasShotContext && shotPromptEntry) {
@@ -117,11 +119,11 @@ export function useVersionManagement({
         };
       }
       return {
-        history: promptHistory.history,
-        updateEntryVersions: promptHistory.updateEntryVersions,
+        history,
+        updateEntryVersions,
       };
     },
-    [hasShotContext, shotPromptEntry, updateShotVersions, promptHistory.history, promptHistory.updateEntryVersions]
+    [hasShotContext, shotPromptEntry, updateShotVersions, history, updateEntryVersions]
   );
 
   const versioningPromptUuid = hasShotContext ? shotId : currentPromptUuid;
@@ -228,7 +230,7 @@ export function useVersionManagement({
       if (!promptText.trim()) return;
 
       setActiveVersionId(versionId);
-      promptOptimizer.setOptimizedPrompt(promptText);
+      setOptimizedPrompt(promptText);
       setDisplayedPromptSilently(promptText);
 
       const highlights = isHighlightSnapshot(target.highlights)
@@ -245,9 +247,9 @@ export function useVersionManagement({
       applyInitialHighlightSnapshot,
       currentVersions,
       orderedVersions,
-      promptOptimizer,
       resetEditStacks,
       resetVersionEdits,
+      setOptimizedPrompt,
       setActiveVersionId,
       setDisplayedPromptSilently,
     ]
@@ -260,7 +262,7 @@ export function useVersionManagement({
     if (currentPromptUuid) {
       return { uuid: currentPromptUuid, docId: currentPromptDocId ?? '' };
     }
-    const draft = promptHistory.createDraft({
+    const draft = createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
       generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
@@ -274,8 +276,8 @@ export function useVersionManagement({
     shotId,
     currentPromptDocId,
     currentPromptUuid,
+    createDraft,
     generationParams,
-    promptHistory,
     selectedMode,
     selectedModel,
     serializedKeyframes,
@@ -290,9 +292,9 @@ export function useVersionManagement({
         return;
       }
       if (!identifiers?.uuid) return;
-      promptHistory.updateEntryVersions(identifiers.uuid, identifiers.docId ?? null, versions);
+      updateEntryVersions(identifiers.uuid, identifiers.docId ?? null, versions);
     },
-    [hasShotContext, shotId, updateShotVersions, promptHistory]
+    [hasShotContext, shotId, updateShotVersions, updateEntryVersions]
   );
 
   const handleCreateVersion = useCallback((): void => {

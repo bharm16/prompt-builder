@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface ModelSelectorOption {
@@ -43,10 +43,10 @@ export function ModelSelector({
   selectClassName,
   ariaLabel,
 }: ModelSelectorProps): React.ReactElement {
-  const items = useMemo(
-    () => options.map((option) => ({ ...option, displayLabel: buildLabel(option, recommendedId, efficientId) })),
-    [efficientId, options, recommendedId]
-  );
+  const items = options.map((option) => ({
+    ...option,
+    displayLabel: buildLabel(option, recommendedId, efficientId),
+  }));
   const showLabel = label !== null && label !== undefined;
 
   return (

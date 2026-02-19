@@ -22,11 +22,16 @@ export function KontextFrameStrip({
 }: KontextFrameStripProps): React.ReactElement {
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set());
 
-  const normalizedFrames = frames.slice(0, 4);
-  const slots =
-    normalizedFrames.length >= 4
-      ? normalizedFrames
-      : [...normalizedFrames, ...Array.from({ length: 4 - normalizedFrames.length }, () => null)];
+  const slots = useMemo(() => {
+    const normalizedFrames = frames.slice(0, 4);
+    if (normalizedFrames.length >= 4) {
+      return normalizedFrames;
+    }
+    return [
+      ...normalizedFrames,
+      ...Array.from({ length: 4 - normalizedFrames.length }, () => null),
+    ];
+  }, [frames]);
   const [resolvedSlots, setResolvedSlots] = useState<Array<string | null>>(slots);
   const refreshAttemptedRef = useRef<Map<number, boolean>>(new Map());
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 5;

@@ -28,7 +28,6 @@ export function useHighlightSourceSelection({
   promptUuid,
   displayedPrompt,
   enableMLHighlighting,
-  initialHighlightsVersion,
 }: UseHighlightSourceSelectionOptions): HighlightSourceResult | null {
   return useMemo(() => {
     if (!enableMLHighlighting) {
@@ -100,7 +99,6 @@ export function useHighlightSourceSelection({
     isDraftReady,
     isRefining,
     initialHighlights,
-    initialHighlightsVersion,
     promptUuid,
     displayedPrompt,
   ]);

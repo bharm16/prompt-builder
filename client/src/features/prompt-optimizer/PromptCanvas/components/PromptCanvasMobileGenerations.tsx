@@ -1,5 +1,10 @@
 import React from 'react';
-import { Sheet, SheetContent } from '@promptstudio/system/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@promptstudio/system/components/ui/sheet';
 import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel';
 import type { PromptCanvasViewProps } from './PromptCanvasView.types';
 import { CanvasButton } from './PromptCanvasView.shared';
@@ -39,6 +44,10 @@ export function PromptCanvasMobileGenerations({
           side="bottom"
           className="p-ps-3 h-[85vh] overflow-auto border-0 bg-transparent shadow-none [&>button]:hidden"
         >
+          <SheetTitle className="sr-only">Generations panel</SheetTitle>
+          <SheetDescription className="sr-only">
+            Generated prompt previews and outputs.
+          </SheetDescription>
           <GenerationsPanel {...generationsPanelProps} className="h-full" />
         </SheetContent>
       </Sheet>

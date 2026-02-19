@@ -78,7 +78,7 @@ export function ShotEditor({
   useEffect(() => {
     const lastShot = session.shots[session.shots.length - 1];
     setStyleReferenceId(lastShot?.id ?? null);
-  }, [session.id, session.shots.length]);
+  }, [session.id, session.shots, session.shots.length]);
 
   useEffect(() => {
     let active = true;

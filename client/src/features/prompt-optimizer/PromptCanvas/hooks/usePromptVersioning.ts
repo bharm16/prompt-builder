@@ -203,17 +203,18 @@ export function usePromptVersioning({
   generationParams,
   selectedModel,
 }: UsePromptVersioningOptions): UsePromptVersioningReturn {
+  const { history, updateEntryVersions } = promptHistory;
   // Track last persisted thumbnail to prevent infinite update loops
   const lastPersistedThumbnailRef = useRef<string | null>(null);
 
   const currentPromptEntry = useMemo(() => {
-    if (!promptHistory?.history?.length) return null;
+    if (!history.length) return null;
     return (
-      promptHistory.history.find((entry) => entry.uuid === currentPromptUuid) ||
-      promptHistory.history.find((entry) => entry.id === currentPromptDocId) ||
+      history.find((entry) => entry.uuid === currentPromptUuid) ||
+      history.find((entry) => entry.id === currentPromptDocId) ||
       null
     );
-  }, [promptHistory, currentPromptUuid, currentPromptDocId]);
+  }, [history, currentPromptUuid, currentPromptDocId]);
 
   const currentVersions = useMemo<PromptVersionEntry[]>(
     () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
@@ -235,9 +236,9 @@ export function usePromptVersioning({
       // Bug 13 fix: read entry from ref to avoid stale docId after draft promotion
       const entry = currentPromptEntryRef.current;
       const resolvedDocId = entry?.id ?? currentPromptDocId;
-      promptHistory.updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
+      updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
-    [promptHistory, currentPromptUuid, currentPromptDocId]
+    [updateEntryVersions, currentPromptUuid, currentPromptDocId]
   );
 
   const createVersionEntry = useCallback(

@@ -30,6 +30,7 @@ export function useEditorShotPromptBinding({
   setShowResults,
   debounceMs = 500,
 }: UseEditorShotPromptBindingParams): void {
+  const { inputPrompt, displayedPrompt, setInputPrompt } = promptOptimizer;
   const lastSyncedShotIdRef = useRef<string | null>(null);
 
   const debouncedPersistPrompt = useMemo(
@@ -65,17 +66,19 @@ export function useEditorShotPromptBinding({
     debouncedPersistPrompt.cancel();
 
     const nextPrompt = currentEditorShot.userPrompt ?? '';
-    if (promptOptimizer.inputPrompt !== nextPrompt) {
-      promptOptimizer.setInputPrompt(nextPrompt);
+    if (inputPrompt !== nextPrompt) {
+      setInputPrompt(nextPrompt);
     }
 
-    if (promptOptimizer.displayedPrompt.trim()) {
+    if (displayedPrompt.trim()) {
       setDisplayedPromptSilently('');
       setShowResults(false);
     }
   }, [
     currentEditorShot,
-    promptOptimizer,
+    displayedPrompt,
+    inputPrompt,
+    setInputPrompt,
     setDisplayedPromptSilently,
     setShowResults,
     debouncedPersistPrompt,
@@ -88,7 +91,7 @@ export function useEditorShotPromptBinding({
     }
 
     const shotPrompt = currentEditorShot.userPrompt ?? '';
-    const nextPrompt = promptOptimizer.inputPrompt;
+    const nextPrompt = inputPrompt;
     if (shotPrompt === nextPrompt) {
       debouncedPersistPrompt.cancel();
       return;
@@ -98,7 +101,7 @@ export function useEditorShotPromptBinding({
   }, [
     currentEditorShot,
     hasActiveContinuityShot,
-    promptOptimizer.inputPrompt,
+    inputPrompt,
     debouncedPersistPrompt,
   ]);
 }

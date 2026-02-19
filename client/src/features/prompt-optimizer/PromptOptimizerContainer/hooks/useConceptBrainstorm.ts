@@ -95,6 +95,8 @@ export function useConceptBrainstorm({
   ) => Promise<void>;
   handleSkipBrainstorm: () => void;
 } {
+  const { setInputPrompt, optimize } = promptOptimizer;
+  const { saveToHistory } = promptHistory;
   const conceptOptimizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -129,7 +131,7 @@ export function useConceptBrainstorm({
         metadata,
       };
 
-      promptOptimizer.setInputPrompt(finalConcept);
+      setInputPrompt(finalConcept);
       setShowBrainstorm(false);
 
       // Clear any existing timeout and set new one for optimization
@@ -139,7 +141,7 @@ export function useConceptBrainstorm({
 
       conceptOptimizeTimeoutRef.current = setTimeout(async () => {
         try {
-          const result = await promptOptimizer.optimize(
+          const result = await optimize(
             finalConcept,
             null,
             brainstormContextData,
@@ -148,7 +150,7 @@ export function useConceptBrainstorm({
           );
 
           if (result) {
-            const saveResult = await promptHistory.saveToHistory(
+            const saveResult = await saveToHistory(
               finalConcept,
               result.optimized,
               result.score,
@@ -190,8 +192,9 @@ export function useConceptBrainstorm({
       }, PERFORMANCE_CONFIG.ASYNC_OPERATION_DELAY_MS);
     },
     [
-      promptOptimizer,
-      promptHistory,
+      optimize,
+      saveToHistory,
+      setInputPrompt,
       selectedMode,
       selectedModel,
       generationParams,

@@ -364,10 +364,15 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     skipLoadFromUrlRef,
   ]);
 
+  const promptOptimizerService = promptOptimizer;
+  const promptHistoryService = promptHistory;
   const servicesValue = useMemo<PromptServicesState>(() => ({
-    promptOptimizer,
-    promptHistory,
-  }), [promptOptimizer, promptHistory]);
+    promptOptimizer: promptOptimizerService,
+    promptHistory: promptHistoryService,
+  }), [
+    promptHistoryService,
+    promptOptimizerService,
+  ]);
 
   const actionsValue = useMemo<PromptActionsState>(() => ({
     applyInitialHighlightSnapshot,

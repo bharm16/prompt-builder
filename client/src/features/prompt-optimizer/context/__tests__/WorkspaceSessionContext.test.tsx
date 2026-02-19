@@ -100,6 +100,10 @@ const wrapper =
 
 const wrapperWithoutSession =
   ({ children }: { children: ReactNode }) => <WorkspaceSessionProvider>{children}</WorkspaceSessionProvider>;
+const draftWrapper =
+  ({ children }: { children: ReactNode }) => (
+    <WorkspaceSessionProvider sessionId="draft-123">{children}</WorkspaceSessionProvider>
+  );
 
 describe('WorkspaceSessionContext', () => {
   beforeEach(() => {
@@ -129,6 +133,18 @@ describe('WorkspaceSessionContext', () => {
     expect(result.current.currentShotId).toBe('__single__');
     expect(result.current.currentShot?.id).toBe('__single__');
     expect(result.current.currentShot?.userPrompt).toBe('Keep this prompt');
+  });
+
+  it('skips remote session fetch for local draft session ids', async () => {
+    const { result } = renderHook(() => useWorkspaceSession(), { wrapper: draftWrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(result.current.session).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 
   it('keeps single real continuity shots in single-shot mode while retaining continuity routing', async () => {

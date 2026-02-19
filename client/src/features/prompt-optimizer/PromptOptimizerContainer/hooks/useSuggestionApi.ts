@@ -46,8 +46,9 @@ export function useSuggestionApi({
   );
 
   useEffect(() => {
+    const requestManager = requestManagerRef.current;
     return () => {
-      requestManagerRef.current.dispose();
+      requestManager.dispose();
     };
   }, []);
 

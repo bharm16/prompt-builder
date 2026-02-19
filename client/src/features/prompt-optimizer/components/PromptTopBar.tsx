@@ -67,7 +67,7 @@ export const PromptTopBar = ({
     if (!showResults && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [showResults]);
+  }, [showResults, textareaRef]);
 
   const {
     inputPrompt,
@@ -153,7 +153,7 @@ export const PromptTopBar = ({
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 0);
-  }, [inputPrompt, isOptimizing, selectedModel]);
+  }, [inputPrompt, isOptimizing, selectedModel, textareaRef]);
 
   const handleModelChange = useCallback(
     (_nextModel: string, previousModel: string | undefined): void => {
@@ -167,7 +167,7 @@ export const PromptTopBar = ({
         textareaRef.current?.focus();
       }, 0);
     },
-    [inputPrompt, isEditing, isOptimizing, showResults]
+    [inputPrompt, isEditing, isOptimizing, showResults, textareaRef]
   );
 
   const handleCancel = useCallback((): void => {

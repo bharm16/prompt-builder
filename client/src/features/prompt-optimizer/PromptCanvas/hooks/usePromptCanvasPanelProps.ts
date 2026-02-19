@@ -47,6 +47,18 @@ export function usePromptCanvasPanelProps({
   onRestoreVersion,
   onCreateVersionIfNeeded,
 }: UsePromptCanvasPanelPropsArgs): UsePromptCanvasPanelPropsResult {
+  const resolvedInitialGenerations = useMemo<Generation[] | undefined>(() => {
+    if (Array.isArray(initialGenerations)) {
+      return initialGenerations;
+    }
+    // When switching to a fresh session, no version is selected yet.
+    // Force-clear panel generations instead of carrying over the previous session's local state.
+    if (!promptVersionId) {
+      return [];
+    }
+    return undefined;
+  }, [initialGenerations, promptVersionId]);
+
   const versionsPanelProps = useMemo<VersionsPanelPropsBase>(
     () => ({
       versions: versionsForPanel,
@@ -65,7 +77,7 @@ export function usePromptCanvasPanelProps({
       duration: durationSeconds ?? undefined,
       fps: fpsNumber ?? undefined,
       generationParams: generationParams ?? undefined,
-      initialGenerations,
+      initialGenerations: resolvedInitialGenerations,
       onGenerationsChange,
       versions: currentVersions,
       onRestoreVersion,
@@ -80,7 +92,7 @@ export function usePromptCanvasPanelProps({
       durationSeconds,
       fpsNumber,
       generationParams,
-      initialGenerations,
+      resolvedInitialGenerations,
       onGenerationsChange,
       currentVersions,
       onRestoreVersion,

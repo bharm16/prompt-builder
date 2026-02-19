@@ -36,9 +36,11 @@ export function usePromptCoherence({
   toast,
   log,
 }: UsePromptCoherenceParams): ReturnType<typeof useCoherenceAnnotations> {
+  const displayedPrompt = promptOptimizer.displayedPrompt;
+  const updateEntryOutput = promptHistory.updateEntryOutput;
   const handleApplyCoherenceFix = useCallback(
     (recommendation: CoherenceRecommendation, issue: CoherenceIssue): boolean => {
-      const currentPrompt = promptOptimizer.displayedPrompt;
+      const currentPrompt = displayedPrompt;
       if (!currentPrompt) {
         return false;
       }
@@ -65,7 +67,7 @@ export function usePromptCoherence({
 
       if (currentPromptUuid) {
         try {
-          promptHistory.updateEntryOutput(currentPromptUuid, currentPromptDocId ?? null, result.updatedPrompt);
+          updateEntryOutput(currentPromptUuid, currentPromptDocId ?? null, result.updatedPrompt);
         } catch (error) {
           const info = sanitizeError(error);
           log.warn('Failed to persist coherence edits', {
@@ -87,8 +89,8 @@ export function usePromptCoherence({
       handleDisplayedPromptChange,
       latestHighlightRef,
       log,
-      promptHistory,
-      promptOptimizer.displayedPrompt,
+      updateEntryOutput,
+      displayedPrompt,
     ]
   );
 

@@ -259,7 +259,7 @@ export function PromptCanvas({
       setGenerationsSheetOpen(false);
       setShowDiff(false);
     }
-  }, [hasCanvasContent]);
+  }, [hasCanvasContent, setGenerationsSheetOpen, setShowDiff]);
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -533,7 +533,7 @@ export function PromptCanvas({
       window.setTimeout(() => node.classList.remove('opacity-80'), 200);
     }, 6000);
     return () => window.clearInterval(interval);
-  }, [showHighlights, normalizedDisplayedPrompt]);
+  }, [editorRef, showHighlights, normalizedDisplayedPrompt]);
 
   // Text selection hook
   const {

@@ -84,6 +84,7 @@ export function useSuggestionFetch({
 }: UseSuggestionFetchParams): {
   fetchEnhancementSuggestions: (payload?: FetchPayload) => Promise<void>;
 } {
+  const displayedPrompt = promptOptimizer.displayedPrompt;
   const { buildCacheKey, getCachedSuggestions, setCachedSuggestions } = useSuggestionCache();
   const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } = useSuggestionApi({
     promptOptimizer,
@@ -134,7 +135,7 @@ export function useSuggestionFetch({
 
       const trimmedHighlight = (highlightedText || '').trim();
       const normalizedHighlight = trimmedHighlight.normalize('NFC');
-      const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
+      const rawPrompt = payloadPrompt ?? displayedPrompt ?? '';
       const normalizedPrompt = rawPrompt.normalize('NFC');
       const metadata: SuggestionsData['metadata'] = rawMetadata
         ? ({
@@ -323,7 +324,7 @@ export function useSuggestionFetch({
       cancelCurrentRequest,
       fetchSuggestions,
       getCachedSuggestions,
-      promptOptimizer,
+      displayedPrompt,
       selectedMode,
       setSuggestionsData,
       setCachedSuggestions,

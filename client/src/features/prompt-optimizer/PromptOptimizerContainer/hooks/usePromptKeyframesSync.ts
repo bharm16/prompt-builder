@@ -26,6 +26,7 @@ export function usePromptKeyframesSync({
   currentPromptDocId,
   promptHistory,
 }: UsePromptKeyframesSyncParams): UsePromptKeyframesSyncResult {
+  const { history, updateEntryPersisted } = promptHistory;
   const keyframesRef = useRef<KeyframeTile[]>(keyframes);
   const keyframeSessionRef = useRef<{ uuid: string | null; docId: string | null }>({
     uuid: currentPromptUuid ?? null,
@@ -48,7 +49,7 @@ export function usePromptKeyframesSync({
       }
       return;
     }
-    const entry = promptHistory.history.find((item) => item.uuid === currentPromptUuid);
+    const entry = history.find((item) => item.uuid === currentPromptUuid);
     if (!entry) {
       if (keyframesRef.current.length) {
         setKeyframes([]);
@@ -58,7 +59,7 @@ export function usePromptKeyframesSync({
     const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
     if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
     setKeyframes(nextKeyframes);
-  }, [currentPromptUuid, promptHistory.history, setKeyframes]);
+  }, [currentPromptUuid, history, setKeyframes]);
 
   useEffect(() => {
     if (!currentPromptUuid) {
@@ -74,13 +75,13 @@ export function usePromptKeyframesSync({
   useEffect(() => {
     const { uuid, docId } = keyframeSessionRef.current;
     if (!uuid) return;
-    const entry = promptHistory.history.find((item) => item.uuid === uuid);
+    const entry = history.find((item) => item.uuid === uuid);
     if (!entry) return;
     const serialized = serializeKeyframes(keyframes);
     if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
     localWritePendingRef.current = true;
-    promptHistory.updateEntryPersisted(uuid, docId, { keyframes: serialized });
-  }, [keyframes, promptHistory.history, promptHistory.updateEntryPersisted]);
+    updateEntryPersisted(uuid, docId, { keyframes: serialized });
+  }, [keyframes, history, updateEntryPersisted]);
 
   const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 

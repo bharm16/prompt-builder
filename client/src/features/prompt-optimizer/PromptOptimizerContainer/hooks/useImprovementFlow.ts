@@ -31,16 +31,21 @@ export function useImprovementFlow({
     context: unknown
   ) => Promise<void>;
 } {
+  const {
+    inputPrompt,
+    setInputPrompt,
+    setImprovementContext,
+  } = promptOptimizer;
   /**
    * Initiate improvement flow
    */
   const handleImproveFirst = useCallback(() => {
-    if (!promptOptimizer.inputPrompt.trim()) {
+    if (!inputPrompt.trim()) {
       toast.warning('Please enter a prompt first');
       return;
     }
     setShowImprover(true);
-  }, [promptOptimizer, toast, setShowImprover]);
+  }, [inputPrompt, toast, setShowImprover]);
 
   /**
    * Handle completion of improvement modal
@@ -49,11 +54,11 @@ export function useImprovementFlow({
     async (enhancedPrompt: string, context: unknown): Promise<void> => {
       setShowImprover(false);
       const ctx = (context ?? null) as Record<string, unknown> | null;
-      promptOptimizer.setImprovementContext(ctx);
-      promptOptimizer.setInputPrompt(enhancedPrompt);
+      setImprovementContext(ctx);
+      setInputPrompt(enhancedPrompt);
       handleOptimize(enhancedPrompt, ctx);
     },
-    [setShowImprover, promptOptimizer, handleOptimize]
+    [setShowImprover, setImprovementContext, setInputPrompt, handleOptimize]
   );
 
   return {

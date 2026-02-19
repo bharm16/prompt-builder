@@ -7,7 +7,7 @@ interface UseAutoSaveOptions {
   displayedPrompt: string | null;
   isApplyingHistoryRef: MutableRefObject<boolean>;
   handleDisplayedPromptChange: (text: string) => void;
-  promptHistory: Pick<PromptHistory, 'updateEntryOutput'>;
+  updateEntryOutput: PromptHistory['updateEntryOutput'];
   setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
 }
@@ -22,12 +22,18 @@ export function useAutoSave({
   displayedPrompt,
   isApplyingHistoryRef,
   handleDisplayedPromptChange,
-  promptHistory,
+  updateEntryOutput,
   setOutputSaveState,
   setOutputLastSavedAt,
 }: UseAutoSaveOptions): UseAutoSaveResult {
   const saveOutputTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedOutputRef = useRef<string | null>(null);
+  const displayedPromptRef = useRef<string | null>(displayedPrompt);
+  displayedPromptRef.current = displayedPrompt;
+  const handleDisplayedPromptChangeRef = useRef(handleDisplayedPromptChange);
+  handleDisplayedPromptChangeRef.current = handleDisplayedPromptChange;
+  const updateEntryOutputRef = useRef(updateEntryOutput);
+  updateEntryOutputRef.current = updateEntryOutput;
   const promptMetaRef = useRef<{ uuid: string | null; docId: string | null }>({
     uuid: currentPromptUuid,
     docId: currentPromptDocId,
@@ -54,12 +60,13 @@ export function useAutoSave({
 
   const handleDisplayedPromptChangeWithAutosave = useCallback(
     (newText: string): void => {
-      handleDisplayedPromptChange(newText);
+      handleDisplayedPromptChangeRef.current(newText);
 
-      if (!currentPromptUuid) return;
+      const { uuid: currentUuid, docId: currentDocId } = promptMetaRef.current;
+      if (!currentUuid) return;
       if (isApplyingHistoryRef.current) return;
       if (lastSavedOutputRef.current === null) {
-        lastSavedOutputRef.current = displayedPrompt ?? '';
+        lastSavedOutputRef.current = displayedPromptRef.current ?? '';
       }
       if (lastSavedOutputRef.current === newText) return;
 
@@ -67,8 +74,8 @@ export function useAutoSave({
         clearTimeout(saveOutputTimeoutRef.current);
       }
 
-      const scheduledUuid = currentPromptUuid;
-      const scheduledDocId = currentPromptDocId;
+      const scheduledUuid = currentUuid;
+      const scheduledDocId = currentDocId;
       setOutputSaveState('saving');
 
       saveOutputTimeoutRef.current = setTimeout(() => {
@@ -85,7 +92,7 @@ export function useAutoSave({
 
         try {
           // Fire-and-forget persistence. The underlying repository logs failures.
-          promptHistory.updateEntryOutput(scheduledUuid, scheduledDocId, newText);
+          updateEntryOutputRef.current(scheduledUuid, scheduledDocId, newText);
           setOutputSaveState('saved');
           setOutputLastSavedAt(Date.now());
         } catch {
@@ -96,12 +103,7 @@ export function useAutoSave({
       }, 1000);
     },
     [
-      handleDisplayedPromptChange,
-      currentPromptUuid,
-      currentPromptDocId,
       isApplyingHistoryRef,
-      displayedPrompt,
-      promptHistory,
       setOutputLastSavedAt,
       setOutputSaveState,
     ]

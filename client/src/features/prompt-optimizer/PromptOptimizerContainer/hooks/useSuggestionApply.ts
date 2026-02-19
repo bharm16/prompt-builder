@@ -60,6 +60,7 @@ export function useSuggestionApply({
 }: UseSuggestionApplyParams): {
   handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
 } {
+  const updateEntryOutput = promptHistory.updateEntryOutput;
   // Initialize edit history tracking
   const { addEdit } = useEditHistory();
 
@@ -211,7 +212,7 @@ export function useSuggestionApply({
           // Persist the updated prompt to database/storage
           if (currentPromptUuid && result.updatedPrompt) {
             try {
-              promptHistory.updateEntryOutput(
+              updateEntryOutput(
                 currentPromptUuid,
                 currentPromptDocId,
                 result.updatedPrompt
@@ -250,7 +251,7 @@ export function useSuggestionApply({
       addEdit,
       currentPromptUuid,
       currentPromptDocId,
-      promptHistory,
+      updateEntryOutput,
       onCoherenceCheck,
     ]
   );

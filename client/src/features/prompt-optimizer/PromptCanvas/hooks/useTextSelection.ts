@@ -5,7 +5,7 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useCallback, type RefObject } from 'react';
+import { useCallback, useMemo, type RefObject } from 'react';
 import { getSelectionOffsets, selectRange } from '@features/prompt-optimizer/utils/textSelection';
 import {
   findHighlightNode,
@@ -45,7 +45,10 @@ export function useTextSelection({
   onSpanSelect,
   onIntentRefine,
 }: UseTextSelectionOptions): UseTextSelectionReturn {
-  const spanContextSpans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
+  const spanContextSpans = useMemo(
+    () => (Array.isArray(parseResult?.spans) ? parseResult.spans : []),
+    [parseResult?.spans]
+  );
 
   const handleTextSelection = useCallback((): void => {
     if (selectedMode !== 'video') {

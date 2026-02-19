@@ -1,4 +1,4 @@
-import React, { type ReactElement, useCallback, useEffect } from "react";
+import React, { type ReactElement, useCallback, useEffect, useRef } from "react";
 import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
 import { FaceSwapPreviewModal } from "@/components/modals/FaceSwapPreviewModal";
 import { InsufficientCreditsModal } from "@/components/modals/InsufficientCreditsModal";
@@ -123,10 +123,19 @@ export function GenerationControlsPanel(
     enabled: state.activeTab === "video",
   });
 
+  const openInsufficientCreditsRef = useRef(openInsufficientCredits);
+  openInsufficientCreditsRef.current = openInsufficientCredits;
+  const handleInsufficientCredits = useCallback(
+    (requiredCredits: number, operation: string) => {
+      openInsufficientCreditsRef.current(requiredCredits, operation);
+    },
+    [],
+  );
+
   useEffect(() => {
-    setOnInsufficientCredits(() => openInsufficientCredits);
+    setOnInsufficientCredits(() => handleInsufficientCredits);
     return () => setOnInsufficientCredits(null);
-  }, [openInsufficientCredits, setOnInsufficientCredits]);
+  }, [handleInsufficientCredits, setOnInsufficientCredits]);
 
   const handleGenerate = useCallback(
     (overrides?: GenerationOverrides) => {
@@ -165,7 +174,6 @@ export function GenerationControlsPanel(
       recommendation.recommendationAgeMs,
       recommendation.recommendationMode,
       recommendation.recommendedModelId,
-      recommendation.renderModelId,
       selectedOperationCost,
       selectedOperationLabel,
       selectedModelIdForGeneration,

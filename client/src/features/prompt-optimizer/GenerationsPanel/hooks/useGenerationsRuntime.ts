@@ -99,6 +99,12 @@ export function useGenerationsRuntime({
     useGenerationControlsContext();
   const onInsufficientCreditsRef = useRef(onInsufficientCredits);
   onInsufficientCreditsRef.current = onInsufficientCredits;
+  const notifyInsufficientCredits = useCallback(
+    (required: number, operation: string) => {
+      onInsufficientCreditsRef.current?.(required, operation);
+    },
+    []
+  );
   const balanceRef = useRef(balance);
   balanceRef.current = balance;
   const authUidRef = useRef(authUser?.uid);
@@ -188,7 +194,7 @@ export function useGenerationsRuntime({
       generationParams: mergedGenerationParams,
       promptVersionId,
       generations,
-      onInsufficientCredits: onInsufficientCredits ?? undefined,
+      onInsufficientCredits: notifyInsufficientCredits,
     }),
     [
       aspectRatio,
@@ -196,7 +202,7 @@ export function useGenerationsRuntime({
       fps,
       generations,
       mergedGenerationParams,
-      onInsufficientCredits,
+      notifyInsufficientCredits,
       promptVersionId,
     ]
   );
@@ -431,6 +437,31 @@ export function useGenerationsRuntime({
     startFrame?.url,
   ]);
 
+  const handleDraftRef = useRef(handleDraft);
+  handleDraftRef.current = handleDraft;
+  const handleRenderWithFaceSwapRef = useRef(handleRenderWithFaceSwap);
+  handleRenderWithFaceSwapRef.current = handleRenderWithFaceSwap;
+  const handleStoryboardRef = useRef(handleStoryboard);
+  handleStoryboardRef.current = handleStoryboard;
+
+  const handleDraftForControls = useCallback(
+    (model: DraftModel, overrides?: GenerationOverrides) => {
+      handleDraftRef.current(model, overrides);
+    },
+    []
+  );
+
+  const handleRenderForControls = useCallback(
+    (model: string, overrides?: GenerationOverrides) => {
+      handleRenderWithFaceSwapRef.current(model, overrides);
+    },
+    []
+  );
+
+  const handleStoryboardForControls = useCallback(() => {
+    handleStoryboardRef.current();
+  }, []);
+
   const handleDelete = useCallback(
     (generation: Generation) => {
       if (hasActiveContinuityShot) return;
@@ -602,18 +633,18 @@ export function useGenerationsRuntime({
 
   const controlsPayload = useMemo(
     () => ({
-      onDraft: handleDraft,
-      onRender: handleRenderWithFaceSwap,
-      onStoryboard: handleStoryboard,
+      onDraft: handleDraftForControls,
+      onRender: handleRenderForControls,
+      onStoryboard: handleStoryboardForControls,
       isGenerating: controlsIsGenerating,
       activeDraftModel,
     }),
     [
       activeDraftModel,
       controlsIsGenerating,
-      handleDraft,
-      handleRenderWithFaceSwap,
-      handleStoryboard,
+      handleDraftForControls,
+      handleRenderForControls,
+      handleStoryboardForControls,
     ]
   );
 
