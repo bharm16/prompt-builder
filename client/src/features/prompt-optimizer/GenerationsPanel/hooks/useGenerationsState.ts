@@ -96,6 +96,8 @@ export function useGenerationsState({
   );
   const initialRef = useRef<Generation[] | undefined>(initialGenerations);
   const suppressOnChangeRef = useRef(false);
+  const onGenerationsChangeRef = useRef(onGenerationsChange);
+  onGenerationsChangeRef.current = onGenerationsChange;
   const generationsRef = useRef(state.generations);
   generationsRef.current = state.generations;
 
@@ -131,8 +133,8 @@ export function useGenerationsState({
     }
     if (prevGenerationsRef.current === state.generations) return;
     prevGenerationsRef.current = state.generations;
-    onGenerationsChange?.(state.generations);
-  }, [onGenerationsChange, state.generations]);
+    onGenerationsChangeRef.current?.(state.generations);
+  }, [state.generations]);
 
   const addGeneration = useCallback(
     (generation: Generation) => dispatch({ type: 'ADD_GENERATION', payload: generation }),

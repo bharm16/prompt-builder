@@ -1,25 +1,33 @@
-# Vidra (PromptCanvas)
+# Vidra
 
 Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews.
 
 ## Tech Stack
 
-- **Monorepo**: Node.js >= 20, ESM (`"type": "module"` in package.json)
-- **Client**: React 18 + Vite, Tailwind CSS + DaisyUI, TypeScript (migration in progress)
+- **Monorepo**: Node.js >= 20, ESM (`"type": "module"` in all package.json files)
+- **Client**: React 18 + Vite, Tailwind CSS + DaisyUI, Radix UI primitives, TypeScript (migration in progress)
 - **Server**: Express + tsx (TypeScript), LLM providers (OpenAI, Gemini, Groq), Firebase Admin, Stripe
 - **Shared**: Import via `#shared/*` path alias
 - **Testing**: Vitest (unit), Playwright (e2e), fast-check (property)
 
+## Runtime Constraints
+
+- ESM only — no `require()`, no `__dirname` (use `import.meta.url` + `fileURLToPath`)
+- Node 20+ — top-level await, `structuredClone`, native fetch all available
+- Vite dev server proxies `/api` to port 3001 — never hardcode URLs in client code
+- Firebase Admin requires `GOOGLE_APPLICATION_CREDENTIALS` env var at startup
+- Redis is optional — all caching falls back to in-memory when `REDIS_URL` is unset
+
 ## Repository Structure
 
 ```
-client/          # React frontend (Vite)
-server/          # Express API + services
-shared/          # Shared types and utilities
+client/          # React frontend (Vite) — see client/CLAUDE.md
+server/          # Express API + services — see server/CLAUDE.md
+shared/          # Shared types and utilities (contract layer)
 packages/        # Workspace packages (@promptstudio/system)
 config/          # Build, lint, and test configuration
 scripts/         # Dev tools, migrations, evaluations
-docs/            # Architecture and TypeScript migration docs
+docs/            # Architecture docs (see docs/architecture/)
 tests/           # E2E, load, and evaluation suites
 ```
 
@@ -32,7 +40,7 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Span labeling** | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/` | `/llm/label-spans` |
 | **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance) | `server/src/services/enhancement/` | `/api/suggestions`, `/api/enhance` |
 | **Optimization** | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement) | `server/src/services/prompt-optimization/` | `/api/optimize-stream` (SSE) |
-| **Continuity** | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match) | `server/src/services/continuity/` | `/api/continuity` |
+| **Continuity** | Shot-to-shot visual consistency in multi-shot sequences | `server/src/services/continuity/` | `/api/continuity` |
 | **Convergence** | Motion and visual convergence pipeline (iterative refinement toward target) | `server/src/services/convergence/` | `/api/motion` |
 | **Video Concept** | Guided wizard flow: subject → action → location → camera → lighting → style | `server/src/services/video-concept/` | via `/api` routes |
 | **Model Intelligence** | AI-powered model recommendation based on prompt analysis | `server/src/services/model-intelligence/` | `/api/model-intelligence` |
@@ -40,8 +48,6 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
 
 **Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. The canonical implementations live in the domain subdirectories (`enhancement/`, `video-concept/`). Do not import from the root-level files.
-
-See also: `docs/architecture/SERVICE_BOUNDARIES.md` for span-labeling vs. video-prompt-analysis boundary rules.
 
 ## Service Architecture
 
@@ -63,58 +69,36 @@ The container is created in `server/src/config/services.config.ts` and initializ
 ### Dependency Rules
 
 - Services receive dependencies through **constructor injection** — never call `container.resolve()` outside of route factory functions or DI config files.
-- Services may depend on infrastructure services (cache, metrics, clients) and peer services within their domain.
-- Cross-domain dependencies should flow through the route layer or an orchestrator service, not via direct imports.
 - The `aiService` is the **only** LLM routing layer. Never call provider clients (claude, groq, gemini) directly from business services.
+- Cross-domain dependencies flow through the route layer or an orchestrator service, not via direct imports.
 
 ### Frontend-Backend Decoupling
 
 The client and server are **strictly decoupled**. Neither side may import from the other.
 
-**Hard rules:**
-
 - `client/src/` **NEVER** imports from `server/src/` — and vice versa
 - The only shared code lives in `shared/` (types, constants, Zod schemas — never runtime logic)
-- Changes to `shared/` are **contract changes** that affect both sides — run `tsc --noEmit` immediately after modifying
+- Changes to `shared/` are **contract changes** — run `tsc --noEmit` immediately after modifying
 
-**The anti-corruption layer:**
-
-Each client feature's `api/` directory insulates UI components from server response shapes:
-
-```text
+**Anti-corruption layer:** Each client feature's `api/` directory insulates UI from server DTOs:
+```
 Server DTO → feature/api/schemas.ts (Zod) → feature/api/*.ts (transform) → hook → component
 ```
 
-- UI components consume **transformed client types**, never raw server DTOs
-- If a server response field changes, only the feature's `api/` files should need updating — not components or hooks
-- If a UI-only concern needs a new type, create it in the feature's `types/` directory — do not add it to `shared/`
-
-**Cross-layer change protocol:**
-
-When a change genuinely requires updating both client and server:
-
-1. Update the `shared/` contract first
-2. Run `tsc --noEmit` — fix compilation errors on both sides
-3. Update the server route/service
-4. Update the client feature `api/` layer (schemas + transforms)
-5. UI components should not need changes if the anti-corruption layer is working correctly
+Cross-layer change protocol: see `.claude/skills/cross-layer-change/SKILL.md`.
 
 ## Feature Flags
 
-These environment variables gate entire subsystems. Code that doesn't account for them will silently not execute or will crash on null references.
-
 | Flag | Default | Effect When Set |
 |------|---------|----------------|
-| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. Server becomes prompt-optimization-only. Video-related DI registrations still happen but routes are never mounted. |
-| `ENABLE_CONVERGENCE=false` | `true` | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container. Any code consuming this service must null-check. |
+| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. Video-related DI registrations still happen but routes are never mounted. |
+| `ENABLE_CONVERGENCE=false` | `true` | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container. |
 
-**Rule:** When adding code that depends on `continuitySessionService`, always handle the `null` case — the service is legitimately `null` when convergence is disabled.
+**Rule:** Code consuming `continuitySessionService` must always null-check — the service is legitimately `null` when convergence is disabled.
 
-**Rule:** When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard pattern. Generation-related routes must be inside the `if (!promptOutputOnly)` block.
+**Rule:** Generation-related routes must be inside the `if (!promptOutputOnly)` block in `routes.config.ts`.
 
 ## Route → Service → Client API Map
-
-Use this table to find the correct client-side file for a given backend route. If no client file exists, create one following the existing pattern (thin wrapper in `api/` or stateful client in `services/`).
 
 | Route | Server Route File | Client API/Service |
 |-------|-------------------|--------------------|
@@ -134,7 +118,7 @@ Use this table to find the correct client-side file for a given backend route. I
 | `/api/reference-images/*` | `reference-images.routes.ts` | `features/reference-images/` |
 | `/health` | `health.routes.ts` | (not called from client) |
 
-**Rule:** API calls never go directly in React components. Use `client/src/api/` for thin fetch wrappers or `client/src/services/` for stateful clients with caching/retry. Feature-scoped APIs live in `client/src/features/<name>/api/`.
+**Rule:** API calls never go directly in React components. Use `client/src/api/` for thin fetch wrappers or `client/src/services/` for stateful clients. Feature-scoped APIs live in `client/src/features/<name>/api/`.
 
 ## Commands
 
@@ -167,13 +151,11 @@ A pre-commit hook enforces checks 1-2 automatically. Run `bash scripts/install-h
 
 ### Integration Test Gate (Service Changes)
 
-When modifying files in `server/src/config/services.config.ts`, `server/src/config/services.initialize.ts`, `server/src/app.ts`, `server/src/server.ts`, or `server/index.ts`, also run:
+When modifying `server/src/config/services.config.ts`, `services.initialize.ts`, `app.ts`, `server.ts`, or `server/index.ts`, also run:
 
 ```bash
 PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
-
-If these fail, the change broke application startup or DI wiring. Fix the source code, not the tests.
 
 ### Commit Scope Rules
 
@@ -182,76 +164,32 @@ If these fail, the change broke application startup or DI wiring. Fix the source
 - Never combine dependency upgrades with code changes in the same commit
 - Never combine test infrastructure changes with production code changes
 
-## Change Scope Limits
+### Change Scope Limits
 
 - Type changes to shared interfaces: must run `tsc --noEmit` BEFORE continuing to other files
 - Dependency version bumps: isolated commit, nothing else in it
 - If fixing types requires adding `| null` or `| undefined` to more than 3 interfaces, STOP — find the root cause instead of widening types
-- If a test fix requires changing the production type to make it pass, that's a production code change, not a test fix — treat it accordingly
-
-## Bugfix Protocol
-
-When fixing a bug, follow this sequence exactly:
-
-1. **Write a failing test first** that reproduces the bug. If the bug is in a service, write a unit test. If the bug crosses service boundaries, write an integration test. The test must fail _before_ the fix and pass _after_.
-2. **Fix the root cause** in the service/hook layer, not the symptom in the UI/API layer.
-3. **Run the new test** — it must pass.
-4. **Run the full existing test suite** (`npm run test:unit`) — all existing tests must still pass without modification.
-
-### Test update rules during bugfixes
-
-- **Never weaken an existing test to accommodate a fix.** If an existing test fails after your fix, your fix changed a contract. Treat that as a separate, deliberate decision — not collateral damage.
-- **Never update a test and the source file it covers in the same logical change** unless the contract itself is intentionally changing. If the contract is changing, say so explicitly in the commit message.
-- **A failing existing test after a bugfix is information, not a problem to silence.** Investigate why it fails. If your fix changed observable behavior that other consumers depend on, you need to assess the blast radius — not just make the test green.
-- **Add tests, don't modify them.** The default action for a bugfix is to _add_ a new test case, not _edit_ existing ones.
-
-## UX Behavioral Rules
-
-These are architectural constraints, not styling opinions. They affect how components wire state and handle user interactions.
-
-1. **Browsing is read-only. Editing is explicit.** Viewing past state (gallery, history, popovers) never mutates the current working prompt or settings. Any state restoration requires a deliberate, labeled action (e.g., "Reuse prompt and settings"). If clicking something can lose the user's work, the design is wrong.
-
-2. **Tools persist. Navigation interrupts.** Panels the user checks repeatedly (generation history, credits, session info) must remain visible while switching contexts. Opening one panel should not close an unrelated panel. If the user has to click away and click back to see something, they'll stop checking it.
-
-## Architecture Patterns
-
-### Frontend Pattern: VideoConceptBuilder
-
-Reference: `client/src/components/VideoConceptBuilder/`
-
-- Orchestrator component (max ~500 lines, heuristic only)
-- State via `useReducer` in `hooks/`
-- API calls in `api/` (never inline in components)
-- Config/constants in `config/`
-- Small, focused UI components in `components/`
-
-### Backend Pattern: PromptOptimizationService
-
-Reference: `server/src/services/prompt-optimization/`
-
-- Thin orchestrator service
-- Specialized services for distinct responsibilities
-- Templates in external `.md` files
-- Validation schemas with Zod
+- If a test fix requires changing the production type to make it pass, that's a production code change — treat it accordingly
 
 ## Code Rules
 
-### SRP/SoC (Critical)
-
+### SRP / Separation of Concerns
 
 Before modifying code, ask:
 1. How many distinct responsibilities does this file have?
 2. How many reasons to change? (different stakeholders, different triggers)
-3. If only 1 responsibility → Don't split, even if over line threshold
+3. If only 1 responsibility → don't split, even if over line threshold
 
-### File Splitting Guidelines
+### File Splitting: When to Actually Split
 
-| Type | When to Actually Split |
-|------|------------------------|
+| Type | Split When |
+|------|-----------|
 | Components | Mixed presentation + business logic |
 | Hooks | Managing unrelated state domains |
 | Services | Multiple reasons to change |
 | Utils | Functions with different concerns |
+
+Do NOT split files solely because they exceed a line threshold. Do NOT create components only used in one place. Do NOT extract code that always changes together. Do NOT add indirection without improving cohesion. Do NOT use `?.` more than 2 levels deep (fix your types instead).
 
 ### TypeScript Rules
 
@@ -262,92 +200,26 @@ Before modifying code, ask:
 - **Explicit return types**: Required for exported functions and async functions
 - **Prefer `undefined`**: Over `null` (except when API explicitly returns null)
 
-### What NOT to Do
+## UX Behavioral Rules
 
-- Split files solely because they exceed a line threshold
-- Create components only used in one place
-- Extract code that always changes together
-- Add indirection without improving cohesion
-- Use `?.` more than 2 levels deep (fix your types instead)
+These are architectural constraints, not styling opinions.
 
-### What TO Do
+1. **Browsing is read-only. Editing is explicit.** Viewing past state never mutates the current working prompt or settings. Any state restoration requires a deliberate, labeled action. If clicking something can lose the user's work, the design is wrong.
 
-- Split when file has multiple distinct responsibilities
-- Extract when different parts have different reasons to change
-- Create components when they're reusable elsewhere
-- Separate orchestration from implementation details
+2. **Tools persist. Navigation interrupts.** Panels the user checks repeatedly must remain visible while switching contexts. Opening one panel should not close an unrelated panel.
 
-## Environment Setup
+## Procedural Workflows
 
-1. Copy `.env.example` to `.env`
-2. Required for local dev:
-   - `VITE_FIREBASE_*` (all Firebase config vars)
-   - At least one LLM key (e.g., `OPENAI_API_KEY`, `GROQ_API_KEY`)
-   - `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON for GCS/Firebase Admin)
-3. Optional:
-   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (billing)
-   - `REDIS_URL` (caching, defaults to in-memory)
-   - `API_KEY` (production API auth)
+These are on-demand — loaded via skills when the task applies:
 
-## Writing Integration Tests
-
-Read `docs/architecture/typescript/TEST_GUIDE.md` Part 3 before writing ANY integration test.
-
-### The Cardinal Rule
-
-**Write tests from contracts, not implementations.** Read registration files, type interfaces, route declarations, and schema definitions. Do NOT read service implementations when writing the test assertions. The test encodes what the code PROMISES to do. If the implementation doesn't match the promise, the test should fail.
-
-Files to read for contracts:
-- `server/src/config/services.config.ts` — every service name and its factory
-- `server/src/config/services.initialize.ts` — initialization order and health checks
-- `server/src/app.ts` — middleware stack and route registration
-- `server/src/routes/*.routes.ts` — route paths and their schemas
-- `server/src/schemas/*.ts` — Zod validation contracts
-- `shared/taxonomy.ts` — category definitions
-
-Files to NOT read when writing assertions:
-- Service class implementations (e.g., `EnhancementService.ts` internals)
-- Route handler function bodies
-- LLM prompt templates
-- Utility function implementations
-
-### When Generating Integration Tests
-
-1. Read the contract files listed above
-2. Write assertions based on what the contracts promise
-3. Run the test — expect failures
-4. Report failures to the user with root cause analysis
-5. **STOP. Do not auto-fix.** Ask the user whether to fix the source code or adjust the test spec.
-
-### When Fixing Integration Test Failures
-
-If the user asks you to fix failing integration tests:
-- Default to fixing the SOURCE CODE, not the test
-- Only modify the test if it references a service name, route path, or schema field that genuinely does not exist in any contract file
-- Never weaken an assertion to make it pass (e.g., changing `.toBe(200)` to `.toBeDefined()`)
-- Never add try/catch in the test to swallow errors
-- Never change `expect(x).toBe(y)` to `expect(x).toBe(z)` where `z` is what the broken code returns
-
-### Integration Test Types (Quick Reference)
-
-| Type | When to Write | What to Assert |
-|------|--------------|----------------|
-| Bootstrap (Type 1) | Changed startup sequence, DI config, env validation | Server starts, health check returns 200 |
-| DI Container (Type 2) | Added/removed/renamed a service registration | Every registered name resolves without throwing |
-| Full-Stack Route (Type 3) | Changed middleware, auth, or route wiring | Request through real app gets expected status |
-| Database (Type 4) | Changed Firestore schema, transaction logic | Data round-trips correctly through emulator |
-| Workflow (Type 5) | Changed service that feeds into another service | Output of service A is valid input for service B |
-| Contract (Type 6) | Integrated new external API or updated client | Client handles real response fixtures correctly |
-
-## Documentation References
-
-- Architecture rules: `docs/architecture/CLAUDE_CODE_RULES.md`
-- TypeScript style: `docs/architecture/typescript/STYLE_RULES.md`
-- Test guide (includes integration tests): `docs/architecture/typescript/TEST_GUIDE.md`
-- Zod patterns: `docs/architecture/typescript/ZOD_PATTERNS.md`
-- Logging: `docs/architecture/typescript/LOGGING_PATTERNS.md`
+- **Bugfix protocol:** `.claude/skills/bugfix/SKILL.md`
+- **Integration tests:** `docs/architecture/typescript/TEST_GUIDE.md` Part 3
+- **Cross-layer changes:** `.claude/skills/cross-layer-change/SKILL.md`
+- **New feature scaffolding:** `.claude/skills/new-feature/SKILL.md`
 
 ## Subsystem Guides
 
-- See `client/CLAUDE.md` for frontend-specific guidance
-- See `server/CLAUDE.md` for backend-specific guidance
+- Frontend-specific: `client/CLAUDE.md`
+- Backend-specific: `server/CLAUDE.md`
+- Architecture rules: `docs/architecture/CLAUDE_CODE_RULES.md`
+- Service boundaries: `docs/architecture/SERVICE_BOUNDARIES.md`

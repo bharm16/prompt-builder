@@ -1,4 +1,4 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useUserCreditBalance } from '@/hooks/useUserCreditBalance';
 
 interface CreditBalanceContextValue {
@@ -21,7 +21,12 @@ export function CreditBalanceProvider({
   children: ReactNode;
 }): React.ReactElement {
   const state = useUserCreditBalance(userId);
-  return <CreditBalanceContext.Provider value={state}>{children}</CreditBalanceContext.Provider>;
+  const value = useMemo<CreditBalanceContextValue>(() => ({
+    balance: state.balance,
+    isLoading: state.isLoading,
+    error: state.error,
+  }), [state.balance, state.isLoading, state.error]);
+  return <CreditBalanceContext.Provider value={value}>{children}</CreditBalanceContext.Provider>;
 }
 
 export function useCreditBalance(): CreditBalanceContextValue {

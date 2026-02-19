@@ -9,6 +9,7 @@ import {
 import { useCapabilitiesClamping } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { StartFramePopover } from './StartFramePopover';
+import { MiniDropdown } from './MiniDropdown';
 
 interface CanvasSettingsRowProps {
   prompt: string;
@@ -162,25 +163,7 @@ export function CanvasSettingsRow({
     }
   }, [controls, isWan, renderModelId, trackGenerationStart]);
 
-  /* Cycle through aspect ratio options on click */
-  const handleAspectRatioClick = useCallback(() => {
-    if (!aspectRatioOptions.length) return;
-    const currentIndex = aspectRatioOptions.indexOf(aspectRatio);
-    const nextIndex = (currentIndex + 1) % aspectRatioOptions.length;
-    const nextAspectRatio = aspectRatioOptions[nextIndex];
-    if (!nextAspectRatio) return;
-    handleAspectRatioChange(nextAspectRatio);
-  }, [aspectRatio, aspectRatioOptions, handleAspectRatioChange]);
-
-  /* Cycle through duration options on click */
-  const handleDurationClick = useCallback(() => {
-    if (!durationOptions.length) return;
-    const currentIndex = durationOptions.indexOf(duration);
-    const nextIndex = (currentIndex + 1) % durationOptions.length;
-    const nextDuration = durationOptions[nextIndex];
-    if (typeof nextDuration !== 'number') return;
-    handleDurationChange(nextDuration);
-  }, [duration, durationOptions, handleDurationChange]);
+  const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
 
   const creditCost = isWan ? VIDEO_DRAFT_MODEL.cost : renderModelCost;
 
@@ -207,17 +190,22 @@ export function CanvasSettingsRow({
           Assets
         </BarBtn>
 
-        {/* Aspect ratio — cycle on click */}
-        <BarBtn onClick={handleAspectRatioClick}>
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>
-          {aspectRatio}
-        </BarBtn>
+        {/* Aspect ratio dropdown */}
+        <MiniDropdown
+          value={aspectRatio}
+          options={aspectRatioOptions}
+          onChange={handleAspectRatioChange}
+          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>}
+        />
 
-        {/* Duration — cycle on click */}
-        <BarBtn onClick={handleDurationClick}>
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>
-          {duration}s
-        </BarBtn>
+        {/* Duration dropdown */}
+        <MiniDropdown
+          value={duration}
+          options={durationOptions}
+          onChange={handleDurationChange}
+          formatLabel={formatDurationLabel}
+          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>}
+        />
 
         {/* AI Enhance */}
         <BarBtn

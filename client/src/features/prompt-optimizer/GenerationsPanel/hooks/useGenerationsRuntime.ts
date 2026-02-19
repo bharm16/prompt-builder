@@ -97,6 +97,12 @@ export function useGenerationsRuntime({
 
   const { setControls, faceSwapPreview, onInsufficientCredits } =
     useGenerationControlsContext();
+  const onInsufficientCreditsRef = useRef(onInsufficientCredits);
+  onInsufficientCreditsRef.current = onInsufficientCredits;
+  const balanceRef = useRef(balance);
+  balanceRef.current = balance;
+  const authUidRef = useRef(authUser?.uid);
+  authUidRef.current = authUser?.uid;
   const { domain } = useGenerationControlsStoreState();
   const { setStartFrame, clearStartFrame } = useGenerationControlsStoreActions();
   const keyframes = domain.keyframes;
@@ -229,13 +235,14 @@ export function useGenerationsRuntime({
 
   const hasCreditsFor = useCallback(
     (required: number, operation: string): boolean => {
-      if (!authUser?.uid) return true;
-      if (balance === null || balance === undefined) return true;
-      if (balance >= required) return true;
-      onInsufficientCredits?.(required, operation);
+      if (!authUidRef.current) return true;
+      if (balanceRef.current === null || balanceRef.current === undefined) return true;
+      if (balanceRef.current >= required) return true;
+      onInsufficientCreditsRef.current?.(required, operation);
       return false;
     },
-    [authUser?.uid, balance, onInsufficientCredits]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- balance/authUid accessed via stable refs
+    []
   );
 
   const generateSequenceShot = useCallback(
@@ -645,16 +652,20 @@ export function useGenerationsRuntime({
     return nonStoryboardGenerations[nonStoryboardGenerations.length - 1] ?? null;
   }, [activeGeneration, generations, heroOverrideGenerationId]);
 
+  const onStateSnapshotRef = useRef(onStateSnapshot);
+  onStateSnapshotRef.current = onStateSnapshot;
+
   useEffect(() => {
-    if (!onStateSnapshot) return;
+    const callback = onStateSnapshotRef.current;
+    if (!callback) return;
     const snapshot: GenerationsPanelStateSnapshot = {
       generations,
       activeGenerationId,
       isGenerating,
       selectedFrameUrl: selectedFrameUrl ?? null,
     };
-    onStateSnapshot(snapshot);
-  }, [activeGenerationId, generations, isGenerating, onStateSnapshot, selectedFrameUrl]);
+    callback(snapshot);
+  }, [activeGenerationId, generations, isGenerating, selectedFrameUrl]);
 
   return {
     generations,

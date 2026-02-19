@@ -10,7 +10,7 @@
  * Single Responsibility: Orchestrate the prompt optimization workflow
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { logger } from '../services/LoggingService';
 import type { Toast } from './types';
@@ -382,7 +382,7 @@ export const usePromptOptimizer = (
     ]
   );
 
-  return {
+  return useMemo<UsePromptOptimizerResult>(() => ({
     // State
     inputPrompt: state.inputPrompt,
     setInputPrompt,
@@ -421,5 +421,22 @@ export const usePromptOptimizer = (
     addLockedSpan,
     removeLockedSpan,
     clearLockedSpans,
-  };
+  }), [
+    state,
+    setInputPrompt,
+    setOptimizedPrompt,
+    setDisplayedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
+    setSkipAnimation,
+    setImprovementContext,
+    optimize,
+    compile,
+    resetPrompt,
+    setLockedSpans,
+    addLockedSpan,
+    removeLockedSpan,
+    clearLockedSpans,
+  ]);
 };

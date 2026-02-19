@@ -1,4 +1,4 @@
-import React, { createContext, useContext, type MutableRefObject, type ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, type MutableRefObject, type ReactNode } from 'react';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import type { CoherenceIssue } from '@/features/prompt-optimizer/components/coherence/useCoherenceAnnotations';
@@ -95,7 +95,7 @@ export function PromptResultsActionsProvider({
     setOutputLastSavedAt,
   });
 
-  const value: PromptResultsActionsContextValue = {
+  const value = useMemo<PromptResultsActionsContextValue>(() => ({
     user,
     onDisplayedPromptChange: handleDisplayedPromptChangeWithAutosave,
     onReoptimize,
@@ -117,7 +117,29 @@ export function PromptResultsActionsProvider({
     onApplyCoherenceFix,
     onScrollToCoherenceSpan,
     i2vContext,
-  };
+  }), [
+    user,
+    handleDisplayedPromptChangeWithAutosave,
+    onReoptimize,
+    onFetchSuggestions,
+    onSuggestionClick,
+    onHighlightsPersist,
+    onUndo,
+    onRedo,
+    stablePromptContext,
+    suggestionsData,
+    coherenceAffectedSpanIds,
+    coherenceSpanIssueMap,
+    coherenceIssues,
+    isCoherenceChecking,
+    isCoherencePanelExpanded,
+    onToggleCoherencePanelExpanded,
+    onDismissCoherenceIssue,
+    onDismissAllCoherenceIssues,
+    onApplyCoherenceFix,
+    onScrollToCoherenceSpan,
+    i2vContext,
+  ]);
 
   return (
     <PromptResultsActionsContext.Provider value={value}>{children}</PromptResultsActionsContext.Provider>

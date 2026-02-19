@@ -43,6 +43,12 @@ export function PromptInsertionBusProvider({
   clearResultsView,
 }: PromptInsertionBusProviderProps): React.ReactElement {
   const insertHandlerRef = useRef<PromptInsertHandler | null>(null);
+  const inputPromptRef = useRef(inputPrompt);
+  inputPromptRef.current = inputPrompt;
+  const setInputPromptRef = useRef(setInputPrompt);
+  setInputPromptRef.current = setInputPrompt;
+  const clearResultsViewRef = useRef(clearResultsView);
+  clearResultsViewRef.current = clearResultsView;
 
   const registerInsertHandler = useCallback((handler: PromptInsertHandler | null): void => {
     insertHandlerRef.current = handler;
@@ -58,12 +64,13 @@ export function PromptInsertionBusProvider({
         return true;
       }
 
-      const nextPrompt = appendTriggerWithDelimiter(inputPrompt, normalizedTrigger);
-      setInputPrompt(nextPrompt);
-      clearResultsView?.();
+      const nextPrompt = appendTriggerWithDelimiter(inputPromptRef.current, normalizedTrigger);
+      setInputPromptRef.current(nextPrompt);
+      clearResultsViewRef.current?.();
       return false;
     },
-    [clearResultsView, inputPrompt, setInputPrompt]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- all values accessed via stable refs
+    []
   );
 
   const value = useMemo<PromptInsertionBusContextValue>(

@@ -31,6 +31,7 @@ import { CanvasTopBar } from './components/CanvasTopBar';
 import { CanvasPromptBar } from './components/CanvasPromptBar';
 import { ModelCornerSelector } from './components/ModelCornerSelector';
 import { CanvasHeroViewer } from './components/CanvasHeroViewer';
+import { NewSessionView } from './components/NewSessionView';
 
 interface CanvasWorkspaceProps {
   generationsPanelProps: GenerationsPanelProps;
@@ -230,11 +231,12 @@ export function CanvasWorkspace({
     ]
   );
 
+  const onStateSnapshotProp = generationsPanelProps.onStateSnapshot;
   const handleSnapshot = useCallback(
     (nextSnapshot: GenerationsPanelStateSnapshot) => {
-      generationsPanelProps.onStateSnapshot?.(nextSnapshot);
+      onStateSnapshotProp?.(nextSnapshot);
     },
-    [generationsPanelProps]
+    [onStateSnapshotProp]
   );
 
   const generationsRuntime = useGenerationsRuntime({
@@ -285,6 +287,12 @@ export function CanvasWorkspace({
     return lookup;
   }, [galleryEntries]);
 
+  const isEmptySession = useMemo(() => {
+    const hasGenerations = galleryEntries.length > 0 || heroGeneration !== null;
+    const hasStartFrame = Boolean(domain.startFrame);
+    return !hasGenerations && !hasStartFrame;
+  }, [galleryEntries.length, heroGeneration, domain.startFrame]);
+
   const galleryOpen = workspaceDomain?.galleryOpen ?? true;
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
@@ -304,6 +312,48 @@ export function CanvasWorkspace({
     },
     [generationLookup, onReuseGeneration]
   );
+
+  if (isEmptySession) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
+        <CanvasTopBar />
+
+        <NewSessionView
+          editorRef={editorRef}
+          onInput={onInput}
+          prompt={prompt}
+          renderModelId={renderModelId}
+          renderModelOptions={renderModelOptions}
+          modelRecommendation={modelRecommendation}
+          recommendedModelId={recommendedModelId}
+          efficientModelId={efficientModelId}
+          onModelChange={handleModelChange}
+          onOpenMotion={() => {
+            if (!domain.startFrame) return;
+            setShowCameraMotionModal(true);
+          }}
+          {...(generationDomain?.onStartFrameUpload
+            ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+            : {})}
+        />
+
+        {domain.startFrame ? (
+          <CameraMotionModal
+            isOpen={showCameraMotionModal}
+            onClose={() => setShowCameraMotionModal(false)}
+            imageUrl={domain.startFrame.url}
+            imageStoragePath={domain.startFrame.storagePath ?? null}
+            imageAssetId={domain.startFrame.assetId ?? null}
+            initialSelection={domain.cameraMotion}
+            onSelect={(cameraPath) => {
+              storeActions.setCameraMotion(cameraPath);
+              setShowCameraMotionModal(false);
+            }}
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">

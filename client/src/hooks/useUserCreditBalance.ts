@@ -40,10 +40,12 @@ export function useUserCreditBalance(userId: string | null): CreditBalanceState 
       userRef,
       (snapshot) => {
         const data = snapshot.data() as Record<string, unknown> | undefined;
-        setState({
-          balance: normalizeBalance(data?.credits),
-          isLoading: false,
-          error: null,
+        const nextBalance = normalizeBalance(data?.credits);
+        setState((prev) => {
+          if (prev.balance === nextBalance && !prev.isLoading && prev.error === null) {
+            return prev; // same reference = no re-render
+          }
+          return { balance: nextBalance, isLoading: false, error: null };
         });
       },
       (error) => {
