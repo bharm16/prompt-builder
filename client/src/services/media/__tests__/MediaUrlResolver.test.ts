@@ -77,4 +77,56 @@ describe('MediaUrlResolver', () => {
     expect(result.url).toBe(freshUrl);
     expect(result.source).toBe('raw');
   });
+
+  it('resolves local preview content URLs that embed user storage paths', async () => {
+    (storageApi.getViewUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
+      viewUrl: 'https://storage.example.com/users/user123/generations/generated.mp4',
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      storagePath: 'users/user123/generations/generated.mp4',
+    });
+
+    const result = await resolveMediaUrl({
+      kind: 'video',
+      url: '/api/preview/video/content/users/user123/generations/generated.mp4',
+    });
+
+    expect(storageApi.getViewUrl).toHaveBeenCalledWith('users/user123/generations/generated.mp4');
+    expect(getVideoAssetViewUrl).not.toHaveBeenCalled();
+    expect(result.url).toBe('https://storage.example.com/users/user123/generations/generated.mp4');
+    expect(result.source).toBe('storage');
+  });
+
+  it('does not fall back to protected preview content URL when asset lookup fails', async () => {
+    (getVideoAssetViewUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: false,
+      error: 'Video asset not found',
+    });
+
+    const result = await resolveMediaUrl({
+      kind: 'video',
+      url: '/api/preview/video/content/2b540a8b-e96b-4810-bfd2-8a9e9b1fade6',
+      assetId: '2b540a8b-e96b-4810-bfd2-8a9e9b1fade6',
+    });
+
+    expect(getVideoAssetViewUrl).toHaveBeenCalledWith('2b540a8b-e96b-4810-bfd2-8a9e9b1fade6');
+    expect(result.url).toBeNull();
+    expect(result.source).toBe('preview');
+  });
+
+  it('does not attempt preview-asset lookup when users storage path resolution fails', async () => {
+    (storageApi.getViewUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
+      viewUrl: undefined,
+      storagePath: 'users/user123/generations/generated.mp4',
+    });
+
+    const result = await resolveMediaUrl({
+      kind: 'video',
+      url: '/api/preview/video/content/users/user123/generations/generated.mp4',
+    });
+
+    expect(storageApi.getViewUrl).toHaveBeenCalledWith('users/user123/generations/generated.mp4');
+    expect(getVideoAssetViewUrl).not.toHaveBeenCalled();
+    expect(result.url).toBeNull();
+    expect(result.source).toBe('storage');
+  });
 });

@@ -19,6 +19,15 @@ export function extractStorageObjectPath(rawUrl: string): string | null {
   const url = safeParseUrl(rawUrl);
   if (!url) return null;
 
+  const localPreviewPath = url.pathname;
+  if (localPreviewPath.includes(VIDEO_CONTENT_PREFIX)) {
+    const relative = localPreviewPath.split(VIDEO_CONTENT_PREFIX)[1] || '';
+    const decodedRelative = decodeURIComponent(relative);
+    if (decodedRelative.startsWith('users/')) {
+      return decodedRelative;
+    }
+  }
+
   const host = url.host;
   if (host === 'storage.googleapis.com' || host === 'storage.cloud.google.com') {
     const parts = url.pathname.split('/').filter(Boolean);

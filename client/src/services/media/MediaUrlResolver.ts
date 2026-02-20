@@ -35,6 +35,40 @@ const cache = new Map<string, { result: MediaUrlResult; expiresAtMs: number | nu
 
 const CACHE_TTL_MS = 30_000;
 const EXPIRY_SAFETY_WINDOW_MS = 2 * 60 * 1000;
+const PREVIEW_ROUTE_PREFIX = '/api/preview/';
+const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
+
+const parseCandidateUrl = (rawUrl: string): URL | null => {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  try {
+    return new URL(trimmed);
+  } catch {
+    if (typeof window === 'undefined') return null;
+    try {
+      return new URL(trimmed, window.location.origin);
+    } catch {
+      return null;
+    }
+  }
+};
+
+const isBlockedRawPreviewUrl = (rawUrl: string | null | undefined): boolean => {
+  if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0) return false;
+  const parsed = parseCandidateUrl(rawUrl);
+  if (!parsed) return false;
+  const path = parsed.pathname;
+  if (!path.startsWith(PREVIEW_ROUTE_PREFIX)) return false;
+  if (path.startsWith(VIDEO_CONTENT_ROUTE_PREFIX) && parsed.searchParams.has('token')) {
+    return false;
+  }
+  return true;
+};
+
+const pickSafeFallbackUrl = (fallbackUrl: string | null): string | null => {
+  if (!fallbackUrl) return null;
+  return isBlockedRawPreviewUrl(fallbackUrl) ? null : fallbackUrl;
+};
 
 const toExpiresAtMs = (value?: string | number | null): number | null => {
   if (value == null) return null;
@@ -61,7 +95,7 @@ const buildCacheKey = (req: MediaUrlRequest): string => {
 };
 
 const withFallbackUrl = (result: MediaUrlResult, fallbackUrl: string | null): MediaUrlResult =>
-  result.url ? result : { ...result, url: fallbackUrl };
+  result.url ? result : { ...result, url: pickSafeFallbackUrl(fallbackUrl) };
 
 const resolveViaStoragePath = async (storagePath: string): Promise<MediaUrlResult> => {
   const data = (await storageApi.getViewUrl(storagePath)) as {
@@ -138,11 +172,13 @@ const resolveFromUrl = async (
     if (objectPath.startsWith('users/')) {
       const resolved = await resolveViaStoragePath(objectPath);
       if (resolved.url) return resolved;
+      return resolved;
     }
-    const assetId = objectPath.split('/').filter(Boolean).pop();
+    const assetId = objectPath.split('/').filter(Boolean).pop() ?? null;
     if (assetId) {
       const resolved = await resolveViaAssetId(assetId, kind);
       if (resolved.url) return resolved;
+      if (isBlockedRawPreviewUrl(trimmed)) return resolved;
     }
   }
 
@@ -150,9 +186,14 @@ const resolveFromUrl = async (
   if (assetIdFromContent) {
     const resolved = await resolveViaAssetId(assetIdFromContent, 'video');
     if (resolved.url) return resolved;
+    if (isBlockedRawPreviewUrl(trimmed)) return resolved;
   }
 
-  return { url: trimmed, source: 'raw' };
+  const safeFallback = pickSafeFallbackUrl(trimmed);
+  if (!safeFallback) {
+    return { url: null, source: 'unknown' };
+  }
+  return { url: safeFallback, source: 'raw' };
 };
 
 export async function resolveMediaUrl(req: MediaUrlRequest): Promise<MediaUrlResult> {
@@ -208,7 +249,7 @@ export async function resolveMediaUrl(req: MediaUrlRequest): Promise<MediaUrlRes
         assetId: resolvedReq.assetId ?? null,
         error: error instanceof Error ? error.message : String(error),
       });
-      return { url: resolvedReq.url ?? null, source: 'unknown' };
+      return { url: pickSafeFallbackUrl(resolvedReq.url ?? null), source: 'unknown' };
     }
   })();
 

@@ -23,6 +23,13 @@ describe('storageUrl', () => {
 
       expect(extractStorageObjectPath(url)).toBe('path/to/video.mp4');
     });
+
+    it('extracts user storage paths from local preview content URLs', () => {
+      const url =
+        'http://localhost:5173/api/preview/video/content/users/user123/generations/generated.mp4';
+
+      expect(extractStorageObjectPath(url)).toBe('users/user123/generations/generated.mp4');
+    });
   });
 
   describe('core behavior', () => {

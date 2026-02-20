@@ -4,6 +4,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { GalleryPanel } from '../GalleryPanel';
 import type { GalleryGeneration } from '../types';
 
+vi.mock('@/hooks/useResolvedMediaUrl', () => ({
+  useResolvedMediaUrl: ({ url }: { url?: string | null }) => ({ url: url ?? null }),
+}));
+
 const makeGeneration = (
   id: string,
   overrides: Partial<GalleryGeneration> = {}
@@ -89,5 +93,24 @@ describe('GalleryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close gallery' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-});
 
+  it('renders video fallback thumbnail when image thumbnail is missing', () => {
+    render(
+      <GalleryPanel
+        generations={[
+          makeGeneration('video-1', {
+            mediaType: 'video',
+            thumbnailUrl: null,
+            mediaUrl: '/api/preview/video/content/asset-1',
+          }),
+        ]}
+        activeGenerationId={null}
+        onSelectGeneration={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const card = screen.getByTestId('gallery-thumbnail-video-1');
+    expect(card.querySelector('video')).not.toBeNull();
+  });
+});

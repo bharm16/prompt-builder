@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MediaKind, MediaUrlRequest, MediaUrlResult } from '@/services/media/MediaUrlResolver';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 
@@ -9,6 +9,7 @@ interface UseResolvedMediaUrlOptions {
   assetId?: string | null;
   enabled?: boolean;
   preferFresh?: boolean;
+  deferUntilResolved?: boolean;
 }
 
 interface UseResolvedMediaUrlResult {
@@ -19,6 +20,45 @@ interface UseResolvedMediaUrlResult {
   refresh: (reason?: string) => Promise<MediaUrlResult>;
 }
 
+const PREVIEW_ROUTE_PREFIX = '/api/preview/';
+const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
+
+function parseCandidateUrl(rawUrl: string): URL | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    return new URL(trimmed);
+  } catch {
+    if (typeof window === 'undefined') return null;
+    try {
+      return new URL(trimmed, window.location.origin);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function shouldDeferRawPreviewUrl(rawUrl: string | null | undefined): boolean {
+  if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0) {
+    return false;
+  }
+
+  const parsed = parseCandidateUrl(rawUrl);
+  if (!parsed) return false;
+
+  const path = parsed.pathname;
+  if (!path.startsWith(PREVIEW_ROUTE_PREFIX)) {
+    return false;
+  }
+
+  if (path.startsWith(VIDEO_CONTENT_ROUTE_PREFIX) && parsed.searchParams.has('token')) {
+    return false;
+  }
+
+  return true;
+}
+
 export function useResolvedMediaUrl({
   kind,
   url,
@@ -26,8 +66,25 @@ export function useResolvedMediaUrl({
   assetId,
   enabled = true,
   preferFresh = true,
+  deferUntilResolved = false,
 }: UseResolvedMediaUrlOptions): UseResolvedMediaUrlResult {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(url ?? null);
+  const requestSignature = [
+    kind,
+    url ?? '',
+    storagePath ?? '',
+    assetId ?? '',
+    preferFresh ? 'fresh' : 'stale',
+  ].join('|');
+  const immediateUrl = useMemo((): string | null => {
+    if (deferUntilResolved && enabled) {
+      return null;
+    }
+    return shouldDeferRawPreviewUrl(url) ? null : (url ?? null);
+  }, [deferUntilResolved, enabled, url]);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(
+    immediateUrl
+  );
+  const [resolvedSignature, setResolvedSignature] = useState<string>(requestSignature);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +106,7 @@ export function useResolvedMediaUrl({
         const result = await resolveMediaUrl(request);
         if (lastRequestRef.current === request) {
           setResolvedUrl(result.url ?? null);
+          setResolvedSignature(requestSignature);
           setExpiresAt(result.expiresAt ?? null);
         }
         return result;
@@ -64,14 +122,15 @@ export function useResolvedMediaUrl({
         }
       }
     },
-    [assetId, kind, preferFresh, storagePath, url]
+    [assetId, kind, preferFresh, requestSignature, storagePath, url]
   );
 
   useEffect(() => {
-    setResolvedUrl(url ?? null);
+    setResolvedUrl(immediateUrl);
+    setResolvedSignature(requestSignature);
     setExpiresAt(null);
     setError(null);
-  }, [url, storagePath, assetId, kind]);
+  }, [assetId, immediateUrl, kind, requestSignature, storagePath, url]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -79,7 +138,7 @@ export function useResolvedMediaUrl({
   }, [enabled, refresh]);
 
   return {
-    url: resolvedUrl,
+    url: resolvedSignature === requestSignature ? resolvedUrl : immediateUrl,
     expiresAt,
     loading,
     error,

@@ -100,9 +100,6 @@ const parseDurationSeconds = (generationParams: Record<string, unknown>): number
   return 5;
 };
 
-const resolveGenerationTimestamp = (generation: Generation): number =>
-  generation.completedAt ?? generation.createdAt ?? 0;
-
 export function CanvasWorkspace({
   generationsPanelProps,
   copied,
@@ -249,21 +246,7 @@ export function CanvasWorkspace({
     setViewingId(null);
   }, [generationsPanelProps.promptVersionId]);
 
-  const orderedGenerations = useMemo(
-    () =>
-      [...generationsRuntime.generations].sort(
-        (left, right) => resolveGenerationTimestamp(right) - resolveGenerationTimestamp(left)
-      ),
-    [generationsRuntime.generations]
-  );
-
-  const heroGeneration = useMemo(() => {
-    if (orderedGenerations.length === 0) return null;
-    const latestCompleted = orderedGenerations.find(
-      (generation) => generation.status === 'completed'
-    );
-    return latestCompleted ?? orderedGenerations[0] ?? null;
-  }, [orderedGenerations]);
+  const heroGeneration = generationsRuntime.heroGeneration;
 
   const galleryEntries = useMemo(
     () =>

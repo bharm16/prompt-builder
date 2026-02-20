@@ -144,4 +144,48 @@ describe('useResolvedMediaUrl', () => {
     expect(mockResolveMediaUrl).toHaveBeenCalledTimes(1);
     expect(result.current.url).toBe('https://signed.example/manual.png');
   });
+
+  it('does not emit protected local preview URLs before resolver runs', async () => {
+    mockResolveMediaUrl.mockResolvedValue({
+      url: 'https://storage.example.com/users/u1/generations/video.mp4',
+      source: 'storage',
+    });
+
+    const { result } = renderHook(() =>
+      useResolvedMediaUrl({
+        kind: 'video',
+        url: '/api/preview/video/content/users/u1/generations/video.mp4',
+      })
+    );
+
+    expect(result.current.url).toBeNull();
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.url).toBe('https://storage.example.com/users/u1/generations/video.mp4');
+    });
+  });
+
+  it('can defer showing initial URL until resolver completes', async () => {
+    const deferred = createDeferred<{ url: string; source: 'storage' }>();
+    mockResolveMediaUrl.mockReturnValue(deferred.promise);
+
+    const { result } = renderHook(() =>
+      useResolvedMediaUrl({
+        kind: 'image',
+        url: 'https://raw.example/preview.png',
+        deferUntilResolved: true,
+      })
+    );
+
+    expect(result.current.url).toBeNull();
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      deferred.resolve({ url: 'https://signed.example/preview.png', source: 'storage' });
+      await Promise.resolve();
+    });
+
+    expect(result.current.url).toBe('https://signed.example/preview.png');
+  });
 });

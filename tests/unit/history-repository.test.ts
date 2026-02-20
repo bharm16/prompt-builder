@@ -181,9 +181,9 @@ describe('updatePrompt', () => {
     vi.clearAllMocks();
   });
 
-  it('falls back to uuid when docId starts with draft-', async () => {
+  it('skips remote persistence when docId starts with draft- for authenticated users', async () => {
     await updatePrompt('user-1', 'uuid-1', 'draft-123', { input: 'new' });
-    expect(mockRepository.updatePrompt).toHaveBeenCalledWith('uuid-1', { input: 'new' });
+    expect(mockRepository.updatePrompt).not.toHaveBeenCalled();
   });
 
   it('falls back to uuid when docId is null', async () => {
@@ -205,9 +205,9 @@ describe('updateOutput', () => {
     mockRepository.updateOutput = vi.fn().mockResolvedValue(undefined);
   });
 
-  it('falls back to uuid when docId is a draft id for Firestore repo', async () => {
+  it('skips remote output persistence when docId is a draft id for authenticated users', async () => {
     await updateOutput('user-1', 'uuid-1', 'draft-456', 'new output');
-    expect(mockRepository.updateOutput).toHaveBeenCalledWith('uuid-1', 'new output');
+    expect(mockRepository.updateOutput).not.toHaveBeenCalled();
   });
 });
 

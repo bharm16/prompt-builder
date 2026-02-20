@@ -21,28 +21,106 @@ interface UseShotGenerationsResult {
   updateShotVersions: (versions: PromptVersionEntry[]) => void;
 }
 
+interface VersionMediaSnapshot {
+  previewImageUrl: string | null;
+  videoUrl: string | null;
+  videoStoragePath: string | null;
+  videoAssetId: string | null;
+}
+
+const normalizeNonEmptyString = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const resolveLatestVersionMediaSnapshot = (
+  versions: PromptVersionEntry[] | undefined
+): VersionMediaSnapshot => {
+  if (!Array.isArray(versions) || versions.length === 0) {
+    return {
+      previewImageUrl: null,
+      videoUrl: null,
+      videoStoragePath: null,
+      videoAssetId: null,
+    };
+  }
+
+  for (let index = versions.length - 1; index >= 0; index -= 1) {
+    const version = versions[index];
+    if (!version || typeof version !== 'object') continue;
+
+    const previewImageUrl = normalizeNonEmptyString(version.preview?.imageUrl);
+    const videoUrl = normalizeNonEmptyString(version.video?.videoUrl);
+    const videoStoragePath = normalizeNonEmptyString(version.video?.storagePath);
+    const videoAssetId = normalizeNonEmptyString(version.video?.assetId);
+
+    if (previewImageUrl || videoUrl || videoStoragePath || videoAssetId) {
+      return {
+        previewImageUrl,
+        videoUrl,
+        videoStoragePath,
+        videoAssetId,
+      };
+    }
+  }
+
+  return {
+    previewImageUrl: null,
+    videoUrl: null,
+    videoStoragePath: null,
+    videoAssetId: null,
+  };
+};
+
 export function useShotGenerations({
   currentShot,
   updateShot,
 }: UseShotGenerationsOptions): UseShotGenerationsResult {
   const shotId = currentShot?.id ?? null;
+  const typedVersions = useMemo(
+    () => (currentShot?.versions as unknown as PromptVersionEntry[] | undefined) ?? [],
+    [currentShot?.versions]
+  );
+  const versionMediaSnapshot = useMemo(
+    () => resolveLatestVersionMediaSnapshot(typedVersions),
+    [typedVersions]
+  );
 
   const sequenceGenerationVersionId = useMemo(() => {
     if (!currentShot) return null;
-    const versions = (currentShot.versions as unknown as PromptVersionEntry[] | undefined) ?? [];
-    const existing = versions.length ? versions[versions.length - 1]?.versionId : undefined;
+    const existing = typedVersions.length ? typedVersions[typedVersions.length - 1]?.versionId : undefined;
     return existing ?? `shot-${currentShot.id}`;
-  }, [currentShot]);
+  }, [currentShot, typedVersions]);
 
   const sequenceVideoUrl = useMemo(() => {
+    if (versionMediaSnapshot.videoUrl) return versionMediaSnapshot.videoUrl;
     if (!currentShot?.videoAssetId) return null;
     return `/api/preview/video/content/${currentShot.videoAssetId}`;
-  }, [currentShot?.videoAssetId]);
+  }, [currentShot?.videoAssetId, versionMediaSnapshot.videoUrl]);
+
+  const sequenceVideoRef = useMemo(
+    () =>
+      versionMediaSnapshot.videoStoragePath ??
+      versionMediaSnapshot.videoAssetId ??
+      currentShot?.videoAssetId ??
+      null,
+    [
+      currentShot?.videoAssetId,
+      versionMediaSnapshot.videoAssetId,
+      versionMediaSnapshot.videoStoragePath,
+    ]
+  );
+
+  const sequenceThumbnailUrl = useMemo(
+    () =>
+      normalizeNonEmptyString(currentShot?.generatedKeyframeUrl) ??
+      versionMediaSnapshot.previewImageUrl ??
+      null,
+    [currentShot?.generatedKeyframeUrl, versionMediaSnapshot.previewImageUrl]
+  );
 
   const sequenceGenerations = useMemo<Generation[]>(() => {
     if (!currentShot || !sequenceGenerationVersionId) return [];
     const status = mapShotStatusToGenerationStatus(currentShot.status);
-    const hasOutput = Boolean(currentShot.videoAssetId || currentShot.generatedKeyframeUrl);
+    const hasOutput = Boolean(sequenceVideoUrl || sequenceVideoRef || sequenceThumbnailUrl);
     const shouldRender = hasOutput || status !== 'pending';
     if (!shouldRender) return [];
     const createdAtMs = resolveVersionTimestamp(currentShot.createdAt) ?? Date.now();
@@ -61,15 +139,21 @@ export function useShotGenerations({
         completedAt: completedAtMs,
         mediaType: 'video',
         mediaUrls: sequenceVideoUrl ? [sequenceVideoUrl] : [],
-        ...(currentShot.videoAssetId ? { mediaAssetIds: [currentShot.videoAssetId] } : {}),
-        thumbnailUrl: currentShot.generatedKeyframeUrl ?? null,
+        ...(sequenceVideoRef ? { mediaAssetIds: [sequenceVideoRef] } : {}),
+        thumbnailUrl: sequenceThumbnailUrl,
       },
     ];
-  }, [currentShot, sequenceGenerationVersionId, sequenceVideoUrl]);
+  }, [
+    currentShot,
+    sequenceGenerationVersionId,
+    sequenceThumbnailUrl,
+    sequenceVideoRef,
+    sequenceVideoUrl,
+  ]);
 
   const sequenceVersions = useMemo<PromptVersionEntry[]>(() => {
     if (!currentShot) return [];
-    const existing = (currentShot.versions ?? []) as unknown as PromptVersionEntry[];
+    const existing = typedVersions;
     if (existing.length > 0) {
       if (
         sequenceGenerations.length > 0 &&
@@ -123,7 +207,7 @@ export function useShotGenerations({
         generations: sequenceGenerations,
       },
     ];
-  }, [currentShot, sequenceGenerationVersionId, sequenceGenerations, sequenceVideoUrl]);
+  }, [currentShot, sequenceGenerationVersionId, sequenceGenerations, sequenceVideoUrl, typedVersions]);
 
   const shotPromptEntry = useMemo<PromptHistoryEntry | null>(() => {
     if (!currentShot) return null;

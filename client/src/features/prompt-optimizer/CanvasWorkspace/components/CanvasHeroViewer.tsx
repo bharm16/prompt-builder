@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { formatRelativeTime } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import { getModelConfig } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { resolvePrimaryVideoSource } from '@/features/prompt-optimizer/GenerationsPanel/utils/videoSource';
 
 interface CanvasHeroViewerProps {
   generation: Generation | null;
@@ -14,12 +17,10 @@ const resolveTierLabel = (generation: Generation | null): string => {
   return 'final';
 };
 
-const resolvePreviewUrl = (generation: Generation | null): string | null => {
-  if (!generation) return null;
-  if (generation.thumbnailUrl && generation.thumbnailUrl.trim().length > 0) {
-    return generation.thumbnailUrl.trim();
-  }
-  return generation.mediaUrls[0] ?? null;
+const normalizeUrl = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 };
 
 const resolveAspectRatio = (generation: Generation | null): string => {
@@ -41,7 +42,50 @@ const resolveAspectRatio = (generation: Generation | null): string => {
 export function CanvasHeroViewer({
   generation,
 }: CanvasHeroViewerProps): React.ReactElement {
-  const previewUrl = useMemo(() => resolvePreviewUrl(generation), [generation]);
+  const rawPrimaryMediaUrl = useMemo(
+    () => normalizeUrl(generation?.mediaUrls[0] ?? null),
+    [generation?.mediaUrls]
+  );
+  const rawThumbnailUrl = useMemo(
+    () => normalizeUrl(generation?.thumbnailUrl ?? null),
+    [generation?.thumbnailUrl]
+  );
+  const primaryMediaRef = generation?.mediaAssetIds?.[0] ?? null;
+  const { storagePath: videoStoragePath, assetId: videoAssetId } = useMemo(
+    () => resolvePrimaryVideoSource(rawPrimaryMediaUrl, primaryMediaRef),
+    [primaryMediaRef, rawPrimaryMediaUrl]
+  );
+  const { url: resolvedVideoUrl } = useResolvedMediaUrl({
+    kind: 'video',
+    url: rawPrimaryMediaUrl,
+    storagePath: videoStoragePath,
+    assetId: videoAssetId,
+    deferUntilResolved: true,
+    enabled: Boolean(
+      generation &&
+      generation.mediaType === 'video' &&
+      (rawPrimaryMediaUrl || videoStoragePath || videoAssetId)
+    ),
+  });
+
+  const fallbackImageUrl = useMemo(() => {
+    if (generation?.mediaType === 'video') {
+      return rawThumbnailUrl;
+    }
+    return rawThumbnailUrl ?? rawPrimaryMediaUrl;
+  }, [generation?.mediaType, rawPrimaryMediaUrl, rawThumbnailUrl]);
+  const fallbackImageStoragePath = useMemo(
+    () => (fallbackImageUrl ? extractStorageObjectPath(fallbackImageUrl) : null),
+    [fallbackImageUrl]
+  );
+  const { url: resolvedImageUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: fallbackImageUrl,
+    storagePath: fallbackImageStoragePath,
+    deferUntilResolved: true,
+    enabled: Boolean(fallbackImageUrl),
+  });
+
   const metadata = useMemo(() => {
     if (!generation) return 'No generations yet';
 
@@ -55,7 +99,8 @@ export function CanvasHeroViewer({
   }, [generation]);
 
   const aspectRatio = useMemo(() => resolveAspectRatio(generation), [generation]);
-  const isVideo = generation?.mediaType === 'video' && Boolean(previewUrl);
+  const isVideo = generation?.mediaType === 'video' && Boolean(resolvedVideoUrl);
+  const previewUrl = isVideo ? resolvedVideoUrl : resolvedImageUrl;
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-[#0D0E12]">
@@ -90,4 +135,3 @@ export function CanvasHeroViewer({
     </div>
   );
 }
-

@@ -21,6 +21,7 @@ type VersionGenerationSource = {
   generation: Generation;
   promptSpans: GalleryPromptSpan[];
   versionTimestamp: number | null;
+  versionPreviewImageUrl: string | null;
 };
 
 const resolveTimestamp = (generation: Generation, versionTimestamp: number | null): number =>
@@ -32,17 +33,50 @@ const mapTier = (generation: Generation): GalleryTier => {
   return 'final';
 };
 
-const resolveThumbnailUrl = (generation: Generation): string | null => {
-  if (
-    typeof generation.thumbnailUrl === 'string' &&
-    generation.thumbnailUrl.trim().length > 0
-  ) {
-    return generation.thumbnailUrl.trim();
+const isLikelyVideoUrl = (url: string): boolean => {
+  const value = url.toLowerCase();
+  if (value.includes('/api/preview/video/content/')) {
+    return true;
+  }
+  return /\.(mp4|webm|mov|m3u8)(\?|#|$)/.test(value);
+};
+
+const normalizeNonEmpty = (value: string | null | undefined): string | null =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const resolveThumbnailUrl = (
+  generation: Generation,
+  versionPreviewImageUrl: string | null
+): string | null => {
+  const isCompletedGeneration = generation.status === 'completed';
+  const normalizedThumbnail = normalizeNonEmpty(generation.thumbnailUrl);
+  const normalizedVersionPreview = normalizeNonEmpty(versionPreviewImageUrl);
+
+  if (generation.mediaType === 'video') {
+    if (normalizedThumbnail && !isLikelyVideoUrl(normalizedThumbnail)) {
+      return normalizedThumbnail;
+    }
+    if (
+      isCompletedGeneration &&
+      normalizedVersionPreview &&
+      !isLikelyVideoUrl(normalizedVersionPreview)
+    ) {
+      return normalizedVersionPreview;
+    }
+    return null;
   }
 
-  const firstMediaUrl = generation.mediaUrls[0];
-  if (typeof firstMediaUrl === 'string' && firstMediaUrl.trim().length > 0) {
-    return firstMediaUrl.trim();
+  if (normalizedThumbnail) {
+    return normalizedThumbnail;
+  }
+
+  const firstMediaUrl = normalizeNonEmpty(generation.mediaUrls[0]);
+  if (firstMediaUrl) {
+    return firstMediaUrl;
+  }
+
+  if (isCompletedGeneration && normalizedVersionPreview) {
+    return normalizedVersionPreview;
   }
 
   return null;
@@ -110,11 +144,12 @@ const formatDuration = (duration: number | null | undefined): string | undefined
 const mapGalleryGeneration = (
   generation: Generation,
   promptSpans: GalleryPromptSpan[],
-  versionTimestamp: number | null
+  versionTimestamp: number | null,
+  versionPreviewImageUrl: string | null
 ): GalleryGeneration => ({
   id: generation.id,
   tier: mapTier(generation),
-  thumbnailUrl: resolveThumbnailUrl(generation),
+  thumbnailUrl: resolveThumbnailUrl(generation, versionPreviewImageUrl),
   mediaUrl: generation.mediaUrls[0] ?? null,
   mediaType: generation.mediaType,
   prompt: generation.prompt ?? '',
@@ -137,11 +172,13 @@ export function buildGalleryGenerationEntries({
     const timestamp = Date.parse(version.timestamp);
     const versionTimestamp = Number.isFinite(timestamp) ? timestamp : null;
     const promptSpans = parsePromptSpans(version.highlights);
+    const versionPreviewImageUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
     for (const generation of version.generations) {
       versionGenerations.push({
         generation,
         promptSpans,
         versionTimestamp,
+        versionPreviewImageUrl,
       });
     }
   }
@@ -158,6 +195,7 @@ export function buildGalleryGenerationEntries({
         generation,
         promptSpans: [],
         versionTimestamp: null,
+        versionPreviewImageUrl: null,
       });
       continue;
     }
@@ -173,10 +211,10 @@ export function buildGalleryGenerationEntries({
       gallery: mapGalleryGeneration(
         source.generation,
         source.promptSpans,
-        source.versionTimestamp
+        source.versionTimestamp,
+        source.versionPreviewImageUrl
       ),
       generation: source.generation,
     }))
     .sort((left, right) => right.gallery.createdAt - left.gallery.createdAt);
 }
-

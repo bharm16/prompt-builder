@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
 import type { PopoverPreviewProps } from './types';
 
 const iconClassName = 'h-4 w-4';
@@ -80,6 +82,12 @@ const parseAspectRatio = (value: string | undefined): string => {
   return `${left} / ${right}`;
 };
 
+const normalizeUrl = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 const copyText = async (text: string): Promise<void> => {
   if (typeof navigator === 'undefined' || !navigator.clipboard) return;
   await navigator.clipboard.writeText(text);
@@ -101,18 +109,69 @@ export function PopoverPreview({
 }: PopoverPreviewProps): React.ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const previewUrl = generation.mediaUrl ?? generation.thumbnailUrl ?? null;
+  const rawMediaUrl = useMemo(
+    () => normalizeUrl(generation.mediaUrl),
+    [generation.mediaUrl]
+  );
+  const rawThumbnailUrl = useMemo(
+    () => normalizeUrl(generation.thumbnailUrl),
+    [generation.thumbnailUrl]
+  );
+  const videoStoragePath = useMemo(
+    () => (rawMediaUrl ? extractStorageObjectPath(rawMediaUrl) : null),
+    [rawMediaUrl]
+  );
+  const videoAssetId = useMemo(
+    () => (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
+    [rawMediaUrl, videoStoragePath]
+  );
+  const { url: resolvedVideoUrl } = useResolvedMediaUrl({
+    kind: 'video',
+    url: rawMediaUrl,
+    storagePath: videoStoragePath,
+    assetId: videoAssetId,
+    deferUntilResolved: true,
+    enabled: generation.mediaType === 'video' && Boolean(rawMediaUrl || videoStoragePath || videoAssetId),
+  });
+  const imageCandidateUrl = useMemo(() => {
+    if (generation.mediaType === 'video') {
+      return rawThumbnailUrl;
+    }
+    return rawMediaUrl ?? rawThumbnailUrl;
+  }, [generation.mediaType, rawMediaUrl, rawThumbnailUrl]);
+  const imageStoragePath = useMemo(
+    () => (imageCandidateUrl ? extractStorageObjectPath(imageCandidateUrl) : null),
+    [imageCandidateUrl]
+  );
+  const { url: resolvedImageUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: imageCandidateUrl,
+    storagePath: imageStoragePath,
+    deferUntilResolved: true,
+    enabled: Boolean(imageCandidateUrl),
+  });
+
+  const previewUrl =
+    generation.mediaType === 'video'
+      ? resolvedVideoUrl ?? resolvedImageUrl
+      : resolvedImageUrl;
   const aspectRatio = useMemo(
     () => parseAspectRatio(generation.aspectRatio),
     [generation.aspectRatio]
   );
-  const isVideo = generation.mediaType === 'video' && Boolean(previewUrl);
+  const isVideo = generation.mediaType === 'video' && Boolean(resolvedVideoUrl);
 
   const handleTogglePlayback = (): void => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      void videoRef.current.play();
-      setIsPlaying(true);
+      void videoRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          setIsPlaying(false);
+        });
       return;
     }
     videoRef.current.pause();
@@ -243,4 +302,3 @@ export function PopoverPreview({
     </section>
   );
 }
-

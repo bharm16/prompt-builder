@@ -20,6 +20,13 @@ const isValidSessionId = (docId: string | null | undefined): docId is string => 
   return normalized.length > 0 && !normalized.startsWith('draft-');
 };
 
+const isDraftDocId = (docId: string | null | undefined): boolean => {
+  if (!docId) {
+    return false;
+  }
+  return docId.trim().startsWith('draft-');
+};
+
 const normalizeRecord = (value: unknown): Record<string, unknown> | null => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -146,6 +153,10 @@ export async function updatePrompt(
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
+
   if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     let attemptedUuid = false;
@@ -189,6 +200,10 @@ export async function updateHighlights(
   highlightCache: Record<string, unknown> | null
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
+
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
 
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);
@@ -234,6 +249,10 @@ export async function updateOutput(
   output: string
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
+
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
 
   if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);

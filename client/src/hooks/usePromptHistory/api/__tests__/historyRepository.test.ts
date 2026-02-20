@@ -160,14 +160,13 @@ describe('historyRepository', () => {
     expect(updatePromptMock).toHaveBeenNthCalledWith(2, 'uuid-1', { input: 'updated' });
   });
 
-  it('updatePrompt skips draft docId and persists directly by uuid', async () => {
+  it('updatePrompt skips remote persistence for authenticated draft docId', async () => {
     const updatePromptMock = vi.fn().mockResolvedValue(undefined);
     mockGetPromptRepositoryForUser.mockReturnValue({ updatePrompt: updatePromptMock });
 
     await updatePrompt('user-1', 'uuid-2', 'draft-123', { title: 'Title' });
 
-    expect(updatePromptMock).toHaveBeenCalledTimes(1);
-    expect(updatePromptMock).toHaveBeenCalledWith('uuid-2', { title: 'Title' });
+    expect(updatePromptMock).not.toHaveBeenCalled();
   });
 
   it('updateHighlights normalizes non-object highlightCache to null', async () => {
@@ -179,6 +178,15 @@ describe('historyRepository', () => {
     expect(updateHighlightsMock).toHaveBeenCalledWith('session_9', {
       highlightCache: null,
     });
+  });
+
+  it('updateOutput skips remote persistence for authenticated draft docId', async () => {
+    const updateOutputMock = vi.fn().mockResolvedValue(undefined);
+    mockGetPromptRepositoryForUser.mockReturnValue({ updateOutput: updateOutputMock });
+
+    await updateOutput('user-1', 'uuid-out', 'draft-1', 'new output');
+
+    expect(updateOutputMock).not.toHaveBeenCalled();
   });
 
   it('updateOutput falls back to uuid when docId update fails', async () => {
