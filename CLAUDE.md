@@ -135,6 +135,8 @@ npm run format      # Prettier format all files
 npm run test:unit   # Run unit tests
 npm run test:e2e    # Playwright e2e tests
 npm run test:coverage # Unit tests with coverage report
+npm run test:regression      # Run only regression tests
+npm run test:regression:list  # Audit all regression test files
 ```
 
 ## Commit Protocol (MANDATORY)
@@ -147,7 +149,7 @@ Before EVERY commit, run all three checks in order:
 
 If any check fails, DO NOT commit. Fix the failures first.
 
-A pre-commit hook enforces checks 1-2 automatically. Run `bash scripts/install-hooks.sh` after cloning.
+A pre-commit hook enforces checks 1-2 automatically, plus: **fix commits must include a regression test** (the hook rejects `fix:` / `fix(` commits without new test blocks). Run `bash scripts/install-hooks.sh` after cloning.
 
 ### Integration Test Gate (Service Changes)
 
@@ -212,7 +214,7 @@ These are architectural constraints, not styling opinions.
 
 These are on-demand — loaded via skills when the task applies:
 
-- **Bugfix protocol:** `.claude/skills/bugfix/SKILL.md`
+- **Bugfix protocol:** `.claude/skills/bugfix/SKILL.md` — invariant-first regression tests at the failure boundary. **Read this before every bugfix.**
 - **Integration tests:** `docs/architecture/typescript/TEST_GUIDE.md` Part 3
 - **Cross-layer changes:** `.claude/skills/cross-layer-change/SKILL.md`
 - **New feature scaffolding:** `.claude/skills/new-feature/SKILL.md`

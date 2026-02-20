@@ -1,12 +1,6 @@
 ---
 name: bugfix
 description: Fix a bug using the project's invariant-first regression test protocol. Use when the user reports a bug, asks to fix broken behavior, or describes unexpected output.
-allowed-tools:
-  - read_file
-  - write_file
-  - bash
-  - grep
-  - edit
 ---
 
 ## Bugfix Protocol
@@ -45,7 +39,7 @@ Route the test based on **where the user experienced the failure**, not where th
 | Wrong data / corrupt output | Service integration test with real dependency chain | External APIs only (LLM, Firebase, Stripe) | Missing triggers in augmented prompt |
 | Pure function edge case | Unit test or property test (fast-check) | None | Parser returning null on empty input |
 
-**Default to the highest layer that reproduces the bug.** A test at the HTTP layer catches bugs in middleware, services, AND the function — a unit test only catches bugs in the function.
+**Default to the highest layer that reproduces the bug.**
 
 ### 4. Write a Failing Regression Test
 
@@ -72,15 +66,15 @@ describe('regression: [invariant description]', () => {
 });
 ```
 
-**Minimize mocking.** Mock external boundaries (LLM APIs, databases, network). Never mock peer services within the same domain to passthrough — that removes the interactions where bugs live.
+**Minimize mocking.** Mock external boundaries (LLM APIs, databases, network). Never mock peer services within the same domain to passthrough.
 
-**If your regression test mocks the service being fixed, it's wrong.** A regression test for an auth bug must send an HTTP request through real auth middleware. A regression test for a suggestion bug must run suggestions through the real processing pipeline.
+**If your regression test mocks the service being fixed, it's wrong.**
 
 **Name tests as invariants, not fixes:**
 - ✗ `it('fixes dev API key missing when Firebase token present')`
 - ✓ `it('dev requests with expired Firebase token fall back to API key auth')`
 
-**The test MUST fail** before the fix. Run it to confirm. If it passes, the test doesn't capture the bug.
+**The test MUST fail** before the fix. Run it to confirm.
 
 ### 5. Fix the Root Cause
 
@@ -100,19 +94,17 @@ All must pass.
 
 ### Test Update Rules
 
-- **Never weaken an existing test** to accommodate a fix. If an existing test fails, your fix changed a contract — investigate the blast radius.
+- **Never weaken an existing test** to accommodate a fix.
 - **Never update a test and the source file it covers in the same logical change** unless the contract itself is intentionally changing.
-- **Add tests, don't modify them.** The default action is to add a new test case, not edit existing ones.
+- **Add tests, don't modify them.** Default action: add a new test case, not edit existing ones.
 - A failing existing test after a bugfix is **information**, not a problem to silence.
 
 ### Anti-Patterns to Avoid
 
-These patterns make a regression test useless. Do not write tests that:
-
 1. **Mock every dependency to passthrough** — tests call order, not behavior
-2. **Assert one specific input→output** without property generalization — misses the same bug via different path
+2. **Assert one specific input→output** without property generalization
 3. **Test implementation details** (method calls, internal state) instead of observable output
-4. **Live in generic test files** without the `.regression.test.ts` naming — invisible during audits
-5. **Test at the wrong layer** — unit-testing a helper function when the bug was an HTTP 403
+4. **Live in generic test files** without `.regression.test.ts` naming
+5. **Test at the wrong layer** — unit-testing a helper when the bug was an HTTP 403
 
 See also: `docs/architecture/BUGFIX_PROTOCOL.md`

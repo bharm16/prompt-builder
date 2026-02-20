@@ -2,6 +2,7 @@ import { auth } from '@/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const FIREBASE_TOKEN_HEADER = 'X-Firebase-Token';
+const API_KEY_HEADER = 'X-API-Key';
 const DEV_FALLBACK_API_KEY = 'dev-key-12345';
 const AUTH_READY_TIMEOUT_MS = 3000;
 
@@ -46,25 +47,23 @@ export async function getFirebaseToken(): Promise<string | null> {
 
 export async function buildFirebaseAuthHeaders(): Promise<Record<string, string>> {
   await waitForAuthReady();
+  const isProduction = (import.meta as { env?: { MODE?: string } }).env?.MODE === 'production';
+  const devFallbackHeaders = isProduction ? {} : { [API_KEY_HEADER]: DEV_FALLBACK_API_KEY };
   const user = auth.currentUser;
   if (!user) {
-    if ((import.meta as { env?: { MODE?: string } }).env?.MODE !== 'production') {
-      return {
-        'X-API-Key': DEV_FALLBACK_API_KEY,
-      };
-    }
-    return {};
+    return devFallbackHeaders;
   }
 
   try {
     const token = await user.getIdToken();
     if (!token) {
-      return {};
+      return devFallbackHeaders;
     }
     return {
       [FIREBASE_TOKEN_HEADER]: token,
+      ...devFallbackHeaders,
     };
   } catch {
-    return {};
+    return devFallbackHeaders;
   }
 }

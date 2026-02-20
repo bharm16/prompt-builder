@@ -3,14 +3,19 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-HOOK_SRC="${SCRIPT_DIR}/hooks/pre-commit"
-HOOK_DST="${ROOT_DIR}/.git/hooks/pre-commit"
+HOOKS_SRC="${SCRIPT_DIR}/hooks"
+HOOKS_DST="${ROOT_DIR}/.git/hooks"
 
-if [ ! -f "${HOOK_SRC}" ]; then
-  echo "Error: ${HOOK_SRC} not found"
-  exit 1
-fi
+for HOOK in pre-commit commit-msg; do
+  SRC="${HOOKS_SRC}/${HOOK}"
+  DST="${HOOKS_DST}/${HOOK}"
 
-cp "${HOOK_SRC}" "${HOOK_DST}"
-chmod +x "${HOOK_DST}"
-echo "Pre-commit hook installed at ${HOOK_DST}"
+  if [ ! -f "${SRC}" ]; then
+    echo "Warning: ${SRC} not found, skipping"
+    continue
+  fi
+
+  cp "${SRC}" "${DST}"
+  chmod +x "${DST}"
+  echo "${HOOK} hook installed at ${DST}"
+done

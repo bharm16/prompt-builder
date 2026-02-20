@@ -81,6 +81,15 @@ jobs:
           path: coverage/
         if: always()
 
+  regression-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check regression test mock boundaries
+        run: npm run test:regression:quality
+
   lint:
     runs-on: ubuntu-latest
 

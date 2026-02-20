@@ -92,9 +92,17 @@ describe('firebaseAuth', () => {
     const { buildFirebaseAuthHeaders, getFirebaseToken } = await loadFirebaseAuthModule();
 
     await expect(getFirebaseToken()).resolves.toBe('firebase-token-123');
-    await expect(buildFirebaseAuthHeaders()).resolves.toEqual({
-      'X-Firebase-Token': 'firebase-token-123',
-    });
+    const mode = (import.meta as { env?: { MODE?: string } }).env?.MODE;
+    if (mode === 'production') {
+      await expect(buildFirebaseAuthHeaders()).resolves.toEqual({
+        'X-Firebase-Token': 'firebase-token-123',
+      });
+    } else {
+      await expect(buildFirebaseAuthHeaders()).resolves.toEqual({
+        'X-Firebase-Token': 'firebase-token-123',
+        'X-API-Key': 'dev-key-12345',
+      });
+    }
   });
 
   it('returns empty auth headers when token retrieval fails', async () => {
@@ -105,7 +113,14 @@ describe('firebaseAuth', () => {
     const { buildFirebaseAuthHeaders, getFirebaseToken } = await loadFirebaseAuthModule();
 
     await expect(getFirebaseToken()).resolves.toBeNull();
-    await expect(buildFirebaseAuthHeaders()).resolves.toEqual({});
+    const mode = (import.meta as { env?: { MODE?: string } }).env?.MODE;
+    if (mode === 'production') {
+      await expect(buildFirebaseAuthHeaders()).resolves.toEqual({});
+    } else {
+      await expect(buildFirebaseAuthHeaders()).resolves.toEqual({
+        'X-API-Key': 'dev-key-12345',
+      });
+    }
   });
 
   it('waits for auth state only once across repeated calls', async () => {

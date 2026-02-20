@@ -149,16 +149,25 @@ PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/inte
 
 When fixing a bug, follow this sequence exactly:
 
-1. Write a failing test first that reproduces the bug. Unit test for service bugs, integration test for cross-service bugs. Must fail before the fix and pass after.
-2. Fix root cause in service/hook layer, not symptom in UI/API layer.
-3. Run the new test — must pass.
-4. Run full existing suite (`npm run test:unit`) — all existing tests must pass without modification.
+1. **Identify the violated invariant.** Frame as a general rule: "For any X, property Y holds." Not a specific input→output.
+2. **Write a failing regression test** named `*.regression.test.ts` that asserts the invariant.
+   - Default to **property-based tests** (fast-check) when the invariant spans a class of inputs.
+   - Use **integration tests** (real pipeline, mock only LLM/DB) when the bug involves service interactions. Never mock peer services to passthrough.
+   - Use point tests only for pure functions with a single edge case.
+   - The test MUST fail before the fix. Run it to confirm.
+3. Fix root cause in service/hook layer, not symptom in UI/API layer.
+4. Run the new test — must pass.
+5. Run full existing suite (`npm run test:unit`) — all existing tests must pass without modification.
+
+The pre-commit hook rejects `fix:` / `fix(` commits without new test blocks.
 
 Test update rules during bugfixes:
 - Never weaken an existing test to accommodate a fix. A failing existing test means your fix changed a contract — treat that as a separate decision.
 - Never update a test and the source file it covers in the same logical change unless the contract itself is intentionally changing.
 - A failing existing test after a bugfix is information. Investigate before touching the test.
 - Default action: add a new test case, don't edit existing ones.
+
+See: `docs/architecture/BUGFIX_PROTOCOL.md`
 
 ## Working notes
 - Keep changes small and consistent with existing patterns.
