@@ -22,7 +22,6 @@ import { trackModelRecommendationEvent } from '@/features/model-intelligence/api
 import { useModelSelectionRecommendation } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
 import {
   useSidebarGenerationDomain,
-  useSidebarWorkspaceDomain,
 } from '@/components/ToolSidebar/context';
 import { GalleryPanel } from '@/features/prompt-optimizer/components/GalleryPanel';
 import { GenerationPopover } from '@/features/prompt-optimizer/components/GenerationPopover';
@@ -161,7 +160,6 @@ export function CanvasWorkspace({
   const promptHighlights = useOptionalPromptHighlights();
   const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
   const generationDomain = useSidebarGenerationDomain();
-  const workspaceDomain = useSidebarWorkspaceDomain();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
 
@@ -276,16 +274,15 @@ export function CanvasWorkspace({
     return !hasGenerations && !hasStartFrame;
   }, [galleryEntries.length, heroGeneration, domain.startFrame]);
 
-  const galleryOpen = workspaceDomain?.galleryOpen ?? true;
-  const setGalleryOpen = workspaceDomain?.setGalleryOpen;
+  const galleryOpen = true;
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
   }, []);
 
   const handleCloseGallery = useCallback((): void => {
-    setGalleryOpen?.(false);
-  }, [setGalleryOpen]);
+    // Gallery rail is intentionally persistent in canvas mode.
+  }, []);
 
   const handleReuse = useCallback(
     (generationId: string): void => {
@@ -343,7 +340,7 @@ export function CanvasWorkspace({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
       <CanvasTopBar />
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden px-3">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-1">
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}

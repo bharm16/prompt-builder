@@ -18,7 +18,7 @@ export function GalleryFilters({
   onFilterChange,
 }: GalleryFiltersProps): React.ReactElement {
   return (
-    <div className="flex items-center gap-1 px-3 pb-1 pt-2">
+    <div className="pointer-events-auto mb-2 flex w-[52px] flex-wrap items-center justify-center gap-1">
       {FILTERS.map((filter) => {
         const isActive = activeFilter === filter.id;
         return (
@@ -26,10 +26,10 @@ export function GalleryFilters({
             key={filter.id}
             type="button"
             onClick={() => onFilterChange(filter.id)}
-            className={`inline-flex h-6 items-center rounded-md px-2 text-[11px] font-medium transition-colors ${
+            className={`inline-flex h-5 min-w-[22px] items-center justify-center rounded-md px-1.5 text-[10px] font-medium transition-colors ${
               isActive
-                ? 'bg-[#16181E] text-[#E2E6EF]'
-                : 'bg-transparent text-[#555B6E] hover:text-[#8B92A5]'
+                ? 'bg-[#262626] text-[#F5F5F5]'
+                : 'bg-transparent text-[#737373] hover:bg-[#171717] hover:text-[#D4D4D4]'
             }`}
             aria-pressed={isActive}
           >

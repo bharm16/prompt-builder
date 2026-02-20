@@ -1,64 +1,38 @@
-import React, { useMemo, useState } from 'react';
-import { X } from '@promptstudio/system/components/ui';
-import { GalleryFilters } from './GalleryFilters';
+import React from 'react';
 import { GalleryThumbnail } from './GalleryThumbnail';
-import type { GalleryFilter, GalleryPanelProps } from './types';
-
-const applyFilter = (
-  filter: GalleryFilter,
-  generation: GalleryPanelProps['generations'][number]
-): boolean => {
-  if (filter === 'preview') return generation.tier === 'preview';
-  if (filter === 'draft') return generation.tier === 'draft';
-  if (filter === 'favorites') return generation.isFavorite;
-  return true;
-};
+import type { GalleryPanelProps } from './types';
 
 export function GalleryPanel({
   generations,
   activeGenerationId,
   onSelectGeneration,
-  onClose,
+  onClose: _onClose,
 }: GalleryPanelProps): React.ReactElement {
-  const [activeFilter, setActiveFilter] = useState<GalleryFilter>('all');
-
-  const filteredGenerations = useMemo(
-    () => generations.filter((generation) => applyFilter(activeFilter, generation)),
-    [activeFilter, generations]
-  );
-
   return (
     <aside
-      className="flex h-full w-[200px] flex-none flex-col border-l border-[#1A1C22] bg-[#111318]"
+      className="pointer-events-none flex h-full w-[128px] flex-none flex-col items-center bg-transparent pb-[3px] pr-[3px] pt-[3px]"
       aria-label="Generations gallery"
       data-testid="gallery-panel"
     >
-      <div className="flex h-12 items-center px-3">
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex h-6 w-6 items-center justify-center rounded text-[#555B6E] transition-colors hover:text-[#8B92A5]"
-          aria-label="Close gallery"
-        >
-          <X size={14} weight="bold" aria-hidden="true" />
-        </button>
-      </div>
+      <div className="my-auto mr-[3px] flex w-[120px] min-h-96 max-h-[648px] flex-col rounded-[10px] bg-black p-2.5">
+        <div className="mb-3 h-[100px] w-[100px]" aria-hidden="true" />
 
-      <GalleryFilters
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-      />
+        <div className="flex h-5 w-full items-center justify-center pr-2">
+          <hr className="h-[3px] w-5 rounded-full border-0 bg-[#262626]" />
+        </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 overflow-auto px-2 pb-2 pt-1.5">
-        {filteredGenerations.map((generation) => (
-          <GalleryThumbnail
-            key={generation.id}
-            generation={generation}
-            isActive={generation.id === activeGenerationId}
-            onClick={() => onSelectGeneration(generation.id)}
-          />
-        ))}
+        <div className="scrollbar-hide pointer-events-none relative -left-1.5 -top-1.5 mb-[-4px] w-[500px] flex-1 snap-y overflow-y-auto pb-1 pl-1.5 pr-0">
+          <div className="pointer-events-auto flex w-[100px] flex-col gap-1.5">
+            {generations.map((generation) => (
+              <GalleryThumbnail
+                key={generation.id}
+                generation={generation}
+                isActive={generation.id === activeGenerationId}
+                onClick={() => onSelectGeneration(generation.id)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </aside>
   );
