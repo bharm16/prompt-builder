@@ -103,7 +103,6 @@ export {
 export type { StorageService } from './storage';
 export {
   GCSStorageService,
-  getGCSStorageService,
   createGCSStorageService,
 } from './storage';
 

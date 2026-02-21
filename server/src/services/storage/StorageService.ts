@@ -2,7 +2,6 @@ import { Storage } from '@google-cloud/storage';
 import { SignedUrlService } from './services/SignedUrlService';
 import { UploadService } from './services/UploadService';
 import { RetentionService } from './services/RetentionService';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import { safeUrlHost } from '@utils/url';
 import { logger } from '@infrastructure/Logger';
 import {
@@ -46,18 +45,22 @@ export class StorageService {
 
   constructor(dependencies: {
     storage?: Storage;
+    bucketName?: string;
     signedUrlService?: SignedUrlService;
     uploadService?: UploadService;
     retentionService?: RetentionService;
   } = {}) {
     if (!dependencies.storage) {
-      ensureGcsCredentials();
+      throw new Error('StorageService requires an injected Storage instance');
     }
-    this.storage = dependencies.storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
-    this.signedUrlService = dependencies.signedUrlService || new SignedUrlService(this.storage);
-    this.uploadService = dependencies.uploadService || new UploadService(this.storage);
-    this.retentionService = dependencies.retentionService || new RetentionService(this.storage);
+    this.storage = dependencies.storage;
+    const bucketName = dependencies.bucketName || STORAGE_CONFIG.bucketName;
+    this.bucket = this.storage.bucket(bucketName);
+    this.signedUrlService =
+      dependencies.signedUrlService || new SignedUrlService(this.storage, bucketName);
+    this.uploadService = dependencies.uploadService || new UploadService(this.storage, bucketName);
+    this.retentionService =
+      dependencies.retentionService || new RetentionService(this.storage, bucketName);
   }
 
   private async withTiming<T>(
@@ -361,16 +364,7 @@ export class StorageService {
     storagePath: string
   ): Promise<{ viewUrl: string; expiresAt: string; storagePath: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      const allowCrossUser =
-        process.env.NODE_ENV !== 'production' &&
-        process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
-      if (!allowCrossUser) {
-        throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
-      }
-      this.log.warn('Bypassing storage ownership check in development', {
-        userId,
-        storagePath,
-      });
+      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
     }
 
     return this.withTiming(
@@ -393,16 +387,7 @@ export class StorageService {
     filename?: string | null
   ): Promise<{ downloadUrl: string; expiresAt: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      const allowCrossUser =
-        process.env.NODE_ENV !== 'production' &&
-        process.env.ALLOW_DEV_CROSS_USER_STORAGE === 'true';
-      if (!allowCrossUser) {
-        throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
-      }
-      this.log.warn('Bypassing storage ownership check in development', {
-        userId,
-        storagePath,
-      });
+      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
     }
 
     return this.withTiming(
@@ -510,15 +495,6 @@ export class StorageService {
       'debug'
     );
   }
-}
-
-let instance: StorageService | null = null;
-
-export function getStorageService(): StorageService {
-  if (!instance) {
-    instance = new StorageService();
-  }
-  return instance;
 }
 
 export default StorageService;

@@ -6,18 +6,20 @@ import { buildRefundKey } from '@services/credits/refundGuard';
 import { createImageGenerateHandler } from '@routes/preview/handlers/imageGenerate';
 import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
-const { getAuthenticatedUserIdMock } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
-}));
-
-const createApp = (handler: express.RequestHandler, requestId = 'req-image-1') => {
+const createApp = (
+  handler: express.RequestHandler,
+  requestId = 'req-image-1',
+  userId: string | null = 'user-1'
+) => {
   const app = express();
   app.use((req, _res, next) => {
     (req as express.Request & { id?: string }).id = requestId;
+    const requestWithUser = req as express.Request & { user?: { uid?: string } | undefined };
+    if (userId) {
+      requestWithUser.user = { uid: userId };
+    } else {
+      delete requestWithUser.user;
+    }
     next();
   });
   app.use(express.json());
@@ -28,7 +30,6 @@ const createApp = (handler: express.RequestHandler, requestId = 'req-image-1') =
 describe('imageGenerate refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-1');
   });
 
   it('reserves credits, runs generation, and does not refund on success', async () => {
@@ -87,6 +88,7 @@ describe('imageGenerate refunds', () => {
       id: 'req-img-insufficient-1',
       path: '/preview/generate',
       body: { prompt: 'A dramatic portrait' },
+      user: { uid: 'user-1' },
     } as unknown as Request;
     const res = {
       status: vi.fn().mockReturnThis(),
@@ -157,7 +159,6 @@ describe('imageGenerate refunds', () => {
   });
 
   it('returns 401 when authentication is missing', async () => {
-    getAuthenticatedUserIdMock.mockResolvedValueOnce(null);
     const reserveCreditsMock = vi.fn(async () => true);
     const generatePreviewMock = vi.fn();
 
@@ -172,7 +173,7 @@ describe('imageGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = createApp(handler, 'req-img-auth-1');
+    const app = createApp(handler, 'req-img-auth-1', null);
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
     );

@@ -22,8 +22,8 @@ export class AssetService {
   private readonly embeddings: AssetEmbeddingService | null;
 
   constructor(
-    assetRepository = new AssetRepository(),
-    referenceImageService = new ReferenceImageService(),
+    assetRepository: AssetRepository,
+    referenceImageService: ReferenceImageService,
     resolverService = new AssetResolverService(assetRepository),
     triggerValidation = new TriggerValidationService(),
     embeddingService: FaceEmbeddingService | null = null

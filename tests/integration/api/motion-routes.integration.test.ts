@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   depthServiceMock,
-  getGCSStorageServiceMock,
+  getStorageServiceMock,
   createDepthEstimationServiceForUserMock,
   getDepthWarmupStatusMock,
   getStartupWarmupPromiseMock,
@@ -16,16 +16,12 @@ const {
 
   return {
     depthServiceMock,
-    getGCSStorageServiceMock: vi.fn(),
+    getStorageServiceMock: vi.fn(),
     createDepthEstimationServiceForUserMock: vi.fn(() => depthServiceMock),
     getDepthWarmupStatusMock: vi.fn(),
     getStartupWarmupPromiseMock: vi.fn(),
   };
 });
-
-vi.mock('@services/convergence/storage', () => ({
-  getGCSStorageService: getGCSStorageServiceMock,
-}));
 
 vi.mock('@services/convergence/depth', () => ({
   createDepthEstimationServiceForUser: createDepthEstimationServiceForUserMock,
@@ -42,7 +38,17 @@ const TEST_API_KEY = 'integration-motion-key';
 function createApp() {
   const app = express();
   app.use(express.json());
-  app.use('/api/motion', apiAuthMiddleware, createMotionRoutes());
+  app.use(
+    '/api/motion',
+    apiAuthMiddleware,
+    createMotionRoutes({
+      cameraPaths: CAMERA_PATHS,
+      createDepthEstimationServiceForUser: createDepthEstimationServiceForUserMock,
+      getDepthWarmupStatus: getDepthWarmupStatusMock,
+      getStartupWarmupPromise: getStartupWarmupPromiseMock,
+      getStorageService: getStorageServiceMock,
+    })
+  );
   return app;
 }
 
@@ -54,7 +60,7 @@ describe('Motion Routes (integration)', () => {
     process.env.ALLOWED_API_KEYS = TEST_API_KEY;
     vi.clearAllMocks();
 
-    getGCSStorageServiceMock.mockReturnValue({ id: 'storage-service' });
+    getStorageServiceMock.mockReturnValue({ id: 'storage-service' });
     depthServiceMock.isAvailable.mockReturnValue(true);
     depthServiceMock.estimateDepth.mockResolvedValue('https://example.com/depth.png');
     getStartupWarmupPromiseMock.mockReturnValue(null);
@@ -127,4 +133,3 @@ describe('Motion Routes (integration)', () => {
     expect(noAuthResponse.body.error).toBe('Authentication required');
   });
 });
-

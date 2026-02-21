@@ -66,15 +66,33 @@ export function scheduleInlineVideoPreviewProcessing({
               model: claimed.request.options?.model,
               creditsUsed: claimed.creditsReserved,
             });
+            logger.info('Secondary storage copy completed', {
+              persistence_type: 'secondary-copy',
+              required: false,
+              outcome: 'success',
+              job_id: jobId,
+              user_id: claimed.userId,
+              storage_path: storageResult.storagePath,
+            });
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.warn('Failed to persist inline preview video to storage', {
-              jobId,
-              workerId,
-              userId: claimed.userId,
+            logger.info('Secondary storage copy failed', {
+              persistence_type: 'secondary-copy',
+              required: false,
+              outcome: 'failed',
+              job_id: jobId,
+              user_id: claimed.userId,
               error: errorMessage,
             });
           }
+        } else {
+          logger.info('Secondary storage copy skipped', {
+            persistence_type: 'secondary-copy',
+            required: false,
+            outcome: 'skipped',
+            job_id: jobId,
+            user_id: claimed.userId,
+          });
         }
 
         const resultWithStorage = storageResult

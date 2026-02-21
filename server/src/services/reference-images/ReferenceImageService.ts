@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Bucket } from '@google-cloud/storage';
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
+import { getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 import { ReferenceImageService as ReferenceImageProcessor } from '@services/asset/ReferenceImageService';
 import { assertUrlSafe } from '@server/shared/urlValidation';
 
 interface ReferenceImageServiceOptions {
   db?: FirebaseFirestore.Firestore;
-  bucket?: Bucket;
+  bucket: Bucket;
   bucketName?: string;
   processor?: ReferenceImageProcessor;
 }
@@ -40,59 +40,6 @@ interface CreateReferenceImageInput {
   originalName?: string | null;
 }
 
-function normalizeBucketName(raw: string): string {
-  let bucketName = raw.trim();
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  if (bucketName.startsWith('gs://')) {
-    bucketName = bucketName.slice(5);
-  }
-
-  if (bucketName.startsWith('http://') || bucketName.startsWith('https://')) {
-    try {
-      const parsed = new URL(bucketName);
-      if (parsed.hostname === 'firebasestorage.googleapis.com') {
-        const match = parsed.pathname.match(/\/b\/([^/]+)\/o/);
-        if (match?.[1]) bucketName = match[1];
-      } else if (parsed.hostname === 'storage.googleapis.com') {
-        const pathParts = parsed.pathname.split('/').filter(Boolean);
-        if (pathParts[0]) bucketName = pathParts[0];
-      } else {
-        bucketName = parsed.hostname;
-      }
-    } catch {
-      // Keep original string if URL parsing fails.
-    }
-  }
-
-  bucketName = bucketName.replace(/^\/+/, '').split(/[/?#]/)[0] || '';
-  if (bucketName.endsWith('.firebasestorage.app')) {
-    bucketName = bucketName.replace(/\.firebasestorage\.app$/, '.appspot.com');
-  }
-
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  return bucketName;
-}
-
-function resolveBucketName(explicit?: string): string {
-  const envBucket =
-    explicit ||
-    process.env.VITE_FIREBASE_STORAGE_BUCKET ||
-    process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.GCS_BUCKET_NAME;
-  if (!envBucket) {
-    throw new Error(
-      'Missing storage bucket config: VITE_FIREBASE_STORAGE_BUCKET or GCS_BUCKET_NAME'
-    );
-  }
-  return normalizeBucketName(envBucket);
-}
-
 function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
   const encodedPath = encodeURIComponent(storagePath);
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
@@ -113,10 +60,13 @@ export class ReferenceImageService {
   private readonly processor: ReferenceImageProcessor;
   private readonly log = logger.child({ service: 'ReferenceImageService' });
 
-  constructor(options: ReferenceImageServiceOptions = {}) {
+  constructor(options: ReferenceImageServiceOptions) {
+    if (!options.bucket) {
+      throw new Error('ReferenceImageService requires an injected storage bucket');
+    }
     this.db = options.db || getFirestore();
-    this.bucketName = resolveBucketName(options.bucketName);
-    this.bucket = options.bucket || admin.storage().bucket(this.bucketName);
+    this.bucket = options.bucket;
+    this.bucketName = options.bucketName || options.bucket.name;
     this.processor = options.processor || new ReferenceImageProcessor();
   }
 

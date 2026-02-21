@@ -2,7 +2,6 @@ import express, { type Request, type Router } from 'express';
 import { isIP } from 'node:net';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { STORAGE_TYPES, type StorageType } from '@services/storage/config/storageConfig';
-import { getAuthenticatedUserId } from '@routes/preview/auth';
 
 type RequestWithUser = Request & { user?: { uid?: string } };
 
@@ -33,11 +32,8 @@ export interface StorageRoutesService {
   deleteFiles: (userId: string, paths: unknown[]) => Promise<unknown>;
 }
 
-async function resolveUserId(req: RequestWithUser): Promise<string | null> {
-  if (req.user?.uid) {
-    return req.user.uid;
-  }
-  return await getAuthenticatedUserId(req);
+function resolveUserId(req: RequestWithUser): string | null {
+  return req.user?.uid ?? null;
 }
 
 function rejectAnonymous(userId: string | null): string | null {
@@ -69,7 +65,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/upload-url',
     asyncHandler(async (req, res) => {
       const { type, contentType, metadata } = req.body || {};
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
       const normalizedType = normalizeStorageType(type);
 
       if (!userId) {
@@ -106,7 +102,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/save-from-url',
     asyncHandler(async (req, res) => {
       const { sourceUrl, type, metadata } = req.body || {};
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
       const normalizedType = normalizeStorageType(type);
 
       if (!userId) {
@@ -143,7 +139,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/confirm-upload',
     asyncHandler(async (req, res) => {
       const { storagePath } = req.body || {};
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -169,7 +165,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/view-url',
     asyncHandler(async (req, res) => {
       const path = typeof req.query.path === 'string' ? req.query.path.trim() : null;
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -196,7 +192,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     asyncHandler(async (req, res) => {
       const path = typeof req.query.path === 'string' ? req.query.path.trim() : null;
       const filename = typeof req.query.filename === 'string' ? req.query.filename.trim() : null;
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -224,7 +220,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
       const type = normalizeStorageType(req.query.type);
       const limitValue = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : NaN;
       const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -254,7 +250,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
   router.get(
     '/usage',
     asyncHandler(async (req, res) => {
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -273,7 +269,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/:path(*)',
     asyncHandler(async (req, res) => {
       const { path } = req.params as { path?: string };
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({
@@ -299,7 +295,7 @@ export function createStorageRoutes(storageService: StorageRoutesService): Route
     '/delete-batch',
     asyncHandler(async (req, res) => {
       const { paths } = req.body || {};
-      const userId = rejectAnonymous(await resolveUserId(req as RequestWithUser));
+      const userId = rejectAnonymous(resolveUserId(req as RequestWithUser));
 
       if (!userId) {
         return res.status(401).json({

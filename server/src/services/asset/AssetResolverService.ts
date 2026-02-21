@@ -6,7 +6,7 @@ export class AssetResolverService {
   private readonly repository: AssetRepository;
   private readonly log = logger.child({ service: 'AssetResolverService' });
 
-  constructor(assetRepository: AssetRepository = new AssetRepository()) {
+  constructor(assetRepository: AssetRepository) {
     this.repository = assetRepository;
   }
 

@@ -40,6 +40,12 @@ vi.mock('@promptstudio/system/components/ui/sheet', () => ({
   SheetContent: ({ children }: { children: ReactNode }) => (
     <div data-testid="sheet-content">{children}</div>
   ),
+  SheetTitle: ({ children }: { children: ReactNode }) => (
+    <div data-testid="sheet-title">{children}</div>
+  ),
+  SheetDescription: ({ children }: { children: ReactNode }) => (
+    <div data-testid="sheet-description">{children}</div>
+  ),
 }));
 
 const sidebarState = vi.hoisted(() => ({
@@ -222,12 +228,12 @@ describe('ToolSidebar', () => {
     expect(eventTypes).toContain(PROMPT_FOCUS_INTENT);
   });
 
-  it('ignores sheet close events when studio is already active', () => {
+  it('does not render sheet overlay when studio is already active', () => {
     sidebarState.activePanel = 'studio';
 
     render(<ToolSidebar {...createProps()} />);
-    fireEvent.click(screen.getByTestId('sheet-close'));
 
+    expect(screen.queryByTestId('sheet-close')).not.toBeInTheDocument();
     expect(sidebarState.setActivePanel).not.toHaveBeenCalled();
   });
 

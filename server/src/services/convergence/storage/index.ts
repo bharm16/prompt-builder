@@ -9,6 +9,5 @@
 export type { StorageService } from './StorageService';
 export {
   GCSStorageService,
-  getGCSStorageService,
   createGCSStorageService,
 } from './StorageService';

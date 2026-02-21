@@ -4,6 +4,7 @@
 
 export interface StoredImageAsset {
   id: string;
+  storagePath: string;
   url: string;
   contentType: string;
   createdAt: number;

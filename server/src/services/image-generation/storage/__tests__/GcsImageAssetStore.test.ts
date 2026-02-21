@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
 import { GcsImageAssetStore } from '../GcsImageAssetStore';
 
-vi.mock('@utils/gcsCredentials', () => ({
-  ensureGcsCredentials: vi.fn(),
-}));
-
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-id'),
 }));
@@ -25,11 +21,6 @@ let bucketMock: {
   file: MockedFunction<(path: string) => FileMock>;
   getFiles: MockedFunction<(options?: Record<string, unknown>) => Promise<[FileMock[]]>>;
 };
-let storageMock: { bucket: MockedFunction<(name: string) => typeof bucketMock> };
-
-vi.mock('@google-cloud/storage', () => ({
-  Storage: vi.fn(() => storageMock),
-}));
 
 const createFileMock = (name: string): FileMock => ({
   name,
@@ -50,12 +41,6 @@ describe('GcsImageAssetStore', () => {
       }),
       getFiles: vi.fn(),
     };
-    storageMock = {
-      bucket: vi.fn((name: string) => {
-        void name;
-        return bucketMock;
-      }),
-    };
     vi.clearAllMocks();
   });
 
@@ -66,7 +51,7 @@ describe('GcsImageAssetStore', () => {
   describe('error handling', () => {
     it('throws when fetching the source image fails', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: '/image-previews/',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -86,7 +71,7 @@ describe('GcsImageAssetStore', () => {
 
     it('retries uploads when the GCS stream is destroyed', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: 'image-previews',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -107,7 +92,7 @@ describe('GcsImageAssetStore', () => {
 
     it('handles delete errors when cleaning up expired assets', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: 'image-previews',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -126,7 +111,7 @@ describe('GcsImageAssetStore', () => {
   describe('edge cases', () => {
     it('returns null when the asset does not exist', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: 'image-previews',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -141,7 +126,7 @@ describe('GcsImageAssetStore', () => {
 
     it('returns 0 when cleanup is called with an invalid threshold', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: 'image-previews',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -154,7 +139,7 @@ describe('GcsImageAssetStore', () => {
 
     it('omits sizeBytes when metadata size is not positive', async () => {
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: 'image-previews',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',
@@ -183,7 +168,7 @@ describe('GcsImageAssetStore', () => {
     it('stores fetched images and returns signed URLs', async () => {
       const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
       const store = new GcsImageAssetStore({
-        bucketName: 'bucket',
+        bucket: bucketMock as never,
         basePath: '/image-previews/',
         signedUrlTtlMs: 60000,
         cacheControl: 'public, max-age=60',

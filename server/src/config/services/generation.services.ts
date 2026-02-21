@@ -15,6 +15,7 @@ import { ReplicateFluxKontextFastProvider } from '@services/image-generation/pro
 import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
 import { VideoToImagePromptTransformer } from '@services/image-generation/providers/VideoToImagePromptTransformer';
 import type { ImagePreviewProvider } from '@services/image-generation/providers/types';
+import type { ImageAssetStore } from '@services/image-generation/storage';
 import {
   parseImagePreviewProviderOrder,
   resolveImagePreviewProviderSelection,
@@ -27,7 +28,7 @@ import { VideoGenerationService } from '@services/video-generation/VideoGenerati
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
-import { createVideoAssetStore } from '@services/video-generation/storage';
+import type { VideoAssetStore } from '@services/video-generation/storage';
 import { resolveFalApiKey } from '@utils/falApiKey';
 import type { StorageService } from '@services/storage/StorageService';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
@@ -106,7 +107,8 @@ export function registerGenerationServices(container: DIContainer): void {
     'imageGenerationService',
     (
       replicateProvider: ReplicateFluxSchnellProvider | null,
-      kontextProvider: ReplicateFluxKontextFastProvider | null
+      kontextProvider: ReplicateFluxKontextFastProvider | null,
+      imageAssetStore: ImageAssetStore
     ) => {
       const providers = [replicateProvider, kontextProvider].filter(Boolean) as ImagePreviewProvider[];
 
@@ -135,11 +137,12 @@ export function registerGenerationServices(container: DIContainer): void {
 
       return new ImageGenerationService({
         providers,
+        assetStore: imageAssetStore,
         defaultProvider: selection ?? 'auto',
         fallbackOrder,
       });
     },
-    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider']
+    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider', 'imageAssetStore']
   );
 
   container.register(
@@ -165,7 +168,7 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'videoGenerationService',
-    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) => {
+    (videoAssetStore: VideoAssetStore) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       const openAIKey = process.env.OPENAI_API_KEY;
       const lumaApiKey = process.env.LUMA_API_KEY || process.env.LUMAAI_API_KEY;

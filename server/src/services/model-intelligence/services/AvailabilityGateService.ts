@@ -26,7 +26,7 @@ const UNKNOWN_REASONS = new Set(['unknown_availability', 'video_generation_unava
 
 const isUserIdEligibleForCredits = (userId: string | null | undefined): boolean => {
   if (!userId) return false;
-  if (userId.startsWith('api-key:') || userId.startsWith('dev-api-key:')) return false;
+  if (userId.startsWith('api-key:')) return false;
   return true;
 };
 

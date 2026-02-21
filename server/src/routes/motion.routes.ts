@@ -11,7 +11,7 @@ import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
 import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
-import { getGCSStorageService } from '@services/convergence/storage';
+import type { GCSStorageService } from '@services/convergence/storage';
 import { safeUrlHost } from '@utils/url';
 
 const log = logger.child({ routes: 'motion' });
@@ -59,7 +59,7 @@ export interface MotionRouteServices {
   createDepthEstimationServiceForUser: typeof createDepthEstimationServiceForUser;
   getDepthWarmupStatus: typeof getDepthWarmupStatus;
   getStartupWarmupPromise: typeof getStartupWarmupPromise;
-  getStorageService: typeof getGCSStorageService;
+  getStorageService: () => GCSStorageService;
 }
 
 const defaultServices: MotionRouteServices = {
@@ -67,7 +67,9 @@ const defaultServices: MotionRouteServices = {
   createDepthEstimationServiceForUser,
   getDepthWarmupStatus,
   getStartupWarmupPromise,
-  getStorageService: getGCSStorageService,
+  getStorageService: () => {
+    throw new Error('Motion routes require an injected convergence storage service');
+  },
 };
 
 const buildFallbackResponse = (cameraPaths: typeof CAMERA_PATHS): ApiResponse<DepthEstimationSuccessPayload> => ({

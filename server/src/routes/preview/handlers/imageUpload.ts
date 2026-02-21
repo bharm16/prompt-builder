@@ -3,7 +3,6 @@ import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
 import { cleanupUploadFile, readUploadBuffer } from '@utils/upload';
 import { validateImageBuffer } from '@utils/validateFileType';
-import { getAuthenticatedUserId } from '../auth';
 
 const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -33,7 +32,7 @@ type ImageUploadServices = Pick<PreviewRoutesServices, 'storageService'>;
 
 export const createImageUploadHandler = ({ storageService }: ImageUploadServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
       return res.status(401).json({
         success: false,

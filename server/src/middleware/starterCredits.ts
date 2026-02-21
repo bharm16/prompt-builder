@@ -21,7 +21,7 @@ const parseStarterCredits = (): number => {
 };
 
 const shouldSkipUser = (userId: string): boolean =>
-  userId.startsWith('api-key:') || userId.startsWith('dev-api-key:');
+  userId.startsWith('api-key:');
 
 export function __resetStarterCreditsCacheForTests(): void {
   cache.clear();

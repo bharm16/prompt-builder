@@ -34,7 +34,7 @@ import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMed
 import { createMotionRoutes } from '@routes/motion.routes';
 import { CAMERA_PATHS } from '@services/convergence/constants';
 import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
-import { getGCSStorageService } from '@services/convergence/storage';
+import type { GCSStorageService } from '@services/convergence/storage';
 import type { VideoConceptServiceContract } from '@routes/video/types';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
@@ -72,6 +72,13 @@ function resolveOptionalService<T>(
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
   const { promptOutputOnly } = getRuntimeFlags();
+  const convergenceStorageService = promptOutputOnly
+    ? null
+    : resolveOptionalService<GCSStorageService | null>(
+        container,
+        'convergenceStorageService',
+        'convergence-storage'
+      );
   const userCreditService = container.resolve<UserCreditService>('userCreditService');
   const videoGenerationService = promptOutputOnly
     ? null
@@ -137,8 +144,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     });
     app.use('/api/preview', publicPreviewRoutes);
 
-    const motionMediaRoutes = createConvergenceMediaRoutes(getGCSStorageService);
-    app.use('/api/motion/media', motionMediaRoutes);
+    if (convergenceStorageService) {
+      const motionMediaRoutes = createConvergenceMediaRoutes(() => convergenceStorageService);
+      app.use('/api/motion/media', motionMediaRoutes);
+    } else {
+      logger.warn('Convergence media routes disabled: storage service unavailable');
+    }
   }
 
   // ============================================================================
@@ -176,7 +187,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       createDepthEstimationServiceForUser,
       getDepthWarmupStatus,
       getStartupWarmupPromise,
-      getStorageService: getGCSStorageService,
+      getStorageService: () => {
+        if (!convergenceStorageService) {
+          throw new Error('Convergence storage service is not available');
+        }
+        return convergenceStorageService;
+      },
     });
     app.use('/api/motion', apiAuthMiddleware, motionRoutes);
   }

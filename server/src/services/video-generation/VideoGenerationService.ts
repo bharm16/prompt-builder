@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { createVideoAssetStore, type VideoAssetStore, type VideoAssetStream } from './storage';
+import type { VideoAssetStore, VideoAssetStream } from './storage';
 import type {
   VideoAvailabilityReport,
   VideoAvailabilitySnapshot,
@@ -25,7 +25,10 @@ export class VideoGenerationService {
 
   constructor(options: VideoGenerationServiceOptions) {
     this.providers = createVideoProviders(options, this.log);
-    this.assetStore = options.assetStore ?? createVideoAssetStore();
+    if (!options.assetStore) {
+      throw new Error('VideoGenerationService requires an injected video asset store');
+    }
+    this.assetStore = options.assetStore;
   }
 
   /**

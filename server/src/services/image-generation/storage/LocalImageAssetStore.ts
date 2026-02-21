@@ -58,6 +58,7 @@ export class LocalImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: filename,
       url,
       contentType: resolvedContentType,
       createdAt: Date.now(),
@@ -80,6 +81,7 @@ export class LocalImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: filename,
       url,
       contentType,
       createdAt: Date.now(),

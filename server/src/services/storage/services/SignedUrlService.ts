@@ -9,9 +9,9 @@ export class SignedUrlService {
   private readonly bucket;
   private readonly log = logger.child({ service: 'SignedUrlService' });
 
-  constructor(storage?: Storage) {
-    this.storage = storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
+  constructor(storage: Storage, bucketName: string = STORAGE_CONFIG.bucketName) {
+    this.storage = storage;
+    this.bucket = this.storage.bucket(bucketName);
   }
 
   private async withTiming<T>(

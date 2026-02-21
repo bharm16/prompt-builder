@@ -30,7 +30,7 @@ describe('billingApi', () => {
 
     const result = await createCheckoutSession('price_123');
 
-    expect(mocks.post).toHaveBeenCalledWith('/api/payment/checkout', { priceId: 'price_123' });
+    expect(mocks.post).toHaveBeenCalledWith('/payment/checkout', { priceId: 'price_123' });
     expect(result).toEqual({ url: 'https://checkout.example.com' });
   });
 
@@ -39,7 +39,7 @@ describe('billingApi', () => {
 
     const result = await createBillingPortalSession();
 
-    expect(mocks.post).toHaveBeenCalledWith('/api/payment/portal', {});
+    expect(mocks.post).toHaveBeenCalledWith('/payment/portal', {});
     expect(result).toEqual({ url: 'https://portal.example.com' });
   });
 
@@ -62,7 +62,7 @@ describe('billingApi', () => {
 
     const invoices = await fetchInvoices();
 
-    expect(mocks.get).toHaveBeenCalledWith('/api/payment/invoices');
+    expect(mocks.get).toHaveBeenCalledWith('/payment/invoices');
     expect(invoices).toHaveLength(1);
     expect(invoices[0]).toMatchObject({
       id: 'inv_1',
@@ -99,7 +99,7 @@ describe('billingApi', () => {
 
     const status = await fetchBillingStatus();
 
-    expect(mocks.get).toHaveBeenCalledWith('/api/payment/status');
+    expect(mocks.get).toHaveBeenCalledWith('/payment/status');
     expect(status).toEqual({
       planTier: 'explorer',
       isSubscribed: true,
@@ -125,7 +125,7 @@ describe('billingApi', () => {
 
     const history = await fetchCreditHistory(10);
 
-    expect(mocks.get).toHaveBeenCalledWith('/api/payment/credits/history?limit=10');
+    expect(mocks.get).toHaveBeenCalledWith('/payment/credits/history?limit=10');
     expect(history).toHaveLength(1);
     expect(history[0]?.id).toBe('txn_1');
   });

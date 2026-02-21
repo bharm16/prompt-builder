@@ -4,13 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getVideoCost } from '@config/modelCosts';
 import { buildRefundKey } from '@services/credits/refundGuard';
 
-const { getAuthenticatedUserIdMock, scheduleInlineMock } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
+const { scheduleInlineMock } = vi.hoisted(() => ({
   scheduleInlineMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
 vi.mock('@routes/preview/inlineProcessor', () => ({
@@ -20,10 +15,32 @@ vi.mock('@routes/preview/inlineProcessor', () => ({
 import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenerate';
 import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
+const createApp = (
+  handler: express.RequestHandler,
+  userId: string | null = 'user-123',
+  requestId?: string
+): express.Express => {
+  const app = express();
+  app.use((req, _res, next) => {
+    if (requestId) {
+      (req as express.Request & { id?: string }).id = requestId;
+    }
+    const requestWithUser = req as express.Request & { user?: { uid?: string } | undefined };
+    if (userId) {
+      requestWithUser.user = { uid: userId };
+    } else {
+      delete requestWithUser.user;
+    }
+    next();
+  });
+  app.use(express.json());
+  app.post('/preview/video/generate', handler);
+  return app;
+};
+
 describe('videoGenerate face swap preprocessing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-123');
   });
 
   it('performs face swap when startImage and characterAssetId are provided', async () => {
@@ -68,9 +85,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -121,9 +136,7 @@ describe('videoGenerate face swap preprocessing', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -182,9 +195,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -262,9 +273,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -321,9 +330,7 @@ describe('videoGenerate face swap preprocessing', () => {
       assetService: null as never,
     });
 
-    const app = express();
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -377,13 +384,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-refund-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler, 'user-123', 'req-refund-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -448,13 +449,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-refund-kf-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler, 'user-123', 'req-refund-kf-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -524,13 +519,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-queue-fs-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler, 'user-123', 'req-queue-fs-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app)
@@ -618,13 +607,7 @@ describe('videoGenerate face swap preprocessing', () => {
       } as never,
     });
 
-    const app = express();
-    app.use((req, _res, next) => {
-      (req as express.Request & { id?: string }).id = 'req-queue-kf-1';
-      next();
-    });
-    app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    const app = createApp(handler, 'user-123', 'req-queue-kf-1');
 
     const response = await runSupertestOrSkip(() =>
       request(app)

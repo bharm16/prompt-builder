@@ -1,6 +1,9 @@
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import { MetricsService } from '@infrastructure/MetricsService';
+import { Storage, type Bucket } from '@google-cloud/storage';
+import { resolveBucketName } from '@config/storageBucket';
+import { SIGNED_URL_TTL_MS } from '@config/signedUrlPolicy';
 import { CacheService } from '@services/cache/CacheService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { RedisClient } from '@services/cache/types';
@@ -8,13 +11,20 @@ import { UserCreditService } from '@services/credits/UserCreditService';
 import { createCreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
 import { getRefundFailureStore } from '@services/credits/RefundFailureStore';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
-import { getStorageService } from '@services/storage/StorageService';
+import { StorageService } from '@services/storage/StorageService';
+import { createImageAssetStore } from '@services/image-generation/storage';
 import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
-import { createVideoAssetStore } from '@services/video-generation/storage';
+import { createVideoAssetStore, type VideoAssetStore } from '@services/video-generation/storage';
 import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
+import { createGCSStorageService } from '@services/convergence/storage';
 import { createRedisClient } from '../redis.ts';
 import type { ServiceConfig } from './service-config.types.ts';
+
+function resolveSignedUrlTtlMs(rawSeconds: string | undefined, fallbackMs: number): number {
+  const ttlSeconds = Number.parseInt(rawSeconds || '', 10);
+  return Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds * 1000 : fallbackMs;
+}
 
 export function registerInfrastructureServices(container: DIContainer): void {
   container.registerValue('logger', logger);
@@ -37,7 +47,25 @@ export function registerInfrastructureServices(container: DIContainer): void {
     { singleton: true }
   );
 
-  container.register('storageService', () => getStorageService(), [], { singleton: true });
+  container.register('gcsStorage', () => new Storage(), [], { singleton: true });
+  container.registerValue('gcsBucketName', resolveBucketName());
+  container.register(
+    'gcsBucket',
+    (gcsStorage: Storage, gcsBucketName: string) => gcsStorage.bucket(gcsBucketName),
+    ['gcsStorage', 'gcsBucketName'],
+    { singleton: true }
+  );
+
+  container.register(
+    'storageService',
+    (gcsStorage: Storage, gcsBucketName: string) =>
+      new StorageService({
+        storage: gcsStorage,
+        bucketName: gcsBucketName,
+      }),
+    ['gcsStorage', 'gcsBucketName'],
+    { singleton: true }
+  );
 
   container.register(
     'faceEmbeddingService',
@@ -53,13 +81,48 @@ export function registerInfrastructureServices(container: DIContainer): void {
     { singleton: true }
   );
 
-  container.register('videoAssetStore', () => createVideoAssetStore(), [], { singleton: true });
+  container.register(
+    'videoAssetStore',
+    (gcsBucket: Bucket) =>
+      createVideoAssetStore({
+        bucket: gcsBucket,
+        basePath: process.env.VIDEO_STORAGE_BASE_PATH || 'video-previews',
+        signedUrlTtlMs: resolveSignedUrlTtlMs(
+          process.env.VIDEO_STORAGE_SIGNED_URL_TTL_SECONDS,
+          SIGNED_URL_TTL_MS.view
+        ),
+        cacheControl: process.env.VIDEO_STORAGE_CACHE_CONTROL || 'public, max-age=86400',
+      }),
+    ['gcsBucket'],
+    { singleton: true }
+  );
+  container.register(
+    'imageAssetStore',
+    (gcsBucket: Bucket) =>
+      createImageAssetStore({
+        bucket: gcsBucket,
+        basePath: process.env.IMAGE_STORAGE_BASE_PATH || 'image-previews',
+        signedUrlTtlMs: resolveSignedUrlTtlMs(
+          process.env.IMAGE_STORAGE_SIGNED_URL_TTL_SECONDS,
+          SIGNED_URL_TTL_MS.view
+        ),
+        cacheControl: process.env.IMAGE_STORAGE_CACHE_CONTROL || 'public, max-age=86400',
+      }),
+    ['gcsBucket'],
+    { singleton: true }
+  );
+  container.register(
+    'convergenceStorageService',
+    (gcsBucket: Bucket) => createGCSStorageService(gcsBucket),
+    ['gcsBucket'],
+    { singleton: true }
+  );
   container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
   container.register('videoContentAccessService', () => createVideoContentAccessService(), [], { singleton: true });
 
   container.register(
     'videoAssetRetentionService',
-    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) =>
+    (videoAssetStore: VideoAssetStore) =>
       createVideoAssetRetentionService(videoAssetStore),
     ['videoAssetStore'],
     { singleton: true }

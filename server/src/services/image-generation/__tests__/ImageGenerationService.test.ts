@@ -127,7 +127,7 @@ describe('ImageGenerationService', () => {
       await expect(service.imageExists('asset-id')).rejects.toThrow('existence check failed');
     });
 
-    it('returns provider URLs when storage fails after generation', async () => {
+    it('fails when storage persistence fails after generation', async () => {
       const provider = createProvider('replicate-flux-schnell');
       (provider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
         .mockResolvedValueOnce({
@@ -141,11 +141,7 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [provider], assetStore });
 
-      const result = await service.generatePreview('prompt');
-
-      expect(result.imageUrl).toBe('https://cdn.example.com/preview.webp');
-      expect(result.providerUrl).toBe('https://cdn.example.com/preview.webp');
-      expect(result.metadata.model).toBe('flux-schnell');
+      await expect(service.generatePreview('prompt')).rejects.toThrow('storage down');
     });
   });
 
@@ -262,6 +258,7 @@ describe('ImageGenerationService', () => {
 
       const storedAsset: StoredImageAsset = {
         id: 'asset-123',
+        storagePath: 'image-previews/asset-123.webp',
         url: 'https://storage.example.com/asset-123',
         contentType: 'image/webp',
         createdAt: 1710000000000,
@@ -277,7 +274,7 @@ describe('ImageGenerationService', () => {
 
       expect(result.imageUrl).toBe(storedAsset.url);
       expect(result.providerUrl).toBe(previewResult.imageUrl);
-      expect(result.storagePath).toBe(storedAsset.id);
+      expect(result.storagePath).toBe(storedAsset.storagePath);
       expect(result.viewUrl).toBe(storedAsset.url);
       const expiresAt = storedAsset.expiresAt;
       expect(expiresAt).toBeDefined();

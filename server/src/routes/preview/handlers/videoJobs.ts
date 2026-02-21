@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
-import { getAuthenticatedUserId } from '../auth';
 import { buildVideoContentUrl } from '../content';
 
 type VideoJobsServices = Pick<
@@ -28,7 +27,7 @@ export const createVideoJobsHandler = ({
       });
     }
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
       return res.status(401).json({
         success: false,

@@ -48,7 +48,7 @@ export class UserCreditService {
   private refundCollection = this.db.collection('credit_refunds');
 
   private isApiKeyUser(userId: string): boolean {
-    return userId.startsWith('api-key:') || userId.startsWith('dev-api-key:');
+    return userId.startsWith('api-key:');
   }
 
   private sanitizeHistoryLimit(limit: number): number {
@@ -380,4 +380,3 @@ export class UserCreditService {
     });
   }
 }
-

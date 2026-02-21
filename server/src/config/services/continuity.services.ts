@@ -4,9 +4,9 @@ import { AIModelService } from '@services/ai-model/index';
 import AssetService from '@services/asset/AssetService';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
-import { getStorageService } from '@services/storage/StorageService';
+import type { StorageService as AppStorageService } from '@services/storage/StorageService';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import { createVideoAssetStore } from '@services/video-generation/storage';
+import type { VideoAssetStore } from '@services/video-generation/storage';
 import {
   AnchorService,
   CharacterKeyframeService,
@@ -31,14 +31,14 @@ export function registerContinuityServices(container: DIContainer): void {
 
   container.register(
     'frameBridgeService',
-    (storageService: ReturnType<typeof getStorageService>) => new FrameBridgeService(storageService),
+    (storageService: AppStorageService) => new FrameBridgeService(storageService),
     ['storageService'],
     { singleton: true }
   );
 
   container.register(
     'styleReferenceService',
-    (storageService: ReturnType<typeof getStorageService>) => new StyleReferenceService(storageService),
+    (storageService: AppStorageService) => new StyleReferenceService(storageService),
     ['storageService'],
     { singleton: true }
   );
@@ -48,7 +48,7 @@ export function registerContinuityServices(container: DIContainer): void {
     (
       keyframeGenerationService: KeyframeGenerationService | null,
       assetService: AssetService | null,
-      storageService: ReturnType<typeof getStorageService>
+      storageService: AppStorageService
     ) => {
       if (!keyframeGenerationService || !assetService) {
         logger.warn('CharacterKeyframeService disabled', {
@@ -82,30 +82,24 @@ export function registerContinuityServices(container: DIContainer): void {
 
   container.register(
     'gradingService',
-    (
-      videoAssetStore: ReturnType<typeof createVideoAssetStore>,
-      storageService: ReturnType<typeof getStorageService>
-    ) => new GradingService(videoAssetStore, storageService),
+    (videoAssetStore: VideoAssetStore, storageService: AppStorageService) =>
+      new GradingService(videoAssetStore, storageService),
     ['videoAssetStore', 'storageService'],
     { singleton: true }
   );
 
   container.register(
     'qualityGateService',
-    (
-      faceEmbeddingService: FaceEmbeddingService | null,
-      storageService: ReturnType<typeof getStorageService>
-    ) => new QualityGateService(faceEmbeddingService, storageService),
+    (faceEmbeddingService: FaceEmbeddingService | null, storageService: AppStorageService) =>
+      new QualityGateService(faceEmbeddingService, storageService),
     ['faceEmbeddingService', 'storageService'],
     { singleton: true }
   );
 
   container.register(
     'sceneProxyService',
-    (
-      storageService: ReturnType<typeof getStorageService>,
-      frameBridgeService: FrameBridgeService
-    ) => new SceneProxyService(storageService, frameBridgeService),
+    (storageService: AppStorageService, frameBridgeService: FrameBridgeService) =>
+      new SceneProxyService(storageService, frameBridgeService),
     ['storageService', 'frameBridgeService'],
     { singleton: true }
   );
@@ -126,7 +120,7 @@ export function registerContinuityServices(container: DIContainer): void {
       videoGenerationService: VideoGenerationService | null,
       assetService: AssetService | null,
       continuitySessionStore: ContinuitySessionStore,
-      storageService: ReturnType<typeof getStorageService>
+      storageService: AppStorageService
     ) => {
       if (!videoGenerationService || !assetService) {
         logger.warn('ContinuitySessionService disabled', {

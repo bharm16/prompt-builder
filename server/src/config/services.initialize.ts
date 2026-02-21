@@ -1,5 +1,7 @@
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
+import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
+import type { Bucket } from '@google-cloud/storage';
 import type { LLMClient } from '@clients/LLMClient';
 import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
 import { warmupDepthEstimationOnStartup } from '@services/convergence/depth';
@@ -16,6 +18,20 @@ interface HealthCheckResult {
   responseTime?: number;
 }
 
+async function runInfrastructureStartupChecks(container: DIContainer): Promise<void> {
+  const auth = admin.auth();
+  await auth.listUsers(1);
+
+  const firestore = getFirestore();
+  await firestore.listCollections();
+
+  const bucket = container.resolve<Bucket>('gcsBucket');
+  const [exists] = await bucket.exists();
+  if (!exists) {
+    throw new Error(`Configured GCS bucket does not exist: ${bucket.name}`);
+  }
+}
+
 /**
  * Initialize and validate all services
  * Performs health checks on critical services
@@ -25,6 +41,22 @@ interface HealthCheckResult {
 export async function initializeServices(container: DIContainer): Promise<DIContainer> {
   logger.info('Initializing services...');
   const runtimeFlags = getRuntimeFlags();
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+
+  if (!isTestEnv) {
+    try {
+      await runInfrastructureStartupChecks(container);
+      logger.info('✅ Infrastructure startup checks passed', {
+        checks: ['firebase-auth', 'firestore', 'gcs-bucket'],
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Infrastructure startup checks failed', error as Error, {
+        error: errorMessage,
+      });
+      throw new Error(`Infrastructure startup checks failed: ${errorMessage}`);
+    }
+  }
 
   // Resolve OpenAI client and validate (optional)
   const claudeClient = container.resolve<LLMClient | null>('claudeClient');
@@ -208,7 +240,6 @@ export async function initializeServices(container: DIContainer): Promise<DICont
 
   logger.info('All services initialized and validated successfully');
   const { promptOutputOnly } = runtimeFlags;
-  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
 
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
   const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');

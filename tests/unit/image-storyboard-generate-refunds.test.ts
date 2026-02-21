@@ -6,18 +6,20 @@ import { buildRefundKey } from '@services/credits/refundGuard';
 import { createImageStoryboardGenerateHandler } from '@routes/preview/handlers/imageStoryboardGenerate';
 import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
-const { getAuthenticatedUserIdMock } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
-}));
-
-const createApp = (handler: express.RequestHandler, requestId = 'req-sb-1') => {
+const createApp = (
+  handler: express.RequestHandler,
+  requestId = 'req-sb-1',
+  userId: string | null = 'user-1'
+) => {
   const app = express();
   app.use((req, _res, next) => {
     (req as express.Request & { id?: string }).id = requestId;
+    const requestWithUser = req as express.Request & { user?: { uid?: string } | undefined };
+    if (userId) {
+      requestWithUser.user = { uid: userId };
+    } else {
+      delete requestWithUser.user;
+    }
     next();
   });
   app.use(express.json());
@@ -28,7 +30,6 @@ const createApp = (handler: express.RequestHandler, requestId = 'req-sb-1') => {
 describe('imageStoryboardGenerate refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-1');
   });
 
   it('reserves credits, runs generation, and does not refund on success', async () => {
@@ -152,7 +153,6 @@ describe('imageStoryboardGenerate refunds', () => {
   });
 
   it('returns 401 when authentication is missing', async () => {
-    getAuthenticatedUserIdMock.mockResolvedValueOnce(null);
     const reserveCreditsMock = vi.fn(async () => true);
     const generateStoryboardMock = vi.fn();
 
@@ -167,7 +167,7 @@ describe('imageStoryboardGenerate refunds', () => {
       assetService: null as never,
     });
 
-    const app = createApp(handler, 'req-sb-auth-1');
+    const app = createApp(handler, 'req-sb-auth-1', null);
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/generate/storyboard').send({ prompt: 'A storyboard prompt' })
     );

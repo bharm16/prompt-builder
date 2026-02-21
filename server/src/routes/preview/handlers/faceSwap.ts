@@ -6,7 +6,6 @@ import { assertUrlSafe } from '@server/shared/urlValidation';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { getAuthenticatedUserId } from '../auth';
 
 const FACE_SWAP_CREDIT_COST = 2;
 const log = logger.child({ route: 'preview.faceSwap' });
@@ -76,7 +75,7 @@ export const createFaceSwapPreviewHandler = ({
       });
     }
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
       return sendApiError(res, req, 401, {
         error: 'Authentication required',

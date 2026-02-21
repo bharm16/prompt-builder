@@ -22,8 +22,6 @@ export function validateEnv(): void {
       'METRICS_TOKEN',
       'FRONTEND_URL',
       'GCS_BUCKET_NAME',
-      'IMAGE_STORAGE_BUCKET',
-      'VIDEO_STORAGE_BUCKET',
     ];
     const missingProd = prodRequired.filter((key) => !process.env[key]);
     if (missingProd.length > 0) {
@@ -43,11 +41,7 @@ export function validateEnv(): void {
     }
 
     // Storage is prod-only (no local fallback)
-    const videoBucket = process.env.VIDEO_STORAGE_BUCKET?.trim();
-    const imageBucket = process.env.IMAGE_STORAGE_BUCKET?.trim();
     const gcsBucket = process.env.GCS_BUCKET_NAME?.trim();
-    if (!videoBucket) throw new Error('Missing required production env var: VIDEO_STORAGE_BUCKET');
-    if (!imageBucket) throw new Error('Missing required production env var: IMAGE_STORAGE_BUCKET');
     if (!gcsBucket) throw new Error('Missing required production env var: GCS_BUCKET_NAME');
 
     // Basic sanity checks

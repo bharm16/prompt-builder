@@ -7,7 +7,6 @@ import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { ResolvedPrompt } from '@shared/types/asset';
 import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/constants';
 import { parseImageStoryboardGenerateRequest } from '../imageStoryboardRequest';
-import { getAuthenticatedUserId } from '../auth';
 
 type ImageStoryboardGenerateServices = Pick<
   PreviewRoutesServices,
@@ -90,7 +89,7 @@ export const createImageStoryboardGenerateHandler = ({
     const { prompt, aspectRatio, seedImageUrl, speedMode, seed } = parsedRequest.data;
     const requestId = (req as Request & { id?: string }).id;
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
       return sendApiError(res, req, 401, {
         error: 'Authentication required',

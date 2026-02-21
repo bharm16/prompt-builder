@@ -26,10 +26,13 @@ export class ConsistentVideoService {
     videoGenerationService?: VideoGenerationService;
   } = {}) {
     this.keyframeService = options.keyframeService || new KeyframeGenerationService();
-    this.assetService = options.assetService || new AssetService();
     if (!options.videoGenerationService) {
       throw new Error('VideoGenerationService is required');
     }
+    if (!options.assetService) {
+      throw new Error('AssetService is required');
+    }
+    this.assetService = options.assetService;
     this.videoGenerationService = options.videoGenerationService;
   }
 

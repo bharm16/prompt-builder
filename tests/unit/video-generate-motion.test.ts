@@ -2,13 +2,8 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getAuthenticatedUserIdMock, scheduleInlineMock } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
+const { scheduleInlineMock } = vi.hoisted(() => ({
   scheduleInlineMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
 vi.mock('@routes/preview/inlineProcessor', () => ({
@@ -21,7 +16,6 @@ import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 describe('videoGenerate motion guidance', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-123');
   });
 
   it('appends camera and subject motion guidance to the queued prompt', async () => {
@@ -52,6 +46,10 @@ describe('videoGenerate motion guidance', () => {
     });
 
     const app = express();
+    app.use((req, _res, next) => {
+      (req as express.Request & { user?: { uid?: string } }).user = { uid: 'user-123' };
+      next();
+    });
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 

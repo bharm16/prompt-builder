@@ -28,7 +28,6 @@ const mocks = vi.hoisted(() => {
   return {
     files,
     bucket,
-    bucketName: '' as string,
     loggerWarn: vi.fn(),
   };
 });
@@ -39,20 +38,6 @@ vi.mock(
     logger: {
       child: () => ({
         warn: mocks.loggerWarn,
-      }),
-    },
-  })
-);
-
-vi.mock(
-  '@infrastructure/firebaseAdmin',
-  () => ({
-    admin: {
-      storage: () => ({
-        bucket: (name: string) => {
-          mocks.bucketName = name;
-          return mocks.bucket;
-        },
       }),
     },
   })
@@ -86,7 +71,6 @@ describe('GcsVideoAssetStore', () => {
     mocks.files.clear();
     mocks.bucket.file.mockClear();
     mocks.bucket.getFiles.mockReset();
-    mocks.bucketName = '';
     vi.clearAllMocks();
   });
 
@@ -104,7 +88,7 @@ describe('GcsVideoAssetStore', () => {
     mocks.files.set(objectName, file);
 
     const store = new GcsVideoAssetStore({
-      bucketName: 'bucket-a',
+      bucket: mocks.bucket as never,
       basePath: '/video-previews/',
       signedUrlTtlMs: 60_000,
       cacheControl: 'public, max-age=86400',
@@ -112,7 +96,6 @@ describe('GcsVideoAssetStore', () => {
 
     const result = await store.storeFromBuffer(Buffer.from([1, 2, 3]), 'video/mp4');
 
-    expect(mocks.bucketName).toBe('bucket-a');
     expect(file.save).toHaveBeenCalledWith(Buffer.from([1, 2, 3]), {
       contentType: 'video/mp4',
       resumable: false,
@@ -139,7 +122,7 @@ describe('GcsVideoAssetStore', () => {
     mocks.files.set(objectName, file);
 
     const store = new GcsVideoAssetStore({
-      bucketName: 'bucket-a',
+      bucket: mocks.bucket as never,
       basePath: 'base',
       signedUrlTtlMs: 120_000,
       cacheControl: 'private, max-age=30',
@@ -176,7 +159,7 @@ describe('GcsVideoAssetStore', () => {
     mocks.files.set(missingName, missing);
 
     const store = new GcsVideoAssetStore({
-      bucketName: 'bucket-a',
+      bucket: mocks.bucket as never,
       basePath: 'video-previews',
       signedUrlTtlMs: 60_000,
       cacheControl: 'public, max-age=86400',
@@ -207,7 +190,7 @@ describe('GcsVideoAssetStore', () => {
     );
 
     const store = new GcsVideoAssetStore({
-      bucketName: 'bucket-a',
+      bucket: mocks.bucket as never,
       basePath: 'video-previews',
       signedUrlTtlMs: 60_000,
       cacheControl: 'public, max-age=86400',
@@ -239,7 +222,7 @@ describe('GcsVideoAssetStore', () => {
     mocks.bucket.getFiles.mockResolvedValue([[oldFile, freshFile, errorFile]]);
 
     const store = new GcsVideoAssetStore({
-      bucketName: 'bucket-a',
+      bucket: mocks.bucket as never,
       basePath: 'video-previews',
       signedUrlTtlMs: 60_000,
       cacheControl: 'public, max-age=86400',

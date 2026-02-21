@@ -7,9 +7,9 @@ export class RetentionService {
   private readonly storage: Storage;
   private readonly bucket;
 
-  constructor(storage?: Storage) {
-    this.storage = storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
+  constructor(storage: Storage, bucketName: string = STORAGE_CONFIG.bucketName) {
+    this.storage = storage;
+    this.bucket = this.storage.bucket(bucketName);
   }
 
   async deleteFile(path: string, userId: string): Promise<{ deleted: boolean; path: string }> {

@@ -50,7 +50,7 @@ describe('GalleryPanel', () => {
     expect(onSelectGeneration).toHaveBeenCalledWith('g-2');
   });
 
-  it('filters by preview, draft, and favorites', () => {
+  it('renders all tiers in compact mode without filter controls', () => {
     const generations = [
       makeGeneration('preview-1', { tier: 'preview' }),
       makeGeneration('draft-1', { tier: 'draft' }),
@@ -66,20 +66,15 @@ describe('GalleryPanel', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.getByTestId('gallery-thumbnail-preview-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('gallery-thumbnail-draft-1')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Draft' }));
     expect(screen.getByTestId('gallery-thumbnail-draft-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('gallery-thumbnail-preview-1')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '★' }));
     expect(screen.getByTestId('gallery-thumbnail-favorite-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('gallery-thumbnail-draft-1')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Preview' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Draft' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '★' })).not.toBeInTheDocument();
   });
 
-  it('closes from header close button', () => {
+  it('does not render a close button in compact mode', () => {
     const onClose = vi.fn();
     render(
       <GalleryPanel
@@ -90,8 +85,8 @@ describe('GalleryPanel', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close gallery' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Close gallery' })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('renders video fallback thumbnail when image thumbnail is missing', () => {

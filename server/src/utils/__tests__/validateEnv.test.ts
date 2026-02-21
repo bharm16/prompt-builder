@@ -28,8 +28,6 @@ describe('validateEnv', () => {
     delete process.env.METRICS_TOKEN;
     delete process.env.FRONTEND_URL;
     delete process.env.GCS_BUCKET_NAME;
-    delete process.env.IMAGE_STORAGE_BUCKET;
-    delete process.env.VIDEO_STORAGE_BUCKET;
     delete process.env.ALLOWED_API_KEYS;
     delete process.env.API_KEY;
     delete process.env.OPENAI_API_KEY;
@@ -83,8 +81,6 @@ describe('validateEnv', () => {
     process.env.METRICS_TOKEN = 'metrics-token';
     process.env.FRONTEND_URL = 'https://example.com';
     process.env.GCS_BUCKET_NAME = 'bucket';
-    process.env.IMAGE_STORAGE_BUCKET = 'image-bucket';
-    process.env.VIDEO_STORAGE_BUCKET = 'video-bucket';
     process.env.OPENAI_API_KEY = 'sk-valid';
 
     expect(() => validateEnv()).not.toThrow();

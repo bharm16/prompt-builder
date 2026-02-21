@@ -5,7 +5,6 @@ import { spawn } from 'node:child_process';
 import { logger } from '@infrastructure/Logger';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
-import { createVideoAssetStore } from '@services/video-generation/storage';
 import type { VideoAssetStore } from '@services/video-generation/storage';
 
 export class GradingService {
@@ -13,8 +12,8 @@ export class GradingService {
   private readonly assetStore: VideoAssetStore;
   private readonly storage: StorageService | undefined;
 
-  constructor(assetStore?: VideoAssetStore, storageService?: StorageService) {
-    this.assetStore = assetStore || createVideoAssetStore();
+  constructor(assetStore: VideoAssetStore, storageService?: StorageService) {
+    this.assetStore = assetStore;
     this.storage = storageService;
   }
 

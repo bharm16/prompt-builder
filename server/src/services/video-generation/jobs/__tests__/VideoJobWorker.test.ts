@@ -147,9 +147,12 @@ describe('VideoJobWorker', () => {
     await runProcessJob(worker, createJob());
 
     expect(jobStore.markCompleted).toHaveBeenCalledWith('job-1', generationResult);
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Failed to persist generated video to storage', {
-      jobId: 'job-1',
-      userId: 'user-1',
+    expect(mocks.loggerInfo).toHaveBeenCalledWith('Secondary storage copy failed', {
+      persistence_type: 'secondary-copy',
+      required: false,
+      outcome: 'failed',
+      job_id: 'job-1',
+      user_id: 'user-1',
       error: 'storage unavailable',
     });
   });

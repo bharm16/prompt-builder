@@ -6,9 +6,8 @@ import type { Asset, AssetReferenceImage, AssetType } from '@shared/types/asset'
 
 interface AssetRepositoryOptions {
   db?: FirebaseFirestore.Firestore;
-  bucket?: Bucket;
+  bucket: Bucket;
   bucketName?: string;
-  bucketFactory?: (bucketName: string) => Bucket;
 }
 
 export interface ReferenceImageMetadataInput {
@@ -30,89 +29,6 @@ export interface ProcessedImageInput {
 }
 
 const MAX_IN_QUERY = 10;
-
-function normalizeBucketName(raw: string): string {
-  let bucketName = raw.trim();
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  if (bucketName.startsWith('gs://')) {
-    bucketName = bucketName.slice(5);
-  }
-
-  if (bucketName.startsWith('http://') || bucketName.startsWith('https://')) {
-    try {
-      const parsed = new URL(bucketName);
-      if (parsed.hostname === 'firebasestorage.googleapis.com') {
-        const match = parsed.pathname.match(/\/b\/([^/]+)\/o/);
-        if (match?.[1]) bucketName = match[1];
-      } else if (parsed.hostname === 'storage.googleapis.com') {
-        const pathParts = parsed.pathname.split('/').filter(Boolean);
-        if (pathParts[0]) bucketName = pathParts[0];
-      } else {
-        bucketName = parsed.hostname;
-      }
-    } catch {
-      // Keep original string if URL parsing fails.
-    }
-  }
-
-  bucketName = bucketName.replace(/^\/+/, '').split(/[/?#]/)[0] || '';
-  if (bucketName.endsWith('.firebasestorage.app')) {
-    bucketName = bucketName.replace(/\.firebasestorage\.app$/, '.appspot.com');
-  }
-
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  return bucketName;
-}
-
-function resolveBucketCandidates(explicit?: string): string[] {
-  const rawBuckets = [
-    explicit,
-    process.env.ASSET_STORAGE_BUCKET,
-    process.env.FIREBASE_STORAGE_BUCKET,
-    process.env.GCS_BUCKET_NAME,
-    process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
-
-  if (!rawBuckets.length) {
-    throw new Error(
-      'Missing storage bucket config: ASSET_STORAGE_BUCKET, FIREBASE_STORAGE_BUCKET, GCS_BUCKET_NAME, or VITE_FIREBASE_STORAGE_BUCKET'
-    );
-  }
-
-  const seen = new Set<string>();
-  const candidates: string[] = [];
-  for (const rawBucket of rawBuckets) {
-    const normalized = normalizeBucketName(rawBucket);
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-    candidates.push(normalized);
-  }
-
-  return candidates;
-}
-
-function isBucketNotFoundError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-
-  const withCode = error as { code?: unknown };
-  if (withCode.code === 404 || withCode.code === '404') {
-    return true;
-  }
-
-  const withErrors = error as { errors?: Array<{ reason?: string }> };
-  return (
-    Array.isArray(withErrors.errors) &&
-    withErrors.errors.some((entry) => entry?.reason === 'notFound')
-  );
-}
 
 function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
   const encodedPath = encodeURIComponent(storagePath);
@@ -213,29 +129,15 @@ export class AssetRepository {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
   private readonly bucketName: string;
-  private readonly bucketCandidates: string[];
-  private readonly bucketFactory: (bucketName: string) => Bucket;
-  private readonly bucketCache = new Map<string, Bucket>();
   private readonly log = logger.child({ service: 'AssetRepository' });
 
-  constructor(options: AssetRepositoryOptions = {}) {
-    this.db = options.db || getFirestore();
-    this.bucketCandidates = resolveBucketCandidates(options.bucketName);
-    this.bucketName = this.bucketCandidates[0]!;
-    this.bucketFactory = options.bucketFactory || ((bucketName: string) => admin.storage().bucket(bucketName));
-    this.bucket = options.bucket || this.bucketFactory(this.bucketName);
-    this.bucketCache.set(this.bucketName, this.bucket);
-  }
-
-  private getBucketByName(bucketName: string): Bucket {
-    const cached = this.bucketCache.get(bucketName);
-    if (cached) {
-      return cached;
+  constructor(options: AssetRepositoryOptions) {
+    if (!options.bucket) {
+      throw new Error('AssetRepository requires an injected storage bucket');
     }
-
-    const bucket = this.bucketFactory(bucketName);
-    this.bucketCache.set(bucketName, bucket);
-    return bucket;
+    this.db = options.db || getFirestore();
+    this.bucket = options.bucket;
+    this.bucketName = options.bucketName || options.bucket.name;
   }
 
   private getAssetsCollection(userId: string): FirebaseFirestore.CollectionReference {
@@ -512,72 +414,39 @@ export class AssetRepository {
     const thumbnailToken = uuidv4();
 
     try {
-      let resolvedBucketName: string | null = null;
-      let lastError: unknown = null;
-      const fallbackBuckets = this.bucketCandidates.filter((candidate) => candidate !== this.bucketName);
-      const uploadBuckets = [this.bucketName, ...fallbackBuckets];
+      await this.bucket.file(storagePath).save(image.buffer, {
+        resumable: false,
+        contentType: 'image/jpeg',
+        metadata: {
+          cacheControl: 'public, max-age=31536000',
+          metadata: {
+            firebaseStorageDownloadTokens: imageToken,
+          },
+        },
+        preconditionOpts: { ifGenerationMatch: 0 },
+      });
 
-      for (const candidateBucket of uploadBuckets) {
-        const candidateBucketClient = this.getBucketByName(candidateBucket);
-        try {
-          await candidateBucketClient.file(storagePath).save(image.buffer, {
-            resumable: false,
-            contentType: 'image/jpeg',
+      try {
+        await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
+          resumable: false,
+          contentType: 'image/jpeg',
+          metadata: {
+            cacheControl: 'public, max-age=31536000',
             metadata: {
-              cacheControl: 'public, max-age=31536000',
-              metadata: {
-                firebaseStorageDownloadTokens: imageToken,
-              },
+              firebaseStorageDownloadTokens: thumbnailToken,
             },
-            preconditionOpts: { ifGenerationMatch: 0 },
-          });
-
-          try {
-            await candidateBucketClient.file(thumbnailPath).save(thumbnail.buffer, {
-              resumable: false,
-              contentType: 'image/jpeg',
-              metadata: {
-                cacheControl: 'public, max-age=31536000',
-                metadata: {
-                  firebaseStorageDownloadTokens: thumbnailToken,
-                },
-              },
-              preconditionOpts: { ifGenerationMatch: 0 },
-            });
-          } catch (thumbnailError) {
-            await candidateBucketClient.file(storagePath).delete().catch(() => undefined);
-            throw thumbnailError;
-          }
-
-          resolvedBucketName = candidateBucket;
-          break;
-        } catch (uploadError) {
-          lastError = uploadError;
-          const hasFallback = candidateBucket !== uploadBuckets[uploadBuckets.length - 1];
-          if (!isBucketNotFoundError(uploadError) || !hasFallback) {
-            throw uploadError;
-          }
-
-          const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
-          this.log.warn('Primary asset bucket not found, trying fallback bucket', {
-            operation,
-            userId,
-            assetId,
-            failedBucket: candidateBucket,
-            nextBucket: uploadBuckets[uploadBuckets.indexOf(candidateBucket) + 1],
-            error: errorMessage,
-          });
-        }
-      }
-
-      if (!resolvedBucketName) {
-        throw lastError instanceof Error ? lastError : new Error('Failed to upload asset image');
+          },
+          preconditionOpts: { ifGenerationMatch: 0 },
+        });
+      } catch (thumbnailError) {
+        await this.bucket.file(storagePath).delete().catch(() => undefined);
+        throw thumbnailError;
       }
 
       const referenceImage: AssetReferenceImage = {
         id: imageId,
-        url: buildDownloadUrl(resolvedBucketName, storagePath, imageToken),
-        thumbnailUrl: buildDownloadUrl(resolvedBucketName, thumbnailPath, thumbnailToken),
+        url: buildDownloadUrl(this.bucketName, storagePath, imageToken),
+        thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
         isPrimary: false,
         storagePath,
         thumbnailPath,
@@ -634,16 +503,14 @@ export class AssetRepository {
       const image = asset.referenceImages.find((img) => img.id === imageId);
       if (!image) return false;
 
-      const imageBucket = extractBucketFromUrl(image.url) || this.bucketName;
-      const thumbnailBucket = extractBucketFromUrl(image.thumbnailUrl) || imageBucket;
       const storageTargets = [
-        image.storagePath ? { path: image.storagePath, bucket: imageBucket } : null,
-        image.thumbnailPath ? { path: image.thumbnailPath, bucket: thumbnailBucket } : null,
-      ].filter((value): value is { path: string; bucket: string } => Boolean(value));
+        image.storagePath ? { path: image.storagePath } : null,
+        image.thumbnailPath ? { path: image.thumbnailPath } : null,
+      ].filter((value): value is { path: string } => Boolean(value));
 
       for (const target of storageTargets) {
         try {
-          await this.getBucketByName(target.bucket).file(target.path).delete();
+          await this.bucket.file(target.path).delete();
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.log.warn('Failed to delete asset image from storage', {
@@ -651,7 +518,7 @@ export class AssetRepository {
             assetId,
             imageId,
             path: target.path,
-            bucket: target.bucket,
+            bucket: this.bucketName,
             error: errorMessage,
           });
         }

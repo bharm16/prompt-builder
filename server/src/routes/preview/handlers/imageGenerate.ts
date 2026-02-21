@@ -9,7 +9,6 @@ import type {
   ImagePreviewSpeedMode,
 } from '@services/image-generation/providers/types';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { getAuthenticatedUserId } from '../auth';
 
 type ImageGenerateServices = Pick<
   PreviewRoutesServices,
@@ -145,7 +144,7 @@ export const createImageGenerateHandler = ({
       });
     }
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     const requestId = (req as Request & { id?: string }).id;
     if (!userId) {
       return sendApiError(res, req, 401, {
@@ -244,22 +243,11 @@ export const createImageGenerateHandler = ({
       } | null = null;
 
       if (storageService) {
-        try {
-          storageResult = await storageService.saveFromUrl(userId, result.imageUrl, 'preview-image', {
-            model: result.metadata.model,
-            promptId: (req.body as { promptId?: string })?.promptId,
-            aspectRatio: result.metadata.aspectRatio,
-          });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.warn('Failed to persist preview image to storage', {
-            userId,
-            error: errorMessage,
-            shouldResolvePrompt,
-            resolvedAssetCount,
-            resolvedCharacterCount,
-          });
-        }
+        storageResult = await storageService.saveFromUrl(userId, result.imageUrl, 'preview-image', {
+          model: result.metadata.model,
+          promptId: (req.body as { promptId?: string })?.promptId,
+          aspectRatio: result.metadata.aspectRatio,
+        });
       }
 
       const responseData = storageResult

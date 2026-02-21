@@ -6,17 +6,11 @@ import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenera
 import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 const {
-  getAuthenticatedUserIdMock,
   scheduleInlineMock,
   normalizeGenerationParamsMock,
 } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
   scheduleInlineMock: vi.fn(),
   normalizeGenerationParamsMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
 vi.mock('@routes/preview/inlineProcessor', () => ({
@@ -30,16 +24,23 @@ vi.mock('@routes/optimize/normalizeGenerationParams', () => ({
 type AppOptions = {
   requestId?: string;
   handler: ReturnType<typeof createVideoGenerateHandler>;
+  userId?: string | null;
 };
 
-const createApp = ({ requestId, handler }: AppOptions): express.Express => {
+const createApp = ({ requestId, handler, userId = 'user-123' }: AppOptions): express.Express => {
   const app = express();
-  if (requestId) {
-    app.use((req, _res, next) => {
+  app.use((req, _res, next) => {
+    if (requestId) {
       (req as express.Request & { id?: string }).id = requestId;
-      next();
-    });
-  }
+    }
+    const requestWithUser = req as express.Request & { user?: { uid?: string } | undefined };
+    if (userId) {
+      requestWithUser.user = { uid: userId };
+    } else {
+      delete requestWithUser.user;
+    }
+    next();
+  });
   app.use(express.json());
   app.post('/preview/video/generate', handler);
   return app;
@@ -48,7 +49,6 @@ const createApp = ({ requestId, handler }: AppOptions): express.Express => {
 describe('videoGenerate contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-123');
     normalizeGenerationParamsMock.mockImplementation(
       ({ generationParams }: { generationParams: unknown }) => ({
         normalizedGenerationParams:
@@ -60,7 +60,6 @@ describe('videoGenerate contract', () => {
   });
 
   it('rejects anonymous users with 401', async () => {
-    getAuthenticatedUserIdMock.mockResolvedValueOnce('anonymous');
     const handler = createVideoGenerateHandler({
       videoGenerationService: {
         getModelAvailability: () => ({ available: true, resolvedModelId: 'sora-2' }),
@@ -76,7 +75,7 @@ describe('videoGenerate contract', () => {
       faceSwapService: null as never,
       assetService: null as never,
     });
-    const app = createApp({ handler });
+    const app = createApp({ handler, userId: 'anonymous' });
 
     const response = await runSupertestOrSkip(() =>
       request(app).post('/preview/video/generate').send({

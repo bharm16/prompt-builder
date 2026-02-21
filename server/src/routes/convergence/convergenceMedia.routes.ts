@@ -12,7 +12,6 @@ import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { asyncHandler } from '@middleware/asyncHandler';
-import { getGCSStorageService } from '@services/convergence/storage';
 import type { GCSStorageService } from '@services/convergence/storage';
 
 const STORAGE_HOST = 'storage.googleapis.com';
@@ -65,7 +64,7 @@ const extractObjectPath = (url: URL, bucketName: string): string | null => {
 const sanitizeFilename = (value: string): string =>
   value.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export function createConvergenceMediaRoutes(getStorageService: () => GCSStorageService = getGCSStorageService): Router {
+export function createConvergenceMediaRoutes(getStorageService: () => GCSStorageService): Router {
   const router = express.Router();
 
   router.post(
@@ -126,15 +125,8 @@ export function createConvergenceMediaRoutes(getStorageService: () => GCSStorage
     '/proxy',
     asyncHandler(async (req: Request, res: Response) => {
       const urlParam = typeof req.query.url === 'string' ? req.query.url.trim() : '';
-      const bucketName = process.env.GCS_BUCKET_NAME?.trim();
-
-      if (!bucketName) {
-        return res.status(500).json({
-          success: false,
-          error: 'SERVER_CONFIGURATION_ERROR',
-          message: 'GCS_BUCKET_NAME is not configured',
-        });
-      }
+      const storageService = getStorageService();
+      const bucketName = storageService.getBucketName();
 
       if (!urlParam) {
         return res.status(400).json({
@@ -178,7 +170,6 @@ export function createConvergenceMediaRoutes(getStorageService: () => GCSStorage
         host: parsedUrl.hostname,
       });
 
-      const storageService = getStorageService();
       let upstreamUrl = parsedUrl.toString();
       try {
         const refreshedUrl = await storageService.refreshSignedUrl(upstreamUrl);

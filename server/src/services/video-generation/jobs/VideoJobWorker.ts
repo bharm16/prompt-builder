@@ -155,11 +155,22 @@ export class VideoJobWorker {
           model: job.request.options?.model,
           creditsUsed: job.creditsReserved,
         });
+        this.log.info('Secondary storage copy completed', {
+          persistence_type: 'secondary-copy',
+          required: false,
+          outcome: 'success',
+          job_id: job.id,
+          user_id: job.userId,
+          storage_path: storageResult.storagePath,
+        });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log.warn('Failed to persist generated video to storage', {
-          jobId: job.id,
-          userId: job.userId,
+        this.log.info('Secondary storage copy failed', {
+          persistence_type: 'secondary-copy',
+          required: false,
+          outcome: 'failed',
+          job_id: job.id,
+          user_id: job.userId,
           error: errorMessage,
         });
       }

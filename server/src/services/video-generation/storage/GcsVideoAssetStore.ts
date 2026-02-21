@@ -1,12 +1,11 @@
 import { pipeline } from 'node:stream/promises';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bucket, File } from '@google-cloud/storage';
-import { admin } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
 
 interface GcsVideoAssetStoreOptions {
-  bucketName: string;
+  bucket: Bucket;
   basePath: string;
   signedUrlTtlMs: number;
   cacheControl: string;
@@ -20,7 +19,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly log = logger.child({ service: 'GcsVideoAssetStore' });
 
   constructor(options: GcsVideoAssetStoreOptions) {
-    this.bucket = admin.storage().bucket(options.bucketName);
+    this.bucket = options.bucket;
     this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;

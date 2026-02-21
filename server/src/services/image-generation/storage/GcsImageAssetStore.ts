@@ -6,37 +6,29 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { Storage, type Bucket, type File } from '@google-cloud/storage';
+import type { Bucket, File } from '@google-cloud/storage';
 import { logger } from '@infrastructure/Logger';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import type { ImageAssetStore, StoredImageAsset } from './types';
 
 interface GcsImageAssetStoreOptions {
-  bucketName: string;
+  bucket: Bucket;
   basePath: string;
   signedUrlTtlMs: number;
   cacheControl: string;
 }
 
 export class GcsImageAssetStore implements ImageAssetStore {
-  private readonly storage: Storage;
-  private readonly bucketName: string;
+  private readonly bucket: Bucket;
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
   private readonly log = logger.child({ service: 'GcsImageAssetStore' });
 
   constructor(options: GcsImageAssetStoreOptions) {
-    ensureGcsCredentials();
-    this.storage = new Storage();
-    this.bucketName = options.bucketName;
+    this.bucket = options.bucket;
     this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
-  }
-
-  private get bucket(): Bucket {
-    return this.storage.bucket(this.bucketName);
   }
 
   async storeFromUrl(sourceUrl: string, contentType?: string): Promise<StoredImageAsset> {
@@ -70,6 +62,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: objectPath,
       url,
       contentType: resolvedContentType,
       createdAt: Date.now(),
@@ -92,6 +85,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: objectPath,
       url,
       contentType,
       createdAt: Date.now(),

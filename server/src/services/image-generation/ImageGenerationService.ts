@@ -13,13 +13,13 @@ import type {
   ImagePreviewRequest,
 } from './providers/types';
 import { buildProviderPlan } from './providers/registry';
-import { createImageAssetStore, type ImageAssetStore } from './storage';
+import type { ImageAssetStore } from './storage';
 
 type ImageGenerationServiceConfig = {
   providers: ImagePreviewProvider[];
   defaultProvider?: ImagePreviewProviderSelection;
   fallbackOrder?: ImagePreviewProviderId[];
-  assetStore?: ImageAssetStore;
+  assetStore: ImageAssetStore;
   /** Skip storage and return provider URL directly (for testing) */
   skipStorage?: boolean;
 };
@@ -36,7 +36,7 @@ export class ImageGenerationService {
     this.providers = config.providers;
     this.defaultProvider = config.defaultProvider ?? 'auto';
     this.fallbackOrder = config.fallbackOrder ?? [];
-    this.assetStore = config.assetStore ?? createImageAssetStore();
+    this.assetStore = config.assetStore;
     this.skipStorage = config.skipStorage ?? false;
   }
 
@@ -165,7 +165,7 @@ export class ImageGenerationService {
       const result: ImageGenerationResult = {
         imageUrl: stored.url,
         providerUrl,
-        storagePath: stored.id,
+        storagePath: stored.storagePath,
         viewUrl: stored.url,
         metadata: {
           aspectRatio: providerResult.aspectRatio,
@@ -185,21 +185,11 @@ export class ImageGenerationService {
       return result;
     } catch (error) {
       this.log.error(
-        'Failed to store image to GCS, returning provider URL',
+        'Failed to store image to GCS',
         error instanceof Error ? error : new Error(String(error)),
         { userId }
       );
-
-      return {
-        imageUrl: providerUrl,
-        providerUrl,
-        metadata: {
-          aspectRatio: providerResult.aspectRatio,
-          model: providerResult.model,
-          duration: providerResult.durationMs,
-          generatedAt: new Date().toISOString(),
-        },
-      };
+      throw error;
     }
   }
 }

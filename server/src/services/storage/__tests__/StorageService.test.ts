@@ -66,11 +66,8 @@ const buildStorageService = () => {
 };
 
 describe('StorageService', () => {
-  const originalAllowCrossUser = process.env.ALLOW_DEV_CROSS_USER_STORAGE;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ALLOW_DEV_CROSS_USER_STORAGE = originalAllowCrossUser;
   });
 
   it('returns upload URL for valid type and content type', async () => {
@@ -223,18 +220,6 @@ describe('StorageService', () => {
     expect(metadata.storagePath).toBe('users/user123/generations/123-abc.mp4');
     expect(metadata.sizeBytes).toBe(1024);
     expect(metadata.contentType).toBe('video/mp4');
-  });
-
-  it('allows cross-user view URL in development when explicitly enabled', async () => {
-    const { service, mockSignedUrlService } = buildStorageService();
-    process.env.ALLOW_DEV_CROSS_USER_STORAGE = 'true';
-
-    const result = await service.getViewUrl('user123', 'users/otheruser/generations/123-abc.mp4');
-
-    expect(result.viewUrl).toBe('https://storage.googleapis.com/view');
-    expect(mockSignedUrlService.getViewUrl).toHaveBeenCalledWith(
-      'users/otheruser/generations/123-abc.mp4'
-    );
   });
 
   it('propagates delegated upload errors', async () => {

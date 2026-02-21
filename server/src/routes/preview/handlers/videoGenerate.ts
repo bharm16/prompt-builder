@@ -8,7 +8,6 @@ import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import type { VideoModelId } from '@services/video-generation/types';
 import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
 import { assertUrlSafe } from '@server/shared/urlValidation';
-import { getAuthenticatedUserId } from '../auth';
 import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
 import { extractMotionMeta } from './video-generate/motion';
@@ -94,7 +93,7 @@ export const createVideoGenerateHandler = ({
     }
 
     let { cleaned: cleanedPrompt, wasStripped: promptWasStripped } = stripVideoPreviewPrompt(prompt);
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     const requestId = (req as Request & { id?: string }).id;
     const rawMotionMeta = extractMotionMeta(generationParams);
     const promptTriggers = extractPromptTriggers(cleanedPrompt);

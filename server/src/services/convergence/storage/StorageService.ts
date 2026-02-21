@@ -8,10 +8,9 @@
  * @module convergence/storage
  */
 
-import { Storage, Bucket, type File } from '@google-cloud/storage';
+import { Bucket, type File } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import { SESSION_TTL_MS } from '../constants';
 
 // ============================================================================
@@ -109,6 +108,10 @@ export class GCSStorageService implements StorageService {
   private readonly log = logger.child({ service: 'GCSStorageService' });
 
   constructor(private readonly bucket: Bucket) {}
+
+  getBucketName(): string {
+    return this.bucket.name;
+  }
 
   /**
    * Upload a single image from temporary URL to GCS
@@ -448,41 +451,8 @@ export class GCSStorageService implements StorageService {
   }
 }
 
-// ============================================================================
-// Factory and Singleton
-// ============================================================================
-
-let instance: GCSStorageService | null = null;
-
 /**
- * Get the singleton GCSStorageService instance.
- * Creates the instance on first call.
- *
- * @returns GCSStorageService instance
- */
-export function getGCSStorageService(): GCSStorageService {
-  if (!instance) {
-    ensureGcsCredentials();
-    const storage = new Storage();
-    const bucketName = process.env.GCS_BUCKET_NAME?.trim();
-
-    if (!bucketName) {
-      throw new Error('Missing required env var: GCS_BUCKET_NAME');
-    }
-
-    const bucket = storage.bucket(bucketName);
-    instance = new GCSStorageService(bucket);
-  }
-
-  return instance;
-}
-
-/**
- * Create a GCSStorageService with a custom bucket.
- * Useful for testing or using different buckets.
- *
- * @param bucket - GCS Bucket instance
- * @returns New GCSStorageService instance
+ * Create a GCSStorageService with a provided bucket.
  */
 export function createGCSStorageService(bucket: Bucket): GCSStorageService {
   return new GCSStorageService(bucket);
