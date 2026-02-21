@@ -1,7 +1,11 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '@middleware/asyncHandler';
-import type { SessionService } from '@services/sessions/SessionService';
+import {
+  SessionAccessDeniedError,
+  SessionNotFoundError,
+  type SessionService,
+} from '@services/sessions/SessionService';
 import type {
   SessionCreateRequest,
   SessionHighlightUpdate,
@@ -77,6 +81,18 @@ function requireRouteParam(req: Request, res: Response, key: string): string | n
     return null;
   }
   return value;
+}
+
+function handleSessionMutationError(error: unknown, res: Response): boolean {
+  if (error instanceof SessionAccessDeniedError) {
+    res.status(403).json({ success: false, error: 'Access denied' });
+    return true;
+  }
+  if (error instanceof SessionNotFoundError) {
+    res.status(404).json({ success: false, error: 'Session not found' });
+    return true;
+  }
+  return false;
 }
 
 function toContinuityCreateSessionRequest(
@@ -159,42 +175,44 @@ function toSessionVersionsUpdate(data: z.infer<typeof UpdateVersionsSchema>): Se
 
 export function createSessionRoutes(
   sessionService: SessionService,
-  continuityService: ContinuitySessionService,
+  continuityService: ContinuitySessionService | null = null,
   userCreditService?: UserCreditService | null
 ): Router {
   const router = express.Router();
 
-  router.post(
-    '/continuity',
-    asyncHandler(async (req: Request, res: Response) => {
-      const userId = requireUserId(req as RequestWithUser, res);
-      if (!userId) return;
-      const parsed = CreateContinuitySessionSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
-        return;
-      }
-      if (parsed.data.sessionId) {
-        const existing = await sessionService.getSession(parsed.data.sessionId);
-        if (!existing) {
-          res.status(404).json({ success: false, error: 'Session not found' });
+  if (continuityService) {
+    router.post(
+      '/continuity',
+      asyncHandler(async (req: Request, res: Response) => {
+        const userId = requireUserId(req as RequestWithUser, res);
+        if (!userId) return;
+        const parsed = CreateContinuitySessionSchema.safeParse(req.body);
+        if (!parsed.success) {
+          res.status(400).json({ success: false, error: 'Invalid request', details: parsed.error.issues });
           return;
         }
-        if (existing.userId !== userId) {
-          res.status(403).json({ success: false, error: 'Access denied' });
+        if (parsed.data.sessionId) {
+          const existing = await sessionService.getSession(parsed.data.sessionId);
+          if (!existing) {
+            res.status(404).json({ success: false, error: 'Session not found' });
+            return;
+          }
+          if (existing.userId !== userId) {
+            res.status(403).json({ success: false, error: 'Access denied' });
+            return;
+          }
+        }
+        const continuityRequest = toContinuityCreateSessionRequest(parsed.data);
+        const continuitySession = await continuityService.createSession(userId, continuityRequest);
+        const session = await sessionService.getSession(continuitySession.id);
+        if (!session) {
+          res.status(500).json({ success: false, error: 'Session not available after creation' });
           return;
         }
-      }
-      const continuityRequest = toContinuityCreateSessionRequest(parsed.data);
-      const continuitySession = await continuityService.createSession(userId, continuityRequest);
-      const session = await sessionService.getSession(continuitySession.id);
-      if (!session) {
-        res.status(500).json({ success: false, error: 'Session not available after creation' });
-        return;
-      }
-      res.json({ success: true, data: sessionService.toDto(session) });
-    })
-  );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      })
+    );
+  }
 
   router.get(
     '/',
@@ -291,12 +309,17 @@ export function createSessionRoutes(
       }
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.updateSession(sessionId, toSessionUpdateRequest(parsed.data));
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+      try {
+        const session = await sessionService.updateSessionForUser(
+          userId,
+          sessionId,
+          toSessionUpdateRequest(parsed.data)
+        );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
 
@@ -307,17 +330,13 @@ export function createSessionRoutes(
       if (!userId) return;
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.getSession(sessionId);
-      if (!session) {
-        res.status(404).json({ success: false, error: 'Session not found' });
-        return;
+      try {
+        await sessionService.deleteSessionForUser(userId, sessionId);
+        res.json({ success: true });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
-      }
-      await sessionService.deleteSession(session.id);
-      res.json({ success: true });
     })
   );
 
@@ -333,12 +352,17 @@ export function createSessionRoutes(
       }
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.updatePrompt(sessionId, toSessionPromptUpdate(parsed.data));
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+      try {
+        const session = await sessionService.updatePromptForUser(
+          userId,
+          sessionId,
+          toSessionPromptUpdate(parsed.data)
+        );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
 
@@ -354,15 +378,17 @@ export function createSessionRoutes(
       }
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.updateHighlights(
-        sessionId,
-        toSessionHighlightUpdate(parsed.data)
-      );
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+      try {
+        const session = await sessionService.updateHighlightsForUser(
+          userId,
+          sessionId,
+          toSessionHighlightUpdate(parsed.data)
+        );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
 
@@ -378,12 +404,17 @@ export function createSessionRoutes(
       }
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.updateOutput(sessionId, toSessionOutputUpdate(parsed.data));
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+      try {
+        const session = await sessionService.updateOutputForUser(
+          userId,
+          sessionId,
+          toSessionOutputUpdate(parsed.data)
+        );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
 
@@ -399,161 +430,165 @@ export function createSessionRoutes(
       }
       const sessionId = requireRouteParam(req, res, 'sessionId');
       if (!sessionId) return;
-      const session = await sessionService.updateVersions(
-        sessionId,
-        toSessionVersionsUpdate(parsed.data)
-      );
-      if (session.userId !== userId) {
-        res.status(403).json({ success: false, error: 'Access denied' });
-        return;
+      try {
+        const session = await sessionService.updateVersionsForUser(
+          userId,
+          sessionId,
+          toSessionVersionsUpdate(parsed.data)
+        );
+        res.json({ success: true, data: sessionService.toDto(session) });
+      } catch (error) {
+        if (handleSessionMutationError(error, res)) return;
+        throw error;
       }
-      res.json({ success: true, data: sessionService.toDto(session) });
     })
   );
 
-  // Continuity operations (session-scoped)
-  router.post(
-    '/:sessionId/shots',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleCreateShot(continuityService, req, res, {
-        sessionId: session.id,
-        status: 200,
-      });
-    })
-  );
+  if (continuityService) {
+    // Continuity operations (session-scoped)
+    router.post(
+      '/:sessionId/shots',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleCreateShot(continuityService, req, res, {
+          sessionId: session.id,
+          status: 200,
+        });
+      })
+    );
 
-  router.patch(
-    '/:sessionId/shots/:shotId',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      const shotId = requireRouteParam(req, res, 'shotId');
-      if (!shotId) return;
-      await handleUpdateShot(continuityService, req, res, {
-        sessionId: session.id,
-        shotId,
-      });
-    })
-  );
+    router.patch(
+      '/:sessionId/shots/:shotId',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        const shotId = requireRouteParam(req, res, 'shotId');
+        if (!shotId) return;
+        await handleUpdateShot(continuityService, req, res, {
+          sessionId: session.id,
+          shotId,
+        });
+      })
+    );
 
-  router.post(
-    '/:sessionId/shots/:shotId/generate',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleGenerateShot(continuityService, session, req, res, userCreditService);
-    })
-  );
+    router.post(
+      '/:sessionId/shots/:shotId/generate',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleGenerateShot(continuityService, session, req, res, userCreditService);
+      })
+    );
 
-  router.get(
-    '/:sessionId/shots/:shotId/status',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      const shotId = requireRouteParam(req, res, 'shotId');
-      if (!shotId) return;
-      const shot = session.shots.find((candidate) => candidate.id === shotId);
-      if (!shot) {
-        res.status(404).json({ success: false, error: 'Shot not found' });
-        return;
-      }
+    router.get(
+      '/:sessionId/shots/:shotId/status',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        const shotId = requireRouteParam(req, res, 'shotId');
+        if (!shotId) return;
+        const shot = session.shots.find((candidate) => candidate.id === shotId);
+        if (!shot) {
+          res.status(404).json({ success: false, error: 'Shot not found' });
+          return;
+        }
 
-      // Status reads are eventually consistent with persisted generator checkpoints.
-      res.json({
-        success: true,
-        data: {
-          shotId: shot.id,
-          status: shot.status,
-          continuityMechanismUsed: shot.continuityMechanismUsed ?? null,
-          styleScore: shot.styleScore ?? null,
-          identityScore: shot.identityScore ?? null,
-          styleDegraded: shot.styleDegraded ?? false,
-          styleDegradedReason: shot.styleDegradedReason ?? null,
-          generatedKeyframeUrl: shot.generatedKeyframeUrl ?? null,
-          frameBridgeUrl: shot.frameBridge?.frameUrl ?? null,
-          retryCount: shot.retryCount ?? 0,
-          error: shot.error ?? null,
-        },
-      });
-    })
-  );
+        // Status reads are eventually consistent with persisted generator checkpoints.
+        res.json({
+          success: true,
+          data: {
+            shotId: shot.id,
+            status: shot.status,
+            continuityMechanismUsed: shot.continuityMechanismUsed ?? null,
+            styleScore: shot.styleScore ?? null,
+            identityScore: shot.identityScore ?? null,
+            styleDegraded: shot.styleDegraded ?? false,
+            styleDegradedReason: shot.styleDegradedReason ?? null,
+            generatedKeyframeUrl: shot.generatedKeyframeUrl ?? null,
+            frameBridgeUrl: shot.frameBridge?.frameUrl ?? null,
+            retryCount: shot.retryCount ?? 0,
+            error: shot.error ?? null,
+          },
+        });
+      })
+    );
 
-  router.post(
-    '/:sessionId/shots/:shotId/generate-stream',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleGenerateShotStream(
-        continuityService,
-        session,
-        req,
-        res,
-        userCreditService
-      );
-    })
-  );
+    router.post(
+      '/:sessionId/shots/:shotId/generate-stream',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleGenerateShotStream(
+          continuityService,
+          session,
+          req,
+          res,
+          userCreditService
+        );
+      })
+    );
 
-  router.post(
-    '/:sessionId/shots/:shotId/scene-proxy-preview',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      const shotId = requireRouteParam(req, res, 'shotId');
-      if (!shotId) return;
-      await handlePreviewSceneProxy(continuityService, req, res, {
-        sessionId: session.id,
-        shotId,
-      });
-    })
-  );
+    router.post(
+      '/:sessionId/shots/:shotId/scene-proxy-preview',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        const shotId = requireRouteParam(req, res, 'shotId');
+        if (!shotId) return;
+        await handlePreviewSceneProxy(continuityService, req, res, {
+          sessionId: session.id,
+          shotId,
+        });
+      })
+    );
 
-  router.put(
-    '/:sessionId/shots/:shotId/style-reference',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      const shotId = requireRouteParam(req, res, 'shotId');
-      if (!shotId) return;
-      await handleUpdateStyleReference(continuityService, req, res, {
-        sessionId: session.id,
-        shotId,
-      });
-    })
-  );
+    router.put(
+      '/:sessionId/shots/:shotId/style-reference',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        const shotId = requireRouteParam(req, res, 'shotId');
+        if (!shotId) return;
+        await handleUpdateStyleReference(continuityService, req, res, {
+          sessionId: session.id,
+          shotId,
+        });
+      })
+    );
 
-  router.put(
-    '/:sessionId/settings',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleUpdateSessionSettings(continuityService, req, res, { sessionId: session.id });
-    })
-  );
+    router.put(
+      '/:sessionId/settings',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleUpdateSessionSettings(continuityService, req, res, { sessionId: session.id });
+      })
+    );
 
-  router.put(
-    '/:sessionId/style-reference',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleUpdatePrimaryStyleReference(continuityService, req, res, {
-        sessionId: session.id,
-      });
-    })
-  );
+    router.put(
+      '/:sessionId/style-reference',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleUpdatePrimaryStyleReference(continuityService, req, res, {
+          sessionId: session.id,
+        });
+      })
+    );
 
-  router.post(
-    '/:sessionId/scene-proxy',
-    asyncHandler(async (req: Request, res: Response) => {
-      const session = await requireSessionForUser(continuityService, req, res);
-      if (!session) return;
-      await handleCreateSceneProxy(continuityService, req, res, {
-        sessionId: session.id,
-        status: 200,
-      });
-    })
-  );
+    router.post(
+      '/:sessionId/scene-proxy',
+      asyncHandler(async (req: Request, res: Response) => {
+        const session = await requireSessionForUser(continuityService, req, res);
+        if (!session) return;
+        await handleCreateSceneProxy(continuityService, req, res, {
+          sessionId: session.id,
+          status: 200,
+        });
+      })
+    );
+  }
 
   return router;
 }

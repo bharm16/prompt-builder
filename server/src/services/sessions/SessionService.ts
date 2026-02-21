@@ -29,6 +29,17 @@ export class SessionService {
   private readonly log = logger.child({ service: 'SessionService' });
   constructor(private sessionStore: SessionStore) {}
 
+  private async requireOwnedSession(userId: string, sessionId: string): Promise<SessionRecord> {
+    const current = await this.sessionStore.get(sessionId);
+    if (!current) {
+      throw new SessionNotFoundError(sessionId);
+    }
+    if (current.userId !== userId) {
+      throw new SessionAccessDeniedError(sessionId, userId, current.userId);
+    }
+    return current;
+  }
+
   async createPromptSession(userId: string, request: SessionCreateRequest): Promise<SessionRecord> {
     const now = new Date();
     const prompt = request.prompt ? { ...request.prompt } : undefined;
@@ -156,6 +167,15 @@ export class SessionService {
     return next;
   }
 
+  async updateSessionForUser(
+    userId: string,
+    sessionId: string,
+    updates: SessionUpdateRequest
+  ): Promise<SessionRecord> {
+    await this.requireOwnedSession(userId, sessionId);
+    return this.updateSession(sessionId, updates);
+  }
+
   async updatePrompt(sessionId: string, updates: SessionPromptUpdate): Promise<SessionRecord> {
     const promptUpdates: Partial<SessionPrompt> = {
       ...(updates.title !== undefined ? { title: updates.title } : {}),
@@ -167,6 +187,15 @@ export class SessionService {
       ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
     };
     return this.updateSession(sessionId, { prompt: promptUpdates });
+  }
+
+  async updatePromptForUser(
+    userId: string,
+    sessionId: string,
+    updates: SessionPromptUpdate
+  ): Promise<SessionRecord> {
+    await this.requireOwnedSession(userId, sessionId);
+    return this.updatePrompt(sessionId, updates);
   }
 
   async updateHighlights(sessionId: string, updates: SessionHighlightUpdate): Promise<SessionRecord> {
@@ -203,11 +232,28 @@ export class SessionService {
     return next;
   }
 
+  async updateHighlightsForUser(
+    userId: string,
+    sessionId: string,
+    updates: SessionHighlightUpdate
+  ): Promise<SessionRecord> {
+    await this.requireOwnedSession(userId, sessionId);
+    return this.updateHighlights(sessionId, updates);
+  }
+
   async updateOutput(sessionId: string, updates: SessionOutputUpdate): Promise<SessionRecord> {
     const promptUpdates: Partial<SessionPrompt> = {
       ...(updates.output !== undefined ? { output: updates.output } : {}),
     };
     return this.updateSession(sessionId, { prompt: promptUpdates });
+  }
+
+  async updateOutputForUser(
+    userId: string,
+    sessionId: string,
+    updates: SessionOutputUpdate
+  ): Promise<SessionRecord> {
+    return this.updateSessionForUser(userId, sessionId, { prompt: updates });
   }
 
   async updateVersions(sessionId: string, updates: SessionVersionsUpdate): Promise<SessionRecord> {
@@ -237,7 +283,21 @@ export class SessionService {
     return next;
   }
 
+  async updateVersionsForUser(
+    userId: string,
+    sessionId: string,
+    updates: SessionVersionsUpdate
+  ): Promise<SessionRecord> {
+    await this.requireOwnedSession(userId, sessionId);
+    return this.updateVersions(sessionId, updates);
+  }
+
   async deleteSession(sessionId: string): Promise<void> {
+    await this.sessionStore.delete(sessionId);
+  }
+
+  async deleteSessionForUser(userId: string, sessionId: string): Promise<void> {
+    await this.requireOwnedSession(userId, sessionId);
     await this.sessionStore.delete(sessionId);
   }
 
@@ -345,5 +405,23 @@ export class SessionService {
 
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  }
+}
+
+export class SessionAccessDeniedError extends Error {
+  constructor(
+    readonly sessionId: string,
+    readonly requestUserId: string,
+    readonly ownerUserId: string
+  ) {
+    super(`Access denied for session ${sessionId}`);
+    this.name = 'SessionAccessDeniedError';
+  }
+}
+
+export class SessionNotFoundError extends Error {
+  constructor(readonly sessionId: string) {
+    super(`Session not found: ${sessionId}`);
+    this.name = 'SessionNotFoundError';
   }
 }

@@ -157,6 +157,36 @@ describe('RunwayStrategy', () => {
     });
   });
 
+  describe('transform - fallback behavior', () => {
+    it('falls back deterministically when LLM rewrite fails', async () => {
+      const fallbackStrategy = new RunwayStrategy({
+        analyzer: {
+          analyze: vi.fn(async () => ({
+            subjects: [],
+            actions: [],
+            camera: { movements: [] },
+            environment: { setting: '', lighting: [] },
+            audio: {},
+            meta: { mood: [], style: [] },
+            technical: {},
+            raw: 'fallback raw prompt',
+          })),
+        } as never,
+        llmRewriter: {
+          rewrite: vi.fn(async () => {
+            throw new Error('gateway unavailable');
+          }),
+        } as never,
+      });
+
+      fallbackStrategy.normalize('fallback raw prompt');
+      const transformed = await fallbackStrategy.transform('fallback raw prompt');
+
+      expect(typeof transformed.prompt).toBe('string');
+      expect(transformed.metadata.warnings.some((warning) => warning.includes('LLM rewrite unavailable'))).toBe(true);
+    });
+  });
+
   describe('augment - mandatory stability behavior', () => {
     it('injects mandatory stability constraints when missing', () => {
       const input = makeResult('Dolly in: A woman walks through a garden');

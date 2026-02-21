@@ -8,6 +8,10 @@ import { mapSpansToIR } from './SpanToIrMapper';
 import { extractBasicHeuristics } from './HeuristicIrExtractor';
 import { enrichFromTechnicalSpecs, enrichIR } from './IrEnricher';
 
+interface VideoPromptAnalyzerDeps {
+  llmExtractor?: LlmIrExtractor;
+}
+
 /**
  * Service responsible for analyzing raw text and extracting structured VideoPromptIR
  * Uses a hybrid approach:
@@ -15,7 +19,11 @@ import { enrichFromTechnicalSpecs, enrichIR } from './IrEnricher';
  * 2. Semantic Entity Extraction (GLiNER) for high-fidelity role detection
  */
 export class VideoPromptAnalyzer {
-  private readonly llmExtractor = new LlmIrExtractor();
+  private readonly llmExtractor: LlmIrExtractor;
+
+  constructor(deps: VideoPromptAnalyzerDeps = {}) {
+    this.llmExtractor = deps.llmExtractor ?? new LlmIrExtractor();
+  }
 
   /**
    * Analyze raw text and produce a structured Intermediate Representation (IR)

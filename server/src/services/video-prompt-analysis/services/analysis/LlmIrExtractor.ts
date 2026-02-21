@@ -1,5 +1,5 @@
-import { GeminiAdapter } from '@clients/adapters/GeminiAdapter';
 import type { VideoPromptIR } from '../../types';
+import type { VideoPromptLlmGateway } from '../llm/VideoPromptLlmGateway';
 import { createEmptyIR } from './IrFactory';
 
 type UnknownRecord = Record<string, unknown>;
@@ -16,17 +16,15 @@ function asTrimmedStringArray(value: unknown): string[] {
 }
 
 export class LlmIrExtractor {
-  private adapter: GeminiAdapter | null = null;
-
-  constructor(private readonly defaultModel: string = 'gemini-2.5-flash') {}
+  constructor(private readonly gateway: VideoPromptLlmGateway | null = null) {}
 
   async tryAnalyze(text: string): Promise<VideoPromptIR | null> {
+    if (!this.gateway) {
+      return null;
+    }
+
     try {
-      const adapter = this.getAdapter();
-      const response = await adapter.generateStructuredOutput(
-        this.buildLlmPrompt(text),
-        this.getIrSchema()
-      );
+      const response = await this.gateway.extractIr(this.buildLlmPrompt(text), this.getIrSchema());
 
       if (!isRecord(response)) {
         return null;
@@ -41,16 +39,6 @@ export class LlmIrExtractor {
     } catch {
       return null;
     }
-  }
-
-  private getAdapter(): GeminiAdapter {
-    if (!this.adapter) {
-      this.adapter = new GeminiAdapter({
-        apiKey: process.env.GEMINI_API_KEY || '',
-        defaultModel: this.defaultModel,
-      });
-    }
-    return this.adapter;
   }
 
   private buildIrFromLlm(parsed: UnknownRecord, raw: string): VideoPromptIR {

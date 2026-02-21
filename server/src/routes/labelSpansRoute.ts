@@ -2,6 +2,7 @@ import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
+import { requestCoalescing } from '@middleware/requestCoalescing';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
 import { createLabelSpansCoordinator } from './labelSpans/coordinator';
@@ -45,7 +46,7 @@ export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCac
     return;
   });
 
-  router.post('/', async (req: Request, res: Response) => {
+  router.post('/', requestCoalescing.middleware({ keyScope: '/llm/label-spans' }), async (req: Request, res: Response) => {
     const parsed = parseLabelSpansRequest(req.body);
     if (!parsed.ok) {
       return res.status(parsed.status).json({ error: parsed.error });

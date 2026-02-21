@@ -16,10 +16,14 @@ import { KlingStrategy } from './strategies/KlingStrategy';
 import { SoraStrategy } from './strategies/SoraStrategy';
 import { VeoStrategy } from './strategies/VeoStrategy';
 import { WanStrategy } from './strategies/WanStrategy';
+import { LlmIrExtractor } from './services/analysis/LlmIrExtractor';
+import { VideoPromptAnalyzer } from './services/analysis/VideoPromptAnalyzer';
+import { VideoPromptLLMRewriter } from './services/rewriter/VideoPromptLLMRewriter';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
 import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
 import type { ModelCapabilities } from './services/detection/ModelDetectionService';
 import type { SectionConstraints } from './services/detection/SectionDetectionService';
+import type { VideoPromptLlmGateway } from './services/llm/VideoPromptLlmGateway';
 import type { PromptOptimizationResult, PromptContext, PhaseResult } from './strategies/types';
 
 export interface VideoPromptServiceDeps {
@@ -32,6 +36,7 @@ export interface VideoPromptServiceDeps {
   sectionDetector?: SectionDetectionService;
   taxonomyValidator?: TaxonomyValidationService;
   strategyRegistry?: StrategyRegistry;
+  videoPromptLlmGateway?: VideoPromptLlmGateway | null;
 }
 
 /**
@@ -71,15 +76,40 @@ export class VideoPromptService {
     if (deps.strategyRegistry) {
       this.strategyRegistry = deps.strategyRegistry;
     } else {
+      const createAnalyzer = (): VideoPromptAnalyzer =>
+        new VideoPromptAnalyzer({
+          llmExtractor: new LlmIrExtractor(deps.videoPromptLlmGateway ?? null),
+        });
+      const createRewriter = (): VideoPromptLLMRewriter =>
+        new VideoPromptLLMRewriter(deps.videoPromptLlmGateway ?? null);
+
       // Register strategy factories — each get() call creates a fresh instance
       // to prevent shared mutable state across concurrent requests
       this.strategyRegistry = new StrategyRegistry();
-      this.strategyRegistry.register('runway-gen45', () => new RunwayStrategy());
-      this.strategyRegistry.register('luma-ray3', () => new LumaStrategy());
-      this.strategyRegistry.register('kling-26', () => new KlingStrategy());
-      this.strategyRegistry.register('sora-2', () => new SoraStrategy());
-      this.strategyRegistry.register('veo-4', () => new VeoStrategy());
-      this.strategyRegistry.register('wan-2.2', () => new WanStrategy());
+      this.strategyRegistry.register(
+        'runway-gen45',
+        () => new RunwayStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'luma-ray3',
+        () => new LumaStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'kling-26',
+        () => new KlingStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'sora-2',
+        () => new SoraStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'veo-4',
+        () => new VeoStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'wan-2.2',
+        () => new WanStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
     }
   }
 

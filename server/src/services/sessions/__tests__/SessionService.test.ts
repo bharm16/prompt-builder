@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionRecord } from '../types';
 import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
-import { SessionService } from '../SessionService';
+import { SessionAccessDeniedError, SessionNotFoundError, SessionService } from '../SessionService';
 
 const buildRecord = (overrides: Partial<SessionRecord> = {}): SessionRecord => ({
   id: 'session-1',
@@ -151,6 +151,29 @@ describe('SessionService', () => {
     expect(sessionStore.save).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'session-1', status: 'completed' })
     );
+  });
+
+  it('blocks user-scoped updates when session is owned by a different user', async () => {
+    const current = buildRecord({ id: 'session-1', userId: 'owner-user', status: 'active' });
+    sessionStore.get.mockResolvedValue(current);
+
+    const service = new SessionService(sessionStore as never);
+    await expect(
+      service.updateSessionForUser('request-user', 'session-1', { name: 'Should not update' })
+    ).rejects.toBeInstanceOf(SessionAccessDeniedError);
+
+    expect(sessionStore.save).not.toHaveBeenCalled();
+  });
+
+  it('throws a not-found error for user-scoped delete when session is missing', async () => {
+    sessionStore.get.mockResolvedValue(null);
+
+    const service = new SessionService(sessionStore as never);
+    await expect(service.deleteSessionForUser('user-1', 'missing-session')).rejects.toBeInstanceOf(
+      SessionNotFoundError
+    );
+
+    expect(sessionStore.delete).not.toHaveBeenCalled();
   });
 
   it('filters session listing by includeContinuity/includePrompt flags', async () => {

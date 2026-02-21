@@ -12,7 +12,6 @@
  * 5. Body parsing
  * 6. Logging
  * 7. Metrics
- * 8. Request coalescing
  */
 
 import express, { type Application } from 'express';
@@ -22,7 +21,6 @@ import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
 import compression from 'compression';
 
 import { requestIdMiddleware } from '@middleware/requestId';
-import { requestCoalescing } from '@middleware/requestCoalescing';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
@@ -440,14 +438,6 @@ export function applyLoggingAndMetricsMiddleware(app: Application, services: Mid
 }
 
 /**
- * Apply request coalescing middleware
- * Reduces duplicate API calls by 50-80%
- */
-export function applyRequestCoalescingMiddleware(app: Application): void {
-  app.use(requestCoalescing.middleware());
-}
-
-/**
  * Configure all middleware in the correct order
  * This is the main function to call from app setup
  */
@@ -472,9 +462,6 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
 
   // 7. Logging and metrics
   applyLoggingAndMetricsMiddleware(app, services);
-
-  // 8. Request coalescing
-  applyRequestCoalescingMiddleware(app);
 
   logger.info('All middleware configured successfully');
 }

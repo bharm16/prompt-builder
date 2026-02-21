@@ -126,8 +126,8 @@ export function createAPIRoutes(services: ApiServices): Router {
     router.use('/continuity', createContinuityRoutes(continuitySessionService, userCreditService));
   }
 
-  if (sessionService && continuitySessionService) {
-    router.use('/v2/sessions', createSessionRoutes(sessionService, continuitySessionService, userCreditService));
+  if (sessionService) {
+    router.use('/v2/sessions', createSessionRoutes(sessionService, continuitySessionService ?? null, userCreditService));
   }
 
   if (modelIntelligenceService) {

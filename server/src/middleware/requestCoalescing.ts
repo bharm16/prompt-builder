@@ -2,31 +2,189 @@ import crypto from 'crypto';
 import type { Request, RequestHandler, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 
-const COALESCING_WINDOW_MS = 100;
-const MAX_INLINE_KEY_LENGTH = 512;
+const DEFAULT_COALESCING_WINDOW_MS = 100;
 
-/**
- * Request coalescing middleware
- * Deduplicates identical in-flight requests to prevent redundant API calls
- *
- * When multiple identical requests arrive simultaneously, only one will
- * execute the handler. Other requests will wait and receive the same response.
- *
- * Performance Impact:
- * - Reduces duplicate API calls by 50-80% under concurrent load
- * - Minimal overhead (~1ms) for non-coalesced requests
- * - Significant savings for slow operations (Claude API calls)
- */
+const HOP_BY_HOP_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade',
+  'content-length',
+]);
+
+export interface RequestCoalescingOptions {
+  keyScope: string;
+  windowMs?: number;
+}
+
+type CoalescedResponseKind = 'json' | 'send' | 'end';
+
+type CoalescedResponse = {
+  kind: CoalescedResponseKind;
+  statusCode: number;
+  headers: Record<string, string | string[]>;
+  body?: unknown;
+};
+
+type PendingEntry = {
+  promise: Promise<CoalescedResponse>;
+  completedAt: number | null;
+  expiresAt: number | null;
+};
+
+type RequestWithPrincipal = Request & {
+  user?: { uid?: string };
+  auth?: { uid?: string };
+  userId?: string;
+  uid?: string;
+};
+
+function hashFingerprint(input: string): string {
+  return crypto.createHash('sha256').update(input).digest('hex').substring(0, 32);
+}
+
+function parseMaybeJson(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const appearsJson =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'));
+
+  if (!appearsJson) {
+    return trimmed;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
+function stableStringify(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
+  if (value === null) {
+    return 'null';
+  }
+
+  const valueType = typeof value;
+  if (valueType === 'string') {
+    return JSON.stringify(value);
+  }
+
+  if (valueType === 'number' || valueType === 'boolean') {
+    return JSON.stringify(value);
+  }
+
+  if (valueType === 'bigint') {
+    return JSON.stringify((value as bigint).toString());
+  }
+
+  if (valueType === 'undefined') {
+    return '""';
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item, seen)).join(',')}]`;
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return stableStringify(parseMaybeJson(value.toString('utf8')), seen);
+  }
+
+  if (valueType === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    if (seen.has(objectValue)) {
+      return '"[Circular]"';
+    }
+
+    seen.add(objectValue);
+    const keys = Object.keys(objectValue).sort();
+    const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(objectValue[key], seen)}`);
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(String(value));
+}
+
+function canonicalizeBody(body: unknown): string {
+  if (typeof body === 'string') {
+    return stableStringify(parseMaybeJson(body));
+  }
+
+  if (Buffer.isBuffer(body)) {
+    return stableStringify(parseMaybeJson(body.toString('utf8')));
+  }
+
+  return stableStringify(body);
+}
+
+function resolvePrincipalFingerprint(req: Request): string {
+  const request = req as RequestWithPrincipal;
+  const principal = request.user?.uid ?? request.auth?.uid ?? request.userId ?? request.uid;
+  if (typeof principal === 'string' && principal.trim().length > 0) {
+    return `principal:${principal.trim()}`;
+  }
+
+  const authorization = req.get('authorization') ?? '';
+  const apiKey = req.get('x-api-key') ?? '';
+  const firebaseToken = req.get('x-firebase-token') ?? '';
+  return `credentials:${authorization}|${apiKey}|${firebaseToken}`;
+}
+
+function normalizeHeaders(res: Response): Record<string, string | string[]> {
+  const headers = res.getHeaders();
+  const normalized: Record<string, string | string[]> = {};
+
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+
+    const lowerName = name.toLowerCase();
+    if (HOP_BY_HOP_HEADERS.has(lowerName)) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      normalized[lowerName] = value.map((entry) => String(entry));
+      continue;
+    }
+
+    normalized[lowerName] = String(value);
+  }
+
+  return normalized;
+}
+
+function isStreamingRequest(req: Request): boolean {
+  const path = `${req.baseUrl ?? ''}${req.path ?? ''}`.toLowerCase();
+  if (path.includes('/stream')) {
+    return true;
+  }
+
+  const acceptHeader = String(req.headers.accept ?? '').toLowerCase();
+  if (acceptHeader.includes('text/event-stream') || acceptHeader.includes('application/x-ndjson')) {
+    return true;
+  }
+
+  const contentType = String(req.headers['content-type'] ?? '').toLowerCase();
+  return contentType.includes('text/event-stream') || contentType.includes('application/x-ndjson');
+}
+
 export class RequestCoalescingMiddleware {
-  private pendingRequests: Map<string, { promise: Promise<unknown>; completedAt: number | null }>;
+  private pendingRequests: Map<string, PendingEntry>;
   private stats: { coalesced: number; unique: number; totalSaved: number };
   private cleanupTimer: ReturnType<typeof setTimeout> | null;
 
   constructor() {
-    // Map of request keys to pending promises with completion timestamps
     this.pendingRequests = new Map();
-
-    // Statistics for monitoring
     this.stats = {
       coalesced: 0,
       unique: 0,
@@ -35,152 +193,173 @@ export class RequestCoalescingMiddleware {
     this.cleanupTimer = null;
   }
 
-  /**
-   * Generate a cache key from request
-   * Uses only essential request data for key generation
-   */
-  generateKey(req: Request): string {
-    // Include: method, path, and request body
-    // Exclude: headers (except auth), timestamps, request IDs
-    const auth = req.get('authorization');
-    const authPrefix = auth ? auth.substring(0, 20) : '';
-    const baseKey = `${req.method}:${req.path}:${authPrefix}`;
+  generateKey(req: Request, options: RequestCoalescingOptions): string {
+    const principalHash = hashFingerprint(resolvePrincipalFingerprint(req));
+    const bodyHash = hashFingerprint(canonicalizeBody(req.body));
 
-    if (req.body === null || req.body === undefined) {
-      return baseKey;
-    }
-
-    let bodyFingerprint = '';
-    if (typeof req.body === 'string') {
-      bodyFingerprint = req.body;
-    } else if (Buffer.isBuffer(req.body)) {
-      bodyFingerprint = req.body.toString('utf8');
-    } else {
-      bodyFingerprint = JSON.stringify(req.body);
-    }
-
-    if (!bodyFingerprint) {
-      return baseKey;
-    }
-
-    if (bodyFingerprint.length <= MAX_INLINE_KEY_LENGTH) {
-      return `${baseKey}:${bodyFingerprint}`;
-    }
-
-    // Hash large bodies to avoid oversized keys
-    const hash = crypto
-      .createHash('sha256')
-      .update(bodyFingerprint)
-      .digest('hex')
-      .substring(0, 16);
-
-    return `${baseKey}:${hash}`;
+    return `${req.method}:${options.keyScope}:${principalHash}:${bodyHash}`;
   }
 
-  /**
-   * Express middleware function
-   */
-  middleware(): RequestHandler {
+  middleware(options: RequestCoalescingOptions): RequestHandler {
+    if (!options?.keyScope || options.keyScope.trim().length === 0) {
+      throw new Error('request coalescing requires a non-empty keyScope');
+    }
+
+    const coalescingWindowMs = Math.max(1, options.windowMs ?? DEFAULT_COALESCING_WINDOW_MS);
+
     return async (req, res, next): Promise<void> => {
-      // Only coalesce POST requests (GET should use HTTP cache)
-      if (req.method !== 'POST') {
+      if (req.method !== 'POST' || isStreamingRequest(req)) {
         next();
         return;
       }
 
-      // Skip coalescing for non-API routes
-      if (!req.path.startsWith('/api/') && !req.path.startsWith('/llm/')) {
-        next();
-        return;
-      }
+      const requestKey = this.generateKey(req, options);
+      const pendingEntry = this.pendingRequests.get(requestKey);
 
-      const requestKey = this.generateKey(req);
+      if (pendingEntry && pendingEntry.completedAt === null) {
+        this.stats.coalesced++;
+        this.stats.totalSaved++;
 
-      // Check if this request is already in-flight
-      if (this.pendingRequests.has(requestKey)) {
-        const pendingEntry = this.pendingRequests.get(requestKey);
+        logger.debug('Request coalesced', {
+          requestId: req.id,
+          keyScope: options.keyScope,
+          path: req.path,
+        });
 
-        // Only coalesce if the request is still pending (not completed)
-        if (pendingEntry && pendingEntry.completedAt === null) {
-          this.stats.coalesced++;
-          logger.debug('Request coalesced', {
-            requestId: req.id,
-            path: req.path,
-            coalescedWith: requestKey,
-          });
-
-          try {
-            // Wait for the existing request to complete
-            const result = await pendingEntry.promise;
-
-            // Send the cached result
-            res.json(result);
-            return;
-          } catch (error) {
-            // If the coalesced request failed, let this one fail too
-            next(error);
-            return;
-          }
+        try {
+          const snapshot = await pendingEntry.promise;
+          this.applySnapshot(res, snapshot);
+          return;
+        } catch (error) {
+          next(error);
+          return;
         }
       }
 
-      // This is a unique request - create a promise for it
       this.stats.unique++;
 
-      let resolvePromise: (value: unknown) => void = () => undefined;
+      let resolvePromise: (value: CoalescedResponse) => void = () => undefined;
       let rejectPromise: (reason?: unknown) => void = () => undefined;
 
-      const requestPromise = new Promise<unknown>((resolve, reject) => {
+      const requestPromise = new Promise<CoalescedResponse>((resolve, reject) => {
         resolvePromise = resolve;
         rejectPromise = reject;
       });
 
-      // Store promise with metadata
       this.pendingRequests.set(requestKey, {
         promise: requestPromise,
         completedAt: null,
+        expiresAt: null,
       });
 
-      // Override res.json to capture the response
-      const originalJson = res.json.bind(res);
-      const wrappedJson: Response['json'] = (...args) => {
-        const [data] = args;
-        // Resolve the promise with the response data
-        resolvePromise(data);
+      let settled = false;
+      const settleSuccess = (snapshot: CoalescedResponse): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
 
-        // Mark the request as completed instead of deleting immediately
-        // This allows concurrent requests to still coalesce during the window
+        resolvePromise(snapshot);
+
         const entry = this.pendingRequests.get(requestKey);
         if (entry) {
-          entry.completedAt = Date.now();
+          const now = Date.now();
+          entry.completedAt = now;
+          entry.expiresAt = now + coalescingWindowMs;
         }
-        this._scheduleCleanup();
 
-        // Send the original response
+        this._scheduleCleanup(coalescingWindowMs);
+      };
+
+      const settleFailure = (error: unknown): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        rejectPromise(error);
+        this.pendingRequests.delete(requestKey);
+      };
+
+      const captureSnapshot = (kind: CoalescedResponseKind, body?: unknown): CoalescedResponse => ({
+        kind,
+        body,
+        statusCode: res.statusCode,
+        headers: normalizeHeaders(res),
+      });
+
+      const originalJson = res.json.bind(res);
+      const wrappedJson: Response['json'] = (...args) => {
+        settleSuccess(captureSnapshot('json', args[0]));
         return originalJson(...args);
       };
       res.json = wrappedJson;
 
-      // Handle errors
-      res.on('error', (error) => {
-        rejectPromise(error);
-        this.pendingRequests.delete(requestKey);
+      const originalSend = res.send.bind(res);
+      const wrappedSend: Response['send'] = (...args) => {
+        settleSuccess(captureSnapshot('send', args[0]));
+        return originalSend(...args);
+      };
+      res.send = wrappedSend;
+
+      const originalEnd = res.end.bind(res);
+      const wrappedEnd = ((
+        chunk?: unknown,
+        encoding?: BufferEncoding | (() => void),
+        cb?: () => void
+      ) => {
+        settleSuccess(captureSnapshot('end', chunk));
+
+        if (typeof encoding === 'function') {
+          return originalEnd(chunk as never, encoding);
+        }
+
+        if (encoding === undefined) {
+          return originalEnd(chunk as never, cb);
+        }
+
+        return originalEnd(chunk as never, encoding, cb);
+      }) as Response['end'];
+      res.end = wrappedEnd;
+
+      res.once('error', (error) => {
+        settleFailure(error);
       });
 
-      // Continue to the actual handler
+      res.once('close', () => {
+        if (!res.writableEnded) {
+          settleFailure(new Error(`Coalesced request closed before completion: ${req.path}`));
+        }
+      });
+
       next();
     };
   }
 
-  /**
-   * Clean up completed requests after the coalescing window
-   * @private
-   */
+  private applySnapshot(res: Response, snapshot: CoalescedResponse): void {
+    res.status(snapshot.statusCode);
+
+    for (const [name, value] of Object.entries(snapshot.headers)) {
+      res.setHeader(name, value);
+    }
+
+    if (snapshot.kind === 'json') {
+      res.json(snapshot.body);
+      return;
+    }
+
+    if (snapshot.kind === 'send') {
+      res.send(snapshot.body as never);
+      return;
+    }
+
+    res.end(snapshot.body as never);
+  }
+
   _cleanupCompletedRequests(): void {
     const now = Date.now();
 
     for (const [key, entry] of this.pendingRequests.entries()) {
-      if (entry.completedAt && now - entry.completedAt > COALESCING_WINDOW_MS) {
+      if (entry.expiresAt !== null && now >= entry.expiresAt) {
         this.pendingRequests.delete(key);
       }
     }
@@ -188,14 +367,14 @@ export class RequestCoalescingMiddleware {
 
   _hasCompletedEntries(): boolean {
     for (const entry of this.pendingRequests.values()) {
-      if (entry.completedAt) {
+      if (entry.expiresAt !== null) {
         return true;
       }
     }
     return false;
   }
 
-  _scheduleCleanup(): void {
+  _scheduleCleanup(intervalMs: number = DEFAULT_COALESCING_WINDOW_MS): void {
     if (this.cleanupTimer) {
       return;
     }
@@ -204,14 +383,11 @@ export class RequestCoalescingMiddleware {
       this.cleanupTimer = null;
       this._cleanupCompletedRequests();
       if (this._hasCompletedEntries()) {
-        this._scheduleCleanup();
+        this._scheduleCleanup(intervalMs);
       }
-    }, COALESCING_WINDOW_MS);
+    }, intervalMs);
   }
 
-  /**
-   * Get coalescing statistics
-   */
   getStats(): {
     coalesced: number;
     unique: number;
@@ -226,14 +402,11 @@ export class RequestCoalescingMiddleware {
     return {
       ...this.stats,
       total,
-      coalescingRate: coalescingRate.toFixed(2) + '%',
+      coalescingRate: `${coalescingRate.toFixed(2)}%`,
       activePending: this.pendingRequests.size,
     };
   }
 
-  /**
-   * Reset statistics
-   */
   resetStats(): void {
     this.stats = {
       coalesced: 0,
@@ -242,9 +415,6 @@ export class RequestCoalescingMiddleware {
     };
   }
 
-  /**
-   * Clear all pending requests (for shutdown)
-   */
   clear(): void {
     this.pendingRequests.clear();
     if (this.cleanupTimer) {
@@ -254,5 +424,4 @@ export class RequestCoalescingMiddleware {
   }
 }
 
-// Export singleton instance
 export const requestCoalescing = new RequestCoalescingMiddleware();

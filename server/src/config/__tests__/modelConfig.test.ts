@@ -29,6 +29,8 @@ describe('modelConfig', () => {
     expect(operations.length).toBeGreaterThan(0);
     expect(operations).toContain('optimize_standard');
     expect(operations).toContain('span_labeling');
+    expect(operations).toContain('video_prompt_ir_extraction');
+    expect(operations).toContain('video_prompt_rewrite');
   });
 
   it('reports seed and developer message flags from operation config', () => {

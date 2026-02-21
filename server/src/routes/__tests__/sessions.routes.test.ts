@@ -2,6 +2,8 @@ import express from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSessionRoutes } from '../sessions.routes';
+import { SessionAccessDeniedError, SessionService } from '@services/sessions/SessionService';
+import type { SessionRecord } from '@services/sessions/types';
 
 interface ErrorWithCode {
   code?: string;
@@ -58,6 +60,12 @@ const buildServices = () => {
     getSessionByPromptUuid: vi.fn(),
     getSession: vi.fn().mockResolvedValue({ id: 'session-1', userId: 'user-1', status: 'active' }),
     createPromptSession: vi.fn(),
+    updateSessionForUser: vi.fn(),
+    deleteSessionForUser: vi.fn(),
+    updatePromptForUser: vi.fn(),
+    updateHighlightsForUser: vi.fn(),
+    updateOutputForUser: vi.fn(),
+    updateVersionsForUser: vi.fn(),
     updateSession: vi.fn(),
     deleteSession: vi.fn(),
     updatePrompt: vi.fn(),
@@ -220,6 +228,103 @@ describe('sessions.routes', () => {
     expect(forbidden.status).toBe(403);
   });
 
+  it('returns 403 for unauthorized scoped session updates before unscoped mutations', async () => {
+    const { sessionService, continuityService } = buildServices();
+    sessionService.updateSessionForUser.mockRejectedValueOnce(
+      new SessionAccessDeniedError('session-1', 'user-1', 'other-user')
+    );
+    const app = createApp(sessionService, continuityService);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .patch('/sessions/session-1')
+        .set('x-user-id', 'user-1')
+        .send({ name: 'blocked update' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ success: false, error: 'Access denied' });
+    expect(sessionService.updateSessionForUser).toHaveBeenCalledWith('user-1', 'session-1', {
+      name: 'blocked update',
+    });
+    expect(sessionService.updateSession).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for unauthorized scoped session delete before unscoped delete', async () => {
+    const { sessionService, continuityService } = buildServices();
+    sessionService.deleteSessionForUser.mockRejectedValueOnce(
+      new SessionAccessDeniedError('session-1', 'user-1', 'other-user')
+    );
+    const app = createApp(sessionService, continuityService);
+
+    const response = await runSupertestOrSkip(() =>
+      request(app).delete('/sessions/session-1').set('x-user-id', 'user-1')
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ success: false, error: 'Access denied' });
+    expect(sessionService.deleteSessionForUser).toHaveBeenCalledWith('user-1', 'session-1');
+    expect(sessionService.deleteSession).not.toHaveBeenCalled();
+  });
+
+  it('never mutates stored state on unauthorized PATCH', async () => {
+    const records = new Map<string, SessionRecord>();
+    const sessionStore = {
+      save: vi.fn(async (session: SessionRecord) => {
+        records.set(session.id, session);
+      }),
+      get: vi.fn(async (sessionId: string) => records.get(sessionId) ?? null),
+      findByPromptUuid: vi.fn(async (userId: string, promptUuid: string) => {
+        return (
+          Array.from(records.values()).find(
+            (candidate) => candidate.userId === userId && candidate.promptUuid === promptUuid
+          ) ?? null
+        );
+      }),
+      findByUser: vi.fn(async (userId: string) => {
+        return Array.from(records.values()).filter((candidate) => candidate.userId === userId);
+      }),
+      delete: vi.fn(async (sessionId: string) => {
+        records.delete(sessionId);
+      }),
+    };
+    const sessionService = new SessionService(sessionStore as never);
+    const created = await sessionService.createPromptSession('owner-user', {
+      name: 'Owner session',
+      prompt: {
+        uuid: 'owner-prompt',
+        input: 'owner input',
+        output: 'owner output',
+      },
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      const userId = req.header('x-user-id');
+      if (userId) {
+        (req as express.Request & { user?: { uid: string } }).user = { uid: userId };
+      }
+      next();
+    });
+    app.use('/sessions', createSessionRoutes(sessionService, null));
+
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .patch(`/sessions/${created.id}`)
+        .set('x-user-id', 'request-user')
+        .send({ name: 'hijacked name' })
+    );
+    if (!response) return;
+
+    expect(response.status).toBe(403);
+    const unchanged = await sessionService.getSession(created.id);
+    expect(unchanged?.name).toBe('Owner session');
+    expect(unchanged?.prompt?.output).toBe('owner output');
+  });
+
   it('returns validation errors for prompt/highlights/output/versions updates', async () => {
     const { sessionService, continuityService } = buildServices();
     const app = createApp(sessionService, continuityService);
@@ -260,10 +365,10 @@ describe('sessions.routes', () => {
     if (!versions) return;
     expect(versions.status).toBe(400);
 
-    expect(sessionService.updatePrompt).not.toHaveBeenCalled();
-    expect(sessionService.updateHighlights).not.toHaveBeenCalled();
-    expect(sessionService.updateOutput).not.toHaveBeenCalled();
-    expect(sessionService.updateVersions).not.toHaveBeenCalled();
+    expect(sessionService.updatePromptForUser).not.toHaveBeenCalled();
+    expect(sessionService.updateHighlightsForUser).not.toHaveBeenCalled();
+    expect(sessionService.updateOutputForUser).not.toHaveBeenCalled();
+    expect(sessionService.updateVersionsForUser).not.toHaveBeenCalled();
   });
 
   it('returns shot status payload for /sessions/:sessionId/shots/:shotId/status', async () => {

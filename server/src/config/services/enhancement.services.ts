@@ -18,11 +18,23 @@ import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeSer
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
 import type { CacheService } from '@services/cache/CacheService';
 import { VideoPromptService } from '@services/video-prompt-analysis/index';
+import { AIServiceVideoPromptLlmGateway } from '@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway';
 import { MultimodalAssetManager } from '@services/video-prompt-analysis/services/MultimodalAssetManager';
 import { VideoConceptService } from '@services/video-concept/VideoConceptService';
 
 export function registerEnhancementServices(container: DIContainer): void {
-  container.register('videoService', () => new VideoPromptService(), []);
+  container.register(
+    'videoPromptLlmGateway',
+    (aiService: AIModelService) => new AIServiceVideoPromptLlmGateway(aiService),
+    ['aiService']
+  );
+
+  container.register(
+    'videoService',
+    (videoPromptLlmGateway: AIServiceVideoPromptLlmGateway) =>
+      new VideoPromptService({ videoPromptLlmGateway }),
+    ['videoPromptLlmGateway']
+  );
   container.register('multimodalAssetManager', () => new MultimodalAssetManager(), []);
   container.register('brainstormBuilder', () => new BrainstormContextBuilder(), []);
   container.register('promptBuilder', () => new CleanPromptBuilder(), []);

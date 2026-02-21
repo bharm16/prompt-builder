@@ -1,23 +1,16 @@
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VideoPromptLLMRewriter } from './VideoPromptLLMRewriter';
 import type { VideoPromptIR } from '../../types';
-
-// Mock GeminiAdapter
-const mockGenerateText = vi.fn();
-const mockGenerateStructuredOutput = vi.fn();
-
-vi.mock('../../../../clients/adapters/GeminiAdapter', () => {
-  return {
-    GeminiAdapter: vi.fn().mockImplementation(() => ({
-      generateText: mockGenerateText,
-      generateStructuredOutput: mockGenerateStructuredOutput,
-    })),
-  };
-});
+import type { VideoPromptLlmGateway } from '../llm/VideoPromptLlmGateway';
 
 describe('VideoPromptLLMRewriter', () => {
   let rewriter: VideoPromptLLMRewriter;
+  const mockGateway: VideoPromptLlmGateway = {
+    extractIr: vi.fn(),
+    rewriteStructured: vi.fn(),
+    rewriteText: vi.fn(),
+  };
+
   const baseIr: VideoPromptIR = {
     subjects: [{ text: 'test subject', attributes: [] }],
     actions: ['test action'],
@@ -31,30 +24,38 @@ describe('VideoPromptLLMRewriter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    rewriter = new VideoPromptLLMRewriter();
+    rewriter = new VideoPromptLLMRewriter(mockGateway);
   });
 
-  it('should call generateText for runway-gen45', async () => {
-    mockGenerateText.mockResolvedValue('Optimized prompt');
+  it('routes text strategy rewrites through gateway', async () => {
+    vi.mocked(mockGateway.rewriteText).mockResolvedValue('Optimized prompt');
+
     const result = await rewriter.rewrite(baseIr, 'runway-gen45');
-    
-    expect(mockGenerateText).toHaveBeenCalledWith(
-      expect.stringContaining('INSTRUCTIONS for Runway Gen-4.5'),
-      expect.objectContaining({ maxTokens: 8192 })
+
+    expect(mockGateway.rewriteText).toHaveBeenCalledWith(
+      expect.stringContaining('INSTRUCTIONS for Runway Gen-4.5')
     );
     expect(result).toBe('Optimized prompt');
   });
 
-  it('should call generateStructuredOutput for veo-4', async () => {
+  it('routes structured strategy rewrites through gateway', async () => {
     const mockJson = { mode: 'generate', subject: { description: 'test', action: 'test' } };
-    mockGenerateStructuredOutput.mockResolvedValue(mockJson);
-    
+    vi.mocked(mockGateway.rewriteStructured).mockResolvedValue(mockJson);
+
     const result = await rewriter.rewrite(baseIr, 'veo-4');
-    
-    expect(mockGenerateStructuredOutput).toHaveBeenCalledWith(
+
+    expect(mockGateway.rewriteStructured).toHaveBeenCalledWith(
       expect.stringContaining('INSTRUCTIONS for Google Veo 4'),
-      expect.any(Object) // Schema
+      expect.any(Object)
     );
     expect(result).toEqual(mockJson);
+  });
+
+  it('throws when gateway dependency is unavailable', async () => {
+    const unavailableGatewayRewriter = new VideoPromptLLMRewriter(null);
+
+    await expect(unavailableGatewayRewriter.rewrite(baseIr, 'runway-gen45')).rejects.toThrow(
+      'Video prompt LLM gateway unavailable'
+    );
   });
 });

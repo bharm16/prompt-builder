@@ -19,6 +19,7 @@ import { useAssetReferenceImages } from './useAssetReferenceImages';
 import { useGenerationMediaRefresh } from './useGenerationMediaRefresh';
 import { useKeyframeWorkflow } from './useKeyframeWorkflow';
 import { useGenerationsTimeline } from './useGenerationsTimeline';
+import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 import type {
   Generation,
   GenerationsPanelProps,
@@ -253,11 +254,15 @@ export function useGenerationsRuntime({
 
   const generateSequenceShot = useCallback(
     async (modelId?: string) => {
-      if (!currentShot) return;
+      if (!currentShot) {
+        toast.warning('No active continuity shot available.');
+        return;
+      }
       if (
         currentShot.status === 'generating-keyframe' ||
         currentShot.status === 'generating-video'
       ) {
+        toast.warning('A shot is already generating.');
         return;
       }
       if (modelId && currentShot.modelId !== modelId) {
@@ -265,7 +270,7 @@ export function useGenerationsRuntime({
       }
       await generateShot(currentShot.id);
     },
-    [currentShot, generateShot, updateShot]
+    [currentShot, generateShot, toast, updateShot]
   );
 
   const handleDraft = useCallback(
@@ -417,7 +422,11 @@ export function useGenerationsRuntime({
   );
 
   const handleStoryboard = useCallback(() => {
-    if (hasActiveContinuityShot) return;
+    if (hasActiveContinuityShot) {
+      onCreateVersionIfNeeded();
+      void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
+      return;
+    }
     const storyboardConfig = getModelConfig('flux-kontext');
     const requiredCredits = storyboardConfig?.credits ?? 4;
     if (!hasCreditsFor(requiredCredits, 'Storyboard')) {
@@ -430,6 +439,7 @@ export function useGenerationsRuntime({
     generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
   }, [
     generateStoryboard,
+    generateSequenceShot,
     hasActiveContinuityShot,
     hasCreditsFor,
     onCreateVersionIfNeeded,
