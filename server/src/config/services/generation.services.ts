@@ -29,9 +29,9 @@ import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import type { VideoAssetStore } from '@services/video-generation/storage';
-import { resolveFalApiKey } from '@utils/falApiKey';
 import type { StorageService } from '@services/storage/StorageService';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerGenerationServices(container: DIContainer): void {
   container.register('videoPromptDetector', () => new VideoPromptDetectionService(), []);
@@ -75,21 +75,29 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'replicateFluxSchnellProvider',
-    (transformer: VideoToImagePromptTransformer | null, videoPromptDetector: VideoPromptDetectionService) => {
-      const apiToken = process.env.REPLICATE_API_TOKEN;
+    (
+      transformer: VideoToImagePromptTransformer | null,
+      videoPromptDetector: VideoPromptDetectionService,
+      config: ServiceConfig
+    ) => {
+      const apiToken = config.replicate.apiToken;
       if (!apiToken) {
         logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
         return null;
       }
       return new ReplicateFluxSchnellProvider({ apiToken, promptTransformer: transformer, videoPromptDetector });
     },
-    ['videoToImageTransformer', 'videoPromptDetector']
+    ['videoToImageTransformer', 'videoPromptDetector', 'config']
   );
 
   container.register(
     'replicateFluxKontextFastProvider',
-    (transformer: VideoToImagePromptTransformer | null, videoPromptDetector: VideoPromptDetectionService) => {
-      const apiToken = process.env.REPLICATE_API_TOKEN;
+    (
+      transformer: VideoToImagePromptTransformer | null,
+      videoPromptDetector: VideoPromptDetectionService,
+      config: ServiceConfig
+    ) => {
+      const apiToken = config.replicate.apiToken;
       if (!apiToken) {
         logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
         return null;
@@ -100,7 +108,7 @@ export function registerGenerationServices(container: DIContainer): void {
         videoPromptDetector,
       });
     },
-    ['videoToImageTransformer', 'videoPromptDetector']
+    ['videoToImageTransformer', 'videoPromptDetector', 'config']
   );
 
   container.register(
@@ -218,19 +226,19 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'keyframeGenerationService',
-    () => {
-      const falKey = resolveFalApiKey();
+    (config: ServiceConfig) => {
+      const falKey = config.fal.apiKey;
       if (!falKey) {
         logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
         return null;
       }
-      const replicateToken = process.env.REPLICATE_API_TOKEN;
+      const replicateToken = config.replicate.apiToken;
       return new KeyframeGenerationService({
         falApiKey: falKey,
         ...(replicateToken ? { apiToken: replicateToken } : {}),
       });
     },
-    [],
+    ['config'],
     { singleton: true }
   );
 
@@ -242,8 +250,8 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'faceSwapService',
-    () => {
-      const falKey = resolveFalApiKey();
+    (config: ServiceConfig) => {
+      const falKey = config.fal.apiKey;
       if (!falKey) {
         logger.warn('FaceSwapService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
         return null;
@@ -255,7 +263,7 @@ export function registerGenerationServices(container: DIContainer): void {
       }
       return new FaceSwapService({ faceSwapProvider });
     },
-    [],
+    ['config'],
     { singleton: true }
   );
 

@@ -20,6 +20,12 @@ export interface ServiceConfig {
     model: string;
     baseURL: string;
   };
+  replicate: {
+    apiToken: string | undefined;
+  };
+  fal: {
+    apiKey: string | undefined;
+  };
   redis: {
     defaultTTL: number;
     shortTTL: number;

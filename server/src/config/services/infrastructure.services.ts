@@ -18,6 +18,7 @@ import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { createVideoAssetStore, type VideoAssetStore } from '@services/video-generation/storage';
 import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import { createGCSStorageService } from '@services/convergence/storage';
+import { resolveFalApiKey } from '@utils/falApiKey';
 import { createRedisClient } from '../redis.ts';
 import type { ServiceConfig } from './service-config.types.ts';
 
@@ -149,6 +150,12 @@ export function registerInfrastructureServices(container: DIContainer): void {
       timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
       model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    },
+    replicate: {
+      apiToken: process.env.REPLICATE_API_TOKEN,
+    },
+    fal: {
+      apiKey: resolveFalApiKey() || undefined,
     },
     redis: {
       defaultTTL: 3600,
