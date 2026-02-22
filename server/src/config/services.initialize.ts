@@ -18,6 +18,61 @@ interface HealthCheckResult {
   responseTime?: number;
 }
 
+interface LLMClientValidationConfig {
+  client: LLMClient;
+  serviceName: string;
+  successMessage: string;
+  unhealthyMessage: string;
+  failureMessage: string;
+  allowUnhealthy?: boolean;
+  disableUnhealthyMessage?: string;
+  keepUnhealthyMessage?: string;
+}
+
+async function validateLLMClient(
+  container: DIContainer,
+  config: LLMClientValidationConfig
+): Promise<void> {
+  try {
+    const health = (await config.client.healthCheck()) as HealthCheckResult;
+
+    if (!health.healthy) {
+      logger.warn(config.unhealthyMessage, {
+        error: health.error,
+      });
+
+      if (!config.allowUnhealthy) {
+        if (config.disableUnhealthyMessage) {
+          logger.warn(config.disableUnhealthyMessage);
+        }
+        container.registerValue(config.serviceName, null);
+      } else if (config.keepUnhealthyMessage) {
+        logger.warn(config.keepUnhealthyMessage);
+      }
+
+      return;
+    }
+
+    logger.info(config.successMessage, {
+      responseTime: health.responseTime,
+    });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger.warn(config.failureMessage, {
+      error: errorMessage,
+    });
+
+    if (!config.allowUnhealthy) {
+      if (config.disableUnhealthyMessage) {
+        logger.warn(config.disableUnhealthyMessage);
+      }
+      container.registerValue(config.serviceName, null);
+    } else if (config.keepUnhealthyMessage) {
+      logger.warn(config.keepUnhealthyMessage);
+    }
+  }
+}
+
 async function runInfrastructureStartupChecks(container: DIContainer): Promise<void> {
   const auth = admin.auth();
   await auth.listUsers(1);
@@ -64,28 +119,13 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   if (claudeClient) {
     logger.info('Validating OpenAI API key...');
 
-    try {
-      const openAIHealth = await claudeClient.healthCheck() as HealthCheckResult;
-
-      if (!openAIHealth.healthy) {
-        logger.warn(
-          '⚠️  OpenAI API key validation failed - OpenAI adapter disabled',
-          { error: openAIHealth.error }
-        );
-        container.registerValue('claudeClient', null);
-      } else {
-        logger.info('✅ OpenAI API key validated successfully', {
-          responseTime: openAIHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled',
-        { error: errorMessage }
-      );
-      container.registerValue('claudeClient', null);
-    }
+    await validateLLMClient(container, {
+      client: claudeClient,
+      serviceName: 'claudeClient',
+      successMessage: '✅ OpenAI API key validated successfully',
+      unhealthyMessage: '⚠️  OpenAI API key validation failed - OpenAI adapter disabled',
+      failureMessage: '⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled',
+    });
   } else {
     logger.warn('OpenAI client not configured; relying on other providers');
   }
@@ -95,33 +135,13 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   if (groqClient) {
     logger.info('Groq client initialized for two-stage optimization');
 
-    try {
-      const groqHealth = await groqClient.healthCheck() as HealthCheckResult;
-
-      if (!groqHealth.healthy) {
-        logger.warn(
-          '⚠️  Groq API key validation failed - two-stage optimization disabled',
-          {
-            error: groqHealth.error,
-          }
-        );
-        // Override with null to disable
-        container.registerValue('groqClient', null);
-      } else {
-        logger.info('✅ Groq API key validated successfully', {
-          responseTime: groqHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Groq API key - two-stage optimization disabled',
-        {
-          error: errorMessage,
-        }
-      );
-      container.registerValue('groqClient', null);
-    }
+    await validateLLMClient(container, {
+      client: groqClient,
+      serviceName: 'groqClient',
+      successMessage: '✅ Groq API key validated successfully',
+      unhealthyMessage: '⚠️  Groq API key validation failed - two-stage optimization disabled',
+      failureMessage: '⚠️  Failed to validate Groq API key - two-stage optimization disabled',
+    });
   }
 
   // Resolve and validate Qwen client (OPTIONAL)
@@ -129,32 +149,13 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   if (qwenClient) {
     logger.info('Qwen client initialized for adapter-based routing');
 
-    try {
-      const qwenHealth = await qwenClient.healthCheck() as HealthCheckResult;
-
-      if (!qwenHealth.healthy) {
-        logger.warn(
-          '⚠️  Qwen API key validation failed - adapter disabled',
-          {
-            error: qwenHealth.error,
-          }
-        );
-        container.registerValue('qwenClient', null);
-      } else {
-        logger.info('✅ Qwen API key validated successfully', {
-          responseTime: qwenHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Qwen API key - adapter disabled',
-        {
-          error: errorMessage,
-        }
-      );
-      container.registerValue('qwenClient', null);
-    }
+    await validateLLMClient(container, {
+      client: qwenClient,
+      serviceName: 'qwenClient',
+      successMessage: '✅ Qwen API key validated successfully',
+      unhealthyMessage: '⚠️  Qwen API key validation failed - adapter disabled',
+      failureMessage: '⚠️  Failed to validate Qwen API key - adapter disabled',
+    });
   }
 
   // Resolve and validate Gemini client (OPTIONAL)
@@ -163,42 +164,16 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     logger.info('Gemini client initialized for adapter-based routing');
     const allowUnhealthyGemini = runtimeFlags.allowUnhealthyGemini;
 
-    try {
-      const geminiHealth = await geminiClient.healthCheck() as HealthCheckResult;
-
-      if (!geminiHealth.healthy) {
-        logger.warn(
-          '⚠️  Gemini API key validation failed',
-          {
-            error: geminiHealth.error,
-          }
-        );
-        if (!allowUnhealthyGemini) {
-          logger.warn('⚠️  Gemini adapter disabled (health check failed)');
-          container.registerValue('geminiClient', null);
-        } else {
-          logger.warn('Keeping Gemini adapter enabled despite failed health check');
-        }
-      } else {
-        logger.info('✅ Gemini API key validated successfully', {
-          responseTime: geminiHealth.responseTime,
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.warn(
-        '⚠️  Failed to validate Gemini API key',
-        {
-          error: errorMessage,
-        }
-      );
-      if (!allowUnhealthyGemini) {
-        logger.warn('⚠️  Gemini adapter disabled (health check failed)');
-        container.registerValue('geminiClient', null);
-      } else {
-        logger.warn('Keeping Gemini adapter enabled despite failed health check');
-      }
-    }
+    await validateLLMClient(container, {
+      client: geminiClient,
+      serviceName: 'geminiClient',
+      successMessage: '✅ Gemini API key validated successfully',
+      unhealthyMessage: '⚠️  Gemini API key validation failed',
+      failureMessage: '⚠️  Failed to validate Gemini API key',
+      allowUnhealthy: allowUnhealthyGemini,
+      disableUnhealthyMessage: '⚠️  Gemini adapter disabled (health check failed)',
+      keepUnhealthyMessage: 'Keeping Gemini adapter enabled despite failed health check',
+    });
   }
 
   // Pre-resolve all services to ensure they can be instantiated
