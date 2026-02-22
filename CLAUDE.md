@@ -77,8 +77,12 @@ The container is created in `server/src/config/services.config.ts` and initializ
 The client and server are **strictly decoupled**. Neither side may import from the other.
 
 - `client/src/` **NEVER** imports from `server/src/` — and vice versa
-- The only shared code lives in `shared/` (types, constants, Zod schemas — never runtime logic)
+- The only shared code lives in `shared/` (types, constants, Zod schemas, and pure utility functions — never I/O or framework-dependent logic)
 - Changes to `shared/` are **contract changes** — run `tsc --noEmit` immediately after modifying
+
+**Shared layer rule:** Code in `shared/` must be pure — no Node.js APIs, no React, no `fetch`,
+no file I/O, no database access. Pure functions that operate on data (validation, parsing,
+condition matching) are acceptable and encouraged to prevent client/server implementation drift.
 
 **Anti-corruption layer:** Each client feature's `api/` directory insulates UI from server DTOs:
 ```
