@@ -236,20 +236,8 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'keyframeService',
-    () => {
-      const falKey = resolveFalApiKey();
-      if (!falKey) {
-        logger.warn('KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable');
-        return null;
-      }
-      const replicateToken = process.env.REPLICATE_API_TOKEN;
-      return new KeyframeGenerationService({
-        falApiKey: falKey,
-        ...(replicateToken ? { apiToken: replicateToken } : {}),
-      });
-    },
-    [],
-    { singleton: true }
+    (keyframeGenerationService: KeyframeGenerationService | null) => keyframeGenerationService,
+    ['keyframeGenerationService']
   );
 
   container.register(
