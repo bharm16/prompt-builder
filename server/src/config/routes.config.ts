@@ -27,7 +27,7 @@ import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import type { StorageRoutesService } from '@routes/storage.routes';
 import { createSuggestionsRoute } from '@routes/suggestions';
-import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
+import { createPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
 import type { PaymentRouteServices } from '@routes/payment/types';
 import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
@@ -42,7 +42,6 @@ import type { ContinuitySessionService } from '@services/continuity/ContinuitySe
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import type { PreviewRoutesServices } from '@routes/types';
-import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
 import { getRuntimeFlags } from './runtime-flags';
 
 type RequestWithId = Request & {
@@ -129,21 +128,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
 
   app.use('/', healthRoutes);
 
-  // ============================================================================
-  // Public Preview Routes (no auth required for video content)
-  // ============================================================================
-
   if (!promptOutputOnly) {
-    const publicPreviewRoutes = createPublicPreviewRoutes({
-      videoGenerationService,
-      videoContentAccessService: resolveOptionalService<VideoContentAccessService | null>(
-        container,
-        'videoContentAccessService',
-        'public-preview'
-      ),
-    });
-    app.use('/api/preview', publicPreviewRoutes);
-
     if (convergenceStorageService) {
       const motionMediaRoutes = createConvergenceMediaRoutes(() => convergenceStorageService);
       app.use('/api/motion/media', motionMediaRoutes);

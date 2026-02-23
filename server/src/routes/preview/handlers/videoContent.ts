@@ -84,5 +84,6 @@ export const createVideoContentHandler = ({
       });
     }
 
-    return sendVideoContent(res, entry);
+    await sendVideoContent(res, entry);
+    return;
   };

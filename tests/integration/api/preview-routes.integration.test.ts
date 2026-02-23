@@ -55,6 +55,7 @@ function createApp() {
     videoJobStore: null,
     videoContentAccessService: null,
     userCreditService,
+    storageService: storageServiceMock,
     keyframeService: null,
     faceSwapService: null,
     assetService: null,

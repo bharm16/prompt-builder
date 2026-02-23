@@ -44,38 +44,50 @@ export const createVideoAssetViewHandler = ({
       });
     }
 
-    if (videoJobStore) {
-      const job = await videoJobStore.findJobByAssetId(assetId);
-      if (job?.result?.storagePath) {
-        if (job.userId !== userId) {
-          return res.status(403).json({
-            success: false,
-            error: 'Access denied',
-            message: 'This video does not belong to the authenticated user.',
-          });
-        }
+    if (!videoJobStore) {
+      return res.status(503).json({
+        success: false,
+        error: 'Video job store is not available',
+      });
+    }
 
-        try {
-          if (!storageService) {
-            throw new Error('storage unavailable');
-          }
-          const { viewUrl, expiresAt, storagePath } = await storageService.getViewUrl(
-            userId,
-            job.result.storagePath
-          );
-          return res.json({
-            success: true,
-            data: {
-              viewUrl,
-              expiresAt,
-              storagePath,
-              assetId,
-              source: 'storage',
-            },
-          });
-        } catch {
-          // Fall through to video preview bucket when storage view fails.
+    const job = await videoJobStore.findJobByAssetId(assetId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: 'Video asset not found',
+      });
+    }
+
+    if (job.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'This video does not belong to the authenticated user.',
+      });
+    }
+
+    if (job.result?.storagePath) {
+      try {
+        if (!storageService) {
+          throw new Error('storage unavailable');
         }
+        const { viewUrl, expiresAt, storagePath } = await storageService.getViewUrl(
+          userId,
+          job.result.storagePath
+        );
+        return res.json({
+          success: true,
+          data: {
+            viewUrl,
+            expiresAt,
+            storagePath,
+            assetId,
+            source: 'storage',
+          },
+        });
+      } catch {
+        // Fall through to video preview bucket when storage view fails.
       }
     }
 

@@ -35,7 +35,7 @@ describe('LocalImageAssetStore', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(store.storeFromUrl('https://example.com/image.webp')).rejects.toThrow(
+      await expect(store.storeFromUrl('https://example.com/image.webp', 'user-1')).rejects.toThrow(
         'Failed to fetch image: 500 Server Error'
       );
     });
@@ -49,7 +49,9 @@ describe('LocalImageAssetStore', () => {
         publicPath: '/public/images',
       });
 
-      await expect(store.storeFromBuffer(Buffer.from('data'), 'image/png')).rejects.toThrow();
+      await expect(
+        store.storeFromBuffer(Buffer.from('data'), 'image/png', 'user-1')
+      ).rejects.toThrow();
     });
 
     it('returns false when file lookups fail', async () => {
@@ -61,7 +63,7 @@ describe('LocalImageAssetStore', () => {
         publicPath: '/public/images',
       });
 
-      const exists = await store.exists('missing-id');
+      const exists = await store.exists('missing-id', 'user-1');
 
       expect(exists).toBe(false);
     });
@@ -74,7 +76,7 @@ describe('LocalImageAssetStore', () => {
         publicPath: '/public/images',
       });
 
-      const result = await store.getPublicUrl('missing-id');
+      const result = await store.getPublicUrl('missing-id', 'user-1');
 
       expect(result).toBeNull();
     });
@@ -85,11 +87,15 @@ describe('LocalImageAssetStore', () => {
         publicPath: '/public/images',
       });
 
-      const result = await store.storeFromBuffer(Buffer.from('data'), 'application/octet-stream');
-      const expectedPath = path.join(tempDir, 'test-id.webp');
+      const result = await store.storeFromBuffer(
+        Buffer.from('data'),
+        'application/octet-stream',
+        'user-1'
+      );
+      const expectedPath = path.join(tempDir, 'user-1', 'test-id.webp');
       const stat = await fs.stat(expectedPath);
 
-      expect(result.url).toBe('/public/images/test-id');
+      expect(result.url).toBe('/public/images/user-1/test-id');
       expect(stat.size).toBe(4);
     });
   });
@@ -101,11 +107,27 @@ describe('LocalImageAssetStore', () => {
         publicPath: '/public/images',
       });
 
-      const result = await store.storeFromBuffer(Buffer.from('image-data'), 'image/png');
+      const result = await store.storeFromBuffer(Buffer.from('image-data'), 'image/png', 'user-1');
 
       expect(result.id).toBe('test-id');
-      expect(result.url).toBe('/public/images/test-id');
+      expect(result.url).toBe('/public/images/user-1/test-id');
+      expect(result.storagePath).toBe('user-1/test-id.png');
       expect(result.sizeBytes).toBe(10);
+    });
+
+    it('scopes asset lookups by owner', async () => {
+      const store = new LocalImageAssetStore({
+        directory: tempDir,
+        publicPath: '/public/images',
+      });
+
+      await store.storeFromBuffer(Buffer.from('image-data'), 'image/png', 'user-1');
+
+      await expect(store.getPublicUrl('test-id', 'user-2')).resolves.toBeNull();
+      await expect(store.exists('test-id', 'user-2')).resolves.toBe(false);
+      await expect(store.getPublicUrl('test-id', 'user-1')).resolves.toBe(
+        '/public/images/user-1/test-id'
+      );
     });
 
     it('removes expired files based on mtime and returns the delete count', async () => {

@@ -16,22 +16,22 @@ export interface ImageAssetStore {
   /**
    * Download an image from a URL and store it
    */
-  storeFromUrl(sourceUrl: string, contentType?: string): Promise<StoredImageAsset>;
+  storeFromUrl(sourceUrl: string, userId: string, contentType?: string): Promise<StoredImageAsset>;
 
   /**
    * Store an image from a buffer
    */
-  storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredImageAsset>;
+  storeFromBuffer(buffer: Buffer, contentType: string, userId: string): Promise<StoredImageAsset>;
 
   /**
    * Get a signed/public URL for an asset
    */
-  getPublicUrl(assetId: string): Promise<string | null>;
+  getPublicUrl(assetId: string, userId: string): Promise<string | null>;
 
   /**
    * Check if an asset exists
    */
-  exists(assetId: string): Promise<boolean>;
+  exists(assetId: string, userId: string): Promise<boolean>;
 
   /**
    * Delete expired assets

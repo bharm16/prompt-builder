@@ -65,6 +65,7 @@
       "@routes/*": ["server/src/routes/*"],
       "@clients/*": ["server/src/clients/*"],
       "@server/*": ["server/src/*"],
+      "@migrations/*": ["scripts/migrations/*"],
       "@shared/*": ["shared/*"],
       "#shared/*": ["shared/*"],
       "@promptstudio/system/*": ["packages/promptstudio-system/src/*"]

@@ -1,4 +1,6 @@
+import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
+import { isKnownGenerationModelInput } from '@services/video-models/ModelRegistry';
 
 export type VideoAspectRatio = '16:9' | '9:16' | '21:9' | '1:1';
 
@@ -27,6 +29,8 @@ interface VideoPreviewParseFailure {
 
 export type VideoPreviewParseResult = VideoPreviewParseSuccess | VideoPreviewParseFailure;
 
+const VIDEO_ASPECT_RATIOS = new Set<VideoAspectRatio>(['16:9', '9:16', '21:9', '1:1']);
+
 export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult => {
   const {
     prompt,
@@ -40,8 +44,8 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     faceSwapAlreadyApplied,
   } = (body || {}) as {
     prompt?: unknown;
-    aspectRatio?: VideoAspectRatio;
-    model?: string;
+    aspectRatio?: unknown;
+    model?: unknown;
     startImage?: unknown;
     inputReference?: unknown;
     generationParams?: unknown;
@@ -52,6 +56,37 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return { ok: false, status: 400, error: 'Prompt must be a non-empty string' };
+  }
+
+  let resolvedAspectRatio: VideoAspectRatio | undefined;
+  if (aspectRatio !== undefined) {
+    if (typeof aspectRatio !== 'string') {
+      return { ok: false, status: 400, error: 'aspectRatio must be a string' };
+    }
+    const trimmedAspectRatio = aspectRatio.trim();
+    if (!VIDEO_ASPECT_RATIOS.has(trimmedAspectRatio as VideoAspectRatio)) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'aspectRatio must be one of: 16:9, 9:16, 21:9, 1:1',
+      };
+    }
+    resolvedAspectRatio = trimmedAspectRatio as VideoAspectRatio;
+  }
+
+  let resolvedModel: string | undefined;
+  if (model !== undefined) {
+    if (typeof model !== 'string') {
+      return { ok: false, status: 400, error: 'model must be a string' };
+    }
+    const trimmedModel = model.trim();
+    if (trimmedModel.length === 0) {
+      return { ok: false, status: 400, error: 'model must be a non-empty string' };
+    }
+    if (trimmedModel.toLowerCase() !== 'auto' && !isKnownGenerationModelInput(trimmedModel)) {
+      return { ok: false, status: 400, error: `Unknown model: ${trimmedModel}` };
+    }
+    resolvedModel = trimmedModel;
   }
 
   if (startImage !== undefined && typeof startImage !== 'string') {
@@ -85,8 +120,8 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     ok: true,
     payload: {
       prompt,
-      ...(aspectRatio ? { aspectRatio } : {}),
-      ...(model ? { model } : {}),
+      ...(resolvedAspectRatio ? { aspectRatio: resolvedAspectRatio } : {}),
+      ...(resolvedModel ? { model: resolvedModel } : {}),
       ...(startImage ? { startImage } : {}),
       ...(inputReference ? { inputReference } : {}),
       ...(generationParams !== undefined ? { generationParams } : {}),
@@ -97,15 +132,23 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
   };
 };
 
-export const sendVideoContent = (
+export const sendVideoContent = async (
   res: Response,
   entry: { contentType: string; stream: NodeJS.ReadableStream; contentLength?: number }
-): Response => {
+): Promise<void> => {
   res.setHeader('Content-Type', entry.contentType);
   if (entry.contentLength) {
     res.setHeader('Content-Length', String(entry.contentLength));
   }
   res.setHeader('Cache-Control', 'private, max-age=600');
-  entry.stream.pipe(res);
-  return res;
+
+  try {
+    await pipeline(entry.stream, res);
+  } catch (error) {
+    if (res.headersSent) {
+      const streamError = error instanceof Error ? error : new Error(String(error));
+      res.destroy(streamError);
+    }
+    throw error;
+  }
 };

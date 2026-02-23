@@ -64,7 +64,7 @@ describe('GcsImageAssetStore', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(store.storeFromUrl('https://example.com/missing.webp')).rejects.toThrow(
+      await expect(store.storeFromUrl('https://example.com/missing.webp', 'user-1')).rejects.toThrow(
         'Failed to fetch image: 404 Not Found'
       );
     });
@@ -83,7 +83,7 @@ describe('GcsImageAssetStore', () => {
       fileMock.getMetadata.mockResolvedValueOnce([{ size: '512' }]);
       fileMock.getSignedUrl.mockResolvedValueOnce(['https://signed.example.com/asset']);
 
-      const result = await store.storeFromBuffer(Buffer.from('image'), 'image/webp');
+      const result = await store.storeFromBuffer(Buffer.from('image'), 'image/webp', 'user-1');
 
       expect(result.url).toBe('https://signed.example.com/asset');
       expect(result.sizeBytes).toBe(512);
@@ -119,7 +119,7 @@ describe('GcsImageAssetStore', () => {
 
       fileMock.exists.mockResolvedValueOnce([false]);
 
-      const result = await store.getPublicUrl('missing-id');
+      const result = await store.getPublicUrl('missing-id', 'user-1');
 
       expect(result).toBeNull();
     });
@@ -158,7 +158,7 @@ describe('GcsImageAssetStore', () => {
       fileMock.getMetadata.mockResolvedValueOnce([{ size: '0' }]);
       fileMock.getSignedUrl.mockResolvedValueOnce(['https://signed.example.com/asset']);
 
-      const result = await store.storeFromUrl('https://example.com/source.webp');
+      const result = await store.storeFromUrl('https://example.com/source.webp', 'user-1');
 
       expect(result.sizeBytes).toBeUndefined();
     });
@@ -188,9 +188,9 @@ describe('GcsImageAssetStore', () => {
       fileMock.getMetadata.mockResolvedValueOnce([{ size: '1024' }]);
       fileMock.getSignedUrl.mockResolvedValueOnce(['https://signed.example.com/asset']);
 
-      const result = await store.storeFromUrl('https://example.com/source.png');
+      const result = await store.storeFromUrl('https://example.com/source.png', 'user-1');
 
-      expect(bucketMock.file).toHaveBeenCalledWith('image-previews/test-id');
+      expect(bucketMock.file).toHaveBeenCalledWith('image-previews/user-1/test-id');
       expect(result.id).toBe('test-id');
       expect(result.url).toBe('https://signed.example.com/asset');
       expect(result.contentType).toBe('image/png');

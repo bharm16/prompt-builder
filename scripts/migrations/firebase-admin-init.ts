@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'fs';
 // Load environment variables
 dotenv.config();
 
-let db = null;
+let db: FirebaseFirestore.Firestore | null = null;
 
 /**
  * Initialize Firebase Admin SDK
@@ -14,7 +14,7 @@ let db = null;
  * 1. Service Account JSON file (FIREBASE_SERVICE_ACCOUNT_PATH)
  * 2. Application Default Credentials (for Cloud Run, GCE)
  */
-export function initializeFirebaseAdmin() {
+export function initializeFirebaseAdmin(): FirebaseFirestore.Firestore {
   if (db) {
     return db;
   }
@@ -45,10 +45,12 @@ export function initializeFirebaseAdmin() {
       }
     }
 
+    const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+
     if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        ...(typeof projectId === 'string' && projectId.length > 0 ? { projectId } : {}),
       });
     } else {
       // Method 2: Application Default Credentials (ADC)
@@ -57,16 +59,17 @@ export function initializeFirebaseAdmin() {
       console.log('Make sure you have run: gcloud auth application-default login');
 
       admin.initializeApp({
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        ...(typeof projectId === 'string' && projectId.length > 0 ? { projectId } : {}),
       });
     }
 
     db = admin.firestore();
-    console.log(`✓ Connected to Firestore project: ${process.env.VITE_FIREBASE_PROJECT_ID}\n`);
+    console.log(`✓ Connected to Firestore project: ${projectId ?? 'default'}\n`);
     
     return db;
   } catch (error) {
-    console.error('❌ Failed to initialize Firebase Admin:', error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Failed to initialize Firebase Admin:', errorMessage);
     console.error('\nTo fix this, either:');
     console.error('1. Set FIREBASE_SERVICE_ACCOUNT_PATH in .env pointing to your service account JSON');
     console.error('2. Run: gcloud auth application-default login');

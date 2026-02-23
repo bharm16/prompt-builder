@@ -15,7 +15,6 @@ import { createVideoAvailabilityHandler } from './preview/handlers/videoAvailabi
 import { createVideoGenerateHandler } from './preview/handlers/videoGenerate';
 import { createVideoJobsHandler } from './preview/handlers/videoJobs';
 import { createVideoContentHandler } from './preview/handlers/videoContent';
-import { createPublicVideoContentHandler } from './preview/handlers/publicVideoContent';
 import { createImageContentHandler } from './preview/handlers/imageContent';
 import { createImageUploadHandler } from './preview/handlers/imageUpload';
 import { createImageAssetViewHandler } from './preview/handlers/imageAssetView';
@@ -63,18 +62,6 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));
   router.get('/video/content/:contentId', asyncHandler(videoContentHandler));
   router.get('/image/content/:contentId', asyncHandler(imageContentHandler));
-
-  return router;
-}
-
-export function createPublicPreviewRoutes(
-  services: Pick<PreviewRoutesServices, 'videoGenerationService' | 'videoContentAccessService'>
-): Router {
-  const router = express.Router();
-
-  const publicVideoContentHandler = createPublicVideoContentHandler(services);
-
-  router.get('/video/content/:contentId', asyncHandler(publicVideoContentHandler));
 
   return router;
 }

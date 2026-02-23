@@ -128,15 +128,15 @@ export class ImageGenerationService {
   /**
    * Get a signed URL for a stored image
    */
-  public async getImageUrl(assetId: string): Promise<string | null> {
-    return await this.assetStore.getPublicUrl(assetId);
+  public async getImageUrl(assetId: string, userId: string): Promise<string | null> {
+    return await this.assetStore.getPublicUrl(assetId, userId);
   }
 
   /**
    * Check if an image exists
    */
-  public async imageExists(assetId: string): Promise<boolean> {
-    return await this.assetStore.exists(assetId);
+  public async imageExists(assetId: string, userId: string): Promise<boolean> {
+    return await this.assetStore.exists(assetId, userId);
   }
 
   /**
@@ -154,7 +154,7 @@ export class ImageGenerationService {
     const providerUrl = providerResult.imageUrl;
 
     try {
-      const stored = await this.assetStore.storeFromUrl(providerResult.imageUrl);
+      const stored = await this.assetStore.storeFromUrl(providerResult.imageUrl, userId);
 
       this.log.info('Stored generated image', {
         assetId: stored.id,

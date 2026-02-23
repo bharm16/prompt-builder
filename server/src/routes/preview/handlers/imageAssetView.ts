@@ -39,7 +39,7 @@ export const createImageAssetViewHandler = ({
       });
     }
 
-    const viewUrl = await imageGenerationService.getImageUrl(assetId);
+    const viewUrl = await imageGenerationService.getImageUrl(assetId, userId);
     if (!viewUrl) {
       return res.status(404).json({
         success: false,

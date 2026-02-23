@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import {
+  isKnownGenerationModelInput,
   isKlingModelId,
   isLumaModelId,
   isOpenAISoraModelId,
@@ -70,6 +71,14 @@ describe('ModelRegistry', () => {
   it('returns generation model id directly via helper', () => {
     expect(resolveGenerationModelId('sora')).toBe(VIDEO_MODELS.SORA_2);
     expect(resolveGenerationModelId('wan-2.5')).toBe(VIDEO_MODELS.DRAFT_I2V_WAN_2_5);
+  });
+
+  it('validates known generation model inputs without resolving to defaults', () => {
+    expect(isKnownGenerationModelInput('SORA_2')).toBe(true);
+    expect(isKnownGenerationModelInput('sora')).toBe(true);
+    expect(isKnownGenerationModelInput(VIDEO_MODELS.SORA_2)).toBe(true);
+    expect(isKnownGenerationModelInput('not-a-model')).toBe(false);
+    expect(isKnownGenerationModelInput('  ')).toBe(false);
   });
 
   it('resolves prompt model aliases and passthrough values', () => {

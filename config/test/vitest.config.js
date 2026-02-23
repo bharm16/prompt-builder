@@ -39,6 +39,8 @@ const aliases = [
   { find: '@clients', replacement: path.resolve(__dirname, '../../server/src/clients') },
   { find: /^@server\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/$1') },
   { find: '@server', replacement: path.resolve(__dirname, '../../server/src') },
+  { find: /^@migrations\/(.*)/, replacement: path.resolve(__dirname, '../../scripts/migrations/$1') },
+  { find: '@migrations', replacement: path.resolve(__dirname, '../../scripts/migrations') },
 
   // Client-specific aliases (from client/tsconfig.json)
   { find: /^@\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/$1') },

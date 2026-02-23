@@ -115,7 +115,7 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [], assetStore });
 
-      await expect(service.getImageUrl('asset-id')).rejects.toThrow('asset store unavailable');
+      await expect(service.getImageUrl('asset-id', 'user-1')).rejects.toThrow('asset store unavailable');
     });
 
     it('propagates asset store errors when checking image existence', async () => {
@@ -124,7 +124,7 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [], assetStore });
 
-      await expect(service.imageExists('asset-id')).rejects.toThrow('existence check failed');
+      await expect(service.imageExists('asset-id', 'user-1')).rejects.toThrow('existence check failed');
     });
 
     it('fails when storage persistence fails after generation', async () => {

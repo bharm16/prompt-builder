@@ -32,8 +32,12 @@ export class LocalImageAssetStore implements ImageAssetStore {
     this.initialized = true;
   }
 
-  async storeFromUrl(sourceUrl: string, contentType?: string): Promise<StoredImageAsset> {
-    await this.ensureDirectory();
+  async storeFromUrl(
+    sourceUrl: string,
+    userId: string,
+    contentType?: string
+  ): Promise<StoredImageAsset> {
+    await this.ensureUserDirectory(userId);
 
     const id = uuidv4();
     const response = await fetch(sourceUrl);
@@ -47,18 +51,19 @@ export class LocalImageAssetStore implements ImageAssetStore {
 
     const extension = this.getExtension(resolvedContentType);
     const filename = `${id}${extension}`;
-    const filePath = path.join(this.directory, filename);
+    const userDirectory = this.resolveUserDirectory(userId);
+    const filePath = path.join(userDirectory, filename);
 
     await fs.writeFile(filePath, buffer);
 
     const stats = await fs.stat(filePath);
-    const url = `${this.publicPath}/${id}`;
+    const url = this.buildPublicUrl(userId, id);
 
     this.log.info('Stored image locally', { id, sizeBytes: stats.size });
 
     return {
       id,
-      storagePath: filename,
+      storagePath: `${this.sanitizeUserId(userId)}/${filename}`,
       url,
       contentType: resolvedContentType,
       createdAt: Date.now(),
@@ -66,22 +71,27 @@ export class LocalImageAssetStore implements ImageAssetStore {
     };
   }
 
-  async storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredImageAsset> {
-    await this.ensureDirectory();
+  async storeFromBuffer(
+    buffer: Buffer,
+    contentType: string,
+    userId: string
+  ): Promise<StoredImageAsset> {
+    await this.ensureUserDirectory(userId);
 
     const id = uuidv4();
     const extension = this.getExtension(contentType);
     const filename = `${id}${extension}`;
-    const filePath = path.join(this.directory, filename);
+    const userDirectory = this.resolveUserDirectory(userId);
+    const filePath = path.join(userDirectory, filename);
 
     await fs.writeFile(filePath, buffer);
 
     const stats = await fs.stat(filePath);
-    const url = `${this.publicPath}/${id}`;
+    const url = this.buildPublicUrl(userId, id);
 
     return {
       id,
-      storagePath: filename,
+      storagePath: `${this.sanitizeUserId(userId)}/${filename}`,
       url,
       contentType,
       createdAt: Date.now(),
@@ -89,16 +99,16 @@ export class LocalImageAssetStore implements ImageAssetStore {
     };
   }
 
-  async getPublicUrl(assetId: string): Promise<string | null> {
-    const exists = await this.exists(assetId);
+  async getPublicUrl(assetId: string, userId: string): Promise<string | null> {
+    const exists = await this.exists(assetId, userId);
     if (!exists) {
       return null;
     }
-    return `${this.publicPath}/${assetId}`;
+    return this.buildPublicUrl(userId, assetId);
   }
 
-  async exists(assetId: string): Promise<boolean> {
-    const files = await this.findAssetFiles(assetId);
+  async exists(assetId: string, userId: string): Promise<boolean> {
+    const files = await this.findAssetFiles(assetId, userId);
     return files.length > 0;
   }
 
@@ -109,7 +119,24 @@ export class LocalImageAssetStore implements ImageAssetStore {
 
     try {
       await this.ensureDirectory();
-      const files = await fs.readdir(this.directory);
+      const entries = await fs.readdir(this.directory, { withFileTypes: true });
+      const files: string[] = [];
+
+      for (const entry of entries) {
+        const entryPath = path.join(this.directory, entry.name);
+        if (entry.isFile()) {
+          files.push(entryPath);
+          continue;
+        }
+        if (!entry.isDirectory()) {
+          continue;
+        }
+        const userFiles = await fs.readdir(entryPath);
+        for (const userFile of userFiles) {
+          files.push(path.join(entryPath, userFile));
+        }
+      }
+
       let deleted = 0;
 
       for (const file of files) {
@@ -117,11 +144,10 @@ export class LocalImageAssetStore implements ImageAssetStore {
           break;
         }
 
-        const filePath = path.join(this.directory, file);
         try {
-          const stats = await fs.stat(filePath);
+          const stats = await fs.stat(file);
           if (stats.mtimeMs < olderThanMs) {
-            await fs.unlink(filePath);
+            await fs.unlink(file);
             deleted += 1;
           }
         } catch {
@@ -135,14 +161,40 @@ export class LocalImageAssetStore implements ImageAssetStore {
     }
   }
 
-  private async findAssetFiles(assetId: string): Promise<string[]> {
+  private async findAssetFiles(assetId: string, userId: string): Promise<string[]> {
     try {
-      await this.ensureDirectory();
-      const files = await fs.readdir(this.directory);
-      return files.filter((f) => f.startsWith(assetId));
+      const userDirectory = this.resolveUserDirectory(userId);
+      const files = await fs.readdir(userDirectory);
+      return files.filter((fileName) => {
+        if (fileName === assetId) {
+          return true;
+        }
+        return fileName.startsWith(`${assetId}.`);
+      });
     } catch {
       return [];
     }
+  }
+
+  private async ensureUserDirectory(userId: string): Promise<void> {
+    await this.ensureDirectory();
+    await fs.mkdir(this.resolveUserDirectory(userId), { recursive: true });
+  }
+
+  private resolveUserDirectory(userId: string): string {
+    return path.join(this.directory, this.sanitizeUserId(userId));
+  }
+
+  private buildPublicUrl(userId: string, assetId: string): string {
+    return `${this.publicPath}/${this.sanitizeUserId(userId)}/${assetId}`;
+  }
+
+  private sanitizeUserId(userId: string): string {
+    const trimmed = userId.trim();
+    if (trimmed.length === 0) {
+      return 'anonymous';
+    }
+    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, '_');
   }
 
   private getExtension(contentType: string): string {

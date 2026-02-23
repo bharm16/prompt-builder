@@ -12,6 +12,7 @@ type LogSink = { warn: (message: string, meta?: Record<string, unknown>) => void
 
 const DEFAULT_VIDEO_MODEL = VIDEO_MODELS.PRO || 'wan-video/wan-2.2-t2v-fast';
 const VIDEO_MODEL_IDS = new Set<VideoModelId>(Object.values(VIDEO_MODELS) as VideoModelId[]);
+const VIDEO_MODEL_KEYS = new Set<VideoModelKey>(Object.keys(VIDEO_MODELS) as VideoModelKey[]);
 
 const GENERATION_MODEL_ALIASES: Record<string, VideoModelId> = {
   // Sora
@@ -137,6 +138,23 @@ export function resolveGenerationModelSelection(
 
   log?.warn('Unknown video model requested; falling back to default', { model });
   return { modelId: DEFAULT_VIDEO_MODEL, resolvedBy: 'default', requested: String(model) };
+}
+
+export function isKnownGenerationModelInput(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  if (VIDEO_MODEL_KEYS.has(trimmed as VideoModelKey)) {
+    return true;
+  }
+
+  if (VIDEO_MODEL_IDS.has(trimmed as VideoModelId)) {
+    return true;
+  }
+
+  return Boolean(GENERATION_MODEL_ALIASES[normalizeAliasKey(trimmed)]);
 }
 
 export function resolveGenerationModelId(
