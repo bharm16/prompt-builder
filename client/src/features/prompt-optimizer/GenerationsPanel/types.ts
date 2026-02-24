@@ -39,6 +39,7 @@ export interface GenerationsPanelRuntime {
   };
   timeline: TimelineItem[];
   totalVisibleGenerations: number;
+  canExtendGenerations: boolean;
   isSequenceMode: boolean;
   hasActiveContinuityShot: boolean;
   isStartingSequence: boolean;
@@ -55,6 +56,7 @@ export interface GenerationsPanelRuntime {
   handleRetry: (generation: Generation) => void;
   handleDelete: (generation: Generation) => void;
   handleDownload: (generation: Generation) => void;
+  handleExtendGeneration: (generation: Generation) => void;
   handleCancel: (generation: Generation) => void;
   handleContinueSequence: (generation: Generation) => void;
   handleSelectFrame: (

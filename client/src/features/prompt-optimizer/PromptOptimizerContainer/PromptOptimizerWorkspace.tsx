@@ -179,6 +179,9 @@ function PromptOptimizerContent({
     addKeyframe,
     setStartFrame,
     clearStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsStoreActions();
@@ -199,6 +202,9 @@ function PromptOptimizerContent({
     keyframes,
     setKeyframes,
     setStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
     currentPromptUuid,
     currentPromptDocId,
     promptHistory,
@@ -349,8 +355,18 @@ function PromptOptimizerContent({
   const handleCreateNewWithKeyframes = useCallback((): void => {
     setKeyframes([]);
     clearStartFrame();
+    clearEndFrame();
+    clearVideoReferences();
+    clearExtendVideo();
     handleCreateNew();
-  }, [clearStartFrame, handleCreateNew, setKeyframes]);
+  }, [
+    clearEndFrame,
+    clearExtendVideo,
+    clearStartFrame,
+    clearVideoReferences,
+    handleCreateNew,
+    setKeyframes,
+  ]);
 
   const uploadSidebarImage = useCallback(
     async (file: File): Promise<{
@@ -612,6 +628,7 @@ function PromptOptimizerContent({
         onCreateFromTrigger={assetManagement.onCreateFromTrigger}
         onImageUpload={handleImageUpload}
         onStartFrameUpload={handleStartFrameUpload}
+        onUploadSidebarImage={uploadSidebarImage}
       >
         <PromptResultsActionsProvider
           currentPromptUuid={currentPromptUuid}

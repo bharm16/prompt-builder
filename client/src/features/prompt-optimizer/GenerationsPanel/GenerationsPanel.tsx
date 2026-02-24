@@ -45,6 +45,8 @@ function GenerationsPanelView({
               onRetry={runtime.handleRetry}
               onDelete={runtime.handleDelete}
               onDownload={runtime.handleDownload}
+              onExtend={runtime.handleExtendGeneration}
+              canExtend={runtime.canExtendGenerations}
               onCancel={runtime.handleCancel}
               onContinueSequence={runtime.handleContinueSequence}
               isSequenceMode={isSequenceContext}
@@ -104,6 +106,8 @@ function GenerationsPanelView({
                   onRetry={runtime.handleRetry}
                   onDelete={runtime.handleDelete}
                   onDownload={runtime.handleDownload}
+                  onExtend={runtime.handleExtendGeneration}
+                  canExtend={runtime.canExtendGenerations}
                   onCancel={runtime.handleCancel}
                   onContinueSequence={runtime.handleContinueSequence}
                   isSequenceMode={isSequenceContext}

@@ -316,6 +316,9 @@ export function CanvasWorkspace({
           {...(generationDomain?.onStartFrameUpload
             ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
             : {})}
+          {...(generationDomain?.onUploadSidebarImage
+            ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
+            : {})}
         />
 
         {domain.startFrame ? (
@@ -416,6 +419,9 @@ export function CanvasWorkspace({
               }}
               {...(generationDomain?.onStartFrameUpload
                 ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+                : {})}
+              {...(generationDomain?.onUploadSidebarImage
+                ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
                 : {})}
             />
           </div>

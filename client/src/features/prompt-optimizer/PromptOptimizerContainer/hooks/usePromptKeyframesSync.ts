@@ -8,6 +8,9 @@ type UsePromptKeyframesSyncParams = {
   keyframes: KeyframeTile[];
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
   setStartFrame: (tile: KeyframeTile | null) => void;
+  clearEndFrame: () => void;
+  clearVideoReferences: () => void;
+  clearExtendVideo: () => void;
   currentPromptUuid: string | null | undefined;
   currentPromptDocId: string | null | undefined;
   promptHistory: Pick<PromptHistory, 'history' | 'updateEntryPersisted'>;
@@ -22,6 +25,9 @@ export function usePromptKeyframesSync({
   keyframes,
   setKeyframes,
   setStartFrame,
+  clearEndFrame,
+  clearVideoReferences,
+  clearExtendVideo,
   currentPromptUuid,
   currentPromptDocId,
   promptHistory,
@@ -47,6 +53,9 @@ export function usePromptKeyframesSync({
       if (keyframesRef.current.length) {
         setKeyframes([]);
       }
+      clearEndFrame();
+      clearVideoReferences();
+      clearExtendVideo();
       return;
     }
     const entry = history.find((item) => item.uuid === currentPromptUuid);
@@ -54,12 +63,22 @@ export function usePromptKeyframesSync({
       if (keyframesRef.current.length) {
         setKeyframes([]);
       }
+      clearEndFrame();
+      clearVideoReferences();
+      clearExtendVideo();
       return;
     }
     const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
     if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
     setKeyframes(nextKeyframes);
-  }, [currentPromptUuid, history, setKeyframes]);
+  }, [
+    clearEndFrame,
+    clearExtendVideo,
+    clearVideoReferences,
+    currentPromptUuid,
+    history,
+    setKeyframes,
+  ]);
 
   useEffect(() => {
     if (!currentPromptUuid) {
@@ -90,8 +109,17 @@ export function usePromptKeyframesSync({
       const hydrated = hydrateKeyframes(stored);
       setKeyframes(hydrated);
       setStartFrame(hydrated[0] ?? null);
+      clearEndFrame();
+      clearVideoReferences();
+      clearExtendVideo();
     },
-    [setKeyframes, setStartFrame]
+    [
+      clearEndFrame,
+      clearExtendVideo,
+      clearVideoReferences,
+      setKeyframes,
+      setStartFrame,
+    ]
   );
 
   return { serializedKeyframes, onLoadKeyframes };

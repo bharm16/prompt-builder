@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
+import type { CapabilityValues, CapabilitiesSchema } from '@shared/capabilities';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { logger } from '@/services/LoggingService';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
@@ -28,6 +28,7 @@ interface UseCapabilitiesClampingOptions {
 }
 
 interface UseCapabilitiesClampingResult {
+  schema: CapabilitiesSchema | null;
   aspectRatioInfo: FieldInfo | null;
   durationInfo: FieldInfo | null;
   aspectRatioOptions: string[];
@@ -122,6 +123,7 @@ export function useCapabilitiesClamping({
   }, [durationOptions, duration, onDurationChange]);
 
   return {
+    schema,
     aspectRatioInfo,
     durationInfo,
     aspectRatioOptions,

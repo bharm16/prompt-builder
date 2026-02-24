@@ -14,6 +14,11 @@ export interface GenerationControlsPanelProps {
   onBack?: () => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStartFrameUpload?: (file: File) => void | Promise<void>;
+  onUploadSidebarImage?: (file: File) => Promise<{
+    url: string;
+    storagePath?: string;
+    viewUrlExpiresAt?: string;
+  } | null>;
   onStoryboard: () => void;
 }
 

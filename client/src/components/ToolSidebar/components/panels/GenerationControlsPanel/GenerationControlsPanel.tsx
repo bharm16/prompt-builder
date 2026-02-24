@@ -55,6 +55,7 @@ export function GenerationControlsPanel(
     assets: assetsFromProps,
     onImageUpload: onImageUploadFromProps,
     onStartFrameUpload: onStartFrameUploadFromProps,
+    onUploadSidebarImage: onUploadSidebarImageFromProps,
   } = props;
   const onDraft = onDraftFromProps ?? generationDomain?.onDraft ?? noopDraft;
   const onRender = onRenderFromProps ?? generationDomain?.onRender ?? noopRender;
@@ -65,6 +66,8 @@ export function GenerationControlsPanel(
   const onImageUpload = onImageUploadFromProps ?? generationDomain?.onImageUpload;
   const onStartFrameUpload =
     onStartFrameUploadFromProps ?? generationDomain?.onStartFrameUpload;
+  const onUploadSidebarImage =
+    onUploadSidebarImageFromProps ?? generationDomain?.onUploadSidebarImage;
 
   const mergedProps: GenerationControlsPanelProps = {
     onDraft,
@@ -76,6 +79,7 @@ export function GenerationControlsPanel(
     ...(onBack ? { onBack } : {}),
     ...(onImageUpload ? { onImageUpload } : {}),
     ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
+    ...(onUploadSidebarImage ? { onUploadSidebarImage } : {}),
   };
 
   const {
@@ -95,6 +99,9 @@ export function GenerationControlsPanel(
     tier,
     keyframes,
     startFrame,
+    endFrame,
+    videoReferenceImages,
+    extendVideo,
     cameraMotion,
   } = store;
   const showMotionControls = true;
@@ -290,13 +297,60 @@ export function GenerationControlsPanel(
         disabled={derived.isStartFrameUploadDisabled}
       />
 
+      <input
+        ref={refs.endFrameFileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            void actions.handleEndFrameFile(file);
+          }
+          event.target.value = "";
+        }}
+        disabled={derived.isEndFrameUploadDisabled}
+      />
+
+      <input
+        ref={refs.videoReferenceFileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            void actions.handleVideoReferenceFile(file);
+          }
+          event.target.value = "";
+        }}
+        disabled={derived.isVideoReferenceUploadDisabled}
+      />
+
       {state.activeTab === "video" ? (
         <VideoTabContent
           startFrame={startFrame}
+          endFrame={endFrame}
+          videoReferenceImages={videoReferenceImages}
+          extendVideo={extendVideo}
+          supportsStartFrame={capabilities.videoInputCapabilities.supportsStartFrame}
+          supportsEndFrame={capabilities.videoInputCapabilities.supportsEndFrame}
+          supportsReferenceImages={capabilities.videoInputCapabilities.supportsReferenceImages}
+          supportsExtendVideo={capabilities.videoInputCapabilities.supportsExtendVideo}
+          maxReferenceImages={capabilities.videoInputCapabilities.maxReferenceImages}
           isUploadDisabled={derived.isStartFrameUploadDisabled}
+          isEndFrameUploadDisabled={derived.isEndFrameUploadDisabled}
           onRequestUpload={actions.handleStartFrameUploadRequest}
           onUploadFile={actions.handleStartFrameFile}
           onClearStartFrame={actions.handleClearStartFrame}
+          onRequestEndFrameUpload={actions.handleEndFrameUploadRequest}
+          onEndFrameUpload={actions.handleEndFrameFile}
+          onClearEndFrame={actions.handleClearEndFrame}
+          onRequestVideoReferenceUpload={actions.handleVideoReferenceUploadRequest}
+          onAddVideoReference={actions.handleVideoReferenceFile}
+          onRemoveVideoReference={actions.handleRemoveVideoReference}
+          onUpdateVideoReferenceType={actions.handleUpdateVideoReferenceType}
+          onClearExtendVideo={actions.handleClearExtendVideo}
           faceSwapMode={faceSwap.mode}
           faceSwapCharacterOptions={faceSwap.characterOptions}
           selectedCharacterId={faceSwap.selectedCharacterId}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
 import type { ModelRecommendation } from '@/features/model-intelligence/types';
 import { useCreditBalance } from '@/contexts/CreditBalanceContext';
 import { ModelCornerSelector } from './ModelCornerSelector';
@@ -16,6 +17,7 @@ interface NewSessionViewProps {
   onModelChange: (modelId: string) => void;
   onOpenMotion: () => void;
   onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
+  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
   onEnhance?: () => void;
 }
 
@@ -31,6 +33,7 @@ export function NewSessionView({
   onModelChange,
   onOpenMotion,
   onStartFrameUpload,
+  onUploadSidebarImage,
   onEnhance,
 }: NewSessionViewProps): React.ReactElement {
   const [isFocused, setIsFocused] = useState(false);
@@ -102,6 +105,7 @@ export function NewSessionView({
                   : {})}
                 onOpenMotion={onOpenMotion}
                 {...(onStartFrameUpload ? { onStartFrameUpload } : {})}
+                {...(onUploadSidebarImage ? { onUploadSidebarImage } : {})}
                 {...(onEnhance ? { onEnhance } : {})}
               />
             </div>

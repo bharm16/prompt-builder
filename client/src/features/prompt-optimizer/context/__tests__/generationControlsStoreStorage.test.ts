@@ -24,6 +24,25 @@ const SAMPLE_STATE: GenerationControlsState = {
       source: 'upload',
       storagePath: 'uploads/frame1.png',
     },
+    endFrame: {
+      id: 'end-frame-1',
+      url: 'https://storage.example.com/frame2.png',
+      source: 'upload',
+      storagePath: 'uploads/frame2.png',
+    },
+    videoReferenceImages: [
+      {
+        id: 'ref-1',
+        url: 'https://storage.example.com/reference1.png',
+        referenceType: 'asset',
+        source: 'upload',
+      },
+    ],
+    extendVideo: {
+      url: 'https://storage.example.com/video.mp4',
+      source: 'generation',
+      generationId: 'gen-1',
+    },
     cameraMotion: {
       id: 'pan_left',
       label: 'Pan Left',
@@ -93,6 +112,9 @@ describe('generationControlsStoreStorage', () => {
     expect(loaded.domain.videoTier).toBe('render');
     expect(loaded.domain.keyframes).toHaveLength(1);
     expect(loaded.domain.startFrame?.id).toBe('legacy-kf');
+    expect(loaded.domain.endFrame).toBeNull();
+    expect(loaded.domain.videoReferenceImages).toEqual([]);
+    expect(loaded.domain.extendVideo).toBeNull();
     expect(loaded.domain.cameraMotion?.id).toBe('static');
     expect(loaded.domain.subjectMotion).toBe('Legacy motion');
     expect(loaded.ui.activeTab).toBe('video');
@@ -137,6 +159,9 @@ describe('generationControlsStoreStorage', () => {
     const loaded = loadGenerationControlsStoreState();
     expect(loaded.domain.startFrame?.id).toBe('legacy-start');
     expect(loaded.domain.startFrame?.url).toBe('https://example.com/legacy-start.png');
+    expect(loaded.domain.endFrame).toBeNull();
+    expect(loaded.domain.videoReferenceImages).toEqual([]);
+    expect(loaded.domain.extendVideo).toBeNull();
   });
 
   it('persists to new key only', () => {

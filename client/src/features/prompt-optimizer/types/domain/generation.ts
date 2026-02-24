@@ -50,6 +50,18 @@ export interface GenerationParams {
     storagePath?: string | undefined;
     viewUrlExpiresAt?: string | undefined;
   } | null | undefined;
+  endImage?: {
+    url: string;
+    storagePath?: string | undefined;
+    viewUrlExpiresAt?: string | undefined;
+  } | null | undefined;
+  referenceImages?: Array<{
+    url: string;
+    type: 'asset' | 'style';
+    storagePath?: string | undefined;
+    viewUrlExpiresAt?: string | undefined;
+  }> | undefined;
+  extendVideoUrl?: string | null | undefined;
   characterAssetId?: string | null | undefined;
   faceSwapAlreadyApplied?: boolean | undefined;
   faceSwapUrl?: string | null | undefined;

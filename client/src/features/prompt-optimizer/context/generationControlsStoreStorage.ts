@@ -68,6 +68,24 @@ const KeyframeTileSchema = z.object({
 
 const KeyframesArraySchema = z.array(KeyframeTileSchema).max(3);
 
+const VideoReferenceImageSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  referenceType: z.enum(['asset', 'style']),
+  source: z.enum(['upload', 'library', 'asset']),
+  storagePath: z.string().optional(),
+  assetId: z.string().optional(),
+  viewUrlExpiresAt: z.string().optional(),
+});
+
+const ExtendVideoSourceSchema = z.object({
+  url: z.string(),
+  source: z.enum(['generation', 'upload']),
+  generationId: z.string().optional(),
+  storagePath: z.string().optional(),
+  assetId: z.string().optional(),
+});
+
 const GenerationControlsStoreSchema = z.object({
   domain: z.object({
     selectedModel: z.string(),
@@ -75,6 +93,9 @@ const GenerationControlsStoreSchema = z.object({
     videoTier: VideoTierSchema,
     keyframes: KeyframesArraySchema,
     startFrame: KeyframeTileSchema.nullable().optional().default(null),
+    endFrame: KeyframeTileSchema.nullable().optional().default(null),
+    videoReferenceImages: z.array(VideoReferenceImageSchema).optional().default([]),
+    extendVideo: ExtendVideoSourceSchema.nullable().optional().default(null),
     cameraMotion: CameraPathSchema.nullable(),
     subjectMotion: z.string(),
   }),
@@ -102,6 +123,9 @@ const buildLegacyState = (): GenerationControlsState => ({
       videoTier: loadVideoTier(),
       keyframes,
       startFrame: keyframes[0] ?? null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: null,
       cameraMotion: loadCameraMotion(),
       subjectMotion: loadSubjectMotion(),
     };

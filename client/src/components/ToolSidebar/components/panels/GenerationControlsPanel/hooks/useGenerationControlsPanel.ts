@@ -17,6 +17,10 @@ import type { FieldInfo } from "../utils/capabilities";
 import type { CameraPath } from "@/features/convergence/types";
 import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
 import type { ModelRecommendation } from "@/features/model-intelligence/types";
+import type {
+  ExtendVideoSource,
+  VideoReferenceImage,
+} from "@/features/prompt-optimizer/context/generationControlsStoreTypes";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
@@ -31,11 +35,17 @@ import { useModelSelectionRecommendation } from "./useModelSelectionRecommendati
 import { useFaceSwapState, type FaceSwapMode } from "./useFaceSwapState";
 import { useCapabilitiesClamping } from "./useCapabilitiesClamping";
 import { useCameraMotionModalFlow } from "./useCameraMotionModalFlow";
+import {
+  useVideoInputCapabilities,
+  type VideoInputCapabilities,
+} from "./useVideoInputCapabilities";
 
 export interface UseGenerationControlsPanelResult {
   refs: {
     fileInputRef: RefObject<HTMLInputElement>;
     startFrameFileInputRef: RefObject<HTMLInputElement>;
+    endFrameFileInputRef: RefObject<HTMLInputElement>;
+    videoReferenceFileInputRef: RefObject<HTMLInputElement>;
   };
   state: {
     activeTab: GenerationControlsTab;
@@ -49,14 +59,23 @@ export interface UseGenerationControlsPanelResult {
     tier: VideoTier;
     keyframes: KeyframeTile[];
     startFrame: KeyframeTile | null;
+    endFrame: KeyframeTile | null;
+    videoReferenceImages: VideoReferenceImage[];
+    extendVideo: ExtendVideoSource | null;
     cameraMotion: CameraPath | null;
   };
   derived: {
     isOptimizing: boolean;
     hasStartFrame: boolean;
+    hasEndFrame: boolean;
+    isExtendMode: boolean;
+    videoReferenceCount: number;
     isKeyframeLimitReached: boolean;
+    isVideoReferenceLimitReached: boolean;
     isUploadDisabled: boolean;
     isStartFrameUploadDisabled: boolean;
+    isEndFrameUploadDisabled: boolean;
+    isVideoReferenceUploadDisabled: boolean;
     startFrameUrlHost: string | null;
     hasPrompt: boolean;
     promptLength: number;
@@ -96,6 +115,7 @@ export interface UseGenerationControlsPanelResult {
     durationInfo: FieldInfo | null;
     aspectRatioOptions: string[];
     durationOptions: number[];
+    videoInputCapabilities: VideoInputCapabilities;
   };
   actions: {
     setActiveTab: (tab: GenerationControlsTab) => void;
@@ -110,6 +130,14 @@ export interface UseGenerationControlsPanelResult {
     handleStartFrameFile: (file: File) => Promise<void>;
     handleStartFrameUploadRequest: () => void;
     handleClearStartFrame: () => void;
+    handleEndFrameFile: (file: File) => Promise<void>;
+    handleEndFrameUploadRequest: () => void;
+    handleClearEndFrame: () => void;
+    handleVideoReferenceFile: (file: File) => Promise<void>;
+    handleVideoReferenceUploadRequest: () => void;
+    handleRemoveVideoReference: (id: string) => void;
+    handleUpdateVideoReferenceType: (id: string, type: "asset" | "style") => void;
+    handleClearExtendVideo: () => void;
     handleCameraMotionButtonClick: () => void;
     handleCloseCameraMotionModal: () => void;
     handleSelectCameraMotion: (path: CameraPath) => void;
@@ -133,13 +161,18 @@ export const useGenerationControlsPanel = (
     assets = [],
     onImageUpload,
     onStartFrameUpload,
+    onUploadSidebarImage,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null!);
   const startFrameFileInputRef = useRef<HTMLInputElement>(null!);
+  const endFrameFileInputRef = useRef<HTMLInputElement>(null!);
+  const videoReferenceFileInputRef = useRef<HTMLInputElement>(null!);
   const previousShotIdRef = useRef<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isStartFrameUploading, setIsStartFrameUploading] = useState(false);
+  const [isEndFrameUploading, setIsEndFrameUploading] = useState(false);
+  const [isVideoRefUploading, setIsVideoRefUploading] = useState(false);
 
   const promptHighlights = useOptionalPromptHighlights();
   const { promptOptimizer } = usePromptServices();
@@ -161,6 +194,9 @@ export const useGenerationControlsPanel = (
   const tier = domain.videoTier;
   const keyframes = domain.keyframes;
   const startFrame = domain.startFrame;
+  const endFrame = domain.endFrame;
+  const videoReferenceImages = domain.videoReferenceImages;
+  const extendVideo = domain.extendVideo;
   const cameraMotion = domain.cameraMotion;
   const showMotionControls = true;
 
@@ -246,6 +282,8 @@ export const useGenerationControlsPanel = (
   );
 
   const hasStartFrame = Boolean(startFrame);
+  const hasEndFrame = Boolean(endFrame);
+  const isExtendMode = Boolean(extendVideo);
   const isKeyframeLimitReached = keyframes.length >= 3;
   const startFrameUrl = startFrame?.url ?? null;
   const startFrameUrlHost = safeUrlHost(startFrameUrl);
@@ -275,6 +313,7 @@ export const useGenerationControlsPanel = (
   const isGenerationReady = Boolean(controls);
 
   const {
+    schema,
     aspectRatioInfo,
     durationInfo,
     aspectRatioOptions,
@@ -290,6 +329,12 @@ export const useGenerationControlsPanel = (
     onAspectRatioChange: handleAspectRatioChange,
     onDurationChange: handleDurationChange,
   });
+
+  const videoInputCapabilities = useVideoInputCapabilities(schema);
+  const videoReferenceCount = videoReferenceImages.length;
+  const isVideoReferenceLimitReached =
+    videoInputCapabilities.maxReferenceImages === 0 ||
+    videoReferenceCount >= videoInputCapabilities.maxReferenceImages;
 
   const isUploadDisabled =
     !onImageUpload || isUploading || isKeyframeLimitReached;
@@ -381,22 +426,49 @@ export const useGenerationControlsPanel = (
     setInputPrompt("");
   }, [setInputPrompt]);
 
-  const isStartFrameUploadDisabled = !onStartFrameUpload || isStartFrameUploading;
+  const isStartFrameUploadDisabled =
+    (!onStartFrameUpload && !onUploadSidebarImage) || isStartFrameUploading;
 
   const handleStartFrameFile = useCallback(
     async (file: File): Promise<void> => {
-      if (isStartFrameUploadDisabled || !onStartFrameUpload) return;
-      const result = onStartFrameUpload(file);
-      if (result && typeof (result as Promise<void>).then === "function") {
-        setIsStartFrameUploading(true);
-        try {
-          await result;
-        } finally {
-          setIsStartFrameUploading(false);
+      if (isStartFrameUploadDisabled) return;
+      if (onStartFrameUpload) {
+        const result = onStartFrameUpload(file);
+        if (result && typeof (result as Promise<void>).then === "function") {
+          setIsStartFrameUploading(true);
+          try {
+            await result;
+          } finally {
+            setIsStartFrameUploading(false);
+          }
         }
+        return;
+      }
+
+      if (!onUploadSidebarImage) return;
+      setIsStartFrameUploading(true);
+      try {
+        const uploaded = await onUploadSidebarImage(file);
+        if (!uploaded) return;
+        storeActions.setStartFrame({
+          id: `start-frame-upload-${Date.now()}`,
+          url: uploaded.url,
+          source: "upload",
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
+        });
+      } finally {
+        setIsStartFrameUploading(false);
       }
     },
-    [isStartFrameUploadDisabled, onStartFrameUpload]
+    [
+      isStartFrameUploadDisabled,
+      onStartFrameUpload,
+      onUploadSidebarImage,
+      storeActions,
+    ]
   );
 
   const handleStartFrameUploadRequest = useCallback(() => {
@@ -406,6 +478,90 @@ export const useGenerationControlsPanel = (
 
   const handleClearStartFrame = useCallback(() => {
     storeActions.clearStartFrame();
+  }, [storeActions]);
+
+  const isEndFrameUploadDisabled =
+    !onUploadSidebarImage || isEndFrameUploading;
+
+  const handleEndFrameFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (isEndFrameUploadDisabled || !onUploadSidebarImage) return;
+      setIsEndFrameUploading(true);
+      try {
+        const uploaded = await onUploadSidebarImage(file);
+        if (!uploaded) return;
+        storeActions.setEndFrame({
+          id: `end-frame-upload-${Date.now()}`,
+          url: uploaded.url,
+          source: "upload",
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
+        });
+      } finally {
+        setIsEndFrameUploading(false);
+      }
+    },
+    [isEndFrameUploadDisabled, onUploadSidebarImage, storeActions]
+  );
+
+  const handleEndFrameUploadRequest = useCallback(() => {
+    if (isEndFrameUploadDisabled) return;
+    endFrameFileInputRef.current?.click();
+  }, [isEndFrameUploadDisabled]);
+
+  const handleClearEndFrame = useCallback(() => {
+    storeActions.clearEndFrame();
+  }, [storeActions]);
+
+  const isVideoReferenceUploadDisabled =
+    !onUploadSidebarImage || isVideoRefUploading || isVideoReferenceLimitReached;
+
+  const handleVideoReferenceFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (isVideoReferenceUploadDisabled || !onUploadSidebarImage) return;
+      setIsVideoRefUploading(true);
+      try {
+        const uploaded = await onUploadSidebarImage(file);
+        if (!uploaded) return;
+        storeActions.addVideoReference({
+          url: uploaded.url,
+          referenceType: "asset",
+          source: "upload",
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
+        });
+      } finally {
+        setIsVideoRefUploading(false);
+      }
+    },
+    [isVideoReferenceUploadDisabled, onUploadSidebarImage, storeActions]
+  );
+
+  const handleVideoReferenceUploadRequest = useCallback(() => {
+    if (isVideoReferenceUploadDisabled) return;
+    videoReferenceFileInputRef.current?.click();
+  }, [isVideoReferenceUploadDisabled]);
+
+  const handleRemoveVideoReference = useCallback(
+    (id: string): void => {
+      storeActions.removeVideoReference(id);
+    },
+    [storeActions]
+  );
+
+  const handleUpdateVideoReferenceType = useCallback(
+    (id: string, type: "asset" | "style"): void => {
+      storeActions.updateVideoReferenceType(id, type);
+    },
+    [storeActions]
+  );
+
+  const handleClearExtendVideo = useCallback(() => {
+    storeActions.clearExtendVideo();
   }, [storeActions]);
 
   const trimmedPrompt = prompt.trim();
@@ -427,6 +583,8 @@ export const useGenerationControlsPanel = (
     refs: {
       fileInputRef,
       startFrameFileInputRef,
+      endFrameFileInputRef,
+      videoReferenceFileInputRef,
     },
     state: {
       activeTab,
@@ -440,14 +598,23 @@ export const useGenerationControlsPanel = (
       tier,
       keyframes,
       startFrame,
+      endFrame,
+      videoReferenceImages,
+      extendVideo,
       cameraMotion,
     },
     derived: {
       isOptimizing,
       hasStartFrame,
+      hasEndFrame,
+      isExtendMode,
+      videoReferenceCount,
       isKeyframeLimitReached,
+      isVideoReferenceLimitReached,
       isUploadDisabled,
       isStartFrameUploadDisabled,
+      isEndFrameUploadDisabled,
+      isVideoReferenceUploadDisabled,
       startFrameUrlHost,
       hasPrompt,
       promptLength: trimmedPrompt.length,
@@ -475,6 +642,7 @@ export const useGenerationControlsPanel = (
       durationInfo,
       aspectRatioOptions,
       durationOptions,
+      videoInputCapabilities,
     },
     actions: {
       setActiveTab,
@@ -489,6 +657,14 @@ export const useGenerationControlsPanel = (
       handleStartFrameFile,
       handleStartFrameUploadRequest,
       handleClearStartFrame,
+      handleEndFrameFile,
+      handleEndFrameUploadRequest,
+      handleClearEndFrame,
+      handleVideoReferenceFile,
+      handleVideoReferenceUploadRequest,
+      handleRemoveVideoReference,
+      handleUpdateVideoReferenceType,
+      handleClearExtendVideo,
       handleCameraMotionButtonClick,
       handleCloseCameraMotionModal,
       handleSelectCameraMotion,

@@ -108,6 +108,155 @@ describe('GenerationControlsStore', () => {
     expect(result.current.state.domain.startFrame).toBeNull();
   });
 
+  it('clears extend mode when setting start or end frame', () => {
+    const initialState = buildInitialState({
+      domain: {
+        extendVideo: {
+          url: 'https://example.com/video.mp4',
+          source: 'generation',
+          generationId: 'gen-1',
+        },
+      },
+    });
+
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper(initialState) }
+    );
+
+    act(() => {
+      result.current.actions.setStartFrame({
+        id: 'start-frame',
+        url: 'https://example.com/start.png',
+        source: 'upload',
+      });
+    });
+
+    expect(result.current.state.domain.extendVideo).toBeNull();
+
+    act(() => {
+      result.current.actions.setExtendVideo({
+        url: 'https://example.com/video-2.mp4',
+        source: 'generation',
+        generationId: 'gen-2',
+      });
+    });
+
+    act(() => {
+      result.current.actions.setEndFrame({
+        id: 'end-frame',
+        url: 'https://example.com/end.png',
+        source: 'upload',
+      });
+    });
+
+    expect(result.current.state.domain.extendVideo).toBeNull();
+  });
+
+  it('clears frame and motion inputs when extend mode is set', () => {
+    const initialState = buildInitialState({
+      domain: {
+        startFrame: {
+          id: 'start-frame',
+          url: 'https://example.com/start.png',
+          source: 'upload',
+        },
+        endFrame: {
+          id: 'end-frame',
+          url: 'https://example.com/end.png',
+          source: 'upload',
+        },
+        cameraMotion: SAMPLE_CAMERA_MOTION,
+        subjectMotion: 'Walk forward',
+      },
+    });
+
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper(initialState) }
+    );
+
+    act(() => {
+      result.current.actions.setExtendVideo({
+        url: 'https://example.com/video.mp4',
+        source: 'generation',
+        generationId: 'gen-1',
+      });
+    });
+
+    expect(result.current.state.domain.extendVideo?.url).toBe(
+      'https://example.com/video.mp4'
+    );
+    expect(result.current.state.domain.startFrame).toBeNull();
+    expect(result.current.state.domain.endFrame).toBeNull();
+    expect(result.current.state.domain.cameraMotion).toBeNull();
+    expect(result.current.state.domain.subjectMotion).toBe('');
+  });
+
+  it('adds, updates, removes, and clears video references with max limit', () => {
+    const { result } = renderHook(
+      () => ({
+        state: useGenerationControlsStoreState(),
+        actions: useGenerationControlsStoreActions(),
+      }),
+      { wrapper: buildWrapper() }
+    );
+
+    act(() => {
+      result.current.actions.addVideoReference({
+        url: 'https://example.com/reference-1.png',
+        referenceType: 'asset',
+        source: 'upload',
+      });
+      result.current.actions.addVideoReference({
+        url: 'https://example.com/reference-2.png',
+        referenceType: 'asset',
+        source: 'upload',
+      });
+      result.current.actions.addVideoReference({
+        url: 'https://example.com/reference-3.png',
+        referenceType: 'asset',
+        source: 'upload',
+      });
+      result.current.actions.addVideoReference({
+        url: 'https://example.com/reference-4.png',
+        referenceType: 'asset',
+        source: 'upload',
+      });
+    });
+
+    expect(result.current.state.domain.videoReferenceImages).toHaveLength(3);
+
+    const referenceId = result.current.state.domain.videoReferenceImages[0]?.id;
+    if (!referenceId) {
+      throw new Error('Expected a reference id');
+    }
+
+    act(() => {
+      result.current.actions.updateVideoReferenceType(referenceId, 'style');
+    });
+    expect(
+      result.current.state.domain.videoReferenceImages.find((item) => item.id === referenceId)
+        ?.referenceType
+    ).toBe('style');
+
+    act(() => {
+      result.current.actions.removeVideoReference(referenceId);
+    });
+    expect(result.current.state.domain.videoReferenceImages).toHaveLength(2);
+
+    act(() => {
+      result.current.actions.clearVideoReferences();
+    });
+    expect(result.current.state.domain.videoReferenceImages).toHaveLength(0);
+  });
+
   it('resets motion only when start frame identity changes', () => {
     const initialState = buildInitialState({
       domain: {

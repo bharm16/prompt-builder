@@ -5,9 +5,11 @@ import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type ConstraintMode,
+  type ExtendVideoSource,
   type GenerationControlsState,
   type GenerationControlsTab,
   type ImageSubTab,
+  type VideoReferenceImage,
 } from './generationControlsStoreTypes';
 import {
   loadGenerationControlsStoreState,
@@ -15,6 +17,7 @@ import {
 } from './generationControlsStoreStorage';
 
 const MAX_KEYFRAMES = 3;
+const MAX_VIDEO_REFERENCES = 3;
 
 type GenerationControlsAction =
   | { type: 'setSelectedModel'; value: string }
@@ -22,7 +25,15 @@ type GenerationControlsAction =
   | { type: 'mergeGenerationParams'; value: CapabilityValues }
   | { type: 'setVideoTier'; value: VideoTier }
   | { type: 'setStartFrame'; value: KeyframeTile | null }
+  | { type: 'setEndFrame'; value: KeyframeTile | null }
   | { type: 'clearStartFrame' }
+  | { type: 'clearEndFrame' }
+  | { type: 'addVideoReference'; value: Omit<VideoReferenceImage, 'id'> }
+  | { type: 'removeVideoReference'; value: string }
+  | { type: 'updateVideoReferenceType'; value: { id: string; referenceType: 'asset' | 'style' } }
+  | { type: 'clearVideoReferences' }
+  | { type: 'setExtendVideo'; value: ExtendVideoSource | null }
+  | { type: 'clearExtendVideo' }
   | { type: 'setKeyframes'; value: KeyframeTile[] | null | undefined }
   | { type: 'addKeyframe'; value: Omit<KeyframeTile, 'id'> }
   | { type: 'removeKeyframe'; value: string }
@@ -40,7 +51,15 @@ export interface GenerationControlsActions {
   mergeGenerationParams: (params: CapabilityValues) => void;
   setVideoTier: (tier: VideoTier) => void;
   setStartFrame: (tile: KeyframeTile | null) => void;
+  setEndFrame: (tile: KeyframeTile | null) => void;
   clearStartFrame: () => void;
+  clearEndFrame: () => void;
+  addVideoReference: (ref: Omit<VideoReferenceImage, 'id'>) => void;
+  removeVideoReference: (id: string) => void;
+  updateVideoReferenceType: (id: string, referenceType: 'asset' | 'style') => void;
+  clearVideoReferences: () => void;
+  setExtendVideo: (source: ExtendVideoSource | null) => void;
+  clearExtendVideo: () => void;
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
   addKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
   removeKeyframe: (id: string) => void;
@@ -212,7 +231,20 @@ const reducer = (
         domain: {
           ...state.domain,
           startFrame: nextStartFrame,
+          ...(nextStartFrame ? { extendVideo: null } : {}),
           ...motion,
+        },
+      };
+    }
+    case 'setEndFrame': {
+      const nextEndFrame = action.value;
+      if (areKeyframeTilesEqual(state.domain.endFrame, nextEndFrame)) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          endFrame: nextEndFrame,
+          ...(nextEndFrame ? { extendVideo: null } : {}),
         },
       };
     }
@@ -225,6 +257,106 @@ const reducer = (
           ...state.domain,
           startFrame: null,
           ...motion,
+        },
+      };
+    }
+    case 'clearEndFrame': {
+      if (!state.domain.endFrame) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          endFrame: null,
+        },
+      };
+    }
+    case 'addVideoReference': {
+      if (state.domain.videoReferenceImages.length >= MAX_VIDEO_REFERENCES) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          videoReferenceImages: [
+            ...state.domain.videoReferenceImages,
+            { id: createKeyframeId(), ...action.value },
+          ],
+        },
+      };
+    }
+    case 'removeVideoReference': {
+      const next = state.domain.videoReferenceImages.filter((reference) => reference.id !== action.value);
+      if (next.length === state.domain.videoReferenceImages.length) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          videoReferenceImages: next,
+        },
+      };
+    }
+    case 'updateVideoReferenceType': {
+      const { id, referenceType } = action.value;
+      let hasChanges = false;
+      const next = state.domain.videoReferenceImages.map((reference) => {
+        if (reference.id !== id) return reference;
+        if (reference.referenceType === referenceType) return reference;
+        hasChanges = true;
+        return { ...reference, referenceType };
+      });
+      if (!hasChanges) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          videoReferenceImages: next,
+        },
+      };
+    }
+    case 'clearVideoReferences': {
+      if (state.domain.videoReferenceImages.length === 0) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          videoReferenceImages: [],
+        },
+      };
+    }
+    case 'setExtendVideo': {
+      const next = action.value;
+      const current = state.domain.extendVideo;
+      const isSame =
+        current === next ||
+        (Boolean(current) === Boolean(next) &&
+          current?.url === next?.url &&
+          current?.source === next?.source &&
+          current?.generationId === next?.generationId &&
+          current?.storagePath === next?.storagePath &&
+          current?.assetId === next?.assetId);
+      if (isSame) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          extendVideo: next,
+          ...(next
+            ? {
+                startFrame: null,
+                endFrame: null,
+                cameraMotion: null,
+                subjectMotion: '',
+              }
+            : {}),
+        },
+      };
+    }
+    case 'clearExtendVideo': {
+      if (!state.domain.extendVideo) return state;
+      return {
+        ...state,
+        domain: {
+          ...state.domain,
+          extendVideo: null,
         },
       };
     }
@@ -335,7 +467,16 @@ export function GenerationControlsStoreProvider({
       mergeGenerationParams: (value) => dispatch({ type: 'mergeGenerationParams', value }),
       setVideoTier: (value) => dispatch({ type: 'setVideoTier', value }),
       setStartFrame: (value) => dispatch({ type: 'setStartFrame', value }),
+      setEndFrame: (value) => dispatch({ type: 'setEndFrame', value }),
       clearStartFrame: () => dispatch({ type: 'clearStartFrame' }),
+      clearEndFrame: () => dispatch({ type: 'clearEndFrame' }),
+      addVideoReference: (value) => dispatch({ type: 'addVideoReference', value }),
+      removeVideoReference: (value) => dispatch({ type: 'removeVideoReference', value }),
+      updateVideoReferenceType: (id, referenceType) =>
+        dispatch({ type: 'updateVideoReferenceType', value: { id, referenceType } }),
+      clearVideoReferences: () => dispatch({ type: 'clearVideoReferences' }),
+      setExtendVideo: (value) => dispatch({ type: 'setExtendVideo', value }),
+      clearExtendVideo: () => dispatch({ type: 'clearExtendVideo' }),
       setKeyframes: (value) => dispatch({ type: 'setKeyframes', value }),
       addKeyframe: (value) => dispatch({ type: 'addKeyframe', value }),
       removeKeyframe: (value) => dispatch({ type: 'removeKeyframe', value }),

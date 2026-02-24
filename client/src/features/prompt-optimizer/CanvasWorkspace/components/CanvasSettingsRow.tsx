@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
-import { Sparkles, Folder } from '@promptstudio/system/components/ui';
+import { Sparkles, Folder, X } from '@promptstudio/system/components/ui';
+import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, STORYBOARD_COST } from '@/components/ToolSidebar/config/modelConfig';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import {
@@ -7,8 +8,11 @@ import {
   useGenerationControlsStoreState,
 } from '@/features/prompt-optimizer/context/GenerationControlsStore';
 import { useCapabilitiesClamping } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
+import { useVideoInputCapabilities } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities';
 import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
 import { StartFramePopover } from './StartFramePopover';
+import { EndFramePopover } from './EndFramePopover';
+import { VideoReferencesPopover } from './VideoReferencesPopover';
 import { MiniDropdown } from './MiniDropdown';
 
 interface CanvasSettingsRowProps {
@@ -20,6 +24,7 @@ interface CanvasSettingsRowProps {
   recommendationAgeMs?: number | null | undefined;
   onOpenMotion: () => void;
   onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
+  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
   onEnhance?: () => void;
 }
 
@@ -79,6 +84,7 @@ export function CanvasSettingsRow({
   recommendationAgeMs,
   onOpenMotion,
   onStartFrameUpload,
+  onUploadSidebarImage,
   onEnhance,
 }: CanvasSettingsRowProps): React.ReactElement {
   const { controls } = useGenerationControlsContext();
@@ -112,7 +118,7 @@ export function CanvasSettingsRow({
     [storeActions]
   );
 
-  const { aspectRatioOptions, durationOptions } = useCapabilitiesClamping({
+  const { aspectRatioOptions, durationOptions, schema } = useCapabilitiesClamping({
     activeTab: 'video',
     selectedModel: domain.selectedModel,
     videoTier: domain.videoTier,
@@ -123,6 +129,7 @@ export function CanvasSettingsRow({
     onAspectRatioChange: handleAspectRatioChange,
     onDurationChange: handleDurationChange,
   });
+  const videoInputCapabilities = useVideoInputCapabilities(schema ?? null);
 
   const renderModelCost =
     VIDEO_RENDER_MODELS.find((model) => model.id === renderModelId)?.cost ??
@@ -183,6 +190,55 @@ export function CanvasSettingsRow({
           onStartFrameUpload={onStartFrameUpload}
           disabled={isGenerating}
         />
+
+        {videoInputCapabilities.supportsEndFrame ? (
+          <EndFramePopover
+            endFrame={domain.endFrame}
+            onSetEndFrame={storeActions.setEndFrame}
+            onClearEndFrame={storeActions.clearEndFrame}
+            onUploadSidebarImage={onUploadSidebarImage}
+            disabled={isGenerating}
+          />
+        ) : null}
+
+        {videoInputCapabilities.supportsReferenceImages ? (
+          <VideoReferencesPopover
+            references={domain.videoReferenceImages}
+            maxSlots={videoInputCapabilities.maxReferenceImages}
+            onAddReference={storeActions.addVideoReference}
+            onRemoveReference={storeActions.removeVideoReference}
+            onUpdateReferenceType={storeActions.updateVideoReferenceType}
+            onUploadSidebarImage={onUploadSidebarImage}
+            disabled={isGenerating}
+          />
+        ) : null}
+
+        {domain.extendVideo ? (
+          <div className="inline-flex h-[30px] items-center gap-1 rounded-lg bg-[#1C1E26] pl-2.5 pr-1 text-xs font-medium text-[#E2E6EF]">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1.2" y="2.2" width="6.4" height="6" rx="1" />
+              <path d="M7.6 4.2 9.8 3v5L7.6 6.8" />
+            </svg>
+            Extending
+            <button
+              type="button"
+              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded text-[#8B92A5] transition-colors hover:bg-[#22252C] hover:text-[#E2E6EF]"
+              onClick={() => storeActions.clearExtendVideo()}
+              aria-label="Clear extend mode"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        ) : null}
 
         {/* Assets */}
         <BarBtn onClick={(e) => e.stopPropagation()}>

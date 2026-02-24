@@ -25,6 +25,8 @@ interface GenerationCardProps {
   onRetry?: ((generation: Generation) => void) | undefined;
   onDelete?: ((generation: Generation) => void) | undefined;
   onDownload?: ((generation: Generation) => void) | undefined;
+  onExtend?: ((generation: Generation) => void) | undefined;
+  canExtend?: boolean | undefined;
   onCancel?: ((generation: Generation) => void) | undefined;
   onContinueSequence?: ((generation: Generation) => void) | undefined;
   isSequenceMode?: boolean | undefined;
@@ -42,6 +44,8 @@ export const GenerationCard = memo(function GenerationCard({
   onRetry,
   onDelete,
   onDownload,
+  onExtend,
+  canExtend = false,
   onCancel,
   onContinueSequence,
   isSequenceMode = false,
@@ -76,6 +80,12 @@ export const GenerationCard = memo(function GenerationCard({
     generation.status === 'completed' &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
+  const showExtend =
+    canExtend &&
+    generation.status === 'completed' &&
+    generation.mediaType === 'video' &&
+    Boolean(mediaUrl) &&
+    Boolean(onExtend);
   const canSelectFrames =
     generation.mediaType === 'image-sequence' &&
     generation.status === 'completed' &&
@@ -230,6 +240,19 @@ export const GenerationCard = memo(function GenerationCard({
           >
             <Download size={12} aria-hidden="true" />
             Download
+          </Button>
+        )}
+        {showExtend && mediaUrl && onExtend && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            onClick={(event) => {
+              event.stopPropagation();
+              onExtend(generation);
+            }}
+          >
+            Extend
           </Button>
         )}
         {showContinueScene && (

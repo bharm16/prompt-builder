@@ -27,8 +27,26 @@ export interface StartImage {
   viewUrlExpiresAt?: string;
 }
 
+export interface SidebarUploadedImage {
+  url: string;
+  storagePath?: string;
+  viewUrlExpiresAt?: string;
+}
+
 export interface GenerationOverrides {
   startImage?: StartImage | null;
+  endImage?: {
+    url: string;
+    storagePath?: string;
+    viewUrlExpiresAt?: string;
+  } | null;
+  referenceImages?: Array<{
+    url: string;
+    type: 'asset' | 'style';
+    storagePath?: string;
+    viewUrlExpiresAt?: string;
+  }>;
+  extendVideoUrl?: string | null;
   generationParams?: Record<string, unknown>;
   characterAssetId?: string | null;
   faceSwapAlreadyApplied?: boolean;
@@ -64,6 +82,7 @@ export interface ToolSidebarGenerationDomain {
   onRender: (model: string, overrides?: GenerationOverrides) => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStartFrameUpload?: (file: File) => void | Promise<void>;
+  onUploadSidebarImage?: (file: File) => Promise<SidebarUploadedImage | null>;
   onStoryboard: () => void;
 }
 

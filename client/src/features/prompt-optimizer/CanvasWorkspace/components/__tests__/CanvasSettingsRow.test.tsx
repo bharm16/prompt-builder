@@ -16,10 +16,28 @@ vi.mock('../StartFramePopover', () => ({
   StartFramePopover: () => <div data-testid="start-frame-popover" />,
 }));
 
+vi.mock('../EndFramePopover', () => ({
+  EndFramePopover: () => <div data-testid="end-frame-popover" />,
+}));
+
+vi.mock('../VideoReferencesPopover', () => ({
+  VideoReferencesPopover: () => <div data-testid="video-references-popover" />,
+}));
+
 vi.mock(
   '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping',
   () => ({
     useCapabilitiesClamping: () => ({
+      schema: {
+        provider: 'generic',
+        model: 'google/veo-3',
+        version: '1',
+        fields: {
+          last_frame: { type: 'bool', default: true },
+          reference_images: { type: 'bool', default: true },
+          extend_video: { type: 'bool', default: true },
+        },
+      },
       aspectRatioInfo: null,
       durationInfo: null,
       aspectRatioOptions: ['16:9', '9:16'],
@@ -146,5 +164,44 @@ describe('CanvasSettingsRow', () => {
 
     expect(screen.getByTestId('canvas-preview-button')).toBeDisabled();
     expect(screen.getByTestId('canvas-generate-button')).toBeDisabled();
+  });
+
+  it('shows end frame and references controls in prompt input row', () => {
+    renderRow({
+      controls: {
+        onStoryboard: vi.fn(),
+        onDraft: vi.fn(),
+        onRender: vi.fn(),
+        isGenerating: false,
+        activeDraftModel: null,
+      },
+    });
+
+    expect(screen.getByTestId('start-frame-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('end-frame-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('video-references-popover')).toBeInTheDocument();
+  });
+
+  it('shows extend chip and clears extend mode from prompt row', () => {
+    renderRow({
+      controls: {
+        onStoryboard: vi.fn(),
+        onDraft: vi.fn(),
+        onRender: vi.fn(),
+        isGenerating: false,
+        activeDraftModel: null,
+      },
+      state: buildState({
+        extendVideo: {
+          url: 'https://example.com/source.mp4',
+          source: 'generation',
+          generationId: 'gen-1',
+        },
+      }),
+    });
+
+    expect(screen.getByText('Extending')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear extend mode' }));
+    expect(screen.queryByText('Extending')).not.toBeInTheDocument();
   });
 });

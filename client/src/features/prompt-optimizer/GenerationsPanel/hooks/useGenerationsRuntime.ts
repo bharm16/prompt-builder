@@ -4,6 +4,7 @@ import { useCreditBalance } from '@/contexts/CreditBalanceContext';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { useToast } from '@components/Toast';
 import { logger } from '@/services/LoggingService';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { usePromptNavigation, usePromptSession } from '../../context/PromptStateContext';
 import { useWorkspaceSession } from '../../context/WorkspaceSessionContext';
 import { useGenerationControlsContext } from '../../context/GenerationControlsContext';
@@ -20,6 +21,7 @@ import { useGenerationMediaRefresh } from './useGenerationMediaRefresh';
 import { useKeyframeWorkflow } from './useKeyframeWorkflow';
 import { useGenerationsTimeline } from './useGenerationsTimeline';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
+import { useCapabilities } from '@/features/prompt-optimizer/hooks/useCapabilities';
 import type {
   Generation,
   GenerationsPanelProps,
@@ -111,11 +113,32 @@ export function useGenerationsRuntime({
   const authUidRef = useRef(authUser?.uid);
   authUidRef.current = authUser?.uid;
   const { domain } = useGenerationControlsStoreState();
-  const { setStartFrame, clearStartFrame } = useGenerationControlsStoreActions();
-  const keyframes = domain.keyframes;
-  const startFrame = domain.startFrame;
-  const cameraMotion = domain.cameraMotion;
-  const subjectMotion = domain.subjectMotion;
+  const {
+    setStartFrame,
+    clearStartFrame,
+    setExtendVideo,
+    clearExtendVideo,
+  } = useGenerationControlsStoreActions();
+  const selectedModelId =
+    typeof domain.selectedModel === 'string' ? domain.selectedModel.trim() : '';
+  const keyframes = useMemo(() => domain.keyframes ?? [], [domain.keyframes]);
+  const startFrame = domain.startFrame ?? null;
+  const endFrame = domain.endFrame ?? null;
+  const videoReferenceImages = useMemo(
+    () => domain.videoReferenceImages ?? [],
+    [domain.videoReferenceImages]
+  );
+  const extendVideo = domain.extendVideo ?? null;
+  const cameraMotion = domain.cameraMotion ?? null;
+  const subjectMotion = typeof domain.subjectMotion === 'string' ? domain.subjectMotion : '';
+
+  const { schema: selectedModelSchema } = useCapabilities(
+    selectedModelId || undefined,
+    { enabled: Boolean(selectedModelId) }
+  );
+
+  const selectedModelSupportsExtend =
+    selectedModelSchema?.fields?.extend_video?.default === true;
 
   const mergedGenerationParams = useMemo(() => {
     const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;
@@ -187,6 +210,19 @@ export function useGenerationsRuntime({
     });
   }, [motionMergeMeta]);
 
+  useEffect(() => {
+    if (!extendVideo) return;
+    if (!selectedModelId || !selectedModelSchema) return;
+    if (selectedModelSupportsExtend) return;
+    clearExtendVideo();
+  }, [
+    clearExtendVideo,
+    extendVideo,
+    selectedModelId,
+    selectedModelSchema,
+    selectedModelSupportsExtend,
+  ]);
+
   const generationActionsOptions = useMemo(
     () => ({
       aspectRatio,
@@ -240,6 +276,61 @@ export function useGenerationsRuntime({
     };
   }, [faceSwapPreview?.characterAssetId, faceSwapPreview?.url]);
 
+  const storeDrivenOverrides = useMemo<GenerationOverrides | undefined>(() => {
+    const overrides: GenerationOverrides = {};
+
+    if (startFrame) {
+      overrides.startImage = {
+        url: startFrame.url,
+        source: startFrame.source,
+        ...(startFrame.assetId ? { assetId: startFrame.assetId } : {}),
+        ...(startFrame.storagePath ? { storagePath: startFrame.storagePath } : {}),
+        ...(startFrame.viewUrlExpiresAt
+          ? { viewUrlExpiresAt: startFrame.viewUrlExpiresAt }
+          : {}),
+      };
+    }
+
+    if (endFrame?.url) {
+      overrides.endImage = {
+        url: endFrame.url,
+        ...(endFrame.storagePath ? { storagePath: endFrame.storagePath } : {}),
+        ...(endFrame.viewUrlExpiresAt
+          ? { viewUrlExpiresAt: endFrame.viewUrlExpiresAt }
+          : {}),
+      };
+    }
+
+    if (videoReferenceImages.length > 0) {
+      overrides.referenceImages = videoReferenceImages.map((reference) => ({
+        url: reference.url,
+        type: reference.referenceType,
+        ...(reference.storagePath ? { storagePath: reference.storagePath } : {}),
+        ...(reference.viewUrlExpiresAt
+          ? { viewUrlExpiresAt: reference.viewUrlExpiresAt }
+          : {}),
+      }));
+    }
+
+    if (extendVideo?.url) {
+      overrides.extendVideoUrl = extendVideo.url;
+    }
+
+    return Object.keys(overrides).length > 0 ? overrides : undefined;
+  }, [endFrame, extendVideo, startFrame, videoReferenceImages]);
+
+  const mergeRuntimeOverrides = useCallback(
+    (overrides?: GenerationOverrides): GenerationOverrides | undefined => {
+      const merged: GenerationOverrides = {
+        ...(storeDrivenOverrides ?? {}),
+        ...(overrides ?? {}),
+      };
+
+      return Object.keys(merged).length > 0 ? merged : undefined;
+    },
+    [storeDrivenOverrides]
+  );
+
   const hasCreditsFor = useCallback(
     (required: number, operation: string): boolean => {
       if (!authUidRef.current) return true;
@@ -287,23 +378,9 @@ export function useGenerationsRuntime({
       if (!hasCreditsFor(requiredCredits, operationLabel)) {
         return;
       }
-      const resolvedOverrides = overrides ?? faceSwapOverride ?? undefined;
+      const resolvedOverrides = mergeRuntimeOverrides(overrides ?? faceSwapOverride ?? undefined);
       const versionId = onCreateVersionIfNeeded();
-      const resolvedStartImage =
-        resolvedOverrides?.startImage ??
-        (startFrame
-          ? {
-              url: startFrame.url,
-              source: startFrame.source,
-              ...(startFrame.assetId ? { assetId: startFrame.assetId } : {}),
-              ...(startFrame.storagePath
-                ? { storagePath: startFrame.storagePath }
-                : {}),
-              ...(startFrame.viewUrlExpiresAt
-                ? { viewUrlExpiresAt: startFrame.viewUrlExpiresAt }
-                : {}),
-            }
-          : null);
+      const resolvedStartImage = resolvedOverrides?.startImage ?? null;
       const autoCharacterAssetId =
         resolvedOverrides?.characterAssetId ??
         (!resolvedStartImage ? detectedCharacter?.id : undefined);
@@ -311,6 +388,13 @@ export function useGenerationsRuntime({
       generateDraft(model, prompt, {
         promptVersionId: versionId,
         ...(resolvedStartImage ? { startImage: resolvedStartImage } : {}),
+        ...(resolvedOverrides?.endImage ? { endImage: resolvedOverrides.endImage } : {}),
+        ...(resolvedOverrides?.referenceImages?.length
+          ? { referenceImages: resolvedOverrides.referenceImages }
+          : {}),
+        ...(resolvedOverrides?.extendVideoUrl
+          ? { extendVideoUrl: resolvedOverrides.extendVideoUrl }
+          : {}),
         ...(autoCharacterAssetId
           ? { characterAssetId: autoCharacterAssetId }
           : {}),
@@ -335,10 +419,10 @@ export function useGenerationsRuntime({
       generateSequenceShot,
       hasActiveContinuityShot,
       hasCreditsFor,
+      mergeRuntimeOverrides,
       mergedGenerationParams,
       onCreateVersionIfNeeded,
       prompt,
-      startFrame,
     ]
   );
 
@@ -405,11 +489,8 @@ export function useGenerationsRuntime({
       if (!hasCreditsFor(requiredCredits, operationLabel)) {
         return;
       }
-      if (!overrides && faceSwapOverride) {
-        handleRender(model, faceSwapOverride);
-        return;
-      }
-      handleRender(model, overrides);
+      const resolvedOverrides = mergeRuntimeOverrides(overrides ?? faceSwapOverride ?? undefined);
+      handleRender(model, resolvedOverrides);
     },
     [
       faceSwapOverride,
@@ -417,6 +498,7 @@ export function useGenerationsRuntime({
       handleRender,
       hasActiveContinuityShot,
       hasCreditsFor,
+      mergeRuntimeOverrides,
       onCreateVersionIfNeeded,
     ]
   );
@@ -511,6 +593,44 @@ export function useGenerationsRuntime({
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, []);
+
+  const handleExtendGeneration = useCallback(
+    (generation: Generation) => {
+      if (!selectedModelSupportsExtend) return;
+      if (generation.status !== 'completed' || generation.mediaType !== 'video') return;
+      const mediaUrl = generation.mediaUrls[0] ?? null;
+      if (!mediaUrl) {
+        toast.warning('This generation is missing a video source for extension.');
+        return;
+      }
+
+      const { storagePath, assetId } = resolvePrimaryVideoSource(
+        mediaUrl,
+        generation.mediaAssetIds?.[0] ?? null
+      );
+
+      void (async () => {
+        const resolved = await resolveMediaUrl({
+          kind: 'video',
+          url: mediaUrl,
+          storagePath,
+          assetId,
+          preferFresh: true,
+        });
+        const resolvedStoragePath = resolved.storagePath ?? storagePath;
+        const resolvedAssetId = resolved.assetId ?? assetId;
+
+        setExtendVideo({
+          url: resolved.url ?? mediaUrl,
+          source: 'generation',
+          generationId: generation.id,
+          ...(resolvedStoragePath ? { storagePath: resolvedStoragePath } : {}),
+          ...(resolvedAssetId ? { assetId: resolvedAssetId } : {}),
+        });
+      })();
+    },
+    [selectedModelSupportsExtend, setExtendVideo, toast]
+  );
 
   const handleContinueSequence = useCallback(
     async (generation: Generation) => {
@@ -627,6 +747,7 @@ export function useGenerationsRuntime({
     () => timeline.filter((item) => item.type === 'generation').length,
     [timeline]
   );
+  const canExtendGenerations = Boolean(selectedModelSupportsExtend);
 
   const isNonStoryboardGenerating = useMemo(
     () =>
@@ -716,6 +837,7 @@ export function useGenerationsRuntime({
     keyframeStep,
     timeline,
     totalVisibleGenerations,
+    canExtendGenerations,
     isSequenceMode,
     hasActiveContinuityShot,
     isStartingSequence,
@@ -729,6 +851,7 @@ export function useGenerationsRuntime({
     handleRetry,
     handleDelete,
     handleDownload,
+    handleExtendGeneration,
     handleCancel,
     handleContinueSequence,
     handleSelectFrame,

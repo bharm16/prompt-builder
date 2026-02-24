@@ -29,6 +29,11 @@ interface SidebarDataProviderProps {
   onCreateFromTrigger?: (trigger: string) => void;
   onImageUpload?: (file: File) => void | Promise<void>;
   onStartFrameUpload?: (file: File) => void | Promise<void>;
+  onUploadSidebarImage?: (file: File) => Promise<{
+    url: string;
+    storagePath?: string;
+    viewUrlExpiresAt?: string;
+  } | null>;
 }
 
 export function SidebarDataProvider({
@@ -41,6 +46,7 @@ export function SidebarDataProvider({
   onCreateFromTrigger,
   onImageUpload,
   onStartFrameUpload,
+  onUploadSidebarImage,
 }: SidebarDataProviderProps): React.ReactElement {
   const { promptHistory, promptOptimizer } = usePromptServices();
   const { selectedModel } = usePromptConfig();
@@ -48,7 +54,13 @@ export function SidebarDataProvider({
   const { initialHighlights } = usePromptHighlights();
   const { currentPromptUuid, currentPromptDocId } = usePromptSession();
   const { handleCreateNew, loadFromHistory } = usePromptActions();
-  const { setKeyframes, setStartFrame } = useGenerationControlsStoreActions();
+  const {
+    setKeyframes,
+    setStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
+  } = useGenerationControlsStoreActions();
   const { controls } = useGenerationControlsContext();
   const { insertAtCaret } = usePromptInsertionBus();
 
@@ -61,6 +73,9 @@ export function SidebarDataProvider({
     promptHistory,
     setKeyframes,
     setStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
     loadFromHistory,
     handleCreateNew,
   });
@@ -171,8 +186,9 @@ export function SidebarDataProvider({
       },
       ...(onImageUpload ? { onImageUpload } : {}),
       ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
+      ...(onUploadSidebarImage ? { onUploadSidebarImage } : {}),
     }),
-    [controls, onImageUpload, onStartFrameUpload]
+    [controls, onImageUpload, onStartFrameUpload, onUploadSidebarImage]
   );
 
   const assetsDomain = useMemo(

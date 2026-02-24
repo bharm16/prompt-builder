@@ -6,12 +6,33 @@ export type GenerationControlsTab = 'video' | 'image';
 export type ImageSubTab = 'references' | 'styles';
 export type ConstraintMode = 'strict' | 'flexible' | 'transform';
 
+export interface VideoReferenceImage {
+  id: string;
+  url: string;
+  referenceType: 'asset' | 'style';
+  source: 'upload' | 'library' | 'asset';
+  storagePath?: string;
+  assetId?: string;
+  viewUrlExpiresAt?: string;
+}
+
+export interface ExtendVideoSource {
+  url: string;
+  source: 'generation' | 'upload';
+  generationId?: string;
+  storagePath?: string;
+  assetId?: string;
+}
+
 export interface GenerationControlsDomainState {
   selectedModel: string;
   generationParams: CapabilityValues;
   videoTier: VideoTier;
   keyframes: KeyframeTile[];
   startFrame: KeyframeTile | null;
+  endFrame: KeyframeTile | null;
+  videoReferenceImages: VideoReferenceImage[];
+  extendVideo: ExtendVideoSource | null;
   cameraMotion: CameraPath | null;
   subjectMotion: string;
 }
@@ -34,6 +55,9 @@ export const DEFAULT_GENERATION_CONTROLS_STATE: GenerationControlsState = {
     videoTier: 'render',
     keyframes: [],
     startFrame: null,
+    endFrame: null,
+    videoReferenceImages: [],
+    extendVideo: null,
     cameraMotion: null,
     subjectMotion: '',
   },

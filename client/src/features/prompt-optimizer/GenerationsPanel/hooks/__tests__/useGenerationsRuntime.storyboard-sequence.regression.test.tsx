@@ -2,6 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 import { useGenerationsRuntime } from '../useGenerationsRuntime';
+import type { CapabilitiesSchema } from '@shared/capabilities';
+import type { ExtendVideoSource } from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
 
 const setControlsMock = vi.fn();
 const updateShotMock = vi.fn().mockResolvedValue(undefined);
@@ -19,6 +21,17 @@ const navigateMock = vi.fn();
 const toastWarningMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
+const clearExtendVideoMock = vi.fn();
+let mockSelectedModel = 'sora-2';
+let mockExtendVideo: ExtendVideoSource | null = null;
+let mockCapabilitiesSchema: CapabilitiesSchema = {
+  provider: 'generic',
+  model: 'sora-2',
+  version: '1',
+  fields: {
+    extend_video: { type: 'bool', default: true },
+  },
+};
 
 vi.mock('@/contexts/CreditBalanceContext', () => ({
   useCreditBalance: () => ({ balance: null }),
@@ -90,8 +103,12 @@ vi.mock('@/features/prompt-optimizer/context/GenerationControlsContext', () => (
 vi.mock('@/features/prompt-optimizer/context/GenerationControlsStore', () => ({
   useGenerationControlsStoreState: () => ({
     domain: {
+      selectedModel: mockSelectedModel,
       keyframes: [],
       startFrame: null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: mockExtendVideo,
       cameraMotion: null,
       subjectMotion: '',
     },
@@ -99,6 +116,17 @@ vi.mock('@/features/prompt-optimizer/context/GenerationControlsStore', () => ({
   useGenerationControlsStoreActions: () => ({
     setStartFrame: vi.fn(),
     clearStartFrame: vi.fn(),
+    setExtendVideo: vi.fn(),
+    clearExtendVideo: clearExtendVideoMock,
+  }),
+}));
+
+vi.mock('@/features/prompt-optimizer/hooks/useCapabilities', () => ({
+  useCapabilities: () => ({
+    schema: mockCapabilitiesSchema,
+    isLoading: false,
+    error: null,
+    target: { provider: 'generic', model: mockSelectedModel, label: 'Model' },
   }),
 }));
 
@@ -155,6 +183,16 @@ vi.mock('@/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsTimeli
 describe('regression: preview action in continuity mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSelectedModel = 'sora-2';
+    mockExtendVideo = null;
+    mockCapabilitiesSchema = {
+      provider: 'generic',
+      model: 'sora-2',
+      version: '1',
+      fields: {
+        extend_video: { type: 'bool', default: true },
+      },
+    };
   });
 
   it('starts continuity shot generation when preview action is triggered', async () => {
@@ -192,5 +230,37 @@ describe('regression: preview action in continuity mode', () => {
     });
 
     expect(generateStoryboardMock).not.toHaveBeenCalled();
+  });
+
+  it('clears extend mode when selected model does not support extend_video', async () => {
+    mockSelectedModel = 'wan-2.2';
+    mockExtendVideo = {
+      url: 'https://example.com/video.mp4',
+      source: 'generation',
+      generationId: 'gen-1',
+    };
+    mockCapabilitiesSchema = {
+      provider: 'generic',
+      model: 'wan-2.2',
+      version: '1',
+      fields: {
+        extend_video: { type: 'bool', default: false },
+      },
+    };
+
+    renderHook(() =>
+      useGenerationsRuntime({
+        prompt: 'Extend this clip',
+        promptVersionId: 'version-1',
+        aspectRatio: '16:9',
+        versions: [],
+        onCreateVersionIfNeeded: onCreateVersionIfNeededMock,
+        presentation: 'hero',
+      })
+    );
+
+    await waitFor(() => {
+      expect(clearExtendVideoMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

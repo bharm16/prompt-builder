@@ -31,6 +31,16 @@ const toStartImage = (frame: KeyframeTile): NonNullable<GenerationOverrides['sta
   ...(frame.viewUrlExpiresAt ? { viewUrlExpiresAt: frame.viewUrlExpiresAt } : {}),
 });
 
+const hasExplicitRenderInputs = (overrides?: GenerationOverrides): boolean =>
+  Boolean(
+    overrides?.startImage ||
+      overrides?.characterAssetId ||
+      overrides?.faceSwapAlreadyApplied ||
+      overrides?.endImage?.url ||
+      (overrides?.referenceImages && overrides.referenceImages.length > 0) ||
+      overrides?.extendVideoUrl
+  );
+
 export function useKeyframeWorkflow({
   prompt,
   startFrame,
@@ -66,6 +76,13 @@ export function useKeyframeWorkflow({
       generateRender(model, prompt, {
         promptVersionId: versionId,
         startImage,
+        ...(overrides?.endImage ? { endImage: overrides.endImage } : {}),
+        ...(overrides?.referenceImages?.length
+          ? { referenceImages: overrides.referenceImages }
+          : {}),
+        ...(overrides?.extendVideoUrl
+          ? { extendVideoUrl: overrides.extendVideoUrl }
+          : {}),
         ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
         ...(overrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         ...(overrides?.faceSwapUrl ? { faceSwapUrl: overrides.faceSwapUrl } : {}),
@@ -89,7 +106,7 @@ export function useKeyframeWorkflow({
   const handleRender = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
-      if (overrides?.startImage || overrides?.characterAssetId || overrides?.faceSwapAlreadyApplied) {
+      if (hasExplicitRenderInputs(overrides)) {
         runRender(model, overrides);
         return;
       }
