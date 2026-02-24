@@ -9,6 +9,9 @@ export interface VideoPreviewPayload {
   aspectRatio?: VideoAspectRatio;
   model?: string;
   startImage?: string;
+  endImage?: string;
+  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }>;
+  extendVideoUrl?: string;
   inputReference?: string;
   generationParams?: unknown;
   characterAssetId?: string;
@@ -37,6 +40,9 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     aspectRatio,
     model,
     startImage,
+    endImage,
+    referenceImages,
+    extendVideoUrl,
     inputReference,
     generationParams,
     characterAssetId,
@@ -47,6 +53,9 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     aspectRatio?: unknown;
     model?: unknown;
     startImage?: unknown;
+    endImage?: unknown;
+    referenceImages?: unknown;
+    extendVideoUrl?: unknown;
     inputReference?: unknown;
     generationParams?: unknown;
     characterAssetId?: unknown;
@@ -97,6 +106,43 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     return { ok: false, status: 400, error: 'inputReference must be a string URL' };
   }
 
+  if (endImage !== undefined && typeof endImage !== 'string') {
+    return { ok: false, status: 400, error: 'endImage must be a string URL' };
+  }
+
+  if (extendVideoUrl !== undefined && typeof extendVideoUrl !== 'string') {
+    return { ok: false, status: 400, error: 'extendVideoUrl must be a string URL' };
+  }
+
+  if (referenceImages !== undefined) {
+    if (!Array.isArray(referenceImages)) {
+      return { ok: false, status: 400, error: 'referenceImages must be an array' };
+    }
+    if (referenceImages.length > 3) {
+      return { ok: false, status: 400, error: 'referenceImages supports a maximum of 3 items' };
+    }
+    for (const ref of referenceImages) {
+      if (!ref || typeof ref !== 'object') {
+        return { ok: false, status: 400, error: 'Each referenceImages entry must be an object' };
+      }
+      const typed = ref as { url?: unknown; type?: unknown };
+      if (typeof typed.url !== 'string' || typed.url.trim().length === 0) {
+        return {
+          ok: false,
+          status: 400,
+          error: 'Each referenceImages entry requires a non-empty url',
+        };
+      }
+      if (typed.type !== 'asset' && typed.type !== 'style') {
+        return {
+          ok: false,
+          status: 400,
+          error: 'Each referenceImages type must be \"asset\" or \"style\"',
+        };
+      }
+    }
+  }
+
   if (characterAssetId !== undefined && typeof characterAssetId !== 'string') {
     return { ok: false, status: 400, error: 'characterAssetId must be a string' };
   }
@@ -123,6 +169,9 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
       ...(resolvedAspectRatio ? { aspectRatio: resolvedAspectRatio } : {}),
       ...(resolvedModel ? { model: resolvedModel } : {}),
       ...(startImage ? { startImage } : {}),
+      ...(endImage ? { endImage } : {}),
+      ...(referenceImages?.length ? { referenceImages } : {}),
+      ...(extendVideoUrl ? { extendVideoUrl } : {}),
       ...(inputReference ? { inputReference } : {}),
       ...(generationParams !== undefined ? { generationParams } : {}),
       ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),

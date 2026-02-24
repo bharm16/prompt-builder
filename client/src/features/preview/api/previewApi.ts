@@ -372,6 +372,9 @@ export interface VideoJobStatusResponse {
 
 export interface GenerateVideoPreviewOptions {
   startImage?: string | undefined;
+  endImage?: string | undefined;
+  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }> | undefined;
+  extendVideoUrl?: string | undefined;
   inputReference?: string | undefined;
   generationParams?: Record<string, unknown> | undefined;
   characterAssetId?: string | undefined;
@@ -393,13 +396,18 @@ export async function generateVideoPreview(
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const motionMeta = extractMotionMeta(options?.generationParams);
   const startImageUrlHost = safeUrlHost(options?.startImage);
+  const endImageUrlHost = safeUrlHost(options?.endImage);
   const inputReferenceUrlHost = safeUrlHost(options?.inputReference);
+  const extendVideoUrlHost = safeUrlHost(options?.extendVideoUrl);
 
   const payload = {
     prompt: trimmedPrompt,
     ...(aspectRatio ? { aspectRatio } : {}),
     ...(model ? { model } : {}),
     ...(options?.startImage ? { startImage: options.startImage } : {}),
+    ...(options?.endImage ? { endImage: options.endImage } : {}),
+    ...(options?.referenceImages?.length ? { referenceImages: options.referenceImages } : {}),
+    ...(options?.extendVideoUrl ? { extendVideoUrl: options.extendVideoUrl } : {}),
     ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
     ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
     ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
@@ -414,6 +422,11 @@ export async function generateVideoPreview(
     model: model ?? null,
     hasStartImage: Boolean(options?.startImage),
     startImageUrlHost,
+    hasEndImage: Boolean(options?.endImage),
+    endImageUrlHost,
+    referenceImageCount: options?.referenceImages?.length ?? 0,
+    hasExtendVideo: Boolean(options?.extendVideoUrl),
+    extendVideoUrlHost,
     hasInputReference: Boolean(options?.inputReference),
     inputReferenceUrlHost,
     hasCharacterAssetId: Boolean(options?.characterAssetId),
@@ -465,6 +478,11 @@ export async function generateVideoPreview(
       model: model ?? null,
       hasStartImage: Boolean(options?.startImage),
       startImageUrlHost,
+      hasEndImage: Boolean(options?.endImage),
+      endImageUrlHost,
+      referenceImageCount: options?.referenceImages?.length ?? 0,
+      hasExtendVideo: Boolean(options?.extendVideoUrl),
+      extendVideoUrlHost,
       hasInputReference: Boolean(options?.inputReference),
       inputReferenceUrlHost,
       hasCharacterAssetId: Boolean(options?.characterAssetId),

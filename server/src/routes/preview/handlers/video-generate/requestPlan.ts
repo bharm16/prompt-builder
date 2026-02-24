@@ -57,11 +57,27 @@ export const buildVideoRequestPlan = (
     cleanedPrompt,
     resolvedStartImage,
     inputReference,
+    endImage,
+    referenceImages,
+    extendVideoUrl,
     aspectRatio,
     characterAssetId,
     faceSwapAlreadyApplied,
     swappedImageUrl,
   } = args;
+
+  const asFiniteNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  };
 
   const normalized = normalizeGenerationParams({
     generationParams,
@@ -97,19 +113,16 @@ export const buildVideoRequestPlan = (
     normalizedParams && typeof normalizedParams.aspect_ratio === 'string'
       ? (normalizedParams.aspect_ratio as VideoGenerationOptions['aspectRatio'])
       : undefined;
-  const paramFps =
-    normalizedParams && typeof normalizedParams.fps === 'number' ? normalizedParams.fps : undefined;
-  const paramDurationS =
-    normalizedParams && typeof normalizedParams.duration_s === 'number'
-      ? normalizedParams.duration_s
-      : undefined;
+  const paramFps = asFiniteNumber(normalizedParams?.fps);
+  const paramDurationS = asFiniteNumber(normalizedParams?.duration_s);
+  const paramSeed = asFiniteNumber(normalizedParams?.seed);
   const paramResolution =
     normalizedParams && typeof normalizedParams.resolution === 'string'
       ? normalizedParams.resolution
       : undefined;
 
   const seconds =
-    paramDurationS != null && ['4', '8', '12'].includes(String(paramDurationS))
+    paramDurationS != null && ['4', '5', '6', '8', '10', '12'].includes(String(paramDurationS))
       ? (String(paramDurationS) as VideoGenerationOptions['seconds'])
       : undefined;
 
@@ -117,7 +130,8 @@ export const buildVideoRequestPlan = (
   const videoCost = getVideoCost(costModel, durationForCost);
 
   const size =
-    typeof paramResolution === 'string' && (/\d+x\d+/i.test(paramResolution) || /p$/i.test(paramResolution))
+    typeof paramResolution === 'string' &&
+    (/\d+x\d+/i.test(paramResolution) || /p$/i.test(paramResolution) || /k$/i.test(paramResolution))
       ? paramResolution
       : undefined;
 
@@ -149,6 +163,15 @@ export const buildVideoRequestPlan = (
   if (inputReference) {
     options.inputReference = inputReference;
   }
+  if (endImage) {
+    options.endImage = endImage;
+  }
+  if (referenceImages && referenceImages.length > 0) {
+    options.referenceImages = referenceImages;
+  }
+  if (extendVideoUrl) {
+    options.extendVideoUrl = extendVideoUrl;
+  }
   if (characterAssetId) {
     options.characterAssetId = characterAssetId;
   }
@@ -160,6 +183,9 @@ export const buildVideoRequestPlan = (
   }
   if (typeof paramFps === 'number') {
     options.fps = paramFps;
+  }
+  if (typeof paramSeed === 'number') {
+    options.seed = Math.round(paramSeed);
   }
   if (seconds) {
     options.seconds = seconds;

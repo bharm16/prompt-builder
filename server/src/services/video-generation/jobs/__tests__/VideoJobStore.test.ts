@@ -225,6 +225,35 @@ describe('VideoJobStore', () => {
     });
   });
 
+  it('preserves extended generation option fields through schema parsing', async () => {
+    const store = new VideoJobStore();
+
+    const job = await store.createJob({
+      userId: 'user-extended',
+      request: {
+        prompt: 'extended prompt',
+        options: {
+          model: 'google/veo-3',
+          seed: 456,
+          seconds: '6',
+          endImage: 'https://images.example.com/end.png',
+          referenceImages: [{ url: 'https://images.example.com/ref.png', type: 'asset' }],
+          extendVideoUrl: 'https://videos.example.com/source.mp4',
+        },
+      },
+      creditsReserved: 18,
+    });
+
+    expect(job.request.options).toEqual({
+      model: 'google/veo-3',
+      seed: 456,
+      seconds: '6',
+      endImage: 'https://images.example.com/end.png',
+      referenceImages: [{ url: 'https://images.example.com/ref.png', type: 'asset' }],
+      extendVideoUrl: 'https://videos.example.com/source.mp4',
+    });
+  });
+
   it('getJob and findJobByAssetId return parsed records and null when missing', async () => {
     mocks.records.set('job-a', {
       status: 'completed',

@@ -9,6 +9,8 @@ import {
   fpsField,
   guidanceField,
   imageInputField,
+  lastFrameField,
+  referenceImagesField,
   resolutionField,
   seedField,
   styleReferenceField,
@@ -42,7 +44,6 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
         fps: fpsField([24, 30]),
         audio: audioField(false),
         seed: seedField(),
-        guidance: guidanceField(7),
         image_input: imageInputField(true),
       },
       { features: { text_to_video: true, image_to_video: true } }
@@ -57,7 +58,6 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
         fps: fpsField([24, 30]),
         audio: audioField(false),
         seed: seedField(),
-        guidance: guidanceField(7),
         image_input: imageInputField(true),
       },
       { features: { text_to_video: true, image_to_video: true } }
@@ -93,6 +93,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
         fps: fpsField([24]),
         seed: seedField(),
         image_input: imageInputField(true),
+        last_frame: lastFrameField(true),
         extend_video: extendVideoField(true),
       },
       { features: { text_to_video: true, image_to_video: true } }
@@ -104,15 +105,17 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
       'veo-4',
       {
         aspect_ratio: aspectRatioField(),
-        duration_s: durationField([4, 8]),
-        resolution: resolutionField(),
-        fps: fpsField([24, 30]),
-        audio: audioField(false),
+        duration_s: durationField([4, 6, 8]),
+        resolution: resolutionField(['720p', '1080p', '4k']),
+        fps: fpsField([24]),
+        audio: audioField(true),
         seed: seedField(),
-        guidance: guidanceField(8),
-        image_input: imageInputField(false),
+        image_input: imageInputField(true),
+        last_frame: lastFrameField(true),
+        reference_images: referenceImagesField(true),
+        extend_video: extendVideoField(true),
       },
-      { features: { text_to_video: true, image_to_video: false } }
+      { features: { text_to_video: true, image_to_video: true } }
     ),
   },
   kling: {
@@ -127,6 +130,7 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
         audio: audioField(true),
         seed: seedField(),
         image_input: imageInputField(true),
+        last_frame: lastFrameField(true),
         character_reference: characterReferenceField(true),
       },
       { features: { text_to_video: true, image_to_video: true } }

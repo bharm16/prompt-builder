@@ -19,6 +19,7 @@ interface KlingImageToVideoInput {
   model_name?: KlingModelId;
   prompt: string;
   image: string;
+  image_tail?: string;
   negative_prompt?: string;
   aspect_ratio?: KlingAspectRatio;
   duration?: '5' | '10';
@@ -95,6 +96,13 @@ function resolveKlingAspectRatio(
     return '16:9';
   }
   return aspectRatio;
+}
+
+function resolveKlingDuration(seconds?: VideoGenerationOptions['seconds']): '5' | '10' | undefined {
+  if (seconds === '5' || seconds === '10') {
+    return seconds;
+  }
+  return undefined;
 }
 
 async function _rawKlingFetch(
@@ -316,12 +324,15 @@ async function generateKlingImageToVideo(
   log: LogSink
 ): Promise<string> {
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
+  const duration = resolveKlingDuration(options.seconds);
   const input: KlingImageToVideoInput = {
     model_name: modelId,
     prompt,
     image: options.startImage!,
+    ...(options.endImage ? { image_tail: options.endImage } : {}),
     ...(options.negativePrompt ? { negative_prompt: options.negativePrompt } : {}),
     ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+    ...(duration ? { duration } : {}),
   };
 
   const taskId = await createKlingImageToVideoTask(baseUrl, apiKey, input);
@@ -329,6 +340,7 @@ async function generateKlingImageToVideo(
     modelId,
     taskId,
     imageUrl: options.startImage,
+    hasEndImage: Boolean(options.endImage),
   });
 
   return await waitForKlingImageToVideo(baseUrl, apiKey, taskId);

@@ -160,11 +160,18 @@ export function createVideoProviders(
       id: 'gemini',
       requiredKey: 'GEMINI_API_KEY',
       isAvailable: () => Boolean(geminiApiKey),
-      async generate(prompt, _modelId, _generationOptions, assetStore, providerLog) {
+      async generate(prompt, _modelId, generationOptions, assetStore, providerLog) {
         if (!geminiApiKey) {
           throw new Error('Veo video generation requires GEMINI_API_KEY.');
         }
-        const asset = await generateVeoVideo(geminiApiKey, geminiBaseUrl, prompt, assetStore, providerLog);
+        const asset = await generateVeoVideo(
+          geminiApiKey,
+          geminiBaseUrl,
+          prompt,
+          generationOptions,
+          assetStore,
+          providerLog
+        );
         return { asset };
       },
     },

@@ -33,8 +33,14 @@ export interface VideoGenerationOptions {
   /** Override Replicate's prompt_extend behavior for Wan models */
   promptExtend?: boolean;
   startImage?: string;
+  /** End/last frame image URL for interpolation (Veo, Luma, Kling) */
+  endImage?: string;
+  /** Reference image URLs for style/character consistency (Veo: up to 3) */
+  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }>;
+  /** URL of an existing video to extend/continue (Veo scene extension) */
+  extendVideoUrl?: string;
   inputReference?: string;
-  seconds?: '4' | '8' | '12';
+  seconds?: '4' | '5' | '6' | '8' | '10' | '12';
   size?: string;
   seed?: number;
   /** Provider-native style reference image (if supported) */

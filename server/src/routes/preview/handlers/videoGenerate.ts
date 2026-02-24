@@ -61,6 +61,9 @@ export const createVideoGenerateHandler = ({
       aspectRatio,
       model,
       startImage,
+      endImage,
+      referenceImages,
+      extendVideoUrl,
       inputReference,
       generationParams,
       characterAssetId: requestedCharacterAssetId,
@@ -89,6 +92,41 @@ export const createVideoGenerateHandler = ({
           code: GENERATION_ERROR_CODES.INVALID_REQUEST,
           details: err instanceof Error ? err.message : 'URL validation failed',
         });
+      }
+    }
+    if (endImage) {
+      try {
+        assertUrlSafe(endImage, 'endImage');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid endImage URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (extendVideoUrl) {
+      try {
+        assertUrlSafe(extendVideoUrl, 'extendVideoUrl');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid extendVideoUrl URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (referenceImages) {
+      for (const ref of referenceImages) {
+        try {
+          assertUrlSafe(ref.url, 'referenceImages[].url');
+        } catch (err) {
+          return sendApiError(res, req, 400, {
+            error: 'Invalid referenceImages URL',
+            code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+            details: err instanceof Error ? err.message : 'URL validation failed',
+          });
+        }
       }
     }
 
@@ -230,6 +268,9 @@ export const createVideoGenerateHandler = ({
       cleanedPrompt,
       resolvedStartImage,
       inputReference,
+      endImage,
+      referenceImages,
+      extendVideoUrl,
       aspectRatio,
       characterAssetId,
       faceSwapAlreadyApplied,

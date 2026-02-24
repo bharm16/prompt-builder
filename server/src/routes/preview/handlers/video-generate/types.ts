@@ -116,6 +116,9 @@ export interface VideoRequestPlanArgs {
   cleanedPrompt: string;
   resolvedStartImage?: string | undefined;
   inputReference?: string | undefined;
+  endImage?: string | undefined;
+  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }> | undefined;
+  extendVideoUrl?: string | undefined;
   aspectRatio?: string | undefined;
   characterAssetId?: string | undefined;
   faceSwapAlreadyApplied: boolean;

@@ -18,17 +18,47 @@ interface LumaKeyframes {
   frame1?: LumaKeyframe;
 }
 
-function buildLumaKeyframes(options: VideoGenerationOptions): LumaKeyframes | undefined {
-  if (!options.startImage) {
+type LumaAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '21:9' | '9:21';
+
+function resolveLumaAspectRatio(
+  aspectRatio: VideoGenerationOptions['aspectRatio']
+): LumaAspectRatio | undefined {
+  if (
+    aspectRatio === '16:9' ||
+    aspectRatio === '9:16' ||
+    aspectRatio === '1:1' ||
+    aspectRatio === '21:9'
+  ) {
+    return aspectRatio;
+  }
+  return undefined;
+}
+
+export function buildLumaKeyframes(options: VideoGenerationOptions): LumaKeyframes | undefined {
+  const hasStart = Boolean(options.startImage);
+  const hasEnd = Boolean(options.endImage);
+
+  if (!hasStart && !hasEnd) {
     return undefined;
   }
 
-  return {
-    frame0: {
+  const keyframes: LumaKeyframes = {};
+
+  if (hasStart) {
+    keyframes.frame0 = {
       type: 'image',
-      url: options.startImage,
-    },
-  };
+      url: options.startImage!,
+    };
+  }
+
+  if (hasEnd) {
+    keyframes.frame1 = {
+      type: 'image',
+      url: options.endImage!,
+    };
+  }
+
+  return keyframes;
 }
 
 export async function generateLumaVideo(
@@ -38,10 +68,12 @@ export async function generateLumaVideo(
   log: LogSink
 ): Promise<string> {
   const keyframes = buildLumaKeyframes(options);
+  const aspectRatio = resolveLumaAspectRatio(options.aspectRatio);
 
   const generation = await luma.generations.create({
     prompt,
     model: 'ray-2',
+    ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
     ...(keyframes ? { keyframes } : {}),
   });
   if (!generation.id) {
@@ -50,6 +82,15 @@ export async function generateLumaVideo(
   log.info('Luma generation started', {
     generationId: generation.id,
     hasStartImage: Boolean(options.startImage),
+    hasEndImage: Boolean(options.endImage),
+    mode:
+      options.endImage && options.startImage
+        ? 'interpolation'
+        : options.startImage
+          ? 'i2v'
+          : options.endImage
+            ? 'end-frame-only'
+            : 't2v',
   });
 
   let result = generation;

@@ -121,6 +121,30 @@ export const extendVideoField = (supported = false): CapabilityField => ({
   },
 });
 
+export const lastFrameField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Last Frame',
+    description: 'Supports end-frame interpolation (first + last frame control)',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 5.5,
+  },
+});
+
+export const referenceImagesField = (supported = false, maxCount = 3): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Reference Images',
+    description: `Supports up to ${maxCount} reference images for style/character consistency`,
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 6.5,
+  },
+});
+
 export const seedField = (): CapabilityField => ({
   type: 'int',
   default: 0,

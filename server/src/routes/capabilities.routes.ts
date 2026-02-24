@@ -1,7 +1,13 @@
 import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { logger } from '@infrastructure/Logger';
-import { getCapabilities, listModels, listProviders, resolveProviderForModel } from '@services/capabilities';
+import {
+  getCapabilities,
+  listModels,
+  listProviders,
+  resolveModelId,
+  resolveProviderForModel,
+} from '@services/capabilities';
 
 export function createCapabilitiesRoutes(): Router {
   const router = express.Router();
@@ -45,13 +51,20 @@ export function createCapabilitiesRoutes(): Router {
           ? req.query.model.trim()
           : 'auto';
 
-      let schema = getCapabilities(requestedProvider, model);
+      const resolvedModel = resolveModelId(model) ?? model;
+      const modelCandidates = resolvedModel === model ? [model] : [model, resolvedModel];
+      const getSchema = (provider: string) =>
+        modelCandidates
+          .map((candidateModel) => getCapabilities(provider, candidateModel))
+          .find((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate)) ?? null;
+
+      let schema = getSchema(requestedProvider);
       let resolvedProvider: string | null = null;
 
       if (!schema && requestedProvider === 'generic' && model !== 'auto') {
-        resolvedProvider = resolveProviderForModel(model);
+        resolvedProvider = resolveProviderForModel(resolvedModel);
         if (resolvedProvider) {
-          schema = getCapabilities(resolvedProvider, model);
+          schema = getSchema(resolvedProvider);
         }
       }
 
@@ -59,12 +72,14 @@ export function createCapabilitiesRoutes(): Router {
         logger.warn('Capabilities schema not found', {
           provider: requestedProvider,
           model,
+          resolvedModel,
           resolvedProvider,
         });
         res.status(404).json({
           error: 'Capabilities not found',
           provider: requestedProvider,
           model,
+          resolvedModel,
           resolvedProvider,
         });
         return;

@@ -1,22 +1,81 @@
-import { sleep } from '../../utils/sleep';
+import { sleep } from '@services/video-generation/utils/sleep';
 import { veoFetch } from './httpClient';
 import { VEO_OPERATION_SCHEMA, VEO_START_RESPONSE_SCHEMA, type VeoOperation } from './schemas';
+import type { VeoInlineData } from './imageUtils';
+
+export interface VeoGenerationInput {
+  prompt: string;
+  startImage?: VeoInlineData;
+  lastFrame?: VeoInlineData;
+  referenceImages?: Array<{ image: VeoInlineData; referenceType: 'asset' | 'style' }>;
+  extendVideo?: VeoInlineData;
+  parameters?: {
+    aspectRatio?: string;
+    resolution?: string;
+    durationSeconds?: number;
+    seed?: number;
+    numberOfVideos?: number;
+    personGeneration?: string;
+  };
+}
 
 export async function startVeoGeneration(
   baseUrl: string,
   apiKey: string,
-  prompt: string,
+  input: VeoGenerationInput,
   modelId: string
 ): Promise<string> {
+  const instance: Record<string, unknown> = { prompt: input.prompt };
+  if (input.startImage) {
+    instance.image = input.startImage;
+  }
+  if (input.extendVideo) {
+    instance.video = input.extendVideo;
+  }
+
+  const parameters: Record<string, unknown> = {};
+  if (input.lastFrame) {
+    parameters.lastFrame = input.lastFrame;
+  }
+  if (input.referenceImages?.length) {
+    parameters.referenceImages = input.referenceImages.map((ref) => ({
+      image: ref.image,
+      referenceType: ref.referenceType,
+    }));
+  }
+  if (input.parameters) {
+    const p = input.parameters;
+    if (p.aspectRatio) {
+      parameters.aspectRatio = p.aspectRatio;
+    }
+    if (p.resolution) {
+      parameters.resolution = p.resolution;
+    }
+    if (p.durationSeconds) {
+      parameters.durationSeconds = p.durationSeconds;
+    }
+    if (p.seed !== undefined && p.seed !== 0) {
+      parameters.seed = p.seed;
+    }
+    if (p.numberOfVideos) {
+      parameters.numberOfVideos = p.numberOfVideos;
+    }
+    if (p.personGeneration) {
+      parameters.personGeneration = p.personGeneration;
+    }
+  }
+
+  const body: Record<string, unknown> = { instances: [instance] };
+  if (Object.keys(parameters).length > 0) {
+    body.parameters = parameters;
+  }
+
   const json = await veoFetch(baseUrl, apiKey, `/models/${modelId}:predictLongRunning`, {
     method: 'POST',
-    body: JSON.stringify({
-      instances: [{ prompt }],
-    }),
+    body: JSON.stringify(body),
   });
 
-  const parsed = VEO_START_RESPONSE_SCHEMA.parse(json);
-  return parsed.name;
+  return VEO_START_RESPONSE_SCHEMA.parse(json).name;
 }
 
 export async function waitForVeoOperation(

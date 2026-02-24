@@ -79,6 +79,63 @@ describe('video request parser regression', () => {
       expect(result.payload.model).toBe(model);
     }
   });
+
+  it('accepts endImage, referenceImages, and extendVideoUrl when valid', () => {
+    const result = parseVideoPreviewRequest({
+      prompt: 'Cinematic prompt',
+      endImage: 'https://images.example.com/end.png',
+      referenceImages: [
+        { url: 'https://images.example.com/ref-1.png', type: 'asset' },
+        { url: 'https://images.example.com/ref-2.png', type: 'style' },
+      ],
+      extendVideoUrl: 'https://videos.example.com/source.mp4',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.payload.endImage).toBe('https://images.example.com/end.png');
+    expect(result.payload.referenceImages).toHaveLength(2);
+    expect(result.payload.extendVideoUrl).toBe('https://videos.example.com/source.mp4');
+  });
+
+  it('rejects invalid referenceImages payloads', () => {
+    const notArray = parseVideoPreviewRequest({
+      prompt: 'Cinematic prompt',
+      referenceImages: 'bad',
+    });
+    expect(notArray).toEqual({
+      ok: false,
+      status: 400,
+      error: 'referenceImages must be an array',
+    });
+
+    const tooMany = parseVideoPreviewRequest({
+      prompt: 'Cinematic prompt',
+      referenceImages: [
+        { url: 'https://images.example.com/1.png', type: 'asset' },
+        { url: 'https://images.example.com/2.png', type: 'asset' },
+        { url: 'https://images.example.com/3.png', type: 'asset' },
+        { url: 'https://images.example.com/4.png', type: 'asset' },
+      ],
+    });
+    expect(tooMany).toEqual({
+      ok: false,
+      status: 400,
+      error: 'referenceImages supports a maximum of 3 items',
+    });
+
+    const invalidType = parseVideoPreviewRequest({
+      prompt: 'Cinematic prompt',
+      referenceImages: [{ url: 'https://images.example.com/1.png', type: 'other' }],
+    });
+    expect(invalidType).toEqual({
+      ok: false,
+      status: 400,
+      error: 'Each referenceImages type must be \"asset\" or \"style\"',
+    });
+  });
 });
 
 describe('sendVideoContent regression', () => {

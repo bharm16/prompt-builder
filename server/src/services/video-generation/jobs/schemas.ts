@@ -9,9 +9,21 @@ export const VideoGenerationOptionsSchema = z.object({
   negativePrompt: z.string().optional(),
   promptExtend: z.boolean().optional(),
   startImage: z.string().optional(),
+  endImage: z.string().optional(),
+  referenceImages: z
+    .array(
+      z.object({
+        url: z.string(),
+        type: z.enum(['asset', 'style']),
+      })
+    )
+    .max(3)
+    .optional(),
+  extendVideoUrl: z.string().optional(),
   inputReference: z.string().optional(),
-  seconds: z.enum(['4', '8', '12']).optional(),
+  seconds: z.enum(['4', '5', '6', '8', '10', '12']).optional(),
   size: z.string().optional(),
+  seed: z.number().optional(),
   style_reference: z.string().optional(),
   style_reference_weight: z.number().optional(),
   characterAssetId: z.string().optional(),

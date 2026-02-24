@@ -32,8 +32,7 @@ export const MODEL_CATALOG: CatalogEntry[] = [
   {
     id: 'kling-26',
     provider: 'kling',
-    source: 'fal',
-    falEndpoint: 'fal-ai/kling-video/v2.1/pro/image-to-video',
+    source: 'manual',
   },
   { id: 'sora-2', provider: 'openai', source: 'openai' },
   { id: 'sora-2-pro', provider: 'openai', source: 'openai' },
