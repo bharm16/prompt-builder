@@ -19,101 +19,146 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
   Record<string, CapabilitiesSchema>
 > = {
   generic: {
-    auto: buildSchema('generic', 'auto', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8]),
-      resolution: resolutionField(['720p']),
-      fps: fpsField([24]),
-    }),
+    auto: buildSchema(
+      'generic',
+      'auto',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8]),
+        resolution: resolutionField(['720p']),
+        fps: fpsField([24]),
+      },
+      { features: { text_to_video: true, image_to_video: false } }
+    ),
   },
   openai: {
-    'sora-2': buildSchema('openai', 'sora-2', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8, 12]),
-      resolution: resolutionField(),
-      fps: fpsField([24, 30]),
-      audio: audioField(false),
-      seed: seedField(),
-      guidance: guidanceField(7),
-      image_input: imageInputField(true),
-    }),
-    'sora-2-pro': buildSchema('openai', 'sora-2-pro', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8, 12]),
-      resolution: resolutionField(),
-      fps: fpsField([24, 30]),
-      audio: audioField(false),
-      seed: seedField(),
-      guidance: guidanceField(7),
-      image_input: imageInputField(true),
-    }),
+    'sora-2': buildSchema(
+      'openai',
+      'sora-2',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8, 12]),
+        resolution: resolutionField(),
+        fps: fpsField([24, 30]),
+        audio: audioField(false),
+        seed: seedField(),
+        guidance: guidanceField(7),
+        image_input: imageInputField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
+    'sora-2-pro': buildSchema(
+      'openai',
+      'sora-2-pro',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8, 12]),
+        resolution: resolutionField(),
+        fps: fpsField([24, 30]),
+        audio: audioField(false),
+        seed: seedField(),
+        guidance: guidanceField(7),
+        image_input: imageInputField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
   },
   runway: {
-    'runway-gen45': buildSchema('runway', 'runway-gen45', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8, 12]),
-      resolution: resolutionField(),
-      fps: fpsField([24, 30]),
-      seed: seedField(),
-      guidance: guidanceField(6),
-      image_input: imageInputField(true),
-      style_reference: styleReferenceField(true),
-      character_reference: characterReferenceField(true),
-      extend_video: extendVideoField(true),
-    }),
+    'runway-gen45': buildSchema(
+      'runway',
+      'runway-gen45',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8, 12]),
+        resolution: resolutionField(),
+        fps: fpsField([24, 30]),
+        seed: seedField(),
+        guidance: guidanceField(6),
+        image_input: imageInputField(true),
+        style_reference: styleReferenceField(true),
+        character_reference: characterReferenceField(true),
+        extend_video: extendVideoField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
   },
   luma: {
-    'luma-ray3': buildSchema('luma', 'luma-ray3', {
-      aspect_ratio: aspectRatioField(['16:9', '9:16']),
-      duration_s: durationField([4, 8]),
-      resolution: resolutionField(['720p']),
-      fps: fpsField([24]),
-      seed: seedField(),
-      image_input: imageInputField(true),
-      extend_video: extendVideoField(true),
-    }),
+    'luma-ray3': buildSchema(
+      'luma',
+      'luma-ray3',
+      {
+        aspect_ratio: aspectRatioField(['16:9', '9:16']),
+        duration_s: durationField([4, 8]),
+        resolution: resolutionField(['720p']),
+        fps: fpsField([24]),
+        seed: seedField(),
+        image_input: imageInputField(true),
+        extend_video: extendVideoField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
   },
   google: {
-    'veo-4': buildSchema('google', 'veo-4', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8]),
-      resolution: resolutionField(),
-      fps: fpsField([24, 30]),
-      audio: audioField(false),
-      seed: seedField(),
-      guidance: guidanceField(8),
-      image_input: imageInputField(false),
-    }),
+    'veo-4': buildSchema(
+      'google',
+      'veo-4',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8]),
+        resolution: resolutionField(),
+        fps: fpsField([24, 30]),
+        audio: audioField(false),
+        seed: seedField(),
+        guidance: guidanceField(8),
+        image_input: imageInputField(false),
+      },
+      { features: { text_to_video: true, image_to_video: false } }
+    ),
   },
   kling: {
-    'kling-26': buildSchema('kling', 'kling-26', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([5, 10, 15]),
-      resolution: resolutionField(['720p']),
-      fps: fpsField([24, 30]),
-      audio: audioField(true),
-      seed: seedField(),
-      image_input: imageInputField(true),
-      character_reference: characterReferenceField(true),
-    }),
+    'kling-26': buildSchema(
+      'kling',
+      'kling-26',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([5, 10]),
+        resolution: resolutionField(['720p']),
+        fps: fpsField([24, 30]),
+        audio: audioField(true),
+        seed: seedField(),
+        image_input: imageInputField(true),
+        character_reference: characterReferenceField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
   },
   wan: {
-    'wan-2.2': buildSchema('wan', 'wan-2.2', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([4, 8, 12]),
-      resolution: resolutionField(['720p']),
-      fps: fpsField([24, 30]),
-      seed: seedField(),
-      image_input: imageInputField(true),
-    }),
-    'wan-2.5': buildSchema('wan', 'wan-2.5', {
-      aspect_ratio: aspectRatioField(),
-      duration_s: durationField([5, 8, 10]),
-      resolution: resolutionField(['480p', '720p', '1080p']),
-      fps: fpsField([24, 30]),
-      audio: audioField(true),
-      seed: seedField(),
-      image_input: imageInputField(true),
-    }),
+    'wan-2.2': buildSchema(
+      'wan',
+      'wan-2.2',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 8, 12]),
+        resolution: resolutionField(['720p']),
+        fps: fpsField([24, 30]),
+        seed: seedField(),
+        image_input: imageInputField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
+    'wan-2.5': buildSchema(
+      'wan',
+      'wan-2.5',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([5, 8, 10]),
+        resolution: resolutionField(['480p', '720p', '1080p']),
+        fps: fpsField([24, 30]),
+        audio: audioField(true),
+        seed: seedField(),
+        image_input: imageInputField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
   },
 };

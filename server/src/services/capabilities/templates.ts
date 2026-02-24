@@ -1,4 +1,4 @@
-import type { CapabilitiesSchema, CapabilityField } from '@shared/capabilities';
+import type { CapabilitiesSchema, CapabilityField, ModelFeatures } from '@shared/capabilities';
 
 export const CAPABILITIES_VERSION = '2026-01-03';
 export const DEFAULT_GENERATED_AT = '2026-01-03T00:00:00Z';
@@ -158,12 +158,13 @@ export const buildSchema = (
   provider: string,
   model: string,
   fields: Record<string, CapabilityField>,
-  options?: { source?: string; generatedAt?: string }
+  options?: { source?: string; generatedAt?: string; features?: ModelFeatures }
 ): CapabilitiesSchema => ({
   provider,
   model,
   version: CAPABILITIES_VERSION,
   source: options?.source ?? 'manual',
   generated_at: options?.generatedAt ?? DEFAULT_GENERATED_AT,
+  ...(options?.features ? { features: options.features } : {}),
   fields,
 });
