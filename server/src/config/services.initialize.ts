@@ -219,6 +219,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
   const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');
   const shouldWarmGliner = !promptOutputOnly &&
+    runtimeFlags.processRole === 'api' &&
     NEURO_SYMBOLIC.ENABLED &&
     NEURO_SYMBOLIC.GLINER?.ENABLED &&
     NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP;
@@ -237,7 +238,11 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
     }
   } else {
-    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'prewarm disabled or GLiNER disabled';
+    const reason = promptOutputOnly
+      ? 'PROMPT_OUTPUT_ONLY'
+      : runtimeFlags.processRole !== 'api'
+        ? `PROCESS_ROLE=${runtimeFlags.processRole}`
+        : 'prewarm disabled or GLiNER disabled';
     logger.info('ℹ️ GLiNER warmup skipped', { reason });
   }
 
@@ -261,7 +266,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     }
   };
 
-  if (!isTestEnv && !promptOutputOnly) {
+  if (!isTestEnv && !promptOutputOnly && runtimeFlags.processRole === 'api') {
     // Start depth warmup in background - do not await
     // This allows server to become healthy/ready while fal.ai spins up
     warmupDepthEstimationOnStartup()
@@ -273,11 +278,17 @@ export async function initializeServices(container: DIContainer): Promise<DICont
         logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
       });
   } else {
-    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'test environment';
+    const reason = promptOutputOnly
+      ? 'PROMPT_OUTPUT_ONLY'
+      : runtimeFlags.processRole !== 'api'
+        ? `PROCESS_ROLE=${runtimeFlags.processRole}`
+        : 'test environment';
     logger.info('ℹ️ Depth warmup skipped', { reason });
   }
 
-  if (!isTestEnv && !promptOutputOnly) {
+  const isWorkerRole = runtimeFlags.processRole === 'worker';
+
+  if (!isTestEnv && !promptOutputOnly && isWorkerRole) {
     const creditRefundSweeper = container.resolve<CreditRefundSweeper | null>('creditRefundSweeper');
     if (creditRefundSweeper) {
       creditRefundSweeper.start();
@@ -305,6 +316,8 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     } else if (videoJobWorker && workerDisabled) {
       logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
     }
+  } else if (!isTestEnv && !promptOutputOnly && !isWorkerRole) {
+    logger.info('ℹ️ Video background services skipped (PROCESS_ROLE=api)');
   } else if (promptOutputOnly) {
     logger.info('ℹ️ Video background services skipped (PROMPT_OUTPUT_ONLY)');
   }

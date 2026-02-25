@@ -201,4 +201,46 @@ describe('generateVideoWorkflow', () => {
       }),
     });
   });
+
+  it('enforces the workflow watchdog timeout when provider polling fails to terminate', async () => {
+    vi.useFakeTimers();
+    const previousWorkflow = process.env.VIDEO_WORKFLOW_TIMEOUT_MS;
+    const previousProvider = process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS;
+    try {
+      process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS = '1000';
+      process.env.VIDEO_WORKFLOW_TIMEOUT_MS = '2000';
+
+      const providers = createProviderMap({ openai: true });
+      providers.openai.generate = vi.fn(
+        () =>
+          new Promise<{ asset: StoredVideoAsset }>(() => {
+            // Intentionally unresolved promise for watchdog coverage.
+          })
+      );
+
+      const promise = generateVideoWorkflow(
+        'watchdog prompt',
+        { model: 'sora-2' },
+        providers,
+        createAssetStore(),
+        createLog()
+      );
+
+      const assertion = expect(promise).rejects.toThrow(/workflow timeout exceeded/i);
+      await vi.advanceTimersByTimeAsync(11_000);
+      await assertion;
+    } finally {
+      if (previousWorkflow === undefined) {
+        delete process.env.VIDEO_WORKFLOW_TIMEOUT_MS;
+      } else {
+        process.env.VIDEO_WORKFLOW_TIMEOUT_MS = previousWorkflow;
+      }
+      if (previousProvider === undefined) {
+        delete process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS;
+      } else {
+        process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS = previousProvider;
+      }
+      vi.useRealTimers();
+    }
+  });
 });

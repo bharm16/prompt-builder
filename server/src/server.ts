@@ -16,6 +16,12 @@ import { logger } from './infrastructure/Logger.ts';
 import { closeRedisClient } from './config/redis.ts';
 import type { DIContainer } from './infrastructure/DIContainer.ts';
 import type { SpanLabelingCacheService } from './services/cache/SpanLabelingCacheService.ts';
+import type { CapabilitiesProbeService } from './services/capabilities/CapabilitiesProbeService.ts';
+import type { CreditRefundSweeper } from './services/credits/CreditRefundSweeper.ts';
+import type { VideoJobWorker } from './services/video-generation/jobs/VideoJobWorker.ts';
+import type { VideoJobSweeper } from './services/video-generation/jobs/VideoJobSweeper.ts';
+import type { VideoAssetRetentionService } from './services/video-generation/storage/VideoAssetRetentionService.ts';
+import { getRuntimeFlags } from './config/runtime-flags.ts';
 
 /**
  * Start the HTTP server
@@ -72,14 +78,44 @@ export async function startServer(
  * @param {DIContainer} container - Dependency injection container
  */
 export function setupGracefulShutdown(server: Server, container: DIContainer): void {
+  const resolveOptional = <T>(serviceName: string): T | null => {
+    try {
+      return container.resolve<T>(serviceName);
+    } catch {
+      return null;
+    }
+  };
+
   const shutdown = async (signal: string) => {
     logger.info('Signal received; closing HTTP server.', { signal });
+    const { videoWorkerShutdownDrainSeconds } = getRuntimeFlags();
+    const drainTimeoutMs = Math.max(1_000, videoWorkerShutdownDrainSeconds * 1000);
 
     // Stop accepting new connections
     server.close(async () => {
       logger.info('HTTP server closed');
 
       try {
+        // Stop periodic loops first to prevent new claims/retries during shutdown
+        const videoJobSweeper = resolveOptional<VideoJobSweeper | null>('videoJobSweeper');
+        videoJobSweeper?.stop();
+
+        const creditRefundSweeper = resolveOptional<CreditRefundSweeper | null>('creditRefundSweeper');
+        creditRefundSweeper?.stop();
+
+        const videoAssetRetentionService =
+          resolveOptional<VideoAssetRetentionService | null>('videoAssetRetentionService');
+        videoAssetRetentionService?.stop();
+
+        const capabilitiesProbe = resolveOptional<CapabilitiesProbeService | null>('capabilitiesProbeService');
+        capabilitiesProbe?.stop();
+
+        // Drain active worker jobs with a deadline, then release claims for fast reclaim.
+        const videoJobWorker = resolveOptional<VideoJobWorker | null>('videoJobWorker');
+        if (videoJobWorker) {
+          await videoJobWorker.shutdown(drainTimeoutMs);
+        }
+
         // Close Redis connection
         const redisClient = container.resolve<Redis | null>('redisClient');
         await closeRedisClient(redisClient);
@@ -100,11 +136,13 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
       }
     });
 
-    // Force shutdown after 30 seconds
+    const forceShutdownMs = Math.max(30_000, drainTimeoutMs + 15_000);
+
+    // Force shutdown after drain budget + safety margin
     setTimeout(() => {
       logger.error('Forced shutdown after timeout');
       process.exit(1);
-    }, 30000);
+    }, forceShutdownMs);
   };
 
   // Handle shutdown signals

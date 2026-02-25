@@ -305,30 +305,37 @@ export function registerGenerationServices(container: DIContainer): void {
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
-      storageService: StorageService
+      storageService: StorageService,
+      metricsService: MetricsService
     ) => {
       if (!videoGenerationService) {
         return null;
       }
 
       const pollIntervalMs = Number.parseInt(process.env.VIDEO_JOB_POLL_INTERVAL_MS || '2000', 10);
-      const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
+      const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '60', 10);
       const maxConcurrent = Number.parseInt(process.env.VIDEO_JOB_MAX_CONCURRENT || '2', 10);
+      const heartbeatIntervalMs = Number.parseInt(
+        process.env.VIDEO_JOB_HEARTBEAT_INTERVAL_MS || '20000',
+        10
+      );
 
       return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, storageService, {
         pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
-        leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 900000,
+        leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 60000,
         maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
+        heartbeatIntervalMs: Number.isFinite(heartbeatIntervalMs) ? heartbeatIntervalMs : 20000,
+        metrics: metricsService,
       });
     },
-    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService']
+    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService']
   );
 
   container.register(
     'videoJobSweeper',
-    (videoJobStore: VideoJobStore, creditService: UserCreditService) =>
-      createVideoJobSweeper(videoJobStore, creditService),
-    ['videoJobStore', 'userCreditService'],
+    (videoJobStore: VideoJobStore, creditService: UserCreditService, metricsService: MetricsService) =>
+      createVideoJobSweeper(videoJobStore, creditService, metricsService),
+    ['videoJobStore', 'userCreditService', 'metricsService'],
     { singleton: true }
   );
 }

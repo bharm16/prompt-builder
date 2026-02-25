@@ -121,6 +121,36 @@ export const createVideoJobsHandler = ({
 
     if (job.status === 'failed') {
       response.error = job.error?.message || 'Video generation failed';
+      if (job.error?.code) {
+        response.errorCode = job.error.code;
+      }
+      if (job.error?.category) {
+        response.errorCategory = job.error.category;
+      }
+      if (typeof job.error?.retryable === 'boolean') {
+        response.errorRetryable = job.error.retryable;
+      }
+      if (job.error?.stage) {
+        response.errorStage = job.error.stage;
+      }
+      if (job.error?.provider) {
+        response.errorProvider = job.error.provider;
+      }
+      if (typeof job.error?.attempt === 'number') {
+        response.errorAttempt = job.error.attempt;
+      }
+    }
+
+    response.attempts = job.attempts;
+    response.maxAttempts = job.maxAttempts;
+    if (typeof job.lastHeartbeatAtMs === 'number') {
+      response.lastHeartbeatAtMs = job.lastHeartbeatAtMs;
+    }
+    if (typeof job.releasedAtMs === 'number') {
+      response.releasedAtMs = job.releasedAtMs;
+    }
+    if (job.releaseReason) {
+      response.releaseReason = job.releaseReason;
     }
 
     return res.json(response);

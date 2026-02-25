@@ -9,6 +9,7 @@ import {
   type VeoGenerationInput,
 } from './veo/operations';
 import { fetchAsVeoInline } from './veo/imageUtils';
+import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -18,7 +19,6 @@ export const DEFAULT_VEO_BASE_URL = 'https://generativelanguage.googleapis.com/v
 export const VEO_MODEL_ID = 'veo-3.1-generate-preview';
 
 const VEO_STATUS_POLL_INTERVAL_MS = 10000;
-const VEO_TASK_TIMEOUT_MS = 5 * 60 * 1000;
 
 export async function generateVeoVideo(
   apiKey: string,
@@ -28,6 +28,7 @@ export async function generateVeoVideo(
   assetStore: VideoAssetStore,
   log: LogSink
 ): Promise<StoredVideoAsset> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const input: VeoGenerationInput = { prompt };
 
   if (options.startImage) {
@@ -86,7 +87,7 @@ export async function generateVeoVideo(
 
   const operation = await waitForVeoOperation(baseUrl, apiKey, operationName, {
     pollIntervalMs: VEO_STATUS_POLL_INTERVAL_MS,
-    timeoutMs: VEO_TASK_TIMEOUT_MS,
+    timeoutMs,
   });
   const videoUri = extractVeoVideoUri(operation.response);
 

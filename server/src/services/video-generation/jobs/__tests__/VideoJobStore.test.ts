@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { VideoJobRecord } from '../types';
 
 type StoreRecord = Record<string, unknown>;
 
@@ -64,6 +65,8 @@ const mocks = vi.hoisted(() => ({
   records: new Map<string, StoreRecord>(),
   idCounter: 0,
   loggerError: vi.fn(),
+  loggerWarn: vi.fn(),
+  loggerDebug: vi.fn(),
   runTransactionError: null as Error | null,
   serverTimestamp: vi.fn(() => ({ _methodName: 'FieldValue.serverTimestamp' })),
   fieldDelete: vi.fn(() => ({ _methodName: 'FieldValue.delete' })),
@@ -142,6 +145,10 @@ vi.mock(
   () => ({
     logger: {
       error: mocks.loggerError,
+      child: () => ({
+        warn: mocks.loggerWarn,
+        debug: mocks.loggerDebug,
+      }),
     },
   })
 );
@@ -422,6 +429,89 @@ describe('VideoJobStore', () => {
     expect(failedQueued?.error?.message).toBe('queued too long');
     expect(failedProcessing?.status).toBe('failed');
     expect(failedProcessing?.error?.message).toBe('processing stalled');
+  });
+
+  it('renews leases and releases claims with explicit reason', async () => {
+    mocks.records.set('job-processing', {
+      status: 'processing',
+      userId: 'user-1',
+      request: { prompt: 'prompt', options: { model: 'sora-2' } },
+      creditsReserved: 4,
+      attempts: 1,
+      maxAttempts: 3,
+      createdAtMs: Date.now() - 3_000,
+      updatedAtMs: Date.now() - 2_000,
+      workerId: 'worker-1',
+      leaseExpiresAtMs: Date.now() + 10_000,
+      lastHeartbeatAtMs: Date.now() - 1_000,
+    });
+    const store = new VideoJobStore();
+
+    const renewed = await store.renewLease('job-processing', 'worker-1', 15_000);
+    const released = await store.releaseClaim('job-processing', 'worker-1', 'worker shutdown');
+    const record = mocks.records.get('job-processing');
+
+    expect(renewed).toBe(true);
+    expect(released).toBe(true);
+    expect(record?.status).toBe('queued');
+    expect(record).not.toHaveProperty('workerId');
+    expect(record).not.toHaveProperty('leaseExpiresAtMs');
+    expect(record).toMatchObject({
+      releaseReason: 'worker shutdown',
+    });
+  });
+
+  it('requeues retryable errors and can enqueue dead-letter records', async () => {
+    mocks.records.set('job-processing', {
+      status: 'processing',
+      userId: 'user-1',
+      request: { prompt: 'prompt', options: { model: 'sora-2' } },
+      creditsReserved: 4,
+      attempts: 2,
+      maxAttempts: 3,
+      createdAtMs: Date.now() - 3_000,
+      updatedAtMs: Date.now() - 2_000,
+      workerId: 'worker-1',
+      leaseExpiresAtMs: Date.now() + 10_000,
+    });
+    const store = new VideoJobStore();
+
+    const requeued = await store.requeueForRetry('job-processing', 'worker-1', {
+      message: 'provider timeout',
+      code: 'VIDEO_JOB_TIMEOUT',
+      category: 'timeout',
+      retryable: true,
+      stage: 'generation',
+      attempt: 2,
+    });
+    const job = await store.getJob('job-processing');
+
+    expect(requeued).toBe(true);
+    expect(job?.status).toBe('queued');
+    expect(job?.error).toMatchObject({
+      code: 'VIDEO_JOB_TIMEOUT',
+      category: 'timeout',
+      retryable: true,
+    });
+
+    await expect(
+      store.enqueueDeadLetter(
+        {
+          ...(job as VideoJobRecord),
+          id: 'job-processing',
+          status: 'failed',
+        },
+        {
+          message: 'provider timeout',
+          code: 'VIDEO_JOB_TIMEOUT',
+          category: 'timeout',
+          retryable: false,
+          stage: 'generation',
+          attempt: 3,
+        },
+        'worker-terminal'
+      )
+    ).resolves.toBeUndefined();
   });
 
   it('returns safe values and logs when transactions fail', async () => {

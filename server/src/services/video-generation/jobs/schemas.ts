@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VIDEO_JOB_STATUSES } from './types';
+import { VIDEO_JOB_ERROR_CATEGORIES, VIDEO_JOB_ERROR_STAGES, VIDEO_JOB_STATUSES } from './types';
 
 export const VideoGenerationOptionsSchema = z.object({
   model: z.string().optional(),
@@ -51,6 +51,12 @@ export const VideoJobResultSchema = z.object({
 
 export const VideoJobErrorSchema = z.object({
   message: z.string(),
+  code: z.string().optional(),
+  category: z.enum(VIDEO_JOB_ERROR_CATEGORIES).optional(),
+  retryable: z.boolean().optional(),
+  stage: z.enum(VIDEO_JOB_ERROR_STAGES).optional(),
+  provider: z.string().optional(),
+  attempt: z.number().int().positive().optional(),
 });
 
 export const VideoJobRecordSchema = z.object({
@@ -58,6 +64,8 @@ export const VideoJobRecordSchema = z.object({
   userId: z.string(),
   request: VideoJobRequestSchema,
   creditsReserved: z.number().nonnegative(),
+  attempts: z.number().int().nonnegative().optional(),
+  maxAttempts: z.number().int().positive().optional(),
   createdAtMs: z.number(),
   updatedAtMs: z.number(),
   completedAtMs: z.number().optional(),
@@ -65,4 +73,7 @@ export const VideoJobRecordSchema = z.object({
   error: VideoJobErrorSchema.optional(),
   workerId: z.string().optional(),
   leaseExpiresAtMs: z.number().optional(),
+  lastHeartbeatAtMs: z.number().optional(),
+  releasedAtMs: z.number().optional(),
+  releaseReason: z.string().optional(),
 });

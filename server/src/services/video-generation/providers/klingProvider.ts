@@ -2,6 +2,7 @@ import { z } from 'zod';
 import CircuitBreaker from 'opossum';
 import type { KlingAspectRatio, KlingModelId, VideoGenerationOptions } from '../types';
 import { sleep } from '../utils/sleep';
+import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -29,7 +30,6 @@ interface KlingImageToVideoInput {
 export const DEFAULT_KLING_BASE_URL = 'https://api.klingai.com';
 
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
-const KLING_TASK_TIMEOUT_MS = 5 * 60 * 1000;
 
 const KLING_TASK_STATUS_SCHEMA = z.enum(['submitted', 'processing', 'succeed', 'failed']);
 
@@ -222,6 +222,7 @@ async function waitForKlingVideo(
   apiKey: string,
   taskId: string
 ): Promise<string> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
 
   while (true) {
@@ -239,7 +240,7 @@ async function waitForKlingVideo(
       throw new Error(`Kling task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > KLING_TASK_TIMEOUT_MS) {
+    if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for Kling task ${taskId}`);
     }
 
@@ -252,6 +253,7 @@ async function waitForKlingImageToVideo(
   apiKey: string,
   taskId: string
 ): Promise<string> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
 
   while (true) {
@@ -281,7 +283,7 @@ async function waitForKlingImageToVideo(
       throw new Error(`Kling i2v task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > KLING_TASK_TIMEOUT_MS) {
+    if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for Kling i2v task ${taskId}`);
     }
 

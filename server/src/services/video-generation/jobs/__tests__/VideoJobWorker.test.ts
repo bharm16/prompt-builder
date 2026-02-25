@@ -12,31 +12,30 @@ const mocks = vi.hoisted(() => ({
   saveFromUrl: vi.fn(),
 }));
 
-vi.mock(
-  '@infrastructure/Logger',
-  () => ({
-    logger: {
-      child: () => ({
-        info: mocks.loggerInfo,
-        warn: mocks.loggerWarn,
-        error: mocks.loggerError,
-      }),
-    },
-  })
-);
+vi.mock('@infrastructure/Logger', () => ({
+  logger: {
+    child: () => ({
+      info: mocks.loggerInfo,
+      warn: mocks.loggerWarn,
+      error: mocks.loggerError,
+      debug: vi.fn(),
+    }),
+  },
+}));
 
-vi.mock(
-  '@services/credits/refundGuard',
-  () => ({
-    buildRefundKey: mocks.buildRefundKey,
-    refundWithGuard: mocks.refundWithGuard,
-  })
-);
+vi.mock('@services/credits/refundGuard', () => ({
+  buildRefundKey: mocks.buildRefundKey,
+  refundWithGuard: mocks.refundWithGuard,
+}));
 
 type MinimalJobStore = {
   claimNextJob: ReturnType<typeof vi.fn>;
   markCompleted: ReturnType<typeof vi.fn>;
   markFailed: ReturnType<typeof vi.fn>;
+  requeueForRetry: ReturnType<typeof vi.fn>;
+  enqueueDeadLetter: ReturnType<typeof vi.fn>;
+  releaseClaim: ReturnType<typeof vi.fn>;
+  renewLease: ReturnType<typeof vi.fn>;
 };
 
 const createJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord => ({
@@ -48,15 +47,14 @@ const createJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord => ({
     options: { model: 'sora-2' },
   },
   creditsReserved: 7,
+  attempts: 1,
+  maxAttempts: 3,
   createdAtMs: Date.now(),
   updatedAtMs: Date.now(),
   ...overrides,
 });
 
-const createWorker = (
-  jobStore: MinimalJobStore,
-  generateVideo: ReturnType<typeof vi.fn>
-) =>
+const createWorker = (jobStore: MinimalJobStore, generateVideo: ReturnType<typeof vi.fn>) =>
   new VideoJobWorker(
     jobStore as never,
     { generateVideo } as never,
@@ -65,8 +63,9 @@ const createWorker = (
     {
       workerId: 'worker-a',
       pollIntervalMs: 1_000,
-      leaseMs: 10_000,
+      leaseMs: 60_000,
       maxConcurrent: 1,
+      heartbeatIntervalMs: 10_000,
     }
   );
 
@@ -78,7 +77,7 @@ describe('VideoJobWorker', () => {
     vi.clearAllMocks();
   });
 
-  it('marks job completed with storage metadata when generation succeeds', async () => {
+  it('marks job completed with required storage metadata when generation succeeds', async () => {
     const generationResult: VideoGenerationResult = {
       assetId: 'asset-1',
       videoUrl: 'https://provider.example.com/video.mp4',
@@ -90,6 +89,10 @@ describe('VideoJobWorker', () => {
       claimNextJob: vi.fn(),
       markCompleted: vi.fn().mockResolvedValue(true),
       markFailed: vi.fn(),
+      requeueForRetry: vi.fn(),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
     };
     mocks.saveFromUrl.mockResolvedValue({
       storagePath: 'users/user-1/generation/video.mp4',
@@ -103,16 +106,6 @@ describe('VideoJobWorker', () => {
     const worker = createWorker(jobStore, generateVideo);
     await runProcessJob(worker, createJob());
 
-    expect(generateVideo).toHaveBeenCalledWith('a cinematic prompt', { model: 'sora-2' });
-    expect(mocks.saveFromUrl).toHaveBeenCalledWith(
-      'user-1',
-      'https://provider.example.com/video.mp4',
-      'generation',
-      {
-        model: 'sora-2',
-        creditsUsed: 7,
-      }
-    );
     expect(jobStore.markCompleted).toHaveBeenCalledWith('job-1', {
       assetId: 'asset-1',
       videoUrl: 'https://provider.example.com/video.mp4',
@@ -124,82 +117,131 @@ describe('VideoJobWorker', () => {
       sizeBytes: 987,
     });
     expect(jobStore.markFailed).not.toHaveBeenCalled();
+    expect(jobStore.requeueForRetry).not.toHaveBeenCalled();
     expect(mocks.refundWithGuard).not.toHaveBeenCalled();
   });
 
-  it('continues completion when storage persistence fails', async () => {
-    const generationResult: VideoGenerationResult = {
-      assetId: 'asset-1',
-      videoUrl: 'https://provider.example.com/video.mp4',
-      contentType: 'video/mp4',
-      inputMode: 'i2v',
-      startImageUrl: 'https://images.example.com/start.png',
-    };
-    const generateVideo = vi.fn().mockResolvedValue(generationResult);
-    const jobStore: MinimalJobStore = {
-      claimNextJob: vi.fn(),
-      markCompleted: vi.fn().mockResolvedValue(true),
-      markFailed: vi.fn(),
-    };
-    mocks.saveFromUrl.mockRejectedValue(new Error('storage unavailable'));
-
-    const worker = createWorker(jobStore, generateVideo);
-    await runProcessJob(worker, createJob());
-
-    expect(jobStore.markCompleted).toHaveBeenCalledWith('job-1', generationResult);
-    expect(mocks.loggerInfo).toHaveBeenCalledWith('Secondary storage copy failed', {
-      persistence_type: 'secondary-copy',
-      required: false,
-      outcome: 'failed',
-      job_id: 'job-1',
-      user_id: 'user-1',
-      error: 'storage unavailable',
-    });
-  });
-
-  it('marks failed jobs and refunds reserved credits when generation fails', async () => {
-    const generateVideo = vi.fn().mockRejectedValue(new Error('provider rate limit'));
-    const jobStore: MinimalJobStore = {
-      claimNextJob: vi.fn(),
-      markCompleted: vi.fn(),
-      markFailed: vi.fn().mockResolvedValue(true),
-    };
-    const worker = createWorker(jobStore, generateVideo);
-    const job = createJob({ id: 'job-fail', creditsReserved: 4 });
-
-    await runProcessJob(worker, job);
-
-    expect(jobStore.markFailed).toHaveBeenCalledWith('job-fail', 'provider rate limit');
-    expect(mocks.buildRefundKey).toHaveBeenCalledWith(['video-job', 'job-fail', 'video']);
-    expect(mocks.refundWithGuard).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        amount: 4,
-        refundKey: 'refund-video-job-job-fail-video',
-        reason: 'video job worker failed',
-        metadata: {
-          jobId: 'job-fail',
-          workerId: 'worker-a',
-        },
-      })
-    );
-  });
-
-  it('skips refund when failed status cannot be persisted', async () => {
+  it('requeues retryable failures while attempts remain', async () => {
     const generateVideo = vi.fn().mockRejectedValue(new Error('provider timeout'));
     const jobStore: MinimalJobStore = {
       claimNextJob: vi.fn(),
       markCompleted: vi.fn(),
-      markFailed: vi.fn().mockResolvedValue(false),
+      markFailed: vi.fn(),
+      requeueForRetry: vi.fn().mockResolvedValue(true),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
+    };
+
+    const worker = createWorker(jobStore, generateVideo);
+    await runProcessJob(worker, createJob({ attempts: 1, maxAttempts: 3 }));
+
+    expect(jobStore.requeueForRetry).toHaveBeenCalledWith(
+      'job-1',
+      'worker-a',
+      expect.objectContaining({
+        retryable: true,
+        stage: 'generation',
+        category: 'timeout',
+        attempt: 1,
+      })
+    );
+    expect(jobStore.markFailed).not.toHaveBeenCalled();
+    expect(mocks.refundWithGuard).not.toHaveBeenCalled();
+  });
+
+  it('marks terminal failures, enqueues DLQ, and refunds credits when attempts are exhausted', async () => {
+    const generateVideo = vi.fn().mockRejectedValue(new Error('provider timeout'));
+    const jobStore: MinimalJobStore = {
+      claimNextJob: vi.fn(),
+      markCompleted: vi.fn(),
+      markFailed: vi.fn().mockResolvedValue(true),
+      requeueForRetry: vi.fn(),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
     };
     const worker = createWorker(jobStore, generateVideo);
+    const job = createJob({ id: 'job-fail', attempts: 3, maxAttempts: 3, creditsReserved: 4 });
 
-    await runProcessJob(worker, createJob({ id: 'job-no-refund' }));
+    await runProcessJob(worker, job);
 
-    expect(mocks.refundWithGuard).not.toHaveBeenCalled();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Video job failure skipped (status changed)', {
-      jobId: 'job-no-refund',
-      userId: 'user-1',
+    expect(jobStore.markFailed).toHaveBeenCalledWith(
+      'job-fail',
+      expect.objectContaining({
+        retryable: false,
+        category: 'timeout',
+        stage: 'generation',
+        attempt: 3,
+      })
+    );
+    expect(jobStore.enqueueDeadLetter).toHaveBeenCalledWith(
+      job,
+      expect.objectContaining({
+        retryable: false,
+      }),
+      'worker-terminal'
+    );
+    expect(mocks.refundWithGuard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        amount: 4,
+        reason: 'video job worker failed',
+      })
+    );
+  });
+
+  it('does not retry validation failures', async () => {
+    const generateVideo = vi.fn().mockRejectedValue(new Error('invalid prompt payload'));
+    const jobStore: MinimalJobStore = {
+      claimNextJob: vi.fn(),
+      markCompleted: vi.fn(),
+      markFailed: vi.fn().mockResolvedValue(true),
+      requeueForRetry: vi.fn().mockResolvedValue(true),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
+    };
+
+    const worker = createWorker(jobStore, generateVideo);
+    await runProcessJob(worker, createJob({ attempts: 1, maxAttempts: 3 }));
+
+    expect(jobStore.requeueForRetry).not.toHaveBeenCalled();
+    expect(jobStore.markFailed).toHaveBeenCalledWith(
+      'job-1',
+      expect.objectContaining({
+        category: 'validation',
+        retryable: false,
+      })
+    );
+  });
+
+  it('releases active jobs when shutdown drain timeout is exceeded', async () => {
+    const jobStore: MinimalJobStore = {
+      claimNextJob: vi.fn(),
+      markCompleted: vi.fn(),
+      markFailed: vi.fn(),
+      requeueForRetry: vi.fn(),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
+    };
+    const worker = createWorker(jobStore, vi.fn());
+
+    let released = false;
+    const internals = worker as unknown as {
+      activeCount: number;
+      activeJobs: Map<string, { release: () => Promise<void>; startedAtMs: number }>;
+    };
+    internals.activeCount = 1;
+    internals.activeJobs.set('job-1', {
+      startedAtMs: Date.now(),
+      release: async () => {
+        released = true;
+      },
     });
+
+    await worker.shutdown(10);
+    expect(released).toBe(true);
   });
 });

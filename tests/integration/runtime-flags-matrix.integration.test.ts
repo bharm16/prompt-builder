@@ -9,6 +9,8 @@ const TEST_API_KEY = 'runtime-flags-test-key';
 const ENV_KEYS = [
   'PROMPT_OUTPUT_ONLY',
   'ENABLE_CONVERGENCE',
+  'PROCESS_ROLE',
+  'VIDEO_JOB_INLINE_ENABLED',
   'ALLOWED_API_KEYS',
   'PORT',
   'NODE_ENV',
@@ -128,6 +130,32 @@ describe('Runtime flag matrix contracts (integration)', () => {
           .set('x-api-key', TEST_API_KEY)
           .send({});
         expect(optimizeRoute.status).toBe(400);
+      }
+    );
+  });
+
+  it('keeps health stable across PROCESS_ROLE api/worker runtime modes', async () => {
+    await withApp(
+      {
+        PROCESS_ROLE: 'api',
+        VIDEO_JOB_INLINE_ENABLED: 'false',
+      },
+      async (app) => {
+        const health = await request(app).get('/health');
+        expect(health.status).toBe(200);
+        expect(health.body.status).toBe('healthy');
+      }
+    );
+
+    await withApp(
+      {
+        PROCESS_ROLE: 'worker',
+        VIDEO_JOB_INLINE_ENABLED: 'false',
+      },
+      async (app) => {
+        const health = await request(app).get('/health');
+        expect(health.status).toBe(200);
+        expect(health.body.status).toBe('healthy');
       }
     );
   });

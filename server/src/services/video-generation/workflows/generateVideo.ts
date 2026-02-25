@@ -5,6 +5,7 @@ import type { VideoGenerationOptions, VideoGenerationResult } from '../types';
 import { getProviderAvailability, resolveProviderForModel } from '../providers/ProviderRegistry';
 import { getModelAvailability } from '../availability';
 import type { VideoProviderMap } from '../providers/VideoProviders';
+import { getWorkflowWatchdogTimeoutMs } from '../providers/timeoutPolicy';
 
 type LogSink = {
   debug: (message: string, meta?: Record<string, unknown>) => void;
@@ -13,6 +14,23 @@ type LogSink = {
   error: (message: string, error?: Error) => void;
 };
 
+async function withWatchdog<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`Video generation workflow timeout exceeded (${timeoutMs}ms)`));
+      }, timeoutMs);
+
+      operation.then(resolve, reject);
+    });
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 export async function generateVideoWorkflow(
   prompt: string,
   options: VideoGenerationOptions,
@@ -20,6 +38,7 @@ export async function generateVideoWorkflow(
   assetStore: VideoAssetStore,
   log: LogSink
 ): Promise<VideoGenerationResult> {
+  const workflowTimeoutMs = getWorkflowWatchdogTimeoutMs();
   const modelSelection = typeof options.model === 'string' ? options.model.trim() : options.model;
   const startImageUrl = options.startImage || options.inputReference;
   const inputMode: VideoGenerationResult['inputMode'] = startImageUrl ? 'i2v' : 't2v';
@@ -53,7 +72,10 @@ export async function generateVideoWorkflow(
     if (!provider) {
       throw new Error(`No provider registered for model: ${modelId}`);
     }
-    const { asset, seed } = await provider.generate(prompt, modelId, options, assetStore, log);
+    const { asset, seed } = await withWatchdog(
+      provider.generate(prompt, modelId, options, assetStore, log),
+      workflowTimeoutMs
+    );
     return formatResult(asset, inputMode, startImageUrl, seed);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

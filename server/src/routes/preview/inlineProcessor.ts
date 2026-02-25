@@ -13,9 +13,9 @@ interface InlinePreviewProcessorParams {
 }
 
 function getVideoJobLeaseMs(): number {
-  const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
+  const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '60', 10);
   if (!Number.isFinite(leaseSeconds) || leaseSeconds <= 0) {
-    return 900000;
+    return 60000;
   }
   return leaseSeconds * 1000;
 }
@@ -53,57 +53,36 @@ export function scheduleInlineVideoPreviewProcessing({
           claimed.request.prompt,
           claimed.request.options
         );
-        let storageResult: {
+        if (!storageService) {
+          throw new Error('Storage service unavailable for required durable write');
+        }
+
+        const storageResult: {
           storagePath: string;
           viewUrl: string;
           expiresAt: string;
           sizeBytes: number;
-        } | null = null;
+        } = await storageService.saveFromUrl(claimed.userId, result.videoUrl, 'generation', {
+          model: claimed.request.options?.model,
+          creditsUsed: claimed.creditsReserved,
+        });
 
-        if (storageService) {
-          try {
-            storageResult = await storageService.saveFromUrl(claimed.userId, result.videoUrl, 'generation', {
-              model: claimed.request.options?.model,
-              creditsUsed: claimed.creditsReserved,
-            });
-            logger.info('Secondary storage copy completed', {
-              persistence_type: 'secondary-copy',
-              required: false,
-              outcome: 'success',
-              job_id: jobId,
-              user_id: claimed.userId,
-              storage_path: storageResult.storagePath,
-            });
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.info('Secondary storage copy failed', {
-              persistence_type: 'secondary-copy',
-              required: false,
-              outcome: 'failed',
-              job_id: jobId,
-              user_id: claimed.userId,
-              error: errorMessage,
-            });
-          }
-        } else {
-          logger.info('Secondary storage copy skipped', {
-            persistence_type: 'secondary-copy',
-            required: false,
-            outcome: 'skipped',
-            job_id: jobId,
-            user_id: claimed.userId,
-          });
-        }
+        logger.info('Required storage copy completed', {
+          persistence_type: 'durable-storage',
+          required: true,
+          outcome: 'success',
+          job_id: jobId,
+          user_id: claimed.userId,
+          storage_path: storageResult.storagePath,
+        });
 
-        const resultWithStorage = storageResult
-          ? {
-              ...result,
-              storagePath: storageResult.storagePath,
-              viewUrl: storageResult.viewUrl,
-              viewUrlExpiresAt: storageResult.expiresAt,
-              sizeBytes: storageResult.sizeBytes,
-            }
-          : result;
+        const resultWithStorage = {
+          ...result,
+          storagePath: storageResult.storagePath,
+          viewUrl: storageResult.viewUrl,
+          viewUrlExpiresAt: storageResult.expiresAt,
+          sizeBytes: storageResult.sizeBytes,
+        };
 
         const marked = await videoJobStore.markCompleted(jobId, resultWithStorage);
         if (!marked) {
@@ -132,8 +111,27 @@ export function scheduleInlineVideoPreviewProcessing({
           errorMessage,
         });
 
-        const marked = await videoJobStore.markFailed(jobId, errorMessage);
+        const marked = await videoJobStore.markFailed(jobId, {
+          message: errorMessage,
+          code: 'VIDEO_JOB_INLINE_FAILED',
+          category: 'infrastructure',
+          retryable: false,
+          stage: 'generation',
+          attempt: claimed.attempts,
+        });
         if (marked) {
+          await videoJobStore.enqueueDeadLetter(
+            claimed,
+            {
+              message: errorMessage,
+              code: 'VIDEO_JOB_INLINE_FAILED',
+              category: 'infrastructure',
+              retryable: false,
+              stage: 'generation',
+              attempt: claimed.attempts,
+            },
+            'inline-terminal'
+          );
           const refundKey = buildRefundKey(['video-job', jobId, 'video']);
           await refundWithGuard({
             userCreditService,

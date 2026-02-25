@@ -25,6 +25,32 @@ spec:
           targetLabel: node
 ---
 apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prompt-builder-worker
+  labels:
+    app: prompt-builder
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: prompt-builder
+      component: worker
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      scheme: http
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+---
+apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: prompt-builder-alerts
@@ -165,3 +191,75 @@ spec:
           annotations:
             summary: "Deployment rollout stuck"
             description: "Deployment {{ $labels.deployment }} rollout has been stuck for 15 minutes"
+
+        # Video job terminal failures
+        - alert: VideoJobTerminalFailures
+          expr: |
+            sum(rate(alerts_total{alert="video_job_terminal_failure"}[10m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: video-jobs
+          annotations:
+            summary: "Video jobs are failing terminally"
+            description: "Video job terminal failure alerts are firing (rate: {{ $value }} /sec)"
+
+        # DLQ growth proxy (terminal failures write to video_job_dlq)
+        - alert: VideoJobDLQGrowth
+          expr: |
+            increase(alerts_total{alert="video_job_terminal_failure"}[30m]) > 5
+          for: 0m
+          labels:
+            severity: warning
+            component: video-jobs
+          annotations:
+            summary: "Video job DLQ growth detected"
+            description: "More than 5 terminal video job failures in 30 minutes."
+
+        # Video job retries spiking
+        - alert: VideoJobRetrySpike
+          expr: |
+            sum(rate(alerts_total{alert="video_job_requeued"}[10m])) > 0.02
+          for: 10m
+          labels:
+            severity: warning
+            component: video-jobs
+          annotations:
+            summary: "Video job retries are spiking"
+            description: "Video job requeue rate exceeded threshold (rate: {{ $value }} /sec)"
+
+        # Worker drain timeout on shutdown
+        - alert: VideoWorkerDrainTimeout
+          expr: |
+            increase(alerts_total{alert="video_job_worker_drain_timeout"}[30m]) > 0
+          for: 0m
+          labels:
+            severity: critical
+            component: worker
+          annotations:
+            summary: "Video worker drain timeout occurred"
+            description: "A worker shutdown exceeded drain timeout and forced claim release."
+
+        # Sweeper reclaiming stale jobs indicates claim/heartbeat issues
+        - alert: VideoJobStaleReclaimSpike
+          expr: |
+            sum(rate(alerts_total{alert="video_job_sweeper_stale_reclaimed"}[10m])) > 0.01
+          for: 10m
+          labels:
+            severity: warning
+            component: video-jobs
+          annotations:
+            summary: "Video job stale reclaim activity is elevated"
+            description: "Sweeper reclaimed stale jobs above expected baseline (rate: {{ $value }} /sec)"
+
+        # Persistence failures indicate durable storage degradation
+        - alert: VideoJobPersistenceFailures
+          expr: |
+            sum(rate(alerts_total{alert="video_job_persistence_failure"}[10m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: storage
+          annotations:
+            summary: "Video job durable persistence failures detected"
+            description: "Video persistence failures are occurring (rate: {{ $value }} /sec)"

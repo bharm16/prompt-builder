@@ -5,6 +5,7 @@ import { parseVideoPreviewRequest } from '@routes/preview/videoRequest';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
+import { getRuntimeFlags } from '@config/runtime-flags';
 import type { VideoModelId } from '@services/video-generation/types';
 import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
 import { assertUrlSafe } from '@server/shared/urlValidation';
@@ -386,14 +387,16 @@ export const createVideoGenerateHandler = ({
         motionGuidanceAppended: plan.motionGuidanceAppended,
       });
 
-      scheduleInlineVideoPreviewProcessing({
-        jobId: job.id,
-        requestId,
-        videoJobStore,
-        videoGenerationService,
-        userCreditService,
-        storageService: storageService ?? null,
-      });
+      if (getRuntimeFlags().videoJobInlineEnabled) {
+        scheduleInlineVideoPreviewProcessing({
+          jobId: job.id,
+          requestId,
+          videoJobStore,
+          videoGenerationService,
+          userCreditService,
+          storageService: storageService ?? null,
+        });
+      }
 
       const responsePayload = {
         jobId: job.id,

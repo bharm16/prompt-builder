@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prompt-builder-api
+  name: prompt-builder-worker
   labels:
     app: prompt-builder
-    component: api
+    component: worker
 spec:
-  replicas: 3
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0  # Zero-downtime deployments
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: prompt-builder
-      component: api
+      component: worker
   template:
     metadata:
       labels:
         app: prompt-builder
-        component: api
+        component: worker
         version: v1
       annotations:
         prometheus.io/scrape: "true"
@@ -36,22 +36,8 @@ spec:
 
       serviceAccountName: prompt-builder-api
 
-      # Pod anti-affinity to spread across nodes
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                        - prompt-builder
-                topologyKey: kubernetes.io/hostname
-
       containers:
-        - name: api
+        - name: worker
           image: ghcr.io/bharm16/prompt-builder:latest
           imagePullPolicy: Always
 
@@ -68,7 +54,7 @@ spec:
             - name: LOG_LEVEL
               value: "info"
             - name: PROCESS_ROLE
-              value: "api"
+              value: "worker"
             - name: VIDEO_JOB_INLINE_ENABLED
               value: "false"
 
@@ -86,35 +72,26 @@ spec:
               memory: "512Mi"
               cpu: "500m"
 
-          # Liveness probe - restart if unhealthy
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
-              httpHeaders:
-                - name: X-Kubernetes-Probe
-                  value: liveness
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 3
             successThreshold: 1
             failureThreshold: 3
 
-          # Readiness probe - don't send traffic if not ready
           readinessProbe:
             httpGet:
               path: /health/ready
               port: http
-              httpHeaders:
-                - name: X-Kubernetes-Probe
-                  value: readiness
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
             failureThreshold: 2
 
-          # Startup probe - for slow-starting containers
           startupProbe:
             httpGet:
               path: /health/live
@@ -123,16 +100,15 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
-            failureThreshold: 12  # 60 seconds max startup time
+            failureThreshold: 12
 
-          # Lifecycle hooks for graceful shutdown
           lifecycle:
             preStop:
               exec:
                 command:
                   - /bin/sh
                   - -c
-                  - sleep 15  # Allow time for load balancer to deregister
+                  - sleep 10
 
           securityContext:
             allowPrivilegeEscalation: false
@@ -149,8 +125,7 @@ spec:
             - name: cache
               mountPath: /app/.cache
 
-      # Graceful termination
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 90
 
       volumes:
         - name: tmp
@@ -158,6 +133,5 @@ spec:
         - name: cache
           emptyDir: {}
 
-      # Image pull secrets for private registry
       imagePullSecrets:
         - name: ghcr-pull-secret

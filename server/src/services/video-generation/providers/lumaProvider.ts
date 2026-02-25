@@ -1,6 +1,7 @@
 import type { LumaAI } from 'lumaai';
 import { sleep } from '../utils/sleep';
 import type { VideoGenerationOptions } from '../types';
+import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -67,6 +68,7 @@ export async function generateLumaVideo(
   options: VideoGenerationOptions,
   log: LogSink
 ): Promise<string> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const keyframes = buildLumaKeyframes(options);
   const aspectRatio = resolveLumaAspectRatio(options.aspectRatio);
 
@@ -94,9 +96,13 @@ export async function generateLumaVideo(
   });
 
   let result = generation;
+  const start = Date.now();
   while (result.state !== 'completed') {
     if (result.state === 'failed') {
       throw new Error('Luma generation failed');
+    }
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`Timed out waiting for Luma generation ${generation.id}`);
     }
     await sleep(LUMA_STATUS_POLL_INTERVAL_MS);
     result = await luma.generations.get(generation.id);

@@ -27,7 +27,7 @@ import { initializeDepthWarmer } from '@services/convergence/depth';
  */
 export function createApp(container: DIContainer): Application {
   const app = express();
-  const { promptOutputOnly } = getRuntimeFlags();
+  const { promptOutputOnly, processRole } = getRuntimeFlags();
 
   // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
   // Ensures rate limiting, logging, and security middleware see real IPs
@@ -50,7 +50,7 @@ export function createApp(container: DIContainer): Application {
   });
 
   // Pre-warm fal.ai depth estimation to reduce cold starts in Create mode.
-  if (!promptOutputOnly) {
+  if (!promptOutputOnly && processRole === 'api') {
     initializeDepthWarmer();
   }
 
