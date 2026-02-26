@@ -2,8 +2,8 @@ import { createHash } from 'crypto';
 import { logger } from '@infrastructure/Logger';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
 import { getCurrentSpanProvider } from '@llm/span-labeling/services/LlmClientFactory';
-import { spanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
 import type { LabelSpansParams, LabelSpansResult, ValidationPolicy } from '@llm/span-labeling/types';
 
 interface LabelSpansCoordinatorInput {
@@ -44,7 +44,7 @@ const createCoalescingKey = (
   return `span:${textHash}:${policyHash}`;
 };
 
-export function createLabelSpansCoordinator(aiService: AIModelService): {
+export function createLabelSpansCoordinator(aiService: AIModelService, spanLabelingCache: SpanLabelingCacheService | null = null): {
   resolve: (input: LabelSpansCoordinatorInput) => Promise<LabelSpansCoordinatorResult>;
 } {
   const inflightRequests = new Map<string, Promise<LabelSpansResult>>();

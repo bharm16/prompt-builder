@@ -12,6 +12,7 @@ import {
 import type { SpansData } from '../usePromptOptimizerState';
 import type { Toast } from '../types';
 import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import type { I2VOptimizationResult } from '@/features/prompt-optimizer/types/i2v';
 import type { CapabilityValues } from '@shared/capabilities';
 
 export interface PromptOptimizerActions {
@@ -27,6 +28,7 @@ export interface PromptOptimizerActions {
   setQualityScore: (score: number | null) => void;
   setPreviewPrompt: (prompt: string | null) => void;
   setPreviewAspectRatio: (ratio: string | null) => void;
+  rollback: () => void;
 }
 
 export interface OptimizationOutcome {
@@ -61,6 +63,7 @@ type AnalyzeAndOptimize = (options: {
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
 }) => Promise<{
@@ -68,7 +71,7 @@ type AnalyzeAndOptimize = (options: {
   optimizedPrompt?: string;
   inputMode?: 't2v' | 'i2v';
   metadata?: Record<string, unknown>;
-  i2v?: Record<string, unknown>;
+  i2v?: I2VOptimizationResult;
 }>;
 
 function normalizeSpans(spans: unknown[]): SpansData['spans'] {
@@ -139,6 +142,9 @@ export async function runTwoStageOptimization({
     stage: 'two-stage',
   });
 
+  // Keep the UI in a single "refining" state and only reveal text on final refinement.
+  actions.setIsRefining(true);
+
   let draftNotified = false;
   let refinementComplete = false;
 
@@ -157,10 +163,6 @@ export async function runTwoStageOptimization({
         return;
       }
       actions.setDraftPrompt(draft);
-      actions.setOptimizedPrompt(draft);
-
-      const draftScore = calculateQualityScore(promptToOptimize, draft);
-      actions.setQualityScore(draftScore);
 
       if (draftNotified) {
         return;
@@ -180,19 +182,12 @@ export async function runTwoStageOptimization({
         duration: draftDuration,
       });
 
-      actions.setIsDraftReady(true);
-      actions.setIsRefining(true);
-      actions.setIsProcessing(false);
-
       log.info('Draft ready', {
         operation: 'optimize',
         stage: 'draft',
         duration: draftDuration,
-        score: draftScore,
         outputLength: draft.length,
       });
-
-      toast.info('Draft ready! Refining in background...');
     },
     onSpans: (spans: unknown[], source: string, meta?: unknown) => {
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
@@ -237,10 +232,6 @@ export async function runTwoStageOptimization({
         return;
       }
 
-      actions.setOptimizedPrompt(refined);
-      if (!refinedSpans) {
-        actions.setDisplayedPrompt(refined);
-      }
       if (metadata?.streaming === true) {
         return;
       }
@@ -248,6 +239,11 @@ export async function runTwoStageOptimization({
         return;
       }
       refinementComplete = true;
+
+      actions.setOptimizedPrompt(refined);
+      if (!refinedSpans) {
+        actions.setDisplayedPrompt(refined);
+      }
 
       const refinementDuration = logger.endTimer('optimize');
 
@@ -275,6 +271,7 @@ export async function runTwoStageOptimization({
       }
 
       actions.setQualityScore(refinedScore);
+      actions.setIsDraftReady(true);
       actions.setIsRefining(false);
 
       log.info('Refinement complete', {
@@ -301,21 +298,18 @@ export async function runTwoStageOptimization({
         operation: 'optimize',
         mode: selectedMode,
       });
-      actions.setIsRefining(false);
-      actions.setIsProcessing(false);
+      actions.rollback();
     },
   });
 
   const totalDuration = logger.endTimer('optimize');
 
   if (result.usedFallback) {
-    log.info('Two-stage optimization fell back to single-stage', {
+    log.warn('Two-stage optimization returned fallback result', {
       operation: 'optimize',
       usedFallback: true,
     });
-    toast.warning(
-      'Fast optimization unavailable. Using standard optimization (this may take longer).'
-    );
+    toast.error('Optimization failed. Please try again.');
   }
 
   log.info('Two-stage optimization completed', {
@@ -353,6 +347,7 @@ export interface SingleStageOptimizationOptions {
   brainstormContext: unknown | null;
   generationParams?: CapabilityValues;
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   abortController: AbortController;
   skipCache?: boolean;
@@ -372,6 +367,7 @@ export async function runSingleStageOptimization({
   brainstormContext,
   generationParams,
   startImage,
+  sourcePrompt,
   constraintMode,
   abortController,
   skipCache,
@@ -397,6 +393,7 @@ export async function runSingleStageOptimization({
     ...(skipCache ? { skipCache } : {}),
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
     ...(startImage ? { startImage } : {}),
+    ...(sourcePrompt ? { sourcePrompt } : {}),
     ...(constraintMode ? { constraintMode } : {}),
   });
 

@@ -67,7 +67,7 @@ describe('previewApi', () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: false,
         json: async () => ({ error: 'Not authorized' }),
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });
@@ -96,7 +96,7 @@ describe('previewApi', () => {
         json: async () => {
           throw new Error('bad json');
         },
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });
@@ -186,11 +186,22 @@ describe('previewApi', () => {
           characterAssetId: 'asset-1',
           autoKeyframe: true,
         }),
-        { timeout: API_CONFIG.timeout.video }
+        expect.objectContaining({
+          timeout: API_CONFIG.timeout.video,
+          headers: expect.objectContaining({
+            'Idempotency-Key': expect.any(String),
+          }),
+        })
       );
     });
 
     it('requests the video preview status without caching', async () => {
+      apiClientMocks.get.mockResolvedValueOnce({
+        success: true,
+        jobId: 'job-123',
+        status: 'processing',
+      });
+
       await getVideoPreviewStatus('job-123');
 
       expect(apiClientMocks.get).toHaveBeenCalledWith('/preview/video/jobs/job-123', {
@@ -209,7 +220,7 @@ describe('previewApi', () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => payload,
-      } as Response);
+      } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
       const file = new File(['data'], 'preview.png', { type: 'image/png' });

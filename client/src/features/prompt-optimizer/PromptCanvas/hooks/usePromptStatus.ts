@@ -23,6 +23,11 @@ export function usePromptStatus({
 }: UsePromptStatusOptions): void {
   // Track if we've already set the timestamp for the current draft to avoid re-renders
   const hasSetTimestampRef = useRef(false);
+  const generatedTimestampRef = useRef<number | null>(generatedTimestamp);
+
+  useEffect(() => {
+    generatedTimestampRef.current = generatedTimestamp;
+  }, [generatedTimestamp]);
 
   useEffect(() => {
     if (!displayedPrompt) {
@@ -38,7 +43,7 @@ export function usePromptStatus({
 
     if (isDraftReady && !isRefining && !isProcessing) {
       // Only set timestamp once per draft to prevent loops
-      if (!generatedTimestamp && !hasSetTimestampRef.current) {
+      if (!generatedTimestampRef.current && !hasSetTimestampRef.current) {
         hasSetTimestampRef.current = true;
         setState({
           promptState: 'generated',
@@ -58,7 +63,6 @@ export function usePromptStatus({
     isDraftReady,
     isRefining,
     isProcessing,
-    // Removed generatedTimestamp from deps - we use ref to track if we've set it
     setState,
   ]);
 }

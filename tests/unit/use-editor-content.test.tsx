@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 
 import { useEditorContent } from '@features/prompt-optimizer/PromptCanvas/hooks/useEditorContent';
 import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
@@ -22,20 +22,22 @@ describe('useEditorContent', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders placeholder text when no prompt is available', () => {
+  it('clears editor content in plain-text mode when prompt is empty', () => {
     const editor = document.createElement('div');
+    editor.textContent = 'Existing text';
     document.body.appendChild(editor);
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as unknown as RefObject<HTMLElement>;
 
     renderHook(() =>
       useEditorContent({
         editorRef,
-        displayedPrompt: null,
+        editorText: '',
         formattedHTML: '',
+        renderHtml: false,
       })
     );
 
-    expect(editor.innerHTML).toContain('Your optimized prompt will appear here');
+    expect(editor.textContent).toBe('');
   });
 
   it('updates HTML and restores selection when editor is focused', () => {
@@ -56,13 +58,14 @@ describe('useEditorContent', () => {
 
     mockGetSelectionOffsets.mockReturnValue({ start: 1, end: 3 });
 
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as unknown as RefObject<HTMLElement>;
 
     renderHook(() =>
       useEditorContent({
         editorRef,
-        displayedPrompt: 'New text',
+        editorText: 'New text',
         formattedHTML: '<p>New text</p>',
+        renderHtml: true,
       })
     );
 

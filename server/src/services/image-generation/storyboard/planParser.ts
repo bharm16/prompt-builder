@@ -119,7 +119,8 @@ const collectCandidates = (responseText: string, allowSingleLine: boolean): Delt
 };
 
 const pickBestCandidate = (candidates: DeltaCandidate[]): DeltaCandidate | null => {
-  if (candidates.length === 0) {
+  const firstCandidate = candidates[0];
+  if (!firstCandidate) {
     return null;
   }
   return candidates.reduce((best, candidate) => {
@@ -127,7 +128,7 @@ const pickBestCandidate = (candidates: DeltaCandidate[]): DeltaCandidate | null 
       return candidate;
     }
     return best;
-  }, candidates[0]);
+  }, firstCandidate);
 };
 
 export const parseStoryboardDeltas = (

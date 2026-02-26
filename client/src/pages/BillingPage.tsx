@@ -1,21 +1,47 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Check, CreditCard, FileText } from '@promptstudio/system/components/ui';
-import { apiClient } from '@/services/ApiClient';
+import { createBillingPortalSession, createCheckoutSession } from '@/api/billingApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';
-import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { useUserCreditBalance } from '@hooks/useUserCreditBalance';
-import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@/features/billing/subscriptionTiers';
 import { CREDIT_PACKS } from '@/features/billing/creditPacks';
+import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
+import { useCreditHistory } from '@/features/billing/hooks/useCreditHistory';
 import { AuthShell } from './auth/AuthShell';
 
 function formatInteger(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatSignedCredits(value: number): string {
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}${formatInteger(Math.abs(value))}`;
+}
+
+function formatActivityTime(createdAtMs: number): string {
+  if (!Number.isFinite(createdAtMs) || createdAtMs <= 0) return 'Unknown time';
+  return new Date(createdAtMs).toLocaleString();
+}
+
+function toActivityLabel(type: string): string {
+  switch (type) {
+    case 'starter_grant':
+      return 'Starter grant';
+    case 'reserve':
+      return 'Generation debit';
+    case 'refund':
+      return 'Refund';
+    case 'add':
+      return 'Credit add';
+    default:
+      return type;
+  }
 }
 
 function deriveCheckoutStatus(search: string): { sessionId: string | null; canceled: boolean } {
@@ -31,15 +57,14 @@ export function BillingPage(): React.ReactElement {
   const location = useLocation();
   const log = React.useMemo(() => logger.child('BillingPage'), []);
 
-  const [user, setUser] = React.useState<User | null>(null);
   const [isBusy, setIsBusy] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
+  const { status: billingStatus, isLoading: isLoadingBillingStatus } = useBillingStatus();
+  const {
+    history: creditHistory,
+    isLoading: isLoadingCreditHistory,
+    error: creditHistoryError,
+  } = useCreditHistory({ limit: 50 });
 
   const { balance, isLoading: isLoadingBalance, error: balanceError } = useUserCreditBalance(user?.uid ?? null);
   const checkout = React.useMemo(() => deriveCheckoutStatus(location.search), [location.search]);
@@ -62,8 +87,7 @@ export function BillingPage(): React.ReactElement {
 
     setIsBusy(priceId);
     try {
-      const response = await apiClient.post('/api/payment/checkout', { priceId });
-      const redirectUrl = (response as { url?: string }).url;
+      const { url: redirectUrl } = await createCheckoutSession(priceId);
 
       if (!redirectUrl) {
         throw new Error('Missing checkout URL');
@@ -94,8 +118,7 @@ export function BillingPage(): React.ReactElement {
 
     setIsBusy('portal');
     try {
-      const response = await apiClient.post('/api/payment/portal', {});
-      const redirectUrl = (response as { url?: string }).url;
+      const { url: redirectUrl } = await createBillingPortalSession();
 
       if (!redirectUrl) {
         throw new Error('Missing billing portal URL');
@@ -164,7 +187,23 @@ export function BillingPage(): React.ReactElement {
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white">Credit balance</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[13px] font-semibold text-white">Credit balance</p>
+                  <span
+                    className={cn(
+                      'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                      billingStatus?.isSubscribed
+                        ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                        : 'border-white/10 bg-white/[0.06] text-white/65'
+                    )}
+                  >
+                    {isLoadingBillingStatus
+                      ? '...'
+                      : billingStatus?.isSubscribed
+                        ? `Subscribed${billingStatus.planTier ? ` · ${billingStatus.planTier}` : ''}`
+                        : 'Free'}
+                  </span>
+                </div>
                 <p className="mt-1 text-[13px] leading-snug text-white/60">
                   Used for generation and previews.
                 </p>
@@ -360,6 +399,54 @@ export function BillingPage(): React.ReactElement {
           <p className="mt-4 text-[12px] leading-relaxed text-white/45">
             Credit packs are one-time purchases and add credits immediately after checkout confirmation.
           </p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight text-white">Credit activity</h2>
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-white/50">HISTORY</p>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+            {isLoadingCreditHistory ? (
+              <div className="px-4 py-3 text-[13px] text-white/60">Loading credit activity…</div>
+            ) : null}
+
+            {!isLoadingCreditHistory && creditHistoryError ? (
+              <div className="px-4 py-3 text-[13px] text-red-200">{creditHistoryError}</div>
+            ) : null}
+
+            {!isLoadingCreditHistory && !creditHistoryError && creditHistory.length === 0 ? (
+              <div className="px-4 py-3 text-[13px] text-white/60">No credit activity yet.</div>
+            ) : null}
+
+            {!isLoadingCreditHistory && !creditHistoryError && creditHistory.length > 0 ? (
+              <ul className="divide-y divide-white/10">
+                {creditHistory.map((entry) => (
+                  <li key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-white">
+                        {toActivityLabel(entry.type)}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] text-white/55">
+                        {[entry.source, entry.reason, formatActivityTime(entry.createdAtMs)]
+                          .filter((value): value is string => Boolean(value))
+                          .join(' · ')}
+                      </p>
+                    </div>
+                    <p
+                      className={cn(
+                        'text-[13px] font-semibold tabular-nums',
+                        entry.amount >= 0 ? 'text-emerald-200' : 'text-amber-300'
+                      )}
+                    >
+                      {formatSignedCredits(entry.amount)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </div>
     </AuthShell>

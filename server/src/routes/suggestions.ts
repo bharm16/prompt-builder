@@ -1,16 +1,18 @@
 import type { Router } from 'express';
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import { createSuggestionsServices } from './suggestions/serviceFactory';
+import {
+  createSuggestionsServices,
+  type SuggestionsRouteServices,
+} from './suggestions/serviceFactory';
 import { createSuggestionsHandlers } from './suggestions/handlers';
 import { createSuggestionsRouter } from './suggestions/router';
 
 /**
  * Create suggestions route with dependency injection
- * @param {Object} aiService - AI Model Service instance
+ * @param services - Suggestions route dependencies
  * @returns {Router} Express router
  */
-export function createSuggestionsRoute(aiService: AIModelService): Router {
-  const services = createSuggestionsServices(aiService);
-  const handlers = createSuggestionsHandlers(services);
+export function createSuggestionsRoute(services: SuggestionsRouteServices): Router {
+  const suggestionsServices = createSuggestionsServices(services);
+  const handlers = createSuggestionsHandlers(suggestionsServices);
   return createSuggestionsRouter(handlers);
 }

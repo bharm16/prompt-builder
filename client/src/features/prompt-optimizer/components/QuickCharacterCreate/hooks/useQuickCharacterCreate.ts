@@ -28,8 +28,10 @@ export function useQuickCharacterCreate({
 
   useEffect(() => {
     if (!isOpen) {
-      images.forEach((image) => URL.revokeObjectURL(image.preview));
-      setImages([]);
+      setImages((prev) => {
+        prev.forEach((image) => URL.revokeObjectURL(image.preview));
+        return [];
+      });
       setError(null);
       return;
     }
@@ -108,18 +110,27 @@ export function useQuickCharacterCreate({
         ...(negativePrompt.trim() ? { negativePrompt: negativePrompt.trim() } : {}),
       });
 
-      const uploads = [] as Array<{ id: string | undefined; isPrimary?: boolean | undefined }>;
-      for (const image of images) {
-        const result = await assetApi.addImage(asset.id, image.file);
-        uploads.push({ id: result?.image?.id, isPrimary: image.isPrimary });
-      }
+      try {
+        const uploads = [] as Array<{ id: string | undefined; isPrimary?: boolean | undefined }>;
+        for (const image of images) {
+          const result = await assetApi.addImage(asset.id, image.file);
+          uploads.push({ id: result?.image?.id, isPrimary: image.isPrimary });
+        }
 
-      const primaryUpload = uploads.find((item) => item.isPrimary) ?? uploads[0];
-      if (primaryUpload?.id) {
-        await assetApi.setPrimaryImage(asset.id, primaryUpload.id);
-      }
+        const primaryUpload = uploads.find((item) => item.isPrimary) ?? uploads[0];
+        if (primaryUpload?.id) {
+          await assetApi.setPrimaryImage(asset.id, primaryUpload.id);
+        }
 
-      return asset;
+        return await assetApi.get(asset.id);
+      } catch (uploadError) {
+        try {
+          await assetApi.delete(asset.id);
+        } catch {
+          // Preserve the original upload error and keep cleanup best-effort.
+        }
+        throw uploadError;
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create character.';
       setError(message);

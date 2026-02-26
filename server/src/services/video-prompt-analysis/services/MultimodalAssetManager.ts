@@ -9,6 +9,7 @@
  */
 
 import * as crypto from 'crypto';
+import { sleep } from '@utils/sleep';
 
 /**
  * Supported asset types
@@ -501,7 +502,7 @@ export class MultimodalAssetManager {
     provider: ProviderType
   ): Promise<string> {
     // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await sleep(10);
 
     // Generate provider-specific token format
     const tokenFormats: Record<ProviderType, () => string> = {
@@ -538,7 +539,7 @@ export class MultimodalAssetManager {
    */
   private async mockVLMDescription(asset: StagedAsset): Promise<AssetDescriptionResult> {
     // Simulate VLM processing delay
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await sleep(50);
 
     // Generate mock description based on asset type
     const descriptions: Record<AssetType, string> = {
@@ -559,4 +560,3 @@ export class MultimodalAssetManager {
 /**
  * Singleton instance for convenience
  */
-export const multimodalAssetManager = new MultimodalAssetManager();

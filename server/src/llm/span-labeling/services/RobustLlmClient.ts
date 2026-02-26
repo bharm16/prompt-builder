@@ -160,6 +160,16 @@ export class RobustLlmClient implements ILlmClient {
       throw new Error(parsedPrimary.error);
     }
 
+    // Warn if JSON repair detected likely truncation
+    if (parsedPrimary.repairMeta?.isLikelyTruncated) {
+      logger.warn('LLM response appears truncated after JSON repair', {
+        operation: 'span_labeling',
+        provider: providerName,
+        reason: parsedPrimary.repairMeta.reason,
+        model: modelName || 'unknown',
+      });
+    }
+
     // Cast to expected response type
     let parsedValue = parsedPrimary.value as ParsedLLMResponse;
 

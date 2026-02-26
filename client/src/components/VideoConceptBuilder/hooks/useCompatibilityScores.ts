@@ -87,11 +87,11 @@ export function useCompatibilityScores(
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const timers = timersRef.current;
     return () => {
-      Object.values(timersRef.current).forEach((timer) => clearTimeout(timer));
+      Object.values(timers).forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
   return checkCompatibility;
 }
-

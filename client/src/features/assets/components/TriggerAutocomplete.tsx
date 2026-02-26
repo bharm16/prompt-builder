@@ -37,7 +37,7 @@ export function TriggerAutocomplete({
   useEffect(() => {
     if (listRef.current && suggestions.length > 0) {
       const selectedItem = listRef.current.children[selectedIndex] as HTMLElement | undefined;
-      if (selectedItem) {
+      if (selectedItem && typeof selectedItem.scrollIntoView === 'function') {
         selectedItem.scrollIntoView({ block: 'nearest' });
       }
     }
@@ -148,5 +148,3 @@ export function TriggerAutocomplete({
     </div>
   );
 }
-
-export default TriggerAutocomplete;

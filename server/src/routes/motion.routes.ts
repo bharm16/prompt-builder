@@ -10,20 +10,36 @@ import { z } from 'zod';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
-import { createDepthEstimationServiceForUser } from '@services/convergence/depth';
-import { getGCSStorageService } from '@services/convergence/storage';
+import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
+import type { GCSStorageService } from '@services/convergence/storage';
+import { safeUrlHost } from '@utils/url';
 
 const log = logger.child({ routes: 'motion' });
 const OPERATION = 'estimateDepth';
-const DEPTH_ESTIMATION_TIMEOUT_MS = 25_000;
+const DEPTH_ESTIMATION_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_TIMEOUT_MS || '', 10);
+  if (Number.isFinite(raw) && raw >= 5_000) {
+    return raw;
+  }
+  return 25_000;
+})();
+
+const DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS || '', 10);
+  if (Number.isFinite(raw) && raw >= 5_000) {
+    return raw;
+  }
+  return Math.max(60_000, DEPTH_ESTIMATION_TIMEOUT_MS);
+})();
 
 const DepthEstimationRequestSchema = z.object({
   imageUrl: z.string().url('Invalid image URL'),
 });
 
-interface RequestWithUser extends Request {
+type RequestWithUser = Request & {
   user?: { uid?: string };
-}
+  id?: string;
+};
 
 interface DepthEstimationSuccessPayload {
   depthMapUrl: string | null;
@@ -38,11 +54,29 @@ interface ApiResponse<T> {
   details?: unknown;
 }
 
-const buildFallbackResponse = (): ApiResponse<DepthEstimationSuccessPayload> => ({
+export interface MotionRouteServices {
+  cameraPaths: typeof CAMERA_PATHS;
+  createDepthEstimationServiceForUser: typeof createDepthEstimationServiceForUser;
+  getDepthWarmupStatus: typeof getDepthWarmupStatus;
+  getStartupWarmupPromise: typeof getStartupWarmupPromise;
+  getStorageService: () => GCSStorageService;
+}
+
+const defaultServices: MotionRouteServices = {
+  cameraPaths: CAMERA_PATHS,
+  createDepthEstimationServiceForUser,
+  getDepthWarmupStatus,
+  getStartupWarmupPromise,
+  getStorageService: () => {
+    throw new Error('Motion routes require an injected convergence storage service');
+  },
+};
+
+const buildFallbackResponse = (cameraPaths: typeof CAMERA_PATHS): ApiResponse<DepthEstimationSuccessPayload> => ({
   success: true,
   data: {
     depthMapUrl: null,
-    cameraPaths: CAMERA_PATHS,
+    cameraPaths,
     fallbackMode: true,
   },
 });
@@ -63,7 +97,7 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 };
 
-export function createMotionRoutes(): Router {
+export function createMotionRoutes(services: MotionRouteServices = defaultServices): Router {
   const router = express.Router();
 
   /**
@@ -74,7 +108,7 @@ export function createMotionRoutes(): Router {
   router.post(
     '/depth',
     asyncHandler(async (req: RequestWithUser, res: Response) => {
-      const requestId = (req as RequestWithUser & { id?: string }).id ?? null;
+      const requestId = req.id ?? null;
       const depthRequestId = `depth-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const startedAt = Date.now();
 
@@ -123,7 +157,7 @@ export function createMotionRoutes(): Router {
 
       let storageService;
       try {
-        storageService = getGCSStorageService();
+        storageService = services.getStorageService();
       } catch (error) {
         log.warn('Storage service unavailable; returning fallback motion options', {
           operation: OPERATION,
@@ -133,10 +167,10 @@ export function createMotionRoutes(): Router {
           imageUrlHost,
           error: error instanceof Error ? error.message : String(error),
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
 
-      const depthService = createDepthEstimationServiceForUser(storageService, userId);
+      const depthService = services.createDepthEstimationServiceForUser(storageService, userId);
       if (!depthService.isAvailable()) {
         log.warn('Depth estimation service not available; returning fallback mode', {
           operation: OPERATION,
@@ -145,21 +179,46 @@ export function createMotionRoutes(): Router {
           depthRequestId,
           imageUrlHost,
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
 
       try {
+        // If startup warmup is still in-flight, wait for it so the model is warm
+        // before making the user's depth estimation call.
+        const pendingWarmup = services.getStartupWarmupPromise();
+        if (pendingWarmup) {
+          const { warmupInFlight: wif } = services.getDepthWarmupStatus();
+          if (wif) {
+            log.debug('Waiting for startup warmup to complete before depth estimation', {
+              operation: OPERATION,
+              userId,
+              requestId,
+              depthRequestId,
+            });
+            await pendingWarmup.catch(() => {
+              // Warmup failure is non-fatal; proceed with estimation anyway
+            });
+          }
+        }
+
+        const { warmupInFlight, lastWarmupAt } = services.getDepthWarmupStatus();
+        const coldStart = warmupInFlight || lastWarmupAt === 0;
+        const timeoutMs = coldStart
+          ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
+          : DEPTH_ESTIMATION_TIMEOUT_MS;
+
         log.debug('Depth estimation starting', {
           operation: OPERATION,
           userId,
           requestId,
           depthRequestId,
           imageUrlHost,
-          timeoutMs: DEPTH_ESTIMATION_TIMEOUT_MS,
+          timeoutMs,
+          coldStart,
         });
         const depthMapUrl = await withTimeout(
           depthService.estimateDepth(imageUrl),
-          DEPTH_ESTIMATION_TIMEOUT_MS
+          timeoutMs
         );
         const duration = Date.now() - startedAt;
         const depthMapUrlHost = safeUrlHost(depthMapUrl);
@@ -178,7 +237,7 @@ export function createMotionRoutes(): Router {
           success: true,
           data: {
             depthMapUrl,
-            cameraPaths: CAMERA_PATHS,
+            cameraPaths: services.cameraPaths,
             fallbackMode: false,
           },
         } satisfies ApiResponse<DepthEstimationSuccessPayload>);
@@ -186,6 +245,11 @@ export function createMotionRoutes(): Router {
         const duration = Date.now() - startedAt;
         const errorMessage = error instanceof Error ? error.message : String(error);
         const timedOut = errorMessage.includes('timed out');
+        const { warmupInFlight, lastWarmupAt } = services.getDepthWarmupStatus();
+        const coldStart = warmupInFlight || lastWarmupAt === 0;
+        const timeoutMs = coldStart
+          ? DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS
+          : DEPTH_ESTIMATION_TIMEOUT_MS;
         log.warn('Depth estimation failed; returning fallback mode', {
           operation: OPERATION,
           userId,
@@ -195,25 +259,15 @@ export function createMotionRoutes(): Router {
           imageUrlHost,
           error: errorMessage,
           timedOut,
-          timeoutMs: DEPTH_ESTIMATION_TIMEOUT_MS,
+          timeoutMs,
+          coldStart,
         });
-        return res.json(buildFallbackResponse());
+        return res.json(buildFallbackResponse(services.cameraPaths));
       }
     })
   );
 
   return router;
 }
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 export default createMotionRoutes;

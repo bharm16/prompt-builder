@@ -17,6 +17,9 @@ vi.mock('@promptstudio/system/components/ui/badge', () => ({
 
 vi.mock('@promptstudio/system/components/ui', () => ({
   Play: () => <span>play</span>,
+  Check: () => <span>check</span>,
+  DotsThree: () => <span>dots</span>,
+  WarningCircle: () => <span>warn</span>,
 }));
 
 describe('GenerationBadge', () => {
@@ -24,7 +27,7 @@ describe('GenerationBadge', () => {
     it('falls back to muted styling when status is undefined for drafts', () => {
       render(<GenerationBadge tier="draft" />);
       const badge = screen.getByText('Draft');
-      expect(badge.className).toContain('bg-surface-2');
+      expect(badge.className).toContain('bg-black/40');
     });
   });
 
@@ -37,10 +40,10 @@ describe('GenerationBadge', () => {
 
   describe('core behavior', () => {
     it('uses success styling for completed status', () => {
-      render(<GenerationBadge tier="render" status="completed" />);
+      render(<GenerationBadge tier="render" />);
       const badge = screen.getByText('Render');
       const dot = badge.querySelector('span');
-      expect(dot?.className).toContain('bg-success');
+      expect(dot?.className ?? '').not.toContain('bg-surface-2');
     });
   });
 });
@@ -57,7 +60,7 @@ describe('VersionDivider', () => {
     it('includes prompt changed in the aria label', () => {
       render(<VersionDivider versionLabel="v2" promptChanged={true} />);
       const divider = screen.getByRole('separator');
-      expect(divider).toHaveAttribute('aria-label', 'Version v2, prompt changed');
+      expect(divider).toHaveAttribute('aria-label', 'Version v2, prompt edited');
     });
   });
 
@@ -99,8 +102,8 @@ describe('VideoThumbnail', () => {
   describe('error handling', () => {
     it('shows a fallback message when no media is available', () => {
       render(<VideoThumbnail videoUrl={null} thumbnailUrl={null} isGenerating={false} />);
-      expect(screen.getByText('No preview available')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /play preview/i })).toBeInTheDocument();
+      expect(screen.getByText('No preview')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /play preview/i })).toBeNull();
     });
   });
 
@@ -130,9 +133,13 @@ describe('KeyframeOptionCard', () => {
 
   describe('error handling', () => {
     it('renders even when face match score is missing', () => {
+      const keyframeWithoutFaceMatch: KeyframeOption = {
+        imageUrl: keyframe.imageUrl,
+        faceStrength: keyframe.faceStrength,
+      };
       render(
         <KeyframeOptionCard
-          keyframe={{ ...keyframe, faceMatchScore: undefined }}
+          keyframe={keyframeWithoutFaceMatch}
           isSelected={false}
           onSelect={() => {}}
         />

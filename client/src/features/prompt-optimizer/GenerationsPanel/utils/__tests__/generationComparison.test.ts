@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
 import { serializeGeneration, areGenerationsEqual } from '../generationComparison';
-import type { Generation } from '../../types';
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-123',
@@ -65,6 +65,11 @@ describe('serializeGeneration', () => {
         'duration',
         'fps',
         'thumbnailUrl',
+        'characterAssetId',
+        'faceSwapApplied',
+        'faceSwapUrl',
+        'isFavorite',
+        'generationSettings',
         'error',
         'mediaUrls',
         'mediaAssetIds',

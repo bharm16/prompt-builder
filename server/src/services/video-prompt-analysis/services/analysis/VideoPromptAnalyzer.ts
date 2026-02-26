@@ -1,4 +1,5 @@
 import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
+import SpanLabelingConfig from '../../../../llm/span-labeling/config/SpanLabelingConfig';
 import type { VideoPromptIR } from '../../types';
 import { createEmptyIR } from './IrFactory';
 import { LlmIrExtractor } from './LlmIrExtractor';
@@ -7,6 +8,11 @@ import { mapSpansToIR } from './SpanToIrMapper';
 import { extractBasicHeuristics } from './HeuristicIrExtractor';
 import { enrichFromTechnicalSpecs, enrichIR } from './IrEnricher';
 
+interface VideoPromptAnalyzerDeps {
+  llmExtractor?: LlmIrExtractor;
+  promptOutputOnly?: boolean;
+}
+
 /**
  * Service responsible for analyzing raw text and extracting structured VideoPromptIR
  * Uses a hybrid approach:
@@ -14,7 +20,13 @@ import { enrichFromTechnicalSpecs, enrichIR } from './IrEnricher';
  * 2. Semantic Entity Extraction (GLiNER) for high-fidelity role detection
  */
 export class VideoPromptAnalyzer {
-  private readonly llmExtractor = new LlmIrExtractor();
+  private readonly llmExtractor: LlmIrExtractor;
+  private readonly promptOutputOnly: boolean;
+
+  constructor(deps: VideoPromptAnalyzerDeps = {}) {
+    this.llmExtractor = deps.llmExtractor ?? new LlmIrExtractor();
+    this.promptOutputOnly = deps.promptOutputOnly ?? false;
+  }
 
   /**
    * Analyze raw text and produce a structured Intermediate Representation (IR)
@@ -23,8 +35,10 @@ export class VideoPromptAnalyzer {
    * @returns Structured VideoPromptIR
    */
   async analyze(text: string): Promise<VideoPromptIR> {
-    const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
-    const useGliner = !promptOutputOnly;
+    const promptOutputOnly = this.promptOutputOnly;
+    const useGliner = !promptOutputOnly &&
+      (SpanLabelingConfig.NEURO_SYMBOLIC?.ENABLED ?? false) &&
+      (SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false);
     const llmParsed = promptOutputOnly ? null : await this.llmExtractor.tryAnalyze(text);
 
     if (llmParsed) {

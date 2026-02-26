@@ -9,20 +9,21 @@ import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
+import {
+  FaceSwapPreviewResponseSchema,
+  GeneratePreviewResponseSchema,
+  GenerateStoryboardPreviewResponseSchema,
+  GenerateVideoResponseSchema,
+  MediaViewUrlResponseSchema,
+  UploadPreviewImageResponseSchema,
+  VideoJobStatusResponseSchema,
+} from './schemas';
 
 const log = logger.child('previewApi');
 const VIDEO_OPERATION = 'generateVideoPreview';
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
+const PREVIEW_IMAGE_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -55,6 +56,14 @@ function requireNonEmptyString(value: unknown, name: string): asserts value is s
   if (!value || typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`${name} is required and must be a non-empty string`);
   }
+}
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const randomPart = Math.random().toString(36).slice(2);
+  return `video-${Date.now()}-${randomPart}`;
 }
 
 export type PreviewProvider =
@@ -107,6 +116,20 @@ export interface UploadPreviewImageResponse {
   message?: string;
 }
 
+export type PreviewImageValidationResult =
+  | { valid: true }
+  | { valid: false; error: string };
+
+export function validatePreviewImageFile(file: File): PreviewImageValidationResult {
+  if (!PREVIEW_IMAGE_ALLOWED_TYPES.has(file.type)) {
+    return { valid: false, error: 'Only PNG, JPEG, and WebP files are supported.' };
+  }
+  if (file.size > PREVIEW_IMAGE_MAX_BYTES) {
+    return { valid: false, error: 'Image must be 10MB or smaller.' };
+  }
+  return { valid: true };
+}
+
 export interface GenerateStoryboardPreviewRequest {
   prompt: string;
   aspectRatio?: string;
@@ -131,6 +154,20 @@ export interface MediaViewUrlResponse {
   success: boolean;
   data?: {
     viewUrl: string;
+    expiresAt?: string;
+    storagePath?: string;
+    assetId?: string;
+    source?: string;
+  };
+  error?: string;
+  message?: string;
+}
+
+export interface FaceSwapPreviewResponse {
+  success: boolean;
+  data?: {
+    faceSwapUrl: string;
+    creditsDeducted: number;
   };
   error?: string;
   message?: string;
@@ -155,7 +192,7 @@ export async function generatePreview(
   const isKontext =
     resolvedOptions?.provider === 'replicate-flux-kontext-fast' || Boolean(inputImageUrl);
 
-  return apiClient.post(
+  const payload = (await apiClient.post(
     '/preview/generate',
     {
       prompt: prompt.trim(),
@@ -169,7 +206,9 @@ export async function generatePreview(
         : {}),
     },
     isKontext ? { timeout: 60000 } : {}
-  ) as Promise<GeneratePreviewResponse>;
+  )) as unknown;
+
+  return GeneratePreviewResponseSchema.parse(payload) as GeneratePreviewResponse;
 }
 
 /**
@@ -183,7 +222,7 @@ export async function generateStoryboardPreview(
 
   const seedImageUrl = options?.seedImageUrl?.trim();
 
-  return apiClient.post(
+  const payload = (await apiClient.post(
     '/preview/generate/storyboard',
     {
       prompt: prompt.trim(),
@@ -195,21 +234,50 @@ export async function generateStoryboardPreview(
     {
       timeout: API_CONFIG.timeout.storyboard,
     }
-  ) as Promise<GenerateStoryboardPreviewResponse>;
+  )) as unknown;
+
+  return GenerateStoryboardPreviewResponseSchema.parse(payload) as GenerateStoryboardPreviewResponse;
+}
+
+export async function faceSwapPreview(options: {
+  characterAssetId: string;
+  targetImageUrl: string;
+  aspectRatio?: string;
+}): Promise<FaceSwapPreviewResponse> {
+  requireNonEmptyString(options?.characterAssetId, 'characterAssetId');
+  requireNonEmptyString(options?.targetImageUrl, 'targetImageUrl');
+
+  const payload = (await apiClient.post('/preview/face-swap', {
+    characterAssetId: options.characterAssetId.trim(),
+    targetImageUrl: options.targetImageUrl.trim(),
+    ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+  })) as unknown;
+
+  const parsed = FaceSwapPreviewResponseSchema.parse(payload) as FaceSwapPreviewResponse;
+
+  log.info('Face-swap preview request completed', {
+    hasFaceSwapUrl: Boolean(parsed.data?.faceSwapUrl),
+    faceSwapUrlHost: parsed.data?.faceSwapUrl ? safeUrlHost(parsed.data.faceSwapUrl) : null,
+    creditsDeducted: parsed.data?.creditsDeducted ?? null,
+  });
+
+  return parsed;
 }
 
 export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
   requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
-  return apiClient.get(`/preview/image/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
+  const payload = (await apiClient.get(`/preview/image/view?assetId=${encoded}`)) as unknown;
+  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
 }
 
 export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
   requireNonEmptyString(assetId, 'assetId');
 
   const encoded = encodeURIComponent(assetId.trim());
-  return apiClient.get(`/preview/video/view?assetId=${encoded}`) as Promise<MediaViewUrlResponse>;
+  const payload = (await apiClient.get(`/preview/video/view?assetId=${encoded}`)) as unknown;
+  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
 }
 
 export async function uploadPreviewImage(
@@ -249,12 +317,28 @@ export async function uploadPreviewImage(
     throw new Error(payload?.error || payload?.message || 'Failed to upload image');
   }
 
-  return payload || { success: false, error: 'Failed to upload image' };
+  if (!payload) {
+    return UploadPreviewImageResponseSchema.parse({
+      success: false,
+      error: 'Failed to upload image',
+    }) as UploadPreviewImageResponse;
+  }
+
+  const parsed = UploadPreviewImageResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    return UploadPreviewImageResponseSchema.parse({
+      success: false,
+      error: 'Failed to upload image',
+    }) as UploadPreviewImageResponse;
+  }
+
+  return parsed.data as UploadPreviewImageResponse;
 }
 
 export interface GenerateVideoResponse {
   success: boolean;
   videoUrl?: string;
+  assetId?: string;
   storagePath?: string;
   viewUrl?: string;
   viewUrlExpiresAt?: string;
@@ -266,7 +350,9 @@ export interface GenerateVideoResponse {
   creditsReserved?: number;
   creditsDeducted?: number;
   keyframeGenerated?: boolean;
-  keyframeUrl?: string;
+  keyframeUrl?: string | null;
+  faceSwapApplied?: boolean;
+  faceSwapUrl?: string | null;
   error?: string;
   message?: string;
 }
@@ -277,6 +363,8 @@ export interface VideoJobStatusResponse {
   success: boolean;
   jobId: string;
   status: VideoJobStatus;
+  progress?: number | null;
+  createdAtMs?: number;
   videoUrl?: string;
   assetId?: string;
   contentType?: string;
@@ -294,10 +382,15 @@ export interface VideoJobStatusResponse {
 
 export interface GenerateVideoPreviewOptions {
   startImage?: string | undefined;
+  endImage?: string | undefined;
+  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }> | undefined;
+  extendVideoUrl?: string | undefined;
   inputReference?: string | undefined;
   generationParams?: Record<string, unknown> | undefined;
   characterAssetId?: string | undefined;
   autoKeyframe?: boolean | undefined;
+  faceSwapAlreadyApplied?: boolean | undefined;
+  idempotencyKey?: string | undefined;
 }
 
 /**
@@ -314,18 +407,28 @@ export async function generateVideoPreview(
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const motionMeta = extractMotionMeta(options?.generationParams);
   const startImageUrlHost = safeUrlHost(options?.startImage);
+  const endImageUrlHost = safeUrlHost(options?.endImage);
   const inputReferenceUrlHost = safeUrlHost(options?.inputReference);
+  const extendVideoUrlHost = safeUrlHost(options?.extendVideoUrl);
 
   const payload = {
     prompt: trimmedPrompt,
     ...(aspectRatio ? { aspectRatio } : {}),
     ...(model ? { model } : {}),
     ...(options?.startImage ? { startImage: options.startImage } : {}),
+    ...(options?.endImage ? { endImage: options.endImage } : {}),
+    ...(options?.referenceImages?.length ? { referenceImages: options.referenceImages } : {}),
+    ...(options?.extendVideoUrl ? { extendVideoUrl: options.extendVideoUrl } : {}),
     ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
     ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
     ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
     ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
+    ...(options?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
   };
+  const idempotencyKey =
+    options?.idempotencyKey && options.idempotencyKey.trim().length > 0
+      ? options.idempotencyKey.trim()
+      : generateIdempotencyKey();
 
   log.info('Video preview request started', {
     operation: VIDEO_OPERATION,
@@ -334,21 +437,32 @@ export async function generateVideoPreview(
     model: model ?? null,
     hasStartImage: Boolean(options?.startImage),
     startImageUrlHost,
+    hasEndImage: Boolean(options?.endImage),
+    endImageUrlHost,
+    referenceImageCount: options?.referenceImages?.length ?? 0,
+    hasExtendVideo: Boolean(options?.extendVideoUrl),
+    extendVideoUrlHost,
     hasInputReference: Boolean(options?.inputReference),
     inputReferenceUrlHost,
     hasCharacterAssetId: Boolean(options?.characterAssetId),
     autoKeyframe: options?.autoKeyframe ?? null,
+    faceSwapAlreadyApplied: options?.faceSwapAlreadyApplied ?? null,
     ...motionMeta,
   });
 
   try {
-    const response = (await apiClient.post(
+    const responsePayload = (await apiClient.post(
       '/preview/video/generate',
       payload,
       {
         timeout: API_CONFIG.timeout.video,
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
       }
-    )) as GenerateVideoResponse;
+    )) as unknown;
+
+    const response = GenerateVideoResponseSchema.parse(responsePayload) as GenerateVideoResponse;
 
     const durationMs = Math.round(
       (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
@@ -382,10 +496,16 @@ export async function generateVideoPreview(
       model: model ?? null,
       hasStartImage: Boolean(options?.startImage),
       startImageUrlHost,
+      hasEndImage: Boolean(options?.endImage),
+      endImageUrlHost,
+      referenceImageCount: options?.referenceImages?.length ?? 0,
+      hasExtendVideo: Boolean(options?.extendVideoUrl),
+      extendVideoUrlHost,
       hasInputReference: Boolean(options?.inputReference),
       inputReferenceUrlHost,
       hasCharacterAssetId: Boolean(options?.characterAssetId),
       autoKeyframe: options?.autoKeyframe ?? null,
+      faceSwapAlreadyApplied: options?.faceSwapAlreadyApplied ?? null,
       errorName: info.name,
       ...motionMeta,
     });
@@ -398,9 +518,11 @@ export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStat
     throw new Error('jobId is required');
   }
 
-  return apiClient.get(`/preview/video/jobs/${jobId}`, {
+  const payload = (await apiClient.get(`/preview/video/jobs/${jobId}`, {
     fetchOptions: {
       cache: 'no-store',
     },
-  }) as Promise<VideoJobStatusResponse>;
+  })) as unknown;
+
+  return VideoJobStatusResponseSchema.parse(payload) as VideoJobStatusResponse;
 }

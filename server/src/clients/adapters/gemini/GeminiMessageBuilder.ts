@@ -11,6 +11,7 @@ import type {
   GeminiContent,
   GeminiMessagesResult,
 } from './types.ts';
+import { normalizeGeminiSchema } from './normalizeGeminiSchema.ts';
 
 export class GeminiMessageBuilder {
   /**
@@ -30,7 +31,9 @@ export class GeminiMessageBuilder {
     }
 
     if (options.responseSchema) {
-      generationConfig.responseSchema = options.responseSchema;
+      generationConfig.responseSchema = normalizeGeminiSchema(
+        options.responseSchema as Record<string, unknown>
+      );
       // When schema is provided, responseMimeType must be application/json
       generationConfig.responseMimeType = 'application/json';
     }

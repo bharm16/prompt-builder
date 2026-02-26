@@ -9,7 +9,7 @@ interface DebugButtonProps {
   displayedPrompt?: string;
   optimizedPrompt?: string;
   selectedMode?: string;
-  promptContext?: unknown;
+  promptContext?: Record<string, unknown> | null;
   style?: CSSProperties;
   className?: string;
 }
@@ -17,7 +17,7 @@ interface DebugButtonProps {
 /**
  * Debug Button Component
  *
- * Add this to PromptOptimizerContainer.jsx to enable one-click debugging:
+ * Add this to PromptOptimizerWorkspace.tsx to enable one-click debugging:
  *
  * import DebugButton from '../components/DebugButton';
  *
@@ -43,7 +43,7 @@ export default function DebugButton({
     ...(typeof displayedPrompt === 'string' ? { displayedPrompt } : {}),
     ...(typeof optimizedPrompt === 'string' ? { optimizedPrompt } : {}),
     ...(typeof selectedMode === 'string' ? { selectedMode } : {}),
-    ...(promptContext !== undefined ? { promptContext } : {}),
+    ...(promptContext != null ? { promptContext } : {}),
   };
 
   const { capturePromptData, exportToFile, isCapturing } = usePromptDebugger(state);

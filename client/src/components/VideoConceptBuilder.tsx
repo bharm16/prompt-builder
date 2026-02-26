@@ -148,7 +148,7 @@ export default function VideoConceptBuilder({
       // Trigger compatibility check
       checkCompatibility(key, value);
     },
-    [dispatch, checkCompatibility]
+    [checkCompatibility, debug, dispatch]
   );
 
   const handleSuggestionClick = useCallback<

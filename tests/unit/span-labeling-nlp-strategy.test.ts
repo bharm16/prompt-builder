@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
@@ -98,7 +100,15 @@ describe('NlpSpanStrategy', () => {
 
       vi.mocked(NlpSpanService.extractSemanticSpans).mockResolvedValue({
         spans: [{ text: 'subject', start: 0, end: 7, role: 'subject', confidence: 0.9 }],
-        stats: { phase: 'neuro-symbolic' },
+        stats: {
+          phase: 'neuro-symbolic',
+          totalSpans: 1,
+          closedVocabSpans: 0,
+          openVocabSpans: 1,
+          tier1Latency: 1,
+          tier2Latency: 1,
+          totalLatency: 2,
+        },
       });
       vi.mocked(NlpSpanService.isGlinerAvailable).mockReturnValue(false);
       vi.spyOn(SpanValidator, 'validateSpans').mockReturnValue({

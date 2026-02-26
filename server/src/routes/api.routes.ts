@@ -15,11 +15,14 @@ import { createOptimizeRoutes } from './optimize.routes';
 import { createVideoRoutes } from './video.routes';
 import { createCapabilitiesRoutes } from './capabilities.routes';
 import { createEnhancementRoutes, type EnhancementServices } from './enhancement.routes';
-import { createStorageRoutes } from './storage.routes';
+import { createStorageRoutes, type StorageRoutesService } from './storage.routes';
 import { createAssetRoutes } from './asset.routes';
 import { createConsistentGenerationRoutes } from './consistentGeneration.routes';
 import { createReferenceImagesRoutes } from './reference-images.routes';
 import { createImageObservationRoutes } from './image-observation.routes';
+import { createContinuityRoutes } from './continuity.routes';
+import { createSessionRoutes } from './sessions.routes';
+import { createModelIntelligenceRoutes, type ModelIntelligenceRouteMetrics } from './model-intelligence.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
@@ -27,14 +30,22 @@ import type { AssetService } from '@services/asset/AssetService';
 import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ImageObservationService } from '@services/image-observation';
+import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
+import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import type { SessionService } from '@services/sessions/SessionService';
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
+  storageService: StorageRoutesService;
   videoConceptService?: VideoServices['videoConceptService'] | null;
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
   referenceImageService?: ReferenceImageService | null;
   imageObservationService?: ImageObservationService | null;
+  continuitySessionService?: ContinuitySessionService | null;
+  modelIntelligenceService?: ModelIntelligenceService | null;
+  modelIntelligenceMetrics?: ModelIntelligenceRouteMetrics;
+  sessionService?: SessionService | null;
 }
 
 /**
@@ -57,6 +68,11 @@ export function createAPIRoutes(services: ApiServices): Router {
     userCreditService,
     referenceImageService,
     imageObservationService,
+    continuitySessionService,
+    modelIntelligenceService,
+    modelIntelligenceMetrics,
+    sessionService,
+    storageService,
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
@@ -85,7 +101,7 @@ export function createAPIRoutes(services: ApiServices): Router {
   );
 
   // Mount storage routes under /storage
-  router.use('/storage', createStorageRoutes());
+  router.use('/storage', createStorageRoutes(storageService));
 
   if (assetService) {
     router.use('/assets', createAssetRoutes(assetService));
@@ -104,6 +120,18 @@ export function createAPIRoutes(services: ApiServices): Router {
       '/generate/consistent',
       createConsistentGenerationRoutes(consistentVideoService, userCreditService)
     );
+  }
+
+  if (continuitySessionService) {
+    router.use('/continuity', createContinuityRoutes(continuitySessionService, userCreditService));
+  }
+
+  if (sessionService) {
+    router.use('/v2/sessions', createSessionRoutes(sessionService, continuitySessionService ?? null, userCreditService));
+  }
+
+  if (modelIntelligenceService) {
+    router.use('/', createModelIntelligenceRoutes(modelIntelligenceService, modelIntelligenceMetrics));
   }
 
   // Capabilities registry routes (schema-driven UI)

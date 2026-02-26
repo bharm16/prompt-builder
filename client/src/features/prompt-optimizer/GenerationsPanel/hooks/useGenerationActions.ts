@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { Generation, GenerationParams } from '../types';
+import type { DraftModel } from '@components/ToolSidebar/types';
 import type { GenerationsAction } from './useGenerationsState';
 import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, waitForVideoJob } from '../api';
 import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { assetApi } from '@/features/assets/api/assetApi';
+import { safeUrlHost } from '@/utils/url';
+import { ApiError } from '@/services/http/ApiError';
+import {
+  extractStorageObjectPath,
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
+import { getModelConfig } from '../config/generationConfig';
+import { getVideoInputSupport } from '../utils/videoInputSupport';
 
 interface UseGenerationActionsOptions {
   aspectRatio?: string | undefined;
@@ -14,6 +26,7 @@ interface UseGenerationActionsOptions {
   generationParams?: Record<string, unknown> | undefined;
   promptVersionId?: string | null | undefined;
   generations?: Generation[] | undefined;
+  onInsufficientCredits?: ((required: number, operation: string) => void) | undefined;
 }
 
 interface StoryboardParams extends GenerationParams {
@@ -21,6 +34,7 @@ interface StoryboardParams extends GenerationParams {
 }
 
 const log = logger.child('useGenerationActions');
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -49,15 +63,147 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   } as const;
 };
 
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
+const extractFaceSwapMeta = (params?: GenerationParams) => {
+  const resolvedFaceSwapUrl =
+    params?.faceSwapUrl ?? (params?.faceSwapAlreadyApplied ? params.startImage?.url ?? null : null);
+  return {
+    faceSwapUrl: resolvedFaceSwapUrl,
+    faceSwapApplied: Boolean(resolvedFaceSwapUrl),
+    characterAssetId: params?.characterAssetId ?? null,
+  } as const;
+};
+
+const hasPromptTriggers = (prompt: string): boolean =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).length > 0;
+
+const START_IMAGE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+const parseExpiresAtMs = (value?: string | null): number | null => {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  if (expiresAtMs !== null) {
+    return Date.now() >= expiresAtMs - START_IMAGE_REFRESH_BUFFER_MS;
   }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
+  return hasGcsSignedUrlParams(url);
+};
+
+const isInsufficientCreditsError = (error: unknown): error is ApiError => {
+  if (!(error instanceof ApiError) || error.status !== 402) {
+    return false;
   }
+  if (!error.response || typeof error.response !== 'object') {
+    return false;
+  }
+  if (!('code' in error.response)) {
+    return false;
+  }
+  return (error.response as { code?: unknown }).code === 'INSUFFICIENT_CREDITS';
+};
+
+type RefreshableImageInput = {
+  url: string;
+  storagePath?: string | undefined;
+  viewUrlExpiresAt?: string | undefined;
+};
+
+const resolveRefreshableImageUrl = async <
+  T extends RefreshableImageInput | null | undefined
+>(
+  input: T
+): Promise<T> => {
+  if (!input || typeof input.url !== 'string') {
+    return input;
+  }
+
+  const storagePath = input.storagePath || extractStorageObjectPath(input.url);
+  if (!storagePath) {
+    return input;
+  }
+
+  const expiresAtMs =
+    parseExpiresAtMs(input.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(input.url);
+  const needsRefresh = shouldRefreshStartImage(input.url, expiresAtMs);
+  if (!needsRefresh) {
+    return {
+      ...input,
+      storagePath,
+    };
+  }
+
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url: input.url,
+    storagePath,
+    preferFresh: true,
+  });
+  if (!resolved.url) {
+    return {
+      ...input,
+      storagePath,
+    };
+  }
+
+  return {
+    ...input,
+    url: resolved.url,
+    storagePath,
+    ...(resolved.expiresAt ? { viewUrlExpiresAt: resolved.expiresAt } : {}),
+  };
+};
+
+const resolveStartImageUrl = async (
+  startImage: GenerationParams['startImage']
+): Promise<GenerationParams['startImage']> => {
+  return await resolveRefreshableImageUrl(startImage);
+};
+
+const resolveEndImageUrl = async (
+  endImage: GenerationParams['endImage']
+): Promise<GenerationParams['endImage']> => {
+  return await resolveRefreshableImageUrl(endImage);
+};
+
+const resolveReferenceImageUrl = async (
+  referenceImage: NonNullable<GenerationParams['referenceImages']>[number]
+): Promise<NonNullable<GenerationParams['referenceImages']>[number]> => {
+  return await resolveRefreshableImageUrl(referenceImage);
+};
+
+const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Promise<string | null> => {
+  if (!seedImageUrl || typeof seedImageUrl !== 'string') return seedImageUrl ?? null;
+  const storagePath = extractStorageObjectPath(seedImageUrl);
+  if (!storagePath) return seedImageUrl;
+  const expiresAtMs = parseGcsSignedUrlExpiryMs(seedImageUrl);
+  const needsRefresh = shouldRefreshStartImage(seedImageUrl, expiresAtMs);
+  if (!needsRefresh) return seedImageUrl;
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url: seedImageUrl,
+    storagePath,
+    preferFresh: true,
+  });
+  return resolved.url ?? seedImageUrl;
+};
+
+const resolveExtendVideoUrl = async (
+  extendVideoUrl: string | null | undefined
+): Promise<string | null> => {
+  if (!extendVideoUrl || typeof extendVideoUrl !== 'string') {
+    return extendVideoUrl ?? null;
+  }
+
+  const resolved = await resolveMediaUrl({
+    kind: 'video',
+    url: extendVideoUrl,
+    preferFresh: true,
+  });
+
+  return resolved.url ?? extendVideoUrl;
 };
 
 export function useGenerationActions(
@@ -134,13 +280,21 @@ export function useGenerationActions(
 
   // Bug 9 fix: read options from ref to avoid callback recreation on every options change
   const generateDraft = useCallback(
-    async (model: 'flux-kontext' | 'wan-2.2', prompt: string, params: GenerationParams) => {
+    async (model: DraftModel, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('draft', model, prompt, resolved);
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = modelConfig?.credits ?? 0;
+      const operationLabel = `${modelConfig?.label ?? 'Video'} preview`;
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
+      const faceSwapMeta = extractFaceSwapMeta(resolved);
+      const startImageUrlHost = resolved.startImage?.url ? safeUrlHost(resolved.startImage.url) : null;
+      const requestedEndImage = Boolean(resolved.endImage?.url);
+      const requestedReferenceImageCount = resolved.referenceImages?.length ?? 0;
+      const requestedExtendMode = Boolean(resolved.extendVideoUrl);
 
       log.info('Draft generation started', {
         generationId: generation.id,
@@ -148,6 +302,14 @@ export function useGenerationActions(
         model,
         promptLength: prompt.trim().length,
         aspectRatio: resolved.aspectRatio ?? null,
+        hasStartImage: Boolean(resolved.startImage),
+        startImageUrlHost,
+        faceSwapApplied: faceSwapMeta.faceSwapApplied,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        characterAssetId: faceSwapMeta.characterAssetId,
+        requestedEndImage,
+        requestedReferenceImageCount,
+        requestedExtendMode,
         ...motionMeta,
       });
 
@@ -190,9 +352,33 @@ export function useGenerationActions(
           return;
         }
 
-        let wanPrompt = prompt.trim();
+        let promptForCompilation = prompt.trim();
+        let resolvedCharacterAssetId = resolved.characterAssetId?.trim() || null;
+
+        if (hasPromptTriggers(promptForCompilation)) {
+          try {
+            const resolvedPrompt = await assetApi.resolve(promptForCompilation);
+            const expandedPrompt = resolvedPrompt.expandedText.trim();
+            if (expandedPrompt.length > 0) {
+              promptForCompilation = expandedPrompt;
+            }
+            if (!resolvedCharacterAssetId) {
+              resolvedCharacterAssetId = resolvedPrompt.characters[0]?.id ?? null;
+            }
+          } catch (error) {
+            const info = sanitizeError(error);
+            log.warn('Prompt trigger resolution failed; falling back to raw prompt', {
+              generationId: generation.id,
+              error: info.message,
+              errorName: info.name,
+            });
+          }
+        }
+        if (controller.signal.aborted) return;
+
+        let wanPrompt = promptForCompilation;
         try {
-          wanPrompt = await compileWanPrompt(prompt, controller.signal);
+          wanPrompt = await compileWanPrompt(promptForCompilation, controller.signal);
         } catch (error) {
           const info = sanitizeError(error);
           log.warn('WAN prompt compilation failed; using raw prompt', {
@@ -200,19 +386,91 @@ export function useGenerationActions(
             error: info.message,
             errorName: info.name,
           });
-          wanPrompt = prompt.trim();
+          wanPrompt = promptForCompilation;
         }
         if (controller.signal.aborted) return;
+        const motionPromptInjected = false;
+
+        const videoInputSupport = await getVideoInputSupport(model);
+        if (controller.signal.aborted) return;
+
+        const requestedEndImageInput = resolved.endImage ?? null;
+        const requestedReferenceInputs = resolved.referenceImages ?? [];
+        const requestedExtendVideoUrl = resolved.extendVideoUrl ?? null;
+
+        const allowedEndImageInput = videoInputSupport.supportsEndFrame
+          ? requestedEndImageInput
+          : null;
+        const allowedReferenceInputs = videoInputSupport.supportsReferenceImages
+          ? requestedReferenceInputs
+          : [];
+        const allowedExtendVideoUrl = videoInputSupport.supportsExtendVideo
+          ? requestedExtendVideoUrl
+          : null;
+
+        const resolvedStartImage = resolved.startImage
+          ? await resolveStartImageUrl(resolved.startImage)
+          : null;
+        const resolvedEndImage = allowedEndImageInput
+          ? await resolveEndImageUrl(allowedEndImageInput)
+          : null;
+        const resolvedReferenceImages = allowedReferenceInputs.length
+          ? await Promise.all(
+              allowedReferenceInputs.map((referenceImage) =>
+                resolveReferenceImageUrl(referenceImage)
+              )
+            )
+          : [];
+        const resolvedExtendVideoUrl = allowedExtendVideoUrl
+          ? await resolveExtendVideoUrl(allowedExtendVideoUrl)
+          : null;
+        if (controller.signal.aborted) return;
+        const requestStartImageUrlHost = resolvedStartImage?.url
+          ? safeUrlHost(resolvedStartImage.url)
+          : startImageUrlHost;
+        const requestEndImageUrlHost = resolvedEndImage?.url
+          ? safeUrlHost(resolvedEndImage.url)
+          : null;
+        const requestExtendVideoUrlHost = resolvedExtendVideoUrl
+          ? safeUrlHost(resolvedExtendVideoUrl)
+          : null;
 
         log.info('Video draft request dispatched', {
           generationId: generation.id,
           model,
           promptLength: wanPrompt.length,
           aspectRatio: resolved.aspectRatio ?? null,
+          hasStartImage: Boolean(resolvedStartImage?.url),
+          startImageUrlHost: requestStartImageUrlHost,
+          motionPromptInjected,
+          faceSwapApplied: faceSwapMeta.faceSwapApplied,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          characterAssetId: resolvedCharacterAssetId,
+          requestedEndImage,
+          requestedReferenceImageCount,
+          requestedExtendMode,
+          dispatchedEndImage: Boolean(resolvedEndImage?.url),
+          dispatchedReferenceImageCount: resolvedReferenceImages.length,
+          dispatchedExtendMode: Boolean(resolvedExtendVideoUrl),
+          endImageUrlHost: requestEndImageUrlHost,
+          extendVideoUrlHost: requestExtendVideoUrlHost,
           ...motionMeta,
         });
         const response = await generateVideoPreview(wanPrompt, resolved.aspectRatio ?? undefined, model, {
+          ...(resolvedStartImage?.url ? { startImage: resolvedStartImage.url } : {}),
+          ...(resolvedEndImage?.url ? { endImage: resolvedEndImage.url } : {}),
+          ...(resolvedReferenceImages.length
+            ? {
+                referenceImages: resolvedReferenceImages.map((referenceImage) => ({
+                  url: referenceImage.url,
+                  type: referenceImage.type,
+                })),
+              }
+            : {}),
+          ...(resolvedExtendVideoUrl ? { extendVideoUrl: resolvedExtendVideoUrl } : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
+          ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
+          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         });
         if (controller.signal.aborted) return;
 
@@ -222,9 +480,25 @@ export function useGenerationActions(
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
+          faceSwapApplied: response.faceSwapApplied ?? false,
+          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
           ...motionMeta,
         });
+        if (response.faceSwapApplied || response.faceSwapUrl) {
+          dispatch({
+            type: 'UPDATE_GENERATION',
+            payload: {
+              id: generation.id,
+              updates: {
+                faceSwapApplied: response.faceSwapApplied ?? true,
+                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+              },
+            },
+          });
+        }
         let videoUrl: string | null = null;
+        let videoStoragePath: string | null = response.storagePath ?? null;
+        let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
@@ -232,7 +506,15 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
+            dispatch({
+              type: 'UPDATE_GENERATION',
+              payload: { id: generation.id, updates: { serverProgress: update.progress } },
+            });
+          });
+          videoUrl = jobResult?.videoUrl ?? null;
+          videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
+          videoAssetId = jobResult?.assetId ?? videoAssetId;
           log.debug('Video draft job completed', {
             generationId: generation.id,
             jobId: response.jobId,
@@ -254,15 +536,27 @@ export function useGenerationActions(
         log.info('Video draft generation succeeded', {
           generationId: generation.id,
           durationMs,
+          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
         finalizeGeneration(generation.id, {
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
+          ...(videoAssetId
+            ? { mediaAssetIds: [videoAssetId] }
+            : videoStoragePath
+              ? { mediaAssetIds: [videoStoragePath] }
+              : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
@@ -289,6 +583,9 @@ export function useGenerationActions(
       const { seedImageUrl, ...baseParams } = params;
       const resolved = resolveGenerationOptions(optionsRef.current, baseParams);
       const generation = buildGeneration('draft', 'flux-kontext', prompt, resolved);
+      const modelConfig = getModelConfig('flux-kontext');
+      const requiredCredits = modelConfig?.credits ?? 4;
+      const operationLabel = 'Storyboard';
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
@@ -308,9 +605,10 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
+        const resolvedSeedImageUrl = await resolveSeedImageUrl(seedImageUrl ?? null);
         const response = await generateStoryboardPreview(prompt, {
           ...(resolved.aspectRatio ? { aspectRatio: resolved.aspectRatio } : {}),
-          ...(seedImageUrl ? { seedImageUrl } : {}),
+          ...(resolvedSeedImageUrl ? { seedImageUrl: resolvedSeedImageUrl } : {}),
         });
         if (controller.signal.aborted) return;
         if (!response.success || !response.data?.imageUrls?.length) {
@@ -342,6 +640,12 @@ export function useGenerationActions(
         finalizeGeneration(generation.id, finalizationPayload);
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
@@ -366,16 +670,23 @@ export function useGenerationActions(
     async (model: string, prompt: string, params: GenerationParams) => {
       const resolved = resolveGenerationOptions(optionsRef.current, params);
       const generation = buildGeneration('render', model, prompt, resolved);
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = modelConfig?.credits ?? 0;
+      const operationLabel = `${modelConfig?.label ?? 'Video'} render`;
       dispatch({ type: 'ADD_GENERATION', payload: generation });
       dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
+      const faceSwapMeta = extractFaceSwapMeta(resolved);
       const isCharacterAsset =
         resolved.startImage?.source === 'asset' && Boolean(resolved.startImage?.assetId);
       const startImageUrlHost =
         !isCharacterAsset && resolved.startImage?.url
           ? safeUrlHost(resolved.startImage.url)
           : null;
+      const requestedEndImage = Boolean(resolved.endImage?.url);
+      const requestedReferenceImageCount = resolved.referenceImages?.length ?? 0;
+      const requestedExtendMode = Boolean(resolved.extendVideoUrl);
 
       log.info('Render generation started', {
         generationId: generation.id,
@@ -387,6 +698,12 @@ export function useGenerationActions(
         isCharacterAsset,
         startImageUrlHost,
         characterAssetId: isCharacterAsset ? resolved.startImage?.assetId ?? null : null,
+        faceSwapApplied: faceSwapMeta.faceSwapApplied,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        characterAssetIdOverride: faceSwapMeta.characterAssetId,
+        requestedEndImage,
+        requestedReferenceImageCount,
+        requestedExtendMode,
         ...motionMeta,
       });
 
@@ -394,20 +711,90 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
+        const videoInputSupport = await getVideoInputSupport(model);
+        if (controller.signal.aborted) return;
+
+        const requestedEndImageInput = resolved.endImage ?? null;
+        const requestedReferenceInputs = resolved.referenceImages ?? [];
+        const requestedExtendVideoUrl = resolved.extendVideoUrl ?? null;
+
+        const allowedEndImageInput = videoInputSupport.supportsEndFrame
+          ? requestedEndImageInput
+          : null;
+        const allowedReferenceInputs = videoInputSupport.supportsReferenceImages
+          ? requestedReferenceInputs
+          : [];
+        const allowedExtendVideoUrl = videoInputSupport.supportsExtendVideo
+          ? requestedExtendVideoUrl
+          : null;
+
+        const resolvedStartImage = !isCharacterAsset
+          ? await resolveStartImageUrl(resolved.startImage ?? null)
+          : resolved.startImage ?? null;
+        const resolvedEndImage = allowedEndImageInput
+          ? await resolveEndImageUrl(allowedEndImageInput)
+          : null;
+        const resolvedReferenceImages = allowedReferenceInputs.length
+          ? await Promise.all(
+              allowedReferenceInputs.map((referenceImage) =>
+                resolveReferenceImageUrl(referenceImage)
+              )
+            )
+          : [];
+        const resolvedExtendVideoUrl = allowedExtendVideoUrl
+          ? await resolveExtendVideoUrl(allowedExtendVideoUrl)
+          : null;
+        if (controller.signal.aborted) return;
+        const requestStartImageUrlHost =
+          !isCharacterAsset && resolvedStartImage?.url
+            ? safeUrlHost(resolvedStartImage.url)
+            : startImageUrlHost;
+        const requestEndImageUrlHost = resolvedEndImage?.url
+          ? safeUrlHost(resolvedEndImage.url)
+          : null;
+        const requestExtendVideoUrlHost = resolvedExtendVideoUrl
+          ? safeUrlHost(resolvedExtendVideoUrl)
+          : null;
+
         log.info('Render request dispatched', {
           generationId: generation.id,
           model,
           aspectRatio: resolved.aspectRatio ?? null,
           isCharacterAsset,
-          startImageUrlHost,
+          startImageUrlHost: requestStartImageUrlHost,
+          faceSwapApplied: faceSwapMeta.faceSwapApplied,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          characterAssetId: faceSwapMeta.characterAssetId,
+          requestedEndImage,
+          requestedReferenceImageCount,
+          requestedExtendMode,
+          dispatchedEndImage: Boolean(resolvedEndImage?.url),
+          dispatchedReferenceImageCount: resolvedReferenceImages.length,
+          dispatchedExtendMode: Boolean(resolvedExtendVideoUrl),
+          endImageUrlHost: requestEndImageUrlHost,
+          extendVideoUrlHost: requestExtendVideoUrlHost,
           ...motionMeta,
         });
         const response = await generateVideoPreview(prompt, resolved.aspectRatio ?? undefined, model, {
-          ...(!isCharacterAsset && resolved.startImage?.url
-            ? { startImage: resolved.startImage.url }
+          ...(!isCharacterAsset && resolvedStartImage?.url
+            ? { startImage: resolvedStartImage.url }
             : {}),
+          ...(resolvedEndImage?.url ? { endImage: resolvedEndImage.url } : {}),
+          ...(resolvedReferenceImages.length
+            ? {
+                referenceImages: resolvedReferenceImages.map((referenceImage) => ({
+                  url: referenceImage.url,
+                  type: referenceImage.type,
+                })),
+              }
+            : {}),
+          ...(resolvedExtendVideoUrl ? { extendVideoUrl: resolvedExtendVideoUrl } : {}),
           ...(isCharacterAsset ? { characterAssetId: resolved.startImage?.assetId } : {}),
+          ...(!isCharacterAsset && resolved.characterAssetId
+            ? { characterAssetId: resolved.characterAssetId }
+            : {}),
           ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
+          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
         });
         if (controller.signal.aborted) return;
 
@@ -417,9 +804,25 @@ export function useGenerationActions(
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
+          faceSwapApplied: response.faceSwapApplied ?? false,
+          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
           ...motionMeta,
         });
+        if (response.faceSwapApplied || response.faceSwapUrl) {
+          dispatch({
+            type: 'UPDATE_GENERATION',
+            payload: {
+              id: generation.id,
+              updates: {
+                faceSwapApplied: response.faceSwapApplied ?? true,
+                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+              },
+            },
+          });
+        }
         let videoUrl: string | null = null;
+        let videoStoragePath: string | null = response.storagePath ?? null;
+        let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
@@ -427,7 +830,15 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          videoUrl = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
+            dispatch({
+              type: 'UPDATE_GENERATION',
+              payload: { id: generation.id, updates: { serverProgress: update.progress } },
+            });
+          });
+          videoUrl = jobResult?.videoUrl ?? null;
+          videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
+          videoAssetId = jobResult?.assetId ?? videoAssetId;
           log.debug('Render job completed', {
             generationId: generation.id,
             jobId: response.jobId,
@@ -449,15 +860,27 @@ export function useGenerationActions(
         log.info('Render generation succeeded', {
           generationId: generation.id,
           durationMs,
+          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
         finalizeGeneration(generation.id, {
           status: 'completed',
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
+          ...(videoAssetId
+            ? { mediaAssetIds: [videoAssetId] }
+            : videoStoragePath
+              ? { mediaAssetIds: [videoStoragePath] }
+              : {}),
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (isInsufficientCreditsError(error)) {
+          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
+          inFlightRef.current.delete(generation.id);
+          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          return;
+        }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
@@ -512,7 +935,7 @@ export function useGenerationActions(
         generationParams: opts.generationParams,
       };
       if (generation.tier === 'draft') {
-        generateDraft(generation.model as 'flux-kontext' | 'wan-2.2', generation.prompt, params);
+        generateDraft(generation.model as DraftModel, generation.prompt, params);
         return;
       }
       generateRender(generation.model, generation.prompt, params);

@@ -47,6 +47,8 @@ describe('useImagePreview', () => {
         success: true,
         data: {
           imageUrls: [],
+          deltas: [],
+          baseImageUrl: '',
         },
       });
 
@@ -87,6 +89,7 @@ describe('useImagePreview', () => {
         success: true,
         data: {
           imageUrls: ['https://example.com/1.png', 'https://example.com/2.png'],
+          deltas: ['delta-1', 'delta-2'],
           baseImageUrl: 'https://example.com/base.png',
         },
       });
@@ -122,6 +125,12 @@ describe('useImagePreview', () => {
         success: true,
         data: {
           imageUrl: 'https://example.com/preview.png',
+          metadata: {
+            aspectRatio: '16:9',
+            model: 'test-model',
+            duration: 0,
+            generatedAt: new Date().toISOString(),
+          },
         },
       });
 

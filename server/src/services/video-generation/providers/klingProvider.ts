@@ -2,6 +2,7 @@ import { z } from 'zod';
 import CircuitBreaker from 'opossum';
 import type { KlingAspectRatio, KlingModelId, VideoGenerationOptions } from '../types';
 import { sleep } from '../utils/sleep';
+import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -19,6 +20,7 @@ interface KlingImageToVideoInput {
   model_name?: KlingModelId;
   prompt: string;
   image: string;
+  image_tail?: string;
   negative_prompt?: string;
   aspect_ratio?: KlingAspectRatio;
   duration?: '5' | '10';
@@ -28,7 +30,6 @@ interface KlingImageToVideoInput {
 export const DEFAULT_KLING_BASE_URL = 'https://api.klingai.com';
 
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
-const KLING_TASK_TIMEOUT_MS = 5 * 60 * 1000;
 
 const KLING_TASK_STATUS_SCHEMA = z.enum(['submitted', 'processing', 'succeed', 'failed']);
 
@@ -95,6 +96,13 @@ function resolveKlingAspectRatio(
     return '16:9';
   }
   return aspectRatio;
+}
+
+function resolveKlingDuration(seconds?: VideoGenerationOptions['seconds']): '5' | '10' | undefined {
+  if (seconds === '5' || seconds === '10') {
+    return seconds;
+  }
+  return undefined;
 }
 
 async function _rawKlingFetch(
@@ -214,6 +222,7 @@ async function waitForKlingVideo(
   apiKey: string,
   taskId: string
 ): Promise<string> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
 
   while (true) {
@@ -231,7 +240,7 @@ async function waitForKlingVideo(
       throw new Error(`Kling task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > KLING_TASK_TIMEOUT_MS) {
+    if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for Kling task ${taskId}`);
     }
 
@@ -244,6 +253,7 @@ async function waitForKlingImageToVideo(
   apiKey: string,
   taskId: string
 ): Promise<string> {
+  const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
 
   while (true) {
@@ -273,7 +283,7 @@ async function waitForKlingImageToVideo(
       throw new Error(`Kling i2v task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > KLING_TASK_TIMEOUT_MS) {
+    if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for Kling i2v task ${taskId}`);
     }
 
@@ -316,12 +326,15 @@ async function generateKlingImageToVideo(
   log: LogSink
 ): Promise<string> {
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
+  const duration = resolveKlingDuration(options.seconds);
   const input: KlingImageToVideoInput = {
     model_name: modelId,
     prompt,
     image: options.startImage!,
+    ...(options.endImage ? { image_tail: options.endImage } : {}),
     ...(options.negativePrompt ? { negative_prompt: options.negativePrompt } : {}),
     ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+    ...(duration ? { duration } : {}),
   };
 
   const taskId = await createKlingImageToVideoTask(baseUrl, apiKey, input);
@@ -329,6 +342,7 @@ async function generateKlingImageToVideo(
     modelId,
     taskId,
     imageUrl: options.startImage,
+    hasEndImage: Boolean(options.endImage),
   });
 
   return await waitForKlingImageToVideo(baseUrl, apiKey, taskId);

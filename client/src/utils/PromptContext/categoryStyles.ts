@@ -33,21 +33,21 @@ interface ColorScheme {
 const CATEGORY_PALETTE = categoryColors as Record<string, ColorScheme>;
 
 /**
- * Legacy brainstorm category colors (backward compatibility)
- */
-const LEGACY_COLORS: Record<string, ColorScheme> = {
-  location: CATEGORY_PALETTE.environment,
-  time: CATEGORY_PALETTE.lighting,
-  mood: CATEGORY_PALETTE.style,
-  event: CATEGORY_PALETTE.action,
-  quality: CATEGORY_PALETTE.technical,
-  color: CATEGORY_PALETTE.style,
-};
-
-/**
  * Default fallback color for unknown categories
  */
 const FALLBACK_COLOR: ColorScheme = DEFAULT_CATEGORY_COLOR;
+
+/**
+ * Legacy brainstorm category colors (backward compatibility)
+ */
+const LEGACY_COLORS: Record<string, ColorScheme> = {
+  location: CATEGORY_PALETTE.environment ?? FALLBACK_COLOR,
+  time: CATEGORY_PALETTE.lighting ?? FALLBACK_COLOR,
+  mood: CATEGORY_PALETTE.style ?? FALLBACK_COLOR,
+  event: CATEGORY_PALETTE.action ?? FALLBACK_COLOR,
+  quality: CATEGORY_PALETTE.technical ?? FALLBACK_COLOR,
+  color: CATEGORY_PALETTE.style ?? FALLBACK_COLOR,
+};
 
 /**
  * Get category color for UI display

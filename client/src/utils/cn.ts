@@ -5,7 +5,9 @@
  * @example
  * cn('base-class', condition && 'conditional-class', ['array', 'classes'])
  */
-export function cn(...classes: Array<string | string[] | Record<string, boolean> | undefined | null | boolean>): string {
+export type ClassValue = string | string[] | Record<string, boolean> | undefined | null | boolean;
+
+export function cn(...classes: Array<ClassValue>): string {
   return classes
     .flat(Infinity)
     .filter((cls) => {

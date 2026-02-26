@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { CapabilityValues } from '@shared/capabilities';
-import { loadGenerationParams, loadSelectedModel } from '../promptStateStorage';
+import type { VideoTier } from '@components/ToolSidebar/types';
+import { loadSelectedMode } from '../promptStateStorage';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../GenerationControlsStore';
 
 export function usePromptConfigState(): {
   selectedMode: string;
@@ -9,19 +14,21 @@ export function usePromptConfigState(): {
   setSelectedModel: (model: string) => void;
   generationParams: CapabilityValues;
   setGenerationParams: (params: CapabilityValues) => void;
+  videoTier: VideoTier;
+  setVideoTier: (tier: VideoTier) => void;
 } {
-  const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [selectedModel, setSelectedModel] = useState<string>(() => loadSelectedModel());
-  const [generationParams, setGenerationParams] = useState<CapabilityValues>(
-    () => loadGenerationParams()
-  );
+  const [selectedMode, setSelectedMode] = useState<string>(() => loadSelectedMode());
+  const { domain } = useGenerationControlsStoreState();
+  const actions = useGenerationControlsStoreActions();
 
   return {
     selectedMode,
     setSelectedMode,
-    selectedModel,
-    setSelectedModel,
-    generationParams,
-    setGenerationParams,
+    selectedModel: domain.selectedModel,
+    setSelectedModel: actions.setSelectedModel,
+    generationParams: domain.generationParams,
+    setGenerationParams: actions.setGenerationParams,
+    videoTier: domain.videoTier,
+    setVideoTier: actions.setVideoTier,
   };
 }

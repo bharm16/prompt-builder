@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { MutableRefObject } from 'react';
-import type { PromptVersionEdit } from '@hooks/types';
+import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 export function useVersionEditTracking(): {
   versionEditCountRef: MutableRefObject<number>;

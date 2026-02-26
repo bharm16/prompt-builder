@@ -1,19 +1,20 @@
 import { Storage } from '@google-cloud/storage';
 import { STORAGE_CONFIG } from '../config/storageConfig';
 import { validatePathOwnership, getTypeFromPath } from '../utils/pathUtils';
+import { createForbiddenError } from '../utils/httpError';
 
 export class RetentionService {
   private readonly storage: Storage;
   private readonly bucket;
 
-  constructor(storage?: Storage) {
-    this.storage = storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
+  constructor(storage: Storage, bucketName: string = STORAGE_CONFIG.bucketName) {
+    this.storage = storage;
+    this.bucket = this.storage.bucket(bucketName);
   }
 
   async deleteFile(path: string, userId: string): Promise<{ deleted: boolean; path: string }> {
     if (!validatePathOwnership(path, userId)) {
-      throw new Error('Unauthorized - cannot delete files belonging to other users');
+      throw createForbiddenError('Unauthorized - cannot delete files belonging to other users');
     }
 
     const file = this.bucket.file(path);
@@ -40,9 +41,12 @@ export class RetentionService {
       deleted: results.filter((result) => result.status === 'fulfilled').length,
       failed: results.filter((result) => result.status === 'rejected').length,
       details: results.map((result, index) => ({
-        path: paths[index],
+        path: paths[index] ?? '',
         success: result.status === 'fulfilled',
-        error: result.status === 'rejected' ? result.reason?.message || String(result.reason) : null,
+        error:
+          result.status === 'rejected'
+            ? result.reason?.message || String(result.reason)
+            : null,
       })),
     };
   }
@@ -58,11 +62,10 @@ export class RetentionService {
     else if (type === 'preview-video') prefix += 'previews/videos/';
     else if (type === 'generation') prefix += 'generations/';
 
-    const [files, nextQuery] = await this.bucket.getFiles({
-      prefix,
-      maxResults: limit,
-      pageToken: pageToken || undefined,
-    });
+    const query = pageToken
+      ? { prefix, maxResults: limit, pageToken }
+      : { prefix, maxResults: limit };
+    const [files, , nextQuery] = await this.bucket.getFiles(query);
 
     const items = await Promise.all(
       files.map(async (file) => {
@@ -70,17 +73,25 @@ export class RetentionService {
         return {
           storagePath: file.name,
           type: getTypeFromPath(file.name),
-          sizeBytes: Number.parseInt(metadata.size || '0', 10),
+          sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
           contentType: metadata.contentType,
-          createdAt: metadata.timeCreated,
+          createdAt: metadata.timeCreated ?? new Date().toISOString(),
           metadata: metadata.metadata || {},
         };
       })
     );
 
+    const nextCursor =
+      typeof nextQuery === 'object' &&
+      nextQuery !== null &&
+      'pageToken' in nextQuery &&
+      typeof (nextQuery as { pageToken?: unknown }).pageToken === 'string'
+        ? (nextQuery as { pageToken: string }).pageToken
+        : null;
+
     return {
       items,
-      nextCursor: nextQuery?.pageToken || null,
+      nextCursor,
     };
   }
 
@@ -104,7 +115,7 @@ export class RetentionService {
 
     for (const file of files) {
       const [metadata] = await file.getMetadata();
-      const size = Number.parseInt(metadata.size || '0', 10);
+      const size = Number.parseInt(String(metadata.size ?? '0'), 10);
       const type = getTypeFromPath(file.name);
 
       totalBytes += size;

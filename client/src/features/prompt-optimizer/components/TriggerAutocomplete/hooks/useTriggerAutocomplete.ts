@@ -118,11 +118,11 @@ export function useTriggerAutocomplete({
     setIsOpen(true);
     setActiveRange({ start, end: cursor });
     setPosition(getCaretPosition(input, cursor));
-  }, [assetLookup, close, inputRef, isEnabled, prompt]);
+  }, [assetLookup, close, inputRef, isEnabled]);
 
   useEffect(() => {
     updateFromCursor();
-  }, [updateFromCursor]);
+  }, [prompt, updateFromCursor]);
 
   const selectSuggestion = useCallback(
     (index: number): void => {

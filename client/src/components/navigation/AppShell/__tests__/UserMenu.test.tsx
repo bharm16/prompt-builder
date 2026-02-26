@@ -49,6 +49,23 @@ describe('UserMenu', () => {
         expect(toastMock.error).toHaveBeenCalledWith('Failed to sign in');
       });
     });
+
+    it('shows error toast when sign-out fails', async () => {
+      signOutMock.mockRejectedValueOnce(new Error('failed to sign out'));
+
+      const user = { uid: 'u1', displayName: 'Ada Lovelace', email: 'ada@example.com' };
+      renderWithRouter(<UserMenu user={user} variant="sidebar" />);
+
+      const button = screen.getByRole('button', { name: 'User menu' });
+      fireEvent.click(button);
+      fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
+
+      await waitFor(() => {
+        expect(signOutMock).toHaveBeenCalled();
+        expect(toastMock.error).toHaveBeenCalledWith('Failed to sign out');
+        expect(button).toHaveAttribute('aria-expanded', 'false');
+      });
+    });
   });
 
   describe('edge cases', () => {
@@ -76,6 +93,19 @@ describe('UserMenu', () => {
   });
 
   describe('core behavior', () => {
+    it('calls sign-in repository action in sidebar variant', async () => {
+      signInWithGoogleMock.mockResolvedValueOnce(undefined);
+
+      renderWithRouter(<UserMenu user={null} variant="sidebar" />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+
+      await waitFor(() => {
+        expect(signInWithGoogleMock).toHaveBeenCalled();
+        expect(toastMock.error).not.toHaveBeenCalled();
+      });
+    });
+
     it('signs out and closes menu in sidebar variant', async () => {
       signOutMock.mockResolvedValueOnce(undefined);
 

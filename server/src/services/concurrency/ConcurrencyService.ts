@@ -1,5 +1,4 @@
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
 
 /**
  * ConcurrencyService - Manages concurrent API request limits with priority queue
@@ -24,10 +23,23 @@ import { metricsService } from '@infrastructure/MetricsService';
  * });
  */
 
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface ConcurrencyMetrics {
+  recordGauge(name: string, value: number): void;
+  recordHistogram(name: string, value: number): void;
+}
+
+const NULL_METRICS: ConcurrencyMetrics = {
+  recordGauge() {},
+  recordHistogram() {},
+};
+
 interface ConcurrencyLimiterOptions {
   maxConcurrent?: number;
   queueTimeout?: number;
+  maxQueueLength?: number;
   enableCancellation?: boolean;
+  metricsService?: ConcurrencyMetrics;
 }
 
 interface ExecutionOptions {
@@ -49,6 +61,7 @@ interface LimiterStats {
   totalQueued: number;
   totalCancelled: number;
   totalTimedOut: number;
+  totalRejected: number;
   maxQueueLength: number;
   avgQueueTime: number;
   queueTimes: number[];
@@ -64,22 +77,28 @@ interface QueueStatus {
 export class ConcurrencyLimiter {
   private readonly maxConcurrent: number;
   private readonly queueTimeout: number;
+  private readonly maxQueueLength: number;
   private readonly enableCancellation: boolean;
   private activeCount: number;
   private readonly queue: QueueItem<unknown>[];
   private nextRequestId: number;
   private readonly stats: LimiterStats;
+  private readonly metrics: ConcurrencyMetrics;
 
   /**
    * @param options - Configuration options
    * @param options.maxConcurrent - Maximum concurrent requests (default: 5)
    * @param options.queueTimeout - Max time in queue before rejection (default: 30000ms)
+   * @param options.maxQueueLength - Maximum queue depth before rejecting immediately (default: 20)
    * @param options.enableCancellation - Enable request cancellation (default: true)
+   * @param options.metricsService - Optional metrics collector for recording gauge/histogram data
    */
   constructor(options: ConcurrencyLimiterOptions = {}) {
     this.maxConcurrent = options.maxConcurrent || 5;
     this.queueTimeout = options.queueTimeout || 30000; // 30 seconds
+    this.maxQueueLength = options.maxQueueLength || 20;
     this.enableCancellation = options.enableCancellation !== false;
+    this.metrics = options.metricsService ?? NULL_METRICS;
 
     // Track active requests
     this.activeCount = 0;
@@ -96,6 +115,7 @@ export class ConcurrencyLimiter {
       totalQueued: 0,
       totalCancelled: 0,
       totalTimedOut: 0,
+      totalRejected: 0,
       maxQueueLength: 0,
       avgQueueTime: 0,
       queueTimes: [],
@@ -104,6 +124,7 @@ export class ConcurrencyLimiter {
     logger.debug('ConcurrencyLimiter initialized', {
       maxConcurrent: this.maxConcurrent,
       queueTimeout: this.queueTimeout,
+      maxQueueLength: this.maxQueueLength,
       enableCancellation: this.enableCancellation,
     });
   }
@@ -124,6 +145,26 @@ export class ConcurrencyLimiter {
     // Check if we can execute immediately
     if (this.activeCount < this.maxConcurrent) {
       return await this._executeImmediately(fn, requestId);
+    }
+
+    // Reject immediately if queue is full (load-shedding)
+    if (this.queue.length >= this.maxQueueLength) {
+      this.stats.totalRejected++;
+      this.metrics.recordGauge('request_queue_length', this.queue.length);
+
+      logger.warn('Request rejected — queue full', {
+        requestId,
+        queueLength: this.queue.length,
+        maxQueueLength: this.maxQueueLength,
+        activeCount: this.activeCount,
+      });
+
+      const error = new Error(
+        `Server busy: ${this.queue.length} requests queued. Try again shortly.`
+      ) as Error & { code?: string; retryAfter?: number };
+      error.code = 'QUEUE_FULL';
+      error.retryAfter = 5;
+      throw error;
     }
 
     // Queue the request
@@ -216,7 +257,7 @@ export class ConcurrencyLimiter {
       });
 
       // Record queue metric
-      metricsService.recordGauge('request_queue_length', this.queue.length);
+      this.metrics.recordGauge('request_queue_length', this.queue.length);
     });
   }
 
@@ -274,8 +315,8 @@ export class ConcurrencyLimiter {
       });
 
     // Record metrics
-    metricsService.recordGauge('request_queue_length', this.queue.length);
-    metricsService.recordHistogram('request_queue_time_ms', queueTime);
+    this.metrics.recordGauge('request_queue_length', this.queue.length);
+    this.metrics.recordHistogram('request_queue_time_ms', queueTime);
   }
 
   /**
@@ -305,7 +346,7 @@ export class ConcurrencyLimiter {
       queueLength: this.queue.length,
     });
 
-    metricsService.recordGauge('request_queue_length', this.queue.length);
+    this.metrics.recordGauge('request_queue_length', this.queue.length);
   }
 
   /**
@@ -337,7 +378,7 @@ export class ConcurrencyLimiter {
       queueLength: this.queue.length,
     });
 
-    metricsService.recordGauge('request_queue_length', this.queue.length);
+    this.metrics.recordGauge('request_queue_length', this.queue.length);
   }
 
   /**
@@ -377,7 +418,7 @@ export class ConcurrencyLimiter {
     }
 
     logger.info('Queue cleared', { clearedCount: count });
-    metricsService.recordGauge('request_queue_length', 0);
+    this.metrics.recordGauge('request_queue_length', 0);
   }
 
   /**
@@ -397,31 +438,11 @@ export class ConcurrencyLimiter {
   }
 }
 
-// Singleton instance for OpenAI API limiting
-const parseEnvInt = (value: string | undefined, fallback: number): number => {
+/** Parse an env var as an integer with a fallback. Exported for DI limiter registration. */
+export const parseEnvInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number.parseInt(value || '', 10);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const defaultMaxConcurrent = process.env.NODE_ENV === 'production' ? 10 : 5;
-
-export const openAILimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.OPENAI_MAX_CONCURRENT, defaultMaxConcurrent),
-  queueTimeout: parseEnvInt(process.env.OPENAI_QUEUE_TIMEOUT_MS, 30000),
-  enableCancellation: true,
-});
-
-export const groqLimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.GROQ_MAX_CONCURRENT, defaultMaxConcurrent),
-  queueTimeout: parseEnvInt(process.env.GROQ_QUEUE_TIMEOUT_MS, 30000),
-  enableCancellation: true,
-});
-
-// Qwen shares the Groq API key; use the same limiter to respect shared limits.
-export const qwenLimiter = groqLimiter;
-
-export const geminiLimiter = new ConcurrencyLimiter({
-  maxConcurrent: parseEnvInt(process.env.GEMINI_MAX_CONCURRENT, defaultMaxConcurrent),
-  queueTimeout: parseEnvInt(process.env.GEMINI_QUEUE_TIMEOUT_MS, 30000),
-  enableCancellation: true,
-});
+// ConcurrencyLimiter instances should be created via the DI container
+// (see server/src/config/services/llm.services.ts)

@@ -35,7 +35,8 @@ interface LlmClientFactoryOptions {
  * 1. Explicit provider parameter
  * 2. SPAN_PROVIDER environment variable
  * 3. Auto-detect from model name
- * 4. Default to Groq (current production default)
+ * 4. Operation-specific provider override / operation config detection
+ * 5. Default to Groq
  * 
  * @param options - Factory options
  * @returns Provider-specific LLM client
@@ -102,6 +103,14 @@ function resolveProvider(options: LlmClientFactoryOptions): LlmClientProvider {
     const operationProvider = process.env[`${operationUpper}_PROVIDER`]?.toLowerCase();
     if (operationProvider === 'openai' || operationProvider === 'groq' || operationProvider === 'gemini') {
       return operationProvider as LlmClientProvider;
+    }
+
+    const detected = detectProvider({ operation: options.operation });
+    if (detected === 'openai' || detected === 'groq' || detected === 'gemini') {
+      return detected;
+    }
+    if (detected === 'qwen') {
+      return 'groq';
     }
   }
 

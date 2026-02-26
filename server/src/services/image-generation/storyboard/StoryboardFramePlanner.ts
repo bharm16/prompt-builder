@@ -1,32 +1,45 @@
 import type { LLMClient } from '@clients/LLMClient';
 import { logger } from '@infrastructure/Logger';
 import { extractResponseText } from '@utils/JsonExtractor';
+import { STORYBOARD_FRAME_TIMESTAMPS } from './constants';
+import { fetchImageAsDataUrl } from './fetchImageAsDataUrl';
 import {
   buildFallbackDeltas,
   buildRepairSystemPrompt,
   buildSystemPrompt,
+  buildVisionDeltaUserPrompt,
 } from './prompts';
 import {
   parseStoryboardDeltas,
   type StoryboardDeltasParseResult,
 } from './planParser';
 
+type StoryboardPartialDeltas = Extract<StoryboardDeltasParseResult, { ok: false }>['partial'];
+
 export interface StoryboardFramePlannerOptions {
   llmClient: LLMClient;
+  /** Vision-capable LLM for image-aware delta planning (GPT-4o). Falls back to llmClient if null. */
+  visionLlmClient?: LLMClient | null;
   timeoutMs?: number;
+  /** Timeout for vision requests (image fetch + LLM call). */
+  visionTimeoutMs?: number;
 }
 
 export class StoryboardFramePlanner {
   private readonly llmClient: LLMClient;
+  private readonly visionLlmClient: LLMClient | null;
   private readonly timeoutMs: number;
+  private readonly visionTimeoutMs: number;
   private readonly log = logger.child({ service: 'StoryboardFramePlanner' });
 
   constructor(options: StoryboardFramePlannerOptions) {
     this.llmClient = options.llmClient;
+    this.visionLlmClient = options.visionLlmClient ?? null;
     this.timeoutMs = options.timeoutMs ?? 8000;
+    this.visionTimeoutMs = options.visionTimeoutMs ?? 15000;
   }
 
-  async planDeltas(prompt: string, frameCount: number): Promise<string[]> {
+  async planDeltas(prompt: string, frameCount: number, baseImageUrl?: string): Promise<string[]> {
     const trimmed = prompt.trim();
     if (!trimmed) {
       return [];
@@ -37,7 +50,7 @@ export class StoryboardFramePlanner {
       return [];
     }
 
-    const responseText = await this.requestPlan(trimmed, expectedCount);
+    const responseText = await this.requestPlan(trimmed, expectedCount, baseImageUrl);
     const parsed = this.parseDeltas(responseText, expectedCount);
     if (parsed.ok) {
       return parsed.deltas;
@@ -55,7 +68,8 @@ export class StoryboardFramePlanner {
       trimmed,
       responseText,
       expectedCount,
-      parsed.partial?.deltas
+      parsed.partial?.deltas,
+      baseImageUrl
     );
     const repaired = this.parseDeltas(repairText, expectedCount);
     if (repaired.ok) {
@@ -89,14 +103,29 @@ export class StoryboardFramePlanner {
     return Math.max(0, normalizedFrameCount - 1);
   }
 
-  private async requestPlan(prompt: string, expectedCount: number): Promise<string> {
-    const response = await this.llmClient.complete(buildSystemPrompt(expectedCount), {
-      userMessage: prompt,
-      maxTokens: 400,
-      temperature: 0.4,
-      timeout: this.timeoutMs,
-      jsonMode: true,
-    });
+  private async requestPlan(
+    prompt: string,
+    expectedCount: number,
+    baseImageUrl?: string
+  ): Promise<string> {
+    if (baseImageUrl && this.visionLlmClient) {
+      return this.requestVisionPlan(prompt, expectedCount, baseImageUrl);
+    }
+
+    return this.requestTextPlan(prompt, expectedCount);
+  }
+
+  private async requestTextPlan(prompt: string, expectedCount: number): Promise<string> {
+    const response = await this.llmClient.complete(
+      buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS),
+      {
+        userMessage: prompt,
+        maxTokens: 400,
+        temperature: 0.4,
+        timeout: this.timeoutMs,
+        jsonMode: true,
+      }
+    );
     return extractResponseText(response);
   }
 
@@ -104,7 +133,8 @@ export class StoryboardFramePlanner {
     prompt: string,
     responseText: string,
     expectedCount: number,
-    partialDeltas?: string[]
+    partialDeltas?: string[],
+    baseImageUrl?: string
   ): Promise<string> {
     const partialSection =
       partialDeltas && partialDeltas.length > 0
@@ -112,10 +142,53 @@ export class StoryboardFramePlanner {
             .map((delta, index) => `${index + 1}. ${delta}`)
             .join('\n')}\n\nReturn a full list of ${expectedCount} deltas, reusing these when valid.`
         : '';
+
+    const repairUserMessage = `Base prompt:\n${prompt}\n\nPrevious response:\n${responseText}${partialSection}`;
+
+    if (baseImageUrl && this.visionLlmClient) {
+      let dataUrl: string;
+      try {
+        dataUrl = await fetchImageAsDataUrl(baseImageUrl, {
+          timeoutMs: Math.min(this.visionTimeoutMs, 8000),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.log.warn('Vision repair image fetch failed, falling back to text-only', {
+          error: message,
+          imageUrl: baseImageUrl.slice(0, 120),
+        });
+        dataUrl = '';
+      }
+
+      if (dataUrl) {
+        const repairSystemPrompt = buildRepairSystemPrompt(
+          expectedCount,
+          STORYBOARD_FRAME_TIMESTAMPS
+        );
+        const repairVisionResponse = await this.visionLlmClient.complete(repairSystemPrompt, {
+          messages: [
+            { role: 'system', content: repairSystemPrompt },
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: dataUrl } },
+                { type: 'text', text: repairUserMessage },
+              ],
+            },
+          ],
+          maxTokens: 400,
+          temperature: 0,
+          timeout: this.visionTimeoutMs,
+          jsonMode: true,
+        });
+        return extractResponseText(repairVisionResponse);
+      }
+    }
+
     const repairResponse = await this.llmClient.complete(
-      buildRepairSystemPrompt(expectedCount),
+      buildRepairSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS),
       {
-        userMessage: `Base prompt:\n${prompt}\n\nPrevious response:\n${responseText}${partialSection}`,
+        userMessage: repairUserMessage,
         maxTokens: 400,
         temperature: 0,
         timeout: this.timeoutMs,
@@ -123,6 +196,50 @@ export class StoryboardFramePlanner {
       }
     );
     return extractResponseText(repairResponse);
+  }
+
+  private async requestVisionPlan(
+    prompt: string,
+    expectedCount: number,
+    baseImageUrl: string
+  ): Promise<string> {
+    const visionClient = this.visionLlmClient;
+    if (!visionClient) {
+      return this.requestTextPlan(prompt, expectedCount);
+    }
+
+    let dataUrl: string;
+    try {
+      dataUrl = await fetchImageAsDataUrl(baseImageUrl, {
+        timeoutMs: Math.min(this.visionTimeoutMs, 8000),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log.warn('Vision plan image fetch failed, falling back to text-only', {
+        error: message,
+        imageUrl: baseImageUrl.slice(0, 120),
+      });
+      return this.requestTextPlan(prompt, expectedCount);
+    }
+
+    const systemPrompt = buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
+    const response = await visionClient.complete(systemPrompt, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: dataUrl } },
+            { type: 'text', text: buildVisionDeltaUserPrompt(prompt) },
+          ],
+        },
+      ],
+      maxTokens: 400,
+      temperature: 0.4,
+      timeout: this.visionTimeoutMs,
+      jsonMode: true,
+    });
+    return extractResponseText(response);
   }
 
   private parseDeltas(
@@ -141,9 +258,9 @@ export class StoryboardFramePlanner {
   }
 
   private pickBestPartial(
-    ...partials: Array<StoryboardDeltasParseResult['partial'] | undefined>
-  ): StoryboardDeltasParseResult['partial'] | undefined {
-    let best: StoryboardDeltasParseResult['partial'] | undefined;
+    ...partials: Array<StoryboardPartialDeltas | undefined>
+  ): StoryboardPartialDeltas | undefined {
+    let best: StoryboardPartialDeltas | undefined;
     for (const partial of partials) {
       if (!partial || partial.actualCount <= 0) {
         continue;

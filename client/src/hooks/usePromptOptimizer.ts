@@ -10,12 +10,14 @@
  * Single Responsibility: Orchestrate the prompt optimization workflow
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { logger } from '../services/LoggingService';
 import type { Toast } from './types';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptOptimizerActions } from './utils/promptOptimizationFlow';
+import type { PromptOptimizerActions, OptimizationOutcome } from './utils/promptOptimizationFlow';
+import type { PromptOptimizerState } from './usePromptOptimizerState';
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
 
 import { usePromptOptimizerApi } from './usePromptOptimizerApi';
 import { usePromptOptimizerState } from './usePromptOptimizerState';
@@ -27,9 +29,60 @@ const log = logger.child('usePromptOptimizer');
 interface OptimizationOptions {
   skipCache?: boolean;
   generationParams?: CapabilityValues;
+  startImage?: string;
+  sourcePrompt?: string;
+  constraintMode?: 'strict' | 'flexible' | 'transform';
 }
 
-export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
+interface UsePromptOptimizerResult {
+  inputPrompt: string;
+  setInputPrompt: (prompt: string) => void;
+  isProcessing: boolean;
+  optimizedPrompt: string;
+  setOptimizedPrompt: (prompt: string) => void;
+  displayedPrompt: string;
+  setDisplayedPrompt: (prompt: string) => void;
+  genericOptimizedPrompt: string | null;
+  setGenericOptimizedPrompt: (prompt: string | null) => void;
+  previewPrompt: string | null;
+  setPreviewPrompt: (prompt: string | null) => void;
+  previewAspectRatio: string | null;
+  setPreviewAspectRatio: (ratio: string | null) => void;
+  qualityScore: number | null;
+  skipAnimation: boolean;
+  setSkipAnimation: (skip: boolean) => void;
+  improvementContext: unknown | null;
+  setImprovementContext: (context: unknown | null) => void;
+  draftPrompt: string;
+  isDraftReady: boolean;
+  isRefining: boolean;
+  draftSpans: PromptOptimizerState['draftSpans'];
+  refinedSpans: PromptOptimizerState['refinedSpans'];
+  lockedSpans: LockedSpan[];
+  optimize: (
+    promptToOptimize?: string,
+    context?: unknown | null,
+    brainstormContext?: unknown | null,
+    targetModel?: string,
+    options?: OptimizationOptions
+  ) => Promise<OptimizationOutcome | null>;
+  compile: (
+    promptToCompile: string,
+    targetModel?: string,
+    context?: unknown | null
+  ) => Promise<{ optimized: string; score: number | null } | null>;
+  resetPrompt: () => void;
+  setLockedSpans: (spans: LockedSpan[]) => void;
+  addLockedSpan: (span: LockedSpan) => void;
+  removeLockedSpan: (spanId: string) => void;
+  clearLockedSpans: () => void;
+}
+
+export const usePromptOptimizer = (
+  selectedMode: string,
+  selectedModel?: string,
+  useTwoStage: boolean = true
+): UsePromptOptimizerResult => {
   const toast = useToast() as Toast;
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
@@ -53,6 +106,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
     addLockedSpan,
     removeLockedSpan,
     clearLockedSpans,
+    snapshotForRollback,
+    rollback,
     startOptimization,
     resetPrompt,
     setIsProcessing,
@@ -98,8 +153,13 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       });
       logger.startTimer('optimize');
 
-      startOptimization();
-      setIsProcessing(true);
+      // Wrap non-urgent state updates in startTransition so React can yield
+      // to higher-priority work (e.g., keyboard input) between commits.
+      startTransition(() => {
+        snapshotForRollback();
+        startOptimization();
+        setIsProcessing(true);
+      });
 
       try {
         markOptimizationStart();
@@ -117,6 +177,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           setQualityScore,
           setPreviewPrompt,
           setPreviewAspectRatio,
+          rollback,
         };
 
         const overrideModel =
@@ -165,6 +226,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           ...(typeof options?.skipCache === 'boolean' ? { skipCache: options.skipCache } : {}),
           ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
           ...(options?.startImage ? { startImage: options.startImage } : {}),
+          ...(options?.sourcePrompt ? { sourcePrompt: options.sourcePrompt } : {}),
           ...(options?.constraintMode ? { constraintMode: options.constraintMode } : {}),
           lockedSpans: state.lockedSpans,
           actions,
@@ -189,6 +251,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           useTwoStage,
         });
         toast.error('Failed to optimize. Make sure the server is running.');
+        rollback();
         return null;
       } finally {
         if (requestId === requestIdRef.current) {
@@ -208,6 +271,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       toast,
       useTwoStage,
       selectedMode,
+      snapshotForRollback,
+      rollback,
       startOptimization,
       setIsProcessing,
       setDraftPrompt,
@@ -257,6 +322,9 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
 
       setIsProcessing(true);
       setIsRefining(false);
+      setIsDraftReady(false);
+      setDraftSpans(null);
+      setRefinedSpans(null);
 
       try {
         const result = await compilePrompt({
@@ -312,17 +380,19 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       selectedModel,
       setIsProcessing,
       setIsRefining,
+      setIsDraftReady,
+      setDraftSpans,
+      setRefinedSpans,
       setOptimizedPrompt,
       setDisplayedPrompt,
       setGenericOptimizedPrompt,
       setPreviewPrompt,
       setPreviewAspectRatio,
       toast,
-      log,
     ]
   );
 
-  return {
+  return useMemo<UsePromptOptimizerResult>(() => ({
     // State
     inputPrompt: state.inputPrompt,
     setInputPrompt,
@@ -361,5 +431,22 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
     addLockedSpan,
     removeLockedSpan,
     clearLockedSpans,
-  };
+  }), [
+    state,
+    setInputPrompt,
+    setOptimizedPrompt,
+    setDisplayedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
+    setSkipAnimation,
+    setImprovementContext,
+    optimize,
+    compile,
+    resetPrompt,
+    setLockedSpans,
+    addLockedSpan,
+    removeLockedSpan,
+    clearLockedSpans,
+  ]);
 };

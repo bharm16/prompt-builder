@@ -4,6 +4,8 @@ import { extractUserId } from '@utils/requestHelpers';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import { createSseChannel } from '@routes/optimize/sse';
 import type { PromptOptimizationServiceContract } from '../types';
+import { promptSchema } from '@config/schemas/promptSchemas';
+import { normalizeContext, normalizeLockedSpans, normalizeTargetModel } from './requestNormalization';
 
 export const createOptimizeStreamHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -12,6 +14,26 @@ export const createOptimizeStreamHandler = (
     const requestId = req.id || 'unknown';
     const userId = extractUserId(req);
     const operation = 'optimize-stream';
+
+    const parsed = promptSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn('Optimize-stream request validation failed', {
+        operation,
+        requestId,
+        userId,
+        issues: parsed.error.issues.map((issue) => ({
+          code: issue.code,
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: parsed.error.issues,
+      });
+      return;
+    }
 
     const {
       prompt,
@@ -23,10 +45,14 @@ export const createOptimizeStreamHandler = (
       skipCache,
       lockedSpans,
       startImage,
-    } = req.body;
+    } = parsed.data;
+    const normalizedTargetModel = normalizeTargetModel(targetModel);
+    const normalizedContext = normalizeContext(context);
+    const normalizedLockedSpans = normalizeLockedSpans(lockedSpans);
 
     if (typeof startImage === 'string' && startImage.trim().length > 0) {
       res.status(400).json({
+        success: false,
         error: 'Streaming optimization does not support image-to-video. Use /api/optimize.',
       });
       return;
@@ -34,17 +60,25 @@ export const createOptimizeStreamHandler = (
 
     const { normalizedGenerationParams, error } = normalizeGenerationParams({
       generationParams,
-      targetModel,
       operation,
       requestId,
-      userId,
+      ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+      ...(userId ? { userId } : {}),
     });
     if (error) {
-      res.status(error.status).json({ error: error.error, details: error.details });
+      res.status(error.status).json({
+        success: false,
+        error: error.error,
+        details: error.details,
+      });
       return;
     }
 
-    const { signal, sendEvent, markProcessingStarted, close } = createSseChannel(req, res);
+    const { signal: channelSignal, sendEvent, markProcessingStarted, close } = createSseChannel(req, res);
+
+    const STREAM_TIMEOUT_MS = 120_000;
+    const timeoutSignal = AbortSignal.timeout(STREAM_TIMEOUT_MS);
+    const signal = AbortSignal.any([channelSignal, timeoutSignal]);
 
     const startTime = Date.now();
 
@@ -54,27 +88,27 @@ export const createOptimizeStreamHandler = (
       userId,
       promptLength: prompt?.length || 0,
       mode,
-      targetModel,
-      hasContext: !!context,
+      targetModel: normalizedTargetModel,
+      hasContext: !!normalizedContext,
       hasBrainstormContext: !!brainstormContext,
       generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
       skipCache: !!skipCache,
-      lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
+      lockedSpanCount: normalizedLockedSpans.length,
     });
 
     try {
       markProcessingStarted();
 
-      const result = await promptOptimizationService.optimizeTwoStage({
+      const optimizeRequest = {
         prompt,
         mode,
-        targetModel,
-        context,
-        brainstormContext,
+        context: normalizedContext,
+        brainstormContext: brainstormContext ?? null,
         generationParams: normalizedGenerationParams,
         skipCache,
-        lockedSpans,
+        lockedSpans: normalizedLockedSpans,
         signal,
+        ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
         onDraftChunk: (delta: string): void => {
           if (!delta) {
             return;
@@ -112,7 +146,8 @@ export const createOptimizeStreamHandler = (
             });
           }
         },
-      });
+      };
+      const result = await promptOptimizationService.optimizeTwoStage(optimizeRequest);
 
       sendEvent('refined', {
         refined: result.refined,
@@ -145,6 +180,22 @@ export const createOptimizeStreamHandler = (
 
       close();
     } catch (error: unknown) {
+      if (timeoutSignal.aborted && !res.writableEnded) {
+        logger.warn('Optimize-stream timed out', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+          timeoutMs: STREAM_TIMEOUT_MS,
+        });
+        sendEvent('error', {
+          error: 'Stream timeout exceeded',
+          status: 'timeout',
+        });
+        close();
+        return;
+      }
+
       if (signal.aborted || res.writableEnded) {
         close();
         return;

@@ -54,14 +54,10 @@ describe('useAsyncScheduler', () => {
     it('prevents stale requests from emitting success results', async () => {
       const first = createDeferred();
       const second = createDeferred();
-      let firstSignal: AbortSignal | null = null;
 
       const onExecute = vi
         .fn()
-        .mockImplementationOnce((_: SpanLabelingPayload, signal: AbortSignal) => {
-          firstSignal = signal;
-          return first.promise;
-        })
+        .mockImplementationOnce((_: SpanLabelingPayload, _signal: AbortSignal) => first.promise)
         .mockImplementationOnce(() => second.promise);
 
       const results: string[] = [];
@@ -85,7 +81,9 @@ describe('useAsyncScheduler', () => {
         result.current.schedule({ text: 'next' });
       });
 
-      expect(firstSignal?.aborted).toBe(true);
+      const firstSignal = onExecute.mock.calls[0]?.[1];
+      expect(firstSignal).toBeDefined();
+      expect((firstSignal as AbortSignal).aborted).toBe(true);
 
       first.resolve('first');
       await act(async () => {

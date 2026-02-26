@@ -12,12 +12,26 @@ import type { UpdatePromptOptions } from '../../../repositories/promptRepository
 
 const log = logger.child('historyRepository');
 
-const isValidFirestoreDocId = (docId: string | null | undefined): docId is string => {
+const isValidSessionId = (docId: string | null | undefined): docId is string => {
   if (!docId) {
     return false;
   }
   const normalized = docId.trim();
   return normalized.length > 0 && !normalized.startsWith('draft-');
+};
+
+const isDraftDocId = (docId: string | null | undefined): boolean => {
+  if (!docId) {
+    return false;
+  }
+  return docId.trim().startsWith('draft-');
+};
+
+const normalizeRecord = (value: unknown): Record<string, unknown> | null => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
 };
 
 /**
@@ -29,6 +43,7 @@ export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEn
     title: entry.title ?? null,
     brainstormContext: entry.brainstormContext ?? null,
     generationParams: entry.generationParams ?? null,
+    keyframes: entry.keyframes ?? null,
     highlightCache: entry.highlightCache ?? null,
     versions: entry.versions ?? [],
   }));
@@ -110,6 +125,7 @@ export async function saveEntry(
       mode: params.mode,
       ...(params.targetModel ? { targetModel: params.targetModel } : {}),
       ...(params.generationParams ? { generationParams: params.generationParams } : {}),
+      ...(params.keyframes ? { keyframes: params.keyframes } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
       ...(Array.isArray(params.versions) ? { versions: params.versions } : {}),
@@ -137,20 +153,34 @@ export async function updatePrompt(
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
-  if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
 
+  if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
+    let attemptedUuid = false;
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          return;
-        }
+      if (canUseDocId) {
         await repository.updatePrompt(docId, updates);
         return;
       }
+      attemptedUuid = true;
       await repository.updatePrompt(uuid, updates);
     } catch (error) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updatePrompt(uuid, updates);
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated prompt (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated prompt', {
         uuid,
         docId,
@@ -166,16 +196,43 @@ export async function updatePrompt(
 export async function updateHighlights(
   userId: string | undefined,
   uuid: string,
-  highlightCache: unknown
+  docId: string | null,
+  highlightCache: Record<string, unknown> | null
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
+
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
+    const normalizedHighlightCache = normalizeRecord(highlightCache);
+    let attemptedUuid = false;
     try {
-      await repository.updateHighlights(uuid, { highlightCache });
+      if (canUseDocId) {
+        await repository.updateHighlights(docId, { highlightCache: normalizedHighlightCache });
+        return;
+      }
+      attemptedUuid = true;
+      await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
     } catch (error) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated highlights (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated highlights', {
         uuid,
+        docId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -193,20 +250,34 @@ export async function updateOutput(
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
-  if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
+  if (userId && isDraftDocId(docId)) {
+    return;
+  }
 
+  if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
+    const canUseDocId = Boolean(userId) && isValidSessionId(docId);
+    let attemptedUuid = false;
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          return;
-        }
+      if (canUseDocId) {
         await repository.updateOutput(docId, output);
         return;
       }
+      attemptedUuid = true;
       await repository.updateOutput(uuid, output);
     } catch (error) {
+      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+        try {
+          await repository.updateOutput(uuid, output);
+          return;
+        } catch (fallbackError) {
+          log.warn('Unable to persist updated output (fallback)', {
+            uuid,
+            docId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          });
+          return;
+        }
+      }
       log.warn('Unable to persist updated output', {
         uuid,
         docId,
@@ -228,27 +299,38 @@ export async function updateVersions(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateVersions' in repository && typeof repository.updateVersions === 'function') {
-    const isFirestoreRepo = 'collectionName' in repository && userId;
-    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
-
     const generationCount = versions.reduce(
       (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
       0
     );
 
     try {
-      if (isFirestoreRepo) {
-        if (!canUseFirestoreDoc) {
-          log.debug('Skipping Firestore version update — draft or invalid docId', { uuid, docId });
-          return;
-        }
+      if (userId && isValidSessionId(docId)) {
         await repository.updateVersions(docId, versions);
-        log.debug('Versions persisted to Firestore', { uuid, docId, versionCount: versions.length, generationCount });
+        log.debug('Versions persisted to session store', { uuid, docId, versionCount: versions.length, generationCount });
         return;
       }
       await repository.updateVersions(uuid, versions);
-      log.debug('Versions persisted to localStorage', { uuid, versionCount: versions.length });
+      log.debug(
+        userId ? 'Versions persisted to session store via uuid' : 'Versions persisted to localStorage',
+        { uuid, versionCount: versions.length }
+      );
     } catch (error) {
+      if (userId && isValidSessionId(docId) && uuid && uuid !== docId) {
+        try {
+          await repository.updateVersions(uuid, versions);
+          log.debug('Versions persisted to session store via uuid fallback', {
+            uuid,
+            docId,
+            versionCount: versions.length,
+            generationCount,
+          });
+          return;
+        } catch (fallbackError) {
+          log.error('Failed to persist versions (fallback)', fallbackError as Error, { uuid, docId });
+          return;
+        }
+      }
       log.error('Failed to persist versions', error as Error, { uuid, docId });
     }
   }

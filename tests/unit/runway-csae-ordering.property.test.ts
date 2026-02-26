@@ -105,29 +105,43 @@ function findTermPosition(prompt: string, term: string): number {
   return lowerPrompt.indexOf(lowerTerm);
 }
 
-/**
- * Find the earliest position of any term from a list
- * Returns -1 if none found
- */
-function findEarliestPosition(prompt: string, terms: readonly string[]): number {
-  let earliest = -1;
+function findSegmentIndex(prompt: string, terms: readonly string[]): number {
+  const segments = prompt
+    .toLowerCase()
+    .split(',')
+    .map(segment => segment.trim());
 
-  for (const term of terms) {
-    const pos = findTermPosition(prompt, term);
-    if (pos !== -1 && (earliest === -1 || pos < earliest)) {
-      earliest = pos;
+  for (let i = 0; i < segments.length; i += 1) {
+    const segment = segments[i];
+    if (segment && terms.some(term => segment.includes(term.toLowerCase()))) {
+      return i;
     }
   }
 
-  return earliest;
+  return -1;
 }
 
-/**
- * Check if prompt contains any term from a list
- */
-function containsAnyTerm(prompt: string, terms: readonly string[]): boolean {
+function subjectTermVariants(subjectTerm: string): string[] {
+  const stripped = subjectTerm.replace(/^(a|the)\s+/i, '').trim();
+  const variants = [subjectTerm.toLowerCase()];
+  if (stripped.length > 0) {
+    variants.push(stripped.toLowerCase());
+  }
+  return variants;
+}
+
+function findFirstTermPosition(prompt: string, terms: readonly string[]): number {
   const lowerPrompt = prompt.toLowerCase();
-  return terms.some(term => lowerPrompt.includes(term.toLowerCase()));
+  let best = Number.POSITIVE_INFINITY;
+
+  for (const term of terms) {
+    const index = lowerPrompt.indexOf(term.toLowerCase());
+    if (index !== -1 && index < best) {
+      best = index;
+    }
+  }
+
+  return Number.isFinite(best) ? best : -1;
 }
 
 describe('Runway CSAE Ordering Property Tests', () => {
@@ -164,9 +178,9 @@ describe('Runway CSAE Ordering Property Tests', () => {
               const result = await strategy.transform(normalized);
               const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-              // If both terms are present in output, camera should come first
-              const cameraPos = findTermPosition(prompt, cameraTerm);
-              const subjectPos = findTermPosition(prompt, subjectTerm);
+              // If both categories are present in output, camera should come first.
+              const cameraPos = findSegmentIndex(prompt, [cameraTerm]);
+              const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
 
               if (cameraPos !== -1 && subjectPos !== -1) {
                 expect(cameraPos).toBeLessThan(subjectPos);
@@ -223,12 +237,20 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-            const subjectPos = findTermPosition(prompt, subjectTerm);
-            const actionPos = findTermPosition(prompt, actionTerm);
+            const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
+            const actionPos = findSegmentIndex(prompt, [actionTerm]);
 
-            // If both are present, subject should come before action
+            // If both categories are present, subject should come before action.
             if (subjectPos !== -1 && actionPos !== -1) {
-              expect(subjectPos).toBeLessThan(actionPos);
+              if (subjectPos === actionPos) {
+                const subjectTextPos = findFirstTermPosition(prompt, subjectTermVariants(subjectTerm));
+                const actionTextPos = findFirstTermPosition(prompt, [actionTerm]);
+                if (subjectTextPos !== -1 && actionTextPos !== -1) {
+                  expect(subjectTextPos).toBeLessThan(actionTextPos);
+                }
+              } else {
+                expect(subjectPos).toBeLessThan(actionPos);
+              }
             }
           }
         ),
@@ -250,8 +272,8 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-            const actionPos = findTermPosition(prompt, actionTerm);
-            const envPos = findTermPosition(prompt, envTerm);
+            const actionPos = findSegmentIndex(prompt, [actionTerm]);
+            const envPos = findSegmentIndex(prompt, [envTerm]);
 
             // If both are present, action should come before environment
             if (actionPos !== -1 && envPos !== -1) {
@@ -278,10 +300,10 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-            const cameraPos = findTermPosition(prompt, cameraTerm);
-            const subjectPos = findTermPosition(prompt, subjectTerm);
-            const actionPos = findTermPosition(prompt, actionTerm);
-            const envPos = findTermPosition(prompt, envTerm);
+            const cameraPos = findSegmentIndex(prompt, [cameraTerm]);
+            const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
+            const actionPos = findSegmentIndex(prompt, [actionTerm]);
+            const envPos = findSegmentIndex(prompt, [envTerm]);
 
             // All elements should be present
             expect(cameraPos).not.toBe(-1);
@@ -403,10 +425,11 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
             const lowerPrompt = prompt.toLowerCase();
+            const subjectVariants = subjectTermVariants(subjectTerm);
 
             // All original terms should still be present (possibly reordered)
             expect(lowerPrompt).toContain(cameraTerm.toLowerCase());
-            expect(lowerPrompt).toContain(subjectTerm.toLowerCase());
+            expect(subjectVariants.some(term => lowerPrompt.includes(term))).toBe(true);
             expect(lowerPrompt).toContain(actionTerm.toLowerCase());
           }
         ),

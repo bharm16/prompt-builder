@@ -2,13 +2,13 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import multer from 'multer';
+import multer, { type Options as MulterOptions } from 'multer';
 
 const DEFAULT_TMP_DIR = os.tmpdir();
 
 export function createDiskUpload(options: {
   fileSizeBytes: number;
-  fileFilter?: Parameters<typeof multer>[0]['fileFilter'];
+  fileFilter?: MulterOptions['fileFilter'];
 }): multer.Multer {
   const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, DEFAULT_TMP_DIR),
@@ -22,7 +22,7 @@ export function createDiskUpload(options: {
   return multer({
     storage,
     limits: { fileSize: options.fileSizeBytes },
-    fileFilter: options.fileFilter,
+    ...(options.fileFilter ? { fileFilter: options.fileFilter } : {}),
   });
 }
 

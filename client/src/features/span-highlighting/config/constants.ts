@@ -33,7 +33,7 @@ export const DEFAULT_OPTIONS = {
 /**
  * Debug flag for highlight logging
  */
-export const DEBUG_HIGHLIGHTS = true;
+export const DEBUG_HIGHLIGHTS = import.meta.env.DEV;
 
 /**
  * Performance marks for highlight rendering

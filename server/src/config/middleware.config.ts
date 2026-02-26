@@ -12,17 +12,17 @@
  * 5. Body parsing
  * 6. Logging
  * 7. Metrics
- * 8. Request coalescing
  */
 
 import express, { type Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
+import rateLimit, { type RateLimitRequestHandler, type Store } from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+import type Redis from 'ioredis';
 import compression from 'compression';
 
 import { requestIdMiddleware } from '@middleware/requestId';
-import { requestCoalescing } from '@middleware/requestCoalescing';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
@@ -214,7 +214,7 @@ export function applyCompressionMiddleware(app: Application): void {
  * Apply rate limiting middleware
  * Disabled in test environments
  */
-export function applyRateLimitingMiddleware(app: Application): void {
+export function applyRateLimitingMiddleware(app: Application, redisClient?: Redis | null): void {
   const isTestEnv =
     process.env.NODE_ENV === 'test' ||
     !!process.env.VITEST_WORKER_ID ||
@@ -223,6 +223,22 @@ export function applyRateLimitingMiddleware(app: Application): void {
   if (isTestEnv) {
     logger.info('Rate limiting disabled in test environment');
     return;
+  }
+
+  const storeFactory = redisClient
+    ? (prefix: string): Store => new RedisStore({
+        sendCommand: (...args: string[]) => {
+          const [cmd = '', ...rest] = args;
+          return redisClient.call(cmd, ...rest) as never;
+        },
+        prefix: `rl:${prefix}:`,
+      })
+    : undefined;
+
+  if (storeFactory) {
+    logger.info('Rate limiting using Redis store (distributed)');
+  } else {
+    logger.info('Rate limiting using in-memory store (single-instance)');
   }
 
   const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
@@ -236,7 +252,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
     ? RATE_LIMIT_CONFIG.llm.dev
     : RATE_LIMIT_CONFIG.llm.prod;
 
-  // JSON handler for rate limit responses
+  // JSON handler for rate limit responses — conforms to ApiErrorResponse shape
   const rateLimitJSONHandler = (
     req: express.Request,
     res: express.Response,
@@ -245,10 +261,9 @@ export function applyRateLimitingMiddleware(app: Application): void {
   ): void => {
     const retryAfter = res.getHeader('Retry-After');
     res.status(options.statusCode).json({
-      error: 'Too Many Requests',
-      message: options.message,
-      retryAfter,
-      path: req.path,
+      error: options.message,
+      code: 'RATE_LIMITED',
+      details: retryAfter ? `Retry after ${String(retryAfter)}s` : undefined,
       requestId: (req as express.Request & { id?: string }).id,
     });
   };
@@ -258,7 +273,10 @@ export function applyRateLimitingMiddleware(app: Application): void {
     windowMs: RATE_LIMIT_CONFIG.general.windowMs,
     max: generalMax,
     message: 'Too many requests from this IP',
+    standardHeaders: true,
+    legacyHeaders: false,
     skip: (req: express.Request) => req.path === '/metrics' || req.path === '/api/role-classify',
+    ...(storeFactory ? { store: storeFactory('general') } : {}),
   });
   app.use(generalLimiter);
 
@@ -272,6 +290,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory('api') } : {}),
     })
   );
 
@@ -285,10 +304,12 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory('llm') } : {}),
     })
   );
 
   // Route-specific burst limiters
+  let burstLimiterIndex = 0;
   const makeBurstLimiter = (
     windowMs: number,
     max: number,
@@ -301,6 +322,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory(`burst${burstLimiterIndex++}`) } : {}),
     });
 
   // Video validation endpoint burst limits
@@ -340,6 +362,8 @@ export function applyRateLimitingMiddleware(app: Application): void {
       windowMs: RATE_LIMIT_CONFIG.health.windowMs,
       max: RATE_LIMIT_CONFIG.health.max,
       message: 'Too many health check requests, please slow down',
+      standardHeaders: true,
+      legacyHeaders: false,
     })
   );
 
@@ -428,6 +452,7 @@ export function applyBodyParserMiddleware(app: Application): void {
 interface MiddlewareServices {
   logger: ILogger;
   metricsService: IMetricsCollector;
+  redisClient?: Redis | null;
 }
 
 /**
@@ -437,14 +462,6 @@ interface MiddlewareServices {
 export function applyLoggingAndMetricsMiddleware(app: Application, services: MiddlewareServices): void {
   app.use((services.logger as unknown as { requestLogger: () => express.RequestHandler }).requestLogger());
   app.use((services.metricsService as unknown as { middleware: () => express.RequestHandler }).middleware());
-}
-
-/**
- * Apply request coalescing middleware
- * Reduces duplicate API calls by 50-80%
- */
-export function applyRequestCoalescingMiddleware(app: Application): void {
-  app.use((requestCoalescing as unknown as { middleware: () => express.RequestHandler }).middleware());
 }
 
 /**
@@ -461,8 +478,8 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
   // 3. Compression
   applyCompressionMiddleware(app);
 
-  // 4. Rate limiting
-  applyRateLimitingMiddleware(app);
+  // 4. Rate limiting (uses Redis store when available for distributed enforcement)
+  applyRateLimitingMiddleware(app, services.redisClient);
 
   // 5. CORS
   applyCorsMiddleware(app);
@@ -472,9 +489,6 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
 
   // 7. Logging and metrics
   applyLoggingAndMetricsMiddleware(app, services);
-
-  // 8. Request coalescing
-  applyRequestCoalescingMiddleware(app);
 
   logger.info('All middleware configured successfully');
 }

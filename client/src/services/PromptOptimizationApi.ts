@@ -7,6 +7,7 @@
 
 import { ApiClient } from './ApiClient';
 import { logger } from './LoggingService';
+import { trackPromptOptimize } from './analytics';
 import { calculateQualityScore as scorePromptQuality } from './prompt-optimization/qualityScore';
 import {
   buildOfflineResult,
@@ -42,11 +43,13 @@ export class PromptOptimizationApi {
     skipCache,
     lockedSpans,
     startImage,
+    sourcePrompt,
     constraintMode,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
       const requestOptions = signal ? { signal } : {};
+      trackPromptOptimize(mode);
       return (await this.client.post('/optimize', {
         prompt,
         mode,
@@ -57,6 +60,7 @@ export class PromptOptimizationApi {
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(startImage ? { startImage } : {}),
+        ...(sourcePrompt ? { sourcePrompt } : {}),
         ...(constraintMode ? { constraintMode } : {}),
       }, requestOptions)) as OptimizeResult;
     } catch (error) {
@@ -155,6 +159,7 @@ export class PromptOptimizationApi {
             ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           },
         ...(signal ? { signal } : {}),
+        maxStreamDurationMs: 90_000,
         onMessage: (event, data) => {
           try {
             switch (event) {
@@ -330,7 +335,19 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext, generationParams, skipCache, lockedSpans, startImage, constraintMode } = options;
+    const {
+      prompt,
+      mode,
+      targetModel,
+      context,
+      brainstormContext,
+      generationParams,
+      skipCache,
+      lockedSpans,
+      startImage,
+      sourcePrompt,
+      constraintMode,
+    } = options;
 
     try {
       // Fallback to single-stage API
@@ -344,6 +361,7 @@ export class PromptOptimizationApi {
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(startImage ? { startImage } : {}),
+        ...(sourcePrompt ? { sourcePrompt } : {}),
         ...(constraintMode ? { constraintMode } : {}),
         ...(signal ? { signal } : {}),
       });

@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '@services/cache/CacheService';
+import type { CacheService } from '@services/cache/CacheService';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import type { AIService } from '@services/prompt-optimization/types';
@@ -28,9 +28,9 @@ export class SceneChangeDetectionService {
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log: ILogger;
 
-  constructor(aiService: AIService) {
+  constructor(aiService: AIService, private readonly cacheService: CacheService) {
     this.ai = aiService;
-    this.cacheConfig = cacheService.getConfig('sceneDetection');
+    this.cacheConfig = this.cacheService.getConfig('sceneDetection');
     this.log = logger.child({ service: 'SceneChangeDetectionService' });
   }
 
@@ -58,7 +58,7 @@ export class SceneChangeDetectionService {
     });
 
     // Check cache
-    const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
+    const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
       changedField: params.changedField,
       newValue: params.newValue,
       oldValue: params.oldValue,
@@ -66,7 +66,7 @@ export class SceneChangeDetectionService {
       sectionHeading: params.sectionHeading,
     });
 
-    const cached = await cacheService.get<SceneChangeResult>(cacheKey, 'scene-detection');
+    const cached = await this.cacheService.get<SceneChangeResult>(cacheKey, 'scene-detection');
     if (cached) {
       this.log.debug('Cache hit.', {
         operation,
@@ -106,7 +106,7 @@ export class SceneChangeDetectionService {
     ) as SceneChangeResult;
 
     // Cache the result
-    await cacheService.set(cacheKey, result, {
+    await this.cacheService.set(cacheKey, result, {
       ttl: this.cacheConfig.ttl,
     });
 

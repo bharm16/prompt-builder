@@ -22,6 +22,10 @@
 
 import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts';
 import { logger } from '@infrastructure/Logger';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { PROMPT_VERSIONS } from '../promptVersions';
 
 // OpenAI-specific imports
 import {
@@ -47,6 +51,10 @@ import {
  */
 export type Provider = 'openai' | 'groq' | 'gemini';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const I2V_TEMPLATE_PATH = join(__dirname, '../templates/i2v-span-labeling-prompt.md');
+
 const I2V_SYSTEM_PROMPT = `
 Label ONLY motion-related spans for image-to-video prompts.
 
@@ -69,6 +77,26 @@ Do NOT label:
 Return JSON only, matching the SpanLabelingResponse schema.
 `.trim();
 
+let cachedI2VPrompt: string | null = null;
+
+function loadI2VPromptTemplate(): string {
+  if (cachedI2VPrompt) {
+    return cachedI2VPrompt;
+  }
+
+  try {
+    const content = readFileSync(I2V_TEMPLATE_PATH, 'utf-8').trim();
+    cachedI2VPrompt = content.length > 0 ? content : I2V_SYSTEM_PROMPT;
+  } catch (error) {
+    logger.warn('I2V span labeling template missing; using inline prompt', {
+      error: (error as Error).message,
+    });
+    cachedI2VPrompt = I2V_SYSTEM_PROMPT;
+  }
+
+  return cachedI2VPrompt;
+}
+
 /**
  * Build system prompt optimized for specific provider
  * 
@@ -87,27 +115,44 @@ export function buildSystemPrompt(
   const normalizedProvider = provider.toLowerCase();
 
   if (templateVersion && templateVersion.toLowerCase().startsWith('i2v')) {
-    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${I2V_SYSTEM_PROMPT}`.trim();
+    logger.debug('Building span labeling prompt', {
+      promptVersion: PROMPT_VERSIONS.I2V_SPAN_LABELING,
+      provider: normalizedProvider,
+      templateVersion,
+    });
+    return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${loadI2VPromptTemplate()}`.trim();
   }
-  
+
   let basePrompt: string;
-  
+  let promptVersion: string;
+
   if (normalizedProvider === 'openai') {
     // OpenAI: Minimal prompt, rules in schema descriptions
     basePrompt = OPENAI_MINIMAL_PROMPT;
-    logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
+    promptVersion = PROMPT_VERSIONS.SPAN_LABELING;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+    });
   } else if (normalizedProvider === 'gemini') {
     // Gemini: Use the lightweight test prompt for fast span extraction
     basePrompt = GEMINI_SIMPLE_SYSTEM_PROMPT;
-    logger.debug('Using Gemini simple prompt');
+    promptVersion = PROMPT_VERSIONS.GEMINI_SIMPLE;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+    });
     return basePrompt.trim();
   } else {
     // Groq/Llama 3: Full prompt, rules in system message
     // When json_schema is active, remove redundant format instructions
     basePrompt = getGroqSystemPrompt(useJsonSchema);
-    logger.debug('Using Groq prompt', { 
-      useJsonSchema, 
-      optimized: useJsonSchema ? 'format-instructions-removed' : 'full-prompt'
+    promptVersion = PROMPT_VERSIONS.SPAN_LABELING;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+      useJsonSchema,
+      optimized: useJsonSchema ? 'format-instructions-removed' : 'full-prompt',
     });
   }
   

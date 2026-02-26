@@ -205,8 +205,8 @@ export const NEURO_SYMBOLIC = {
   
   // Tier 2: GLiNER (Open Vocabulary)
   GLINER: {
-    // Enabled - using official 'gliner' npm package
-    ENABLED: true,
+    // Disabled by default; keep available for controlled experiments only
+    ENABLED: false,
 
     // Run GLiNER inference in a worker thread to avoid main-thread blocking
     USE_WORKER: true,

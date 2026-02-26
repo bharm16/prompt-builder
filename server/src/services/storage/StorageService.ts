@@ -2,7 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import { SignedUrlService } from './services/SignedUrlService';
 import { UploadService } from './services/UploadService';
 import { RetentionService } from './services/RetentionService';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
+import { safeUrlHost } from '@utils/url';
 import { logger } from '@infrastructure/Logger';
 import {
   STORAGE_CONFIG,
@@ -11,9 +11,11 @@ import {
   type StorageType,
 } from './config/storageConfig';
 import { generateStoragePath, validatePathOwnership } from './utils/pathUtils';
+import { createForbiddenError } from './utils/httpError';
 
 function normalizeContentType(value: string): string {
-  return value.split(';')[0]?.trim().toLowerCase();
+  const [primary] = value.split(';');
+  return (primary ?? '').trim().toLowerCase();
 }
 
 function resolveExtension(contentType: string): string {
@@ -31,14 +33,6 @@ function isAllowedContentType(type: StorageType, contentType: string): boolean {
   return allowed.some((allowedType) => normalized.startsWith(allowedType));
 }
 
-function safeUrlHost(value: string): string | null {
-  try {
-    return new URL(value).hostname;
-  } catch {
-    return null;
-  }
-}
-
 type SuccessLogLevel = 'debug' | 'info';
 
 export class StorageService {
@@ -51,18 +45,22 @@ export class StorageService {
 
   constructor(dependencies: {
     storage?: Storage;
+    bucketName?: string;
     signedUrlService?: SignedUrlService;
     uploadService?: UploadService;
     retentionService?: RetentionService;
   } = {}) {
     if (!dependencies.storage) {
-      ensureGcsCredentials();
+      throw new Error('StorageService requires an injected Storage instance');
     }
-    this.storage = dependencies.storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
-    this.signedUrlService = dependencies.signedUrlService || new SignedUrlService(this.storage);
-    this.uploadService = dependencies.uploadService || new UploadService(this.storage);
-    this.retentionService = dependencies.retentionService || new RetentionService(this.storage);
+    this.storage = dependencies.storage;
+    const bucketName = dependencies.bucketName || STORAGE_CONFIG.bucketName;
+    this.bucket = this.storage.bucket(bucketName);
+    this.signedUrlService =
+      dependencies.signedUrlService || new SignedUrlService(this.storage, bucketName);
+    this.uploadService = dependencies.uploadService || new UploadService(this.storage, bucketName);
+    this.retentionService =
+      dependencies.retentionService || new RetentionService(this.storage, bucketName);
   }
 
   private async withTiming<T>(
@@ -198,6 +196,56 @@ export class StorageService {
     return result;
   }
 
+  async saveFromBuffer(
+    userId: string,
+    buffer: Buffer,
+    type: StorageType,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    viewUrl: string;
+    expiresAt: string;
+    sizeBytes: number;
+    contentType: string;
+    createdAt: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const result = await this.withTiming(
+      'saveFromBuffer',
+      {
+        userId,
+        type,
+        contentType: normalizeContentType(contentType),
+        sizeBytes: buffer.length,
+      },
+      async () => {
+        const uploadResult = await this.uploadService.uploadFromBuffer(
+          buffer,
+          userId,
+          type,
+          contentType,
+          metadata
+        );
+
+        const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
+          uploadResult.storagePath
+        );
+
+        return {
+          ...uploadResult,
+          viewUrl,
+          expiresAt,
+        };
+      }
+    );
+
+    return result;
+  }
+
   async uploadBuffer(
     userId: string,
     type: StorageType,
@@ -314,15 +362,21 @@ export class StorageService {
   async getViewUrl(
     userId: string,
     storagePath: string
-  ): Promise<{ viewUrl: string; expiresAt: string }> {
+  ): Promise<{ viewUrl: string; expiresAt: string; storagePath: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized - cannot access files belonging to other users');
+      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
     }
 
     return this.withTiming(
       'getViewUrl',
       { userId, storagePath },
-      async () => this.signedUrlService.getViewUrl(storagePath),
+      async () => {
+        const result = await this.signedUrlService.getViewUrl(storagePath);
+        return {
+          ...result,
+          storagePath,
+        };
+      },
       'debug'
     );
   }
@@ -333,7 +387,7 @@ export class StorageService {
     filename?: string | null
   ): Promise<{ downloadUrl: string; expiresAt: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized - cannot access files belonging to other users');
+      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
     }
 
     return this.withTiming(
@@ -419,7 +473,7 @@ export class StorageService {
     metadata: Record<string, unknown>;
   }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw new Error('Unauthorized');
+      throw createForbiddenError('Unauthorized');
     }
 
     return this.withTiming(
@@ -431,9 +485,9 @@ export class StorageService {
 
         return {
           storagePath,
-          sizeBytes: Number.parseInt(metadata.size || '0', 10),
+          sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
           contentType: metadata.contentType,
-          createdAt: metadata.timeCreated,
+          createdAt: metadata.timeCreated ?? new Date().toISOString(),
           updatedAt: metadata.updated,
           metadata: metadata.metadata || {},
         };
@@ -441,15 +495,6 @@ export class StorageService {
       'debug'
     );
   }
-}
-
-let instance: StorageService | null = null;
-
-export function getStorageService(): StorageService {
-  if (!instance) {
-    instance = new StorageService();
-  }
-  return instance;
 }
 
 export default StorageService;

@@ -12,7 +12,16 @@ vi.mock('@utils/provider/ProviderDetector', () => ({
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
+    child: () => ({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    }),
+    debug: vi.fn(),
+    info: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 

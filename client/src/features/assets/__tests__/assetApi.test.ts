@@ -62,13 +62,29 @@ describe('assetApi', () => {
     it('sends FormData with metadata when uploading images', async () => {
       fetchMock.mockResolvedValue({
         ok: true,
-        json: async () => ({ id: 'img-1' }),
+        json: async () => ({
+          image: {
+            id: 'img-1',
+            url: 'https://example.com/image.png',
+            thumbnailUrl: 'https://example.com/thumb.png',
+            isPrimary: false,
+            metadata: {
+              uploadedAt: 'now',
+              width: 100,
+              height: 100,
+              sizeBytes: 1234,
+            },
+          },
+          warnings: [],
+        }),
       });
 
       const file = new File(['image'], 'test.png', { type: 'image/png' });
       await assetApi.addImage('asset-1', file, { angle: 'front', lighting: undefined });
 
-      const [, options] = fetchMock.mock.calls[0];
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [, options] = firstCall!;
       const body = options?.body as FormData;
       expect(body).toBeInstanceOf(FormData);
       expect(body.get('image')).toBe(file);
@@ -104,7 +120,9 @@ describe('assetApi', () => {
         name: 'Ada',
       });
 
-      const [, options] = fetchMock.mock.calls[0];
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [, options] = firstCall!;
       expect(options?.method).toBe('POST');
       expect(options?.headers).toEqual({
         'Content-Type': 'application/json',

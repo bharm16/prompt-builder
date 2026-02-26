@@ -8,10 +8,9 @@
  * @module convergence/storage
  */
 
-import { Storage, Bucket, type File } from '@google-cloud/storage';
+import { Bucket, type File } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import { SESSION_TTL_MS } from '../constants';
 
 // ============================================================================
@@ -61,11 +60,24 @@ export interface StorageService {
    * @param gcsUrls Array of signed GCS URLs to delete
    */
   delete(gcsUrls: string[]): Promise<void>;
+
+  /**
+   * Refresh a signed GCS URL for an object in this bucket.
+   *
+   * Returns null if the URL does not map to this bucket.
+   */
+  refreshSignedUrl?(url: string): Promise<string | null>;
 }
 
 // ============================================================================
 // Configuration
 // ============================================================================
+
+let convergenceSignedUrlTtlMs = SESSION_TTL_MS;
+
+export function setConvergenceStorageSignedUrlTtl(ttlSeconds: number): void {
+  convergenceSignedUrlTtlMs = ttlSeconds * 1000;
+}
 
 const CONVERGENCE_STORAGE_CONFIG = {
   /** Default content type for uploaded images */
@@ -74,15 +86,7 @@ const CONVERGENCE_STORAGE_CONFIG = {
   fetchTimeoutMs: 5 * 60 * 1000,
   /** Maximum concurrent uploads in a batch */
   maxConcurrentUploads: 10,
-  /** Signed URL TTL in milliseconds */
-  signedUrlTtlMs: (() => {
-    const defaultTtlSeconds = Math.floor(SESSION_TTL_MS / 1000);
-    const ttlSeconds = Number.parseInt(
-      process.env.CONVERGENCE_STORAGE_SIGNED_URL_TTL_SECONDS || String(defaultTtlSeconds),
-      10
-    );
-    return Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : defaultTtlSeconds * 1000;
-  })(),
+  get signedUrlTtlMs() { return convergenceSignedUrlTtlMs; },
 } as const;
 
 // ============================================================================
@@ -102,6 +106,10 @@ export class GCSStorageService implements StorageService {
   private readonly log = logger.child({ service: 'GCSStorageService' });
 
   constructor(private readonly bucket: Bucket) {}
+
+  getBucketName(): string {
+    return this.bucket.name;
+  }
 
   /**
    * Upload a single image from temporary URL to GCS
@@ -339,6 +347,28 @@ export class GCSStorageService implements StorageService {
     });
   }
 
+  /**
+   * Refresh a signed URL for an object in this bucket.
+   *
+   * Returns null when the URL is not for this bucket.
+   */
+  async refreshSignedUrl(url: string): Promise<string | null> {
+    const objectPath = this.extractObjectPath(url);
+    if (!objectPath) {
+      return null;
+    }
+
+    const file = this.bucket.file(objectPath);
+    const signedUrl = await this.getSignedUrl(file);
+
+    this.log.debug('Refreshed signed URL for convergence media asset', {
+      objectPath,
+      sourceHost: this.getUrlHost(url),
+    });
+
+    return signedUrl;
+  }
+
   // ============================================================================
   // Private Helpers
   // ============================================================================
@@ -419,41 +449,8 @@ export class GCSStorageService implements StorageService {
   }
 }
 
-// ============================================================================
-// Factory and Singleton
-// ============================================================================
-
-let instance: GCSStorageService | null = null;
-
 /**
- * Get the singleton GCSStorageService instance.
- * Creates the instance on first call.
- *
- * @returns GCSStorageService instance
- */
-export function getGCSStorageService(): GCSStorageService {
-  if (!instance) {
-    ensureGcsCredentials();
-    const storage = new Storage();
-    const bucketName = process.env.GCS_BUCKET_NAME?.trim();
-
-    if (!bucketName) {
-      throw new Error('Missing required env var: GCS_BUCKET_NAME');
-    }
-
-    const bucket = storage.bucket(bucketName);
-    instance = new GCSStorageService(bucket);
-  }
-
-  return instance;
-}
-
-/**
- * Create a GCSStorageService with a custom bucket.
- * Useful for testing or using different buckets.
- *
- * @param bucket - GCS Bucket instance
- * @returns New GCSStorageService instance
+ * Create a GCSStorageService with a provided bucket.
  */
 export function createGCSStorageService(bucket: Bucket): GCSStorageService {
   return new GCSStorageService(bucket);

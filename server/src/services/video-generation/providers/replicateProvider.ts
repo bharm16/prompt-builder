@@ -1,3 +1,4 @@
+import { Blob as NodeBlob } from 'node:buffer';
 import type Replicate from 'replicate';
 import type { VideoGenerationOptions, VideoModelId } from '../types';
 
@@ -9,6 +10,14 @@ type LogSink = {
 
 const DEFAULT_WAN_NEGATIVE_PROMPT =
   'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
+
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const SUPPORTED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
 
 const WAN_ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
   '16:9': '1280*720',
@@ -23,6 +32,103 @@ const WAN_I2V_MODEL_MAP: Record<string, string> = {
   'wan-video/wan-2.1-t2v-480p': 'wavespeedai/wan-2.1-i2v-480p',
   'wan-video/wan-2.1-t2v-720p': 'wavespeedai/wan-2.1-i2v-720p',
 };
+const WAN_T2V_FALLBACK_MODEL = 'wan-video/wan-2.2-t2v-fast';
+
+const isWan25Model = (modelId: string): boolean => modelId.includes('wan-2.5');
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isBlobLike = (value: unknown): value is Blob =>
+  (typeof Blob !== 'undefined' && value instanceof Blob) || value instanceof NodeBlob;
+
+const normalizeContentType = (value: string | null): string =>
+  value?.split(';')[0]?.trim().toLowerCase() ?? '';
+
+function getUrlExtension(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const pathname = url.pathname.toLowerCase();
+    const lastDot = pathname.lastIndexOf('.');
+    if (lastDot < 0) {
+      return null;
+    }
+    return pathname.slice(lastDot);
+  } catch {
+    return null;
+  }
+}
+
+function summarizeInputForLog(input: Record<string, unknown>): Record<string, unknown> {
+  const summary: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (isBlobLike(value)) {
+      summary[key] = {
+        type: 'Blob',
+        size: value.size,
+        mime: value.type,
+      };
+      continue;
+    }
+    if (Buffer.isBuffer(value)) {
+      summary[key] = {
+        type: 'Buffer',
+        size: value.length,
+      };
+      continue;
+    }
+    if (typeof value === 'string' && value.startsWith('data:')) {
+      const mime = value.slice(5, value.indexOf(';')) || 'unknown';
+      summary[key] = {
+        type: 'data-uri',
+        length: value.length,
+        mime,
+      };
+      continue;
+    }
+    summary[key] = value;
+  }
+  return summary;
+}
+
+async function resolveReplicateImageInput(
+  imageUrl: string,
+  log: LogSink,
+  fieldName: 'startImage' | 'style_reference'
+): Promise<string | Blob> {
+  if (imageUrl.startsWith('data:')) {
+    return imageUrl;
+  }
+
+  const extension = getUrlExtension(imageUrl);
+  if (extension && SUPPORTED_IMAGE_EXTENSIONS.has(extension)) {
+    return imageUrl;
+  }
+
+  log.info('Fetching image for Replicate input', {
+    field: fieldName,
+    hasExtension: Boolean(extension),
+  });
+
+  const response = await fetch(imageUrl, { redirect: 'follow' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${fieldName} (${response.status})`);
+  }
+
+  const contentType = normalizeContentType(response.headers.get('content-type'));
+  if (!SUPPORTED_IMAGE_MIME_TYPES.has(contentType)) {
+    throw new Error(
+      `Unsupported ${fieldName} format '${contentType || 'unknown'}'. Supported formats: .jpg, .jpeg, .png, .webp`
+    );
+  }
+
+  const buffer = await response.arrayBuffer();
+  const BlobCtor =
+    typeof globalThis.Blob === 'function'
+      ? globalThis.Blob
+      : (NodeBlob as unknown as typeof Blob);
+  return new BlobCtor([buffer], { type: contentType });
+}
 
 function normalizeWanSize(rawSize: string): string | null {
   const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
@@ -54,8 +160,49 @@ function resolveWanSize(aspectRatio: string, rawSize?: string): string {
   return WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ?? defaultSize;
 }
 
+function resolveWan25Resolution(rawSize?: string): string | null {
+  if (typeof rawSize !== 'string') {
+    return null;
+  }
+  const cleaned = rawSize.trim().toLowerCase();
+  if (!cleaned) {
+    return null;
+  }
+  if (/^\d+p$/.test(cleaned)) {
+    return cleaned;
+  }
+  const match = cleaned.match(/^(\d{2,5})[x*](\d{2,5})$/);
+  if (match) {
+    return `${match[2]}p`;
+  }
+  return null;
+}
+
+function resolveWan25Duration(options: VideoGenerationOptions): number | null {
+  if (typeof options.seconds === 'string' && options.seconds.trim().length > 0) {
+    const parsed = Number(options.seconds);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  if (typeof options.numFrames === 'number' && typeof options.fps === 'number' && options.fps > 0) {
+    const duration = Math.round(options.numFrames / options.fps);
+    return duration > 0 ? duration : null;
+  }
+  return null;
+}
+
 function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string {
-  if (!hasStartImage || !modelId.includes('wan')) {
+  if (!modelId.includes('wan')) {
+    return modelId;
+  }
+
+  const isI2VModel = modelId.includes('i2v');
+  if (!hasStartImage) {
+    return isI2VModel ? WAN_T2V_FALLBACK_MODEL : modelId;
+  }
+
+  if (isI2VModel) {
     return modelId;
   }
 
@@ -78,12 +225,43 @@ export function buildReplicateInput(
 ): Record<string, unknown> {
   const input: Record<string, unknown> = { prompt };
 
+  if (Number.isFinite(options.seed)) {
+    input.seed = Math.round(options.seed as number);
+  }
+
   const isWanModel = modelId.includes('wan');
 
   if (!isWanModel) {
     input.aspect_ratio = options.aspectRatio || '16:9';
     if (options.negativePrompt) {
       input.negative_prompt = options.negativePrompt;
+    }
+    if (options.startImage) {
+      input.image = options.startImage;
+    }
+    if (options.style_reference) {
+      input.style_reference = options.style_reference;
+    }
+    if (typeof options.style_reference_weight === 'number') {
+      input.style_reference_weight = options.style_reference_weight;
+    }
+    return input;
+  }
+
+  if (isWan25Model(modelId)) {
+    const wanNegativePrompt = options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
+    const promptExtend =
+      typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+    const resolution = resolveWan25Resolution(options.size);
+    const duration = resolveWan25Duration(options);
+
+    input.negative_prompt = wanNegativePrompt;
+    input.enable_prompt_expansion = promptExtend;
+    if (resolution) {
+      input.resolution = resolution;
+    }
+    if (typeof duration === 'number') {
+      input.duration = duration;
     }
     if (options.startImage) {
       input.image = options.startImage;
@@ -99,12 +277,20 @@ export function buildReplicateInput(
   input.size = wanSize;
   input.num_frames = options.numFrames || 81;
   input.frames_per_second = options.fps || 16;
-  input.prompt_extend = true;
+  const promptExtend =
+    typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+  input.prompt_extend = promptExtend;
   input.go_fast = true;
   input.sample_shift = 12;
 
   if (options.startImage) {
     input.image = options.startImage;
+  }
+  if (options.style_reference) {
+    input.style_reference = options.style_reference;
+  }
+  if (typeof options.style_reference_weight === 'number') {
+    input.style_reference_weight = options.style_reference_weight;
   }
 
   return input;
@@ -116,14 +302,24 @@ export async function generateReplicateVideo(
   modelId: VideoModelId,
   options: VideoGenerationOptions,
   log: LogSink
-): Promise<string> {
+): Promise<{ url: string; seed?: number }> {
   const resolvedModelId = resolveWanModelForI2V(modelId, Boolean(options.startImage));
   const input = buildReplicateInput(resolvedModelId as VideoModelId, prompt, options);
+  if (typeof input.image === 'string') {
+    input.image = await resolveReplicateImageInput(input.image, log, 'startImage');
+  }
+  if (typeof input.style_reference === 'string') {
+    input.style_reference = await resolveReplicateImageInput(
+      input.style_reference,
+      log,
+      'style_reference'
+    );
+  }
 
   log.info('Calling replicate.run', {
     originalModelId: modelId,
     resolvedModelId,
-    input,
+    input: summarizeInputForLog(input),
     isI2V: Boolean(options.startImage),
   });
 
@@ -137,21 +333,34 @@ export async function generateReplicateVideo(
 
   if (typeof output === 'string') {
     if (output.startsWith('http')) {
-      return output;
+      return { url: output };
     }
     log.warn('Output is a string but not http', { output });
   }
 
   if (output && typeof output === 'object') {
     const outputRecord = output as Record<string, unknown>;
+    const metrics = isRecord(outputRecord.metrics) ? outputRecord.metrics : null;
+    const seed =
+      typeof outputRecord.seed === 'number'
+        ? outputRecord.seed
+        : typeof metrics?.seed === 'number'
+          ? metrics.seed
+          : undefined;
+
     if ('url' in outputRecord && typeof outputRecord.url === 'function') {
       const url = (outputRecord.url as () => unknown)();
       log.info('Extracted URL from FileOutput', { url: String(url) });
-      return String(url);
+      return { url: String(url), ...(seed !== undefined ? { seed } : {}) };
     }
 
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      return output[0];
+      const firstUrl = output[0];
+      return { url: firstUrl, ...(seed !== undefined ? { seed } : {}) };
+    }
+
+    if (typeof outputRecord.url === 'string') {
+      return { url: outputRecord.url, ...(seed !== undefined ? { seed } : {}) };
     }
   }
 

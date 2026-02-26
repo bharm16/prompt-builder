@@ -9,7 +9,9 @@ commonLabels:
 
 resources:
   - deployment.yaml
+  - worker-deployment.yaml
   - service.yaml
+  - worker-service.yaml
   - configmap.yaml
   - ingress.yaml
   - hpa.yaml

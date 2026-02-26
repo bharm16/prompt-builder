@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type MockedFunction } from 'vitest';
 
 import { createResultEmitter } from '@features/span-highlighting/utils/spanLabelingResultEmitter';
 import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
 
 describe('spanLabelingResultEmitter', () => {
   it('emits results once per signature and source', () => {
-    const onResult = vi.fn<[SpanLabelingResult], void>();
+    const onResult: MockedFunction<(result: SpanLabelingResult) => void> = vi.fn();
     const emit = createResultEmitter(onResult);
 
     emit(
@@ -34,7 +34,7 @@ describe('spanLabelingResultEmitter', () => {
   });
 
   it('skips emit when spans are empty', () => {
-    const onResult = vi.fn<[SpanLabelingResult], void>();
+    const onResult: MockedFunction<(result: SpanLabelingResult) => void> = vi.fn();
     const emit = createResultEmitter(onResult);
 
     emit({ spans: [], meta: null, text: 'hello' }, 'network');

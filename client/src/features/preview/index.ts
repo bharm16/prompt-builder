@@ -10,7 +10,12 @@ export { KeyframeWorkflow } from './components/KeyframeWorkflow';
 export { ImageUpload } from './components/ImageUpload';
 export { useImagePreview } from './hooks/useImagePreview';
 export { useVideoPreview } from './hooks/useVideoPreview';
-export { generatePreview, generateVideoPreview, uploadPreviewImage } from './api/previewApi';
+export {
+  generatePreview,
+  generateVideoPreview,
+  uploadPreviewImage,
+  validatePreviewImageFile,
+} from './api/previewApi';
 export type {
   GeneratePreviewRequest,
   GeneratePreviewResponse,

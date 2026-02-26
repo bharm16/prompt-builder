@@ -24,7 +24,6 @@ describe('ContextPreviewBadge components', () => {
           context={{
             specificAspects: '   ',
             backgroundLevel: '',
-            intendedUse: undefined,
           }}
         />
       );

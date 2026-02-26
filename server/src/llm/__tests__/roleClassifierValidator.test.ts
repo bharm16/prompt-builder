@@ -51,12 +51,43 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].text).toBe('cat');
-      expect(labeled[0].confidence).toBe(0.9);
+      const firstLabeled = labeled[0];
+      expect(firstLabeled).toBeDefined();
+      expect(firstLabeled?.text).toBe('cat');
+      expect(firstLabeled?.confidence).toBe(0.9);
     });
   });
 
   describe('edge cases', () => {
+    it('normalizes invalid roles during validation and preserves source-match requirement', () => {
+      const source: InputSpan[] = [
+        { text: 'cat', start: 0, end: 3 },
+      ];
+
+      const labeled = validate(source, [
+        { text: 'cat', start: 0, end: 3, role: 'invalid.role', confidence: 0.8 },
+        { text: 'Cat', start: 0, end: 3, role: TAXONOMY.SUBJECT.id, confidence: 0.8 },
+      ]);
+
+      expect(labeled).toHaveLength(1);
+      expect(labeled[0]?.role).toBe(TAXONOMY.SUBJECT.id);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Unknown role, defaulting to subject',
+        expect.objectContaining({ role: 'invalid.role' })
+      );
+    });
+
+    it('rejects source spans with non-integer offsets', () => {
+      const source: InputSpan[] = [{ text: 'cat', start: 0, end: 3 }];
+
+      const labeled = validate(source, [
+        { text: 'cat', start: 0.5, end: 3, role: TAXONOMY.SUBJECT.id, confidence: 0.9 },
+        { text: 'cat', start: 0, end: 2.5, role: TAXONOMY.SUBJECT.id, confidence: 0.9 },
+      ]);
+
+      expect(labeled).toEqual([]);
+    });
+
     it('clamps confidence values and defaults when missing', () => {
       const source: InputSpan[] = [
         { text: 'cat', start: 0, end: 3 },
@@ -71,9 +102,15 @@ describe('roleClassifierValidator', () => {
       ]);
 
       const byText = Object.fromEntries(labeled.map((item) => [item.text, item]));
-      expect(byText.cat.confidence).toBe(1);
-      expect(byText.runs.confidence).toBe(0);
-      expect(byText.fast.confidence).toBe(0.7);
+      const cat = byText.cat as (typeof labeled)[number] | undefined;
+      const runs = byText.runs as (typeof labeled)[number] | undefined;
+      const fast = byText.fast as (typeof labeled)[number] | undefined;
+      expect(cat).toBeDefined();
+      expect(runs).toBeDefined();
+      expect(fast).toBeDefined();
+      expect(cat?.confidence).toBe(1);
+      expect(runs?.confidence).toBe(0);
+      expect(fast?.confidence).toBe(0.7);
     });
 
     it('skips long spans unless they are technical', () => {
@@ -87,7 +124,8 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].role).toBe(TAXONOMY.TECHNICAL.id);
+      expect(labeled[0]).toBeDefined();
+      expect(labeled[0]?.role).toBe(TAXONOMY.TECHNICAL.id);
     });
   });
 
@@ -104,8 +142,9 @@ describe('roleClassifierValidator', () => {
       ]);
 
       expect(labeled).toHaveLength(1);
-      expect(labeled[0].text).toBe('alpha');
-      expect(labeled[0].role).toBe(TAXONOMY.TECHNICAL.id);
+      expect(labeled[0]).toBeDefined();
+      expect(labeled[0]?.text).toBe('alpha');
+      expect(labeled[0]?.role).toBe(TAXONOMY.TECHNICAL.id);
     });
   });
 });

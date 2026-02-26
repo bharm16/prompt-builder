@@ -17,7 +17,7 @@ export const API_CONFIG = {
     optimization: 60000,  // 60 seconds for prompt optimization
     video: 90000, // 90 seconds for video generation (allow buffer over user's 60s)
     storyboard: 180000, // 180 seconds for storyboard preview chaining
-    suggestions: 3000,  // 3 seconds for suggestions (Requirement 3.5)
+    suggestions: 8000,  // 8 seconds for suggestions (server enhancement pipeline: 2–8s on cache miss)
   },
 
   // Debounce configuration (in milliseconds)

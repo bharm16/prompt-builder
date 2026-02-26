@@ -2,6 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { ReadableStream } from 'node:stream/web';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import {
   STORAGE_CONFIG,
   STORAGE_TYPES,
@@ -9,12 +10,15 @@ import {
   type StorageType,
 } from '../config/storageConfig';
 import { generateStoragePath, validatePathOwnership } from '../utils/pathUtils';
+import { createForbiddenError } from '../utils/httpError';
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 const RESUMABLE_THRESHOLD_BYTES = 5 * 1024 * 1024;
+const PRECONDITION_OPTS = { ifGenerationMatch: 0 };
 
 function normalizeContentType(value: string): string {
-  return value.split(';')[0]?.trim().toLowerCase();
+  const [primary] = value.split(';');
+  return (primary ?? '').trim().toLowerCase();
 }
 
 function resolveExtension(contentType: string): string {
@@ -48,9 +52,9 @@ export class UploadService {
   private readonly storage: Storage;
   private readonly bucket;
 
-  constructor(storage?: Storage) {
-    this.storage = storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
+  constructor(storage: Storage, bucketName: string = STORAGE_CONFIG.bucketName) {
+    this.storage = storage;
+    this.bucket = this.storage.bucket(bucketName);
   }
 
   async uploadFromUrl(
@@ -72,6 +76,7 @@ export class UploadService {
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     try {
+      assertUrlSafe(sourceUrl, 'sourceUrl');
       const response = await fetch(sourceUrl, { signal: controller.signal, redirect: 'follow' });
 
       if (!response.ok) {
@@ -115,6 +120,7 @@ export class UploadService {
             },
           },
           resumable: contentLength ? contentLength > RESUMABLE_THRESHOLD_BYTES : true,
+          preconditionOpts: PRECONDITION_OPTS,
         })
       );
 
@@ -122,13 +128,70 @@ export class UploadService {
 
       return {
         storagePath: path,
-        sizeBytes: Number.parseInt(fileMetadata.size || '0', 10),
+        sizeBytes: Number.parseInt(String(fileMetadata.size ?? '0'), 10),
         contentType: fileMetadata.contentType || contentType,
-        createdAt: fileMetadata.timeCreated,
+        createdAt: fileMetadata.timeCreated ?? new Date().toISOString(),
       };
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async uploadFromBuffer(
+    buffer: Buffer,
+    userId: string,
+    type: StorageType,
+    contentType: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<{
+    storagePath: string;
+    sizeBytes: number;
+    contentType: string;
+    createdAt: string;
+  }> {
+    if (!Object.values(STORAGE_TYPES).includes(type)) {
+      throw new Error(`Invalid storage type: ${type}`);
+    }
+
+    const normalizedContentType = normalizeContentType(contentType);
+    if (!isAllowedContentType(type, normalizedContentType)) {
+      throw new Error(`Invalid content type: ${normalizedContentType}`);
+    }
+
+    const maxSize = STORAGE_CONFIG.maxFileSize[resolveStorageTypeKey(type)];
+    if (buffer.length > maxSize) {
+      throw new Error(`File too large: ${buffer.length} bytes (max: ${maxSize})`);
+    }
+
+    const extension = resolveExtension(normalizedContentType);
+    const path = generateStoragePath(userId, type, extension);
+    const file = this.bucket.file(path);
+
+    const model = typeof metadata.model === 'string' ? metadata.model : 'unknown';
+    const promptId = typeof metadata.promptId === 'string' ? metadata.promptId : '';
+
+    await file.save(buffer, {
+      contentType: normalizedContentType,
+      resumable: buffer.length > RESUMABLE_THRESHOLD_BYTES,
+      metadata: {
+        metadata: {
+          ...metadata,
+          userId,
+          type,
+          model,
+          promptId,
+          createdAt: new Date().toISOString(),
+        },
+      },
+      preconditionOpts: PRECONDITION_OPTS,
+    });
+
+    return {
+      storagePath: path,
+      sizeBytes: buffer.length,
+      contentType: normalizedContentType,
+      createdAt: new Date().toISOString(),
+    };
   }
 
   async uploadBuffer(
@@ -171,6 +234,7 @@ export class UploadService {
           createdAt: new Date().toISOString(),
         },
       },
+      preconditionOpts: PRECONDITION_OPTS,
     });
 
     return {
@@ -222,6 +286,7 @@ export class UploadService {
             createdAt: new Date().toISOString(),
           },
         },
+        preconditionOpts: PRECONDITION_OPTS,
       });
 
       stream.on('error', reject);
@@ -247,7 +312,7 @@ export class UploadService {
     createdAt: string;
   }> {
     if (!validatePathOwnership(path, userId)) {
-      throw new Error('Unauthorized - file does not belong to user');
+      throw createForbiddenError('Unauthorized - file does not belong to user');
     }
 
     const file = this.bucket.file(path);
@@ -260,9 +325,9 @@ export class UploadService {
 
     return {
       storagePath: path,
-      sizeBytes: Number.parseInt(metadata.size || '0', 10),
+      sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
       contentType: metadata.contentType,
-      createdAt: metadata.timeCreated,
+      createdAt: metadata.timeCreated ?? new Date().toISOString(),
     };
   }
 }

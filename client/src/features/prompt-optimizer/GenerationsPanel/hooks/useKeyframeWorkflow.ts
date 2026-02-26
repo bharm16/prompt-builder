@@ -1,21 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Asset } from '@shared/types/asset';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type { GenerationParams } from '../types';
-
-interface AssetReferenceImage {
-  assetId: string;
-  assetType: string;
-  assetName?: string;
-  imageUrl: string;
-}
-
-interface SelectedKeyframe {
-  url: string;
-  generationId: string;
-  frameIndex: number;
-  source: 'generation';
-}
+import type { GenerationOverrides } from '@components/ToolSidebar/types';
 
 interface KeyframeStepState {
   isActive: boolean;
@@ -25,22 +12,44 @@ interface KeyframeStepState {
 
 interface UseKeyframeWorkflowOptions {
   prompt: string;
-  keyframes: KeyframeTile[];
-  assetReferenceImages: AssetReferenceImage[];
+  startFrame: KeyframeTile | null;
+  setStartFrame: (frame: KeyframeTile | null) => void;
+  clearStartFrame: () => void;
   detectedCharacter: Asset | null;
   onCreateVersionIfNeeded: () => string;
   generateRender: (model: string, prompt: string, params: GenerationParams) => void;
 }
 
+const createFrameSelectionId = (generationId: string, frameIndex: number): string =>
+  `frame-${generationId}-${frameIndex}`;
+
+const toStartImage = (frame: KeyframeTile): NonNullable<GenerationOverrides['startImage']> => ({
+  url: frame.url,
+  source: frame.source,
+  ...(frame.assetId ? { assetId: frame.assetId } : {}),
+  ...(frame.storagePath ? { storagePath: frame.storagePath } : {}),
+  ...(frame.viewUrlExpiresAt ? { viewUrlExpiresAt: frame.viewUrlExpiresAt } : {}),
+});
+
+const hasExplicitRenderInputs = (overrides?: GenerationOverrides): boolean =>
+  Boolean(
+    overrides?.startImage ||
+      overrides?.characterAssetId ||
+      overrides?.faceSwapAlreadyApplied ||
+      overrides?.endImage?.url ||
+      (overrides?.referenceImages && overrides.referenceImages.length > 0) ||
+      overrides?.extendVideoUrl
+  );
+
 export function useKeyframeWorkflow({
   prompt,
-  keyframes,
-  assetReferenceImages,
+  startFrame,
+  setStartFrame,
+  clearStartFrame,
   detectedCharacter,
   onCreateVersionIfNeeded,
   generateRender,
 }: UseKeyframeWorkflowOptions) {
-  const [selectedKeyframe, setSelectedKeyframe] = useState<SelectedKeyframe | null>(null);
   const [keyframeStep, setKeyframeStep] = useState<KeyframeStepState>({
     isActive: false,
     character: null,
@@ -56,58 +65,53 @@ export function useKeyframeWorkflow({
   }, [prompt]);
 
   const runRender = useCallback(
-    (model: string, startImageOverride?: GenerationParams['startImage'] | null) => {
+    (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
-      let startImage = null;
-      if (startImageOverride) {
-        startImage = {
-          url: startImageOverride.url,
-          source: startImageOverride.source,
-          ...(startImageOverride.assetId ? { assetId: startImageOverride.assetId } : {}),
-        };
-      } else if (selectedKeyframe) {
-        startImage = {
-          url: selectedKeyframe.url,
-          source: selectedKeyframe.source,
-        };
-      } else if (assetReferenceImages.length > 0) {
-        const characterReference = assetReferenceImages.find(
-          (reference) => reference.assetType === 'character'
-        );
-        if (characterReference) {
-          startImage = {
-            url: characterReference.imageUrl,
-            assetId: characterReference.assetId,
-            source: 'asset' as const,
-          };
-        }
-      }
+      const startImage = overrides?.startImage ?? (startFrame ? toStartImage(startFrame) : null);
+      const resolvedCharacterAssetId =
+        overrides?.characterAssetId ??
+        (startImage?.source === 'asset' ? startImage.assetId : detectedCharacter?.id);
 
       generateRender(model, prompt, {
         promptVersionId: versionId,
         startImage,
+        ...(overrides?.endImage ? { endImage: overrides.endImage } : {}),
+        ...(overrides?.referenceImages?.length
+          ? { referenceImages: overrides.referenceImages }
+          : {}),
+        ...(overrides?.extendVideoUrl
+          ? { extendVideoUrl: overrides.extendVideoUrl }
+          : {}),
+        ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
+        ...(overrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
+        ...(overrides?.faceSwapUrl ? { faceSwapUrl: overrides.faceSwapUrl } : {}),
+        ...(overrides?.generationParams ? { generationParams: overrides.generationParams } : {}),
       });
-      setSelectedKeyframe(null);
       setKeyframeStep({
         isActive: false,
         character: null,
         pendingModel: null,
       });
     },
-    [assetReferenceImages, generateRender, onCreateVersionIfNeeded, prompt, selectedKeyframe]
+    [
+      detectedCharacter?.id,
+      generateRender,
+      onCreateVersionIfNeeded,
+      prompt,
+      startFrame,
+    ]
   );
 
   const handleRender = useCallback(
-    (model: string) => {
+    (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
-      const primaryKeyframe = keyframes[0];
-      if (primaryKeyframe) {
-        runRender(model, {
-          url: primaryKeyframe.url,
-          source: primaryKeyframe.source,
-          ...(primaryKeyframe.assetId ? { assetId: primaryKeyframe.assetId } : {}),
-        });
+      if (hasExplicitRenderInputs(overrides)) {
+        runRender(model, overrides);
+        return;
+      }
+      if (startFrame) {
+        runRender(model, { startImage: toStartImage(startFrame) });
         return;
       }
       if (keyframeStep.isActive) {
@@ -123,38 +127,55 @@ export function useKeyframeWorkflow({
         return;
       }
 
-      runRender(model, null);
+      runRender(model, undefined);
     },
-    [detectedCharacter, keyframeStep.isActive, keyframes, prompt, runRender]
+    [detectedCharacter, keyframeStep.isActive, prompt, runRender, startFrame]
   );
 
   const handleApproveKeyframe = useCallback(
     (keyframeUrl: string) => {
       const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-      runRender(modelToUse, { url: keyframeUrl, source: 'keyframe' });
+      runRender(modelToUse, { startImage: { url: keyframeUrl, source: 'keyframe' } });
     },
     [keyframeStep.pendingModel, runRender]
   );
 
   const handleSkipKeyframe = useCallback(() => {
     const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-    runRender(modelToUse, null);
+    runRender(modelToUse, undefined);
   }, [keyframeStep.pendingModel, runRender]);
 
   const handleSelectFrame = useCallback(
-    (url: string, frameIndex: number, generationId: string) => {
-      setSelectedKeyframe({ url, generationId, frameIndex, source: 'generation' });
+    (
+      url: string,
+      frameIndex: number,
+      generationId: string,
+      storagePath?: string,
+      sourcePrompt?: string
+    ) => {
+      setStartFrame({
+        id: createFrameSelectionId(generationId, frameIndex),
+        url,
+        source: 'generation',
+        ...(sourcePrompt ? { sourcePrompt } : {}),
+        ...(storagePath ? { storagePath } : {}),
+      });
     },
-    []
+    [setStartFrame]
   );
 
   const handleClearSelectedFrame = useCallback(() => {
-    setSelectedKeyframe(null);
-  }, []);
+    clearStartFrame();
+  }, [clearStartFrame]);
+
+  const selectedFrameUrl = useMemo(() => {
+    if (!startFrame) return null;
+    return startFrame.source === 'generation' ? startFrame.url : null;
+  }, [startFrame]);
 
   return {
     keyframeStep,
-    selectedKeyframe,
+    selectedFrameUrl,
     handleRender,
     handleApproveKeyframe,
     handleSkipKeyframe,

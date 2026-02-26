@@ -4,7 +4,7 @@ import { renderHook, act } from '@testing-library/react';
 import { usePromptHistoryActions } from '@features/prompt-optimizer/context/usePromptHistoryActions';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import { createHighlightSignature } from '@features/span-highlighting';
@@ -31,36 +31,52 @@ const createPromptOptimizer = () => {
     inputPrompt: '',
     optimizedPrompt: '',
     displayedPrompt: '',
-    previewPrompt: 'preview',
-    previewAspectRatio: '16:9',
+    previewPrompt: null as string | null,
+    previewAspectRatio: null as string | null,
   };
 
-  const optimizer = {
+  const optimizer: PromptOptimizer = {
     inputPrompt: state.inputPrompt,
-    optimizedPrompt: state.optimizedPrompt,
-    displayedPrompt: state.displayedPrompt,
-    previewPrompt: state.previewPrompt,
-    previewAspectRatio: state.previewAspectRatio,
     setInputPrompt: vi.fn((prompt: string) => {
       state.inputPrompt = prompt;
       optimizer.inputPrompt = prompt;
     }),
+    isProcessing: false,
+    optimizedPrompt: state.optimizedPrompt,
     setOptimizedPrompt: vi.fn((prompt: string) => {
       state.optimizedPrompt = prompt;
       optimizer.optimizedPrompt = prompt;
     }),
+    displayedPrompt: state.displayedPrompt,
     setDisplayedPrompt: vi.fn((prompt: string) => {
       state.displayedPrompt = prompt;
       optimizer.displayedPrompt = prompt;
     }),
+    genericOptimizedPrompt: null,
+    setGenericOptimizedPrompt: vi.fn(),
+    previewPrompt: state.previewPrompt,
     setPreviewPrompt: vi.fn((prompt: string | null) => {
       state.previewPrompt = prompt;
       optimizer.previewPrompt = prompt;
     }),
+    previewAspectRatio: state.previewAspectRatio,
     setPreviewAspectRatio: vi.fn((ratio: string | null) => {
       state.previewAspectRatio = ratio;
       optimizer.previewAspectRatio = ratio;
     }),
+    qualityScore: null,
+    skipAnimation: false,
+    setSkipAnimation: vi.fn(),
+    improvementContext: null,
+    setImprovementContext: vi.fn(),
+    draftPrompt: '',
+    isDraftReady: false,
+    isRefining: false,
+    draftSpans: null,
+    refinedSpans: null,
+    lockedSpans: [],
+    optimize: vi.fn(async () => null),
+    compile: vi.fn(async () => null),
     resetPrompt: vi.fn(() => {
       state.inputPrompt = '';
       state.optimizedPrompt = '';
@@ -69,12 +85,18 @@ const createPromptOptimizer = () => {
       optimizer.optimizedPrompt = '';
       optimizer.displayedPrompt = '';
     }),
-  } as PromptOptimizer;
+    setLockedSpans: vi.fn(),
+    addLockedSpan: vi.fn(),
+    removeLockedSpan: vi.fn(),
+    clearLockedSpans: vi.fn(),
+  };
 
   return { optimizer, state };
 };
 
 const createDebugLogger = (): UsePromptHistoryActionsOptions['debug'] => ({
+  logState: vi.fn(),
+  logEffect: vi.fn(),
   logAction: vi.fn(),
   startTimer: vi.fn(),
   endTimer: vi.fn(),
@@ -141,13 +163,13 @@ describe('usePromptHistoryActions', () => {
         })
       );
 
-      const entry: PromptHistoryEntry = {
+      const entry = {
         uuid: 'uuid-1',
         id: 'doc-1',
         input: 'Input',
         output: 'Output',
         brainstormContext: '{not-json',
-      };
+      } as unknown as PromptHistoryEntry;
 
       act(() => {
         result.current.loadFromHistory(entry);
@@ -195,14 +217,14 @@ describe('usePromptHistoryActions', () => {
         })
       );
 
-      const entry: PromptHistoryEntry = {
+      const entry = {
         uuid: 'uuid-2',
         id: 'doc-2',
         input: 'Input',
         output: 'Output',
         targetModel: 123,
         generationParams: 'bad',
-      };
+      } as unknown as PromptHistoryEntry;
 
       act(() => {
         result.current.loadFromHistory(entry);
@@ -222,7 +244,7 @@ describe('usePromptHistoryActions', () => {
       const { flush, rafSpy } = setupRafQueue();
       const draftResult = { uuid: 'uuid-3', id: 'doc-3' };
       const createDraft: MockedFunction<UsePromptHistoryActionsOptions['promptHistory']['createDraft']> =
-        vi.fn(() => draftResult);
+        vi.fn((_params) => draftResult);
       const promptUuidTracker = createTrackedSetter<string | null>(null);
       const skipLoadFromUrlRef = { current: false };
 
@@ -322,7 +344,9 @@ describe('usePromptHistoryActions', () => {
       rafSpy.mockRestore();
 
       expect(mockCreateHighlightSignature).toHaveBeenCalledWith('Output text');
-      expect(appliedSnapshot?.signature).toBe('sig-default');
+      expect(appliedSnapshot).not.toBeNull();
+      const finalSnapshot = appliedSnapshot as unknown as HighlightSnapshot;
+      expect(finalSnapshot.signature).toBe('sig-default');
     });
 
     it('toggles the applying-history flag when setting prompts silently', () => {
@@ -381,7 +405,7 @@ describe('usePromptHistoryActions', () => {
       const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
       const createDraft: MockedFunction<UsePromptHistoryActionsOptions['promptHistory']['createDraft']> =
-        vi.fn(() => ({ uuid: 'uuid-new', id: 'doc-new' }));
+        vi.fn((_params) => ({ uuid: 'uuid-new', id: 'doc-new' }));
       const suggestionsTracker = createTrackedSetter<SuggestionsData | null>(null);
       const conceptTracker = createTrackedSetter<unknown | null>(null);
       const contextTracker = createTrackedSetter<PromptContext | null>(null);

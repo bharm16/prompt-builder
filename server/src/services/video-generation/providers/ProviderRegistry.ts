@@ -1,14 +1,15 @@
 import type { VideoModelId, VideoProviderAvailability } from '../types';
-import { isKlingModel, isLumaModel, isOpenAISoraModel, isVeoModel, resolveModelSelection } from '../modelResolver';
-import type { ProviderClients } from './ProviderClients';
+import { resolveModelSelection } from '../modelResolver';
+import { resolveProviderForGenerationModel } from '@services/video-models/ModelRegistry';
+import type { VideoProviderMap } from './VideoProviders';
 
-export function getProviderAvailability(clients: ProviderClients): VideoProviderAvailability {
+export function getProviderAvailability(providers: VideoProviderMap): VideoProviderAvailability {
   return {
-    replicate: !!clients.replicate,
-    openai: !!clients.openai,
-    luma: !!clients.luma,
-    kling: !!clients.klingApiKey,
-    gemini: !!clients.geminiApiKey,
+    replicate: providers.replicate.isAvailable(),
+    openai: providers.openai.isAvailable(),
+    luma: providers.luma.isAvailable(),
+    kling: providers.kling.isAvailable(),
+    gemini: providers.gemini.isAvailable(),
   };
 }
 
@@ -32,17 +33,5 @@ export function resolveAutoModelId(providers: VideoProviderAvailability): VideoM
 }
 
 export function resolveProviderForModel(modelId: VideoModelId): keyof VideoProviderAvailability {
-  if (isOpenAISoraModel(modelId)) {
-    return 'openai';
-  }
-  if (isLumaModel(modelId)) {
-    return 'luma';
-  }
-  if (isKlingModel(modelId)) {
-    return 'kling';
-  }
-  if (isVeoModel(modelId)) {
-    return 'gemini';
-  }
-  return 'replicate';
+  return resolveProviderForGenerationModel(modelId);
 }

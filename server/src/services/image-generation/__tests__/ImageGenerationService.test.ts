@@ -115,7 +115,7 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [], assetStore });
 
-      await expect(service.getImageUrl('asset-id')).rejects.toThrow('asset store unavailable');
+      await expect(service.getImageUrl('asset-id', 'user-1')).rejects.toThrow('asset store unavailable');
     });
 
     it('propagates asset store errors when checking image existence', async () => {
@@ -124,10 +124,10 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [], assetStore });
 
-      await expect(service.imageExists('asset-id')).rejects.toThrow('existence check failed');
+      await expect(service.imageExists('asset-id', 'user-1')).rejects.toThrow('existence check failed');
     });
 
-    it('returns provider URLs when storage fails after generation', async () => {
+    it('fails when storage persistence fails after generation', async () => {
       const provider = createProvider('replicate-flux-schnell');
       (provider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
         .mockResolvedValueOnce({
@@ -141,11 +141,7 @@ describe('ImageGenerationService', () => {
 
       const service = new ImageGenerationService({ providers: [provider], assetStore });
 
-      const result = await service.generatePreview('prompt');
-
-      expect(result.imageUrl).toBe('https://cdn.example.com/preview.webp');
-      expect(result.providerUrl).toBe('https://cdn.example.com/preview.webp');
-      expect(result.metadata.model).toBe('flux-schnell');
+      await expect(service.generatePreview('prompt')).rejects.toThrow('storage down');
     });
   });
 
@@ -203,6 +199,44 @@ describe('ImageGenerationService', () => {
       expect('inputImageUrl' in request).toBe(false);
     });
 
+    it('forwards all defined preview options to the selected provider', async () => {
+      const provider = createProvider('replicate-flux-schnell');
+      (provider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
+        .mockResolvedValueOnce({
+          imageUrl: 'https://cdn.example.com/preview.webp',
+          model: 'flux-schnell',
+          durationMs: 50,
+          aspectRatio: '4:5',
+        });
+
+      const service = new ImageGenerationService({
+        providers: [provider],
+        assetStore,
+        skipStorage: true,
+      });
+
+      await service.generatePreview('prompt', {
+        userId: 'user-1',
+        aspectRatio: '4:5',
+        inputImageUrl: 'https://images.example.com/source.png',
+        seed: 12,
+        speedMode: 'Juiced',
+        outputQuality: 77,
+        disablePromptTransformation: true,
+      });
+
+      expect(provider.generatePreview).toHaveBeenCalledWith({
+        prompt: 'prompt',
+        userId: 'user-1',
+        aspectRatio: '4:5',
+        inputImageUrl: 'https://images.example.com/source.png',
+        seed: 12,
+        speedMode: 'Juiced',
+        outputQuality: 77,
+        disablePromptTransformation: true,
+      });
+    });
+
     it('keeps type-only modules empty at runtime', async () => {
       expect(Object.keys(requestTypesModule)).toHaveLength(0);
       expect(Object.keys(responseTypesModule)).toHaveLength(0);
@@ -224,6 +258,7 @@ describe('ImageGenerationService', () => {
 
       const storedAsset: StoredImageAsset = {
         id: 'asset-123',
+        storagePath: 'image-previews/asset-123.webp',
         url: 'https://storage.example.com/asset-123',
         contentType: 'image/webp',
         createdAt: 1710000000000,
@@ -239,9 +274,14 @@ describe('ImageGenerationService', () => {
 
       expect(result.imageUrl).toBe(storedAsset.url);
       expect(result.providerUrl).toBe(previewResult.imageUrl);
-      expect(result.storagePath).toBe(storedAsset.id);
+      expect(result.storagePath).toBe(storedAsset.storagePath);
       expect(result.viewUrl).toBe(storedAsset.url);
-      expect(result.viewUrlExpiresAt).toBe(new Date(storedAsset.expiresAt).toISOString());
+      const expiresAt = storedAsset.expiresAt;
+      expect(expiresAt).toBeDefined();
+      if (expiresAt === undefined) {
+        throw new Error('expected expiresAt to be defined');
+      }
+      expect(result.viewUrlExpiresAt).toBe(new Date(expiresAt).toISOString());
       expect(result.sizeBytes).toBe(2048);
       expect(result.metadata.model).toBe('flux-schnell');
     });
@@ -271,6 +311,70 @@ describe('ImageGenerationService', () => {
 
       expect(result.imageUrl).toBe('https://cdn.example.com/secondary.webp');
       expect(result.metadata.aspectRatio).toBe('4:5');
+    });
+
+    it('uses explicit provider selection and ignores fallback order', async () => {
+      const firstProvider = createProvider('replicate-flux-schnell');
+      const selectedProvider = createProvider('replicate-flux-kontext-fast');
+
+      (selectedProvider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
+        .mockResolvedValueOnce({
+          imageUrl: 'https://cdn.example.com/kontext.webp',
+          model: 'kontext-fast',
+          durationMs: 300,
+          aspectRatio: '1:1',
+        });
+
+      const service = new ImageGenerationService({
+        providers: [firstProvider, selectedProvider],
+        fallbackOrder: ['replicate-flux-schnell', 'replicate-flux-kontext-fast'],
+        assetStore,
+        skipStorage: true,
+      });
+
+      const result = await service.generatePreview('prompt', {
+        provider: 'replicate-flux-kontext-fast',
+      });
+
+      expect(result.imageUrl).toBe('https://cdn.example.com/kontext.webp');
+      expect(firstProvider.generatePreview).not.toHaveBeenCalled();
+      expect(selectedProvider.generatePreview).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses available provider order when auto-selection has no fallback order', async () => {
+      const firstProvider = createProvider('replicate-flux-schnell');
+      const secondProvider = createProvider('replicate-flux-kontext-fast');
+
+      (firstProvider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
+        .mockRejectedValueOnce(new Error('first failed'));
+      (secondProvider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>)
+        .mockResolvedValueOnce({
+          imageUrl: 'https://cdn.example.com/second.webp',
+          model: 'kontext-fast',
+          durationMs: 300,
+          aspectRatio: '16:9',
+        });
+
+      const service = new ImageGenerationService({
+        providers: [firstProvider, secondProvider],
+        assetStore,
+        skipStorage: true,
+      });
+
+      const result = await service.generatePreview('prompt');
+
+      expect(result.imageUrl).toBe('https://cdn.example.com/second.webp');
+      expect(firstProvider.generatePreview).toHaveBeenCalledTimes(1);
+      expect(secondProvider.generatePreview).toHaveBeenCalledTimes(1);
+      const firstCallOrder = (
+        firstProvider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>
+      ).mock.invocationCallOrder[0];
+      const secondCallOrder = (
+        secondProvider.generatePreview as MockedFunction<ImagePreviewProvider['generatePreview']>
+      ).mock.invocationCallOrder[0];
+      expect(firstCallOrder).toBeDefined();
+      expect(secondCallOrder).toBeDefined();
+      expect(firstCallOrder!).toBeLessThan(secondCallOrder!);
     });
 
     it('re-exports the service from the index module', () => {

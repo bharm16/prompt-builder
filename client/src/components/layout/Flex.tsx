@@ -69,9 +69,15 @@ function getFlexClasses(prop: string | { [key: string]: string } | undefined, pr
   return classes.join(' ');
 }
 
+const SPACING_TOKEN_MAP = {
+  'ps-page': 'var(--ps-space-page)',
+  'ps-card': 'var(--ps-space-card)',
+} as const;
+
 function psTokenToCssVar(token: string): string | undefined {
-  if (token === 'ps-page') return 'var(--ps-space-page)';
-  if (token === 'ps-card') return 'var(--ps-space-card)';
+  if (Object.prototype.hasOwnProperty.call(SPACING_TOKEN_MAP, token)) {
+    return SPACING_TOKEN_MAP[token as keyof typeof SPACING_TOKEN_MAP];
+  }
   const m = /^ps-(\d+)$/.exec(token);
   if (!m) return undefined;
   return `var(--ps-space-${m[1]})`;

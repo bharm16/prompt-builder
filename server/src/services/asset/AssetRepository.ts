@@ -6,7 +6,7 @@ import type { Asset, AssetReferenceImage, AssetType } from '@shared/types/asset'
 
 interface AssetRepositoryOptions {
   db?: FirebaseFirestore.Firestore;
-  bucket?: Bucket;
+  bucket: Bucket;
   bucketName?: string;
 }
 
@@ -29,60 +29,6 @@ export interface ProcessedImageInput {
 }
 
 const MAX_IN_QUERY = 10;
-
-function normalizeBucketName(raw: string): string {
-  let bucketName = raw.trim();
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  if (bucketName.startsWith('gs://')) {
-    bucketName = bucketName.slice(5);
-  }
-
-  if (bucketName.startsWith('http://') || bucketName.startsWith('https://')) {
-    try {
-      const parsed = new URL(bucketName);
-      if (parsed.hostname === 'firebasestorage.googleapis.com') {
-        const match = parsed.pathname.match(/\/b\/([^/]+)\/o/);
-        if (match?.[1]) bucketName = match[1];
-      } else if (parsed.hostname === 'storage.googleapis.com') {
-        const pathParts = parsed.pathname.split('/').filter(Boolean);
-        if (pathParts[0]) bucketName = pathParts[0];
-      } else {
-        bucketName = parsed.hostname;
-      }
-    } catch {
-      // Keep original string if URL parsing fails.
-    }
-  }
-
-  bucketName = bucketName.replace(/^\/+/, '').split(/[/?#]/)[0] || '';
-  if (bucketName.endsWith('.firebasestorage.app')) {
-    bucketName = bucketName.replace(/\.firebasestorage\.app$/, '.appspot.com');
-  }
-
-  if (!bucketName) {
-    throw new Error('Storage bucket name is required');
-  }
-
-  return bucketName;
-}
-
-function resolveBucketName(explicit?: string): string {
-  // Prefer server-side env vars over VITE_ (client-side) config
-  const envBucket =
-    explicit ||
-    process.env.GCS_BUCKET_NAME ||
-    process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.VITE_FIREBASE_STORAGE_BUCKET;
-  if (!envBucket) {
-    throw new Error(
-      'Missing storage bucket config: VITE_FIREBASE_STORAGE_BUCKET or GCS_BUCKET_NAME'
-    );
-  }
-  return normalizeBucketName(envBucket);
-}
 
 function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
   const encodedPath = encodeURIComponent(storagePath);
@@ -185,10 +131,13 @@ export class AssetRepository {
   private readonly bucketName: string;
   private readonly log = logger.child({ service: 'AssetRepository' });
 
-  constructor(options: AssetRepositoryOptions = {}) {
+  constructor(options: AssetRepositoryOptions) {
+    if (!options.bucket) {
+      throw new Error('AssetRepository requires an injected storage bucket');
+    }
     this.db = options.db || getFirestore();
-    this.bucketName = resolveBucketName(options.bucketName);
-    this.bucket = options.bucket || admin.storage().bucket(this.bucketName);
+    this.bucket = options.bucket;
+    this.bucketName = options.bucketName || options.bucket.name;
   }
 
   private getAssetsCollection(userId: string): FirebaseFirestore.CollectionReference {
@@ -474,38 +423,45 @@ export class AssetRepository {
             firebaseStorageDownloadTokens: imageToken,
           },
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       });
 
-      await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
-        resumable: false,
-        contentType: 'image/jpeg',
-        metadata: {
-          cacheControl: 'public, max-age=31536000',
+      try {
+        await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
+          resumable: false,
+          contentType: 'image/jpeg',
           metadata: {
-            firebaseStorageDownloadTokens: thumbnailToken,
+            cacheControl: 'public, max-age=31536000',
+            metadata: {
+              firebaseStorageDownloadTokens: thumbnailToken,
+            },
           },
-        },
-      });
+          preconditionOpts: { ifGenerationMatch: 0 },
+        });
+      } catch (thumbnailError) {
+        await this.bucket.file(storagePath).delete().catch(() => undefined);
+        throw thumbnailError;
+      }
 
-    const referenceImage: AssetReferenceImage = {
-      id: imageId,
-      url: buildDownloadUrl(this.bucketName, storagePath, imageToken),
-      thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
-      isPrimary: false,
-      storagePath,
-      thumbnailPath,
-      metadata: {
-        angle: metadata.angle ?? null,
-        expression: metadata.expression ?? null,
-        styleType: metadata.styleType ?? null,
-        timeOfDay: metadata.timeOfDay ?? null,
-        lighting: metadata.lighting ?? null,
-        uploadedAt: new Date().toISOString(),
-        width: metadata.width ?? image.width,
-        height: metadata.height ?? image.height,
-        sizeBytes: image.sizeBytes ?? image.buffer.length,
-      },
-    };
+      const referenceImage: AssetReferenceImage = {
+        id: imageId,
+        url: buildDownloadUrl(this.bucketName, storagePath, imageToken),
+        thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
+        isPrimary: false,
+        storagePath,
+        thumbnailPath,
+        metadata: {
+          angle: metadata.angle ?? null,
+          expression: metadata.expression ?? null,
+          styleType: metadata.styleType ?? null,
+          timeOfDay: metadata.timeOfDay ?? null,
+          lighting: metadata.lighting ?? null,
+          uploadedAt: new Date().toISOString(),
+          width: metadata.width ?? image.width,
+          height: metadata.height ?? image.height,
+          sizeBytes: image.sizeBytes ?? image.buffer.length,
+        },
+      };
 
       const asset = await this.getById(userId, assetId);
       const referenceImages = [...(asset?.referenceImages || []), referenceImage];
@@ -547,19 +503,22 @@ export class AssetRepository {
       const image = asset.referenceImages.find((img) => img.id === imageId);
       if (!image) return false;
 
-      const paths = [image.storagePath, image.thumbnailPath]
-        .filter((path): path is string => typeof path === 'string' && path.length > 0);
+      const storageTargets = [
+        image.storagePath ? { path: image.storagePath } : null,
+        image.thumbnailPath ? { path: image.thumbnailPath } : null,
+      ].filter((value): value is { path: string } => Boolean(value));
 
-      for (const path of paths) {
+      for (const target of storageTargets) {
         try {
-          await this.bucket.file(path).delete();
+          await this.bucket.file(target.path).delete();
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.log.warn('Failed to delete asset image from storage', {
             operation,
             assetId,
             imageId,
-            path,
+            path: target.path,
+            bucket: this.bucketName,
             error: errorMessage,
           });
         }

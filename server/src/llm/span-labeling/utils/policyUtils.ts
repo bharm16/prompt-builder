@@ -5,6 +5,22 @@ import {
 } from '../config/SpanLabelingConfig.js';
 import type { ValidationPolicy, ProcessingOptions } from '../types.js';
 
+const toNumberSafely = (value: unknown): number => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
+const toStringSafely = (value: unknown): string => {
+  try {
+    return String(value);
+  } catch {
+    return '';
+  }
+};
+
 /**
  * Policy and options sanitization utilities
  *
@@ -28,7 +44,7 @@ export function sanitizePolicy(policy: ValidationPolicy | null = {}): Validation
   };
 
   // Validate nonTechnicalWordLimit
-  const limit = Number(merged.nonTechnicalWordLimit);
+  const limit = toNumberSafely(merged.nonTechnicalWordLimit);
   merged.nonTechnicalWordLimit =
     Number.isFinite(limit) && limit > 0
       ? limit
@@ -56,14 +72,14 @@ export function sanitizeOptions(options: ProcessingOptions | null = {}): Process
   };
 
   // Validate maxSpans - must be positive integer, capped at absolute limit
-  const maxSpans = Number(merged.maxSpans);
+  const maxSpans = toNumberSafely(merged.maxSpans);
   merged.maxSpans =
     Number.isInteger(maxSpans) && maxSpans > 0
       ? Math.min(maxSpans, PERFORMANCE.MAX_SPANS_ABSOLUTE_LIMIT)
       : DEFAULT_OPTIONS.maxSpans;
 
   // Validate minConfidence - must be between 0 and 1
-  const minConfidence = Number(merged.minConfidence);
+  const minConfidence = toNumberSafely(merged.minConfidence);
   merged.minConfidence =
     Number.isFinite(minConfidence) &&
     minConfidence >= 0 &&
@@ -72,9 +88,8 @@ export function sanitizeOptions(options: ProcessingOptions | null = {}): Process
       : DEFAULT_OPTIONS.minConfidence;
 
   // Ensure templateVersion is string
-  merged.templateVersion = String(
-    merged.templateVersion || DEFAULT_OPTIONS.templateVersion
-  );
+  const templateVersion = toStringSafely(merged.templateVersion);
+  merged.templateVersion = templateVersion || DEFAULT_OPTIONS.templateVersion;
 
   return merged;
 }
@@ -98,7 +113,7 @@ export function buildTaskDescription(
         : 'Do not return overlapping spans.'
     );
 
-    const limit = Number(policy.nonTechnicalWordLimit);
+    const limit = toNumberSafely(policy.nonTechnicalWordLimit);
     if (Number.isFinite(limit) && limit > 0) {
       parts.push(`Non-technical spans must be ${limit} words or fewer.`);
     }

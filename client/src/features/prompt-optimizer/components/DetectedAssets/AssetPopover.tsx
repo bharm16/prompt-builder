@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
@@ -13,11 +13,28 @@ export function AssetPopover({ asset, onEdit }: AssetPopoverProps): React.ReactE
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const primaryImageUrl = primaryImage?.thumbnailUrl || primaryImage?.url;
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
+  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
+  const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
   const triggerLabel = asset.trigger.startsWith('@')
     ? asset.trigger
     : `@${asset.trigger}`;
+
+  useEffect(() => {
+    setImageUrl(thumbnailUrl || fullUrl);
+    setDidTryFull(false);
+  }, [thumbnailUrl, fullUrl]);
+
+  const handleImageError = () => {
+    if (!didTryFull && fullUrl && imageUrl !== fullUrl) {
+      setDidTryFull(true);
+      setImageUrl(fullUrl);
+      return;
+    }
+    setImageUrl('');
+  };
 
   return (
     <div className="w-64 p-3">
@@ -25,14 +42,15 @@ export function AssetPopover({ asset, onEdit }: AssetPopoverProps): React.ReactE
         <div
           className={cn(
             'flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg',
-            primaryImageUrl ? 'bg-surface-2' : config.bgClass
+            imageUrl ? 'bg-surface-2' : config.bgClass
           )}
         >
-          {primaryImageUrl ? (
+          {imageUrl ? (
             <img
-              src={primaryImageUrl}
+              src={imageUrl}
               alt=""
               className="h-full w-full object-cover"
+              onError={handleImageError}
             />
           ) : (
             <span className={cn('text-xs font-semibold', config.colorClass)}>

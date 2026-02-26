@@ -3,40 +3,45 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { NavigateFunction } from 'react-router-dom';
 
 import { usePromptLoader } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/usePromptLoader';
-import { getPromptRepository } from '@repositories/index';
+import { getPromptRepositoryForUser } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import type { Toast } from '@hooks/types';
 
-const logSpies = {
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { logSpies, PromptContextMock } = vi.hoisted(() => {
+  class PromptContextMock {
+    elements: Record<string, unknown>;
+    metadata: Record<string, unknown>;
 
-class PromptContextMock {
-  elements: Record<string, unknown>;
-  metadata: Record<string, unknown>;
+    constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
+      this.elements = elements;
+      this.metadata = metadata;
+    }
 
-  constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
-    this.elements = elements;
-    this.metadata = metadata;
+    toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
+      return { elements: this.elements, metadata: this.metadata };
+    }
+
+    static fromJSON(data: Record<string, unknown> | null | undefined): PromptContextMock | null {
+      if (!data) return null;
+      const { elements = {}, metadata = {} } = data as {
+        elements?: Record<string, unknown>;
+        metadata?: Record<string, unknown>;
+      };
+      return new PromptContextMock(elements, metadata);
+    }
   }
 
-  toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
-    return { elements: this.elements, metadata: this.metadata };
-  }
-
-  static fromJSON(data: Record<string, unknown> | null | undefined): PromptContextMock | null {
-    if (!data) return null;
-    const { elements = {}, metadata = {} } = data as {
-      elements?: Record<string, unknown>;
-      metadata?: Record<string, unknown>;
-    };
-    return new PromptContextMock(elements, metadata);
-  }
-}
+  return {
+    PromptContextMock,
+    logSpies: {
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@repositories/index', () => ({
-  getPromptRepository: vi.fn(),
+  getPromptRepositoryForUser: vi.fn(),
 }));
 
 vi.mock('@features/span-highlighting', () => ({
@@ -53,7 +58,7 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-const mockGetPromptRepository = vi.mocked(getPromptRepository);
+const mockGetPromptRepositoryForUser = vi.mocked(getPromptRepositoryForUser);
 const mockCreateHighlightSignature = vi.mocked(createHighlightSignature);
 
 type UsePromptLoaderParams = Parameters<typeof usePromptLoader>[0];
@@ -71,7 +76,7 @@ type SetSelectedModel = UsePromptLoaderParams['setSelectedModel'];
 type SetPromptContext = UsePromptLoaderParams['setPromptContext'];
 
 type PromptRepository = {
-  getByUuid: (uuid: string) => Promise<
+  getById: (sessionId: string) => Promise<
     | {
         id?: string;
         uuid: string;
@@ -128,10 +133,11 @@ const createDefaults = (overrides: Partial<UsePromptLoaderParams> = {}): UseProm
   const setPromptContext: MockedFunction<SetPromptContext> = vi.fn();
 
   return {
-    uuid: 'uuid-1',
+    sessionId: 'session-1',
     currentPromptUuid: null,
     navigate: vi.fn() as NavigateFunction,
     toast: createToast(),
+    user: { uid: 'user-1' },
     promptOptimizer: createPromptOptimizer(),
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
@@ -154,12 +160,12 @@ describe('usePromptLoader', () => {
   });
 
   it('loads prompt data and restores context', async () => {
-    const getByUuid: MockedFunction<PromptRepository['getByUuid']> = vi.fn();
-    const promptRepository: PromptRepository = { getByUuid };
+    const getById: MockedFunction<PromptRepository['getById']> = vi.fn();
+    mockGetPromptRepositoryForUser.mockReturnValue(
+      { getById } as unknown as ReturnType<typeof getPromptRepositoryForUser>
+    );
 
-    mockGetPromptRepository.mockReturnValue(promptRepository);
-
-    getByUuid.mockResolvedValue({
+    getById.mockResolvedValue({
       id: 'doc-1',
       uuid: 'uuid-1',
       input: 'Input prompt',
@@ -202,12 +208,12 @@ describe('usePromptLoader', () => {
   });
 
   it('warns and clears context when brainstorm JSON is invalid', async () => {
-    const getByUuid: MockedFunction<PromptRepository['getByUuid']> = vi.fn();
-    const promptRepository: PromptRepository = { getByUuid };
+    const getById: MockedFunction<PromptRepository['getById']> = vi.fn();
+    mockGetPromptRepositoryForUser.mockReturnValue(
+      { getById } as unknown as ReturnType<typeof getPromptRepositoryForUser>
+    );
 
-    mockGetPromptRepository.mockReturnValue(promptRepository);
-
-    getByUuid.mockResolvedValue({
+    getById.mockResolvedValue({
       id: 'doc-2',
       uuid: 'uuid-2',
       input: 'Input prompt',
@@ -215,7 +221,7 @@ describe('usePromptLoader', () => {
       brainstormContext: '{invalid-json',
     });
 
-    const params = createDefaults({ uuid: 'uuid-2' });
+    const params = createDefaults({ sessionId: 'doc-2' });
 
     renderHook(() => usePromptLoader(params));
 
@@ -230,13 +236,13 @@ describe('usePromptLoader', () => {
   });
 
   it('navigates home when prompt does not exist', async () => {
-    const getByUuid: MockedFunction<PromptRepository['getByUuid']> = vi.fn();
-    const promptRepository: PromptRepository = { getByUuid };
+    const getById: MockedFunction<PromptRepository['getById']> = vi.fn();
+    mockGetPromptRepositoryForUser.mockReturnValue(
+      { getById } as unknown as ReturnType<typeof getPromptRepositoryForUser>
+    );
+    getById.mockResolvedValue(null);
 
-    mockGetPromptRepository.mockReturnValue(promptRepository);
-    getByUuid.mockResolvedValue(null);
-
-    const params = createDefaults({ uuid: 'missing-uuid' });
+    const params = createDefaults({ sessionId: 'missing-session' });
 
     renderHook(() => usePromptLoader(params));
 
@@ -248,13 +254,13 @@ describe('usePromptLoader', () => {
   });
 
   it('handles repository errors by showing a toast and redirecting', async () => {
-    const getByUuid: MockedFunction<PromptRepository['getByUuid']> = vi.fn();
-    const promptRepository: PromptRepository = { getByUuid };
+    const getById: MockedFunction<PromptRepository['getById']> = vi.fn();
+    mockGetPromptRepositoryForUser.mockReturnValue(
+      { getById } as unknown as ReturnType<typeof getPromptRepositoryForUser>
+    );
+    getById.mockRejectedValue(new Error('Boom'));
 
-    mockGetPromptRepository.mockReturnValue(promptRepository);
-    getByUuid.mockRejectedValue(new Error('Boom'));
-
-    const params = createDefaults({ uuid: 'uuid-error' });
+    const params = createDefaults({ sessionId: 'session-error' });
 
     renderHook(() => usePromptLoader(params));
 

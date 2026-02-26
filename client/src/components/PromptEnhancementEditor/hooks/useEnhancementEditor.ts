@@ -36,6 +36,7 @@ export function useEnhancementEditor({
   const [isPlaceholder, setIsPlaceholder] = useState<boolean>(false);
   const [highlightMetadata, setHighlightMetadata] = useState<HighlightMetadata | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const suggestionRequestIdRef = useRef(0);
 
   // Close suggestions panel
   const handleClose = useCallback((): void => {
@@ -87,6 +88,7 @@ export function useEnhancementEditor({
       });
       debug.startTimer('fetchSuggestions');
 
+      const currentRequestId = ++suggestionRequestIdRef.current;
       setIsLoading(true);
       setShowSuggestions(true);
       setSuggestions([]);
@@ -101,16 +103,20 @@ export function useEnhancementEditor({
         );
         const result = await fetchEnhancementSuggestions(payload);
 
+        if (suggestionRequestIdRef.current !== currentRequestId) return;
         setSuggestions(result.suggestions);
         setIsPlaceholder(result.isPlaceholder);
         debug.endTimer('fetchSuggestions', `Fetched ${result.suggestions.length} suggestions`);
       } catch (error) {
+        if (suggestionRequestIdRef.current !== currentRequestId) return;
         debug.logError('Failed to fetch enhancement suggestions', error as Error);
         setSuggestions([{ text: 'Failed to load suggestions. Please try again.' }]);
         setIsPlaceholder(false);
         debug.endTimer('fetchSuggestions', 'Fetched 0 suggestions');
       } finally {
-        setIsLoading(false);
+        if (suggestionRequestIdRef.current === currentRequestId) {
+          setIsLoading(false);
+        }
       }
     },
     [promptContent, originalUserPrompt, debug]

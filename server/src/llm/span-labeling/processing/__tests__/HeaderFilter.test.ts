@@ -5,7 +5,7 @@ const buildSpan = (text: string, start: number, end: number, role?: string) => (
   text,
   start,
   end,
-  role,
+  ...(role === undefined ? {} : { role }),
 });
 
 describe('HeaderFilter', () => {

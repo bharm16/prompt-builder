@@ -7,6 +7,7 @@ import type { CameraPath } from '@/features/convergence/types';
 import { estimateDepth } from '@/api/motionApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 
 const log = logger.child('useCameraMotion');
 const OPERATION = 'estimateDepth';
@@ -47,6 +48,19 @@ type Action =
   | { type: 'SET_SUBJECT_MOTION'; motion: string }
   | { type: 'RESET' };
 
+interface UseCameraMotionActions {
+  estimateDepth: (imageUrl: string) => Promise<void>;
+  selectCameraMotion: (cameraPath: CameraPath) => void;
+  clearSelection: () => void;
+  setSubjectMotion: (motion: string) => void;
+  reset: () => void;
+}
+
+interface UseCameraMotionResult {
+  state: State;
+  actions: UseCameraMotionActions;
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'ESTIMATE_START':
@@ -82,18 +96,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
-
-export function useCameraMotion() {
+export function useCameraMotion(): UseCameraMotionResult {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleEstimateDepth = useCallback(async (imageUrl: string) => {

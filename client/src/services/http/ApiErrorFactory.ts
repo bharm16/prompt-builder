@@ -4,11 +4,12 @@ interface CreateErrorOptions {
   message: string;
   status?: number | null;
   response?: unknown;
+  code?: string | undefined;
 }
 
 export class ApiErrorFactory {
-  create({ message, status = null, response = null }: CreateErrorOptions): ApiError {
-    return new ApiError(message, status ?? undefined, response);
+  create({ message, status = null, response = null, code }: CreateErrorOptions): ApiError {
+    return new ApiError(message, status ?? undefined, response, code);
   }
 
   createTimeout(message: string = 'Request timeout'): ApiError {

@@ -1,7 +1,17 @@
 import CircuitBreaker from 'opossum';
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
 import type { IAIClient, AIResponse, MessageContent } from '@interfaces/IAIClient';
+
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface LLMMetricsCollector {
+  updateCircuitBreakerState?(circuit: string, state: 'closed' | 'open' | 'half-open'): void;
+  recordClaudeAPICall(endpoint: string, duration: number, success: boolean): void;
+}
+
+const NULL_METRICS: LLMMetricsCollector = {
+  updateCircuitBreakerState() {},
+  recordClaudeAPICall() {},
+};
 
 /**
  * Custom error classes for better error handling
@@ -106,6 +116,7 @@ interface LLMClientConfig {
   defaultTimeout?: number;
   circuitBreakerConfig?: CircuitBreakerConfig;
   concurrencyLimiter?: ConcurrencyLimiter | null;
+  metricsService?: LLMMetricsCollector;
 }
 
 interface HealthCheckResult {
@@ -128,6 +139,7 @@ export class LLMClient implements IAIClient {
   private defaultModel: string;
   private defaultTimeout: number;
   private concurrencyLimiter: ConcurrencyLimiter | null;
+  private readonly metrics: LLMMetricsCollector;
   public readonly capabilities: NonNullable<IAIClient['capabilities']>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private breaker: CircuitBreaker<any, AIResponse>;
@@ -139,6 +151,7 @@ export class LLMClient implements IAIClient {
     defaultTimeout = 60000,
     circuitBreakerConfig = {},
     concurrencyLimiter = null,
+    metricsService,
   }: LLMClientConfig) {
     if (!adapter || typeof adapter.complete !== 'function') {
       throw new Error('LLMClient requires an adapter with a complete() method');
@@ -149,6 +162,7 @@ export class LLMClient implements IAIClient {
     this.defaultModel = defaultModel;
     this.defaultTimeout = defaultTimeout;
     this.concurrencyLimiter = concurrencyLimiter;
+    this.metrics = metricsService ?? NULL_METRICS;
     const streaming = adapter.capabilities?.streaming ?? typeof adapter.streamComplete === 'function';
     this.capabilities = { streaming };
 
@@ -184,21 +198,21 @@ export class LLMClient implements IAIClient {
     // Circuit breaker event handlers
     this.breaker.on('open', () => {
       logger.error('Circuit breaker opened; API failing.', undefined, { provider: this.providerName });
-      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'open');
+      this.metrics.updateCircuitBreakerState?.(`${this.providerName}-api`, 'open');
     });
 
     this.breaker.on('halfOpen', () => {
       logger.warn('Circuit breaker half-open; testing API.', { provider: this.providerName });
-      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'half-open');
+      this.metrics.updateCircuitBreakerState?.(`${this.providerName}-api`, 'half-open');
     });
 
     this.breaker.on('close', () => {
       logger.info('Circuit breaker closed; API healthy.', { provider: this.providerName });
-      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'closed');
+      this.metrics.updateCircuitBreakerState?.(`${this.providerName}-api`, 'closed');
     });
 
     // Initially set circuit breaker state to closed
-    metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'closed');
+    this.metrics.updateCircuitBreakerState?.(`${this.providerName}-api`, 'closed');
   }
 
   /**
@@ -229,7 +243,7 @@ export class LLMClient implements IAIClient {
       const duration = Date.now() - startTime;
 
       // Record successful API call
-      metricsService.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, true);
+      this.metrics.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, true);
       logger.debug('API call succeeded.', {
         endpoint,
         duration,
@@ -242,7 +256,7 @@ export class LLMClient implements IAIClient {
       const duration = Date.now() - startTime;
 
       // Record failed API call
-      metricsService.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, false);
+      this.metrics.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, false);
 
       const errorObj = error as Error & { code?: string };
 
@@ -303,7 +317,7 @@ export class LLMClient implements IAIClient {
         : await executeStream();
     } catch (error) {
       const duration = Date.now() - startTime;
-      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, false);
+      this.metrics.recordClaudeAPICall(`${this.providerName}-stream`, duration, false);
 
       const errorObj = error as Error & { code?: string };
 
@@ -341,7 +355,7 @@ export class LLMClient implements IAIClient {
       fullText = await this.adapter.streamComplete(systemPrompt, streamOptions);
 
       const duration = Date.now() - startTime;
-      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, true);
+      this.metrics.recordClaudeAPICall(`${this.providerName}-stream`, duration, true);
 
       logger.debug('Streaming completed.', {
         duration,

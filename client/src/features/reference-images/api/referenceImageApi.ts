@@ -1,5 +1,6 @@
 import { API_CONFIG } from '@/config/api.config';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import { ReferenceImageListSchema, ReferenceImageSchema } from './schemas';
 
 export interface ReferenceImage {
   id: string;
@@ -8,14 +9,14 @@ export interface ReferenceImage {
   thumbnailUrl: string;
   storagePath: string;
   thumbnailPath: string;
-  label?: string | null;
+  label?: string | null | undefined;
   metadata: {
     width: number;
     height: number;
     sizeBytes: number;
     contentType: string;
-    source?: string | null;
-    originalName?: string | null;
+    source?: string | null | undefined;
+    originalName?: string | null | undefined;
   };
   createdAt: string;
   updatedAt: string;
@@ -23,13 +24,14 @@ export interface ReferenceImage {
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const authHeaders = await buildFirebaseAuthHeaders();
-  const headers: Record<string, string> = {
-    ...authHeaders,
-    ...(options.headers || {}),
-  };
-
+  const headers = new Headers(options.headers ?? {});
+  Object.entries(authHeaders).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      headers.set(key, value);
+    }
+  });
   if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+    headers.set('Content-Type', 'application/json');
   }
 
   const response = await fetch(`${API_CONFIG.baseURL}/reference-images${endpoint}`, {
@@ -59,8 +61,12 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 export const referenceImageApi = {
   async list(limit?: number): Promise<ReferenceImage[]> {
     const query = Number.isFinite(limit) ? `?limit=${limit}` : '';
-    const payload = await fetchWithAuth(query ? `/${query}` : '/');
-    return (payload?.images || []) as ReferenceImage[];
+    const payload = await fetchWithAuth(query);
+    const parsed = ReferenceImageListSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new Error('Invalid reference image list response');
+    }
+    return parsed.data.images;
   },
 
   async upload(
@@ -81,7 +87,7 @@ export const referenceImageApi = {
       body: formData,
     });
 
-    return payload as unknown as ReferenceImage;
+    return ReferenceImageSchema.parse(payload);
   },
 
   async uploadFromUrl(
@@ -96,7 +102,7 @@ export const referenceImageApi = {
         ...(options.source ? { source: options.source } : {}),
       }),
     });
-    return payload as unknown as ReferenceImage;
+    return ReferenceImageSchema.parse(payload);
   },
 
   async delete(imageId: string): Promise<void> {

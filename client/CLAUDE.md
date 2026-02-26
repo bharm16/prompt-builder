@@ -2,10 +2,13 @@
 
 React 18 + Vite frontend for the Vidra video prompt editor.
 
+Commit protocol, TypeScript rules, and change scope limits are defined in the root `CLAUDE.md` — all rules apply here.
+Root `AGENTS.md` rules apply here — especially the non-negotiable rules and commit protocol.
+
 ## Stack
 
 - React 18 + Vite
-- Tailwind CSS + DaisyUI
+- Tailwind CSS + DaisyUI + Radix UI primitives
 - TypeScript/JavaScript mix (migration in progress)
 - Lucide React for icons
 
@@ -37,7 +40,7 @@ FeatureName/
 ├── hooks/
 │   └── useFeatureState.ts # useReducer for state management
 ├── api/
-│   └── featureApi.ts      # All fetch calls
+│   └── featureApi.ts      # All fetch calls (Zod-validated)
 ├── components/
 │   └── SubComponent.tsx   # UI pieces (~200 lines max, heuristic)
 └── config/
@@ -56,70 +59,24 @@ FeatureName/
 ### State Management
 
 - Use `useReducer` for complex state (not multiple `useState`)
-- Discriminated union types for actions:
-  ```typescript
-  type Action =
-    | { type: 'SET_LOADING'; loading: boolean }
-    | { type: 'SET_DATA'; data: Data }
-    | { type: 'SET_ERROR'; error: string };
-  ```
+- Discriminated union types for reducer actions
 
 ### API Calls
 
-- All API calls go in `api/` or feature-specific `api/` folders
-- Never fetch inline in components
+- All API calls go in `api/` or feature-specific `api/` folders — never fetch inline in components
 - Use Zod to validate API responses
+- Feature `api/` directories transform server DTOs into client-friendly shapes (anti-corruption layer)
+
+### Frontend-Backend Boundary
+
+- **NEVER** import from `server/src/` — only from `@shared/*`, `#shared/*`, or client-local code
+- Shared types live in `shared/` — client-only types go in the feature's `types/` directory
+- If a UI change seems to require a `shared/` type change, stop and ask whether a client-side display type would suffice
+- For genuine cross-layer changes: see `.claude/skills/cross-layer-change/SKILL.md`
 
 ### Styling
 
 - Tailwind CSS for all styling
 - DaisyUI components for UI primitives
-- Reuse existing component patterns before creating new ones
-- Check `client/src/components/` for existing shared components
-
-### TypeScript
-
-- Prefer TypeScript for new files
-- Avoid `any` - use `unknown` with type guards
-- Define types in `types/` or co-located with feature
-- Use Zod schemas at API boundaries
-
-## Common Patterns
-
-### Custom Hook with Reducer
-
-```typescript
-// hooks/useFeatureState.ts
-type State = { /* ... */ };
-type Action = { type: 'ACTION_NAME'; payload: /* ... */ };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'ACTION_NAME':
-      return { ...state, /* ... */ };
-    default:
-      return state;
-  }
-}
-
-export function useFeatureState() {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  // ... derived state, handlers
-  return { state, dispatch, /* handlers */ };
-}
-```
-
-### API Function
-
-```typescript
-// api/featureApi.ts
-import { z } from 'zod';
-
-const ResponseSchema = z.object({ /* ... */ });
-
-export async function fetchFeatureData(id: string): Promise<FeatureData> {
-  const response = await fetch(`/api/feature/${id}`);
-  const data = await response.json();
-  return ResponseSchema.parse(data);
-}
-```
+- Radix UI for accessible primitives (dialogs, popovers, tooltips)
+- Check `client/src/components/` for existing shared components before creating new ones

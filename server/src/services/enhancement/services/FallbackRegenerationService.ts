@@ -126,7 +126,7 @@ export class FallbackRegenerationService {
           temperature,
           isPlaceholder,
           isVideoPrompt,
-          lockedSpanCategories,
+          ...(lockedSpanCategories !== undefined ? { lockedSpanCategories } : {}),
         });
 
         if (result.suggestions.length > 0) {

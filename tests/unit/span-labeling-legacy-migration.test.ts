@@ -244,7 +244,7 @@ describe('chunkingUtils', () => {
     const sentences = chunker.splitIntoSentences(text);
     expect(sentences).toEqual([
       { text: 'Hello world.', startOffset: 0, endOffset: 12 },
-      { text: 'Second sentence.', startOffset: 12, endOffset: 29 },
+      { text: 'Second sentence.', startOffset: 13, endOffset: 29 },
     ]);
 
     const chunks = chunker.chunkText(text);

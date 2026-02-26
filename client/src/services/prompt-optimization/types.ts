@@ -12,6 +12,7 @@ export interface OptimizeOptions {
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   signal?: AbortSignal;
 }
@@ -60,6 +61,7 @@ export interface StreamWithFetchOptions {
   onError: (error: Error) => void;
   onComplete?: () => void;
   signal?: AbortSignal;
+  maxStreamDurationMs?: number;
 }
 
 export interface OfflineResult {

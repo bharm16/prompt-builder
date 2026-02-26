@@ -58,7 +58,7 @@ export function CollapsibleDrawer({
     return position === 'left'
       ? `translateX(calc(-1 * ${delta}))`
       : `translateX(calc(${delta}))`;
-  }, [collapsedHeight, collapsedWidth, drawerHeight, drawerWidth, isBottom, position]);
+  }, [collapsedWidth, drawerWidth, isBottom, position]);
 
   const wrapperStyle = useMemo(() => {
     if (isBottom) {
@@ -124,10 +124,10 @@ export function CollapsibleDrawer({
           ref={panelRef}
           className={cn(
             'relative flex overflow-hidden transition-transform duration-200 ease-out',
-            // Only add background/border when not in bottom collapsed state (let children handle it)
-            isBottom && !isOpen ? 'bg-transparent' : 'bg-surface-2 border border-border',
+            // Bottom drawers own their chrome inside children; avoid an extra boxed wrapper.
+            isBottom ? 'bg-transparent border-0' : 'bg-surface-2 border border-border',
             isBottom ? 'h-full w-full flex-row' : 'h-full flex-col',
-            isOpen && 'shadow-lg'
+            isOpen && !isBottom && 'shadow-lg'
           )}
           style={{
             width: isBottom ? '100%' : drawerWidth,

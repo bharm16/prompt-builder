@@ -2,10 +2,10 @@
  * Storage configuration for GCS
  */
 
-const bucketName = process.env.GCS_BUCKET_NAME?.trim();
-if (!bucketName) {
-  throw new Error('Missing required env var: GCS_BUCKET_NAME');
-}
+import { resolveBucketName } from '@config/storageBucket';
+import { SIGNED_URL_TTL_MS } from '@config/signedUrlPolicy';
+
+const bucketName = resolveBucketName();
 
 export const STORAGE_CONFIG = {
   bucketName,
@@ -15,9 +15,9 @@ export const STORAGE_CONFIG = {
     generation: 'users/{userId}/generations/{timestamp}-{hash}.mp4',
   },
   urlExpiration: {
-    upload: 15 * 60 * 1000,
-    view: 60 * 60 * 1000,
-    download: 24 * 60 * 60 * 1000,
+    upload: SIGNED_URL_TTL_MS.upload,
+    view: SIGNED_URL_TTL_MS.view,
+    download: SIGNED_URL_TTL_MS.download,
   },
   retention: {
     previewImage: 7,

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { PromptControlsRow } from '@features/prompt-optimizer/components/PromptControlsRow';
-import { usePromptState } from '@features/prompt-optimizer/context/PromptStateContext';
+import { usePromptConfig, usePromptServices } from '@features/prompt-optimizer/context/PromptStateContext';
 import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
 import { useModelRegistry } from '@features/prompt-optimizer/hooks/useModelRegistry';
 
@@ -21,7 +21,8 @@ vi.mock('@promptstudio/system/components/ui/select', () => ({
 }));
 
 vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptState: vi.fn(),
+  usePromptConfig: vi.fn(),
+  usePromptServices: vi.fn(),
 }));
 
 vi.mock('@features/prompt-optimizer/hooks/useCapabilities', () => ({
@@ -32,9 +33,31 @@ vi.mock('@features/prompt-optimizer/hooks/useModelRegistry', () => ({
   useModelRegistry: vi.fn(),
 }));
 
-const mockUsePromptState = vi.mocked(usePromptState);
+const mockUsePromptConfig = vi.mocked(usePromptConfig);
+const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUseCapabilities = vi.mocked(useCapabilities);
 const mockUseModelRegistry = vi.mocked(useModelRegistry);
+
+const createPromptConfigState = (
+  overrides: Partial<ReturnType<typeof usePromptConfig>> = {}
+): ReturnType<typeof usePromptConfig> => ({
+  modes: [],
+  selectedMode: 'video',
+  setSelectedMode: vi.fn(),
+  currentMode: {
+    id: 'video',
+    name: 'Video Prompt',
+    icon: undefined as never,
+    description: 'Generate AI video prompts',
+  },
+  selectedModel: '',
+  setSelectedModel: vi.fn(),
+  generationParams: {},
+  setGenerationParams: vi.fn(),
+  videoTier: 'render',
+  setVideoTier: vi.fn(),
+  ...overrides,
+});
 
 describe('PromptControlsRow', () => {
   beforeEach(() => {
@@ -46,18 +69,16 @@ describe('PromptControlsRow', () => {
       error: null,
       target: { provider: 'generic', model: 'auto', label: 'Auto' },
     });
+    mockUsePromptServices.mockReturnValue({
+      promptOptimizer: { isProcessing: false, isRefining: false },
+    } as ReturnType<typeof usePromptServices>);
   });
 
   describe('error handling', () => {
     it('returns null when not in video mode', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
         selectedMode: 'image',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
-        promptOptimizer: { isProcessing: false, isRefining: false },
-      } as ReturnType<typeof usePromptState>);
+      }));
 
       const { container } = render(<PromptControlsRow />);
 
@@ -67,14 +88,12 @@ describe('PromptControlsRow', () => {
 
   describe('edge cases', () => {
     it('disables the model selector when optimizing', () => {
-      mockUsePromptState.mockReturnValue({
-        selectedMode: 'video',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
+      mockUsePromptServices.mockReturnValue({
         promptOptimizer: { isProcessing: true, isRefining: false },
-      } as ReturnType<typeof usePromptState>);
+      } as ReturnType<typeof usePromptServices>);
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
+        selectedMode: 'video',
+      }));
 
       render(<PromptControlsRow />);
 
@@ -85,14 +104,9 @@ describe('PromptControlsRow', () => {
 
   describe('core behavior', () => {
     it('labels the model selector with Auto when no model is selected', () => {
-      mockUsePromptState.mockReturnValue({
+      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
         selectedMode: 'video',
-        selectedModel: '',
-        setSelectedModel: vi.fn(),
-        generationParams: {},
-        setGenerationParams: vi.fn(),
-        promptOptimizer: { isProcessing: false, isRefining: false },
-      } as ReturnType<typeof usePromptState>);
+      }));
 
       render(<PromptControlsRow />);
 

@@ -6,7 +6,7 @@
  *
  * Features:
  * - Request cancellation via SuggestionRequestManager
- * - 3-second timeout for requests
+ * - 8-second timeout for requests
  * - Proper error handling (no error-as-suggestion anti-pattern)
  */
 
@@ -40,7 +40,7 @@ interface UseCustomRequestReturn {
 /** Configuration for request manager (no debounce for custom requests) */
 const REQUEST_CONFIG = {
   debounceMs: 0, // No debounce - user explicitly clicked button
-  timeoutMs: 3000,
+  timeoutMs: 8000,
 };
 
 /**
@@ -48,7 +48,7 @@ const REQUEST_CONFIG = {
  * 
  * Features:
  * - Request cancellation on new request
- * - 3-second timeout
+ * - 8-second timeout
  * - Proper error handling via setError callback
  */
 export function useCustomRequest({
@@ -71,8 +71,9 @@ export function useCustomRequest({
 
   // Cleanup on unmount
   useEffect(() => {
+    const requestManager = requestManagerRef.current;
     return () => {
-      requestManagerRef.current.dispose();
+      requestManager.dispose();
     };
   }, []);
 
@@ -92,9 +93,23 @@ export function useCustomRequest({
     const startTime = performance.now();
     const operation = 'handleCustomRequest';
     logger.startTimer(operation);
-    
+
+    // Check client-side cache before making a network request
+    const cached = requestManagerRef.current.getCached<SuggestionItem[]>(trimmedRequest);
+    if (cached) {
+      if (setSuggestions && Array.isArray(cached)) {
+        setSuggestions(cached, undefined);
+      }
+      logger.info('Custom suggestions served from cache', {
+        hook: 'useCustomRequest',
+        operation,
+        suggestionCount: cached.length,
+      });
+      return;
+    }
+
     setIsCustomLoading(true);
-    
+
     // Clear any previous error
     if (setError) {
       setError('');

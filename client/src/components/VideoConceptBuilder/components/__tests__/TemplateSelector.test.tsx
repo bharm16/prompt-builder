@@ -21,7 +21,9 @@ describe('TemplateSelector', () => {
     it('shows a preview of the first two element values', () => {
       render(<TemplateSelector onLoadTemplate={vi.fn()} />);
 
-      const [firstTemplate] = Object.values(TEMPLATE_LIBRARY);
+      const firstTemplate = Object.values(TEMPLATE_LIBRARY)[0];
+      expect(firstTemplate).toBeDefined();
+      if (!firstTemplate) return;
       const preview = Object.values(firstTemplate.elements).slice(0, 2).join(' • ');
 
       expect(screen.getByText(preview)).toBeInTheDocument();
@@ -35,7 +37,10 @@ describe('TemplateSelector', () => {
 
       render(<TemplateSelector onLoadTemplate={onLoadTemplate} />);
 
-      const [firstKey, firstTemplate] = Object.entries(TEMPLATE_LIBRARY)[0];
+      const firstEntry = Object.entries(TEMPLATE_LIBRARY)[0];
+      expect(firstEntry).toBeDefined();
+      if (!firstEntry) return;
+      const [firstKey, firstTemplate] = firstEntry;
       await user.click(screen.getByText(firstTemplate.name));
 
       expect(onLoadTemplate).toHaveBeenCalledWith(firstKey);

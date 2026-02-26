@@ -15,13 +15,13 @@ describe('spanDataConversion', () => {
   });
 
   it('converts SpansData to SpanData and filters invalid spans', () => {
-    const spans: SpansData = {
+    const spans = {
       spans: [
         { start: 0, end: 2, category: 'style', confidence: 0.5 },
         { start: 0, end: 2, category: 'style' },
       ],
       meta: { source: 'test' },
-    };
+    } as unknown as SpansData;
 
     const result = convertSpansDataToSpanData(spans);
 

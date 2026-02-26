@@ -50,7 +50,7 @@ describe('useSettingsStorage', () => {
   });
 
   describe('edge cases', () => {
-    it('normalizes stored settings and forces darkMode off', () => {
+    it('normalizes stored settings from persisted values', () => {
       localStorage.getItem = vi.fn(() =>
         JSON.stringify({
           darkMode: true,
@@ -63,7 +63,7 @@ describe('useSettingsStorage', () => {
       const { result } = renderHook(() => useSettingsStorage());
 
       expect(result.current.settings).toEqual({
-        darkMode: false,
+        darkMode: true,
         fontSize: 'large',
         autoSave: false,
         exportFormat: 'json',

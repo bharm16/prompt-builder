@@ -4,7 +4,8 @@ import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User a
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { AuthShell } from './auth/AuthShell';
 
 function formatUserLabel(user: User): { title: string; subtitle: string } {
@@ -21,15 +22,8 @@ function formatUserLabel(user: User): { title: string; subtitle: string } {
 export function AccountPage(): React.ReactElement {
   const toast = useToast();
   const navigate = useNavigate();
-  const [user, setUser] = React.useState<User | null>(null);
   const [isBusy, setIsBusy] = React.useState(false);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
 
   const handleSignOut = async (): Promise<void> => {
     setIsBusy(true);

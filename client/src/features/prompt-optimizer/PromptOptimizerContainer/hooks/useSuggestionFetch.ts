@@ -27,11 +27,13 @@ import {
   prepareSpanContext,
   buildSpanFingerprint,
 } from '@features/span-highlighting/utils/spanProcessing';
+import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 import type { Toast } from '@hooks/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { useSuggestionApi } from './useSuggestionApi';
 import { useSuggestionCache } from './useSuggestionCache';
+import { mergeSuggestions } from '../utils/mergeSuggestions';
 import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 
 interface FetchPayload {
@@ -55,28 +57,11 @@ interface UseSuggestionFetchParams {
   stablePromptContext: PromptContext | null;
   toast: Toast;
   handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
-  i2vContext?: I2VContext | null;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 const log = logger.child('useSuggestionFetch');
-
-const mergeSuggestions = (
-  existing: SuggestionItem[],
-  incoming: SuggestionItem[]
-): SuggestionItem[] => {
-  const seen = new Set<string>();
-  const out: SuggestionItem[] = [];
-  const add = (suggestion: SuggestionItem): void => {
-    const key = (suggestion?.text || '').trim().toLowerCase();
-    if (!key) return;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push(suggestion);
-  };
-  existing.forEach(add);
-  incoming.forEach(add);
-  return out;
-};
+export { mergeSuggestions } from '../utils/mergeSuggestions';
 
 /**
  * Hook for fetching enhancement suggestions
@@ -99,6 +84,7 @@ export function useSuggestionFetch({
 }: UseSuggestionFetchParams): {
   fetchEnhancementSuggestions: (payload?: FetchPayload) => Promise<void>;
 } {
+  const displayedPrompt = promptOptimizer.displayedPrompt;
   const { buildCacheKey, getCachedSuggestions, setCachedSuggestions } = useSuggestionCache();
   const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } = useSuggestionApi({
     promptOptimizer,
@@ -149,14 +135,17 @@ export function useSuggestionFetch({
 
       const trimmedHighlight = (highlightedText || '').trim();
       const normalizedHighlight = trimmedHighlight.normalize('NFC');
-      const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
+      const rawPrompt = payloadPrompt ?? displayedPrompt ?? '';
       const normalizedPrompt = rawPrompt.normalize('NFC');
       const metadata: SuggestionsData['metadata'] = rawMetadata
         ? ({
             ...rawMetadata,
-            span: rawMetadata.span ? { ...rawMetadata.span } : undefined,
+            ...(rawMetadata.span ? { span: { ...rawMetadata.span } } : {}),
           } as SuggestionsData['metadata'])
         : null;
+      const normalizedLabeledSpans: HighlightSpan[] = Array.isArray(allLabeledSpans)
+        ? (allLabeledSpans as HighlightSpan[])
+        : [];
 
       // Early returns for invalid cases
       if (selectedMode !== 'video' || !trimmedHighlight) {
@@ -241,7 +230,7 @@ export function useSuggestionFetch({
           offsets: offsets ?? null,
           metadata: metadata ?? null,
           responseMetadata: cached.metadata ?? null,
-          allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+          allLabeledSpans: normalizedLabeledSpans,
           setSuggestions: updateSuggestions,
           onSuggestionClick: handleSuggestionClick,
           onClose: () => setSuggestionsData(null),
@@ -250,7 +239,9 @@ export function useSuggestionFetch({
       }
 
       // Retry function for error state - Requirement 3.3
-      const retryFn = () => fetchEnhancementSuggestions(payload);
+      const retryFn = () => {
+        void fetchEnhancementSuggestions(payload);
+      };
 
       // Schedule debounced request - Requirement 4.1, 4.2
       // NOTE: Loading state is shown AFTER debounce fires (inside scheduleRequest)
@@ -261,7 +252,7 @@ export function useSuggestionFetch({
           normalizedPrompt,
           suggestionContext,
           metadata,
-          allLabeledSpans,
+          allLabeledSpans: normalizedLabeledSpans,
           onRequestStart: () => {
             setSuggestionsData(() => ({
               show: true,
@@ -277,7 +268,7 @@ export function useSuggestionFetch({
               offsets: offsets ?? null,
               metadata: metadata ?? null,
               responseMetadata: null,
-              allLabeledSpans: Array.isArray(allLabeledSpans) ? allLabeledSpans : [],
+              allLabeledSpans: normalizedLabeledSpans,
               onRetry: retryFn,
               setSuggestions: updateSuggestions,
               onSuggestionClick: handleSuggestionClick,
@@ -333,7 +324,7 @@ export function useSuggestionFetch({
       cancelCurrentRequest,
       fetchSuggestions,
       getCachedSuggestions,
-      promptOptimizer,
+      displayedPrompt,
       selectedMode,
       setSuggestionsData,
       setCachedSuggestions,

@@ -6,7 +6,7 @@ import React, {
   useState,
   type ReactElement,
 } from 'react';
-import { Search } from '@promptstudio/system/components/ui';
+import { ArrowLeft, Search } from '@promptstudio/system/components/ui';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
 import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
@@ -26,9 +26,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@promptstudio/system/components/ui/tooltip';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { cn } from '@utils/cn';
 import { HistoryItem } from '@features/history/components/HistoryItem';
+import { useSidebarSessionsDomain } from '@/components/ToolSidebar/context';
 import { formatRelativeOrDate } from '@features/history/utils/historyDates';
 import {
   extractDisambiguator,
@@ -47,16 +48,18 @@ import {
 } from '@features/history/utils/historyMedia';
 
 const INITIAL_HISTORY_LIMIT = 5;
+const EMPTY_HISTORY: PromptHistoryEntry[] = [];
 
 interface SessionsPanelProps {
-  history: PromptHistoryEntry[];
-  filteredHistory: PromptHistoryEntry[];
-  isLoading: boolean;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  onLoadFromHistory: (entry: PromptHistoryEntry) => void;
-  onCreateNew: () => void;
-  onDelete: (id: string) => void;
+  history?: PromptHistoryEntry[];
+  filteredHistory?: PromptHistoryEntry[];
+  isLoading?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onBack?: (() => void) | undefined;
+  onLoadFromHistory?: (entry: PromptHistoryEntry) => void;
+  onCreateNew?: () => void;
+  onDelete?: (id: string) => void;
   onDuplicate?: (entry: PromptHistoryEntry) => void;
   onRename?: (entry: PromptHistoryEntry, title: string) => void;
   currentPromptUuid?: string | null;
@@ -65,21 +68,29 @@ interface SessionsPanelProps {
   activeModelLabel?: string;
 }
 
-export function SessionsPanel({
-  filteredHistory,
-  isLoading,
-  searchQuery,
-  onSearchChange,
-  onLoadFromHistory,
-  onCreateNew,
-  onDelete,
-  onDuplicate,
-  onRename,
-  currentPromptUuid,
-  currentPromptDocId,
-  activeStatusLabel,
-  activeModelLabel,
-}: SessionsPanelProps): ReactElement {
+const noop = (): void => {};
+const noopSearch = (_query: string): void => {};
+const noopLoad = (_entry: PromptHistoryEntry): void => {};
+const noopDelete = (_id: string): void => {};
+
+export function SessionsPanel(props: SessionsPanelProps): ReactElement {
+  const domain = useSidebarSessionsDomain();
+  const filteredHistory =
+    props.filteredHistory ?? domain?.filteredHistory ?? EMPTY_HISTORY;
+  const isLoading = props.isLoading ?? domain?.isLoadingHistory ?? false;
+  const searchQuery = props.searchQuery ?? domain?.searchQuery ?? '';
+  const onSearchChange = props.onSearchChange ?? domain?.onSearchChange ?? noopSearch;
+  const onBack = props.onBack;
+  const onLoadFromHistory = props.onLoadFromHistory ?? domain?.onLoadFromHistory ?? noopLoad;
+  const onCreateNew = props.onCreateNew ?? domain?.onCreateNew ?? noop;
+  const onDelete = props.onDelete ?? domain?.onDelete ?? noopDelete;
+  const onDuplicate = props.onDuplicate ?? domain?.onDuplicate;
+  const onRename = props.onRename ?? domain?.onRename;
+  const currentPromptUuid = props.currentPromptUuid ?? domain?.currentPromptUuid;
+  const currentPromptDocId = props.currentPromptDocId ?? domain?.currentPromptDocId;
+  const activeStatusLabel = props.activeStatusLabel ?? domain?.activeStatusLabel;
+  const activeModelLabel = props.activeModelLabel ?? domain?.activeModelLabel;
+
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = useState<boolean>(false);
   const [focusedEntryKey, setFocusedEntryKey] = useState<string | null>(null);
@@ -123,6 +134,32 @@ export function SessionsPanel({
     ? filteredByChips
     : filteredByChips.slice(0, INITIAL_HISTORY_LIMIT);
   const hasActiveFilters = filterState.videosOnly || filterState.recentOnly;
+  const uniqueDisplayedHistory = useMemo(() => {
+    const seenIds = new Set<string>();
+    const seenUuids = new Set<string>();
+
+    return displayedHistory.filter((entry) => {
+      const normalizedId =
+        typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : null;
+      const normalizedUuid =
+        typeof entry.uuid === 'string' && entry.uuid.trim() ? entry.uuid.trim() : null;
+
+      if (
+        (normalizedId && seenIds.has(normalizedId)) ||
+        (normalizedUuid && seenUuids.has(normalizedUuid))
+      ) {
+        return false;
+      }
+
+      if (normalizedId) {
+        seenIds.add(normalizedId);
+      }
+      if (normalizedUuid) {
+        seenUuids.add(normalizedUuid);
+      }
+      return true;
+    });
+  }, [displayedHistory]);
 
   const handleCopyPrompt = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
@@ -147,11 +184,11 @@ export function SessionsPanel({
 
   const handleOpenInNewTab = useCallback(
     (entry: PromptHistoryEntry): void => {
-      if (!entry.uuid) {
-        toast.warning('This prompt is not available in a new tab yet.');
+      if (!entry.id) {
+        toast.warning('This session is not available in a new tab yet.');
         return;
       }
-      window.open(`/prompt/${entry.uuid}`, '_blank', 'noopener,noreferrer');
+      window.open(`/session/${entry.id}`, '_blank', 'noopener,noreferrer');
     },
     [toast]
   );
@@ -172,14 +209,14 @@ export function SessionsPanel({
   }, [renameEntry, renameValue, onRename, toast]);
 
   const promptRows = useMemo(() => {
-    const baseTitles = displayedHistory.map((entry) =>
+    const baseTitles = uniqueDisplayedHistory.map((entry) =>
       normalizeTitle(resolveEntryTitle(entry))
     );
     const counts = new Map<string, number>();
     baseTitles.forEach((title) => counts.set(title, (counts.get(title) ?? 0) + 1));
     const seen = new Map<string, number>();
 
-    return displayedHistory.map((entry, index) => {
+    return uniqueDisplayedHistory.map((entry, index) => {
       const stage = resolveEntryStage(entry);
       const baseTitle = baseTitles[index] ?? 'Untitled';
       const hasDupes = (counts.get(baseTitle) ?? 0) > 1;
@@ -232,6 +269,8 @@ export function SessionsPanel({
       const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
       const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ''}-${title}`;
 
+      const thumbnail = resolveHistoryThumbnail(entry);
+
       return {
         entry,
         stage,
@@ -240,11 +279,13 @@ export function SessionsPanel({
         isSelected,
         processingLabel: effectiveProcessingLabel,
         key,
-        thumbnailUrl: resolveHistoryThumbnail(entry),
+        thumbnailUrl: thumbnail.url,
+        thumbnailStoragePath: thumbnail.storagePath ?? null,
+        thumbnailAssetId: thumbnail.assetId ?? null,
       };
     });
   }, [
-    displayedHistory,
+    uniqueDisplayedHistory,
     currentPromptUuid,
     currentPromptDocId,
     activeStatusLabel,
@@ -331,7 +372,17 @@ export function SessionsPanel({
     <>
       <div className="flex flex-col h-full">
         <div className="h-12 px-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">Sessions</h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="w-7 h-7 -ml-1 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+              onClick={onBack}
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <h2 className="text-sm font-semibold text-white">Sessions</h2>
+          </div>
           <TooltipProvider delayDuration={120}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -448,6 +499,8 @@ export function SessionsPanel({
                         processingLabel,
                         key,
                         thumbnailUrl,
+                        thumbnailStoragePath,
+                        thumbnailAssetId,
                       },
                       index
                     ) => {
@@ -469,6 +522,8 @@ export function SessionsPanel({
                           stage={stage}
                           processingLabel={processingLabel}
                           thumbnailUrl={thumbnailUrl}
+                          thumbnailStoragePath={thumbnailStoragePath}
+                          thumbnailAssetId={thumbnailAssetId}
                           onCopyPrompt={handleCopyPrompt}
                           onOpenInNewTab={handleOpenInNewTab}
                           dataIndex={index}

@@ -14,6 +14,7 @@ describe('HistoryThumbnail', () => {
 
       const img = screen.getByRole('img', { name: 'Example' });
       fireEvent.error(img);
+      fireEvent.error(img);
 
       expect(screen.queryByRole('img', { name: 'Example' })).toBeNull();
       expect(screen.getByText('E')).toBeInTheDocument();

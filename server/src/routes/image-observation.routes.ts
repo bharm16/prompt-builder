@@ -1,6 +1,15 @@
 import express, { type Router, type Request, type Response } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { ImageObservationService } from '@services/image-observation';
+
+const ImageObservationRequestSchema = z
+  .object({
+    image: z.string().min(1),
+    skipCache: z.boolean().optional(),
+    sourcePrompt: z.string().min(1).optional(),
+  })
+  .strip();
 
 export function createImageObservationRoutes(
   imageObservationService: ImageObservationService
@@ -10,21 +19,28 @@ export function createImageObservationRoutes(
   router.post(
     '/image/observe',
     asyncHandler(async (req: Request, res: Response) => {
-      const { image, skipCache } = (req.body || {}) as {
-        image?: unknown;
-        skipCache?: unknown;
-      };
-
-      if (typeof image !== 'string' || image.trim().length === 0) {
-        return res.status(400).json({ error: 'image must be a non-empty string' });
+      const parsed = ImageObservationRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid request',
+          details: parsed.error.issues,
+        });
       }
 
+      const { image, skipCache, sourcePrompt } = parsed.data;
       const result = await imageObservationService.observe({
         image,
-        skipCache: skipCache === true,
+        ...(skipCache ? { skipCache } : {}),
+        ...(sourcePrompt ? { sourcePrompt } : {}),
       });
 
-      return res.json(result);
+      const { success, ...rest } = result;
+      return res.json({
+        success,
+        data: rest,
+        ...rest,
+      });
     })
   );
 

@@ -20,6 +20,8 @@ export function useSpanSelectionEffects({
 }: UseSpanSelectionEffectsOptions): void {
   const prevPromptRef = useRef<string | null>(null);
   const swapTimeoutRef = useRef<number | null>(null);
+  const setStateRef = useRef(setState);
+  setStateRef.current = setState;
 
   const clearSwapTimeout = useCallback((): void => {
     if (swapTimeoutRef.current) {
@@ -34,14 +36,14 @@ export function useSpanSelectionEffects({
       prevPromptRef.current !== null &&
       prevPromptRef.current !== displayedPrompt
     ) {
-      setState({ lastSwapTime: Date.now() });
+      setStateRef.current({ lastSwapTime: Date.now() });
       clearSwapTimeout();
       swapTimeoutRef.current = window.setTimeout(() => {
-        setState({ lastSwapTime: null });
+        setStateRef.current({ lastSwapTime: null });
         swapTimeoutRef.current = null;
       }, 3000);
     }
-  }, [selectedSpanId, displayedPrompt, setState, clearSwapTimeout]);
+  }, [selectedSpanId, displayedPrompt, clearSwapTimeout]);
 
   useEffect(() => {
     if (!editorRef.current || !enableMLHighlighting) return;

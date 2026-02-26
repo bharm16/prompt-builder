@@ -14,8 +14,7 @@ describe('Design system config guardrails', () => {
 
     expect(source).toContain('presets: [promptStudioPreset]');
     expect(source).not.toContain('borderRadius:');
-    expect(source).not.toContain('boxShadow:');
+    expect(source).not.toMatch(/\n\s{6}boxShadow\s*:/);
     expect(source).not.toContain('daisyui');
   });
 });
-

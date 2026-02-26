@@ -1,4 +1,4 @@
-import type { VideoConceptService } from '@services/VideoConceptService';
+import type { VideoConceptService } from '@services/video-concept/VideoConceptService';
 
 export type VideoConceptServiceContract = Pick<
   VideoConceptService,

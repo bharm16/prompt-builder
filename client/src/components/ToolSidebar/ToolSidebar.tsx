@@ -1,4 +1,8 @@
-import type { ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@promptstudio/system/components/ui/sheet';
+import { FEATURES } from '@/config/features.config';
+import { dispatchPromptFocusIntent } from '@/features/prompt-optimizer/CanvasWorkspace/events';
+import type { PromptHistoryEntry } from '@/features/prompt-optimizer/types/domain/prompt-session';
 import { ToolRail } from './components/ToolRail';
 import { ToolPanel } from './components/ToolPanel';
 import { SessionsPanel } from './components/panels/SessionsPanel';
@@ -6,7 +10,16 @@ import { GenerationControlsPanel } from './components/panels/GenerationControlsP
 import { CharactersPanel } from './components/panels/CharactersPanel';
 import { StylesPanel } from './components/panels/StylesPanel';
 import { useToolSidebarState } from './hooks/useToolSidebarState';
-import type { ToolSidebarProps } from './types';
+import type { ToolPanelType, ToolSidebarProps } from './types';
+import {
+  SidebarDataContextProvider,
+  useSidebarData,
+  useSidebarAssetsDomain,
+  useSidebarGenerationDomain,
+  useSidebarPromptInteractionDomain,
+  useSidebarSessionsDomain,
+  useSidebarWorkspaceDomain,
+} from './context';
 
 /**
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
@@ -16,149 +29,196 @@ import type { ToolSidebarProps } from './types';
  * Requirement 16.1-16.4: Tool panel integration with Create and Studio tools
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
-  const {
-    user,
-    history,
-    filteredHistory,
-    isLoadingHistory,
-    searchQuery,
-    onSearchChange,
-    onLoadFromHistory,
-    onCreateNew,
-    onDelete,
-    onDuplicate,
-    onRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    prompt,
-    onPromptChange,
-    onOptimize,
-    showResults,
-    isProcessing,
-    isRefining,
-    genericOptimizedPrompt,
-    promptInputRef,
-    onCreateFromTrigger,
-    aspectRatio,
-    duration,
-    selectedModel,
-    onModelChange,
-    onAspectRatioChange,
-    onDurationChange,
-    onDraft,
-    onRender,
-    isDraftDisabled,
-    isRenderDisabled,
-    onImageUpload,
-    keyframes,
-    onAddKeyframe,
-    onRemoveKeyframe,
-    onClearKeyframes,
-    tier,
-    onTierChange,
-    onStoryboard,
-    activeDraftModel,
-    showMotionControls = false,
-    cameraMotion = null,
-    onCameraMotionChange,
-    subjectMotion = '',
-    onSubjectMotionChange,
-    assets,
-    assetsByType,
-    isLoadingAssets,
-    onInsertTrigger,
-    onEditAsset,
-    onCreateAsset,
-  } = props;
+  const { user } = props;
+  const hasDomainOverrides =
+    props.sessions !== undefined ||
+    props.promptInteraction !== undefined ||
+    props.generation !== undefined ||
+    props.assets !== undefined ||
+    props.workspace !== undefined;
+  const sidebarDataFromContext = useSidebarData();
+  const sessionsFromContext = useSidebarSessionsDomain();
+  const promptInteractionFromContext = useSidebarPromptInteractionDomain();
+  const generationFromContext = useSidebarGenerationDomain();
+  const assetsFromContext = useSidebarAssetsDomain();
+  const workspaceFromContext = useSidebarWorkspaceDomain();
+
+  const resolvedSessions = props.sessions ?? sessionsFromContext ?? sidebarDataFromContext?.sessions ?? null;
+  const resolvedPromptInteraction =
+    props.promptInteraction ??
+    promptInteractionFromContext ??
+    sidebarDataFromContext?.promptInteraction ??
+    null;
+  const resolvedGeneration =
+    props.generation ?? generationFromContext ?? sidebarDataFromContext?.generation ?? null;
+  const resolvedAssets = props.assets ?? assetsFromContext ?? sidebarDataFromContext?.assets ?? null;
+  const resolvedWorkspace =
+    props.workspace ?? workspaceFromContext ?? sidebarDataFromContext?.workspace ?? null;
+  const onSessionCreateNew = resolvedSessions?.onCreateNew;
+  const onSessionLoadFromHistory = resolvedSessions?.onLoadFromHistory;
+  const sidebarContextValue = useMemo(
+    () => ({
+      sessions: resolvedSessions,
+      promptInteraction: resolvedPromptInteraction,
+      generation: resolvedGeneration,
+      assets: resolvedAssets,
+      workspace: resolvedWorkspace,
+    }),
+    [
+      resolvedAssets,
+      resolvedGeneration,
+      resolvedPromptInteraction,
+      resolvedSessions,
+      resolvedWorkspace,
+    ]
+  );
 
   const { activePanel, setActivePanel } = useToolSidebarState('studio');
+  const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
+  const activePanelRef = useRef(activePanel);
+  useEffect(() => {
+    activePanelRef.current = activePanel;
+  }, [activePanel]);
 
-  const characterAssets = assetsByType.character ?? assets.filter((asset) => asset.type === 'character');
+  const handlePanelChange = useCallback(
+    (panel: ToolPanelType): void => {
+      const previousPanel = activePanelRef.current;
+      setActivePanel(panel);
 
-  return (
+      if (isCanvasFirstLayout && panel === 'studio' && previousPanel !== 'studio') {
+        dispatchPromptFocusIntent({ source: 'tool-rail' });
+      }
+    },
+    [isCanvasFirstLayout, setActivePanel]
+  );
+  const handleSheetOpenChange = useCallback(
+    (open: boolean): void => {
+      if (!open) {
+        setActivePanel('studio');
+      }
+    },
+    [setActivePanel]
+  );
+  const handleSessionsBack = useCallback((): void => {
+    setActivePanel('studio');
+  }, [setActivePanel]);
+  const handleStudioBack = useCallback((): void => {
+    setActivePanel('sessions');
+  }, [setActivePanel]);
+  const handleSessionsActionComplete = useCallback((): void => {
+    setActivePanel('studio');
+    if (isCanvasFirstLayout) {
+      dispatchPromptFocusIntent({ source: 'tool-rail' });
+    }
+  }, [isCanvasFirstLayout, setActivePanel]);
+  const handleSessionCreateNew = useCallback((): void => {
+    onSessionCreateNew?.();
+    handleSessionsActionComplete();
+  }, [handleSessionsActionComplete, onSessionCreateNew]);
+  const handleSessionLoad = useCallback(
+    (entry: PromptHistoryEntry): void => {
+      onSessionLoadFromHistory?.(entry);
+      handleSessionsActionComplete();
+    },
+    [handleSessionsActionComplete, onSessionLoadFromHistory]
+  );
+
+  const renderPanelContent = (panel: ToolPanelType): ReactElement | null => {
+    if (panel === 'sessions') {
+      return (
+        <SessionsPanel
+          onBack={handleSessionsBack}
+          onCreateNew={handleSessionCreateNew}
+          onLoadFromHistory={handleSessionLoad}
+        />
+      );
+    }
+
+    if (panel === 'studio') {
+      return <GenerationControlsPanel onBack={handleStudioBack} />;
+    }
+
+    if (panel === 'characters') {
+      return <CharactersPanel />;
+    }
+
+    if (panel === 'styles') {
+      return <StylesPanel />;
+    }
+
+    if (panel === 'apps') {
+      return (
+        <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+          <div className="text-sm font-semibold text-[#8B92A5]">Apps</div>
+          <div className="mt-2 text-xs text-[#555B6E]">
+            Third-party integrations coming soon.
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const isSheetPanelActive = activePanel !== 'studio';
+  const sheetTitle = useMemo((): string => {
+    switch (activePanel) {
+      case 'sessions':
+        return 'Sessions';
+      case 'characters':
+        return 'Characters';
+      case 'styles':
+        return 'Styles';
+      case 'apps':
+        return 'Apps';
+      case 'studio':
+      default:
+        return 'Studio';
+    }
+  }, [activePanel]);
+  const sidebarContent = (
     <div className="flex h-full">
       <ToolRail
         activePanel={activePanel}
-        onPanelChange={setActivePanel}
+        onPanelChange={handlePanelChange}
         user={user}
-        onCreateNew={onCreateNew}
       />
-      <ToolPanel activePanel={activePanel}>
-        {activePanel === 'sessions' && (
-          <SessionsPanel
-            history={history}
-            filteredHistory={filteredHistory}
-            isLoading={isLoadingHistory}
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-            onLoadFromHistory={onLoadFromHistory}
-            onCreateNew={onCreateNew}
-            onDelete={onDelete}
-            {...(typeof onDuplicate === 'function' ? { onDuplicate } : {})}
-            {...(typeof onRename === 'function' ? { onRename } : {})}
-            {...(currentPromptUuid !== undefined ? { currentPromptUuid } : {})}
-            {...(currentPromptDocId !== undefined ? { currentPromptDocId } : {})}
-            {...(typeof activeStatusLabel === 'string' ? { activeStatusLabel } : {})}
-            {...(typeof activeModelLabel === 'string' ? { activeModelLabel } : {})}
-          />
-        )}
-
-        {(activePanel === 'studio' || activePanel === 'create') && (
-          <GenerationControlsPanel
-            prompt={prompt}
-            {...(typeof onPromptChange === 'function' ? { onPromptChange } : {})}
-            {...(typeof onOptimize === 'function' ? { onOptimize } : {})}
-            {...(typeof showResults === 'boolean' ? { showResults } : {})}
-            {...(typeof isProcessing === 'boolean' ? { isProcessing } : {})}
-            {...(typeof isRefining === 'boolean' ? { isRefining } : {})}
-            genericOptimizedPrompt={genericOptimizedPrompt ?? null}
-            {...(promptInputRef ? { promptInputRef } : {})}
-            {...(typeof onCreateFromTrigger === 'function' ? { onCreateFromTrigger } : {})}
-            aspectRatio={aspectRatio}
-            duration={duration}
-            selectedModel={selectedModel}
-            onModelChange={onModelChange}
-            onAspectRatioChange={onAspectRatioChange}
-            onDurationChange={onDurationChange}
-            onDraft={onDraft}
-            onRender={onRender}
-            isDraftDisabled={isDraftDisabled}
-            isRenderDisabled={isRenderDisabled}
-            {...(typeof onImageUpload === 'function' ? { onImageUpload } : {})}
-            keyframes={keyframes}
-            onAddKeyframe={onAddKeyframe}
-            onRemoveKeyframe={onRemoveKeyframe}
-            {...(typeof onClearKeyframes === 'function' ? { onClearKeyframes } : {})}
-            tier={tier}
-            onTierChange={onTierChange}
-            onStoryboard={onStoryboard}
-            {...(activeDraftModel !== undefined ? { activeDraftModel } : {})}
-            showMotionControls={showMotionControls}
-            cameraMotion={cameraMotion}
-            {...(typeof onCameraMotionChange === 'function' ? { onCameraMotionChange } : {})}
-            subjectMotion={subjectMotion}
-            {...(typeof onSubjectMotionChange === 'function' ? { onSubjectMotionChange } : {})}
-            assets={assets}
-            onInsertTrigger={onInsertTrigger}
-            onBack={() => setActivePanel('sessions')}
-          />
-        )}
-
-        {activePanel === 'characters' && (
-          <CharactersPanel
-            assets={assets}
-            characterAssets={characterAssets}
-            isLoading={isLoadingAssets}
-            onInsertTrigger={onInsertTrigger}
-            onEditAsset={onEditAsset}
-            onCreateAsset={onCreateAsset}
-          />
-        )}
-
-        {activePanel === 'styles' && <StylesPanel />}
-      </ToolPanel>
+      {isCanvasFirstLayout ? (
+        isSheetPanelActive ? (
+          <Sheet
+            modal={false}
+            open={true}
+            onOpenChange={handleSheetOpenChange}
+          >
+            <SheetContent
+              side="left"
+              className="w-[400px] border-l border-r border-[#1A1C22] bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
+            >
+              <SheetTitle className="sr-only">{sheetTitle} panel</SheetTitle>
+              <SheetDescription className="sr-only">
+                Tool sidebar panel content.
+              </SheetDescription>
+              <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
+                {renderPanelContent(activePanel)}
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : null
+      ) : (
+        <ToolPanel activePanel={activePanel}>
+          {renderPanelContent(activePanel)}
+        </ToolPanel>
+      )}
     </div>
   );
+
+  if (hasDomainOverrides) {
+    return (
+      <SidebarDataContextProvider value={sidebarContextValue}>
+        {sidebarContent}
+      </SidebarDataContextProvider>
+    );
+  }
+
+  return sidebarContent;
 }

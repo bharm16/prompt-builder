@@ -1,6 +1,7 @@
 /**
  * SuggestionRequestManager - Manages request lifecycle for AI suggestions.
- * Handles cancellation, debouncing, and deduplication of suggestion requests.
+ * Handles cancellation, debouncing, deduplication, and client-side caching
+ * of suggestion requests.
  *
  * @module SuggestionRequestManager
  */
@@ -13,8 +14,20 @@ import { CancellationError } from './signalUtils';
 export interface RequestManagerConfig {
   /** Debounce delay in milliseconds. Default: 150 */
   debounceMs: number;
-  /** Request timeout in milliseconds. Default: 3000 */
+  /** Request timeout in milliseconds. Default: 8000 */
   timeoutMs: number;
+  /** Cache TTL in milliseconds. Default: 300000 (5 minutes). Set to 0 to disable caching. */
+  cacheTtlMs: number;
+  /** Maximum number of cached entries. Default: 50 */
+  cacheMaxSize: number;
+}
+
+/**
+ * A cached suggestion response with expiration metadata.
+ */
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
 }
 
 /**
@@ -33,7 +46,9 @@ interface RequestState {
 
 const DEFAULT_CONFIG: RequestManagerConfig = {
   debounceMs: 150,
-  timeoutMs: 3000,
+  timeoutMs: 8000,
+  cacheTtlMs: 300_000, // 5 minutes — matches server-side API_CONFIG.cache.suggestions.ttl
+  cacheMaxSize: 50,
 };
 
 /**
@@ -61,6 +76,8 @@ const DEFAULT_CONFIG: RequestManagerConfig = {
 export class SuggestionRequestManager {
   private state: RequestState;
   private config: RequestManagerConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private cache: Map<string, CacheEntry<any>> = new Map();
 
   constructor(config?: Partial<RequestManagerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -70,6 +87,51 @@ export class SuggestionRequestManager {
       debounceTimer: null,
       pendingReject: null,
     };
+  }
+
+  /**
+   * Check the client-side cache for a previously fetched result.
+   * Returns the cached value if present and not expired, otherwise undefined.
+   */
+  getCached<T>(dedupKey: string): T | undefined {
+    if (this.config.cacheTtlMs <= 0) return undefined;
+
+    const entry = this.cache.get(dedupKey) as CacheEntry<T> | undefined;
+    if (!entry) return undefined;
+
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(dedupKey);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  /**
+   * Store a result in the client-side cache.
+   * Evicts the oldest entry when the cache exceeds maxSize.
+   */
+  private setCached<T>(dedupKey: string, value: T): void {
+    if (this.config.cacheTtlMs <= 0) return;
+
+    // Evict oldest entry if at capacity (Map iteration order = insertion order)
+    if (this.cache.size >= this.config.cacheMaxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(dedupKey, {
+      value,
+      expiresAt: Date.now() + this.config.cacheTtlMs,
+    });
+  }
+
+  /**
+   * Clear all cached entries.
+   */
+  clearCache(): void {
+    this.cache.clear();
   }
 
   /**
@@ -145,6 +207,9 @@ export class SuggestionRequestManager {
             return;
           }
 
+          // Cache the successful result
+          this.setCached(dedupKey, result);
+
           // Clear state on success
           this.clearRequestState(dedupKey);
           resolve(result);
@@ -175,10 +240,11 @@ export class SuggestionRequestManager {
   }
 
   /**
-   * Cleanup on unmount - cancels everything.
+   * Cleanup on unmount - cancels everything and clears the cache.
    */
   dispose(): void {
     this.cancelCurrentRequest();
+    this.clearCache();
   }
 
   /**

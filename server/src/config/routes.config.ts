@@ -12,33 +12,127 @@
 import type { Application, Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
+import { getFirestore } from '@infrastructure/firebaseAdmin';
 
 // Import middleware
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { errorHandler } from '@middleware/errorHandler';
 import { createBatchMiddleware } from '@middleware/requestBatching';
+import { createStarterCreditsMiddleware } from '@middleware/starterCredits';
+import { createFirestoreWriteGateMiddleware } from '@middleware/firestoreWriteGate';
 
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
 import { createHealthRoutes } from '@routes/health.routes';
+import { createOpenApiDevRoute } from '../openapi/devRoute.ts';
 import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
+import type { StorageRoutesService } from '@routes/storage.routes';
 import { createSuggestionsRoute } from '@routes/suggestions';
-import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
+import { createPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
+import type { PaymentRouteServices } from '@routes/payment/types';
 import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
 import { createMotionRoutes } from '@routes/motion.routes';
-import { userCreditService } from '@services/credits/UserCreditService';
+import { CAMERA_PATHS } from '@services/convergence/constants';
+import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
+import type { GCSStorageService } from '@services/convergence/storage';
+import type { VideoConceptServiceContract } from '@routes/video/types';
+import type { UserCreditService } from '@services/credits/UserCreditService';
+import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
+import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
+import type { PreviewRoutesServices } from '@routes/types';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
+import { getRuntimeFlags } from './runtime-flags';
+
+type RequestWithId = Request & {
+  id?: string;
+};
+
+function resolveOptionalService<T>(
+  container: DIContainer,
+  serviceName: string,
+  routeContext: string
+): T | null {
+  try {
+    return container.resolve<T>(serviceName);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.warn('Optional route dependency unavailable; route behavior will be degraded', {
+      serviceName,
+      routeContext,
+      error: errorMessage,
+    });
+    return null;
+  }
+}
 
 /**
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
-  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const { promptOutputOnly } = getRuntimeFlags();
+  const firestoreCircuitExecutor = container.resolve<FirestoreCircuitExecutor>('firestoreCircuitExecutor');
+  const convergenceStorageService = promptOutputOnly
+    ? null
+    : resolveOptionalService<GCSStorageService | null>(
+        container,
+        'convergenceStorageService',
+        'convergence-storage'
+      );
+  const userCreditService = container.resolve<UserCreditService>('userCreditService');
+  const videoGenerationService = promptOutputOnly
+    ? null
+    : resolveOptionalService<PreviewRoutesServices['videoGenerationService']>(
+        container,
+        'videoGenerationService',
+        'preview'
+      );
+  const continuitySessionService = resolveOptionalService<ContinuitySessionService | null>(
+    container,
+    'continuitySessionService',
+    'continuity'
+  );
+  const modelIntelligenceService = resolveOptionalService<ModelIntelligenceService | null>(
+    container,
+    'modelIntelligenceService',
+    'model-intelligence'
+  );
+  const consistentVideoService: ConsistentVideoService | null =
+    promptOutputOnly || !videoGenerationService
+      ? null
+      : resolveOptionalService<ConsistentVideoService | null>(
+          container,
+          'consistentVideoService',
+          'consistent-generation'
+        );
+  const videoConceptService: VideoConceptServiceContract | null = promptOutputOnly
+    ? null
+    : resolveOptionalService<VideoConceptServiceContract | null>(
+        container,
+        'videoConceptService',
+        'video-concept'
+      );
+  const starterCreditsMiddleware = createStarterCreditsMiddleware(userCreditService);
 
   // ============================================================================
   // Health Routes (no auth required)
   // ============================================================================
+
+  // Resolve worker instances for health status reporting (workers may be null when
+  // disabled by config or when running in the api process role).
+  type StatusProvider = { getStatus(): { running: boolean; lastRunAt: Date | null; consecutiveFailures: number } };
+  const workerEntries: [string, StatusProvider | null][] = [
+    ['creditRefundSweeper', resolveOptionalService<StatusProvider | null>(container, 'creditRefundSweeper', 'health-workers')],
+    ['videoJobWorker', resolveOptionalService<StatusProvider | null>(container, 'videoJobWorker', 'health-workers')],
+    ['dlqReprocessorWorker', resolveOptionalService<StatusProvider | null>(container, 'dlqReprocessorWorker', 'health-workers')],
+  ];
+  const workers: Record<string, StatusProvider> = {};
+  for (const [name, provider] of workerEntries) {
+    if (provider) workers[name] = provider;
+  }
 
   const healthRoutes = createHealthRoutes({
     claudeClient: container.resolve('claudeClient'),
@@ -46,23 +140,33 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     geminiClient: container.resolve('geminiClient'),
     cacheService: container.resolve('cacheService'),
     metricsService: container.resolve('metricsService'),
+    firestoreCircuitExecutor,
+    checkFirestore: async () => {
+      await firestoreCircuitExecutor.executeRead('health.ready.firestoreProbe', async () => {
+        await getFirestore().listCollections();
+      });
+    },
+    workers,
   });
 
   app.use('/', healthRoutes);
 
-  // ============================================================================
-  // Public Preview Routes (no auth required for video content)
-  // ============================================================================
+  // OpenAPI spec (dev only — returns null in production, not mounted)
+  const openApiRoute = createOpenApiDevRoute();
+  if (openApiRoute) {
+    app.use('/api-docs', openApiRoute);
+  }
+
+  // Firestore write gate: fail-closed for all mutating /api routes.
+  app.use('/api', createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));
 
   if (!promptOutputOnly) {
-    const publicPreviewRoutes = createPublicPreviewRoutes({
-      videoGenerationService: container.resolve('videoGenerationService'),
-      videoContentAccessService: container.resolve('videoContentAccessService'),
-    });
-    app.use('/api/preview', publicPreviewRoutes);
-
-    const motionMediaRoutes = createConvergenceMediaRoutes();
-    app.use('/api/motion/media', motionMediaRoutes);
+    if (convergenceStorageService) {
+      const motionMediaRoutes = createConvergenceMediaRoutes(() => convergenceStorageService);
+      app.use('/api/motion/media', motionMediaRoutes);
+    } else {
+      logger.warn('Convergence media routes disabled: storage service unavailable');
+    }
   }
 
   // ============================================================================
@@ -75,12 +179,17 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
     promptCoherenceService: container.resolve('promptCoherenceService'),
-    videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
+    storageService: container.resolve<StorageRoutesService>('storageService'),
+    videoConceptService,
     assetService: container.resolve('assetService'),
-    consistentVideoService: container.resolve('consistentVideoService'),
+    ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService: container.resolve('userCreditService'),
     referenceImageService: container.resolve('referenceImageService'),
     imageObservationService: container.resolve('imageObservationService'),
+    continuitySessionService,
+    sessionService: container.resolve('sessionService'),
+    modelIntelligenceService,
+    modelIntelligenceMetrics: container.resolve('metricsService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
@@ -90,7 +199,18 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   if (!promptOutputOnly) {
-    const motionRoutes = createMotionRoutes();
+    const motionRoutes = createMotionRoutes({
+      cameraPaths: CAMERA_PATHS,
+      createDepthEstimationServiceForUser,
+      getDepthWarmupStatus,
+      getStartupWarmupPromise,
+      getStorageService: () => {
+        if (!convergenceStorageService) {
+          throw new Error('Convergence storage service is not available');
+        }
+        return convergenceStorageService;
+      },
+    });
     app.use('/api/motion', apiAuthMiddleware, motionRoutes);
   }
 
@@ -99,12 +219,19 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   // Span labeling endpoint (with DI)
-  const labelSpansRoute = createLabelSpansRoute(container.resolve('aiService'));
+  const labelSpansRoute = createLabelSpansRoute(
+    container.resolve('aiService'),
+    container.resolve('spanLabelingCacheService')
+  );
   app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
 
   // Batch endpoint for processing multiple span labeling requests
   // Reduces API calls by 60% under concurrent load
-  app.post('/llm/label-spans-batch', apiAuthMiddleware, createBatchMiddleware());
+  app.post(
+    '/llm/label-spans-batch',
+    apiAuthMiddleware,
+    createBatchMiddleware(container.resolve('aiService'), container.resolve('metricsService'))
+  );
 
   // ============================================================================
   // Role Classification Route (with auth and DI)
@@ -118,7 +245,9 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // ============================================================================
 
   // Optional quality evaluation endpoints (with DI)
-  const suggestionsRoute = createSuggestionsRoute(container.resolve('aiService'));
+  const suggestionsRoute = createSuggestionsRoute({
+    llmJudgeService: container.resolve<LLMJudgeService>('llmJudgeService'),
+  });
   app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
 
   // ============================================================================
@@ -129,32 +258,42 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     const previewRoutes = createPreviewRoutes({
       imageGenerationService: container.resolve('imageGenerationService'),
       storyboardPreviewService: container.resolve('storyboardPreviewService'),
-      videoGenerationService: container.resolve('videoGenerationService'),
+      videoGenerationService,
       videoJobStore: container.resolve('videoJobStore'),
       videoContentAccessService: container.resolve('videoContentAccessService'),
       userCreditService,
+      storageService: container.resolve('storageService'),
       keyframeService: container.resolve('keyframeService'),
+      faceSwapService: container.resolve('faceSwapService'),
       assetService: container.resolve('assetService'),
+      requestIdempotencyService: container.resolve('requestIdempotencyService'),
     });
-    app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+    app.use('/api/preview', apiAuthMiddleware, starterCreditsMiddleware, previewRoutes);
   }
 
   // ============================================================================
   // Payment Routes (auth required)
   // ============================================================================
 
-  const paymentRoutes = createPaymentRoutes();
-  app.use('/api/payment', apiAuthMiddleware, paymentRoutes);
+  const paymentRouteServices: PaymentRouteServices = {
+    paymentService: container.resolve<PaymentRouteServices['paymentService']>('paymentService'),
+    webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
+    billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
+    userCreditService,
+    firestoreCircuitExecutor,
+  };
+  const paymentRoutes = createPaymentRoutes(paymentRouteServices);
+  app.use('/api/payment', apiAuthMiddleware, starterCreditsMiddleware, paymentRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)
   // ============================================================================
 
-  app.use((req: Request, res: Response): void => {
+  app.use((req: RequestWithId, res: Response): void => {
     res.status(404).json({
       error: 'Not found',
       path: req.path,
-      requestId: (req as Request & { id?: string }).id,
+      requestId: req.id,
     });
   });
 }

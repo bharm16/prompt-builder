@@ -26,6 +26,17 @@ vi.mock('@promptstudio/system/components/ui/button', () => ({
 describe('DebugButton', () => {
   const mockUsePromptDebugger = vi.mocked(usePromptDebugger);
   const mockLogger = vi.mocked(logger);
+  const createDebuggerHookResult = (
+    overrides: Partial<ReturnType<typeof usePromptDebugger>> = {}
+  ): ReturnType<typeof usePromptDebugger> => ({
+    capturePromptData: vi.fn(),
+    exportToFile: vi.fn(),
+    exportAllCaptures: vi.fn(),
+    isCapturing: false,
+    lastCapture: null,
+    debugger: {} as ReturnType<typeof usePromptDebugger>['debugger'],
+    ...overrides,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,11 +46,11 @@ describe('DebugButton', () => {
   describe('error handling', () => {
     it('alerts and logs when capture fails', async () => {
       const capturePromptData = vi.fn().mockRejectedValue(new Error('capture failed'));
-      mockUsePromptDebugger.mockReturnValue({
+      mockUsePromptDebugger.mockReturnValue(createDebuggerHookResult({
         capturePromptData,
         exportToFile: vi.fn(),
         isCapturing: false,
-      } as ReturnType<typeof usePromptDebugger>);
+      }));
 
       const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
@@ -57,13 +68,13 @@ describe('DebugButton', () => {
     });
 
     it('alerts and logs when export fails', async () => {
-      mockUsePromptDebugger.mockReturnValue({
+      mockUsePromptDebugger.mockReturnValue(createDebuggerHookResult({
         capturePromptData: vi.fn(),
         exportToFile: vi.fn(() => {
           throw new Error('no data');
         }),
         isCapturing: false,
-      } as ReturnType<typeof usePromptDebugger>);
+      }));
 
       const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
@@ -81,11 +92,11 @@ describe('DebugButton', () => {
 
   describe('edge cases', () => {
     it('disables capture button while capturing', () => {
-      mockUsePromptDebugger.mockReturnValue({
+      mockUsePromptDebugger.mockReturnValue(createDebuggerHookResult({
         capturePromptData: vi.fn(),
         exportToFile: vi.fn(),
         isCapturing: true,
-      } as ReturnType<typeof usePromptDebugger>);
+      }));
 
       render(<DebugButton inputPrompt="Prompt" />);
 
@@ -99,11 +110,11 @@ describe('DebugButton', () => {
 
     it('does not trigger capture when disabled', async () => {
       const capturePromptData = vi.fn();
-      mockUsePromptDebugger.mockReturnValue({
+      mockUsePromptDebugger.mockReturnValue(createDebuggerHookResult({
         capturePromptData,
         exportToFile: vi.fn(),
         isCapturing: true,
-      } as ReturnType<typeof usePromptDebugger>);
+      }));
 
       const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
@@ -121,11 +132,11 @@ describe('DebugButton', () => {
   describe('core behavior', () => {
     it('invokes capture when requested', async () => {
       const capturePromptData = vi.fn().mockResolvedValue({});
-      mockUsePromptDebugger.mockReturnValue({
+      mockUsePromptDebugger.mockReturnValue(createDebuggerHookResult({
         capturePromptData,
         exportToFile: vi.fn(),
         isCapturing: false,
-      } as ReturnType<typeof usePromptDebugger>);
+      }));
 
       const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);

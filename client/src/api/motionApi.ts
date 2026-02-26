@@ -6,6 +6,7 @@ import { apiClient } from '@/services/ApiClient';
 import { logger } from '@/services/LoggingService';
 import type { CameraPath } from '@/features/convergence/types';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 
 const log = logger.child('motionApi');
 const OPERATION = 'estimateDepth';
@@ -22,17 +23,6 @@ interface ApiResponse<T> {
   error?: string;
   details?: unknown;
 }
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
 
 export async function estimateDepth(imageUrl: string): Promise<DepthEstimationResponse> {
   const trimmedUrl = imageUrl.trim();

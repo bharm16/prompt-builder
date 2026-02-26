@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /llm/
+Disallow: /metrics
+Disallow: /health

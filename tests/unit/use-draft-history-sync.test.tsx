@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 
 import { useDraftHistorySync } from '@features/prompt-optimizer/context/hooks/useDraftHistorySync';
 import type { PromptHistory, PromptOptimizer } from '@features/prompt-optimizer/context/types';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { CapabilityValues } from '@shared/capabilities';
 
 type UpdatePayload = Parameters<PromptHistory['updateEntryPersisted']>[2];
@@ -240,12 +240,12 @@ describe('useDraftHistorySync', () => {
 
     it('detects deep-equal generation params and avoids updates', () => {
       const updates: Array<{ uuid: string; docId: string | null; updates: UpdatePayload }> = [];
-      const nestedParams = { steps: [1, 2], options: { seed: 9 } };
+      const params: CapabilityValues = { steps: 2, seed: 9 };
       const historyEntry: PromptHistoryEntry = {
         uuid: 'uuid-4',
         input: 'Draft',
         output: '',
-        generationParams: nestedParams,
+        generationParams: params,
       };
 
       const promptHistory = createPromptHistory([historyEntry], (uuid, docId, updatesPayload) => {
@@ -258,11 +258,8 @@ describe('useDraftHistorySync', () => {
           currentPromptDocId: 'doc-4',
           promptHistory,
           promptOptimizer: createPromptOptimizer({ inputPrompt: 'Draft' }),
-          selectedModel: 'model-a',
-          generationParams: {
-            steps: [1, 2],
-            options: { seed: 9 },
-          } satisfies CapabilityValues,
+          selectedModel: '',
+          generationParams: { steps: 2, seed: 9 },
         })
       );
 

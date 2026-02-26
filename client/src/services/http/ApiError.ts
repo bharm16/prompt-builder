@@ -1,12 +1,14 @@
 export class ApiError extends Error {
   public readonly status: number | undefined;
   public readonly response: unknown;
+  public readonly code: string | undefined;
 
-  constructor(message: string, status?: number, response?: unknown) {
+  constructor(message: string, status?: number, response?: unknown, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.response = response;
+    this.code = code;
   }
 
   isNetworkError(): boolean {
@@ -32,5 +34,16 @@ export class ApiError extends Error {
   isRateLimited(): boolean {
     return this.status === 429;
   }
+
+  hasCode(code: string): boolean {
+    return this.code === code;
+  }
+}
+
+export function getErrorCode(error: unknown): string | undefined {
+  if (error instanceof ApiError) {
+    return error.code;
+  }
+  return undefined;
 }
 

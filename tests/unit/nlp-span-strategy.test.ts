@@ -31,6 +31,18 @@ import SpanLabelingConfig from '@llm/span-labeling/config/SpanLabelingConfig.js'
 import { NlpSpanStrategy } from '@llm/span-labeling/strategies/NlpSpanStrategy.js';
 
 describe('NlpSpanStrategy', () => {
+  const setNeuroSymbolicEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.NEURO_SYMBOLIC as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setGlinerEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.NEURO_SYMBOLIC.GLINER as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setNlpFastPathEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.NLP_FAST_PATH as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
   const originalFlags = {
     neuroSymbolicEnabled: SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED,
     glinerEnabled: SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.ENABLED,
@@ -38,9 +50,9 @@ describe('NlpSpanStrategy', () => {
   };
 
   beforeEach(() => {
-    SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED = true;
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.ENABLED = true;
-    SpanLabelingConfig.NLP_FAST_PATH.ENABLED = true;
+    setNeuroSymbolicEnabled(true);
+    setGlinerEnabled(true);
+    setNlpFastPathEnabled(true);
     extractSemanticSpansMock.mockReset();
     extractKnownSpansMock.mockReset();
     getVocabStatsMock.mockReset();
@@ -49,9 +61,9 @@ describe('NlpSpanStrategy', () => {
   });
 
   afterEach(() => {
-    SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED = originalFlags.neuroSymbolicEnabled;
-    SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.ENABLED = originalFlags.glinerEnabled;
-    SpanLabelingConfig.NLP_FAST_PATH.ENABLED = originalFlags.nlpFastPathEnabled;
+    setNeuroSymbolicEnabled(originalFlags.neuroSymbolicEnabled);
+    setGlinerEnabled(originalFlags.glinerEnabled);
+    setNlpFastPathEnabled(originalFlags.nlpFastPathEnabled);
   });
 
   describe('error handling', () => {

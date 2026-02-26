@@ -26,6 +26,13 @@ export function useUserCreditBalance(userId: string | null): CreditBalanceState 
       return;
     }
 
+    // E2E test hook: bypass Firestore when test global is set
+    const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
+    if (win?.__E2E_CREDIT_BALANCE__ !== undefined) {
+      setState({ balance: win.__E2E_CREDIT_BALANCE__ as number, isLoading: false, error: null });
+      return;
+    }
+
     setState((prev) => ({ balance: prev.balance, isLoading: true, error: null }));
 
     const userRef = doc(db, 'users', userId);
@@ -33,10 +40,12 @@ export function useUserCreditBalance(userId: string | null): CreditBalanceState 
       userRef,
       (snapshot) => {
         const data = snapshot.data() as Record<string, unknown> | undefined;
-        setState({
-          balance: normalizeBalance(data?.credits),
-          isLoading: false,
-          error: null,
+        const nextBalance = normalizeBalance(data?.credits);
+        setState((prev) => {
+          if (prev.balance === nextBalance && !prev.isLoading && prev.error === null) {
+            return prev; // same reference = no re-render
+          }
+          return { balance: nextBalance, isLoading: false, error: null };
         });
       },
       (error) => {

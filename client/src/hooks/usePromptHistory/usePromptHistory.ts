@@ -8,7 +8,7 @@
  * Single Responsibility: Orchestrate the prompt history workflow
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useToast } from '../../components/Toast';
 import { useHistoryState, useHistoryPersistence } from './hooks';
 import type { User, Toast } from './types';
@@ -82,7 +82,7 @@ export const usePromptHistory = (user: User | null) => {
     }
   }, [user, loadHistoryFromFirestore, loadHistoryFromLocalStorage, setIsLoadingHistory]);
 
-  return {
+  return useMemo(() => ({
     history: state.history,
     filteredHistory,
     isLoadingHistory: state.isLoadingHistory,
@@ -98,5 +98,21 @@ export const usePromptHistory = (user: User | null) => {
     updateEntryHighlight,
     updateEntryOutput,
     updateEntryVersions,
-  };
+  }), [
+    state.history,
+    filteredHistory,
+    state.isLoadingHistory,
+    searchQuery,
+    setSearchQuery,
+    saveToHistory,
+    createDraft,
+    updateEntryLocal,
+    updateEntryPersisted,
+    clearHistory,
+    deleteFromHistory,
+    loadHistoryFromFirestore,
+    updateEntryHighlight,
+    updateEntryOutput,
+    updateEntryVersions,
+  ]);
 };

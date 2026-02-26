@@ -2,6 +2,12 @@ import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { metricsAuthMiddleware } from '@middleware/metricsAuth';
 import { logger } from '@infrastructure/Logger';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
+import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
+
+interface WorkerStatusProvider {
+  getStatus(): WorkerStatus;
+}
 
 interface HealthDependencies {
   claudeClient?: { getStats: () => { state: string } } | null;
@@ -15,6 +21,12 @@ interface HealthDependencies {
     register: { contentType: string };
     getMetrics: () => Promise<string>;
   };
+  /** Optional Firestore connectivity check. Skipped when not provided (e.g. tests). */
+  checkFirestore?: () => Promise<void>;
+  /** Optional Firestore circuit state for readiness gating. */
+  firestoreCircuitExecutor?: FirestoreCircuitExecutor;
+  /** Optional background worker status providers for health reporting. */
+  workers?: Record<string, WorkerStatusProvider | null>;
 }
 
 /**
@@ -24,7 +36,16 @@ interface HealthDependencies {
  */
 export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
-  const { claudeClient, groqClient, geminiClient, cacheService, metricsService } = dependencies;
+  const {
+    claudeClient,
+    groqClient,
+    geminiClient,
+    cacheService,
+    metricsService,
+    checkFirestore,
+    firestoreCircuitExecutor,
+    workers,
+  } = dependencies;
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
@@ -54,15 +75,57 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         requestId,
       });
       
-      // Avoid external network calls on readiness to prevent abuse/DoS
-      // Use internal indicators only (cache health and circuit breaker state)
+      // Use lightweight internal indicators where possible (cache, circuit breakers).
+      // Firestore is the exception: it has no local state, so a metadata-only call
+      // with a tight timeout verifies connectivity without reading documents.
       const cacheHealth = cacheService.isHealthy();
       const claudeStats = claudeClient?.getStats();
       const groqStats = groqClient?.getStats();
       const geminiStats = geminiClient?.getStats();
+      const firestoreCircuitSnapshot = firestoreCircuitExecutor?.getReadinessSnapshot();
+
+      let firestoreHealthy = true;
+      let firestoreMessage: string | undefined;
+      if (firestoreCircuitSnapshot?.degraded) {
+        firestoreHealthy = false;
+        if (firestoreCircuitSnapshot.state === 'open') {
+          firestoreMessage = 'Firestore circuit is open';
+        } else if (firestoreCircuitSnapshot.failureRate >= firestoreCircuitSnapshot.thresholds.failureRate) {
+          firestoreMessage = `Firestore failure rate ${Math.round(firestoreCircuitSnapshot.failureRate * 100)}% exceeds threshold`;
+        } else if (
+          firestoreCircuitSnapshot.latencyMeanMs >= firestoreCircuitSnapshot.thresholds.latencyMs
+        ) {
+          firestoreMessage = `Firestore mean latency ${Math.round(firestoreCircuitSnapshot.latencyMeanMs)}ms exceeds threshold`;
+        }
+      }
+      if (checkFirestore) {
+        try {
+          await Promise.race([
+            checkFirestore(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+          ]);
+        } catch (err) {
+          firestoreHealthy = false;
+          firestoreMessage = err instanceof Error ? err.message : 'unknown error';
+        }
+      }
 
       const checks = {
         cache: { healthy: cacheHealth },
+        firestore:
+          checkFirestore || firestoreCircuitSnapshot
+            ? {
+                healthy: firestoreHealthy,
+                ...(firestoreMessage ? { message: firestoreMessage } : {}),
+                ...(firestoreCircuitSnapshot
+                  ? {
+                      circuitState: firestoreCircuitSnapshot.state,
+                      failureRate: firestoreCircuitSnapshot.failureRate,
+                      latencyMeanMs: firestoreCircuitSnapshot.latencyMeanMs,
+                    }
+                  : {}),
+              }
+            : { healthy: true, enabled: false, message: 'Firestore check not configured' },
         openAI: claudeStats ? {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,
@@ -92,6 +155,21 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         },
       };
 
+      // Collect background worker statuses (informational — does not gate readiness)
+      const workerStatuses: Record<string, { running: boolean; lastRunAt: string | null; consecutiveFailures: number }> = {};
+      if (workers) {
+        for (const [name, provider] of Object.entries(workers)) {
+          if (provider) {
+            const status = provider.getStatus();
+            workerStatuses[name] = {
+              running: status.running,
+              lastRunAt: status.lastRunAt?.toISOString() ?? null,
+              consecutiveFailures: status.consecutiveFailures,
+            };
+          }
+        }
+      }
+
       const allHealthy = Object.values(checks).every(
         (c) => c.healthy !== false
       );
@@ -108,6 +186,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         status: allHealthy ? 'ready' : 'not ready',
         timestamp: new Date().toISOString(),
         checks,
+        ...(Object.keys(workerStatuses).length > 0 ? { workers: workerStatuses } : {}),
       });
     })
   );
@@ -183,10 +262,11 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     });
   });
 
-  // Test endpoint for Sentry error tracking
-  router.get('/debug-sentry', (req, res) => {
-    throw new Error('My first Sentry error!');
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    router.get('/debug-sentry', (_req, _res) => {
+      throw new Error('My first Sentry error!');
+    });
+  }
 
   return router;
 }

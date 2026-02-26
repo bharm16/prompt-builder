@@ -7,14 +7,11 @@ import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/
  * MainWorkspace - Unified renderer for Studio/Create tools
  */
 export function MainWorkspace(): React.ReactElement {
-  const { activeTool, convergenceHandoff } = useAppShell();
+  const { convergenceHandoff } = useAppShell();
 
   return (
     <GenerationControlsProvider>
-      <PromptOptimizerWorkspace
-        convergenceHandoff={activeTool === 'studio' ? convergenceHandoff : null}
-        mode={activeTool}
-      />
+      <PromptOptimizerWorkspace convergenceHandoff={convergenceHandoff} />
     </GenerationControlsProvider>
   );
 }

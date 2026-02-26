@@ -1,40 +1,56 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { ToolRail } from '@components/ToolSidebar/components/ToolRail';
-import type { User } from '@hooks/types';
-import type { ActiveTool } from '@/contexts/AppShellContext';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 vi.mock(
   '@utils/cn',
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
-const appShellState = vi.hoisted(() => ({
-  activeTool: 'studio' as ActiveTool,
-  setActiveTool: vi.fn(),
+const useCreditBalanceMock = vi.hoisted(() => vi.fn());
+const useBillingStatusMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/contexts/CreditBalanceContext', () => ({
+  useCreditBalance: (...args: unknown[]) => useCreditBalanceMock(...args),
 }));
 
-vi.mock('@/contexts/AppShellContext', () => ({
-  useAppShell: () => appShellState,
+vi.mock('@/features/billing/hooks/useBillingStatus', () => ({
+  useBillingStatus: (...args: unknown[]) => useBillingStatusMock(...args),
 }));
 
 const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['activePanel']; user: User | null; onPanelChange: (panel: Parameters<typeof ToolRail>[0]['activePanel']) => void; }) =>
   render(
     <MemoryRouter initialEntries={[{ pathname: '/studio', search: '?tab=1' }]}>
-      <ToolRail {...props} onCreateNew={vi.fn()} />
+      <ToolRail {...props} />
     </MemoryRouter>
   );
 
 describe('ToolRail', () => {
   beforeEach(() => {
-    appShellState.activeTool = 'studio';
-    appShellState.setActiveTool.mockClear();
+    vi.clearAllMocks();
+    localStorage.clear();
+    useCreditBalanceMock.mockReturnValue({
+      balance: 12,
+      isLoading: false,
+      error: null,
+    });
+    useBillingStatusMock.mockReturnValue({
+      status: {
+        isSubscribed: false,
+        planTier: null,
+        starterGrantCredits: 25,
+        starterGrantGrantedAtMs: 123,
+      },
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
   });
 
   describe('error handling', () => {
@@ -72,17 +88,15 @@ describe('ToolRail', () => {
   });
 
   describe('edge cases', () => {
-    it('marks Create as active when active tool is create', () => {
-      appShellState.activeTool = 'create';
-
+    it('marks Tool as active when active panel is studio', () => {
       renderToolRail({
-        activePanel: 'sessions',
+        activePanel: 'studio',
         user: null,
         onPanelChange: vi.fn(),
       });
 
-      const createButton = screen.getByRole('button', { name: 'Create' });
-      expect(createButton).toHaveAttribute('aria-pressed', 'true');
+      const toolButton = screen.getByRole('button', { name: 'Tool' });
+      expect(toolButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('marks Chars as active when active panel is characters', () => {
@@ -98,7 +112,7 @@ describe('ToolRail', () => {
   });
 
   describe('core behavior', () => {
-    it('switches to create tool when Create is clicked', () => {
+    it('switches to studio panel when Tool is clicked', () => {
       const onPanelChange = vi.fn();
 
       renderToolRail({
@@ -107,11 +121,54 @@ describe('ToolRail', () => {
         onPanelChange,
       });
 
-      const createButton = screen.getByRole('button', { name: 'Create' });
-      createButton.click();
+      const toolButton = screen.getByRole('button', { name: 'Tool' });
+      toolButton.click();
 
-      expect(appShellState.setActiveTool).toHaveBeenCalledWith('create');
-      expect(onPanelChange).toHaveBeenCalledWith('create');
+      expect(onPanelChange).toHaveBeenCalledWith('studio');
+    });
+
+    it('shows sub badge when billing status is subscribed', () => {
+      useBillingStatusMock.mockReturnValue({
+        status: {
+          isSubscribed: true,
+          planTier: 'explorer',
+          starterGrantCredits: 25,
+          starterGrantGrantedAtMs: 123,
+        },
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      renderToolRail({
+        activePanel: 'studio',
+        user: {
+          uid: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User',
+        },
+        onPanelChange: vi.fn(),
+      });
+
+      expect(screen.getByText('cr · sub')).toBeInTheDocument();
+    });
+
+    it('shows one-time rail hint and persists dismissal by user id', () => {
+      renderToolRail({
+        activePanel: 'studio',
+        user: {
+          uid: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User',
+        },
+        onPanelChange: vi.fn(),
+      });
+
+      const hintButton = screen.getByRole('button', { name: 'Credits' });
+      fireEvent.click(hintButton);
+
+      expect(localStorage.getItem('credit-onboarding-dismissed:user-1')).toBe('1');
+      expect(screen.queryByRole('button', { name: 'Credits' })).toBeNull();
     });
   });
 });

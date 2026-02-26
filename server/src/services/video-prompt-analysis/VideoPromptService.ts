@@ -8,27 +8,44 @@ import { ModelDetectionService } from './services/detection/ModelDetectionServic
 import { SectionDetectionService } from './services/detection/SectionDetectionService';
 import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
 import { countWords } from './utils/textHelpers';
-import {
-  StrategyRegistry,
-  runwayStrategy,
-  lumaStrategy,
-  klingStrategy,
-  soraStrategy,
-  veoStrategy,
-  wanStrategy,
-} from './strategies';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
+import { StrategyRegistry } from './strategies';
+import { RunwayStrategy } from './strategies/RunwayStrategy';
+import { LumaStrategy } from './strategies/LumaStrategy';
+import { KlingStrategy } from './strategies/KlingStrategy';
+import { SoraStrategy } from './strategies/SoraStrategy';
+import { VeoStrategy } from './strategies/VeoStrategy';
+import { WanStrategy } from './strategies/WanStrategy';
+import { LlmIrExtractor } from './services/analysis/LlmIrExtractor';
+import { VideoPromptAnalyzer } from './services/analysis/VideoPromptAnalyzer';
+import { VideoPromptLLMRewriter } from './services/rewriter/VideoPromptLLMRewriter';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
 import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
 import type { ModelCapabilities } from './services/detection/ModelDetectionService';
 import type { SectionConstraints } from './services/detection/SectionDetectionService';
+import type { VideoPromptLlmGateway } from './services/llm/VideoPromptLlmGateway';
 import type { PromptOptimizationResult, PromptContext, PhaseResult } from './strategies/types';
+
+export interface VideoPromptServiceDeps {
+  detector?: VideoPromptDetectionService;
+  phraseRoleAnalyzer?: PhraseRoleAnalysisService;
+  constraintGenerator?: ConstraintGenerationService;
+  fallbackStrategy?: FallbackStrategyService;
+  categoryGuidance?: CategoryGuidanceService;
+  modelDetector?: ModelDetectionService;
+  sectionDetector?: SectionDetectionService;
+  taxonomyValidator?: TaxonomyValidationService;
+  strategyRegistry?: StrategyRegistry;
+  videoPromptLlmGateway?: VideoPromptLlmGateway | null;
+  promptOutputOnly?: boolean;
+}
 
 /**
  * VideoPromptService - Main Orchestrator
- * 
+ *
  * Responsible for coordinating video prompt detection, analysis, and constraint management.
  * Delegates to specialized services for each concern.
- * 
+ *
  * Single Responsibility: Orchestrate video prompt logic
  */
 export class VideoPromptService {
@@ -47,41 +64,55 @@ export class VideoPromptService {
   private static readonly PIPELINE_VERSION = '1.0.0';
   private static readonly MAX_CONCURRENT_MODEL_OPTIMIZATIONS = 3;
 
-  // Mapping from short IDs to strategy IDs
-  public static readonly MODEL_ID_MAP: Record<string, string> = {
-    'runway': 'runway-gen45',
-    'luma': 'luma-ray3',
-    'kling': 'kling-26',
-    'sora': 'sora-2',
-    'veo': 'veo-4',
-    'veo3': 'veo-4',
-    'veo-3': 'veo-4',
-    'veo-3.0-generate-001': 'veo-4',
-    'veo-3.0-fast-generate-001': 'veo-4',
-    'veo-3.1': 'veo-4',
-    'veo-3.1-generate-preview': 'veo-4',
-    'google/veo-3': 'veo-4',
-    'wan': 'wan-2.2'
-  };
+  constructor(deps: VideoPromptServiceDeps = {}) {
+    this.detector = deps.detector ?? new VideoPromptDetectionService();
+    this.phraseRoleAnalyzer = deps.phraseRoleAnalyzer ?? new PhraseRoleAnalysisService();
+    this.constraintGenerator = deps.constraintGenerator ?? new ConstraintGenerationService();
+    this.fallbackStrategy = deps.fallbackStrategy ?? new FallbackStrategyService();
+    this.categoryGuidance = deps.categoryGuidance ?? new CategoryGuidanceService();
+    this.modelDetector = deps.modelDetector ?? new ModelDetectionService();
+    this.sectionDetector = deps.sectionDetector ?? new SectionDetectionService();
+    this.taxonomyValidator = deps.taxonomyValidator ?? new TaxonomyValidationService();
 
-  constructor() {
-    this.detector = new VideoPromptDetectionService();
-    this.phraseRoleAnalyzer = new PhraseRoleAnalysisService();
-    this.constraintGenerator = new ConstraintGenerationService();
-    this.fallbackStrategy = new FallbackStrategyService();
-    this.categoryGuidance = new CategoryGuidanceService();
-    this.modelDetector = new ModelDetectionService();
-    this.sectionDetector = new SectionDetectionService();
-    this.taxonomyValidator = new TaxonomyValidationService();
-    
-    // Initialize strategy registry with all 5 model strategies
-    this.strategyRegistry = new StrategyRegistry();
-    this.strategyRegistry.register(runwayStrategy);
-    this.strategyRegistry.register(lumaStrategy);
-    this.strategyRegistry.register(klingStrategy);
-    this.strategyRegistry.register(soraStrategy);
-    this.strategyRegistry.register(veoStrategy);
-    this.strategyRegistry.register(wanStrategy);
+    if (deps.strategyRegistry) {
+      this.strategyRegistry = deps.strategyRegistry;
+    } else {
+      const createAnalyzer = (): VideoPromptAnalyzer =>
+        new VideoPromptAnalyzer({
+          llmExtractor: new LlmIrExtractor(deps.videoPromptLlmGateway ?? null),
+          ...(deps.promptOutputOnly != null ? { promptOutputOnly: deps.promptOutputOnly } : {}),
+        });
+      const createRewriter = (): VideoPromptLLMRewriter =>
+        new VideoPromptLLMRewriter(deps.videoPromptLlmGateway ?? null);
+
+      // Register strategy factories — each get() call creates a fresh instance
+      // to prevent shared mutable state across concurrent requests
+      this.strategyRegistry = new StrategyRegistry();
+      this.strategyRegistry.register(
+        'runway-gen45',
+        () => new RunwayStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'luma-ray3',
+        () => new LumaStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'kling-26',
+        () => new KlingStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'sora-2',
+        () => new SoraStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'veo-4',
+        () => new VeoStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+      this.strategyRegistry.register(
+        'wan-2.2',
+        () => new WanStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
+      );
+    }
   }
 
   /**
@@ -180,11 +211,7 @@ export class VideoPromptService {
    */
   detectTargetModel(fullPrompt: string | null | undefined): string | null {
     const detected = this.modelDetector.detectTargetModel(fullPrompt);
-    // Always resolve to full strategy ID if possible
-    if (detected && VideoPromptService.MODEL_ID_MAP[detected]) {
-      return VideoPromptService.MODEL_ID_MAP[detected];
-    }
-    return detected;
+    return detected ? resolvePromptModelId(detected) : null;
   }
 
   /**
@@ -301,14 +328,7 @@ export class VideoPromptService {
 
     // Detect model if not provided
     let detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
-
-    // Resolve short ID to full strategy ID
-    if (detectedModelId) {
-      const mappedModelId = VideoPromptService.MODEL_ID_MAP[detectedModelId];
-      if (mappedModelId) {
-        detectedModelId = mappedModelId;
-      }
-    }
+    detectedModelId = detectedModelId ? resolvePromptModelId(detectedModelId) : null;
 
     this.log.info('Starting prompt optimization', {
       operation,

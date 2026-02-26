@@ -103,7 +103,6 @@ export {
 export type { StorageService } from './storage';
 export {
   GCSStorageService,
-  getGCSStorageService,
   createGCSStorageService,
 } from './storage';
 
@@ -115,7 +114,7 @@ export type {
   FalDepthResponse,
 } from './depth';
 export {
-  ReplicateDepthEstimationService,
+  FalDepthEstimationService,
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
 } from './depth';

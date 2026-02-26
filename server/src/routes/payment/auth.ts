@@ -1,12 +1,11 @@
 import type { Request } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { admin } from '@infrastructure/firebaseAdmin';
+import { getAuth } from '@infrastructure/firebaseAdmin';
 import { extractFirebaseToken } from '@utils/auth';
 
 interface PaymentRequestWithAuth extends Request {
   user?: { uid?: string };
   apiKey?: string;
-  body: { userId?: string };
 }
 
 export async function resolveUserId(req: Request): Promise<string | null> {
@@ -19,7 +18,7 @@ export async function resolveUserId(req: Request): Promise<string | null> {
   const token = extractFirebaseToken(req);
   if (token) {
     try {
-      const decoded = await admin.auth().verifyIdToken(token);
+      const decoded = await getAuth().verifyIdToken(token);
       const uid = decoded.uid;
       reqWithAuth.user = { uid };
       return uid;
@@ -29,10 +28,6 @@ export async function resolveUserId(req: Request): Promise<string | null> {
         error: (error as Error).message,
       });
     }
-  }
-
-  if (reqWithAuth.body?.userId) {
-    return reqWithAuth.body.userId;
   }
 
   if (reqWithAuth.apiKey) {

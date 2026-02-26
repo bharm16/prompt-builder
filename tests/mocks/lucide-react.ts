@@ -54,4 +54,4 @@ export const Wand2 = icon('Wand2');
 export const X = icon('X');
 export const Zap = icon('Zap');
 
-export type LucideIcon = (props: IconProps) => JSX.Element;
+export type LucideIcon = (props: IconProps) => React.JSX.Element;

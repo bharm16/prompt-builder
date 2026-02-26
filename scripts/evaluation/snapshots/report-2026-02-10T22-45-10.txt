@@ -1,0 +1,75 @@
+Evaluation Report - 2026-02-10T22:45:10.364Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (2 prompts evaluated):
+  Average Score:      17/25
+  Average Span Count: 7.5
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████ 1
+  acceptable (13-17)   ████████████████████ 1
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - expressive eyes (1x)
+  - documentary portrait (1x)
+  - Dorothea Lange photography (1x)
+  - high-angle shot (1x)
+  - harsh side lighting (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 14647 | P50: 15572 | P95: 15572 | P99: 15572
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: 6s (technical), 16:9 (technical), 24fps (technical)
+  IMPORTANT: expressive eyes (subject), documentary portrait (style), Dorothea Lange photography (style), high-angle shot (camera), harsh side lighting (lighting)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - technical: 6
+  - style: 2
+  - camera: 2
+  - lighting: 2
+  - subject: 1
+  - audio: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         2.00 / 3.50
+  subject      1.50 / 3.50
+  action       1.00 / 4.00
+  environment  1.00 / 4.00
+  lighting     1.00 / 2.50
+  camera       1.00 / 1.00
+  style        1.00 / 1.00
+  technical    5.00 / 5.00
+  audio        1.00 / 1.00
+
+TOP TAXONOMY ERRORS:
+  - shot.type → camera.movement (1x) (e.g. "static tripod at eye level with shallow depth of field")
+  - camera.movement → camera.lens (1x) (e.g. "Eye-level static tripod, 85mm lens, f/2.8")
+
+ERRORS BY SECTION:
+  main            missed 3, falsePositives 0
+  technicalSpecs  missed 7, falsePositives 0
+  alternatives    missed 4, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   0.0% (0/15)
+  medium 0.0% (0/0)
+  low    0.0% (0/0)
+  Notes: No false positives to analyze. No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [15/25] "young gardener with dirt-streaked hands, sowing seeds meticulously in rows, at sunlit community garden with raised beds"
+    Notes: The extraction missed several critical technical specifications and audio elements, which are essential for a comprehensive understanding of the video prompt. The precision is relatively high, but coverage is lacking due to the absence of these elements.
+  [19/25] "grizzled woman with a weather-beaten face"
+    Notes: The extraction missed several important visual control points, particularly in the subject and style categories. There were also taxonomy errors in the roles assigned to some spans.
+
+================================================================================

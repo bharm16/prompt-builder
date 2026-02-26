@@ -56,5 +56,39 @@ describe('sceneContextParser', () => {
       expect(result.affectedFields.Location).toBe('Forest');
       expect(result.changedField).toBe('Location');
     });
+
+    it('matches target values case-insensitively and preserves section context', () => {
+      const prompt = [
+        '**Environment**',
+        '- Location: [Dense Forest]',
+        '- Weather: [Foggy]',
+      ].join('\\n');
+
+      const result = extractSceneContext(prompt, 'dense forest');
+
+      expect(result.sectionHeading).toBe('Environment');
+      expect(result.changedField).toBe('Location');
+      expect(result.sectionContext).toContain('- Weather: [Foggy]');
+    });
+
+    it('falls back to first section with parsed fields when earlier section has no fields', () => {
+      const prompt = [
+        '**Header Only**',
+        'No key/value lines here',
+        '',
+        '**Environment**',
+        '- Location: [Beach]',
+        '- Weather: [Windy]',
+      ].join('\\n');
+
+      const result = extractSceneContext(prompt, 'desert');
+
+      expect(result.sectionHeading).toBe('Environment');
+      expect(result.affectedFields).toEqual({
+        Location: 'Beach',
+        Weather: 'Windy',
+      });
+      expect(result.changedField).toBe('Unknown Field');
+    });
   });
 });

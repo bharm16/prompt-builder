@@ -10,3 +10,9 @@ export {
   type FalPulidKeyframeOptions,
   type FalPulidKeyframeResult,
 } from './FalPulidKeyframeProvider';
+
+export {
+  FalFaceSwapProvider,
+  type FaceSwapOptions,
+  type FaceSwapResult,
+} from './FalFaceSwapProvider';

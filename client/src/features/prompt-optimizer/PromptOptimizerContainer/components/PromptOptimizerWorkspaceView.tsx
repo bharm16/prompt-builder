@@ -1,16 +1,13 @@
 import React from 'react';
 import type { Asset, AssetType } from '@shared/types/asset';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { AppShellProps } from '@components/navigation/AppShell/types';
 import { AppShell } from '@components/navigation/AppShell';
 import DebugButton from '@components/DebugButton';
 import AssetEditor from '@features/assets/components/AssetEditor';
-import type { PromptModalsProps } from '../../types';
-import type { PromptResultsLayoutProps } from '../../layouts/PromptResultsLayout';
-import { PromptModals } from '../../components/PromptModals';
-import { QuickCharacterCreate } from '../../components/QuickCharacterCreate';
-import { DetectedAssets } from '../../components/DetectedAssets';
-import { PromptResultsLayout } from '../../layouts/PromptResultsLayout';
+import type { PromptModalsProps } from '@features/prompt-optimizer/types';
+import { PromptModals } from '@features/prompt-optimizer/components/PromptModals';
+import { QuickCharacterCreate } from '@features/prompt-optimizer/components/QuickCharacterCreate';
+import { DetectedAssets } from '@features/prompt-optimizer/components/DetectedAssets';
+import { PromptResultsLayout } from '@features/prompt-optimizer/layouts/PromptResultsLayout';
 
 interface QuickCreateState {
   isOpen: boolean;
@@ -47,11 +44,10 @@ interface DebugProps {
   displayedPrompt: string;
   optimizedPrompt: string;
   selectedMode: string;
-  promptContext: PromptContext | null;
+  promptContext: Record<string, unknown> | null;
 }
 
 interface PromptOptimizerWorkspaceViewProps {
-  toolSidebarProps: AppShellProps['toolSidebarProps'];
   showHistory: boolean;
   onToggleHistory: (show: boolean) => void;
   shouldShowLoading: boolean;
@@ -65,12 +61,10 @@ interface PromptOptimizerWorkspaceViewProps {
   detectedAssets: Asset[];
   onEditAsset: (assetId: string) => void;
   onCreateFromTrigger?: (trigger: string) => void;
-  promptResultsLayoutProps: PromptResultsLayoutProps;
   debugProps: DebugProps;
 }
 
 export function PromptOptimizerWorkspaceView({
-  toolSidebarProps,
   showHistory,
   onToggleHistory,
   shouldShowLoading,
@@ -84,22 +78,18 @@ export function PromptOptimizerWorkspaceView({
   detectedAssets,
   onEditAsset,
   onCreateFromTrigger,
-  promptResultsLayoutProps,
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
   return (
     <AppShell
       showHistory={showHistory}
       onToggleHistory={onToggleHistory}
-      toolSidebarProps={toolSidebarProps}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
-        {/* Skip to main content */}
         <a href="#main-content" className="ps-skip-link">
           Skip to main content
         </a>
 
-        {/* Modals */}
         <PromptModals {...promptModalsProps} />
         <QuickCharacterCreate
           isOpen={quickCreateState.isOpen}
@@ -126,7 +116,7 @@ export function PromptOptimizerWorkspaceView({
             prompt={detectedAssetsPrompt}
             assets={detectedAssets}
             onEditAsset={onEditAsset}
-            onCreateFromTrigger={onCreateFromTrigger}
+            {...(onCreateFromTrigger ? { onCreateFromTrigger } : {})}
           />
 
           {shouldShowLoading ? (
@@ -139,11 +129,12 @@ export function PromptOptimizerWorkspaceView({
               </div>
             </main>
           ) : (
-            <PromptResultsLayout {...promptResultsLayoutProps} />
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <PromptResultsLayout />
+            </div>
           )}
         </div>
 
-        {/* Debug Button - Hidden */}
         {debugProps.enabled && (
           <DebugButton
             inputPrompt={debugProps.inputPrompt}

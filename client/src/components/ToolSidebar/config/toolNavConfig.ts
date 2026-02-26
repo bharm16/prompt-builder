@@ -1,23 +1,23 @@
-import { LayoutGrid, SlidersHorizontal, Users, Palette, Sparkles } from '@promptstudio/system/components/ui';
+import { List, SlidersHorizontal, LayoutGrid, Users, Palette } from '@promptstudio/system/components/ui';
 import type { ToolNavItem } from '../types';
 
 export const toolNavItems: ToolNavItem[] = [
   {
     id: 'sessions',
-    icon: LayoutGrid,
+    icon: List,
     label: 'Sessions',
     variant: 'header',
   },
   {
-    id: 'create',
-    icon: Sparkles,
-    label: 'Create',
+    id: 'studio',
+    icon: SlidersHorizontal,
+    label: 'Tool',
     variant: 'default',
   },
   {
-    id: 'studio',
-    icon: SlidersHorizontal,
-    label: 'Studio',
+    id: 'apps',
+    icon: LayoutGrid,
+    label: 'Apps',
     variant: 'default',
   },
   {

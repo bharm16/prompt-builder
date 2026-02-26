@@ -1,27 +1,11 @@
 import { useMemo } from 'react';
-import type { PromptVersionEntry } from '@hooks/types';
-import type { Generation } from '../types';
-
-export interface TimelineGeneration extends Generation {
-  _versionId: string;
-  _versionLabel: string;
-}
-
-export interface TimelineDivider {
-  type: 'divider';
-  versionId: string;
-  versionLabel: string;
-  promptChanged: boolean;
-  timestamp: number;
-}
-
-export interface TimelineGenerationItem {
-  type: 'generation';
-  generation: TimelineGeneration;
-  timestamp: number;
-}
-
-export type TimelineItem = TimelineDivider | TimelineGenerationItem;
+import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type {
+  TimelineDivider,
+  TimelineGeneration,
+  TimelineGenerationItem,
+  TimelineItem,
+} from '@features/prompt-optimizer/types/domain/timeline';
 
 interface UseGenerationsTimelineOptions {
   versions: PromptVersionEntry[];
@@ -88,3 +72,5 @@ export function useGenerationsTimeline({
     return items;
   }, [versions]);
 }
+
+export type { TimelineDivider, TimelineGenerationItem, TimelineItem };

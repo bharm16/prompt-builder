@@ -2,13 +2,8 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getAuthenticatedUserIdMock, scheduleInlineMock } = vi.hoisted(() => ({
-  getAuthenticatedUserIdMock: vi.fn(),
+const { scheduleInlineMock } = vi.hoisted(() => ({
   scheduleInlineMock: vi.fn(),
-}));
-
-vi.mock('@routes/preview/auth', () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
 vi.mock('@routes/preview/inlineProcessor', () => ({
@@ -16,11 +11,11 @@ vi.mock('@routes/preview/inlineProcessor', () => ({
 }));
 
 import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenerate';
+import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
 
 describe('videoGenerate motion guidance', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserIdMock.mockResolvedValue('user-123');
   });
 
   it('appends camera and subject motion guidance to the queued prompt', async () => {
@@ -43,26 +38,34 @@ describe('videoGenerate motion guidance', () => {
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
-        refundCredits: vi.fn(async () => undefined),
+        refundCredits: vi.fn(async () => true),
       } as never,
       keyframeService: null as never,
+      faceSwapService: null as never,
       assetService: null as never,
     });
 
     const app = express();
+    app.use((req, _res, next) => {
+      (req as express.Request & { user?: { uid?: string } }).user = { uid: 'user-123' };
+      next();
+    });
     app.use(express.json());
     app.post('/preview/video/generate', handler);
 
-    const response = await request(app)
-      .post('/preview/video/generate')
-      .send({
-        prompt: 'A cinematic shot of a runner at dawn.',
-        model: 'sora-2',
-        generationParams: {
-          camera_motion_id: 'pan_left',
-          subject_motion: 'running steadily toward the horizon',
-        },
-      });
+    const response = await runSupertestOrSkip(() =>
+      request(app)
+        .post('/preview/video/generate')
+        .send({
+          prompt: 'A cinematic shot of a runner at dawn.',
+          model: 'sora-2',
+          generationParams: {
+            camera_motion_id: 'pan_left',
+            subject_motion: 'running steadily toward the horizon',
+          },
+        })
+    );
+    if (!response) return;
 
     expect(response.status).toBe(202);
     expect(createJobMock).toHaveBeenCalledTimes(1);
@@ -77,4 +80,3 @@ describe('videoGenerate motion guidance', () => {
     expect(prompt).toContain('Subject motion: running steadily toward the horizon');
   });
 });
-

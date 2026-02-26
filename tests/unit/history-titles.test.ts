@@ -5,7 +5,7 @@ import {
   resolveEntryTitle,
   extractDisambiguator,
 } from '@features/history/utils/historyTitles';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const createEntry = (overrides: Partial<PromptHistoryEntry> = {}): PromptHistoryEntry => ({
   input: 'default input',

@@ -4,12 +4,17 @@ import { ModelConfig } from '@config/modelConfig';
 // Import the examples along with the generator
 import { generateUniversalVideoPrompt, generateUniversalVideoPromptWithLockedSpans, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { hashString } from '@utils/hash';
 import { getVideoTemplateBuilder } from './video-templates/index';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
 import { detectProvider } from '@utils/provider/ProviderDetector';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
-import type { VideoPromptSlots, VideoPromptStructuredResponse } from './videoPromptTypes';
+import {
+  parseVideoPromptStructuredResponse,
+  type VideoPromptSlots,
+  type VideoPromptStructuredResponse,
+} from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
 import { renderAlternativeApproaches, renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
 import { buildStreamingPrompt } from './video/prompts/buildStreamingPrompt';
@@ -67,16 +72,6 @@ export class VideoStrategy implements OptimizationStrategy {
   constructor(aiService: AIService, templateService: TemplateService) {
     this.ai = aiService;
     this.templateService = templateService;
-  }
-
-  private _hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash |= 0;
-    }
-    return Math.abs(hash);
   }
 
   /**
@@ -201,7 +196,7 @@ export class VideoStrategy implements OptimizationStrategy {
         ...(signal ? { signal } : {}),
       });
 
-      const parsedResponse = JSON.parse(response.text) as VideoPromptStructuredResponse;
+      const parsedResponse = parseVideoPromptStructuredResponse(response.text);
       const normalizedSlots = normalizeSlots(parsedResponse);
 
       const lint = mergeLintResults(
@@ -241,7 +236,7 @@ export class VideoStrategy implements OptimizationStrategy {
           schema,
           messages,
           config,
-          baseSeed: this._hashString(prompt),
+          baseSeed: hashString(prompt),
           attempts: rerollAttempts,
           ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
           ...(signal ? { signal } : {}),
@@ -495,7 +490,7 @@ ${JSON.stringify(options.originalJson, null, 2)}
       ...(options.signal ? { signal: options.signal } : {}),
     });
 
-    const repaired = JSON.parse(response.text) as VideoPromptStructuredResponse;
+    const repaired = parseVideoPromptStructuredResponse(response.text);
     const normalizedSlots = normalizeSlots(repaired);
     return { ...repaired, ...normalizedSlots };
   }

@@ -12,9 +12,9 @@ export function useDetectedAssets(prompt: string, userAssets: Asset[]) {
       return { detectedAssets, unresolvedTriggers, hasCharacter: false, characterCount: 0 };
     }
 
-    const triggers = Array.from(prompt.matchAll(TRIGGER_REGEX)).map((match) =>
-      match[1].toLowerCase()
-    );
+    const triggers = Array.from(prompt.matchAll(TRIGGER_REGEX))
+      .map((match) => match[1]?.toLowerCase() ?? '')
+      .filter((trigger) => trigger.length > 0);
 
     if (triggers.length === 0) {
       return { detectedAssets, unresolvedTriggers, hasCharacter: false, characterCount: 0 };

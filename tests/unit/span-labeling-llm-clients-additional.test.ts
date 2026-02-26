@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
@@ -51,7 +53,8 @@ describe('GroqLlmClient (additional)', () => {
       });
 
       expect(result.spans[0]?.confidence).toBe(0.9);
-      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.logprobsAdjustment).toBe(false);
     });
 
     it('keeps result unchanged when no spans exist', () => {
@@ -61,7 +64,8 @@ describe('GroqLlmClient (additional)', () => {
       const result = client.post({ spans: [], meta: { version: 'v1', notes: '' } });
 
       expect(result.spans).toEqual([]);
-      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.logprobsAdjustment).toBe(false);
     });
   });
 
@@ -76,7 +80,8 @@ describe('GroqLlmClient (additional)', () => {
       });
 
       expect(result.spans[0]?.confidence).toBe(0.4);
-      expect(result.spans[0]?._originalConfidence).toBe(0.8);
+      const span = result.spans[0] as Record<string, unknown> | undefined;
+      expect(span?._originalConfidence).toBe(0.8);
     });
 
     it('does not increase confidence above self-reported value', () => {
@@ -103,7 +108,8 @@ describe('GroqLlmClient (additional)', () => {
       });
 
       expect(result.meta._clientType).toBe('GroqLlmClient');
-      expect(result.meta._providerOptimizations.provider).toBe('groq');
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.provider).toBe('groq');
     });
   });
 });
@@ -127,7 +133,8 @@ describe('OpenAILlmClient (additional)', () => {
       });
 
       expect(result.meta.notes).toBe('keep');
-      expect(result.meta._providerOptimizations.provider).toBe('openai');
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.provider).toBe('openai');
     });
   });
 
@@ -140,7 +147,8 @@ describe('OpenAILlmClient (additional)', () => {
         meta: { version: 'v1', notes: '' },
       });
 
-      expect(result.meta._providerOptimizations.strictSchema).toBe(true);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.strictSchema).toBe(true);
     });
 
     it('does not alter existing span data', () => {
@@ -165,8 +173,9 @@ describe('OpenAILlmClient (additional)', () => {
         meta: { version: 'v1', notes: '' },
       });
 
-      expect(result.meta._providerOptimizations.provider).toBe('openai');
-      expect(result.meta._providerOptimizations.logprobsAdjustment).toBe(false);
+      const providerOptimizations = (result.meta._providerOptimizations ?? {}) as Record<string, unknown>;
+      expect(providerOptimizations.provider).toBe('openai');
+      expect(providerOptimizations.logprobsAdjustment).toBe(false);
     });
   });
 });
@@ -182,8 +191,12 @@ describe('GeminiLlmClient (additional)', () => {
 
       expect(parsed.ok).toBe(true);
       if (parsed.ok) {
-        const value = parsed.value as { spans?: Array<{ text: string }> };
-        expect(value.spans?.[0]?.text).toBe('Hero');
+        const value = parsed.value as unknown;
+        const recoveredText = Array.isArray(value)
+          ? (value[0] as { text?: string } | undefined)?.text
+          : (value as { spans?: Array<{ text: string }>; text?: string })?.spans?.[0]?.text ??
+            (value as { text?: string })?.text;
+        expect(recoveredText).toBe('Hero');
       }
     });
 
@@ -193,8 +206,9 @@ describe('GeminiLlmClient (additional)', () => {
         ._normalizeParsedResponse({ spans: [{ text: 'Hero', category: 'subject' }] });
 
       const span = (normalized.spans as Array<Record<string, unknown>>)[0];
-      expect(span.role).toBe('subject');
-      expect('category' in span).toBe(false);
+      expect(span).toBeDefined();
+      expect(span?.role).toBe('subject');
+      expect(span ? 'category' in span : false).toBe(false);
     });
   });
 
@@ -212,7 +226,7 @@ describe('GeminiLlmClient (additional)', () => {
         stream: vi.fn().mockImplementation(async (_op: string, { onChunk }: { onChunk: (chunk: string) => void }) => {
           chunks.forEach(onChunk);
         }),
-      } as { stream: (op: string, options: { onChunk: (chunk: string) => void }) => Promise<void> };
+      } as never;
 
       const results: Array<Record<string, unknown>> = [];
       for await (const span of client.streamSpans({
@@ -237,7 +251,7 @@ describe('GeminiLlmClient (additional)', () => {
         stream: vi.fn().mockImplementation(async (_op: string, { onChunk }: { onChunk: (chunk: string) => void }) => {
           onChunk('{"text":"Hero","role":"subject"}\n');
         }),
-      } as { stream: (op: string, options: { onChunk: (chunk: string) => void }) => Promise<void> };
+      } as never;
 
       const results: Array<Record<string, unknown>> = [];
       for await (const span of client.streamSpans({

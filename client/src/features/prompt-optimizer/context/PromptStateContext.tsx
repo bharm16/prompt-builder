@@ -85,6 +85,10 @@ export function usePromptHighlights(): PromptHighlightState {
   return context;
 }
 
+export function useOptionalPromptHighlights(): PromptHighlightState | null {
+  return useContext(PromptHighlightContext);
+}
+
 export function usePromptServices(): PromptServicesState {
   const context = useContext(PromptServicesContext);
   if (!context) {
@@ -117,7 +121,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     user: user ? 'authenticated' : 'anonymous' 
   });
   const navigate = useNavigate();
-  const { uuid } = useParams<{ uuid?: string }>();
+  const { sessionId } = useParams<{ sessionId?: string }>();
 
   // Mode configuration (video-only)
   const modes: Mode[] = useMemo(() => [
@@ -136,6 +140,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   } = usePromptConfigState();
 
   const {
@@ -239,6 +245,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   }), [
     modes,
     selectedMode,
@@ -248,6 +256,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSelectedModel,
     generationParams,
     setGenerationParams,
+    videoTier,
+    setVideoTier,
   ]);
 
   const uiValue = useMemo<PromptUIState>(() => ({
@@ -354,10 +364,15 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     skipLoadFromUrlRef,
   ]);
 
+  const promptOptimizerService = promptOptimizer;
+  const promptHistoryService = promptHistory;
   const servicesValue = useMemo<PromptServicesState>(() => ({
-    promptOptimizer,
-    promptHistory,
-  }), [promptOptimizer, promptHistory]);
+    promptOptimizer: promptOptimizerService,
+    promptHistory: promptHistoryService,
+  }), [
+    promptHistoryService,
+    promptOptimizerService,
+  ]);
 
   const actionsValue = useMemo<PromptActionsState>(() => ({
     applyInitialHighlightSnapshot,
@@ -379,8 +394,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   const navigationValue = useMemo<PromptNavigationState>(() => ({
     navigate,
-    uuid,
-  }), [navigate, uuid]);
+    sessionId,
+  }), [navigate, sessionId]);
 
   const combinedValue = useMemo<PromptStateContextValue>(() => ({
     ...configValue,
@@ -400,7 +415,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     navigationValue,
   ]);
 
-  usePromptStatePersistence({ selectedModel, generationParams });
+  usePromptStatePersistence({ selectedMode });
   useDraftHistorySync({
     currentPromptUuid,
     currentPromptDocId,

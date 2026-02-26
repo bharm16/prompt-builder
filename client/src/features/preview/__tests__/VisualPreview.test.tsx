@@ -86,9 +86,13 @@ describe('VisualPreview', () => {
       );
 
       const buttons = screen.getAllByRole('button');
-      expect(buttons[1]).toBeDisabled();
+      const firstButton = buttons[0];
+      const secondButton = buttons[1];
+      expect(firstButton).toBeDefined();
+      expect(secondButton).toBeDefined();
+      expect(secondButton!).toBeDisabled();
 
-      await user.click(buttons[0]);
+      await user.click(firstButton!);
 
       expect(onImageSelected).toHaveBeenCalledWith('https://example.com/1.png', 0);
     });

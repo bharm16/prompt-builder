@@ -33,5 +33,17 @@ service cloud.firestore {
       // Prevent client-side writes to credit balance; only backend via Admin SDK should update
       allow write: if false;
     }
+
+    // Server-only collections: explicitly deny all client access.
+    // These are managed exclusively via Firebase Admin SDK on the backend.
+    match /video_jobs/{document=**} {
+      allow read, write: if false;
+    }
+    match /convergence_sessions/{document=**} {
+      allow read, write: if false;
+    }
+    match /sessions/{document=**} {
+      allow read, write: if false;
+    }
   }
 }

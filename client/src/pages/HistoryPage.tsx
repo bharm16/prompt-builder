@@ -2,9 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search, X } from '@promptstudio/system/components/ui';
 import { Container, Section } from '@components/layout';
-import { getAuthRepository } from '@repositories/index';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { usePromptHistory } from '@hooks/usePromptHistory';
-import type { PromptHistoryEntry, User } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Card } from '@promptstudio/system/components/ui/card';
 import { Input } from '@promptstudio/system/components/ui/input';
@@ -41,14 +41,7 @@ function deriveSnippet(value: string): string {
 }
 
 export function HistoryPage(): React.ReactElement {
-  const [user, setUser] = React.useState<User | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
 
   const promptHistory = usePromptHistory(user);
   const filteredOutputs = React.useMemo(() => {
@@ -161,6 +154,7 @@ export function HistoryPage(): React.ReactElement {
             {filteredOutputs.map((entry, index) => {
               const title = deriveTitle(entry);
               const uuid = typeof entry.uuid === 'string' ? entry.uuid : null;
+              const sessionId = typeof entry.id === 'string' ? entry.id : null;
               const when = formatRelativeOrDate(entry.timestamp);
               const mode = typeof entry.mode === 'string' && entry.mode.trim() ? entry.mode.trim() : null;
               const model =
@@ -199,9 +193,9 @@ export function HistoryPage(): React.ReactElement {
                         </div>
                       </div>
 
-                      {uuid ? (
+                      {sessionId ? (
                         <Link
-                          to={`/prompt/${uuid}`}
+                          to={`/session/${sessionId}`}
                           className="shrink-0 text-sm font-medium text-foreground hover:underline"
                           aria-label="Open prompt"
                         >

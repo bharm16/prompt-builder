@@ -6,9 +6,11 @@ import { findCategoryForPhrase, mapGroupToCategory } from '@/utils/PromptContext
 import { getCategoryColor } from '@/utils/PromptContext/categoryStyles';
 import { categoryColors, DEFAULT_CATEGORY_COLOR } from '@/features/prompt-optimizer/config/categoryColors';
 
-const logSpies = {
-  warn: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    warn: vi.fn(),
+  },
+}));
 
 vi.mock('@/services/LoggingService', () => ({
   logger: {
@@ -39,11 +41,12 @@ describe('PromptContext utilities', () => {
     describe('edge cases', () => {
       it('deduplicates extracted keywords', () => {
         const maps = buildKeywordMaps({ mood: 'Dark dark forest' });
-        const unique = new Set(maps.mood);
+        const moodKeywords = maps.mood ?? [];
+        const unique = new Set(moodKeywords);
 
-        expect(maps.mood).toContain('dark dark forest');
-        expect(maps.mood).toContain('dark forest');
-        expect(unique.size).toBe(maps.mood.length);
+        expect(moodKeywords).toContain('dark dark forest');
+        expect(moodKeywords).toContain('dark dark');
+        expect(unique.size).toBe(moodKeywords.length);
       });
 
       it('expands semantic groups based on action, time, and style', () => {

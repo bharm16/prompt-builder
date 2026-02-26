@@ -37,8 +37,26 @@ vi.mock('@llm/span-labeling/nlp/filters/sectionHeaders', () => ({
 }));
 
 describe('NlpSpanService', () => {
+  const setCompromiseEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.COMPROMISE as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setLightingEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.LIGHTING as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setNeuroSymbolicEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.NEURO_SYMBOLIC as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
+  const setGlinerEnabled = (enabled: boolean) => {
+    (SpanLabelingConfig.NEURO_SYMBOLIC.GLINER as { ENABLED: boolean }).ENABLED = enabled;
+  };
+
   const originalCompromise = SpanLabelingConfig.COMPROMISE.ENABLED;
   const originalLighting = SpanLabelingConfig.LIGHTING.ENABLED;
+  const originalNeuroSymbolic = SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED;
+  const originalGliner = SpanLabelingConfig.NEURO_SYMBOLIC.GLINER.ENABLED;
 
   beforeEach(() => {
     mockExtractClosedVocabulary.mockReset();
@@ -47,13 +65,17 @@ describe('NlpSpanService', () => {
     mockExtractOpenVocabulary.mockReset();
     mockFilterSectionHeaders.mockReset();
 
-    SpanLabelingConfig.COMPROMISE.ENABLED = true;
-    SpanLabelingConfig.LIGHTING.ENABLED = true;
+    setCompromiseEnabled(true);
+    setLightingEnabled(true);
+    setNeuroSymbolicEnabled(originalNeuroSymbolic);
+    setGlinerEnabled(originalGliner);
   });
 
   afterEach(() => {
-    SpanLabelingConfig.COMPROMISE.ENABLED = originalCompromise;
-    SpanLabelingConfig.LIGHTING.ENABLED = originalLighting;
+    setCompromiseEnabled(originalCompromise);
+    setLightingEnabled(originalLighting);
+    setNeuroSymbolicEnabled(originalNeuroSymbolic);
+    setGlinerEnabled(originalGliner);
   });
 
   it('returns empty stats for invalid input', async () => {
@@ -117,6 +139,40 @@ describe('NlpSpanService', () => {
 
     expect(result.spans).toHaveLength(0);
     expect(result.stats.totalSpans).toBe(0);
+  });
+
+  it('does not invoke GLiNER when neuro-symbolic mode is disabled', async () => {
+    const text = 'A fast tracking shot through neon rain';
+
+    setNeuroSymbolicEnabled(false);
+    setGlinerEnabled(true);
+
+    mockExtractClosedVocabulary.mockReturnValue([] as NlpSpan[]);
+    mockExtractActionSpans.mockResolvedValue({
+      spans: [] as NlpSpan[],
+      stats: { verbPhrases: 0, gerunds: 0, totalExtracted: 0, latencyMs: 0 },
+    });
+    mockExtractLightingSpans.mockResolvedValue({
+      spans: [] as NlpSpan[],
+      stats: { patternsFound: 0, shadowPhrases: 0, lightPhrases: 0, totalExtracted: 0, latencyMs: 0 },
+    });
+    mockExtractOpenVocabulary.mockResolvedValue([
+      {
+        text: 'neon rain',
+        start: 27,
+        end: 36,
+        role: 'environment.lighting',
+        confidence: 0.9,
+        source: 'gliner',
+      },
+    ] as NlpSpan[]);
+    mockFilterSectionHeaders.mockImplementation((_text: string, spans: NlpSpan[]) => spans);
+
+    const { extractSemanticSpans } = await import('@llm/span-labeling/nlp/NlpSpanService');
+    const result = await extractSemanticSpans(text);
+
+    expect(mockExtractOpenVocabulary).not.toHaveBeenCalled();
+    expect(result.stats.openVocabSpans).toBe(0);
   });
 
   it('computes coverage based on known spans', async () => {

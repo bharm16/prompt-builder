@@ -50,7 +50,7 @@ describe('CircuitBreakerAdapter', () => {
   describe('edge cases', () => {
     it('reflects half-open state when breaker is half-open', () => {
       const adapter = new CircuitBreakerAdapter({ name: 'test' });
-      const breaker = (adapter as unknown as { breaker: FakeBreaker }).breaker;
+      const breaker = (adapter as unknown as { breaker: InstanceType<typeof FakeBreaker> }).breaker;
       breaker.halfOpen = true;
 
       expect(adapter.getState()).toBe('half-open');

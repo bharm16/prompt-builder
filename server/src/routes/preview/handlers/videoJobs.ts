@@ -1,18 +1,29 @@
 import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
-import { getAuthenticatedUserId } from '../auth';
 import { buildVideoContentUrl } from '../content';
 
 type VideoJobsServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService'
+  'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService' | 'storageService'
 >;
+
+function estimateProgress(status: string, createdAtMs: number): number | null {
+  if (status === 'completed') return 100;
+  if (status === 'failed') return null;
+  if (status === 'queued') return 5;
+  // 'processing': estimate 10–95 based on elapsed time (assume ~3 min typical)
+  const elapsedMs = Date.now() - createdAtMs;
+  const typicalMs = 180_000; // 3 minutes
+  const raw = 10 + Math.floor((elapsedMs / typicalMs) * 85);
+  return Math.max(10, Math.min(95, raw));
+}
 
 export const createVideoJobsHandler = ({
   videoGenerationService,
   videoJobStore,
   videoContentAccessService,
+  storageService,
 }: VideoJobsServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -27,7 +38,7 @@ export const createVideoJobsHandler = ({
       });
     }
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
       return res.status(401).json({
         success: false,
@@ -69,8 +80,31 @@ export const createVideoJobsHandler = ({
     };
 
     if (job.status === 'completed' && job.result) {
-      const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
-      const rawUrl = freshUrl || job.result.videoUrl;
+      let rawUrl: string | null | undefined = null;
+      let viewUrl: string | undefined;
+
+      if (job.result.storagePath) {
+        try {
+          const signed = storageService
+            ? await storageService.getViewUrl(userId, job.result.storagePath)
+            : null;
+          if (!signed) {
+            throw new Error('storage unavailable');
+          }
+          viewUrl = signed.viewUrl;
+          rawUrl = signed.viewUrl;
+          response.storagePath = job.result.storagePath;
+          response.viewUrlExpiresAt = signed.expiresAt;
+        } catch {
+          // Ignore and fall back to preview bucket URL.
+        }
+      }
+
+      if (!rawUrl) {
+        const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
+        rawUrl = freshUrl || job.result.videoUrl;
+      }
+
       const secureUrl = buildVideoContentUrl(
         videoContentAccessService,
         rawUrl,
@@ -82,14 +116,8 @@ export const createVideoJobsHandler = ({
       }
       response.assetId = job.result.assetId;
       response.contentType = job.result.contentType;
-      if (job.result.storagePath) {
-        response.storagePath = job.result.storagePath;
-      }
       if (job.result.viewUrl) {
         response.viewUrl = job.result.viewUrl;
-      }
-      if (job.result.viewUrlExpiresAt) {
-        response.viewUrlExpiresAt = job.result.viewUrlExpiresAt;
       }
       if (typeof job.result.sizeBytes === 'number') {
         response.sizeBytes = job.result.sizeBytes;
@@ -104,6 +132,38 @@ export const createVideoJobsHandler = ({
 
     if (job.status === 'failed') {
       response.error = job.error?.message || 'Video generation failed';
+      if (job.error?.code) {
+        response.errorCode = job.error.code;
+      }
+      if (job.error?.category) {
+        response.errorCategory = job.error.category;
+      }
+      if (typeof job.error?.retryable === 'boolean') {
+        response.errorRetryable = job.error.retryable;
+      }
+      if (job.error?.stage) {
+        response.errorStage = job.error.stage;
+      }
+      if (job.error?.provider) {
+        response.errorProvider = job.error.provider;
+      }
+      if (typeof job.error?.attempt === 'number') {
+        response.errorAttempt = job.error.attempt;
+      }
+    }
+
+    response.progress = estimateProgress(job.status, job.createdAtMs);
+    response.createdAtMs = job.createdAtMs;
+    response.attempts = job.attempts;
+    response.maxAttempts = job.maxAttempts;
+    if (typeof job.lastHeartbeatAtMs === 'number') {
+      response.lastHeartbeatAtMs = job.lastHeartbeatAtMs;
+    }
+    if (typeof job.releasedAtMs === 'number') {
+      response.releasedAtMs = job.releasedAtMs;
+    }
+    if (job.releaseReason) {
+      response.releaseReason = job.releaseReason;
     }
 
     return res.json(response);

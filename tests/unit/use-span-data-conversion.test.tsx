@@ -33,13 +33,13 @@ describe('useSpanDataConversion', () => {
     const initialHighlights = { spans: [], signature: 'sig-1' };
 
     mockConvertSpansDataToSpanData
-      .mockReturnValueOnce({ spans: [], source: 'draft' })
-      .mockReturnValueOnce({ spans: [], source: 'refined' });
+      .mockReturnValueOnce({ spans: [], meta: null })
+      .mockReturnValueOnce({ spans: [], meta: null });
     mockConvertHighlightSnapshotToSourceSelectionOptions.mockReturnValue({
       spans: [],
       signature: 'sig-1',
     });
-    mockConvertHighlightSnapshotToSpanData.mockReturnValue({ spans: [], source: 'initial' });
+    mockConvertHighlightSnapshotToSpanData.mockReturnValue({ spans: [], meta: null });
 
     mockUseHighlightSourceSelection.mockReturnValue({
       spans: [],
@@ -67,8 +67,8 @@ describe('useSpanDataConversion', () => {
     expect(mockConvertSpansDataToSpanData).toHaveBeenCalledWith(refinedSpans);
     expect(mockConvertHighlightSnapshotToSourceSelectionOptions).toHaveBeenCalledWith(initialHighlights);
     expect(mockUseHighlightSourceSelection).toHaveBeenCalledWith({
-      draftSpans: { spans: [], source: 'draft' },
-      refinedSpans: { spans: [], source: 'refined' },
+      draftSpans: { spans: [], meta: null },
+      refinedSpans: { spans: [], meta: null },
       isDraftReady: true,
       isRefining: false,
       initialHighlights: { spans: [], signature: 'sig-1' },
@@ -78,8 +78,8 @@ describe('useSpanDataConversion', () => {
       initialHighlightsVersion: 2,
     });
 
-    expect(result.current.convertedDraftSpans).toEqual({ spans: [], source: 'draft' });
-    expect(result.current.convertedRefinedSpans).toEqual({ spans: [], source: 'refined' });
+    expect(result.current.convertedDraftSpans).toEqual({ spans: [], meta: null });
+    expect(result.current.convertedRefinedSpans).toEqual({ spans: [], meta: null });
     expect(result.current.convertedInitialHighlights).toEqual({ spans: [], signature: 'sig-1' });
     expect(result.current.memoizedInitialHighlights).toEqual(
       expect.objectContaining({ signature: 'sig-1', source: 'persisted' })

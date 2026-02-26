@@ -11,7 +11,7 @@
  * Single Responsibility: Orchestrate the span labeling workflow
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logger } from '@/services/LoggingService';
 import { DEFAULT_POLICY, DEFAULT_OPTIONS } from '../config/index.ts';
 import { sanitizeText, hashString } from '../utils/index.ts';
@@ -27,6 +27,7 @@ import {
 import { useAsyncScheduler } from './useAsyncScheduler.ts';
 import { useSpanLabelingCache } from './useSpanLabelingCache.ts';
 import { useSpanLabelingCacheService } from '../context/SpanLabelingContext.tsx';
+import { predictiveCacheService } from '@/services/PredictiveCacheService';
 import type {
   LabeledSpan,
   SpanMeta,
@@ -311,15 +312,28 @@ export function useSpanLabeling({
 
       log.info('Success', { spanCount: normalizedResult.spans.length });
 
-      setState({
-        spans: normalizedResult.spans,
-        meta: normalizedResult.meta,
-        status: 'success',
-        error: null,
-        signature,
+      // Wrap in startTransition — applying 60+ span highlights is a non-urgent
+      // state update that should yield to user input (typing, clicking).
+      startTransition(() => {
+        setState({
+          spans: normalizedResult.spans,
+          meta: normalizedResult.meta,
+          status: 'success',
+          error: null,
+          signature,
+        });
       });
 
       setCacheForPayload(payload, normalizedResult);
+
+      // Record pattern for predictive caching (network fetch = cache miss)
+      predictiveCacheService.recordRequest({
+        text: payload.text,
+        policy: payload.policy as unknown as Record<string, unknown> | null,
+        templateVersion: payload.templateVersion ?? null,
+        cacheHit: false,
+      });
+
       emitResult(
         {
           spans: normalizedResult.spans,
@@ -411,6 +425,14 @@ export function useSpanLabeling({
             error: null,
             signature: cacheResult.cached.signature,
           });
+          // Record cache hit for predictive caching pattern tracking
+          predictiveCacheService.recordRequest({
+            text: payload.text,
+            policy: payload.policy as unknown as Record<string, unknown> | null,
+            templateVersion: payload.templateVersion ?? null,
+            cacheHit: true,
+          });
+
           emitResult(
             {
               spans: cacheResult.cached.spans as LabeledSpan[],
@@ -445,6 +467,7 @@ export function useSpanLabeling({
       minConfidence,
       policy: mergedPolicy,
       templateVersion,
+      isI2VMode: templateVersion?.toLowerCase().startsWith('i2v') ?? false,
       ...(typeof cacheKey === 'string' ? { cacheId: cacheKey } : {}),
     };
 
@@ -523,7 +546,8 @@ export function useSpanLabeling({
     initialDataVersion,
     emitResult,
     immediate,
-    log
+    log,
+    setCacheForPayload,
   ]);
 
   const refresh = useCallback((): void => {
@@ -531,7 +555,23 @@ export function useSpanLabeling({
     schedule(lastPayloadRef.current, true);
   }, [schedule]);
 
-  useEffect(() => () => cancelPending(), []);
+  // Trigger predictive cache pre-warming when status settles to 'success'
+  useEffect(() => {
+    if (state.status !== 'success' || !enabled) return;
+    predictiveCacheService.preWarmCache(async (params) => {
+      const preWarmPayload: SpanLabelingPayload = {
+        text: params.text,
+        maxSpans,
+        minConfidence,
+        policy: (params.policy ?? mergedPolicy) as SpanLabelingPolicy,
+        templateVersion: params.templateVersion ?? templateVersion,
+        isI2VMode: (params.templateVersion ?? templateVersion)?.toLowerCase().startsWith('i2v') ?? false,
+      };
+      return SpanLabelingApi.labelSpansStream(preWarmPayload, () => {}, null);
+    });
+  }, [state.status, enabled, maxSpans, minConfidence, mergedPolicy, templateVersion]);
+
+  useEffect(() => () => cancelPending(), [cancelPending]);
 
   return {
     spans: state.spans,

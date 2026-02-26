@@ -8,7 +8,7 @@ import {
   usePromptSession,
   usePromptUIStateContext,
 } from '../context/PromptStateContext';
-import type { PromptResultsSectionProps } from '../types';
+import { usePromptResultsActionsContext } from '../context/PromptResultsActionsContext';
 
 /**
  * PromptResultsSection - Results/Canvas Section
@@ -16,34 +16,40 @@ import type { PromptResultsSectionProps } from '../types';
  * Handles the prompt canvas and results display
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
-export const PromptResultsSection = ({
-  user,
-  onDisplayedPromptChange,
-  onReoptimize,
-  onFetchSuggestions,
-  onSuggestionClick,
-  onHighlightsPersist,
-  onUndo,
-  onRedo,
-  stablePromptContext = null,
-  coherenceAffectedSpanIds,
-  coherenceSpanIssueMap,
-  coherenceIssues,
-  isCoherenceChecking,
-  isCoherencePanelExpanded,
-  onToggleCoherencePanelExpanded,
-  onDismissCoherenceIssue,
-  onDismissAllCoherenceIssues,
-  onApplyCoherenceFix,
-  onScrollToCoherenceSpan,
-  i2vContext,
-}: PromptResultsSectionProps): React.ReactElement => {
-  const { showResults } = usePromptUIStateContext();
+export const PromptResultsSection = (): React.ReactElement => {
+  const { showResults, setShowResults } = usePromptUIStateContext();
   const { currentPromptUuid, suggestionsData } = usePromptSession();
   const { currentMode } = usePromptConfig();
   const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
-  const { handleCreateNew } = usePromptActions();
+  const { handleCreateNew, setDisplayedPromptSilently } = usePromptActions();
   const { promptOptimizer } = usePromptServices();
+  const {
+    user,
+    onDisplayedPromptChange,
+    onReoptimize,
+    onFetchSuggestions,
+    onSuggestionClick,
+    onHighlightsPersist,
+    onUndo,
+    onRedo,
+    stablePromptContext,
+    coherenceAffectedSpanIds,
+    coherenceSpanIssueMap,
+    coherenceIssues,
+    isCoherenceChecking,
+    isCoherencePanelExpanded,
+    onToggleCoherencePanelExpanded,
+    onDismissCoherenceIssue,
+    onDismissAllCoherenceIssues,
+    onApplyCoherenceFix,
+    onScrollToCoherenceSpan,
+    i2vContext,
+  } = usePromptResultsActionsContext();
+
+  const handleResetResultsForEditing = React.useCallback((): void => {
+    setDisplayedPromptSilently('');
+    setShowResults(false);
+  }, [setDisplayedPromptSilently, setShowResults]);
 
   return (
     <>
@@ -60,10 +66,10 @@ export const PromptResultsSection = ({
             </div>
             <div className="flex-1">
               <p className="text-body-sm font-semibold text-foreground">
-                Draft ready. Refining in background...
+                Optimizing prompt...
               </p>
               <p className="mt-0.5 text-label-sm text-muted">
-                Finalizing details for the selected model...
+                Running multi-stage refinement. Final output appears when complete.
               </p>
               </div>
             </div>
@@ -76,6 +82,7 @@ export const PromptResultsSection = ({
         user={user}
         inputPrompt={promptOptimizer.inputPrompt}
         onInputPromptChange={promptOptimizer.setInputPrompt}
+        onResetResultsForEditing={handleResetResultsForEditing}
         onReoptimize={onReoptimize}
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}

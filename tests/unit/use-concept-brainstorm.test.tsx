@@ -5,23 +5,28 @@ import { useConceptBrainstorm } from '@features/prompt-optimizer/PromptOptimizer
 import type { CapabilityValues } from '@shared/capabilities';
 import type { Toast } from '@hooks/types';
 
-const logSpies = {
-  error: vi.fn(),
-};
+const { logSpies, PromptContextMock } = vi.hoisted(() => {
+  class PromptContextMock {
+    elements: Record<string, unknown>;
+    metadata: Record<string, unknown>;
 
-class PromptContextMock {
-  elements: Record<string, unknown>;
-  metadata: Record<string, unknown>;
+    constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
+      this.elements = elements;
+      this.metadata = metadata;
+    }
 
-  constructor(elements: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
-    this.elements = elements;
-    this.metadata = metadata;
+    toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
+      return { elements: this.elements, metadata: this.metadata };
+    }
   }
 
-  toJSON(): { elements: Record<string, unknown>; metadata: Record<string, unknown> } {
-    return { elements: this.elements, metadata: this.metadata };
-  }
-}
+  return {
+    PromptContextMock,
+    logSpies: {
+      error: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@utils/PromptContext', () => ({
   PromptContext: PromptContextMock,
@@ -196,6 +201,7 @@ describe('useConceptBrainstorm', () => {
       'video',
       'model-a',
       { seed: 42 },
+      null,
       { elements: { subject: 'cat' }, metadata: { format: 'detailed' } }
     );
 
@@ -211,7 +217,7 @@ describe('useConceptBrainstorm', () => {
     });
     expect(params.resetEditStacks).toHaveBeenCalled();
     expect(params.persistedSignatureRef.current).toBeNull();
-    expect(params.navigate).toHaveBeenCalledWith('/prompt/uuid-1', { replace: true });
+    expect(params.navigate).toHaveBeenCalledWith('/session/doc-1', { replace: true });
   });
 
   it('shows an error when optimization fails', async () => {

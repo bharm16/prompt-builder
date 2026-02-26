@@ -2,7 +2,6 @@ import React, { memo } from 'react';
 import {
   ArrowClockwise,
   Check,
-  DotsThree,
   Download,
   WarningCircle,
   X,
@@ -10,11 +9,14 @@ import {
 import { Button } from '@promptstudio/system/components/ui/button';
 
 import { cn } from '@/utils/cn';
+import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
+import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
 
 import type { Generation } from '../types';
-import { formatRelativeTime, getModelConfig } from '../config/generationConfig';
+import { getModelConfig } from '../config/generationConfig';
 import { useGenerationProgress } from '../hooks/useGenerationProgress';
-import { GenerationBadge } from './GenerationBadge';
+import { resolvePrimaryVideoSource } from '../utils/videoSource';
 import { KontextFrameStrip } from './KontextFrameStrip';
 import { VideoThumbnail } from './VideoThumbnail';
 
@@ -23,46 +25,67 @@ interface GenerationCardProps {
   onRetry?: ((generation: Generation) => void) | undefined;
   onDelete?: ((generation: Generation) => void) | undefined;
   onDownload?: ((generation: Generation) => void) | undefined;
+  onExtend?: ((generation: Generation) => void) | undefined;
+  canExtend?: boolean | undefined;
   onCancel?: ((generation: Generation) => void) | undefined;
+  onContinueSequence?: ((generation: Generation) => void) | undefined;
+  isSequenceMode?: boolean | undefined;
+  isStartingSequence?: boolean | undefined;
   onSelectFrame?: ((url: string, index: number, generationId: string) => void) | undefined;
   onClearSelectedFrame?: (() => void) | undefined;
   selectedFrameUrl?: string | null | undefined;
   isActive?: boolean | undefined;
+  className?: string;
   onClick?: (() => void) | undefined;
 }
-
-const statusLabel = (status: Generation['status']): string => {
-  if (status === 'generating') return 'Generating';
-  if (status === 'completed') return 'Completed';
-  if (status === 'failed') return 'Failed';
-  return 'Pending';
-};
 
 export const GenerationCard = memo(function GenerationCard({
   generation,
   onRetry,
   onDelete,
   onDownload,
+  onExtend,
+  canExtend = false,
   onCancel,
+  onContinueSequence,
+  isSequenceMode = false,
+  isStartingSequence = false,
   onSelectFrame,
   onClearSelectedFrame,
   selectedFrameUrl = null,
-  isActive = false,
+  className,
   onClick,
 }: GenerationCardProps): React.ReactElement {
   const config = getModelConfig(generation.model);
-  const timeLabel = formatRelativeTime(
-    generation.completedAt ?? generation.createdAt
-  );
-  const { progressPercent, isGenerating, isCompleted, isFailed } =
+  const { progressPercent, isGenerating, isFailed } =
     useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
+  const primaryMediaRef = generation.mediaAssetIds?.[0] ?? null;
+  const { storagePath: mediaStoragePath, assetId: primaryVideoAssetId } = resolvePrimaryVideoSource(
+    mediaUrl,
+    primaryMediaRef
+  );
+  const continuitySourceId = primaryVideoAssetId ?? mediaStoragePath;
+  const thumbnailStoragePath = generation.thumbnailUrl
+    ? extractStorageObjectPath(generation.thumbnailUrl)
+    : null;
+  const showContinueScene =
+    Boolean(onContinueSequence) &&
+    !isSequenceMode &&
+    generation.mediaType === 'video' &&
+    generation.status === 'completed';
   const showRetry = generation.status === 'failed' && Boolean(onRetry);
   const showDownload =
     generation.tier === 'render' &&
     generation.status === 'completed' &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
+  const showExtend =
+    canExtend &&
+    generation.status === 'completed' &&
+    generation.mediaType === 'video' &&
+    Boolean(mediaUrl) &&
+    Boolean(onExtend);
   const canSelectFrames =
     generation.mediaType === 'image-sequence' &&
     generation.status === 'completed' &&
@@ -70,7 +93,7 @@ export const GenerationCard = memo(function GenerationCard({
     Boolean(onSelectFrame);
   const hasSelectedFrame =
     canSelectFrames &&
-    Boolean(selectedFrameUrl) &&
+    selectedFrameUrl !== null &&
     generation.mediaUrls.includes(selectedFrameUrl);
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
@@ -83,140 +106,85 @@ export const GenerationCard = memo(function GenerationCard({
 
   return (
     <div
-      className={cn(
-        'bg-surface-2 rounded-xl border p-4 transition-colors',
-        isGenerating
-          ? 'border-accent/50 hover:border-accent animate-border-pulse'
-          : isActive
-            ? 'border-border-strong'
-            : 'border-border',
-        onClick && 'cursor-pointer',
-        onClick && !isGenerating && 'hover:border-border-strong'
-      )}
+      className={cn('group cursor-pointer', className)}
       onClick={onClick ? handleClick : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
         onClick
-          ? (event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
+          ? (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
                 onClick();
               }
             }
           : undefined
       }
     >
-      <div className="flex items-center gap-2">
-        <GenerationBadge tier={generation.tier} status={generation.status} />
-        <div className="min-w-0 flex flex-1 items-center gap-2">
-          <div className="text-body-sm text-foreground truncate font-medium">
-            {config?.label ?? generation.model}
-          </div>
-          <div className="text-label-sm text-muted shrink-0">{timeLabel}</div>
-        </div>
-        {isGenerating ? (
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-label-sm text-muted">
-              {typeof progressPercent === 'number' ? `${progressPercent}%` : '...'}
-            </span>
-            {onCancel && (
-              <button
-                type="button"
-                className="text-label-sm text-muted hover:text-foreground transition-colors"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCancel(generation);
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        ) : isCompleted ? (
-          <div className="ml-auto flex items-center gap-1 text-label-sm font-medium text-success">
-            <Check size={14} weight="bold" className="text-success" aria-hidden="true" />
-            Completed
-          </div>
-        ) : (
-          <div
-            className={cn(
-              'text-label-sm text-muted ml-auto flex items-center gap-1 font-medium',
-              isFailed && 'text-error'
-            )}
-          >
-            {statusLabel(generation.status)}
-          </div>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-7 w-7 rounded-md"
-          aria-label="More actions"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete?.(generation);
-          }}
-        >
-          <DotsThree size={18} weight="bold" aria-hidden="true" />
-        </Button>
-      </div>
-
-      <div className="mt-3">
-        {generation.mediaType === 'image-sequence' ? (
-          (() => {
-            if (generation.status === 'completed' && generation.mediaUrls.length === 0) {
-              console.warn('[GenerationCard] Image-sequence generation completed but no mediaUrls:', {
-                id: generation.id,
-                model: generation.model,
-                mediaType: generation.mediaType,
-              });
-            }
-            return (
-              <KontextFrameStrip
-                frames={
-                  generation.mediaUrls.length
-                    ? generation.mediaUrls
-                    : Array.from({ length: 4 }, () => null)
-                }
-                duration={generation.duration ?? 5}
-                isGenerating={isGenerating}
-                progressPercent={progressPercent}
-                selectedFrameUrl={selectedFrameUrl}
-                onFrameClick={
-                  canSelectFrames
-                    ? (index, url) => {
-                        if (!url) return;
-                        if (selectedFrameUrl === url) {
-                          onClearSelectedFrame?.();
-                          return;
-                        }
-                        onSelectFrame?.(url, index, generation.id);
+      {generation.mediaType === 'image-sequence' ? (
+        (() => {
+          if (import.meta.env.DEV && generation.status === 'completed' && generation.mediaUrls.length === 0) {
+            console.warn('[GenerationCard] Image-sequence generation completed but no mediaUrls:', {
+              id: generation.id,
+              model: generation.model,
+              mediaType: generation.mediaType,
+            });
+          }
+          return (
+            <KontextFrameStrip
+              frames={
+                generation.mediaUrls.length
+                  ? generation.mediaUrls
+                  : Array.from({ length: 4 }, () => null)
+              }
+              duration={generation.duration ?? 5}
+              isGenerating={isGenerating}
+              progressPercent={progressPercent}
+              selectedFrameUrl={selectedFrameUrl}
+              onFrameClick={
+                canSelectFrames
+                  ? (index, url) => {
+                      if (!url) return;
+                      if (selectedFrameUrl === url) {
+                        onClearSelectedFrame?.();
+                        return;
                       }
-                    : undefined
-                }
-              />
-            );
-          })()
-        ) : (
-          <VideoThumbnail
-            videoUrl={mediaUrl}
-            thumbnailUrl={generation.thumbnailUrl ?? undefined}
-            isGenerating={isGenerating}
-          />
-        )}
-      </div>
+                      onSelectFrame?.(url, index, generation.id);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })()
+      ) : (
+        <VideoThumbnail
+          videoUrl={mediaUrl}
+          videoStoragePath={mediaStoragePath}
+          videoAssetId={primaryVideoAssetId}
+          thumbnailUrl={generation.thumbnailUrl ?? null}
+          thumbnailStoragePath={thumbnailStoragePath}
+          isGenerating={isGenerating}
+          progressPercent={progressPercent}
+          tier={generation.tier}
+          modelLabel={config?.label ?? generation.model}
+          isFailed={isFailed}
+          {...(generation.error !== undefined ? { failedMessage: generation.error } : {})}
+          onRetry={showRetry && onRetry ? () => onRetry(generation) : undefined}
+          onCancel={isGenerating && onCancel ? () => onCancel(generation) : undefined}
+          onDelete={onDelete ? () => onDelete(generation) : undefined}
+        />
+      )}
 
       {hasSelectedFrame && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2">
-          <Check size={14} weight="bold" className="text-accent" aria-hidden="true" />
-          <span className="text-xs text-foreground flex-1">
-            Frame selected as keyframe
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#16181E] px-3 py-2">
+          <Check size={14} weight="bold" className="text-[#6C5CE7]" aria-hidden="true" />
+          <span className="flex-1 text-xs font-medium text-[#8B92A5]">
+            Frame selected as start frame
           </span>
           {onClearSelectedFrame && (
             <button
               type="button"
-              className="text-muted hover:text-foreground transition-colors"
+              className="text-[#555B6E] transition-colors hover:text-[#8B92A5]"
               onClick={(event) => {
                 event.stopPropagation();
                 onClearSelectedFrame();
@@ -229,45 +197,75 @@ export const GenerationCard = memo(function GenerationCard({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      {generation.faceSwapUrl && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#16181E] px-3 py-2">
+          <div className="h-10 w-10 overflow-hidden rounded-md border border-[#22252C]">
+            <ImagePreview src={generation.faceSwapUrl} alt="Face swap preview" />
+          </div>
+          <span className="flex-1 text-xs font-medium text-[#8B92A5]">Face swap applied</span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-1.5">
         {generation.status === 'failed' && (
-          <span className="text-error inline-flex items-center gap-1 text-label-sm">
+          <span className="mr-auto inline-flex items-center gap-1 text-label-sm font-medium text-[#EF4444]/40">
             <WarningCircle size={14} aria-hidden="true" />
             {generation.error ?? 'Generation failed'}
           </span>
         )}
 
-        {(showRetry || showDownload) && (
-          <div className="ml-auto flex items-center gap-2">
-            {showRetry && onRetry && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-label-sm h-8 gap-1 px-2"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRetry(generation);
-                }}
-              >
-                <ArrowClockwise size={14} aria-hidden="true" />
-                Retry
-              </Button>
+        {showRetry && onRetry && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRetry(generation);
+            }}
+          >
+            <ArrowClockwise size={12} aria-hidden="true" />
+            Retry
+          </Button>
+        )}
+        {showDownload && mediaUrl && onDownload && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDownload(generation);
+            }}
+          >
+            <Download size={12} aria-hidden="true" />
+            Download
+          </Button>
+        )}
+        {showExtend && mediaUrl && onExtend && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            onClick={(event) => {
+              event.stopPropagation();
+              onExtend(generation);
+            }}
+          >
+            Extend
+          </Button>
+        )}
+        {showContinueScene && (
+          <ContinueSceneButton
+            onClick={() => onContinueSequence?.(generation)}
+            disabled={!continuitySourceId || isStartingSequence}
+            isLoading={isStartingSequence}
+            label="Continue as Sequence"
+            className={cn(
+              showRetry || showDownload ? '' : 'ml-auto',
+              '[&>button]:h-6 [&>button]:rounded-[5px] [&>button]:border [&>button]:border-[#22252C] [&>button]:bg-transparent [&>button]:px-2 [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-[#555B6E] [&>button]:transition-colors [&>button]:hover:border-[#3A3D46] [&>button]:hover:text-[#8B92A5] [&>button]:disabled:border-[#22252C] [&>button]:disabled:text-[#3A3E4C]'
             )}
-            {showDownload && mediaUrl && onDownload && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-label-sm h-8 gap-1 px-2"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDownload(generation);
-                }}
-              >
-                <Download size={14} aria-hidden="true" />
-                Download
-              </Button>
-            )}
-          </div>
+          />
         )}
       </div>
     </div>

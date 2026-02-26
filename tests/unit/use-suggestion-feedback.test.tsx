@@ -59,7 +59,6 @@ describe('useSuggestionFeedback', () => {
       useSuggestionFeedback({
         suggestionsData: null,
         selectedSpanId: 'span-2',
-        onSuggestionClick: undefined,
         setState,
       })
     );

@@ -136,16 +136,53 @@ describe('getGenerationProgressPercent', () => {
     });
   });
 
+  describe('server progress', () => {
+    it('uses serverProgress when higher than time and url progress', () => {
+      const now = Date.now();
+      const gen = createGeneration({
+        createdAt: now, // time = 0%
+        mediaUrls: [], // url = 0%
+        serverProgress: 75,
+      });
+
+      expect(getGenerationProgressPercent(gen, now)).toBe(75);
+    });
+
+    it('caps serverProgress at 99', () => {
+      const now = Date.now();
+      const gen = createGeneration({
+        createdAt: now,
+        mediaUrls: [],
+        serverProgress: 100,
+      });
+
+      expect(getGenerationProgressPercent(gen, now)).toBe(99);
+    });
+
+    it('ignores null or undefined serverProgress', () => {
+      const now = Date.now();
+      const gen = createGeneration({
+        createdAt: now - 17500, // 50% of 35s
+        mediaUrls: [],
+        serverProgress: null,
+      });
+
+      expect(getGenerationProgressPercent(gen, now)).toBe(50);
+    });
+  });
+
   describe('core behavior', () => {
-    it('uses maximum of time-based and url-based progress', () => {
+    it('uses maximum of time-based, url-based, and server progress', () => {
       const now = Date.now();
       // Time progress: 9000 / 18000 = 50%
       // URL progress: 3/4 = 75%
-      // Should return max(50, 75) = 75
+      // Server progress: 60%
+      // Should return max(50, 75, 60) = 75
       const gen = createGeneration({
         mediaType: 'image-sequence',
         createdAt: now - 9000, // 50% time
         mediaUrls: ['url1', 'url2', 'url3'], // 75% urls
+        serverProgress: 60,
       });
 
       expect(getGenerationProgressPercent(gen, now)).toBe(75);

@@ -1,111 +1,28 @@
 import { useEffect, useRef } from 'react';
-import { storageApi } from '@/api/storageApi';
-import {
-  getImageAssetViewUrl,
-  getVideoAssetViewUrl,
-} from '@/features/preview/api/previewApi';
-import {
-  extractStorageObjectPath,
-  extractVideoContentAssetId,
-} from '@/utils/storageUrl';
+import { resolveMediaUrl, type MediaUrlRequest } from '@/services/media/MediaUrlResolver';
+import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { logger } from '@/services/LoggingService';
 import type { Generation } from '../types';
 import type { GenerationsAction } from './useGenerationsState';
 
 const log = logger.child('MediaRefresh');
-
-type AssetKind = 'image' | 'video';
-
-// Bug 16 fix: use JSON to avoid delimiter collision with URLs containing '|'
 const buildSignature = (generation: Generation): string =>
   JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? '']);
 
-const getAssetIdFromPath = (path: string): string | null => {
-  const parts = path.split('/').filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : null;
-};
-
-const resolveViaStoragePath = async (path: string): Promise<string | null> => {
-  try {
-    const { viewUrl } = (await storageApi.getViewUrl(path)) as { viewUrl: string };
-    return viewUrl || null;
-  } catch {
-    return null;
-  }
-};
-
-const resolveViaAssetId = async (
-  assetId: string,
-  kind: AssetKind
-): Promise<string | null> => {
-  try {
-    const response =
-      kind === 'video'
-        ? await getVideoAssetViewUrl(assetId)
-        : await getImageAssetViewUrl(assetId);
-    if (!response.success) {
-      log.warn('Asset view URL request failed', { assetId, kind, error: response.error });
-      return null;
-    }
-    return response.data?.viewUrl ?? null;
-  } catch (error) {
-    log.warn('Failed to resolve asset view URL', {
-      assetId,
-      kind,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return null;
-  }
-};
-
-const resolveMediaUrl = async (
-  rawUrl: string,
-  kind: AssetKind,
-  storagePath?: string
-): Promise<string> => {
-  if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
-
-  // Prefer explicit storage path when available (reliable refresh)
-  if (storagePath) {
-    if (storagePath.startsWith('users/')) {
-      const refreshed = await resolveViaStoragePath(storagePath);
-      if (refreshed) return refreshed;
-    }
-
-    const assetId = getAssetIdFromPath(storagePath);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, kind);
-      if (refreshed) return refreshed;
-    }
-  }
-
-  // Fall back to parsing storage path from URL (legacy generations)
-  const objectPath = extractStorageObjectPath(rawUrl);
-  if (objectPath) {
-    if (objectPath.startsWith('users/')) {
-      const refreshed = await resolveViaStoragePath(objectPath);
-      return refreshed || rawUrl;
-    }
-
-    const assetId = getAssetIdFromPath(objectPath);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, kind);
-      if (!refreshed) {
-        log.warn('Failed to refresh URL, using original', { assetId, kind, objectPath });
-      }
-      return refreshed || rawUrl;
-    }
-  }
-
-  if (kind === 'video') {
-    const assetId = extractVideoContentAssetId(rawUrl);
-    if (assetId) {
-      const refreshed = await resolveViaAssetId(assetId, 'video');
-      return refreshed || rawUrl;
-    }
-  }
-
-  return rawUrl;
+const resolveAssetHints = (
+  url: string | null | undefined,
+  ref: string | null | undefined
+): { storagePath: string | null; assetId: string | null } => {
+  const normalizedRef = typeof ref === 'string' ? ref.trim() : '';
+  const storagePath =
+    normalizedRef && normalizedRef.startsWith('users/')
+      ? normalizedRef
+      : (url ? extractStorageObjectPath(url) : null);
+  const assetId =
+    normalizedRef && !normalizedRef.startsWith('users/')
+      ? normalizedRef
+      : null;
+  return { storagePath, assetId };
 };
 
 const resolveGenerationMedia = async (
@@ -118,18 +35,35 @@ const resolveGenerationMedia = async (
     return null;
   }
 
-  const mediaKind: AssetKind = generation.mediaType === 'video' ? 'video' : 'image';
-  const assetIds = generation.mediaAssetIds;
+  const mediaKind = generation.mediaType === 'video' ? 'video' : 'image';
+  const assetRefs = generation.mediaAssetIds;
+
   const resolvedMediaUrls = hasMedia
     ? await Promise.all(
-        generation.mediaUrls.map((url, index) =>
-          resolveMediaUrl(url, mediaKind, assetIds?.[index] || undefined)
-        )
+        generation.mediaUrls.map(async (url, index) => {
+          const { storagePath, assetId } = resolveAssetHints(url, assetRefs?.[index] || null);
+          const request: MediaUrlRequest = {
+            kind: mediaKind,
+            url,
+            preferFresh: true,
+            ...(storagePath !== null ? { storagePath } : { storagePath: null }),
+            ...(assetId !== null ? { assetId } : { assetId: null }),
+          };
+          const result = await resolveMediaUrl(request);
+          return result.url ?? url;
+        })
       )
     : generation.mediaUrls;
 
   const resolvedThumbnail = generation.thumbnailUrl
-    ? await resolveMediaUrl(generation.thumbnailUrl, 'image')
+    ? (
+        await resolveMediaUrl({
+          kind: 'image',
+          url: generation.thumbnailUrl,
+          storagePath: extractStorageObjectPath(generation.thumbnailUrl) ?? null,
+          preferFresh: true,
+        })
+      ).url ?? generation.thumbnailUrl
     : generation.thumbnailUrl;
 
   const mediaChanged = resolvedMediaUrls.some(
@@ -181,7 +115,8 @@ export function useGenerationMediaRefresh(
       if (!generation.mediaUrls.length && !generation.thumbnailUrl) return;
 
       const signature = buildSignature(generation);
-      if (processedRef.current.get(generation.id) === signature) return;
+      const alreadyProcessed = processedRef.current.get(generation.id) === signature;
+      if (alreadyProcessed) return;
       if (inFlightRef.current.has(generation.id)) return;
 
       inFlightRef.current.add(generation.id);
@@ -219,4 +154,3 @@ export function useGenerationMediaRefresh(
     };
   }, [dispatch, generations]);
 }
-

@@ -2,6 +2,7 @@ import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { enforceVideoMode } from '@middleware/enforceVideoMode';
 import { normalizeOptimizationRequest } from '@middleware/normalizeOptimizationRequest';
+import { requestCoalescing } from '@middleware/requestCoalescing';
 import { validateRequest } from '@middleware/validateRequest';
 import { promptSchema, compileSchema } from '@utils/validation';
 import type { OptimizeServices } from './optimize/types';
@@ -23,6 +24,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
 
   router.post(
     '/optimize',
+    requestCoalescing.middleware({ keyScope: '/api/optimize' }),
     normalizeOptimizationRequest,
     enforceVideoMode,
     validateRequest(promptSchema),

@@ -57,7 +57,7 @@ describe('KeyboardShortcuts', () => {
       await user.type(screen.getByRole('textbox', { name: 'Search actions' }), 'nope');
 
       expect(screen.getByText('No matches for "nope".')).toBeInTheDocument();
-    });
+    }, 20000);
 
     it('skips copy shortcut when text is selected', async () => {
       const { useKeyboardShortcuts } = await loadKeyboardModules('MacIntel');

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit, Trash2, Wand2, User, Palette, MapPin, Box } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '../config/assetConfig';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   character: User,
@@ -32,6 +33,38 @@ export function AssetCard({
 
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) || asset.referenceImages?.[0];
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
+  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: thumbnailUrl || null,
+    storagePath: primaryImage?.thumbnailPath ?? null,
+    enabled: Boolean(thumbnailUrl || primaryImage?.thumbnailPath),
+  });
+  const { url: resolvedFullUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: fullUrl || null,
+    storagePath: primaryImage?.storagePath ?? null,
+    enabled: Boolean(fullUrl || primaryImage?.storagePath),
+  });
+  const preferredThumbnailUrl = resolvedThumbnailUrl || thumbnailUrl;
+  const preferredFullUrl = resolvedFullUrl || fullUrl;
+  const [imageUrl, setImageUrl] = useState(preferredThumbnailUrl || preferredFullUrl);
+  const [didTryFull, setDidTryFull] = useState(false);
+
+  useEffect(() => {
+    setImageUrl(preferredThumbnailUrl || preferredFullUrl);
+    setDidTryFull(false);
+  }, [preferredThumbnailUrl, preferredFullUrl, primaryImage?.id]);
+
+  const handleImageError = () => {
+    if (!didTryFull && preferredFullUrl && imageUrl !== preferredFullUrl) {
+      setDidTryFull(true);
+      setImageUrl(preferredFullUrl);
+      return;
+    }
+    setImageUrl('');
+  };
 
   return (
     <div
@@ -41,11 +74,12 @@ export function AssetCard({
       }`}
     >
       <div className="aspect-square bg-surface-2">
-        {primaryImage ? (
+        {imageUrl ? (
           <img
-            src={primaryImage.thumbnailUrl || primaryImage.url}
+            src={imageUrl}
             alt={asset.name}
             className="h-full w-full object-cover"
+            onError={handleImageError}
           />
         ) : (
           <div className={`flex h-full w-full items-center justify-center ${config.bgClass}`}>

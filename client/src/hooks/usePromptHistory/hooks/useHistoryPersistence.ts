@@ -20,6 +20,7 @@ import {
   clearAll,
 } from '../api';
 import type { User, PromptHistoryEntry, PromptVersionEntry, Toast, SaveResult } from '../types';
+import { enforceImmutableKeyframes, enforceImmutableVersions } from '../utils/immutableMedia';
 import type { UpdatePromptOptions } from '../../../repositories/promptRepositoryTypes';
 
 interface UseHistoryPersistenceOptions {
@@ -45,8 +46,9 @@ interface UseHistoryPersistenceReturn {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    brainstormContext?: unknown,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<SaveResult | null>;
@@ -54,12 +56,13 @@ interface UseHistoryPersistenceReturn {
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
+    keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
   }) => SaveResult;
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
-  updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown> | null) => void;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
@@ -197,8 +200,9 @@ export function useHistoryPersistence({
       selectedMode: string,
       targetModel: string | null = null,
       generationParams: Record<string, unknown> | null = null,
-      brainstormContext: unknown = null,
-      highlightCache: unknown = null,
+      keyframes: PromptHistoryEntry['keyframes'] = null,
+      brainstormContext: Record<string, unknown> | null = null,
+      highlightCache: Record<string, unknown> | null = null,
       existingUuid: string | null = null,
       title: string | null = null
     ): Promise<SaveResult | null> => {
@@ -224,6 +228,7 @@ export function useHistoryPersistence({
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           ...(generationParams ? { generationParams } : {}),
+          ...(keyframes ? { keyframes } : {}),
           brainstormContext,
           highlightCache,
         });
@@ -239,6 +244,7 @@ export function useHistoryPersistence({
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           generationParams: generationParams ?? null,
+          keyframes: keyframes ?? null,
           brainstormContext: brainstormContext ?? null,
           highlightCache: highlightCache ?? null,
         };
@@ -267,6 +273,7 @@ export function useHistoryPersistence({
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
+      keyframes?: PromptHistoryEntry['keyframes'];
       uuid?: string;
     }): SaveResult => {
       const uuid = typeof params.uuid === 'string' && params.uuid.trim() ? params.uuid.trim() : uuidv4();
@@ -283,6 +290,7 @@ export function useHistoryPersistence({
         mode: params.mode,
         targetModel: params.targetModel ?? null,
         generationParams: params.generationParams ?? null,
+        keyframes: params.keyframes ?? null,
         brainstormContext: null,
         highlightCache: null,
         versions: [],
@@ -304,16 +312,38 @@ export function useHistoryPersistence({
   // Bug 3 fix: add .catch() to fire-and-forget persistence calls
   const updateEntryPersisted = useCallback(
     (uuid: string, docId: string | null, updates: UpdatePromptOptions) => {
-      updatePrompt(user?.uid, uuid, docId, updates)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist prompt update', error as Error, { uuid, docId });
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      let effectiveUpdates = updates;
+      if (updates.keyframes !== undefined) {
+        const mergedKeyframes = enforceImmutableKeyframes(entry?.keyframes ?? null, updates.keyframes ?? null);
+        if (mergedKeyframes.warnings.length) {
+          log.warn('Preserved immutable keyframe references during persist', {
+            uuid,
+            docId,
+            warningCount: mergedKeyframes.warnings.length,
+          });
+        }
+        effectiveUpdates = {
+          ...updates,
+          keyframes: mergedKeyframes.keyframes ?? null,
+        };
+      }
+
+      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
+        log.warn('Failed to persist prompt update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
       });
 
       const localUpdates: Partial<PromptHistoryEntry> = {};
-      if (updates.input !== undefined) localUpdates.input = updates.input;
-      if (updates.title !== undefined) localUpdates.title = updates.title;
-      if (updates.mode !== undefined) localUpdates.mode = updates.mode;
-      if (updates.targetModel !== undefined) localUpdates.targetModel = updates.targetModel;
-      if (updates.generationParams !== undefined) localUpdates.generationParams = updates.generationParams;
+      if (effectiveUpdates.input !== undefined) localUpdates.input = effectiveUpdates.input;
+      if (effectiveUpdates.title !== undefined) localUpdates.title = effectiveUpdates.title;
+      if (effectiveUpdates.mode !== undefined) localUpdates.mode = effectiveUpdates.mode;
+      if (effectiveUpdates.targetModel !== undefined) localUpdates.targetModel = effectiveUpdates.targetModel;
+      if (effectiveUpdates.generationParams !== undefined) localUpdates.generationParams = effectiveUpdates.generationParams;
+      if (effectiveUpdates.keyframes !== undefined) localUpdates.keyframes = effectiveUpdates.keyframes;
 
       updateEntry(uuid, localUpdates);
     },
@@ -321,9 +351,15 @@ export function useHistoryPersistence({
   );
 
   const updateEntryHighlight = useCallback(
-    (uuid: string, highlightCache: unknown) => {
-      updateHighlights(user?.uid, uuid, highlightCache)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist highlight update', error as Error, { uuid });
+    (uuid: string, highlightCache: Record<string, unknown> | null) => {
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      const docId = entry?.id ?? null;
+      updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.((error: unknown) => {
+        log.warn('Failed to persist highlight update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
       });
       updateEntry(uuid, { highlightCache: highlightCache ?? null });
     },
@@ -331,34 +367,42 @@ export function useHistoryPersistence({
   );
 
   const updateEntryOutput = useCallback(
-    (uuid: string, docId: string | null, output: string) => {
-      updateOutput(user?.uid, uuid, docId, output)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist output update', error as Error, { uuid, docId });
-      });
+    async (uuid: string, docId: string | null, output: string): Promise<void> => {
       updateEntry(uuid, { output });
+      await updateOutput(user?.uid, uuid, docId, output);
     },
     [user, updateEntry]
   );
 
   const updateEntryVersions = useCallback(
     (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => {
-      const generationCount = versions.reduce(
+      const entry = historyRef.current.find((item) => item.uuid === uuid);
+      const enforced = enforceImmutableVersions(entry ?? null, versions);
+      if (enforced.warnings.length) {
+        log.warn('Preserved immutable media references during version persist', {
+          uuid,
+          docId,
+          warningCount: enforced.warnings.length,
+        });
+      }
+      const nextVersions = enforced.versions;
+      const generationCount = nextVersions.reduce(
         (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
         0
       );
       log.debug('updateEntryVersions called', {
         uuid,
         docId,
-        versionCount: versions.length,
+        versionCount: nextVersions.length,
         generationCount,
       });
 
-      updateEntry(uuid, { versions });
+      updateEntry(uuid, { versions: nextVersions });
 
       const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
       if (isDraftId && user?.uid) {
         if (promotingDraftsRef.current.has(uuid)) {
-          pendingVersionsRef.current.set(uuid, versions);
+          pendingVersionsRef.current.set(uuid, nextVersions);
           log.debug('Draft promotion in progress, queuing version update', { uuid });
           return;
         }
@@ -388,7 +432,7 @@ export function useHistoryPersistence({
           ...(entry.generationParams ? { generationParams: entry.generationParams } : {}),
           brainstormContext: entry.brainstormContext ?? null,
           highlightCache: entry.highlightCache ?? null,
-          versions,
+          versions: nextVersions,
         })
           .then((result) => {
             promotingDraftsRef.current.delete(uuid);
@@ -423,7 +467,7 @@ export function useHistoryPersistence({
       if (versionWriteTimerRef.current !== null) {
         clearTimeout(versionWriteTimerRef.current);
       }
-      pendingVersionWriteRef.current = { uuid, docId, versions };
+      pendingVersionWriteRef.current = { uuid, docId, versions: nextVersions };
       versionWriteTimerRef.current = setTimeout(() => {
         versionWriteTimerRef.current = null;
         const pending = pendingVersionWriteRef.current;
@@ -457,7 +501,7 @@ export function useHistoryPersistence({
           });
           updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
         }
-      }, 150);
+      }, 500);
     },
     [user, updateEntry]
   );

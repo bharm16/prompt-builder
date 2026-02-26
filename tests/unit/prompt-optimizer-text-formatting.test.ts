@@ -19,7 +19,7 @@ describe('textFormatting', () => {
   it('wraps escaped text in ML highlighting container', () => {
     const result = escapeHTMLForMLHighlighting('Test');
 
-    expect(result).toContain('white-space: pre-wrap');
+    expect(result).toContain('whitespace-pre-wrap');
     expect(result).toContain('Test');
   });
 

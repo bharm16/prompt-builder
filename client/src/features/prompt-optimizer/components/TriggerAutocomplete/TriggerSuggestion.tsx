@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { cn } from '@/utils/cn';
@@ -25,12 +25,29 @@ export function TriggerSuggestion({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const primaryImageUrl = primaryImage?.thumbnailUrl || primaryImage?.url;
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
+  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
+  const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
   const triggerLabel = asset.trigger.startsWith('@')
     ? asset.trigger
     : `@${asset.trigger}`;
+
+  useEffect(() => {
+    setImageUrl(thumbnailUrl || fullUrl);
+    setDidTryFull(false);
+  }, [thumbnailUrl, fullUrl]);
+
+  const handleImageError = () => {
+    if (!didTryFull && fullUrl && imageUrl !== fullUrl) {
+      setDidTryFull(true);
+      setImageUrl(fullUrl);
+      return;
+    }
+    setImageUrl('');
+  };
 
   return (
     <button
@@ -44,14 +61,15 @@ export function TriggerSuggestion({
       <div
         className={cn(
           'flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md',
-          primaryImageUrl ? 'bg-surface-3' : config.bgClass
+          imageUrl ? 'bg-surface-3' : config.bgClass
         )}
       >
-        {primaryImageUrl ? (
+        {imageUrl ? (
           <img
-            src={primaryImageUrl}
+            src={imageUrl}
             alt=""
             className="h-full w-full object-cover"
+            onError={handleImageError}
           />
         ) : (
           <Icon className={cn('h-5 w-5', config.colorClass)} />

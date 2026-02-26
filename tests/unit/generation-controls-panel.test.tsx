@@ -1,32 +1,66 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CapabilitiesSchema } from '@shared/capabilities';
 
 import { GenerationControlsPanel } from '@components/ToolSidebar/components/panels/GenerationControlsPanel';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
+import {
+  GenerationControlsStoreProvider,
+} from '@features/prompt-optimizer/context/GenerationControlsStore';
+import type { GenerationControlsState } from '@features/prompt-optimizer/context/generationControlsStoreTypes';
 
 vi.mock(
   '@utils/cn',
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
 const useCapabilitiesMock = vi.hoisted(() => vi.fn());
+const useWorkspaceSessionMock = vi.hoisted(() => vi.fn());
+const useGenerationControlsContextMock = vi.hoisted(() => vi.fn());
+const usePromptServicesMock = vi.hoisted(() => vi.fn());
+const useCreditBalanceMock = vi.hoisted(() => vi.fn());
+const useLowBalanceWarningMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@features/prompt-optimizer/hooks/useCapabilities', () => ({
   useCapabilities: (...args: unknown[]) => useCapabilitiesMock(...args),
+}));
+
+vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
+  useGenerationControlsContext: (...args: unknown[]) =>
+    useGenerationControlsContextMock(...args),
+}));
+
+vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+  useWorkspaceSession: (...args: unknown[]) => useWorkspaceSessionMock(...args),
+}));
+
+vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+  usePromptServices: (...args: unknown[]) => usePromptServicesMock(...args),
+  useOptionalPromptHighlights: () => null,
+}));
+
+vi.mock('@/contexts/CreditBalanceContext', () => ({
+  useCreditBalance: (...args: unknown[]) => useCreditBalanceMock(...args),
+}));
+
+vi.mock('@/features/billing/hooks/useLowBalanceWarning', () => ({
+  useLowBalanceWarning: (...args: unknown[]) => useLowBalanceWarningMock(...args),
+}));
+
+vi.mock('@/hooks/useAuthUser', () => ({
+  useAuthUser: () => ({ uid: 'user-1' }),
 }));
 
 const createKeyframe = (overrides: Partial<KeyframeTile> = {}): KeyframeTile => ({
   id: overrides.id ?? 'frame-1',
   url: overrides.url ?? 'https://example.com/frame.jpg',
   source: overrides.source ?? 'upload',
-  assetId: overrides.assetId,
+  ...(overrides.assetId === undefined ? {} : { assetId: overrides.assetId }),
 });
 
 const createProps = (overrides = {}) => ({
@@ -55,13 +89,97 @@ const createProps = (overrides = {}) => ({
   ...overrides,
 });
 
+const createInitialStoreState = (
+  props: ReturnType<typeof createProps>
+): GenerationControlsState => ({
+  domain: {
+    selectedModel: props.selectedModel,
+    generationParams: {
+      aspect_ratio: props.aspectRatio,
+      duration_s: props.duration,
+    },
+    videoTier: props.tier,
+    keyframes: props.keyframes,
+    startFrame: props.keyframes[0] ?? null,
+    endFrame: null,
+    videoReferenceImages: [],
+    extendVideo: null,
+    cameraMotion: null,
+    subjectMotion: '',
+  },
+  ui: {
+    activeTab: 'video',
+    imageSubTab: 'references',
+    constraintMode: 'strict',
+  },
+});
+
+const renderPanel = (overrides: Parameters<typeof createProps>[0] = {}) => {
+  const props = createProps(overrides);
+  const initialState = createInitialStoreState(props);
+  usePromptServicesMock.mockReturnValue({
+    promptOptimizer: {
+      inputPrompt: props.prompt,
+      setInputPrompt: vi.fn(),
+    },
+  });
+
+  const rendered = render(
+    <GenerationControlsStoreProvider initialState={initialState}>
+      <GenerationControlsPanel {...props} />
+    </GenerationControlsStoreProvider>
+  );
+
+  return { ...rendered, props };
+};
+
 describe('GenerationControlsPanel', () => {
   beforeEach(() => {
+    usePromptServicesMock.mockReset();
+    useLowBalanceWarningMock.mockReset();
+    useCreditBalanceMock.mockReturnValue({
+      balance: 1000,
+      isLoading: false,
+      error: null,
+    });
     useCapabilitiesMock.mockReturnValue({
       schema: null,
       isLoading: false,
       error: null,
       target: { provider: 'mock', model: 'mock', label: 'Mock' },
+    });
+    useWorkspaceSessionMock.mockReturnValue({
+      session: null,
+      loading: false,
+      error: null,
+      isSequenceMode: false,
+      shots: [],
+      currentShotId: null,
+      currentShot: null,
+      currentShotIndex: -1,
+      setCurrentShotId: vi.fn(),
+      refreshSession: vi.fn(),
+      addShot: vi.fn(),
+      updateShot: vi.fn(),
+      updateShotStyleReference: vi.fn(),
+      generateShot: vi.fn(),
+      startSequence: vi.fn(),
+      isStartingSequence: false,
+    });
+    useGenerationControlsContextMock.mockReturnValue({
+      controls: {
+        onDraft: vi.fn(),
+        onRender: vi.fn(),
+        onStoryboard: vi.fn(),
+        isGenerating: false,
+        activeDraftModel: null,
+      },
+      setControls: vi.fn(),
+      onStoryboard: vi.fn(),
+      onInsufficientCredits: null,
+      setOnInsufficientCredits: vi.fn(),
+      faceSwapPreview: null,
+      setFaceSwapPreview: vi.fn(),
     });
   });
 
@@ -70,15 +188,11 @@ describe('GenerationControlsPanel', () => {
       const user = userEvent.setup();
       const onRender = vi.fn();
 
-      render(
-        <GenerationControlsPanel
-          {...createProps({
-            prompt: '   ',
-            onRender,
-            tier: 'render',
-          })}
-        />
-      );
+      renderPanel({
+        prompt: '   ',
+        onRender,
+        tier: 'render',
+      });
 
       const generateButton = screen.getByRole('button', { name: 'Generate' });
       expect(generateButton).toBeDisabled();
@@ -90,31 +204,25 @@ describe('GenerationControlsPanel', () => {
     it('disables generate when image tab has no keyframes', async () => {
       const user = userEvent.setup();
 
-      render(
-        <GenerationControlsPanel
-          {...createProps({
-            prompt: 'Has prompt',
-            keyframes: [],
-          })}
-        />
-      );
+      renderPanel({
+        prompt: 'Has prompt',
+        keyframes: [],
+      });
 
       await user.click(screen.getByRole('button', { name: 'Image' }));
 
       const generateButton = screen.getByRole('button', { name: 'Generate' });
-      expect(generateButton).toBeDisabled();
+      await waitFor(() => {
+        expect(generateButton).toBeDisabled();
+      });
     });
 
     it('disables uploads when keyframe limit is reached', () => {
       const keyframes = [createKeyframe({ id: '1' }), createKeyframe({ id: '2' }), createKeyframe({ id: '3' })];
 
-      const { container } = render(
-        <GenerationControlsPanel
-          {...createProps({
-            keyframes,
-          })}
-        />
-      );
+      const { container } = renderPanel({
+        keyframes,
+      });
 
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement | null;
       expect(fileInput?.disabled).toBe(true);
@@ -146,14 +254,10 @@ describe('GenerationControlsPanel', () => {
         target: { provider: 'mock', model: 'mock', label: 'Mock' },
       });
 
-      render(
-        <GenerationControlsPanel
-          {...createProps({
-            aspectRatio: '2:1',
-            duration: 2,
-          })}
-        />
-      );
+      renderPanel({
+        aspectRatio: '2:1',
+        duration: 2,
+      });
 
       const ratioSelect = screen.getByLabelText('Aspect ratio');
       const durationSelect = screen.getByLabelText('Duration');
@@ -167,20 +271,16 @@ describe('GenerationControlsPanel', () => {
       const user = userEvent.setup();
       const onRender = vi.fn();
 
-      render(
-        <GenerationControlsPanel
-          {...createProps({
-            selectedModel: 'unknown-model',
-            prompt: 'Ready',
-            onRender,
-            tier: 'render',
-          })}
-        />
-      );
+      renderPanel({
+        selectedModel: 'unknown-model',
+        prompt: 'Ready',
+        onRender,
+        tier: 'render',
+      });
 
       await user.click(screen.getByRole('button', { name: 'Generate' }));
 
-      expect(onRender).toHaveBeenCalledWith(VIDEO_RENDER_MODELS[0]?.id ?? 'sora-2');
+      expect(onRender).toHaveBeenCalledWith(VIDEO_RENDER_MODELS[0]?.id ?? 'sora-2', undefined);
     });
   });
 
@@ -189,19 +289,16 @@ describe('GenerationControlsPanel', () => {
       const user = userEvent.setup();
       const onDraft = vi.fn();
 
-      render(
-        <GenerationControlsPanel
-          {...createProps({
-            tier: 'draft',
-            prompt: 'Ready',
-            onDraft,
-          })}
-        />
-      );
+      renderPanel({
+        tier: 'draft',
+        selectedModel: VIDEO_DRAFT_MODEL.id,
+        prompt: 'Ready',
+        onDraft,
+      });
 
       await user.click(screen.getByRole('button', { name: 'Generate' }));
 
-      expect(onDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id);
+      expect(onDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id, undefined);
     });
   });
 });

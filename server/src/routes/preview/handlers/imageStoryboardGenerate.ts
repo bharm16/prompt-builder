@@ -1,10 +1,12 @@
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
+import { sendApiError } from '@middleware/apiErrorResponse';
+import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import type { PreviewRoutesServices } from '@routes/types';
+import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { ResolvedPrompt } from '@shared/types/asset';
 import { STORYBOARD_FRAME_COUNT } from '@services/image-generation/storyboard/constants';
 import { parseImageStoryboardGenerateRequest } from '../imageStoryboardRequest';
-import { getAuthenticatedUserId } from '../auth';
 
 type ImageStoryboardGenerateServices = Pick<
   PreviewRoutesServices,
@@ -12,6 +14,7 @@ type ImageStoryboardGenerateServices = Pick<
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
+const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const hasStatusCode = (value: unknown): value is { statusCode: number } => {
   if (!value || typeof value !== 'object') {
@@ -51,6 +54,9 @@ const selectCharacterReferenceImage = (
   return candidates[0];
 };
 
+const hasPromptTriggers = (prompt: string): boolean =>
+  Array.from(prompt.matchAll(TRIGGER_REGEX)).length > 0;
+
 export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
   userCreditService,
@@ -61,10 +67,10 @@ export const createImageStoryboardGenerateHandler = ({
       logger.warn('Storyboard preview service unavailable for request', {
         path: req.path,
       });
-      return res.status(503).json({
-        success: false,
+      return sendApiError(res, req, 503, {
         error: 'Storyboard preview service is not available',
-        message: 'Storyboard generation requires an LLM planner and image providers',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Storyboard generation requires an LLM planner and image providers',
       });
     }
 
@@ -74,20 +80,21 @@ export const createImageStoryboardGenerateHandler = ({
         path: req.path,
         error: parsedRequest.error,
       });
-      return res.status(400).json({
-        success: false,
+      return sendApiError(res, req, 400, {
         error: parsedRequest.error,
+        code: GENERATION_ERROR_CODES.INVALID_REQUEST,
       });
     }
 
     const { prompt, aspectRatio, seedImageUrl, speedMode, seed } = parsedRequest.data;
+    const requestId = (req as Request & { id?: string }).id;
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
-      return res.status(401).json({
-        success: false,
+      return sendApiError(res, req, 401, {
         error: 'Authentication required',
-        message: 'You must be logged in to generate storyboard previews.',
+        code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
+        details: 'You must be logged in to generate storyboard previews.',
       });
     }
 
@@ -95,10 +102,10 @@ export const createImageStoryboardGenerateHandler = ({
       logger.error('User credit service is not available - blocking preview access', undefined, {
         path: req.path,
       });
-      return res.status(503).json({
-        success: false,
+      return sendApiError(res, req, 503, {
         error: 'Storyboard generation service is not available',
-        message: 'Credit service is not configured',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Credit service is not configured',
       });
     }
 
@@ -106,11 +113,15 @@ export const createImageStoryboardGenerateHandler = ({
     let resolvedAssetCount = 0;
     let resolvedCharacterCount = 0;
     let referenceImageUrl: string | undefined;
+    const shouldResolvePrompt = hasPromptTriggers(prompt);
 
-    if (assetService) {
+    if (shouldResolvePrompt && assetService) {
       try {
         const resolved = await assetService.resolvePrompt(userId, prompt);
-        resolvedPrompt = resolved.expandedText;
+        const expandedPrompt = resolved.expandedText.trim();
+        if (expandedPrompt.length > 0) {
+          resolvedPrompt = expandedPrompt;
+        }
         resolvedAssetCount = resolved.assets.length;
         resolvedCharacterCount = resolved.characters.length;
         if (!seedImageUrl) {
@@ -126,13 +137,13 @@ export const createImageStoryboardGenerateHandler = ({
             path: req.path,
           }
         );
-        return res.status(500).json({
-          success: false,
+        return sendApiError(res, req, 500, {
           error: 'Storyboard prompt resolution failed',
-          message: errorMessage,
+          code: GENERATION_ERROR_CODES.GENERATION_FAILED,
+          details: errorMessage,
         });
       }
-    } else {
+    } else if (shouldResolvePrompt && !assetService) {
       logger.warn('Asset service unavailable for storyboard prompt resolution', {
         userId,
         path: req.path,
@@ -143,6 +154,14 @@ export const createImageStoryboardGenerateHandler = ({
       ? Math.max(0, STORYBOARD_FRAME_COUNT - 1)
       : STORYBOARD_FRAME_COUNT;
     const previewCost = storyboardFrames * IMAGE_PREVIEW_CREDIT_COST;
+    const refundOperationToken =
+      requestId ?? buildRefundKey(['preview-storyboard', userId, prompt, Date.now(), Math.random()]);
+    const previewRefundKey = buildRefundKey([
+      'preview-storyboard',
+      refundOperationToken,
+      userId,
+      'generation',
+    ]);
 
     logger.info('Storyboard preview generation requested', {
       userId,
@@ -157,6 +176,7 @@ export const createImageStoryboardGenerateHandler = ({
       storyboardFrames,
       resolvedAssetCount,
       resolvedCharacterCount,
+      shouldResolvePrompt,
     });
 
     const hasCredits = await userCreditService.reserveCredits(userId, previewCost);
@@ -166,10 +186,10 @@ export const createImageStoryboardGenerateHandler = ({
         previewCost,
         storyboardFrames,
       });
-      return res.status(402).json({
-        success: false,
+      return sendApiError(res, req, 402, {
         error: 'Insufficient credits',
-        message: `This storyboard requires ${previewCost} credit${previewCost === 1 ? '' : 's'}.`,
+        code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+        details: `This storyboard requires ${previewCost} credit${previewCost === 1 ? '' : 's'}.`,
       });
     }
 
@@ -209,10 +229,22 @@ export const createImageStoryboardGenerateHandler = ({
         },
       });
     } catch (error: unknown) {
-      await userCreditService.refundCredits(userId, previewCost);
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = hasStatusCode(error) ? error.statusCode : 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
+      const isServiceUnavailable = statusCode === 503;
+
+      await refundWithGuard({
+        userCreditService,
+        userId,
+        amount: previewCost,
+        refundKey: previewRefundKey,
+        reason: 'preview storyboard generation failed',
+        metadata: {
+          requestId,
+          path: req.path,
+        },
+      });
 
       logger.error('Storyboard preview generation failed', errorInstance, {
         statusCode,
@@ -220,10 +252,12 @@ export const createImageStoryboardGenerateHandler = ({
         aspectRatio,
       });
 
-      return res.status(statusCode).json({
-        success: false,
+      return sendApiError(res, req, statusCode, {
         error: 'Storyboard generation failed',
-        message: errorMessage,
+        code: isServiceUnavailable
+          ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+          : GENERATION_ERROR_CODES.GENERATION_FAILED,
+        details: errorMessage,
       });
     }
   };

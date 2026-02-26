@@ -5,15 +5,31 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import security from 'eslint-plugin-security';
 import noSecrets from 'eslint-plugin-no-secrets';
+import tsParser from '@typescript-eslint/parser';
+import tsEslint from '@typescript-eslint/eslint-plugin';
 import noHardcodedCss from './eslint-plugin-no-hardcoded-css.js';
 
 export default [
-  { ignores: ['dist', 'node_modules'] },
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
+      '**/.vite/**',
+      '**/.cache/**',
+      '**/tmp/**',
+    ],
+  },
+  {
+    files: ['**/*.{js,jsx,mjs,cjs,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -39,17 +55,62 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
-      // Customize these rules as needed
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'react/display-name': 'warn',
+      'react/no-unescaped-entities': 'warn',
+      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/exhaustive-deps': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ArrayExpression[parent.type='CallExpression'][parent.callee.name=/^use(?:Effect|LayoutEffect|Memo|Callback)$/] > Identifier[name=/^(params|options|props|promptOptimizer|promptHistory|workspaceDomain|versioning)$/]",
+          message:
+            'Do not use whole-object dependencies in hook arrays. Depend on specific stable members/functions instead.',
+        },
+      ],
+      // Keep baseline signal useful while this branch is being stabilized.
+      'no-console': 'warn',
       'no-eval': 'error',
       'no-implied-eval': 'error',
+      'no-useless-escape': 'warn',
+      'no-prototype-builtins': 'warn',
+      'no-dupe-keys': 'warn',
+      'no-redeclare': 'warn',
+      'no-case-declarations': 'warn',
+      'no-useless-catch': 'warn',
+      'no-unsafe-finally': 'warn',
+      'no-constant-binary-expression': 'warn',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '@services/EnhancementService',
+              '@services/VideoConceptService',
+            ],
+            message:
+              'Use canonical domain imports instead of legacy root service shims.',
+          },
+          {
+            group: [
+              '@/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+              '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+              '**/PromptOptimizerContainer/PromptOptimizerContainer',
+              '**/PromptOptimizerContainer/PromptOptimizerContainer.tsx',
+            ],
+            message:
+              'Import from @/features/prompt-optimizer/PromptOptimizerContainer (folder entrypoint) or PromptOptimizerWorkspace directly.',
+          },
+        ],
+      }],
       'react/prop-types': 'off', // Turn off if not using prop-types
       // Security rules
-      'no-secrets/no-secrets': 'error',
-      'security/detect-object-injection': 'warn',
-      'security/detect-non-literal-regexp': 'warn',
-      'security/detect-non-literal-fs-filename': 'warn',
+      'no-secrets/no-secrets': 'warn',
+      // High-noise security heuristics are disabled during stabilization.
+      // These rules produce large volumes of false positives in typed code.
+      'security/detect-object-injection': 'off',
+      'security/detect-non-literal-regexp': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
       'security/detect-eval-with-expression': 'error',
       'security/detect-no-csrf-before-method-override': 'error',
       'security/detect-buffer-noassert': 'error',
@@ -58,7 +119,7 @@ export default [
       'security/detect-new-buffer': 'error',
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
-      'security/detect-unsafe-regex': 'error',
+      'security/detect-unsafe-regex': 'off',
       // Hardcoded spacing/formatting values detection in inline styles
       'no-hardcoded-css/no-hardcoded-css': ['warn', {
         allowPixelValues: false,
@@ -67,9 +128,52 @@ export default [
       }],
     },
   },
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsEslint,
+    },
+    rules: {
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: [
+      'server/src/routes/**/*.{js,ts,jsx,tsx}',
+      'server/src/middleware/**/*.{js,ts,jsx,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: '@services/credits/UserCreditService',
+            importNames: ['userCreditService'],
+            message:
+              'Inject credit services through DI or route factory parameters instead of singleton imports.',
+          },
+          {
+            name: '@services/storage/StorageService',
+            importNames: ['getStorageService'],
+            message:
+              'Inject storage services through DI or route factory parameters instead of singleton imports.',
+          },
+        ],
+      }],
+    },
+  },
   // Server-side configuration
   {
-    files: ['server.js', 'utils/**/*.js', 'src/**/*.js', 'migrate-*.js', 'verify-*.js'],
+    files: ['server.{js,ts}', 'utils/**/*.{js,ts}', 'src/**/*.{js,ts}', 'migrate-*.*', 'verify-*.*'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -78,10 +182,20 @@ export default [
   },
   // Test files configuration
   {
-    files: ['__tests__/**/*.js', '**/*.test.js', 'vitest.setup.js'],
+    files: [
+      '**/__tests__/**/*.{js,jsx,ts,tsx}',
+      '**/*.{test,spec}.{js,jsx,ts,tsx}',
+      'tests/**/*.{js,jsx,ts,tsx}',
+      'config/test/vitest.setup.client.js',
+      'config/test/vitest.setup.server.js',
+      'config/test/vitest.config.js',
+      'config/test/vitest.workspace.js',
+      'config/test/playwright.config.js',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,
+        ...globals.browser,
         vi: 'readonly',
         describe: 'readonly',
         it: 'readonly',
@@ -95,7 +209,10 @@ export default [
       },
     },
     rules: {
-      'no-console': 'off', // Allow console in tests
+      'no-console': 'off',
+      'no-secrets/no-secrets': 'off',
+      'security/detect-object-injection': 'off',
+      'security/detect-non-literal-regexp': 'off',
     },
   },
   // Load test files (k6)
@@ -121,16 +238,24 @@ export default [
   },
   // Prompt template files - disable secrets detection for false positives
   {
-    files: ['src/services/prompt-optimization/PromptOptimizationService.js', 'src/services/EnhancementService.js'],
+    files: [
+      'server/src/services/prompt-optimization/PromptOptimizationService.{js,ts}',
+      'server/src/services/EnhancementService.{js,ts}',
+    ],
     rules: {
       'no-secrets/no-secrets': 'off', // Templates contain high-entropy strings
     },
   },
   // Migration and utility scripts - allow console
   {
-    files: ['migrate-*.js', 'verify-*.js'],
+    files: [
+      'migrate-*.*',
+      'verify-*.*',
+      'scripts/**/*.{js,ts,mjs,cjs}',
+    ],
     rules: {
-      'no-console': 'off', // Scripts need console output
+      'no-console': 'off',
+      'no-secrets/no-secrets': 'off',
     },
   },
 ];

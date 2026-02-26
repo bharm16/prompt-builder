@@ -13,6 +13,12 @@ describe('safeParseJSON', () => {
 
       expect(result).toBeNull();
     });
+
+    it('returns null when embedded braces are present but malformed', () => {
+      const result = safeParseJSON('prefix { "spans": [ } suffix');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('edge cases', () => {
@@ -26,6 +32,12 @@ describe('safeParseJSON', () => {
       const result = safeParseJSON('Noise {"spans":[{"text":"cat"}]} trailing');
 
       expect(result?.spans?.[0]?.text).toBe('cat');
+    });
+
+    it('recovers JSON payload from malformed wrapper text', () => {
+      const result = safeParseJSON('LLM response -> {"spans":[{"text":"lens"}]} <- end');
+
+      expect(result).toEqual({ spans: [{ text: 'lens' }] });
     });
   });
 

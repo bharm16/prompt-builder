@@ -10,6 +10,12 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
+# Download model assets during build (cached when inputs are unchanged)
+COPY scripts/download-models.sh ./scripts/download-models.sh
+ARG SPAN_LABELING_MODELS_GCS_URI
+ENV SPAN_LABELING_MODELS_GCS_URI=${SPAN_LABELING_MODELS_GCS_URI}
+RUN chmod +x ./scripts/download-models.sh && ./scripts/download-models.sh
+
 # Copy application code
 COPY . .
 
@@ -18,15 +24,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install runtime dependencies:
+# - dumb-init: proper signal handling
+# - ffmpeg: provides ffmpeg + ffprobe for continuity frame extraction
+RUN apk add --no-cache dumb-init ffmpeg
 
 # Security: Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-# Copy node_modules and application from builder
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs . .
+# Copy built application from builder (includes downloaded model assets)
+COPY --from=builder --chown=nodejs:nodejs /app ./
 
 # Switch to non-root user
 USER nodejs
@@ -41,5 +48,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application (tsx runs TypeScript directly)
+CMD ["npx", "tsx", "--tsconfig", "server/tsconfig.json", "server/index.ts"]

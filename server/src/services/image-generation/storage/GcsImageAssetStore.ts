@@ -6,42 +6,38 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { Storage, type Bucket, type File } from '@google-cloud/storage';
+import type { Bucket, File } from '@google-cloud/storage';
 import { logger } from '@infrastructure/Logger';
-import { ensureGcsCredentials } from '@utils/gcsCredentials';
 import type { ImageAssetStore, StoredImageAsset } from './types';
 
 interface GcsImageAssetStoreOptions {
-  bucketName: string;
+  bucket: Bucket;
   basePath: string;
   signedUrlTtlMs: number;
   cacheControl: string;
 }
 
 export class GcsImageAssetStore implements ImageAssetStore {
-  private readonly storage: Storage;
-  private readonly bucketName: string;
+  private readonly bucket: Bucket;
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
   private readonly log = logger.child({ service: 'GcsImageAssetStore' });
 
   constructor(options: GcsImageAssetStoreOptions) {
-    ensureGcsCredentials();
-    this.storage = new Storage();
-    this.bucketName = options.bucketName;
+    this.bucket = options.bucket;
     this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
   }
 
-  private get bucket(): Bucket {
-    return this.storage.bucket(this.bucketName);
-  }
-
-  async storeFromUrl(sourceUrl: string, contentType?: string): Promise<StoredImageAsset> {
+  async storeFromUrl(
+    sourceUrl: string,
+    userId: string,
+    contentType?: string
+  ): Promise<StoredImageAsset> {
     const id = uuidv4();
-    const objectPath = this.objectPath(id);
+    const objectPath = this.objectPath(userId, id);
 
     this.log.debug('Fetching image from source URL', { sourceUrl: sourceUrl.slice(0, 100) });
 
@@ -70,6 +66,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: objectPath,
       url,
       contentType: resolvedContentType,
       createdAt: Date.now(),
@@ -78,9 +75,13 @@ export class GcsImageAssetStore implements ImageAssetStore {
     };
   }
 
-  async storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredImageAsset> {
+  async storeFromBuffer(
+    buffer: Buffer,
+    contentType: string,
+    userId: string
+  ): Promise<StoredImageAsset> {
     const id = uuidv4();
-    const objectPath = this.objectPath(id);
+    const objectPath = this.objectPath(userId, id);
 
     await this.uploadBuffer(objectPath, buffer, contentType);
 
@@ -92,6 +93,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
     return {
       id,
+      storagePath: objectPath,
       url,
       contentType,
       createdAt: Date.now(),
@@ -100,23 +102,28 @@ export class GcsImageAssetStore implements ImageAssetStore {
     };
   }
 
-  async getPublicUrl(assetId: string): Promise<string | null> {
-    const file = this.bucket.file(this.objectPath(assetId));
+  async getPublicUrl(assetId: string, userId: string): Promise<string | null> {
+    const file = this.bucket.file(this.objectPath(userId, assetId));
     try {
+      const [exists] = await file.exists();
+      if (!exists) {
+        return null;
+      }
       const { url } = await this.getSignedUrl(file);
       return url;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.warn('Failed to generate image signed URL', {
         assetId,
+        userId,
         error: errorMessage,
       });
       return null;
     }
   }
 
-  async exists(assetId: string): Promise<boolean> {
-    const file = this.bucket.file(this.objectPath(assetId));
+  async exists(assetId: string, userId: string): Promise<boolean> {
+    const file = this.bucket.file(this.objectPath(userId, assetId));
     const [exists] = await file.exists();
     return exists;
   }
@@ -156,8 +163,16 @@ export class GcsImageAssetStore implements ImageAssetStore {
     return deleted;
   }
 
-  private objectPath(assetId: string): string {
-    return `${this.basePath}/${assetId}`;
+  private objectPath(userId: string, assetId: string): string {
+    return `${this.basePath}/${this.sanitizeUserId(userId)}/${assetId}`;
+  }
+
+  private sanitizeUserId(userId: string): string {
+    const trimmed = userId.trim();
+    if (trimmed.length === 0) {
+      return 'anonymous';
+    }
+    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, '_');
   }
 
   private async uploadBuffer(
@@ -181,6 +196,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
             cacheControl: this.cacheControl,
             ...(sourceUrl ? { metadata: { sourceUrl } } : {}),
           },
+          preconditionOpts: { ifGenerationMatch: 0 },
         });
         return;
       } catch (error) {
@@ -200,6 +216,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
   private async getSignedUrl(file: File): Promise<{ url: string; expiresAt: number }> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
+      version: 'v4',
       action: 'read',
       expires: expiresAt,
     });

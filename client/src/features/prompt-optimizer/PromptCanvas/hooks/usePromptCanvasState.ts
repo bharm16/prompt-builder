@@ -9,7 +9,7 @@ import { useCallback, useReducer } from 'react';
 
 import type { PromptCanvasAction, PromptCanvasState } from '../types';
 
-const initialState: PromptCanvasState = {
+export const initialPromptCanvasState: PromptCanvasState = {
   showExportMenu: false,
   showLegend: false,
   rightPaneMode: 'refine',
@@ -31,13 +31,22 @@ const initialState: PromptCanvasState = {
   justReplaced: null,
 };
 
-function promptCanvasReducer(
+export function promptCanvasReducer(
   state: PromptCanvasState,
   action: PromptCanvasAction
 ): PromptCanvasState {
   switch (action.type) {
-    case 'MERGE_STATE':
-      return { ...state, ...action.payload };
+    case 'MERGE_STATE': {
+      const keys = Object.keys(action.payload) as Array<keyof PromptCanvasState>;
+      let changed = false;
+      for (const key of keys) {
+        if (!Object.is(state[key], action.payload[key])) {
+          changed = true;
+          break;
+        }
+      }
+      return changed ? { ...state, ...action.payload } : state;
+    }
     case 'INCREMENT_VISUAL_REQUEST_ID':
       return { ...state, visualGenerateRequestId: state.visualGenerateRequestId + 1 };
     case 'INCREMENT_VIDEO_REQUEST_ID':
@@ -55,7 +64,7 @@ export interface UsePromptCanvasStateReturn {
 }
 
 export function usePromptCanvasState(): UsePromptCanvasStateReturn {
-  const [state, dispatch] = useReducer(promptCanvasReducer, initialState);
+  const [state, dispatch] = useReducer(promptCanvasReducer, initialPromptCanvasState);
 
   const setState = useCallback((payload: Partial<PromptCanvasState>) => {
     dispatch({ type: 'MERGE_STATE', payload });

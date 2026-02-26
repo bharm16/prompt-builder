@@ -6,6 +6,7 @@ import { fetchEnhancementSuggestions } from '@features/prompt-optimizer/api/enha
 import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
 import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
 import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import { PromptContext } from '@utils/PromptContext/PromptContext';
 
 vi.mock('@features/prompt-optimizer/api/enhancementSuggestionsApi', () => ({
   fetchEnhancementSuggestions: vi.fn(),
@@ -37,10 +38,20 @@ describe('useSuggestionApi', () => {
     vi.clearAllMocks();
     mockUseEditHistory.mockReturnValue({
       getEditSummary: vi.fn().mockReturnValue([{ id: 'edit-1' }]),
-    } as ReturnType<typeof useEditHistory>);
+    } as unknown as ReturnType<typeof useEditHistory>);
     mockPrepareSpanContext.mockReturnValue({
-      simplifiedSpans: [{ text: 'span-a' }],
-      nearbySpans: [{ text: 'span-b' }],
+      simplifiedSpans: [{ text: 'span-a', role: 'style', category: 'style' }],
+      nearbySpans: [
+        {
+          text: 'span-b',
+          role: 'style',
+          category: 'style',
+          distance: 1,
+          position: 'after',
+          start: 0,
+          end: 1,
+        },
+      ],
     });
   });
 
@@ -68,10 +79,10 @@ describe('useSuggestionApi', () => {
         metadata: null,
         allLabeledSpans: [],
       });
+      const rejection = expect(promise).rejects.toThrow('boom');
 
       await vi.advanceTimersByTimeAsync(200);
-
-      await expect(promise).rejects.toThrow('boom');
+      await rejection;
     });
 
     it('surfaces cancellation errors returned by the request', async () => {
@@ -93,10 +104,10 @@ describe('useSuggestionApi', () => {
         metadata: null,
         allLabeledSpans: [],
       });
+      const rejection = expect(promise).rejects.toThrow(CancellationError);
 
       await vi.advanceTimersByTimeAsync(200);
-
-      await expect(promise).rejects.toThrow(CancellationError);
+      await rejection;
     });
   });
 
@@ -145,7 +156,7 @@ describe('useSuggestionApi', () => {
       const { result } = renderHook(() =>
         useSuggestionApi({
           promptOptimizer: { inputPrompt: 'input' },
-          stablePromptContext: { format: 'video' },
+          stablePromptContext: new PromptContext({}, { format: 'video' }),
         })
       );
 
@@ -175,11 +186,26 @@ describe('useSuggestionApi', () => {
           contextAfter: 'after',
           fullPrompt: 'prompt',
           inputPrompt: 'input',
-          brainstormContext: { format: 'video' },
+          brainstormContext: expect.objectContaining({
+            metadata: expect.objectContaining({ format: 'video' }),
+          }),
           metadata: { category: 'style' },
-          allLabeledSpans: [{ text: 'span-a' }],
-          nearbySpans: [{ text: 'span-b' }],
+          allLabeledSpans: [
+            expect.objectContaining({
+              text: 'span-a',
+              role: 'style',
+              category: 'style',
+            }),
+          ],
+          nearbySpans: [
+            expect.objectContaining({
+              text: 'span-b',
+              role: 'style',
+              category: 'style',
+            }),
+          ],
           editHistory: [{ id: 'edit-1' }],
+          signal: expect.anything(),
         })
       );
 

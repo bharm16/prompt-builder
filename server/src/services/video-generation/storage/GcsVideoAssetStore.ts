@@ -1,12 +1,11 @@
 import { pipeline } from 'node:stream/promises';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bucket, File } from '@google-cloud/storage';
-import { admin } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
 
 interface GcsVideoAssetStoreOptions {
-  bucketName: string;
+  bucket: Bucket;
   basePath: string;
   signedUrlTtlMs: number;
   cacheControl: string;
@@ -20,7 +19,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly log = logger.child({ service: 'GcsVideoAssetStore' });
 
   constructor(options: GcsVideoAssetStoreOptions) {
-    this.bucket = admin.storage().bucket(options.bucketName);
+    this.bucket = options.bucket;
     this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
@@ -36,6 +35,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
       metadata: {
         cacheControl: this.cacheControl,
       },
+      preconditionOpts: { ifGenerationMatch: 0 },
     });
 
     const [metadata] = await file.getMetadata();
@@ -62,6 +62,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
           contentType,
           cacheControl: this.cacheControl,
         },
+        preconditionOpts: { ifGenerationMatch: 0 },
       })
     );
 
@@ -100,6 +101,11 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
     try {
+      const [exists] = await file.exists();
+      if (!exists) {
+        this.log.warn('Video asset missing in GCS', { assetId });
+        return null;
+      }
       return await this.getSignedUrl(file);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -153,6 +159,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private async getSignedUrl(file: File): Promise<string> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
+      version: 'v4',
       action: 'read',
       expires: expiresAt,
     });

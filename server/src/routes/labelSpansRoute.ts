@@ -2,7 +2,9 @@ import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
+import { requestCoalescing } from '@middleware/requestCoalescing';
 import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
 import { createLabelSpansCoordinator } from './labelSpans/coordinator';
 import { parseLabelSpansRequest } from './labelSpans/requestParser';
 import { handleLabelSpansStreamRequest } from './labelSpans/streamingHandler';
@@ -11,9 +13,9 @@ import { toPublicLabelSpansResult } from './labelSpans/transform';
 /**
  * Create label spans route with dependency injection
  */
-export function createLabelSpansRoute(aiService: AIModelService): Router {
+export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCache: SpanLabelingCacheService | null = null): Router {
   const router = ExpressRouter();
-  const coordinator = createLabelSpansCoordinator(aiService);
+  const coordinator = createLabelSpansCoordinator(aiService, spanLabelingCache);
 
   router.post('/stream', async (req: Request, res: Response) => {
     const parsed = parseLabelSpansRequest(req.body);
@@ -44,7 +46,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
     return;
   });
 
-  router.post('/', async (req: Request, res: Response) => {
+  router.post('/', requestCoalescing.middleware({ keyScope: '/llm/label-spans' }), async (req: Request, res: Response) => {
     const parsed = parseLabelSpansRequest(req.body);
     if (!parsed.ok) {
       return res.status(parsed.status).json({ error: parsed.error });

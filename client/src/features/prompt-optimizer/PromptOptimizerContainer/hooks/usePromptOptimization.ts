@@ -2,28 +2,93 @@ import { useCallback } from 'react';
 import { createHighlightSignature } from '@features/span-highlighting';
 import type { NavigateFunction } from 'react-router-dom';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { KeyframeTile } from '@components/ToolSidebar/types';
+import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { applyOptimizationResult } from '../utils/persistOptimizationResult';
+import {
+  extractStorageObjectPath,
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
+
+const OPTIMIZATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+const parseExpiresAtMs = (value?: string | null): number | null => {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  if (expiresAtMs !== null) {
+    return Date.now() >= expiresAtMs - OPTIMIZATION_REFRESH_BUFFER_MS;
+  }
+  return hasGcsSignedUrlParams(url);
+};
+
+const resolveOptimizationStartImageUrl = async (
+  url: string | null | undefined,
+  storagePath?: string | null,
+  viewUrlExpiresAt?: string | null
+): Promise<string | null> => {
+  if (!url || typeof url !== 'string') return url ?? null;
+  const resolvedStoragePath = storagePath || extractStorageObjectPath(url);
+  if (!resolvedStoragePath) return url;
+  const expiresAtMs = parseExpiresAtMs(viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
+  const needsRefresh = shouldRefreshStartImage(url, expiresAtMs);
+  if (!needsRefresh) return url;
+  const resolved = await resolveMediaUrl({
+    kind: 'image',
+    url,
+    storagePath: resolvedStoragePath,
+    preferFresh: true,
+  });
+  return resolved.url ?? url;
+};
+
+const OPTIMIZATION_OPTION_KEYS: ReadonlyArray<keyof OptimizationOptions> = [
+  'compileOnly',
+  'compilePrompt',
+  'targetModel',
+  'forceGenericTarget',
+  'createVersion',
+  'preserveSessionView',
+];
+
+const extractOptimizationOptions = (value: unknown): OptimizationOptions | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  const hasOptionKey = OPTIMIZATION_OPTION_KEYS.some((key) =>
+    Object.prototype.hasOwnProperty.call(candidate, key)
+  );
+  return hasOptionKey ? (candidate as OptimizationOptions) : null;
+};
 
 interface PromptOptimizer {
   inputPrompt: string;
   genericOptimizedPrompt?: string | null;
-  improvementContext: unknown;
+  improvementContext: unknown | null;
+  qualityScore: number | null;
+  setInputPrompt?: (prompt: string) => void;
   optimize: (
     prompt: string,
-    context: unknown | null,
-    brainstormContext: unknown | null,
+    context: Record<string, unknown> | null,
+    brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
     options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   compile: (
     prompt: string,
     targetModel?: string,
-    context?: unknown | null
+    context?: Record<string, unknown> | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
-  [key: string]: unknown;
 }
 
 interface PromptHistory {
@@ -36,12 +101,12 @@ interface PromptHistory {
     mode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    brainstormContext?: unknown | null,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<{ uuid: string; id?: string } | null>;
-  [key: string]: unknown;
 }
 
 export interface UsePromptOptimizationParams {
@@ -51,7 +116,10 @@ export interface UsePromptOptimizationParams {
   selectedMode: string;
   selectedModel?: string; // New: optional selected model
   generationParams: CapabilityValues;
+  keyframes?: PromptHistoryEntry['keyframes'];
+  startFrame?: KeyframeTile | null;
   startImageUrl?: string | null;
+  sourcePrompt?: string | null;
   constraintMode?: 'strict' | 'flexible' | 'transform';
   currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
@@ -66,11 +134,15 @@ export interface UsePromptOptimizationParams {
   persistedSignatureRef: React.MutableRefObject<string | null>;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
   navigate: NavigateFunction;
+  onOptimizationApplied?: (optimizedPrompt: string) => Promise<void> | void;
 }
 
 export interface UsePromptOptimizationReturn {
   handleOptimize: (
     promptToOptimize?: string,
+    // TODO: This parameter is typed as `unknown` because callers pass different shapes
+    // (Record<string, unknown> | null from improvement flow, OptimizationOptions from reoptimize).
+    // A future refactor should split this into separate methods.
     context?: unknown,
     options?: OptimizationOptions
   ) => Promise<void>;
@@ -87,7 +159,10 @@ export function usePromptOptimization({
   selectedMode,
   selectedModel, // Extract new param
   generationParams,
+  keyframes = null,
+  startFrame,
   startImageUrl,
+  sourcePrompt,
   constraintMode,
   currentPromptUuid,
   setCurrentPromptUuid,
@@ -99,7 +174,22 @@ export function usePromptOptimization({
   persistedSignatureRef,
   skipLoadFromUrlRef,
   navigate,
+  onOptimizationApplied,
 }: UsePromptOptimizationParams): UsePromptOptimizationReturn {
+  const {
+    inputPrompt,
+    genericOptimizedPrompt,
+    improvementContext,
+    qualityScore,
+    setInputPrompt,
+    optimize,
+    compile,
+  } = promptOptimizer;
+  const {
+    history,
+    saveToHistory,
+    updateEntryVersions,
+  } = promptHistory;
   /**
    * Handle prompt optimization
    */
@@ -109,8 +199,21 @@ export function usePromptOptimization({
       context?: unknown,
       options?: OptimizationOptions
     ): Promise<void> => {
-      const prompt = promptToOptimize || promptOptimizer.inputPrompt;
-      const ctx = context || promptOptimizer.improvementContext;
+      let normalizedOptions = options;
+      let normalizedContext = context;
+      if (!normalizedOptions) {
+        const extractedOptions = extractOptimizationOptions(normalizedContext);
+        if (extractedOptions) {
+          normalizedOptions = extractedOptions;
+          normalizedContext = undefined;
+        }
+      }
+
+      const prompt = promptToOptimize || inputPrompt;
+      const ctx =
+        (normalizedContext as Record<string, unknown> | null | undefined) ||
+        improvementContext;
+      const optimizationContext = (ctx as Record<string, unknown> | null | undefined) ?? null;
 
       // Serialize prompt context
       const serializedContext = promptContext
@@ -129,36 +232,69 @@ export function usePromptOptimization({
           }
         : null;
 
-      const isCompileOnly = options?.compileOnly === true;
+      const isCompileOnly = normalizedOptions?.compileOnly === true;
       const compilePrompt =
-        options?.compilePrompt ||
-        (typeof promptOptimizer.genericOptimizedPrompt === 'string'
-          ? promptOptimizer.genericOptimizedPrompt
+        normalizedOptions?.compilePrompt ||
+        (typeof genericOptimizedPrompt === 'string'
+          ? genericOptimizedPrompt
           : null);
+      const overrideTargetModel =
+        typeof normalizedOptions?.targetModel === 'string' && normalizedOptions.targetModel.trim()
+          ? normalizedOptions.targetModel.trim()
+          : undefined;
+      const forceGenericTarget = normalizedOptions?.forceGenericTarget === true;
+      const effectiveTargetModel =
+        selectedMode === 'video'
+          ? isCompileOnly
+            ? overrideTargetModel
+            : forceGenericTarget
+              ? undefined
+              : overrideTargetModel ?? selectedModel
+          : undefined;
+      const resolvedCompilePrompt =
+        (compilePrompt || prompt).trim();
 
       const optimizationInput = isCompileOnly ? compilePrompt || prompt : prompt;
-      if (typeof optimizationInput === 'string' && optimizationInput.trim()) {
+      const shouldClearBeforeOptimization =
+        typeof optimizationInput === 'string' &&
+        optimizationInput.trim() &&
+        !(isCompileOnly && !effectiveTargetModel);
+
+      if (shouldClearBeforeOptimization) {
         setShowResults(true);
         setDisplayedPromptSilently('');
       }
 
+      const resolvedStartImageUrl = normalizedOptions?.startImage
+        ? normalizedOptions.startImage
+        : await resolveOptimizationStartImageUrl(
+            startImageUrl ?? null,
+            startFrame?.storagePath ?? null,
+            startFrame?.viewUrlExpiresAt ?? null
+          );
+
       const effectiveOptions: OptimizationOptions = {
-        ...(options ?? {}),
-        ...(options?.startImage ? {} : startImageUrl ? { startImage: startImageUrl } : {}),
-        ...(options?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
+        ...(normalizedOptions ?? {}),
+        ...(normalizedOptions?.startImage ? {} : resolvedStartImageUrl ? { startImage: resolvedStartImageUrl } : {}),
+        ...(normalizedOptions?.sourcePrompt ? {} : sourcePrompt ? { sourcePrompt } : {}),
+        ...(normalizedOptions?.constraintMode ? {} : constraintMode ? { constraintMode } : {}),
       };
 
       const result = isCompileOnly
-        ? await promptOptimizer.compile(
-            compilePrompt || prompt,
-            selectedMode === 'video' ? selectedModel : undefined,
-            ctx
-          )
-        : await promptOptimizer.optimize(
+        ? effectiveTargetModel
+          ? await compile(
+              resolvedCompilePrompt,
+              effectiveTargetModel,
+              optimizationContext
+            )
+          : resolvedCompilePrompt
+            ? { optimized: resolvedCompilePrompt, score: qualityScore }
+            : null
+        : await optimize(
             prompt,
-            ctx,
+            optimizationContext,
             brainstormContextData,
-            selectedMode === 'video' ? selectedModel : undefined,
+            effectiveTargetModel,
             {
               ...effectiveOptions,
               ...(generationParams ? { generationParams } : {}),
@@ -166,45 +302,62 @@ export function usePromptOptimization({
           );
 
       if (result) {
+        const preserveSessionView = normalizedOptions?.preserveSessionView === true;
+        if (preserveSessionView) {
+          if (typeof setInputPrompt === 'function') {
+            setInputPrompt(result.optimized);
+            setDisplayedPromptSilently('');
+            setShowResults(false);
+          } else {
+            setDisplayedPromptSilently(result.optimized);
+            setShowResults(true);
+          }
+          await onOptimizationApplied?.(result.optimized);
+          return;
+        }
+
+        if (isCompileOnly && !effectiveTargetModel) {
+          setShowResults(true);
+          setDisplayedPromptSilently(result.optimized);
+        }
+
         // Save to history
-        const saveResult = await promptHistory.saveToHistory(
+        const saveResult = await saveToHistory(
           prompt,
           result.optimized,
           result.score,
           selectedMode,
-          selectedMode === 'video' ? selectedModel ?? null : null,
+          selectedMode === 'video' ? effectiveTargetModel ?? null : null,
           (generationParams as unknown as Record<string, unknown>) ?? null,
-          serializedContext,
+          keyframes ?? null,
+          serializedContext as unknown as Record<string, unknown> | null,
           null,
           currentPromptUuid
         );
 
         if (saveResult?.uuid) {
-          // Update state
-          skipLoadFromUrlRef.current = true;
-          setCurrentPromptUuid(saveResult.uuid);
-          setCurrentPromptDocId(saveResult.id ?? null);
-          setDisplayedPromptSilently(result.optimized);
-          setShowResults(true);
-          
-          // Reset highlights and stacks
-          applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-          resetEditStacks();
-          persistedSignatureRef.current = null;
-          
-          // Navigate to the new prompt URL
-          if (saveResult.uuid) {
-            navigate(`/prompt/${saveResult.uuid}`, { replace: true });
-          }
+          applyOptimizationResult({
+            optimizedPrompt: result.optimized,
+            saveResult,
+            setCurrentPromptUuid,
+            setCurrentPromptDocId,
+            setDisplayedPromptSilently,
+            setShowResults,
+            applyInitialHighlightSnapshot,
+            resetEditStacks,
+            persistedSignatureRef,
+            skipLoadFromUrlRef,
+            navigate,
+          });
         }
 
-        if (saveResult?.uuid && options?.createVersion) {
+        if (saveResult?.uuid && normalizedOptions?.createVersion) {
           const promptText = result.optimized.trim();
           if (promptText) {
             const uuidForVersions = saveResult.uuid;
-            const history = Array.isArray(promptHistory.history) ? promptHistory.history : [];
+            const promptEntries = Array.isArray(history) ? history : [];
             const existingEntry =
-              history.find((entry) => entry.uuid === uuidForVersions) ?? null;
+              promptEntries.find((entry) => entry.uuid === uuidForVersions) ?? null;
             const currentVersions = Array.isArray(existingEntry?.versions)
               ? existingEntry.versions
               : [];
@@ -219,12 +372,9 @@ export function usePromptOptimization({
                 signature,
                 prompt: promptText,
                 timestamp: new Date().toISOString(),
-                highlights: null,
-                preview: null,
-                video: null,
               };
 
-              promptHistory.updateEntryVersions(
+              updateEntryVersions(
                 uuidForVersions,
                 saveResult.id ?? null,
                 [...currentVersions, nextVersion]
@@ -235,13 +385,25 @@ export function usePromptOptimization({
       }
     },
     [
-      promptOptimizer,
-      promptHistory,
+      inputPrompt,
+      genericOptimizedPrompt,
+      improvementContext,
+      qualityScore,
+      setInputPrompt,
+      optimize,
+      compile,
+      history,
+      saveToHistory,
+      updateEntryVersions,
       promptContext,
       selectedMode,
-      selectedModel, // Added dependency
+      selectedModel,
       generationParams,
+      keyframes,
+      startFrame?.storagePath,
+      startFrame?.viewUrlExpiresAt,
       startImageUrl,
+      sourcePrompt,
       constraintMode,
       currentPromptUuid,
       setCurrentPromptUuid,
@@ -253,6 +415,7 @@ export function usePromptOptimization({
       persistedSignatureRef,
       skipLoadFromUrlRef,
       navigate,
+      onOptimizationApplied,
     ]
   );
 

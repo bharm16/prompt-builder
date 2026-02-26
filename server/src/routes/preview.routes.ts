@@ -8,7 +8,6 @@ import type { Router } from 'express';
 import express from 'express';
 import { createDiskUpload } from '@utils/upload';
 import { asyncHandler } from '@middleware/asyncHandler';
-import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import type { PreviewRoutesServices } from './types';
 import { createImageGenerateHandler } from './preview/handlers/imageGenerate';
 import { createImageStoryboardGenerateHandler } from './preview/handlers/imageStoryboardGenerate';
@@ -16,11 +15,11 @@ import { createVideoAvailabilityHandler } from './preview/handlers/videoAvailabi
 import { createVideoGenerateHandler } from './preview/handlers/videoGenerate';
 import { createVideoJobsHandler } from './preview/handlers/videoJobs';
 import { createVideoContentHandler } from './preview/handlers/videoContent';
-import { createPublicVideoContentHandler } from './preview/handlers/publicVideoContent';
 import { createImageContentHandler } from './preview/handlers/imageContent';
 import { createImageUploadHandler } from './preview/handlers/imageUpload';
 import { createImageAssetViewHandler } from './preview/handlers/imageAssetView';
 import { createVideoAssetViewHandler } from './preview/handlers/videoAssetView';
+import { createFaceSwapPreviewHandler } from './preview/handlers/faceSwap';
 
 const upload = createDiskUpload({
   fileSizeBytes: 10 * 1024 * 1024,
@@ -34,9 +33,10 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
   const resolvedServices: PreviewRoutesServices = {
     ...services,
-    userCreditService: services.userCreditService ?? defaultUserCreditService,
     ...(services.keyframeService !== undefined ? { keyframeService: services.keyframeService } : {}),
+    ...(services.faceSwapService !== undefined ? { faceSwapService: services.faceSwapService } : {}),
     ...(services.assetService !== undefined ? { assetService: services.assetService } : {}),
+    ...(services.storageService !== undefined ? { storageService: services.storageService } : {}),
   };
 
   const imageGenerateHandler = createImageGenerateHandler(resolvedServices);
@@ -46,9 +46,10 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const videoJobsHandler = createVideoJobsHandler(resolvedServices);
   const videoContentHandler = createVideoContentHandler(resolvedServices);
   const imageContentHandler = createImageContentHandler();
-  const imageUploadHandler = createImageUploadHandler();
+  const imageUploadHandler = createImageUploadHandler(resolvedServices);
   const imageAssetViewHandler = createImageAssetViewHandler(resolvedServices);
   const videoAssetViewHandler = createVideoAssetViewHandler(resolvedServices);
+  const faceSwapPreviewHandler = createFaceSwapPreviewHandler(resolvedServices);
 
   router.post('/generate', asyncHandler(imageGenerateHandler));
   router.post('/generate/storyboard', asyncHandler(imageStoryboardGenerateHandler));
@@ -56,22 +57,11 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.get('/image/view', asyncHandler(imageAssetViewHandler));
   router.get('/video/view', asyncHandler(videoAssetViewHandler));
   router.get('/video/availability', asyncHandler(videoAvailabilityHandler));
+  router.post('/face-swap', asyncHandler(faceSwapPreviewHandler));
   router.post('/video/generate', asyncHandler(videoGenerateHandler));
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));
   router.get('/video/content/:contentId', asyncHandler(videoContentHandler));
   router.get('/image/content/:contentId', asyncHandler(imageContentHandler));
-
-  return router;
-}
-
-export function createPublicPreviewRoutes(
-  services: Pick<PreviewRoutesServices, 'videoGenerationService' | 'videoContentAccessService'>
-): Router {
-  const router = express.Router();
-
-  const publicVideoContentHandler = createPublicVideoContentHandler(services);
-
-  router.get('/video/content/:contentId', asyncHandler(publicVideoContentHandler));
 
   return router;
 }

@@ -2,20 +2,26 @@ import NodeCache from 'node-cache';
 import crypto from 'crypto';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { metricsService } from '@infrastructure/MetricsService';
 import { SemanticCacheEnhancer } from './SemanticCacheService.js';
 
+/** Narrow metrics interface — avoids importing the concrete MetricsService class. */
+interface CacheMetricsCollector {
+  recordCacheHit(cacheType: string): void;
+  recordCacheMiss(cacheType: string): void;
+  updateCacheHitRate(cacheType: string, hitRate: number): void;
+}
+
+/** No-op fallback when no metrics collector is provided. */
+const NULL_METRICS: CacheMetricsCollector = {
+  recordCacheHit() {},
+  recordCacheMiss() {},
+  updateCacheHitRate() {},
+};
+
 /**
- * LEGACY CACHE SERVICE
- * 
- * ⚠️ This is a singleton-based cache service used by legacy services.
- * 
- * STATUS: Currently in use by 6 services
- * FUTURE: Should eventually be replaced with dependency-injected pattern
- *         using CacheServiceWithStatistics from this directory
- * 
- * New code should use: services/cache/CacheServiceWithStatistics.js
- * with proper dependency injection via services.config.js
+ * Cache service for storing API responses.
+ * Instances should be created via the DI container
+ * (see server/src/config/services/infrastructure.services.ts).
  */
 
 interface CacheConfig {
@@ -67,8 +73,10 @@ export class CacheService {
   };
   private readonly config: CacheConfig;
   private readonly log: ILogger;
+  private readonly metrics: CacheMetricsCollector;
 
-  constructor(config: CacheConfig = {}) {
+  constructor(config: CacheConfig = {}, metricsService?: CacheMetricsCollector) {
+    this.metrics = metricsService ?? NULL_METRICS;
     this.log = logger.child({ service: 'CacheService' });
     
     this.cache = new NodeCache({
@@ -146,7 +154,7 @@ export class CacheService {
 
     if (value !== undefined) {
       this.stats.hits++;
-      metricsService.recordCacheHit(cacheType);
+      this.metrics.recordCacheHit(cacheType);
       this.updateHitRate(cacheType);
 
       logger.debug('Cache hit', { key, cacheType });
@@ -154,7 +162,7 @@ export class CacheService {
     }
 
     this.stats.misses++;
-    metricsService.recordCacheMiss(cacheType);
+    this.metrics.recordCacheMiss(cacheType);
     this.updateHitRate(cacheType);
 
     logger.debug('Cache miss', { key, cacheType });
@@ -259,7 +267,7 @@ export class CacheService {
         ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100
         : 0;
 
-    metricsService.updateCacheHitRate(cacheType, hitRate);
+    this.metrics.updateCacheHitRate(cacheType, hitRate);
   }
 
   /**
@@ -308,5 +316,5 @@ export class CacheService {
   }
 }
 
-// Export singleton instance
-export const cacheService = new CacheService();
+// CacheService instances should be created via the DI container
+// (see server/src/config/services/infrastructure.services.ts)

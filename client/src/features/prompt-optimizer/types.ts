@@ -1,12 +1,13 @@
 import type { IconProps } from '@promptstudio/system/components/ui';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
+import type { SuggestionItem, SuggestionPayload } from './types/domain/suggestions';
 import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from './types/coherence';
 import type { I2VContext } from './types/i2v';
+import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 
 /**
  * Prompt optimization mode configuration
@@ -38,9 +39,13 @@ export interface OptimizationOptions {
   generationParams?: CapabilityValues;
   compileOnly?: boolean;
   compilePrompt?: string;
+  targetModel?: string;
+  forceGenericTarget?: boolean;
   createVersion?: boolean;
   startImage?: string;
+  sourcePrompt?: string;
   constraintMode?: 'strict' | 'flexible' | 'transform';
+  preserveSessionView?: boolean;
 }
 
 export interface LockedSpan {
@@ -117,14 +122,7 @@ export interface PromptResultsSectionProps {
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
-  onHighlightsPersist: (highlights: {
-    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
-    meta: Record<string, unknown> | null;
-    signature: string;
-    cacheId?: string | null;
-    source?: string;
-    [key: string]: unknown;
-  }) => void;
+  onHighlightsPersist: (highlights: SpanLabelingResult) => void;
   onUndo: () => void;
   onRedo: () => void;
   stablePromptContext?: PromptContext | null | undefined;

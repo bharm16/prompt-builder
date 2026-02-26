@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { HistoryItem } from '../components/HistoryItem';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { PromptRowStage } from '../types';
 
 const createEntry = (overrides: Partial<PromptHistoryEntry> = {}): PromptHistoryEntry => ({
@@ -80,7 +80,7 @@ describe('HistoryItem', () => {
       render(
         <HistoryItem
           {...baseProps}
-          entry={createEntry({ uuid: undefined })}
+          entry={createEntry({ uuid: '' })}
           onOpenInNewTab={onOpenInNewTab}
         />
       );

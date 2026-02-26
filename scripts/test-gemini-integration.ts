@@ -2,17 +2,10 @@ import { config as loadEnv } from 'dotenv';
 import { GeminiAdapter } from '../server/src/clients/adapters/GeminiAdapter.js';
 import { AIModelService } from '../server/src/services/ai-model/AIModelService.js';
 import { labelSpans } from '../server/src/llm/span-labeling/SpanLabelingService.js';
-import { SubstringPositionCache } from '../server/src/llm/span-labeling/cache/SubstringPositionCache.js';
 import { LLMClient } from '../server/src/clients/LLMClient.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 
 // Load env
 loadEnv();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function main() {
   console.log('🚀 Testing Gemini Integration via Service Layer...');
@@ -40,11 +33,6 @@ async function main() {
   // Mock other clients as null since we force Gemini via env var
   const aiService = new AIModelService({
     clients: {
-      openai: null, // Required by interface but nullable in implementation if not used? 
-                    // Wait, AIModelService constructor checks for openai client.
-                    // Let's provide a dummy one if needed or just use geminiClient as openai placeholder if strict.
-                    // Checking AIModelService.ts: if (!clients.openai) throw Error.
-                    // So we must provide something for openai.
       openai: geminiClient, // Hack: satisfy requirement, but we won't use it.
       gemini: geminiClient,
     },

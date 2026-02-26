@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiClient } from '../../services/ApiClient';
+import { createCheckoutSession } from '@/api/billingApi';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { logger } from '../../services/LoggingService';
 import { sanitizeError } from '../../utils/logging';
@@ -10,11 +10,10 @@ export const CreditPurchaseModal = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const log = logger.child('CreditPurchaseModal');
 
-  const handlePurchase = async (priceId: string) => {
+  const handlePurchase = async (priceId: string): Promise<void> => {
     setLoading(priceId);
     try {
-      const response = await apiClient.post('/api/payment/checkout', { priceId });
-      const redirectUrl = (response as { url?: string }).url;
+      const { url: redirectUrl } = await createCheckoutSession(priceId);
 
       if (!redirectUrl) {
         throw new Error('Missing checkout URL');

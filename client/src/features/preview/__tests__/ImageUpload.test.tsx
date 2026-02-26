@@ -4,9 +4,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ImageUpload } from '../components/ImageUpload';
 import { uploadPreviewImage } from '../api/previewApi';
 
-vi.mock('../api/previewApi', () => ({
-  uploadPreviewImage: vi.fn(),
-}));
+vi.mock('../api/previewApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/previewApi')>('../api/previewApi');
+  return {
+    ...actual,
+    uploadPreviewImage: vi.fn(),
+  };
+});
 
 const mockUploadPreviewImage = vi.mocked(uploadPreviewImage);
 
@@ -54,6 +58,7 @@ describe('ImageUpload', () => {
       mockUploadPreviewImage.mockResolvedValueOnce({
         success: true,
         data: {
+          imageUrl: '',
           storagePath: 'path',
         },
       });

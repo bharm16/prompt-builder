@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 import { useToolSidebarState } from '@components/ToolSidebar/hooks/useToolSidebarState';
 
 describe('useToolSidebarState', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   describe('error handling', () => {
     it('uses the provided default panel', () => {
       const { result } = renderHook(() => useToolSidebarState('characters'));
@@ -19,6 +24,18 @@ describe('useToolSidebarState', () => {
       });
 
       expect(result.current.activePanel).toBe('studio');
+    });
+
+    it('does not persist activePanel when the requested panel is already active', () => {
+      const setItemSpy = vi.spyOn(localStorage, 'setItem');
+      const { result } = renderHook(() => useToolSidebarState('sessions'));
+
+      act(() => {
+        result.current.setActivePanel('sessions');
+      });
+
+      expect(result.current.activePanel).toBe('sessions');
+      expect(setItemSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -43,6 +60,18 @@ describe('useToolSidebarState', () => {
       });
 
       expect(result.current.isPanelCollapsed).toBe(false);
+    });
+
+    it('does not persist collapsed state when value is unchanged', () => {
+      const setItemSpy = vi.spyOn(sessionStorage, 'setItem');
+      const { result } = renderHook(() => useToolSidebarState());
+
+      act(() => {
+        result.current.setIsPanelCollapsed(false);
+      });
+
+      expect(result.current.isPanelCollapsed).toBe(false);
+      expect(setItemSpy).not.toHaveBeenCalled();
     });
   });
 

@@ -284,9 +284,9 @@ describe('StrategyRegistry Integration', () => {
             const registry = new StrategyRegistry();
             const strategy = new MockStrategy(modelId, modelName);
 
-            registry.register(strategy);
+            registry.register(modelId, () => new MockStrategy(modelId, modelName));
 
-            // Strategy should be retrievable
+            // Strategy should be retrievable (fresh instance each call)
             const retrieved = registry.get(modelId);
             expect(retrieved).toBeDefined();
             expect(retrieved?.modelId).toBe(modelId);
@@ -319,7 +319,7 @@ describe('StrategyRegistry Integration', () => {
 
             // Register all strategies
             for (const modelId of modelIds) {
-              registry.register(new MockStrategy(modelId, `Model ${modelId}`));
+              registry.register(modelId, () => new MockStrategy(modelId, `Model ${modelId}`));
             }
 
             // has() should return true for registered
@@ -347,7 +347,7 @@ describe('StrategyRegistry Integration', () => {
 
             // Register all strategies
             for (const modelId of modelIds) {
-              registry.register(new MockStrategy(modelId, `Model ${modelId}`));
+              registry.register(modelId, () => new MockStrategy(modelId, `Model ${modelId}`));
             }
 
             // getAll() should return all strategies
@@ -375,10 +375,10 @@ describe('StrategyRegistry Integration', () => {
             const strategy2 = new MockStrategy(modelId, 'Model 2');
 
             // First registration should succeed
-            registry.register(strategy1);
+            registry.register(modelId, () => strategy1);
 
             // Second registration with same modelId should throw
-            expect(() => registry.register(strategy2)).toThrow();
+            expect(() => registry.register(modelId, () => strategy2)).toThrow();
           }
         ),
         { numRuns: 100 }
@@ -493,6 +493,13 @@ class TestKlingStrategy extends BaseStrategy {
 }
 
 describe('BaseStrategy Implementation Tests', () => {
+  const placeboSafeInputArb = fc
+    .string({ minLength: 1, maxLength: 100 })
+    .filter((value) => {
+      const lower = value.toLowerCase();
+      return lower.trim().length > 0 && !/\b4k\b/.test(lower) && !lower.includes('trending on artstation');
+    });
+
   /**
    * Tests that BaseStrategy correctly integrates TechStripper
    * For Runway model, placebo tokens should be stripped
@@ -508,7 +515,7 @@ describe('BaseStrategy Implementation Tests', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }),
+          placeboSafeInputArb,
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);
@@ -516,10 +523,11 @@ describe('BaseStrategy Implementation Tests', () => {
             const output = typeof transformed.prompt === 'string'
               ? transformed.prompt
               : JSON.stringify(transformed.prompt);
+            const normalizedOutput = output.toLowerCase();
 
             // Placebo tokens should be stripped for Runway
-            expect(output.toLowerCase()).not.toContain('4k');
-            expect(output.toLowerCase()).not.toContain('trending on artstation');
+            expect(normalizedOutput).not.toMatch(/\b4k\b/);
+            expect(normalizedOutput).not.toContain('trending on artstation');
           }
         ),
         { numRuns: 100 }
@@ -536,7 +544,7 @@ describe('BaseStrategy Implementation Tests', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+          placeboSafeInputArb,
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);
@@ -675,7 +683,7 @@ describe('BaseStrategy Implementation Tests', () => {
             const result = strategy.augment(transformed);
 
             expect(result.metadata.modelId).toBe('runway-gen45');
-            expect(result.metadata.pipelineVersion).toBe('1.0.0');
+            expect(result.metadata.pipelineVersion).toBe('2.0.0');
           }
         ),
         { numRuns: 100 }

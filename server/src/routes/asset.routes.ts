@@ -1,11 +1,19 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
+import { validateImageBuffer } from '@utils/validateFileType';
 import { asyncHandler } from '@middleware/asyncHandler';
 import type { AssetType } from '@shared/types/asset';
 import type { AssetService } from '@services/asset/AssetService';
 
 const upload = createDiskUpload({
   fileSizeBytes: 5 * 1024 * 1024,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only image files allowed'));
+  },
 });
 
 type RequestWithUser = Request & { user?: { uid?: string } };
@@ -17,6 +25,15 @@ function requireUserId(req: RequestWithUser, res: Response): string | null {
     return null;
   }
   return userId;
+}
+
+function requireRouteParam(req: Request, res: Response, key: string): string | null {
+  const value = req.params[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    res.status(400).json({ error: `Invalid ${key}` });
+    return null;
+  }
+  return value;
 }
 
 function normalizeAssetType(raw?: string | null): AssetType | null {
@@ -134,7 +151,9 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const asset = await assetService.getAsset(userId, req.params.id);
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
+      const asset = await assetService.getAsset(userId, assetId);
       res.json(asset);
     })
   );
@@ -145,8 +164,10 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
       const { trigger, name, textDefinition, negativePrompt } = req.body || {};
-      const asset = await assetService.updateAsset(userId, req.params.id, {
+      const asset = await assetService.updateAsset(userId, assetId, {
         trigger,
         name,
         textDefinition,
@@ -162,7 +183,9 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      await assetService.deleteAsset(userId, req.params.id);
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
+      await assetService.deleteAsset(userId, assetId);
       res.status(204).send();
     })
   );
@@ -174,6 +197,8 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
       if (!req.file) {
         res.status(400).json({ error: 'No image file provided' });
         return;
@@ -189,9 +214,10 @@ export function createAssetRoutes(assetService: AssetService): Router {
 
       try {
         const buffer = await readUploadBuffer(req.file);
+        await validateImageBuffer(buffer, 'image');
         const result = await assetService.addReferenceImage(
           userId,
-          req.params.id,
+          assetId,
           buffer,
           metadata
         );
@@ -209,7 +235,11 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      await assetService.deleteReferenceImage(userId, req.params.id, req.params.imageId);
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
+      const imageId = requireRouteParam(req, res, 'imageId');
+      if (!imageId) return;
+      await assetService.deleteReferenceImage(userId, assetId, imageId);
       res.status(204).send();
     })
   );
@@ -220,11 +250,11 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const asset = await assetService.setPrimaryImage(
-        userId,
-        req.params.id,
-        req.params.imageId
-      );
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
+      const imageId = requireRouteParam(req, res, 'imageId');
+      if (!imageId) return;
+      const asset = await assetService.setPrimaryImage(userId, assetId, imageId);
       res.json(asset);
     })
   );
@@ -235,7 +265,9 @@ export function createAssetRoutes(assetService: AssetService): Router {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetData = await assetService.getAssetForGeneration(userId, req.params.id);
+      const assetId = requireRouteParam(req, res, 'id');
+      if (!assetId) return;
+      const assetData = await assetService.getAssetForGeneration(userId, assetId);
       res.json(assetData);
     })
   );

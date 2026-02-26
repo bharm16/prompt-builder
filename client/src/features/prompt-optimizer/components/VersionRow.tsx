@@ -1,10 +1,10 @@
 import React from 'react';
 import { Icon, Image, Play } from '@promptstudio/system/components/ui';
-import { Badge } from '@promptstudio/system/components/ui/badge';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
 import { cn } from '@/utils/cn';
-import type { PromptVersionEdit } from '@hooks/types';
+import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 
 type VersionPreview = {
   generatedAt?: string;
@@ -28,8 +28,10 @@ export type VersionEntry = {
   dirty?: boolean;
   hasPreview?: boolean;
   hasVideo?: boolean;
+  thumbnailUrl?: string | null;
   preview?: VersionPreview | null;
   video?: unknown;
+  generations?: Generation[];
 };
 
 interface VersionRowProps {
@@ -42,13 +44,47 @@ interface VersionRowProps {
   layout?: 'vertical' | 'horizontal';
 }
 
-const resolvePreviewImageUrl = (entry: VersionEntry): string | null => {
-  if (!entry.preview) return null;
-  const url = entry.preview.imageUrl;
-  if (typeof url === 'string' && url.trim()) {
-    return url.trim();
+const normalizeUrl = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const pushUniqueUrl = (target: string[], candidate: unknown): void => {
+  const normalized = normalizeUrl(candidate);
+  if (!normalized) return;
+  if (!target.includes(normalized)) {
+    target.push(normalized);
   }
-  return null;
+};
+
+const resolvePreviewImageCandidates = (entry: VersionEntry): string[] => {
+  const candidates: string[] = [];
+  pushUniqueUrl(candidates, entry.preview?.imageUrl);
+  pushUniqueUrl(candidates, entry.thumbnailUrl);
+
+  const generations = Array.isArray(entry.generations) ? entry.generations : [];
+  const completedGenerations = generations.filter((generation) => generation.status === 'completed');
+  const source = completedGenerations.length ? completedGenerations : generations;
+
+  // Prefer explicit generation thumbnails first.
+  for (const generation of source) {
+    pushUniqueUrl(candidates, generation.thumbnailUrl);
+  }
+
+  // Then prefer image-like generation outputs.
+  for (const generation of source) {
+    if (generation.mediaType === 'image' || generation.mediaType === 'image-sequence') {
+      pushUniqueUrl(candidates, generation.mediaUrls?.[0]);
+    }
+  }
+
+  // Finally, any first media URL as a last resort.
+  for (const generation of source) {
+    pushUniqueUrl(candidates, generation.mediaUrls?.[0]);
+  }
+
+  return candidates;
 };
 
 const resolveTimestamp = (value: VersionEntry['timestamp']): number | null => {
@@ -107,82 +143,110 @@ export function VersionRow({
   onSelect,
   layout = 'vertical',
 }: VersionRowProps): React.ReactElement {
-  const previewImageUrl = resolvePreviewImageUrl(entry);
-  const hasPreview = Boolean(entry.hasPreview ?? entry.preview);
+  const previewImageCandidates = resolvePreviewImageCandidates(entry);
+  const previewImageCandidateKey = previewImageCandidates.join('|');
+  const [previewImageIndex, setPreviewImageIndex] = React.useState(0);
+  const previewImageUrl =
+    previewImageIndex >= 0 && previewImageIndex < previewImageCandidates.length
+      ? previewImageCandidates[previewImageIndex] ?? null
+      : null;
+  const hasPreview = Boolean(entry.hasPreview || entry.preview || previewImageCandidates.length > 0);
   const hasVideo = Boolean(entry.hasVideo ?? entry.video);
   const label = resolveVersionLabel(entry, index, total);
   const meta = resolveMetaLabel(entry);
   const isDirty = Boolean(entry.isDirty ?? entry.dirty);
 
-  // Horizontal layout (filmstrip card)
+  // Reset image fallback chain when candidate set changes.
+  React.useEffect(() => {
+    setPreviewImageIndex(0);
+  }, [previewImageCandidateKey]);
+
+  const showImage = Boolean(previewImageUrl);
+  const handleImageError = React.useCallback((): void => {
+    setPreviewImageIndex((current) => {
+      const next = current + 1;
+      return next < previewImageCandidates.length ? next : previewImageCandidates.length;
+    });
+  }, [previewImageCandidates.length]);
+
+  // Horizontal layout (compact filmstrip thumb)
   if (layout === 'horizontal') {
     return (
       <button
         type="button"
         onClick={onSelect}
         className={cn(
-          'ps-card-interactive',
-          'snap-start',
-          'relative flex h-[120px] min-w-[160px] max-w-[180px] flex-shrink-0 flex-col items-center justify-start',
-          'gap-2 rounded-lg border p-3 text-center',
-          isSelected
-            ? 'border-2 border-[rgb(104,134,255)] bg-[rgb(36,42,56)]'
-            : 'border border-[rgb(44,48,55)] bg-[rgb(36,40,47)] hover:bg-[rgb(36,42,56)]'
+          'group snap-start',
+          'flex flex-shrink-0 flex-col items-center gap-1.5',
+          'bg-transparent border-none p-0 outline-none cursor-pointer'
         )}
         data-active={isSelected ? 'true' : 'false'}
         aria-pressed={isSelected}
       >
-        {/* Preview thumbnail */}
+        {/* 96×54 thumbnail (16:9) */}
         <div
           className={cn(
-            'ps-thumb-frame flex w-full items-center justify-center',
-            'h-16 overflow-hidden rounded-[6px]',
-            !previewImageUrl && !hasVideo && 'ps-thumb-placeholder'
+            'relative h-[54px] w-24 overflow-hidden rounded-md',
+            'transition-all duration-150',
+            isSelected
+              ? 'ring-[1.5px] ring-accent shadow-[0_0_0_1px_rgba(108,92,231,0.2),0_2px_8px_rgba(108,92,231,0.08)]'
+              : 'border border-border group-hover:border-border-strong'
           )}
         >
-          {previewImageUrl ? (
+          {/* Preview content */}
+          {showImage ? (
             <img
-              src={previewImageUrl}
-              alt={`${label} preview`}
+              src={previewImageUrl!}
+              alt=""
               className="h-full w-full object-cover"
               loading="lazy"
+              onError={handleImageError}
             />
-          ) : hasVideo ? (
-            <Icon icon={Play} size="lg" weight="bold" aria-hidden="true" className="text-muted" />
           ) : (
-            <Icon icon={Image} size="lg" weight="bold" aria-hidden="true" className="text-faint" />
+            <div className="flex h-full w-full items-center justify-center bg-surface-2">
+              <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" className="text-faint" />
+            </div>
           )}
-        </div>
 
-        {/* Label and meta */}
-        <div className="flex w-full flex-col gap-1">
-          <div className="flex items-center justify-center gap-2">
-            {isDirty ? (
-              <span
-                className="h-ps-1 w-ps-1 rounded-full bg-warning ring-2 ring-warning/30 ps-animate-active-dot-pulse"
-                aria-hidden="true"
-              />
-            ) : null}
+          {/* Video badge overlay */}
+          {hasVideo ? (
+            <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-black/60 backdrop-blur-sm">
+              <Icon icon={Play} size="xs" weight="fill" aria-hidden="true" className="text-white" />
+            </div>
+          ) : null}
+
+          {/* Dirty indicator on thumb */}
+          {isDirty ? (
             <span
-              className={cn(
-                'truncate font-semibold',
-                isSelected
-                  ? 'text-label-14 text-foreground'
-                  : 'text-body-sm text-muted'
-              )}
-            >
-              {label}
-            </span>
-            {isSelected && index === 0 ? (
-              <span className="inline-flex items-center rounded-full bg-[rgb(44,48,55)] px-[6px] py-[2px] text-[11px] font-semibold text-[rgb(235,236,239)]">
-                Current
-              </span>
-            ) : null}
-          </div>
-          {meta ? (
-            <span className="truncate text-[11px] font-medium text-muted">{meta}</span>
+              className="absolute left-1 top-1 h-[5px] w-[5px] rounded-full bg-warning shadow-[0_0_0_1.5px_var(--ps-surface-2)]"
+              aria-hidden="true"
+            />
           ) : null}
         </div>
+
+        {/* Label row */}
+        <div className="flex max-w-24 items-center gap-1">
+          <span
+            className={cn(
+              'truncate text-[10px] transition-colors duration-150',
+              isSelected
+                ? 'font-semibold text-foreground'
+                : 'font-medium text-muted group-hover:text-foreground/70'
+            )}
+          >
+            {label}
+          </span>
+          {index === 0 ? (
+            <span className="text-[8px] font-semibold uppercase tracking-wide text-accent/70">
+              current
+            </span>
+          ) : null}
+        </div>
+
+        {/* Meta */}
+        {meta ? (
+          <span className="-mt-0.5 text-[9px] tracking-wide text-faint">{meta}</span>
+        ) : null}
       </button>
     );
   }
@@ -219,12 +283,13 @@ export function VersionRow({
         <div className="inline-flex flex-shrink-0 items-center gap-ps-2">
           {hasPreview ? (
             <div className="inline-flex h-ps-7 w-ps-7 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-3 text-faint">
-              {previewImageUrl ? (
+              {showImage ? (
                 <img
-                  src={previewImageUrl}
-                  alt={`${label} preview`}
+                  src={previewImageUrl!}
+                  alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
+                  onError={handleImageError}
                 />
               ) : (
                 <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" />

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTriggerAutocomplete } from '../hooks/useTriggerAutocomplete';
 import { assetApi } from '../api/assetApi';
 import { logger } from '@/services/LoggingService';
@@ -76,7 +77,7 @@ describe('useTriggerAutocomplete', () => {
         await vi.runAllTimersAsync();
       });
 
-      const event = { key: 'ArrowUp', preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      const event = { key: 'ArrowUp', preventDefault: vi.fn() } as unknown as ReactKeyboardEvent<Element>;
       const handled = result.current.handleKeyDown(event);
 
       expect(handled).toBe(true);
@@ -131,7 +132,7 @@ describe('useTriggerAutocomplete', () => {
         await vi.runAllTimersAsync();
       });
 
-      const event = { key: 'Enter', preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      const event = { key: 'Enter', preventDefault: vi.fn() } as unknown as ReactKeyboardEvent<Element>;
       const response = result.current.handleKeyDown(event);
 
       expect(response).toEqual({ selected: { id: '1', type: 'character', trigger: '@Ada', name: 'Ada' } });

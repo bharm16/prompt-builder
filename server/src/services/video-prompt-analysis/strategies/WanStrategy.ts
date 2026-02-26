@@ -45,6 +45,15 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
   '3:4': '768*1024',
 };
 
+interface WanApiPayload {
+  prompt: string;
+  negative_prompt: string;
+  size: string;
+  num_frames: number;
+  frames_per_second: number;
+  prompt_extend: boolean;
+}
+
 /**
  * WanStrategy optimizes prompts for Wan 2.2 series on Replicate
  */
@@ -138,7 +147,7 @@ export class WanStrategy extends BaseStrategy {
    * @param context - The context containing constraints like aspect ratio
    * @returns The payload object for the Replicate API
    */
-  public getApiPayload(prompt: string, context?: PromptContext): Record<string, any> {
+  public getApiPayload(prompt: string, context?: PromptContext): WanApiPayload {
     const aspectRatio = context?.constraints?.formRequirement || '16:9';
     const size = ASPECT_RATIO_MAP[aspectRatio] || '1280*720'; // Default to 16:9 (720p)
 
@@ -153,7 +162,3 @@ export class WanStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const wanStrategy = new WanStrategy();

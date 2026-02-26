@@ -36,7 +36,7 @@ describe('useHighlightSourceSelection', () => {
     it('prefers draft spans when draft data is ready', () => {
       const { result } = renderHook(() =>
         useHighlightSourceSelection({
-          draftSpans: { spans: [{ start: 0, end: 5, category: 'subject', confidence: 0.9 }], meta: null, source: 'draft', timestamp: 0 },
+          draftSpans: { spans: [{ start: 0, end: 5, category: 'subject', confidence: 0.9 }], meta: null },
           refinedSpans: null,
           isDraftReady: true,
           isRefining: false,
@@ -57,8 +57,8 @@ describe('useHighlightSourceSelection', () => {
     it('prefers refined spans when refinement is complete', () => {
       const { result } = renderHook(() =>
         useHighlightSourceSelection({
-          draftSpans: { spans: [], meta: null, source: 'draft', timestamp: 0 },
-          refinedSpans: { spans: [{ start: 0, end: 5, category: 'style', confidence: 0.8 }], meta: null, source: 'refined', timestamp: 0 },
+          draftSpans: { spans: [], meta: null },
+          refinedSpans: { spans: [{ start: 0, end: 5, category: 'style', confidence: 0.8 }], meta: null },
           isDraftReady: true,
           isRefining: false,
           initialHighlights: null,
@@ -84,7 +84,7 @@ describe('useHighlightSourceSelection', () => {
 
       const { result } = renderHook(() =>
         useHighlightSourceSelection({
-          draftSpans: { spans: [{ start: 0, end: 5, category: 'style', confidence: 0.9 }], meta: null, source: 'draft', timestamp: 0 },
+          draftSpans: { spans: [{ start: 0, end: 5, category: 'style', confidence: 0.9 }], meta: null },
           refinedSpans: null,
           isDraftReady: true,
           isRefining: false,

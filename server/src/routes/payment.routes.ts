@@ -1,34 +1,25 @@
 import express from 'express';
-import { BillingProfileStore } from '@services/payment/BillingProfileStore';
-import { PaymentService } from '@services/payment/PaymentService';
-import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
-import { userCreditService } from '@services/credits/UserCreditService';
+import { asyncHandler } from '@middleware/asyncHandler';
 import { createPaymentHandlers } from './payment/handlers';
 import { createStripeWebhookHandler } from './payment/webhook/handler';
+import type { PaymentRouteServices } from './payment/types';
 
-const paymentService = new PaymentService();
-const webhookEventStore = new StripeWebhookEventStore();
-const billingProfileStore = new BillingProfileStore();
-
-export const createPaymentRoutes = (): express.Router => {
+export const createPaymentRoutes = (services: PaymentRouteServices): express.Router => {
   const router = express.Router();
-  const handlers = createPaymentHandlers({ paymentService, billingProfileStore });
+  const handlers = createPaymentHandlers(services);
 
-  router.get('/invoices', handlers.listInvoices);
-  router.post('/portal', handlers.createPortalSession);
-  router.post('/checkout', handlers.createCheckoutSession);
+  router.get('/status', asyncHandler(handlers.getStatus));
+  router.get('/credits/history', asyncHandler(handlers.listCreditHistory));
+  router.get('/invoices', asyncHandler(handlers.listInvoices));
+  router.post('/portal', asyncHandler(handlers.createPortalSession));
+  router.post('/checkout', asyncHandler(handlers.createCheckoutSession));
 
   return router;
 };
 
-export const createWebhookRoutes = (): express.Router => {
+export const createWebhookRoutes = (services: PaymentRouteServices): express.Router => {
   const router = express.Router();
-  const webhookHandler = createStripeWebhookHandler({
-    paymentService,
-    webhookEventStore,
-    billingProfileStore,
-    userCreditService,
-  });
+  const webhookHandler = createStripeWebhookHandler(services);
 
   router.post('/webhook', express.raw({ type: 'application/json' }), webhookHandler);
 

@@ -1,13 +1,13 @@
-import type { ReactElement } from 'react';
-import { Home } from '@promptstudio/system/components/ui';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { GridFour, Home } from '@promptstudio/system/components/ui';
+import { Link, useLocation } from 'react-router-dom';
+import { useCreditBalance } from '@/contexts/CreditBalanceContext';
+import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
+import { cn } from '@/utils/cn';
+import { useSidebarWorkspaceDomain } from '../context';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
-import { useAppShell } from '@/contexts/AppShellContext';
-import { logger } from '@/services/LoggingService';
-
-const log = logger.child('ToolRail');
 
 export function ToolRail({
   activePanel,
@@ -15,8 +15,10 @@ export function ToolRail({
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { activeTool, setActiveTool } = useAppShell();
+  const { balance, isLoading } = useCreditBalance();
+  const { status, isLoading: isLoadingStatus } = useBillingStatus();
+  const workspace = useSidebarWorkspaceDomain();
+  const [showRailHint, setShowRailHint] = useState(false);
   const headerItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
@@ -26,131 +28,153 @@ export function ToolRail({
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
   const userActionLabel = user ? 'Account' : 'Sign in';
+  const onboardingKey = useMemo(
+    () => (user?.uid ? `credit-onboarding-dismissed:${user.uid}` : null),
+    [user?.uid]
+  );
 
-  /**
-   * Handle panel change with tool switching for Create/Studio
-   * Requirement 16.3-16.4: Tool switching via left panel
-   */
-  const handlePanelChange = (panelId: typeof activePanel): void => {
-    if (panelId === 'create') {
-      log.info('Create tool selected from rail', {
-        fromPath: location.pathname,
-        activeTool,
-      });
-      const result = setActiveTool('create');
-      if (result === 'blocked') {
-        log.warn('Create tool switch blocked by generation-in-progress guard', {
-          fromPath: location.pathname,
-          activeTool,
-        });
-        return;
-      }
-      log.info('Navigating to create route from rail', {
-        toPath: '/create',
-      });
-      navigate('/create');
-      onPanelChange(panelId);
-    } else if (panelId === 'studio') {
-      log.info('Studio tool selected from rail', {
-        fromPath: location.pathname,
-        activeTool,
-      });
-      const result = setActiveTool('studio');
-      if (result === 'blocked') {
-        log.warn('Studio tool switch blocked by generation-in-progress guard', {
-          fromPath: location.pathname,
-          activeTool,
-        });
-        return;
-      }
-      log.info('Navigating to studio route from rail', {
-        toPath: '/',
-      });
-      navigate('/');
-      onPanelChange(panelId);
-    } else {
-      log.debug('Non-tool panel selected from rail', {
-        panelId,
-        fromPath: location.pathname,
-        activeTool,
-      });
-      onPanelChange(panelId);
+  useEffect(() => {
+    if (!onboardingKey) {
+      setShowRailHint(false);
+      return;
     }
+    try {
+      setShowRailHint(localStorage.getItem(onboardingKey) !== '1');
+    } catch {
+      setShowRailHint(false);
+    }
+  }, [onboardingKey]);
+
+  const dismissRailHint = (): void => {
+    if (onboardingKey) {
+      try {
+        localStorage.setItem(onboardingKey, '1');
+      } catch {
+        // Ignore storage failures; still hide the hint for this render.
+      }
+    }
+    setShowRailHint(false);
   };
 
-  /**
-   * Determine if a panel is active, considering both panel state and tool state
-   */
-  const isPanelActive = (panelId: typeof activePanel): boolean => {
-    if (panelId === 'create') {
-      return activeTool === 'create';
+  const handlePanelChange = (panelId: typeof activePanel): void => {
+    if (panelId === 'sessions') {
+      // Toggle sessions — if already viewing sessions, go back to studio
+      onPanelChange(activePanel === 'sessions' ? 'studio' : 'sessions');
+      return;
     }
-    if (panelId === 'studio') {
-      return activeTool === 'studio';
-    }
-    return activePanel === panelId;
+    onPanelChange(panelId);
   };
 
   return (
     <aside
-      className="w-[60px] h-full bg-[#131416] border-r border-[#1B1E23] flex-none relative overflow-hidden text-white text-base leading-4"
+      className="flex h-full w-14 flex-none flex-col items-center border-r border-[#1A1C22] bg-[#0D0E12] py-2.5"
       aria-label="Tool navigation"
     >
-      <div className="h-full px-2.5 flex flex-col gap-3">
-        <div className="h-[58px] py-3 flex flex-col">
-          {headerItem && (
-            <ToolNavButton
-              icon={headerItem.icon}
-              label={headerItem.label}
-              isActive={activePanel === headerItem.id}
-              onClick={() => handlePanelChange(headerItem.id)}
-              variant="header"
-            />
-          )}
-          <div className="w-10 h-px bg-[#1B1E23] mt-auto" />
-        </div>
+      {/* ── Header (hamburger → sessions toggle) ── */}
+      {headerItem && (
+        <ToolNavButton
+          icon={headerItem.icon}
+          label={headerItem.label}
+          isActive={activePanel === 'sessions'}
+          onClick={() => handlePanelChange('sessions')}
+          variant="header"
+        />
+      )}
 
-        <nav className="flex flex-col gap-4" aria-label="Tool panels">
-          {navItems.map((item) => (
-            <ToolNavButton
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={isPanelActive(item.id)}
-              onClick={() => handlePanelChange(item.id)}
-            />
-          ))}
-        </nav>
+      <div className="mx-auto my-1.5 h-px w-7 bg-[#1A1C22]" aria-hidden="true" />
 
-        <div className="flex-1" />
+      {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
+      <nav className="flex flex-col items-center gap-0.5" aria-label="Tool panels">
+        {navItems.map((item) => (
+          <ToolNavButton
+            key={item.id}
+            icon={item.icon}
+            label={item.label}
+            isActive={activePanel === item.id}
+            onClick={() => handlePanelChange(item.id)}
+          />
+        ))}
+        {workspace ? (
+          <ToolNavButton
+            icon={GridFour}
+            label="Gallery"
+            isActive={workspace.galleryOpen}
+            onClick={workspace.toggleGallery}
+          />
+        ) : null}
+      </nav>
 
-        <div className="flex flex-col gap-4 pb-4">
-          <Link
-            to="/home"
-            className="w-6 h-6 p-1 rounded-md flex items-center justify-center hover:bg-[#2C3037]"
-            aria-label="Home"
+      <div className="flex-1" />
+
+      {/* ── Bottom: Home + Avatar ── */}
+      <div className="flex w-full flex-col items-center gap-1.5 pb-1">
+        {showRailHint ? (
+          <button
+            type="button"
+            className="mx-1 w-[48px] rounded-md border border-[#1A1C22] bg-[#111318] px-1 py-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-amber-400"
+            onClick={dismissRailHint}
+            title="Dismiss credit onboarding hint"
           >
-            <Home className="w-4 h-4 text-[#A0AEC0]" />
-          </Link>
+            Credits
+          </button>
+        ) : null}
 
-          {photoURL ? (
-            <Link
-              to={userActionLink}
-              aria-label={userActionLabel}
-              className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center hover:bg-[#2C3037] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-            >
-              <img src={photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
-            </Link>
+        <Link
+          to="/billing"
+          className="flex h-8 w-full flex-col items-center justify-center rounded-lg transition-colors hover:bg-[#151720]"
+          aria-label={`${balance ?? 0} credits - ${
+            status?.isSubscribed ? 'subscribed plan' : 'free plan'
+          } - view billing`}
+        >
+          {isLoading ? (
+            <div className="h-2.5 w-6 animate-pulse rounded bg-[#1A1C22]" />
           ) : (
-            <Link
-              to={userActionLink}
-              aria-label={userActionLabel}
-              className="w-6 h-6 rounded-full bg-[#2C3037] flex items-center justify-center hover:bg-[#3A3F48] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-            >
-              <span className="text-[11px] font-medium text-white">{initial}</span>
-            </Link>
+            <>
+              <span
+                className={cn(
+                  'text-[10px] font-bold tabular-nums leading-none',
+                  balance === 0 || balance === null ? 'text-amber-400' : 'text-[#8B92A5]'
+                )}
+              >
+                {balance ?? 0}
+              </span>
+              <span
+                className={cn(
+                  'mt-0.5 text-[8px] leading-none',
+                  status?.isSubscribed ? 'text-[#8B92A5]' : 'text-[#555B6E]'
+                )}
+              >
+                {isLoadingStatus ? 'cr' : `cr · ${status?.isSubscribed ? 'sub' : 'free'}`}
+              </span>
+            </>
           )}
-        </div>
+        </Link>
+
+        <Link
+          to="/home"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#151720]"
+          aria-label="Home"
+        >
+          <Home className="h-3.5 w-3.5 text-[#555B6E]" />
+        </Link>
+
+        {photoURL ? (
+          <Link
+            to={userActionLink}
+            aria-label={userActionLabel}
+            className="mt-1.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
+          >
+            <img src={photoURL} alt="" className="h-7 w-7 rounded-full" referrerPolicy="no-referrer" />
+          </Link>
+        ) : (
+          <Link
+            to={userActionLink}
+            aria-label={userActionLabel}
+            className="mt-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#8B5CF6]"
+          >
+            <span className="text-[11px] font-bold text-white">{initial}</span>
+          </Link>
+        )}
       </div>
     </aside>
   );

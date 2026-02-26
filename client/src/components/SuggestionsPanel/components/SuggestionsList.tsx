@@ -41,13 +41,57 @@ interface SuggestionsListProps {
 export function SuggestionsList({
   suggestions = [],
   onSuggestionClick = () => {},
-  isPlaceholder = false,
+  isPlaceholder: _isPlaceholder = false,
   showCopyAction = true,
   variant = 'default',
 }: SuggestionsListProps): React.ReactElement | null {
   const toast = useToast();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const log = logger.child('SuggestionsList');
+
+  /**
+   * Copy text to clipboard with error handling.
+   * Shows visual feedback on success, logs warning on failure.
+   * Requirement 9.1: Visual feedback on success
+   * Requirement 9.2: Handle errors gracefully without crashing
+   */
+  const copyToClipboard = useCallback(async (text: string, index: number): Promise<void> => {
+    if (typeof navigator === 'undefined' || !navigator?.clipboard) {
+      log.warn('Clipboard API not available', { component: 'SuggestionsList' });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      // Show visual feedback on success
+      setCopiedIndex(index);
+      toast.success('Copied to clipboard!', 1500);
+      // Reset copied state after brief delay
+      setTimeout(() => setCopiedIndex(null), 1500);
+    } catch (error) {
+      // Log warning on failure, don't crash
+      log.warn('Failed to copy to clipboard', {
+        component: 'SuggestionsList',
+        error: error instanceof Error ? error.message : String(error),
+        textLength: text.length,
+      });
+      // Optionally show user-friendly feedback
+      toast.error('Failed to copy', 1500);
+    }
+  }, [log, toast]);
+
+  const handleCopy = (text: string, index: number, e: React.MouseEvent): void => {
+    e.stopPropagation();
+    void copyToClipboard(text, index);
+  };
+
+  const handleCopyKeyDown = (text: string, index: number, e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.stopPropagation();
+      e.preventDefault();
+      void copyToClipboard(text, index);
+    }
+  };
 
   if (suggestions.length === 0) {
     return null;
@@ -104,50 +148,6 @@ export function SuggestionsList({
       </div>
     );
   }
-
-  /**
-   * Copy text to clipboard with error handling.
-   * Shows visual feedback on success, logs warning on failure.
-   * Requirement 9.1: Visual feedback on success
-   * Requirement 9.2: Handle errors gracefully without crashing
-   */
-  const copyToClipboard = useCallback(async (text: string, index: number): Promise<void> => {
-    if (typeof navigator === 'undefined' || !navigator?.clipboard) {
-      log.warn('Clipboard API not available', { component: 'SuggestionsList' });
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(text);
-      // Show visual feedback on success
-      setCopiedIndex(index);
-      toast.success('Copied to clipboard!', 1500);
-      // Reset copied state after brief delay
-      setTimeout(() => setCopiedIndex(null), 1500);
-    } catch (error) {
-      // Log warning on failure, don't crash
-      log.warn('Failed to copy to clipboard', {
-        component: 'SuggestionsList',
-        error: error instanceof Error ? error.message : String(error),
-        textLength: text.length,
-      });
-      // Optionally show user-friendly feedback
-      toast.error('Failed to copy', 1500);
-    }
-  }, [log, toast]);
-
-  const handleCopy = (text: string, index: number, e: React.MouseEvent): void => {
-    e.stopPropagation();
-    void copyToClipboard(text, index);
-  };
-
-  const handleCopyKeyDown = (text: string, index: number, e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.stopPropagation();
-      e.preventDefault();
-      void copyToClipboard(text, index);
-    }
-  };
 
   return (
     <div

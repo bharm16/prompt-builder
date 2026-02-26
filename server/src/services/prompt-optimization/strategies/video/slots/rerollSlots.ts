@@ -1,5 +1,9 @@
 import type { AIService } from '@services/prompt-optimization/types';
-import type { VideoPromptStructuredResponse, VideoPromptSlots } from '@services/prompt-optimization/strategies/videoPromptTypes';
+import {
+  parseVideoPromptStructuredResponse,
+  type VideoPromptStructuredResponse,
+  type VideoPromptSlots,
+} from '@services/prompt-optimization/strategies/videoPromptTypes';
 import { lintVideoPromptSlots } from '../../videoPromptLinter';
 import { normalizeSlots } from './normalizeSlots';
 import { scoreSlots } from './scoreSlots';
@@ -40,7 +44,7 @@ export async function rerollSlots(options: {
         ...(options.signal ? { signal: options.signal } : {}),
       });
 
-      const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
+      const parsed = parseVideoPromptStructuredResponse(response.text);
       const slots = normalizeSlots(parsed);
       const lint = mergeLint(
         lintVideoPromptSlots(parsed),

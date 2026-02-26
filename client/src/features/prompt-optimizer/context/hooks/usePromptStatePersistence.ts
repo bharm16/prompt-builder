@@ -1,21 +1,14 @@
 import { useEffect } from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
-import { persistGenerationParams, persistSelectedModel } from '../promptStateStorage';
+import { persistSelectedMode } from '../promptStateStorage';
 
 interface UsePromptStatePersistenceOptions {
-  selectedModel: string;
-  generationParams: CapabilityValues;
+  selectedMode: string;
 }
 
 export const usePromptStatePersistence = ({
-  selectedModel,
-  generationParams,
+  selectedMode,
 }: UsePromptStatePersistenceOptions): void => {
   useEffect(() => {
-    persistSelectedModel(selectedModel);
-  }, [selectedModel]);
-
-  useEffect(() => {
-    persistGenerationParams(generationParams);
-  }, [generationParams]);
+    persistSelectedMode(selectedMode);
+  }, [selectedMode]);
 };

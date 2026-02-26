@@ -4,10 +4,10 @@ import { VersionDivider } from '../VersionDivider';
 
 describe('VersionDivider', () => {
   describe('edge cases', () => {
-    it('does not show prompt changed badge when promptChanged is false', () => {
+    it('does not show prompt edited dot when promptChanged is false', () => {
       render(<VersionDivider versionLabel="V1" promptChanged={false} />);
 
-      expect(screen.queryByText('prompt changed')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Prompt edited')).not.toBeInTheDocument();
     });
 
     it('handles empty string versionLabel', () => {
@@ -31,12 +31,12 @@ describe('VersionDivider', () => {
       expect(screen.getByRole('separator')).toHaveAttribute('aria-label', 'Version V3');
     });
 
-    it('includes prompt changed status in aria-label when true', () => {
+    it('includes prompt edited status in aria-label when true', () => {
       render(<VersionDivider versionLabel="V4" promptChanged={true} />);
 
       expect(screen.getByRole('separator')).toHaveAttribute(
         'aria-label',
-        'Version V4, prompt changed'
+        'Version V4, prompt edited'
       );
     });
   });
@@ -48,10 +48,10 @@ describe('VersionDivider', () => {
       expect(screen.getByText('V5')).toBeInTheDocument();
     });
 
-    it('shows prompt changed badge when promptChanged is true', () => {
+    it('shows prompt edited dot when promptChanged is true', () => {
       render(<VersionDivider versionLabel="V6" promptChanged={true} />);
 
-      expect(screen.getByText('prompt changed')).toBeInTheDocument();
+      expect(screen.getByLabelText('Prompt edited')).toBeInTheDocument();
     });
 
     it('applies custom className', () => {
@@ -62,14 +62,13 @@ describe('VersionDivider', () => {
       expect(container.querySelector('.custom-divider')).toBeInTheDocument();
     });
 
-    it('renders horizontal divider lines', () => {
+    it('does not render horizontal divider lines', () => {
       const { container } = render(
         <VersionDivider versionLabel="V8" promptChanged={false} />
       );
 
-      // Should have two divider lines (before and after the label)
       const lines = container.querySelectorAll('[aria-hidden="true"]');
-      expect(lines.length).toBe(2);
+      expect(lines.length).toBe(0);
     });
   });
 });

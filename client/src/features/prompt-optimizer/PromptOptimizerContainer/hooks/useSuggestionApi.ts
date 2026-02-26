@@ -13,7 +13,7 @@ import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
 interface UseSuggestionApiParams {
   promptOptimizer: Pick<PromptOptimizer, 'inputPrompt'>;
   stablePromptContext: PromptContext | null;
-  i2vContext?: I2VContext | null;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 interface FetchSuggestionsParams {
@@ -46,8 +46,9 @@ export function useSuggestionApi({
   );
 
   useEffect(() => {
+    const requestManager = requestManagerRef.current;
     return () => {
-      requestManagerRef.current.dispose();
+      requestManager.dispose();
     };
   }, []);
 
@@ -71,8 +72,8 @@ export function useSuggestionApi({
         const i2vPayload =
           i2vContext?.isI2VMode && i2vContext.observation && i2vContext.lockMap
             ? {
-                observation: i2vContext.observation as Record<string, unknown>,
-                lockMap: i2vContext.lockMap as Record<string, string>,
+                observation: i2vContext.observation as unknown as Record<string, unknown>,
+                lockMap: i2vContext.lockMap as unknown as Record<string, string>,
                 constraintMode: i2vContext.constraintMode,
               }
             : null;

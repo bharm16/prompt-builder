@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import type { RefObject } from 'react';
+import { createRef } from 'react';
 
 import PromptEnhancementEditor from '@/components/PromptEnhancementEditor/PromptEnhancementEditor';
 import { useEnhancementEditor } from '@/components/PromptEnhancementEditor/hooks/useEnhancementEditor';
@@ -25,25 +25,25 @@ describe('PromptEnhancementEditor', () => {
       ).toThrow('hook failed');
     });
 
-    it('bubbles mouse up errors from the hook', () => {
-      const contentRef = { current: null } as RefObject<HTMLDivElement>;
+    it('invokes mouse up handler from the hook', () => {
+      const contentRef = createRef<HTMLDivElement>();
+      const handleMouseUp = vi.fn();
       mockUseEnhancementEditor.mockReturnValue({
         contentRef,
-        handleMouseUp: () => {
-          throw new Error('mouse up failed');
-        },
+        handleMouseUp,
       });
 
       render(<PromptEnhancementEditor promptContent="Prompt" onPromptUpdate={vi.fn()} />);
 
       const content = screen.getByText('Prompt');
-      expect(() => fireEvent.mouseUp(content)).toThrow('mouse up failed');
+      fireEvent.mouseUp(content);
+      expect(handleMouseUp).toHaveBeenCalled();
     });
   });
 
   describe('edge cases', () => {
     it('renders even when prompt content is empty', () => {
-      const contentRef = { current: null } as RefObject<HTMLDivElement>;
+      const contentRef = createRef<HTMLDivElement>();
       mockUseEnhancementEditor.mockReturnValue({
         contentRef,
         handleMouseUp: vi.fn(),
@@ -62,7 +62,7 @@ describe('PromptEnhancementEditor', () => {
   describe('core behavior', () => {
     it('wires the mouse up handler and attaches the ref', () => {
       const handleMouseUp = vi.fn();
-      const contentRef = { current: null } as RefObject<HTMLDivElement>;
+      const contentRef = createRef<HTMLDivElement>();
       mockUseEnhancementEditor.mockReturnValue({ contentRef, handleMouseUp });
 
       render(

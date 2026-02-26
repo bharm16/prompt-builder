@@ -44,7 +44,7 @@ export interface UseEnhancementSuggestionsParams {
     updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   };
   onCoherenceCheck?: ((payload: CoherenceCheckRequest) => Promise<void> | void) | undefined;
-  i2vContext?: I2VContext | null;
+  i2vContext?: I2VContext | null | undefined;
 }
 
 export interface UseEnhancementSuggestionsReturn {

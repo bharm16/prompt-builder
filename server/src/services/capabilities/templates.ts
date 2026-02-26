@@ -1,4 +1,4 @@
-import type { CapabilitiesSchema, CapabilityField } from '@shared/capabilities';
+import type { CapabilitiesSchema, CapabilityField, ModelFeatures } from '@shared/capabilities';
 
 export const CAPABILITIES_VERSION = '2026-01-03';
 export const DEFAULT_GENERATED_AT = '2026-01-03T00:00:00Z';
@@ -85,6 +85,66 @@ export const imageInputField = (supported = false): CapabilityField => ({
   },
 });
 
+export const styleReferenceField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Style Reference',
+    description: 'Supports native style reference inputs',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 6,
+  },
+});
+
+export const characterReferenceField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Character Reference',
+    description: 'Supports native character/identity reference inputs',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 7,
+  },
+});
+
+export const extendVideoField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Extend Video',
+    description: 'Supports extending an existing video asset',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 8,
+  },
+});
+
+export const lastFrameField = (supported = false): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Last Frame',
+    description: 'Supports end-frame interpolation (first + last frame control)',
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 5.5,
+  },
+});
+
+export const referenceImagesField = (supported = false, maxCount = 3): CapabilityField => ({
+  type: 'bool',
+  default: supported,
+  ui: {
+    label: 'Reference Images',
+    description: `Supports up to ${maxCount} reference images for style/character consistency`,
+    control: 'toggle',
+    group: 'Capabilities',
+    order: 6.5,
+  },
+});
+
 export const seedField = (): CapabilityField => ({
   type: 'int',
   default: 0,
@@ -122,12 +182,13 @@ export const buildSchema = (
   provider: string,
   model: string,
   fields: Record<string, CapabilityField>,
-  options?: { source?: string; generatedAt?: string }
+  options?: { source?: string; generatedAt?: string; features?: ModelFeatures }
 ): CapabilitiesSchema => ({
   provider,
   model,
   version: CAPABILITIES_VERSION,
   source: options?.source ?? 'manual',
   generated_at: options?.generatedAt ?? DEFAULT_GENERATED_AT,
+  ...(options?.features ? { features: options.features } : {}),
   fields,
 });

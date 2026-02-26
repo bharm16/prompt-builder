@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
 import { sendVideoContent } from '@routes/preview/videoRequest';
-import { getAuthenticatedUserId } from '../auth';
 import { extractVideoContentToken } from '../content';
 
 type VideoContentServices = Pick<
@@ -51,7 +50,7 @@ export const createVideoContentHandler = ({
         });
       }
 
-      const userId = await getAuthenticatedUserId(req);
+      const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
       if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
         return res.status(401).json({
           success: false,
@@ -85,5 +84,6 @@ export const createVideoContentHandler = ({
       });
     }
 
-    return sendVideoContent(res, entry);
+    await sendVideoContent(res, entry);
+    return;
   };

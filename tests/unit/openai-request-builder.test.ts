@@ -57,12 +57,69 @@ describe('OpenAiRequestBuilder', () => {
       const payload = builder.buildPayload(systemPrompt, {
         schema: { type: 'object' },
       });
+      const responseFormat = payload.response_format as
+        | {
+            type?: string;
+            json_schema?: {
+              name?: string;
+              strict?: boolean;
+              schema?: Record<string, unknown>;
+            };
+          }
+        | undefined;
 
-      expect(payload.response_format?.type).toBe('json_schema');
+      expect(responseFormat?.type).toBe('json_schema');
+      expect(responseFormat?.json_schema?.name).toBe('structured_response');
+      expect(responseFormat?.json_schema?.strict).toBe(true);
       expect(payload.frequency_penalty).toBe(0);
       expect(payload.temperature).toBe(0);
       expect(payload.top_p).toBe(1);
       expect(payload.seed).toBe(hashString(systemPrompt) % 2147483647);
+    });
+
+    it('uses schema-provided name and unwraps wrapper schemas for OpenAI response format', () => {
+      const payload = builder.buildPayload('Return strict JSON output.', {
+        schema: {
+          name: 'judge_response',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              scores: {
+                type: 'object',
+                properties: {
+                  coverage: { type: 'number' },
+                },
+                required: ['coverage'],
+              },
+            },
+            required: ['scores'],
+          },
+        },
+      });
+
+      const responseFormat = payload.response_format as {
+        type: string;
+        json_schema: {
+          name: string;
+          strict: boolean;
+          schema: Record<string, unknown>;
+        };
+      };
+
+      expect(responseFormat.type).toBe('json_schema');
+      expect(responseFormat.json_schema.name).toBe('judge_response');
+      expect(responseFormat.json_schema.strict).toBe(true);
+      expect(responseFormat.json_schema.schema.name).toBeUndefined();
+      expect(responseFormat.json_schema.schema.strict).toBeUndefined();
+      expect(responseFormat.json_schema.schema.additionalProperties).toBe(false);
+      expect(responseFormat.json_schema.schema.properties).toEqual(
+        expect.objectContaining({
+          scores: expect.objectContaining({
+            additionalProperties: false,
+          }),
+        })
+      );
     });
   });
 });

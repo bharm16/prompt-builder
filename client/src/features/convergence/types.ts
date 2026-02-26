@@ -47,6 +47,16 @@ export const CONVERGENCE_STEPS = [
 ] as const;
 export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
 
+/**
+ * Browser network connectivity state for convergence UI recovery messaging.
+ */
+export interface NetworkStatus {
+  isOnline: boolean;
+  wasOffline: boolean;
+  offlineSince: Date | null;
+  restoredAt: Date | null;
+}
+
 // ============================================================================
 // Camera Motion Types
 // ============================================================================

@@ -57,6 +57,12 @@ describe('resolveGenerationOptions', () => {
         fps: null,
         generationParams: undefined,
         startImage: null,
+        endImage: null,
+        referenceImages: undefined,
+        extendVideoUrl: null,
+        characterAssetId: null,
+        faceSwapUrl: null,
+        faceSwapAlreadyApplied: undefined,
       });
     });
 

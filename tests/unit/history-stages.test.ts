@@ -5,7 +5,7 @@ import {
   formatModelLabel,
   normalizeProcessingLabel,
 } from '@features/history/utils/historyStages';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const createEntry = (overrides: Partial<PromptHistoryEntry> = {}): PromptHistoryEntry => ({
   input: 'input',

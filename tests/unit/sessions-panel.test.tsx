@@ -4,15 +4,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { SessionsPanel } from '@components/ToolSidebar/components/panels/SessionsPanel';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 vi.mock(
   '@utils/cn',
   () => ({
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(' '),
-  }),
-  { virtual: true }
+  })
 );
 
 const toastMocks = vi.hoisted(() => ({

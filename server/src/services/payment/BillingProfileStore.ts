@@ -1,9 +1,15 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
+import {
+  FirestoreCircuitExecutor,
+  getFirestoreCircuitExecutor,
+} from '@services/firestore/FirestoreCircuitExecutor';
 
 export type BillingProfileRecord = {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  subscriptionPriceId?: string;
+  planTier?: string;
   stripeLivemode?: boolean;
   createdAtMs: number;
   updatedAtMs: number;
@@ -12,9 +18,17 @@ export type BillingProfileRecord = {
 export class BillingProfileStore {
   private readonly db = getFirestore();
   private readonly collection = this.db.collection('billing_profiles');
+  private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
+
+  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+    this.firestoreCircuitExecutor = firestoreCircuitExecutor;
+  }
 
   async getProfile(userId: string): Promise<BillingProfileRecord | null> {
-    const snapshot = await this.collection.doc(userId).get();
+    const snapshot = await this.firestoreCircuitExecutor.executeRead(
+      'payment.billingProfile.getProfile',
+      async () => await this.collection.doc(userId).get()
+    );
     if (!snapshot.exists) return null;
     return snapshot.data() as BillingProfileRecord;
   }
@@ -24,30 +38,32 @@ export class BillingProfileStore {
     const docRef = this.collection.doc(userId);
 
     try {
-      await this.db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(docRef);
+      await this.firestoreCircuitExecutor.executeWrite('payment.billingProfile.upsertProfile', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(docRef);
 
-        if (!snapshot.exists) {
-          transaction.set(docRef, {
-            createdAtMs: now,
-            updatedAtMs: now,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            ...update,
-          });
-          return;
-        }
+          if (!snapshot.exists) {
+            transaction.set(docRef, {
+              createdAtMs: now,
+              updatedAtMs: now,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              ...update,
+            });
+            return;
+          }
 
-        transaction.set(
-          docRef,
-          {
-            ...update,
-            updatedAtMs: now,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-      });
+          transaction.set(
+            docRef,
+            {
+              ...update,
+              updatedAtMs: now,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        })
+      );
     } catch (error) {
       logger.error('Failed to upsert billing profile', error as Error, {
         userId,
@@ -58,4 +74,3 @@ export class BillingProfileStore {
     }
   }
 }
-

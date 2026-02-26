@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { logger } from '@infrastructure/Logger';
 
 interface ClaudeClient {
@@ -9,18 +10,21 @@ interface ClaudeClient {
   }>;
 }
 
-interface CritiqueIssue {
-  principle: string;
-  severity: 'minor' | 'moderate' | 'major';
-  description: string;
-  suggestion: string;
-}
+const CritiqueIssueSchema = z.object({
+  principle: z.string(),
+  severity: z.enum(['minor', 'moderate', 'major']),
+  description: z.string(),
+  suggestion: z.string(),
+});
 
-interface Critique {
-  overallScore: number;
-  assessment: string;
-  issues: CritiqueIssue[];
-}
+const CritiqueSchema = z.object({
+  overallScore: z.number(),
+  assessment: z.string(),
+  issues: z.array(CritiqueIssueSchema),
+});
+
+type CritiqueIssue = z.infer<typeof CritiqueIssueSchema>;
+type Critique = z.infer<typeof CritiqueSchema>;
 
 interface ConstitutionalReviewOptions {
   principles?: string[];
@@ -170,8 +174,30 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
       .replace(/```\n?/g, '')
       .trim();
 
-    const critique = JSON.parse(critiqueText) as Critique;
-    return critique;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(critiqueText);
+    } catch (error) {
+      logger.warn('Failed to parse critique JSON', {
+        operation: 'constitutionalReview',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error('Failed to parse critique JSON');
+    }
+
+    const validated = CritiqueSchema.safeParse(parsed);
+    if (!validated.success) {
+      logger.warn('Critique response failed validation', {
+        operation: 'constitutionalReview',
+        issues: validated.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      throw new Error('Critique response validation failed');
+    }
+
+    return validated.data;
   }
 
   /**
@@ -303,4 +329,3 @@ Respond with ONLY "YES" or "NO".`;
     return result === 'YES';
   }
 }
-

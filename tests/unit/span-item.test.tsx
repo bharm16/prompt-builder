@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { SpanItem } from '@features/prompt-optimizer/SpanBentoGrid/components/SpanItem';
 import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
 
-const span: Span = { id: 'span-1', quote: 'hello', category: 'shot' };
+const span: Span = { id: 'span-1', quote: 'hello', category: 'shot', start: 0, end: 5 };
 
 describe('SpanItem', () => {
   describe('error handling', () => {

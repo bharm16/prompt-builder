@@ -1,3 +1,15 @@
+import type { Generation } from '@features/prompt-optimizer/types/domain/generation';
+import type {
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptKeyframeSource,
+  PromptVersionEdit,
+  PromptVersionEntry,
+  PromptVersionPreview,
+  PromptVersionVideo,
+  User,
+} from '@features/prompt-optimizer/types/domain/prompt-session';
+
 export interface Span {
   text: string;
   start: number;
@@ -48,7 +60,7 @@ export interface PromptDebuggerState {
   displayedPrompt?: string;
   optimizedPrompt?: string;
   selectedMode?: string;
-  promptContext?: unknown;
+  promptContext?: Record<string, unknown> | null;
   highlights?: Highlight[];
 }
 
@@ -58,64 +70,21 @@ export interface Highlight {
   confidence?: number;
 }
 
-export interface User {
-  uid: string;
-  [key: string]: unknown;
-}
-
-export interface PromptHistoryEntry {
-  id?: string;
-  uuid?: string;
-  timestamp?: string;
-  title?: string | null;
-  input: string;
-  output: string;
-  score?: number | null;
-  mode?: string;
-  targetModel?: string | null;
-  generationParams?: Record<string, unknown> | null;
-  brainstormContext?: unknown | null;
-  highlightCache?: unknown | null;
-  versions?: PromptVersionEntry[];
-}
-
-export interface PromptVersionEdit {
-  timestamp: string;
-  delta?: number;
-  source?: 'manual' | 'suggestion' | 'unknown';
-}
-
-export interface PromptVersionPreview {
-  generatedAt: string;
-  imageUrl?: string | null;
-  aspectRatio?: string | null;
-}
-
-export interface PromptVersionVideo {
-  generatedAt: string;
-  videoUrl?: string | null;
-  model?: string | null;
-  generationParams?: Record<string, unknown> | null;
-}
-
-export interface PromptVersionEntry {
-  versionId: string;
-  label?: string | undefined;
-  signature: string;
-  prompt: string;
-  timestamp: string;
-  highlights?: unknown | null | undefined;
-  editCount?: number | undefined;
-  edits?: PromptVersionEdit[] | undefined;
-  preview?: PromptVersionPreview | null | undefined;
-  video?: PromptVersionVideo | null | undefined;
-  generations?: Generation[] | null | undefined;
-}
-
 export interface Toast {
   success: (message: string, duration?: number) => void;
   error: (message: string, duration?: number) => void;
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
 }
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+
+export type {
+  Generation,
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptKeyframeSource,
+  PromptVersionEdit,
+  PromptVersionEntry,
+  PromptVersionPreview,
+  PromptVersionVideo,
+  User,
+};

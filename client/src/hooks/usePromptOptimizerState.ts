@@ -23,6 +23,18 @@ export interface SpansData {
   timestamp: number;
 }
 
+interface RollbackSnapshot {
+  optimizedPrompt: string;
+  displayedPrompt: string;
+  genericOptimizedPrompt: string | null;
+  previewPrompt: string | null;
+  previewAspectRatio: string | null;
+  qualityScore: number | null;
+  draftPrompt: string;
+  draftSpans: SpansData | null;
+  refinedSpans: SpansData | null;
+}
+
 export interface PromptOptimizerState {
   inputPrompt: string;
   isProcessing: boolean;
@@ -40,6 +52,7 @@ export interface PromptOptimizerState {
   draftSpans: SpansData | null;
   refinedSpans: SpansData | null;
   lockedSpans: LockedSpan[];
+  rollbackSnapshot: RollbackSnapshot | null;
 }
 
 export type PromptOptimizerAction =
@@ -63,6 +76,8 @@ export type PromptOptimizerAction =
   | { type: 'REMOVE_LOCKED_SPAN'; payload: string }
   | { type: 'CLEAR_LOCKED_SPANS' }
   | { type: 'START_OPTIMIZATION' }
+  | { type: 'SNAPSHOT_FOR_ROLLBACK' }
+  | { type: 'ROLLBACK' }
   | { type: 'RESET' };
 
 const initialState: PromptOptimizerState = {
@@ -82,6 +97,7 @@ const initialState: PromptOptimizerState = {
   draftSpans: null,
   refinedSpans: null,
   lockedSpans: [],
+  rollbackSnapshot: null,
 };
 
 function reducer(
@@ -148,6 +164,39 @@ function reducer(
       };
     case 'CLEAR_LOCKED_SPANS':
       return { ...state, lockedSpans: [] };
+    case 'SNAPSHOT_FOR_ROLLBACK':
+      return {
+        ...state,
+        rollbackSnapshot: {
+          optimizedPrompt: state.optimizedPrompt,
+          displayedPrompt: state.displayedPrompt,
+          genericOptimizedPrompt: state.genericOptimizedPrompt,
+          previewPrompt: state.previewPrompt,
+          previewAspectRatio: state.previewAspectRatio,
+          qualityScore: state.qualityScore,
+          draftPrompt: state.draftPrompt,
+          draftSpans: state.draftSpans,
+          refinedSpans: state.refinedSpans,
+        },
+      };
+    case 'ROLLBACK':
+      if (!state.rollbackSnapshot) {
+        log.warn('ROLLBACK dispatched without snapshot');
+        return {
+          ...state,
+          isProcessing: false,
+          isRefining: false,
+          isDraftReady: false,
+        };
+      }
+      return {
+        ...state,
+        ...state.rollbackSnapshot,
+        rollbackSnapshot: null,
+        isProcessing: false,
+        isRefining: false,
+        isDraftReady: false,
+      };
     case 'START_OPTIMIZATION':
       log.debug('Starting optimization - resetting state', {
         action: 'START_OPTIMIZATION',
@@ -257,6 +306,14 @@ export function usePromptOptimizerState() {
     dispatch({ type: 'CLEAR_LOCKED_SPANS' });
   }, []);
 
+  const snapshotForRollback = useCallback(() => {
+    dispatch({ type: 'SNAPSHOT_FOR_ROLLBACK' });
+  }, []);
+
+  const rollback = useCallback(() => {
+    dispatch({ type: 'ROLLBACK' });
+  }, []);
+
   const startOptimization = useCallback(() => {
     dispatch({ type: 'START_OPTIMIZATION' });
   }, []);
@@ -297,6 +354,8 @@ export function usePromptOptimizerState() {
     addLockedSpan,
     removeLockedSpan,
     clearLockedSpans,
+    snapshotForRollback,
+    rollback,
     startOptimization,
     resetPrompt,
     finishProcessing,

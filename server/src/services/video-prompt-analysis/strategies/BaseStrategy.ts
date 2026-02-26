@@ -27,6 +27,13 @@ import type {
  */
 const PIPELINE_VERSION = '2.0.0';
 
+export interface BaseStrategyDeps {
+  techStripper?: TechStripper;
+  safetySanitizer?: SafetySanitizer;
+  analyzer?: VideoPromptAnalyzer;
+  llmRewriter?: VideoPromptLLMRewriter;
+}
+
 /**
  * BaseStrategy provides common pipeline infrastructure for all model strategies.
  *
@@ -48,16 +55,36 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   // Accumulated metadata during pipeline execution
   private currentMetadata: OptimizationMetadata | null = null;
 
+  constructor(deps?: BaseStrategyDeps);
   constructor(
-    techStripperInstance: TechStripper = techStripper,
-    safetySanitizerInstance: SafetySanitizer = safetySanitizer,
-    analyzerInstance: VideoPromptAnalyzer = new VideoPromptAnalyzer(),
-    llmRewriterInstance: VideoPromptLLMRewriter = new VideoPromptLLMRewriter()
+    techStripperInstance?: TechStripper,
+    safetySanitizerInstance?: SafetySanitizer,
+    analyzerInstance?: VideoPromptAnalyzer,
+    llmRewriterInstance?: VideoPromptLLMRewriter
+  );
+  constructor(
+    arg1?: BaseStrategyDeps | TechStripper,
+    arg2?: SafetySanitizer,
+    arg3?: VideoPromptAnalyzer,
+    arg4?: VideoPromptLLMRewriter
   ) {
-    this.techStripper = techStripperInstance;
-    this.safetySanitizer = safetySanitizerInstance;
-    this.analyzer = analyzerInstance;
-    this.llmRewriter = llmRewriterInstance;
+    if (arguments.length > 1) {
+      const positionalTechStripper = arg1 as TechStripper | undefined;
+      this.techStripper =
+        positionalTechStripper && typeof positionalTechStripper.strip === 'function'
+          ? positionalTechStripper
+          : techStripper;
+      this.safetySanitizer = arg2 ?? safetySanitizer;
+      this.analyzer = arg3 ?? new VideoPromptAnalyzer();
+      this.llmRewriter = arg4 ?? new VideoPromptLLMRewriter();
+      return;
+    }
+
+    const deps = (arg1 ?? {}) as BaseStrategyDeps;
+    this.techStripper = deps.techStripper ?? techStripper;
+    this.safetySanitizer = deps.safetySanitizer ?? safetySanitizer;
+    this.analyzer = deps.analyzer ?? new VideoPromptAnalyzer();
+    this.llmRewriter = deps.llmRewriter ?? new VideoPromptLLMRewriter();
   }
 
   /**
@@ -206,7 +233,18 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
     // 2. LLM-powered rewrite (Consumes structured IR)
     const rewriteConstraints = this.getRewriteConstraints(ir, context);
-    const rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+    let rewrittenPrompt: string | Record<string, unknown>;
+    let rewriteFallbackUsed = false;
+    try {
+      rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+    } catch (error) {
+      // Keep the strategy pipeline deterministic even when the LLM provider is unavailable.
+      rewrittenPrompt = ir.raw;
+      rewriteFallbackUsed = true;
+
+      const message = error instanceof Error ? error.message : String(error);
+      this.addWarning(`LLM rewrite unavailable; using fallback prompt (${message})`);
+    }
 
     // 2.5. Post-IR TechStripper (model-aware placebo removal on LLM output)
     let postRewritePrompt = rewrittenPrompt as string | Record<string, unknown>;
@@ -230,7 +268,9 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
       durationMs: performance.now() - startTime,
       changes: [
         ...transformResult.changes,
-        'LLM-powered model rewrite from IR',
+        rewriteFallbackUsed
+          ? 'LLM rewrite unavailable; used deterministic fallback from analyzed prompt'
+          : 'LLM-powered model rewrite from IR',
         ...postStripChanges,
       ],
     });

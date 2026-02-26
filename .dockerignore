@@ -42,6 +42,7 @@ docs/
 # Build artifacts
 dist/
 build/
+server/src/llm/span-labeling/nlp/models/
 
 # Logs
 logs/

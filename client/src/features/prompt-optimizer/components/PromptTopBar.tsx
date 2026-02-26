@@ -53,11 +53,6 @@ export const PromptTopBar = ({
   const { selectedModel, setSelectedModel } = usePromptConfig();
   const { promptOptimizer } = usePromptServices();
 
-  // Hide when brainstorm modal is open
-  if (showBrainstorm) {
-    return null;
-  }
-
   const debug = useDebugLogger('PromptTopBar');
   const localTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = inputRef ?? localTextareaRef;
@@ -72,7 +67,7 @@ export const PromptTopBar = ({
     if (!showResults && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [showResults]);
+  }, [showResults, textareaRef]);
 
   const {
     inputPrompt,
@@ -158,7 +153,7 @@ export const PromptTopBar = ({
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 0);
-  }, [inputPrompt, isOptimizing, selectedModel]);
+  }, [inputPrompt, isOptimizing, selectedModel, textareaRef]);
 
   const handleModelChange = useCallback(
     (_nextModel: string, previousModel: string | undefined): void => {
@@ -172,7 +167,7 @@ export const PromptTopBar = ({
         textareaRef.current?.focus();
       }, 0);
     },
-    [inputPrompt, isEditing, isOptimizing, showResults]
+    [inputPrompt, isEditing, isOptimizing, showResults, textareaRef]
   );
 
   const handleCancel = useCallback((): void => {
@@ -206,10 +201,15 @@ export const PromptTopBar = ({
         : null;
 
     if (modelChanged && !promptChanged && genericPrompt) {
+      const explicitTargetModel =
+        typeof selectedModel === 'string' && selectedModel.trim()
+          ? selectedModel.trim()
+          : undefined;
       void onOptimize(inputPrompt, {
         compileOnly: true,
         compilePrompt: genericPrompt,
         createVersion: true,
+        ...(explicitTargetModel ? { targetModel: explicitTargetModel } : {}),
       });
     } else {
       void onOptimize(inputPrompt);
@@ -271,6 +271,11 @@ export const PromptTopBar = ({
       showResults,
     ]
   );
+
+  // Hide when brainstorm modal is open.
+  if (showBrainstorm) {
+    return null;
+  }
 
   return (
     <header

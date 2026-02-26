@@ -192,9 +192,16 @@ export class RunwayStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const sourcePrompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
 
-    // Handle visual reference descriptions from context (Runway specific requirement)
+    this.enrichCameraFromRaw(ir);
+
+    let prompt = this.buildCsaePrompt(ir, sourcePrompt);
+    if (prompt !== sourcePrompt) {
+      changes.push('Reordered output to CSAE structure (camera → subject → action → environment)');
+    }
+
+    // Handle visual reference descriptions from context (Runway-specific requirement)
     if (context?.assets) {
       for (const asset of context.assets) {
         if (asset.type === 'image' && asset.description) {
@@ -216,9 +223,24 @@ export class RunwayStrategy extends BaseStrategy {
   ): AugmentResult {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
+    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-    // STABILITY_TRIGGERS are now handled by the LLM via Mandatory Constraints
-    const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    // Enforce required A2D stability constraints post-rewrite to guarantee invariants.
+    const mandatoryResult = this.enforceMandatoryConstraints(prompt, [...STABILITY_TRIGGERS]);
+    prompt = mandatoryResult.prompt;
+    changes.push(...mandatoryResult.changes);
+    triggersInjected.push(...mandatoryResult.injected);
+
+    // Inject context-aware cinematographic triggers when absent.
+    const suggestedTriggers = this.selectCinematographicTriggers(prompt);
+    for (const trigger of suggestedTriggers) {
+      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
+        prompt = `${prompt}, ${trigger}`;
+        triggersInjected.push(trigger);
+        changes.push(`Injected cinematographic trigger: "${trigger}"`);
+      }
+    }
+    prompt = this.cleanWhitespace(prompt);
 
     return {
       prompt,
@@ -289,6 +311,151 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   /**
+   * Build a deterministic prompt in CSAE order from IR + raw text.
+   */
+  private buildCsaePrompt(ir: VideoPromptIR, fallbackPrompt: string): string {
+    const raw = this.cleanWhitespace(ir.raw || fallbackPrompt);
+    const camera = this.extractCameraPhrase(ir, raw);
+    const subject = this.extractSubjectPhrase(ir, raw);
+    const action = this.extractActionPhrase(ir, raw);
+    const environment = this.extractEnvironmentPhrase(ir, raw);
+
+    const orderedParts = [camera, subject, action, environment].filter(
+      (part): part is string => Boolean(part && part.trim().length > 0)
+    );
+
+    if (orderedParts.length === 0) {
+      return this.cleanWhitespace(fallbackPrompt || raw);
+    }
+
+    // Preserve additional context not captured by CSAE extraction.
+    let remainder = raw;
+    for (const part of orderedParts) {
+      remainder = this.removeFirstOccurrence(remainder, part);
+    }
+    remainder = this.cleanWhitespace(remainder.replace(/^[,.;:\s]+|[,.;:\s]+$/g, ''));
+    if (remainder.length > 0) {
+      orderedParts.push(remainder);
+    }
+
+    return this.cleanWhitespace(orderedParts.join(', '));
+  }
+
+  private extractCameraPhrase(ir: VideoPromptIR, raw: string): string | null {
+    if (ir.camera.movements.length > 0) {
+      const movement = ir.camera.movements[0];
+      if (movement && movement.trim().length > 0) {
+        return movement;
+      }
+    }
+
+    const cameraTerms = [
+      'pan left',
+      'pan right',
+      'tilt up',
+      'tilt down',
+      'dolly in',
+      'dolly out',
+      'zoom in',
+      'zoom out',
+      'tracking shot',
+      'crane shot',
+      'steadicam',
+      'handheld',
+      'low angle',
+      'high angle',
+      'wide angle',
+      'telephoto',
+      'dolly',
+      'zoom',
+    ];
+
+    return this.findFirstMatchingTerm(raw, cameraTerms);
+  }
+
+  private extractSubjectPhrase(ir: VideoPromptIR, raw: string): string | null {
+    const irSubject = ir.subjects[0]?.text?.trim();
+    if (irSubject) {
+      return irSubject;
+    }
+
+    const subjectMatch = raw.match(
+      /\b(?:a man|a woman|a person|a child|a dog|a cat|the man|the woman|someone|a figure|a character)\b/i
+    );
+    return subjectMatch?.[0] ?? null;
+  }
+
+  private extractActionPhrase(ir: VideoPromptIR, raw: string): string | null {
+    const irAction = ir.actions[0]?.trim();
+    if (irAction) {
+      return irAction;
+    }
+
+    const actionTerms = [
+      'walking',
+      'running',
+      'jumping',
+      'sitting',
+      'standing',
+      'dancing',
+      'talking',
+      'looking',
+      'holding',
+      'reaching',
+      'falling',
+      'flying',
+      'swimming',
+      'driving',
+    ];
+
+    return this.findFirstMatchingTerm(raw, actionTerms);
+  }
+
+  private extractEnvironmentPhrase(ir: VideoPromptIR, raw: string): string | null {
+    if (ir.environment.setting && ir.environment.setting.trim().length > 0) {
+      return ir.environment.setting.trim();
+    }
+
+    if (ir.environment.weather && ir.environment.weather.trim().length > 0) {
+      return ir.environment.weather.trim();
+    }
+
+    const environmentTerms = [
+      'in a forest',
+      'in the city',
+      'at the beach',
+      'on a mountain',
+      'in a room',
+      'at a park',
+      'in the desert',
+      'on the street',
+      'inside a building',
+      'outside',
+      'in the garden',
+    ];
+
+    return this.findFirstMatchingTerm(raw, environmentTerms);
+  }
+
+  private findFirstMatchingTerm(text: string, terms: readonly string[]): string | null {
+    const lower = text.toLowerCase();
+    for (const term of terms) {
+      const lowerTerm = term.toLowerCase();
+      const index = lower.indexOf(lowerTerm);
+      if (index !== -1) {
+        return text.substring(index, index + term.length);
+      }
+    }
+    return null;
+  }
+
+  private removeFirstOccurrence(text: string, value: string): string {
+    const index = text.toLowerCase().indexOf(value.toLowerCase());
+    if (index === -1) return text;
+    return `${text.slice(0, index)} ${text.slice(index + value.length)}`.replace(/\s+/g, ' ');
+  }
+
+  /**
    * Select appropriate cinematographic triggers based on content
    */
   private selectCinematographicTriggers(prompt: string): string[] {
@@ -319,8 +486,16 @@ export class RunwayStrategy extends BaseStrategy {
       selected.push('volumetric lighting');
     }
 
-    // Default: add at least one trigger if none selected
-    if (selected.length === 0) {
+    // Baseline: keep a lighting-style trigger present even when subject-only cues matched.
+    // Subject focus (depth of field) alone can under-specify the lighting profile.
+    const hasLightingStyleTrigger =
+      selected.includes('anamorphic lens flare') ||
+      selected.includes('film grain') ||
+      selected.includes('volumetric lighting') ||
+      selected.includes('cinematic lighting') ||
+      lowerPrompt.includes('cinematic lighting');
+
+    if (!hasLightingStyleTrigger) {
       selected.push('cinematic lighting');
     }
 
@@ -328,8 +503,3 @@ export class RunwayStrategy extends BaseStrategy {
     return selected.slice(0, 3);
   }
 }
-
-/**
- * Singleton instance for convenience
- */
-export const runwayStrategy = new RunwayStrategy();

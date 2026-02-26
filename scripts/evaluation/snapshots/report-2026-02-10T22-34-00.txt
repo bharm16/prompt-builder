@@ -1,0 +1,89 @@
+Evaluation Report - 2026-02-10T22:34:00.954Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (25 prompts evaluated):
+  Average Score:      22.72/25
+  Average Span Count: 18.52
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    ████████████████████████████████ 20
+  good (18-22)         ████████ 5
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - high angle (2x)
+  - vibrant colors (2x)
+  - cozy living room (2x)
+  - gentle shadows (1x)
+  - emphasizing introspection (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - Close-Up (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 11433 | P50: 10251 | P95: 20857 | P99: 22471
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: gentle shadows (lighting), emphasizing introspection (style), evoking a sense of calm (style), high angle (camera), halo effect (lighting)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 21
+  - style: 16
+  - camera: 8
+  - environment: 8
+  - action: 6
+  - subject: 3
+  - technical: 1
+  - audio: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         2.20 / 2.56
+  subject      2.63 / 2.88
+  action       1.79 / 2.38
+  environment  2.20 / 2.76
+  lighting     2.28 / 2.88
+  camera       2.60 / 2.88
+  style        1.95 / 2.55
+  technical    4.16 / 4.16
+  audio        1.64 / 2.28
+
+FALSE POSITIVE REASONS:
+  - duplicate: 1
+      e.g.: Close-Up
+
+TOP TAXONOMY ERRORS:
+  - camera.focus → camera.focus (13x) (e.g. "shallow depth of field", "f/1.8-f/2.8", "shallow depth of field")
+  - camera.focus → camera.aperture (6x) (e.g. "f/1.8-f/2.8", "f/4-f/5.6", "f/1.8-f/2.8")
+  - camera.focus → camera.lens (3x) (e.g. "f/4-f/5.6", "f/4-f/5.6", "f/11-f/16")
+  - lighting.source → lighting.source (2x) (e.g. "natural daylight", "Daylight, soft directional with natural diffusion")
+  - subject.identity → subject.appearance (2x) (e.g. "golden retriever, bright eyes", "sharp axe")
+
+ERRORS BY SECTION:
+  main            missed 39, falsePositives 0
+  technicalSpecs  missed 17, falsePositives 0
+  alternatives    missed 8, falsePositives 1
+
+CONFIDENCE ERROR RATES:
+  high   0.2% (1/463)
+    Failures: "Close-Up" (shot.type)
+  medium 0.0% (0/0)
+  low    0.0% (0/0)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [18/25] "man looking out of a window"
+    Notes: The extraction missed several important elements, particularly in the environment and style categories. There were also some taxonomy errors related to camera focus spans.
+  [20/25] "cat laying in the sun through a window"
+    Notes: The extraction missed several important visual control points, particularly related to actions and style. However, technical specs were well covered.
+  [22/25] "young dancer with colorful tattoos, spinning gracefully on one foot, at vibrant street mural alleyway"
+    Notes: The extraction is mostly accurate, but several important elements related to style and lighting were missed. Taxonomy roles were mostly correct, but some lighting elements were misclassified.
+
+================================================================================

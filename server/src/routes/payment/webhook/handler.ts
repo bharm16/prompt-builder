@@ -9,6 +9,7 @@ export const createStripeWebhookHandler = ({
   webhookEventStore,
   billingProfileStore,
   userCreditService,
+  firestoreCircuitExecutor,
 }: WebhookHandlerDeps) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const signature = req.headers['stripe-signature'];
@@ -23,6 +24,19 @@ export const createStripeWebhookHandler = ({
     } catch (err) {
       logger.error('Webhook signature verification failed', err as Error);
       return res.status(400).send(`Webhook Error: ${(err as Error).message}`);
+    }
+
+    if (firestoreCircuitExecutor && !firestoreCircuitExecutor.isWriteAllowed()) {
+      const retryAfterSeconds = firestoreCircuitExecutor.getRetryAfterSeconds();
+      logger.warn('Stripe webhook deferred due to Firestore write gate', {
+        eventId: event.id,
+        eventType: event.type,
+        retryAfterSeconds,
+      });
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(503).json({
+        error: 'Webhook handling deferred while datastore recovers',
+      });
     }
 
     let claim;

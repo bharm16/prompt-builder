@@ -254,7 +254,7 @@ export function ContactSupportPage(): React.ReactElement {
               RESPONSE TIME
             </p>
             <p className="mt-2 text-[13px] leading-snug text-muted">
-              This is a template page. Add your SLA or support hours here.
+              We aim to respond within 24 hours on business days.
             </p>
           </div>
         </Card>

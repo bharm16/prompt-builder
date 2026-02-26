@@ -8,8 +8,34 @@ export interface VideoJobRequest {
   options: VideoGenerationOptions;
 }
 
+export const VIDEO_JOB_ERROR_CATEGORIES = [
+  'provider',
+  'storage',
+  'timeout',
+  'infrastructure',
+  'validation',
+  'unknown',
+] as const;
+export type VideoJobErrorCategory = typeof VIDEO_JOB_ERROR_CATEGORIES[number];
+
+export const VIDEO_JOB_ERROR_STAGES = [
+  'generation',
+  'persistence',
+  'queue',
+  'shutdown',
+  'sweeper',
+  'unknown',
+] as const;
+export type VideoJobErrorStage = typeof VIDEO_JOB_ERROR_STAGES[number];
+
 export interface VideoJobError {
   message: string;
+  code?: string;
+  category?: VideoJobErrorCategory;
+  retryable?: boolean;
+  stage?: VideoJobErrorStage;
+  provider?: string;
+  attempt?: number;
 }
 
 export interface VideoJobRecord {
@@ -18,6 +44,9 @@ export interface VideoJobRecord {
   userId: string;
   request: VideoJobRequest;
   creditsReserved: number;
+  provider?: string;
+  attempts: number;
+  maxAttempts: number;
   createdAtMs: number;
   updatedAtMs: number;
   completedAtMs?: number;
@@ -25,5 +54,23 @@ export interface VideoJobRecord {
   error?: VideoJobError;
   workerId?: string;
   leaseExpiresAtMs?: number;
+  lastHeartbeatAtMs?: number;
+  releasedAtMs?: number;
+  releaseReason?: string;
 }
 
+export const DLQ_STATUSES = ['pending', 'processing', 'reprocessed', 'escalated'] as const;
+export type DlqStatus = typeof DLQ_STATUSES[number];
+
+export interface DlqEntry {
+  id: string;
+  jobId: string;
+  userId: string;
+  request: VideoJobRequest;
+  creditsReserved: number;
+  provider: string;
+  error: VideoJobError;
+  source: string;
+  dlqAttempt: number;
+  maxDlqAttempts: number;
+}

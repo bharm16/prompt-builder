@@ -60,7 +60,6 @@ const createDefaults = (overrides: Partial<UseUndoRedoParams> = {}): UseUndoRedo
     promptOptimizer: createPromptOptimizer(''),
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
-    onEdit: undefined,
     undoStackRef,
     redoStackRef,
     latestHighlightRef,

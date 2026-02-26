@@ -30,6 +30,16 @@ vi.mock('@hooks/useDebugLogger', () => ({
 const mockFetchEnhancementSuggestions = vi.mocked(fetchEnhancementSuggestions);
 const mockDetectAndApplySceneChange = vi.mocked(detectAndApplySceneChange);
 
+function createDeferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  let reject: (reason?: unknown) => void = () => {};
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('useEnhancementEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -89,6 +99,7 @@ describe('useEnhancementEditor', () => {
         expect(latestState?.isPlaceholder).toBe(false);
         expect(latestState?.isLoading).toBe(false);
       });
+
     });
   });
 
@@ -126,7 +137,13 @@ describe('useEnhancementEditor', () => {
       });
 
       expect(mockFetchEnhancementSuggestions).not.toHaveBeenCalled();
-      expect(onShowSuggestionsChange).not.toHaveBeenCalled();
+      expect(onShowSuggestionsChange).toHaveBeenCalled();
+      const latestState = onShowSuggestionsChange.mock.calls.at(-1)?.[0];
+      expect(latestState).toMatchObject({
+        show: false,
+        selectedText: '',
+        fullPrompt: 'Inside',
+      });
     });
   });
 
@@ -215,6 +232,117 @@ describe('useEnhancementEditor', () => {
         })
       );
       expect(onPromptUpdate).toHaveBeenCalledWith('Final prompt');
+    });
+
+    it('keeps latest suggestion response when requests resolve out of order', async () => {
+      const onPromptUpdate = vi.fn();
+      const onShowSuggestionsChange = vi.fn();
+
+      const container = document.createElement('div');
+      const firstHighlight = document.createElement('span');
+      firstHighlight.setAttribute('data-category', 'lighting');
+      firstHighlight.textContent = 'Bright light';
+      container.appendChild(firstHighlight);
+
+      const secondHighlight = document.createElement('span');
+      secondHighlight.setAttribute('data-category', 'environment');
+      secondHighlight.textContent = 'Dark alley';
+      container.appendChild(secondHighlight);
+
+      const firstRange = document.createRange();
+      firstRange.selectNodeContents(firstHighlight);
+      const secondRange = document.createRange();
+      secondRange.selectNodeContents(secondHighlight);
+
+      const firstSelection = {
+        anchorNode: firstHighlight.firstChild,
+        focusNode: firstHighlight.firstChild,
+        toString: () => 'Bright light',
+        rangeCount: 1,
+        getRangeAt: vi.fn(() => firstRange),
+        removeAllRanges: vi.fn(),
+        addRange: vi.fn(),
+      } as unknown as Selection;
+
+      const secondSelection = {
+        anchorNode: secondHighlight.firstChild,
+        focusNode: secondHighlight.firstChild,
+        toString: () => 'Dark alley',
+        rangeCount: 1,
+        getRangeAt: vi.fn(() => secondRange),
+        removeAllRanges: vi.fn(),
+        addRange: vi.fn(),
+      } as unknown as Selection;
+
+      let activeSelection = firstSelection;
+      vi.spyOn(window, 'getSelection').mockImplementation(() => activeSelection);
+
+      const firstDeferred = createDeferred<{
+        suggestions: Array<{ text: string }>;
+        isPlaceholder: boolean;
+      }>();
+      const secondDeferred = createDeferred<{
+        suggestions: Array<{ text: string }>;
+        isPlaceholder: boolean;
+      }>();
+
+      mockFetchEnhancementSuggestions.mockImplementation((payload) => {
+        if (payload.highlightedText === 'Bright light') {
+          return firstDeferred.promise;
+        }
+        return secondDeferred.promise;
+      });
+
+      const { result } = renderHook(() =>
+        useEnhancementEditor({
+          promptContent: 'Bright light then Dark alley',
+          onPromptUpdate,
+          onShowSuggestionsChange,
+        })
+      );
+      result.current.contentRef.current = container;
+
+      let firstRequestPromise: Promise<void> | null = null;
+      await act(async () => {
+        firstRequestPromise = result.current.handleMouseUp();
+        await Promise.resolve();
+      });
+
+      activeSelection = secondSelection;
+      let secondRequestPromise: Promise<void> | null = null;
+      await act(async () => {
+        secondRequestPromise = result.current.handleMouseUp();
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        secondDeferred.resolve({
+          suggestions: [{ text: 'Replace with moody corridor' }],
+          isPlaceholder: false,
+        });
+        await secondRequestPromise;
+      });
+
+      await act(async () => {
+        firstDeferred.resolve({
+          suggestions: [{ text: 'Replace with warm sunrise' }],
+          isPlaceholder: false,
+        });
+        await firstRequestPromise;
+      });
+
+      await waitFor(() => {
+        const latestState = onShowSuggestionsChange.mock.calls.at(-1)?.[0];
+        expect(latestState?.selectedText).toBe('Dark alley');
+        expect(latestState?.suggestions).toEqual([
+          { text: 'Replace with moody corridor' },
+        ]);
+      });
+
+      const sawLoadingState = onShowSuggestionsChange.mock.calls.some(
+        ([state]) => state?.isLoading === true
+      );
+      expect(sawLoadingState).toBe(true);
     });
   });
 });

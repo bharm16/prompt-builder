@@ -388,7 +388,14 @@ export class KlingStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const sourcePrompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const screenplay = this.parseScreenplay(sourcePrompt, context);
+    let prompt = this.formatScreenplay(screenplay);
+    if (!prompt || prompt.trim().length === 0) {
+      prompt = sourcePrompt;
+    } else if (prompt !== sourcePrompt) {
+      changes.push('Formatted output to Kling screenplay structure');
+    }
 
     // Add @Element references from context assets (Kling specific requirement)
     if (context?.assets) {
@@ -414,9 +421,13 @@ export class KlingStrategy extends BaseStrategy {
   ): AugmentResult {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
+    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-    // Audio triggers are now handled by the LLM via Mandatory Constraints
-    const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    // Enforce core Kling audio constraints post-rewrite for deterministic behavior.
+    const mandatoryResult = this.enforceMandatoryConstraints(prompt, [...AUDIO_TRIGGERS]);
+    prompt = mandatoryResult.prompt;
+    changes.push(...mandatoryResult.changes);
+    triggersInjected.push(...mandatoryResult.injected);
 
     return {
       prompt,
@@ -772,7 +783,3 @@ export class KlingStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const klingStrategy = new KlingStrategy();

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
 import type { PromptOptimizationServiceContract } from '../types';
+import { compileSchema } from '@config/schemas/promptSchemas';
 
 export const createOptimizeCompileHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -12,7 +13,26 @@ export const createOptimizeCompileHandler = (
     const userId = extractUserId(req);
     const operation = 'optimize-compile';
 
-    const { prompt, targetModel, context } = req.body;
+    const parsed = compileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn('Optimize-compile request validation failed', {
+        operation,
+        requestId,
+        userId,
+        issues: parsed.error.issues.map((issue) => ({
+          code: issue.code,
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: parsed.error.issues,
+      });
+    }
+
+    const { prompt, targetModel, context } = parsed.data;
 
     logger.info('Optimize-compile request received', {
       operation,
@@ -39,10 +59,16 @@ export const createOptimizeCompileHandler = (
         targetModel: result.targetModel,
       });
 
-      return res.json({
+      const responsePayload = {
         compiledPrompt: result.compiledPrompt,
         ...(result.metadata ? { metadata: result.metadata } : {}),
         ...(result.targetModel ? { targetModel: result.targetModel } : {}),
+      };
+
+      return res.json({
+        success: true,
+        data: responsePayload,
+        ...responsePayload,
       });
     } catch (error: unknown) {
       const errorInstance = error instanceof Error ? error : new Error(String(error));

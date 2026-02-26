@@ -78,7 +78,7 @@ describe('fetchCustomSuggestions', () => {
 
     const result = await fetchCustomSuggestions(defaultParams);
 
-    expect(result).toEqual(['one', 'two']);
+    expect(result).toEqual([{ text: 'one' }, { text: 'two' }]);
     expect(mockBuildFirebaseAuthHeaders).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/get-custom-suggestions',
@@ -99,7 +99,7 @@ describe('fetchCustomSuggestions', () => {
 
   it('throws when fetch is unavailable', async () => {
     const globalWithFetch = global as { fetch?: typeof fetch };
-    globalWithFetch.fetch = undefined;
+    delete globalWithFetch.fetch;
 
     await expect(fetchCustomSuggestions(defaultParams)).rejects.toThrow('Fetch API unavailable');
   });

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type { Generation, GenerationTier } from '../types';
 import { areGenerationsEqual } from '../utils/generationComparison';
+import { mergeGenerations } from '../utils/generationUrlPreference';
+
+export { mergeGenerations } from '../utils/generationUrlPreference';
 
 export type GenerationsState = {
   generations: Generation[];
@@ -93,6 +96,8 @@ export function useGenerationsState({
   );
   const initialRef = useRef<Generation[] | undefined>(initialGenerations);
   const suppressOnChangeRef = useRef(false);
+  const onGenerationsChangeRef = useRef(onGenerationsChange);
+  onGenerationsChangeRef.current = onGenerationsChange;
   const generationsRef = useRef(state.generations);
   generationsRef.current = state.generations;
 
@@ -101,7 +106,8 @@ export function useGenerationsState({
   useEffect(() => {
     const hasInitial = Boolean(initialGenerations);
     const sameRef = initialRef.current === initialGenerations;
-    const sameContent = areGenerationsEqual(initialGenerations, generationsRef.current);
+    const mergedGenerations = mergeGenerations(initialGenerations, generationsRef.current);
+    const sameContent = areGenerationsEqual(mergedGenerations, generationsRef.current);
     const hasLocalForVersion = Boolean(
       promptVersionId &&
         Array.isArray(initialGenerations) &&
@@ -113,7 +119,7 @@ export function useGenerationsState({
 
     initialRef.current = initialGenerations;
     suppressOnChangeRef.current = true;
-    dispatch({ type: 'SET_GENERATIONS', payload: initialGenerations ?? [] });
+    dispatch({ type: 'SET_GENERATIONS', payload: mergedGenerations ?? [] });
   }, [initialGenerations, promptVersionId]);
 
   // Emit changes to parent
@@ -127,8 +133,8 @@ export function useGenerationsState({
     }
     if (prevGenerationsRef.current === state.generations) return;
     prevGenerationsRef.current = state.generations;
-    onGenerationsChange?.(state.generations);
-  }, [onGenerationsChange, state.generations]);
+    onGenerationsChangeRef.current?.(state.generations);
+  }, [state.generations]);
 
   const addGeneration = useCallback(
     (generation: Generation) => dispatch({ type: 'ADD_GENERATION', payload: generation }),

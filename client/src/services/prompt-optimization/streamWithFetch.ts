@@ -8,6 +8,8 @@ interface StreamWithFetchDeps {
   };
 }
 
+const DEFAULT_MAX_STREAM_DURATION_MS = 120_000;
+
 export async function streamWithFetch(
   {
     url,
@@ -17,9 +19,20 @@ export async function streamWithFetch(
     onError,
     onComplete,
     signal,
+    maxStreamDurationMs,
   }: StreamWithFetchOptions,
   { log }: StreamWithFetchDeps
 ): Promise<void> {
+  const watchdogController = new AbortController();
+  const watchdogTimer = setTimeout(
+    () => watchdogController.abort(new Error('Stream watchdog timeout exceeded')),
+    maxStreamDurationMs ?? DEFAULT_MAX_STREAM_DURATION_MS
+  );
+
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, watchdogController.signal])
+    : watchdogController.signal;
+
   try {
     const authHeaders = await buildFirebaseAuthHeaders();
     const requestInit: RequestInit = {
@@ -29,10 +42,8 @@ export async function streamWithFetch(
         ...authHeaders,
       },
       body: JSON.stringify(body),
+      signal: combinedSignal,
     };
-    if (signal) {
-      requestInit.signal = signal;
-    }
 
     const response = await fetch(url, requestInit);
 
@@ -53,6 +64,7 @@ export async function streamWithFetch(
     const decoder = new TextDecoder();
 
     let buffer = '';
+    let currentEvent = 'message'; // Default event type
 
     while (true) {
       const { done, value } = await reader.read();
@@ -63,8 +75,6 @@ export async function streamWithFetch(
       // Parse SSE messages
       const lines = buffer.split('\n');
       buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      let currentEvent = 'message'; // Default event type
 
       for (const line of lines) {
         if (line.startsWith('event: ')) {
@@ -83,10 +93,12 @@ export async function streamWithFetch(
         }
       }
     }
+    clearTimeout(watchdogTimer);
     if (typeof onComplete === 'function') {
       onComplete();
     }
   } catch (error) {
+    clearTimeout(watchdogTimer);
     const err = error as Error & {
       status?: number | null;
       response?: { status?: number };

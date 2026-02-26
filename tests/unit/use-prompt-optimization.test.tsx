@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import type { NavigateFunction } from 'react-router-dom';
+import type { NavigateOptions, To } from 'react-router-dom';
 
 import {
   usePromptOptimization,
@@ -8,7 +8,7 @@ import {
 } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/usePromptOptimization';
 import { PromptContext } from '@/utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { createHighlightSignature } from '@features/span-highlighting';
 
 vi.mock('@features/span-highlighting', () => ({
@@ -17,7 +17,9 @@ vi.mock('@features/span-highlighting', () => ({
 
 const mockCreateHighlightSignature = vi.mocked(createHighlightSignature);
 
-type PromptOptimizer = UsePromptOptimizationParams['promptOptimizer'];
+type PromptOptimizer = UsePromptOptimizationParams['promptOptimizer'] & {
+  qualityScore?: number | null;
+};
 type PromptHistory = UsePromptOptimizationParams['promptHistory'];
 
 type SetCurrentPromptUuid = UsePromptOptimizationParams['setCurrentPromptUuid'];
@@ -39,6 +41,7 @@ const createPromptOptimizer = (overrides: Partial<PromptOptimizer> = {}): Prompt
   return {
     inputPrompt: 'Original prompt',
     genericOptimizedPrompt: null,
+    qualityScore: null,
     improvementContext: { source: 'improvement' },
     optimize,
     compile,
@@ -65,7 +68,14 @@ const createSetters = () => {
   const setShowResults: MockedFunction<SetShowResults> = vi.fn();
   const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> = vi.fn();
   const resetEditStacks: MockedFunction<ResetEditStacks> = vi.fn();
-  const navigate: MockedFunction<Navigate> = vi.fn();
+  const navigateMock = vi.fn();
+  const navigate: Navigate = (to: To | number, options?: NavigateOptions) => {
+    if (typeof to === 'number') {
+      navigateMock(to);
+      return;
+    }
+    navigateMock(to, options);
+  };
 
   return {
     setCurrentPromptUuid,
@@ -75,6 +85,7 @@ const createSetters = () => {
     applyInitialHighlightSnapshot,
     resetEditStacks,
     navigate,
+    navigateMock,
   };
 };
 
@@ -130,7 +141,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef,
         skipLoadFromUrlRef,
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -158,6 +169,7 @@ describe('usePromptOptimization', () => {
       'video',
       'model-a',
       generationParams,
+      null,
       serializedContext,
       null,
       'existing-uuid'
@@ -173,7 +185,7 @@ describe('usePromptOptimization', () => {
     expect(setters.resetEditStacks).toHaveBeenCalled();
     expect(setters.setCurrentPromptUuid).toHaveBeenCalledWith('uuid-1');
     expect(setters.setCurrentPromptDocId).toHaveBeenCalledWith('doc-1');
-    expect(setters.navigate).toHaveBeenCalledWith('/prompt/uuid-1', { replace: true });
+    expect(setters.navigateMock).toHaveBeenCalledWith('/session/doc-1', { replace: true });
     expect(skipLoadFromUrlRef.current).toBe(true);
     expect(persistedSignatureRef.current).toBeNull();
   });
@@ -218,12 +230,15 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef,
         skipLoadFromUrlRef,
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
     await act(async () => {
-      await result.current.handleOptimize(undefined, undefined, { compileOnly: true });
+      await result.current.handleOptimize(undefined, undefined, {
+        compileOnly: true,
+        targetModel: 'model-b',
+      });
     });
 
     expect(mockCompile).toHaveBeenCalledWith(
@@ -241,8 +256,180 @@ describe('usePromptOptimization', () => {
       {},
       null,
       null,
+      null,
       null
     );
+  });
+
+  it('uses generic compile output when compileOnly has no target model', async () => {
+    const promptOptimizer = createPromptOptimizer({
+      inputPrompt: 'Original',
+      genericOptimizedPrompt: 'Generic compile prompt',
+      qualityScore: 88,
+    });
+    const promptHistory = createPromptHistory();
+    const setters = createSetters();
+
+    const mockCompile = promptOptimizer.compile as MockedFunction<PromptOptimizer['compile']>;
+    const mockOptimize = promptOptimizer.optimize as MockedFunction<PromptOptimizer['optimize']>;
+    const mockSaveToHistory = promptHistory.saveToHistory as MockedFunction<PromptHistory['saveToHistory']>;
+    mockSaveToHistory.mockResolvedValue({ uuid: 'uuid-2b', id: 'doc-2b' });
+
+    const persistedSignatureRef = { current: null };
+    const skipLoadFromUrlRef = { current: false };
+
+    const { result } = renderHook(() =>
+      usePromptOptimization({
+        promptOptimizer,
+        promptHistory,
+        promptContext: null,
+        selectedMode: 'video',
+        selectedModel: 'veo',
+        generationParams: {},
+        currentPromptUuid: null,
+        setCurrentPromptUuid: setters.setCurrentPromptUuid,
+        setCurrentPromptDocId: setters.setCurrentPromptDocId,
+        setDisplayedPromptSilently: setters.setDisplayedPromptSilently,
+        setShowResults: setters.setShowResults,
+        applyInitialHighlightSnapshot: setters.applyInitialHighlightSnapshot,
+        resetEditStacks: setters.resetEditStacks,
+        persistedSignatureRef,
+        skipLoadFromUrlRef,
+        navigate: setters.navigate,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleOptimize(undefined, undefined, { compileOnly: true });
+    });
+
+    expect(mockCompile).not.toHaveBeenCalled();
+    expect(mockOptimize).not.toHaveBeenCalled();
+    expect(mockSaveToHistory).toHaveBeenCalledWith(
+      'Original',
+      'Generic compile prompt',
+      88,
+      'video',
+      null,
+      {},
+      null,
+      null,
+      null,
+      null
+    );
+    expect(setters.setDisplayedPromptSilently).toHaveBeenCalledWith('Generic compile prompt');
+  });
+
+  it('forces model-agnostic optimization when forceGenericTarget is enabled', async () => {
+    const promptOptimizer = createPromptOptimizer({
+      inputPrompt: 'Original generic',
+      improvementContext: { source: 'ctx' },
+    });
+    const promptHistory = createPromptHistory();
+    const setters = createSetters();
+
+    const mockOptimize = promptOptimizer.optimize as MockedFunction<PromptOptimizer['optimize']>;
+    const mockSaveToHistory = promptHistory.saveToHistory as MockedFunction<PromptHistory['saveToHistory']>;
+    mockOptimize.mockResolvedValue({ optimized: 'Generic optimized output', score: 73 });
+    mockSaveToHistory.mockResolvedValue({ uuid: 'uuid-generic', id: 'doc-generic' });
+
+    const { result } = renderHook(() =>
+      usePromptOptimization({
+        promptOptimizer,
+        promptHistory,
+        promptContext: null,
+        selectedMode: 'video',
+        selectedModel: 'veo-4',
+        generationParams: {},
+        currentPromptUuid: null,
+        setCurrentPromptUuid: setters.setCurrentPromptUuid,
+        setCurrentPromptDocId: setters.setCurrentPromptDocId,
+        setDisplayedPromptSilently: setters.setDisplayedPromptSilently,
+        setShowResults: setters.setShowResults,
+        applyInitialHighlightSnapshot: setters.applyInitialHighlightSnapshot,
+        resetEditStacks: setters.resetEditStacks,
+        persistedSignatureRef: { current: null },
+        skipLoadFromUrlRef: { current: false },
+        navigate: setters.navigate,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleOptimize(undefined, undefined, {
+        forceGenericTarget: true,
+      });
+    });
+
+    expect(mockOptimize).toHaveBeenCalledWith(
+      'Original generic',
+      { source: 'ctx' },
+      null,
+      undefined,
+      expect.any(Object)
+    );
+    expect(mockSaveToHistory).toHaveBeenCalledWith(
+      'Original generic',
+      'Generic optimized output',
+      73,
+      'video',
+      null,
+      {},
+      null,
+      null,
+      null,
+      null
+    );
+  });
+
+  it('accepts optimization options passed as the second argument', async () => {
+    const promptOptimizer = createPromptOptimizer({
+      inputPrompt: 'Original',
+      genericOptimizedPrompt: 'Generic compile prompt',
+    });
+    const promptHistory = createPromptHistory();
+    const setters = createSetters();
+
+    const mockCompile = promptOptimizer.compile as MockedFunction<PromptOptimizer['compile']>;
+    const mockOptimize = promptOptimizer.optimize as MockedFunction<PromptOptimizer['optimize']>;
+    const mockSaveToHistory = promptHistory.saveToHistory as MockedFunction<PromptHistory['saveToHistory']>;
+
+    mockCompile.mockResolvedValue({ optimized: 'Runway compiled', score: null });
+    mockSaveToHistory.mockResolvedValue({ uuid: 'uuid-opts2', id: 'doc-opts2' });
+
+    const { result } = renderHook(() =>
+      usePromptOptimization({
+        promptOptimizer,
+        promptHistory,
+        promptContext: null,
+        selectedMode: 'video',
+        selectedModel: 'veo-4',
+        generationParams: {},
+        currentPromptUuid: null,
+        setCurrentPromptUuid: setters.setCurrentPromptUuid,
+        setCurrentPromptDocId: setters.setCurrentPromptDocId,
+        setDisplayedPromptSilently: setters.setDisplayedPromptSilently,
+        setShowResults: setters.setShowResults,
+        applyInitialHighlightSnapshot: setters.applyInitialHighlightSnapshot,
+        resetEditStacks: setters.resetEditStacks,
+        persistedSignatureRef: { current: null },
+        skipLoadFromUrlRef: { current: false },
+        navigate: setters.navigate,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleOptimize(undefined, {
+        compileOnly: true,
+        targetModel: 'runway-gen45',
+      });
+    });
+
+    expect(mockCompile).toHaveBeenCalledWith(
+      'Generic compile prompt',
+      'runway-gen45',
+      { source: 'improvement' }
+    );
+    expect(mockOptimize).not.toHaveBeenCalled();
   });
 
   it('creates a new version entry when requested', async () => {
@@ -291,7 +478,7 @@ describe('usePromptOptimization', () => {
         resetEditStacks: setters.resetEditStacks,
         persistedSignatureRef: { current: null },
         skipLoadFromUrlRef: { current: false },
-        navigate: setters.navigate as NavigateFunction,
+        navigate: setters.navigate,
       })
     );
 
@@ -309,9 +496,6 @@ describe('usePromptOptimization', () => {
           signature: 'signature-new',
           prompt: 'Next prompt',
           versionId: expect.stringMatching(/^v-1704067200000-/),
-          preview: null,
-          video: null,
-          highlights: null,
         }),
       ])
     );

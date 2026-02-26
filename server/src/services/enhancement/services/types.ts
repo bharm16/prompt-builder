@@ -196,6 +196,18 @@ export interface CustomPromptParams {
 }
 
 /**
+ * Result from building a prompt, including provider-specific options
+ */
+export interface PromptBuildResult {
+  systemPrompt: string;
+  developerMessage?: string;
+  userMessage?: string;
+  useStrictSchema?: boolean;
+  provider: 'openai' | 'groq' | 'qwen';
+  reasoningEffort?: 'none' | 'default';
+}
+
+/**
  * Shared context for prompt building
  * SIMPLIFIED for 8B models - only essential fields
  */
@@ -374,18 +386,6 @@ export interface VideoService {
 }
 
 export type AIService = AIModelService;
-
-/**
- * Placeholder detector interface
- */
-export interface PlaceholderDetector {
-  detectPlaceholder(
-    highlightedText: string,
-    contextBefore: string,
-    contextAfter: string,
-    fullPrompt: string
-  ): boolean;
-}
 
 /**
  * Brainstorm builder interface

@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@promptstudio/system/components/ui/dropdown-menu';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { cn } from '@/utils/cn';
 import type { PromptRowStage } from '../types';
 import { HistoryThumbnail } from './HistoryThumbnail';
@@ -28,6 +28,8 @@ export interface HistoryItemProps {
   stage: PromptRowStage;
   processingLabel?: string | null;
   thumbnailUrl?: string | null;
+  thumbnailStoragePath?: string | null;
+  thumbnailAssetId?: string | null;
   versionLabel?: string;
   dataIndex?: number;
 }
@@ -50,6 +52,8 @@ export const HistoryItem = memo<HistoryItemProps>(({
   stage,
   processingLabel = null,
   thumbnailUrl = null,
+  thumbnailStoragePath = null,
+  thumbnailAssetId = null,
   versionLabel,
   dataIndex,
 }) => {
@@ -185,6 +189,8 @@ export const HistoryItem = memo<HistoryItemProps>(({
               <div>
                 <HistoryThumbnail
                   src={thumbnailUrl}
+                  storagePath={thumbnailStoragePath}
+                  assetId={thumbnailAssetId}
                   label={title}
                   size="md"
                   variant="muted"

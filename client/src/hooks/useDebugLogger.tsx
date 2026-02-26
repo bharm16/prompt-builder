@@ -14,7 +14,7 @@
  *   debug.logEffect('fetchData triggered');
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { logger } from '../services/LoggingService';
 
 interface DebugLogger {
@@ -43,12 +43,12 @@ const defaultOptions: UseDebugLoggerOptions = {
  */
 export function useDebugLogger(
   componentName: string,
-  props?: Record<string, unknown>,
+  componentProps?: Record<string, unknown>,
   options: UseDebugLoggerOptions = defaultOptions
 ): DebugLogger {
   const renderCount = useRef(0);
   const prevPropsRef = useRef<Record<string, unknown> | undefined>(undefined);
-  const log = logger.child(componentName);
+  const log = useMemo(() => logger.child(componentName), [componentName]);
 
   // Track render count
   renderCount.current += 1;
@@ -60,10 +60,10 @@ export function useDebugLogger(
 
   // Log props changes
   useEffect(() => {
-    if (!options.logProps || !props) return;
+    if (!options.logProps || !componentProps) return;
 
     if (prevPropsRef.current) {
-      const changes = findChangedProps(prevPropsRef.current, props);
+      const changes = findChangedProps(prevPropsRef.current, componentProps);
       if (changes.length > 0) {
         log.debug('Props changed', {
           changes,
@@ -71,8 +71,8 @@ export function useDebugLogger(
         });
       }
     }
-    prevPropsRef.current = { ...props };
-  }, [props, options.logProps]);
+    prevPropsRef.current = { ...componentProps };
+  }, [componentProps, log, options.logProps]);
 
   // Log mount/unmount
   useEffect(() => {
@@ -83,14 +83,14 @@ export function useDebugLogger(
     return () => {
       log.info('Unmounting', { totalRenders: renderCount.current });
     };
-  }, [options.logMountUnmount]);
+  }, [log, options.logMountUnmount]);
 
   // Memoized logging functions
   const logState = useCallback(
     (name: string, value: unknown) => {
       log.debug('State change', { name, value: summarize(value) });
     },
-    [componentName]
+    [log]
   );
 
   const logEffect = useCallback(
@@ -103,21 +103,21 @@ export function useDebugLogger(
         log.debug('Effect triggered', { description, deps });
       }
     },
-    [componentName]
+    [log]
   );
 
   const logAction = useCallback(
     (action: string, payload?: unknown) => {
       log.info('Action dispatched', payload ? { action, payload: summarize(payload) } : { action });
     },
-    [componentName]
+    [log]
   );
 
   const logError = useCallback(
     (message: string, error?: Error) => {
       log.error(message, error);
     },
-    [componentName]
+    [log]
   );
 
   const startTimer = useCallback(
@@ -141,7 +141,7 @@ export function useDebugLogger(
         log.debug('Operation completed', meta);
       }
     },
-    [componentName]
+    [componentName, log]
   );
 
   return {

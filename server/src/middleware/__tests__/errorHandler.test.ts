@@ -10,9 +10,9 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-// Mock convergence error check
-vi.mock('@services/convergence', () => ({
-  isConvergenceError: vi.fn((err) => {
+// Mock DomainError type guard
+vi.mock('@server/errors/DomainError', () => ({
+  isDomainError: vi.fn((err) => {
     return err && typeof err === 'object' && 'code' in err && 'getHttpStatus' in err;
   }),
 }));
@@ -46,8 +46,9 @@ function createMockResponse(): Response & { statusCode?: number; responseBody?: 
   return res as unknown as Response & { statusCode?: number; responseBody?: unknown };
 }
 
-function createConvergenceError(code: string, httpStatus: number, userMessage: string, details?: unknown) {
+function createDomainError(code: string, httpStatus: number, userMessage: string, details?: unknown) {
   return {
+    name: 'TestDomainError',
     code,
     details,
     getHttpStatus: () => httpStatus,
@@ -160,32 +161,53 @@ describe('errorHandler', () => {
 
       errorHandler(error, req, res, mockNext);
 
+      const body = res.responseBody as { details?: string };
+      const parsedDetails = body.details ? JSON.parse(body.details) : undefined;
+      expect(parsedDetails).toEqual({
+        field: 'email',
+        issue: 'invalid format',
+      });
+    });
+
+    it('includes code from error object when provided', () => {
+      const req = createMockRequest({ id: 'req-code-1' });
+      const res = createMockResponse();
+      const error = Object.assign(new Error('Credit error'), {
+        statusCode: 402,
+        code: 'INSUFFICIENT_CREDITS',
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(402);
       expect(res.responseBody).toMatchObject({
-        details: { field: 'email', issue: 'invalid format' },
+        error: 'Credit error',
+        code: 'INSUFFICIENT_CREDITS',
+        requestId: 'req-code-1',
       });
     });
   });
 
-  describe('ConvergenceError handling', () => {
-    it('maps ConvergenceError to proper HTTP status', () => {
+  describe('DomainError handling', () => {
+    it('maps DomainError to proper HTTP status', () => {
       const req = createMockRequest({ id: 'conv-req' });
       const res = createMockResponse();
-      const error = createConvergenceError('SESSION_EXPIRED', 410, 'Session has expired');
+      const error = createDomainError('SESSION_EXPIRED', 410, 'Session has expired');
 
       errorHandler(error, req, res, mockNext);
 
       expect(res.statusCode).toBe(410);
       expect(res.responseBody).toMatchObject({
-        error: 'SESSION_EXPIRED',
-        message: 'Session has expired',
+        error: 'Session has expired',
+        code: 'SESSION_EXPIRED',
         requestId: 'conv-req',
       });
     });
 
-    it('includes details from ConvergenceError', () => {
+    it('includes details from DomainError', () => {
       const req = createMockRequest();
       const res = createMockResponse();
-      const error = createConvergenceError(
+      const error = createDomainError(
         'INSUFFICIENT_CREDITS',
         402,
         'Not enough credits',
@@ -194,8 +216,23 @@ describe('errorHandler', () => {
 
       errorHandler(error, req, res, mockNext);
 
+      const body = res.responseBody as { details?: string };
+      const parsedDetails = body.details ? JSON.parse(body.details) : undefined;
+      expect(parsedDetails).toEqual({ required: 10, available: 5 });
+    });
+
+    it('maps VideoProviderError categories to proper HTTP status', () => {
+      const req = createMockRequest({ id: 'video-req' });
+      const res = createMockResponse();
+      const error = createDomainError('VIDEO_PROVIDER_TIMEOUT', 504, 'Video generation timed out. Please try again.');
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(504);
       expect(res.responseBody).toMatchObject({
-        details: { required: 10, available: 5 },
+        error: 'Video generation timed out. Please try again.',
+        code: 'VIDEO_PROVIDER_TIMEOUT',
+        requestId: 'video-req',
       });
     });
   });
@@ -257,9 +294,7 @@ describe('errorHandler', () => {
 
       errorHandler(new Error('test'), req, res, mockNext);
 
-      expect(res.responseBody).toMatchObject({
-        requestId: undefined,
-      });
+      expect(res.responseBody).not.toHaveProperty('requestId');
     });
 
     it('handles empty body gracefully', () => {

@@ -17,6 +17,8 @@
 
 import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
+import { createAbortController } from '@clients/utils/abortController';
+import { sleep } from '@utils/sleep';
 import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
 import { validateLLMResponse } from './ResponseValidator.js';
@@ -46,12 +48,6 @@ interface QwenAdapterConfig {
   baseURL?: string;
   defaultModel?: string;
   defaultTimeout?: number;
-}
-
-interface AbortControllerResult {
-  controller: AbortController;
-  timeoutId: NodeJS.Timeout;
-  abortedByTimeout: { value: boolean };
 }
 
 interface GroqResponseData {
@@ -175,7 +171,7 @@ export class GroqQwenAdapter {
             error: error.message,
           });
           attempt++;
-          await this._sleep(Math.pow(2, attempt) * 500);
+          await sleep(Math.pow(2, attempt) * 500);
           continue;
         }
         
@@ -200,7 +196,7 @@ export class GroqQwenAdapter {
     options: QwenCompletionOptions
   ): Promise<AIResponse> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = createAbortController(timeout, options.signal);
 
     try {
       const messages = this._buildMessages(systemPrompt, options);
@@ -421,26 +417,4 @@ export class GroqQwenAdapter {
     }
   }
 
-  private _sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
-    const controller = new AbortController();
-    const abortedByTimeout = { value: false };
-    const timeoutId = setTimeout(() => {
-      abortedByTimeout.value = true;
-      controller.abort();
-    }, timeout);
-
-    if (externalSignal) {
-      if (externalSignal.aborted) {
-        controller.abort();
-      } else {
-        externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
-      }
-    }
-
-    return { controller, timeoutId, abortedByTimeout };
-  }
 }

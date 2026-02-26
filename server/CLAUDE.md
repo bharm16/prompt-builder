@@ -2,12 +2,14 @@
 
 Express API server for the Vidra video prompt editor.
 
+Commit protocol, TypeScript rules, and change scope limits are defined in the root `CLAUDE.md` — all rules apply here.
+Root `AGENTS.md` rules apply here — especially the non-negotiable rules and commit protocol.
+
 ## Stack
 
-- Node.js 20, Express
-- TypeScript executed via tsx
+- Node.js 20, Express, TypeScript via tsx
 - ESM (`"type": "module"`)
-- LLM providers: OpenAI, Gemini, Groq
+- LLM providers: OpenAI, Gemini, Groq (routed through `aiService` only)
 - Firebase Admin for auth and storage
 - Stripe for payments
 - Redis (optional) for caching
@@ -18,8 +20,6 @@ Express API server for the Vidra video prompt editor.
 ```bash
 npm run server      # Start dev server (port 3001)
 npm run server:e2e  # Start server in test mode
-npm run test:unit   # Run unit tests (from root)
-npm run lint        # ESLint (from root)
 ```
 
 ## Structure
@@ -30,11 +30,13 @@ server/
 ├── src/
 │   ├── app.ts             # Express app setup
 │   ├── server.ts          # HTTP server wiring
-│   ├── services/          # Business logic (main pattern)
+│   ├── config/
+│   │   └── services/      # DI registration (domain-scoped)
+│   ├── services/          # Business logic (domain subdirectories)
 │   ├── routes/            # HTTP route handlers
 │   ├── clients/           # External API clients (LLM, etc.)
 │   ├── llm/               # LLM orchestration and span labeling
-│   ├── middleware/        # Express middleware
+│   ├── middleware/         # Express middleware
 │   ├── schemas/           # Zod validation schemas
 │   ├── contracts/         # Request/response contracts
 │   └── utils/             # Shared helpers
@@ -46,7 +48,7 @@ Follow the **PromptOptimizationService** pattern in `server/src/services/prompt-
 
 ```
 ServiceName/
-├── ServiceNameService.ts  # Thin orchestrator
+├── ServiceNameService.ts  # Thin orchestrator (delegates, no business logic)
 ├── services/              # Specialized sub-services
 │   ├── SubService1.ts
 │   └── SubService2.ts
@@ -55,136 +57,41 @@ ServiceName/
 └── types.ts               # Service-specific types
 ```
 
-### Orchestrator Pattern
-
-```typescript
-// ServiceNameService.ts
-export class ServiceNameService {
-  constructor(
-    private subService1: SubService1,
-    private subService2: SubService2,
-  ) {}
-
-  async process(input: Input): Promise<Output> {
-    // Orchestration only - no business logic here
-    const step1Result = await this.subService1.execute(input);
-    const step2Result = await this.subService2.execute(step1Result);
-    return step2Result;
-  }
-}
-```
-
 ## Conventions
 
 ### Routes
 
-- Keep route handlers thin
-- All business logic goes in services
+- Keep route handlers thin — all business logic in services
 - Validate request body with Zod schemas
-- Return consistent response shapes
-
-```typescript
-// routes/feature.routes.ts
-import { z } from 'zod';
-
-const RequestSchema = z.object({
-  prompt: z.string().min(1),
-  options: z.object({ /* ... */ }).optional(),
-});
-
-router.post('/feature', async (req, res) => {
-  const validated = RequestSchema.parse(req.body);
-  const result = await featureService.process(validated);
-  res.json({ success: true, data: result });
-});
-```
+- Return consistent response shapes: `{ success: true, data }` or `{ success: false, error }`
 
 ### Services
 
 - Single responsibility per service
-- Inject dependencies via constructor
-- Use templates for LLM prompts (external `.md` files)
+- Inject dependencies via constructor — never call `container.resolve()` in service code
+- Use external `.md` files for LLM prompt templates
 - Structured logging with Pino
 
-### LLM Clients
+### LLM Access
 
-- All LLM providers in `clients/` with adapters
-- Use `LLMClient` abstraction for provider switching
-- Handle rate limits and retries at client level
+- All LLM calls go through `aiService` — never call provider clients directly
+- Provider clients live in `clients/` with adapters
+- Rate limits and retries handled at client level
 
-### Validation
+### Frontend-Backend Boundary
 
-- Zod schemas in `schemas/` folder
-- Validate all external input (API requests, env vars)
-- Use `z.infer<typeof Schema>` for types
+- **NEVER** import from `client/src/` — only from `#shared/*` or server-local code
+- Routes return general-purpose DTOs, not shapes tailored to specific UI components
+- If a server change seems to require a `shared/` type change, stop and ask whether a server-local type would suffice
+- For genuine cross-layer changes: see `.claude/skills/cross-layer-change/SKILL.md`
 
 ### Error Handling
 
-- Use typed error classes
+- Use typed error classes (ValidationError, NotFoundError, etc.)
 - Log errors with context using Pino
 - Return appropriate HTTP status codes
 
-```typescript
-try {
-  const result = await service.process(input);
-  res.json({ success: true, data: result });
-} catch (error) {
-  if (error instanceof ValidationError) {
-    res.status(400).json({ success: false, error: error.message });
-  } else if (error instanceof NotFoundError) {
-    res.status(404).json({ success: false, error: error.message });
-  } else {
-    logger.error({ error }, 'Unexpected error');
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-}
-```
-
-### TypeScript
-
-- Explicit return types for all exported functions
-- No `any` - use `unknown` with type guards
-- Discriminated unions for result types
-- Zod at all external boundaries
-
-## Common Patterns
-
-### Service with Dependencies
-
-```typescript
-export class FeatureService {
-  constructor(
-    private llmClient: LLMClient,
-    private storageService: StorageService,
-    private logger: Logger,
-  ) {}
-
-  async process(input: FeatureInput): Promise<FeatureOutput> {
-    this.logger.info({ input }, 'Processing feature');
-    // ... implementation
-  }
-}
-```
-
-### LLM Prompt Template
-
-```typescript
-// Load template from external file
-import { readFileSync } from 'fs';
-import { join } from 'path';
-
-const template = readFileSync(
-  join(__dirname, 'templates', 'prompt.md'),
-  'utf-8'
-);
-
-// Interpolate variables
-const prompt = template
-  .replace('{{input}}', userInput)
-  .replace('{{context}}', contextData);
-```
-
-## Documentation
+## Reference Docs
 
 - Logging patterns: `docs/architecture/typescript/LOGGING_PATTERNS.md`
 - Zod patterns: `docs/architecture/typescript/ZOD_PATTERNS.md`

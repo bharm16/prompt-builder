@@ -22,6 +22,12 @@ export const DRAFT_MODELS: Record<string, ModelConfig> = {
     eta: '45s',
     mediaType: 'video',
   },
+  'wan-2.5': {
+    label: 'WAN 2.5',
+    credits: 5,
+    eta: '45s',
+    mediaType: 'video',
+  },
 };
 
 export const RENDER_MODELS: Record<string, ModelConfig> = {

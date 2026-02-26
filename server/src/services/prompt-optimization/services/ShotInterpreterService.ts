@@ -22,11 +22,14 @@ export class ShotInterpreterService {
   private readonly cacheTtlMs: number;
   private readonly cacheMaxEntries: number;
 
-  constructor(aiService: AIService) {
+  constructor(
+    aiService: AIService,
+    cacheConfig?: { cacheTtlMs: number; cacheMax: number }
+  ) {
     this.ai = aiService;
     this.log = logger.child({ service: 'ShotInterpreterService' });
-    this.cacheTtlMs = Number.parseInt(process.env.SHOT_PLAN_CACHE_TTL_MS || '300000', 10);
-    this.cacheMaxEntries = Number.parseInt(process.env.SHOT_PLAN_CACHE_MAX || '200', 10);
+    this.cacheTtlMs = cacheConfig?.cacheTtlMs ?? 300_000;
+    this.cacheMaxEntries = cacheConfig?.cacheMax ?? 200;
   }
 
   /**

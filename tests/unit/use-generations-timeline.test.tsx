@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react';
 
 import { useGenerationsTimeline } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsTimeline';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
-import type { PromptVersionEntry } from '@hooks/types';
+import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-1',

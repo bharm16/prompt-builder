@@ -4,6 +4,7 @@
  */
 
 export { VideoPromptService } from './VideoPromptService';
+export type { VideoPromptServiceDeps } from './VideoPromptService';
 
 // Export detection services for advanced usage
 export { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService';
@@ -19,10 +20,7 @@ export { FallbackStrategyService } from './services/guidance/FallbackStrategySer
 export { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService';
 
 // Export Multimodal Asset Manager
-export {
-  MultimodalAssetManager,
-  multimodalAssetManager,
-} from './services/MultimodalAssetManager';
+export { MultimodalAssetManager } from './services/MultimodalAssetManager';
 export type {
   AssetType,
   ProviderType,
@@ -48,16 +46,13 @@ export {
   StrategyRegistry,
   BaseStrategy,
   RunwayStrategy,
-  runwayStrategy,
   LumaStrategy,
-  lumaStrategy,
   KlingStrategy,
-  klingStrategy,
   SoraStrategy,
-  soraStrategy,
   VeoStrategy,
-  veoStrategy,
+  WanStrategy,
 } from './strategies';
+export type { StrategyFactory } from './strategies';
 export type {
   PromptOptimizationResult,
   OptimizationMetadata,

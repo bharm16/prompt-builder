@@ -65,9 +65,9 @@ const MODEL_PATTERNS = {
     indicators: /\b(veo[_\s-]?4|google\s*veo\s*4)\b/i,
   },
   'wan-2.2': {
-    keywords: ['wan 2.1', 'wan 2.2', 'wan2.1', 'wan2.2', 'wan t2v', 'alibaba wan'],
+    keywords: ['wan 2.1', 'wan 2.2', 'wan 2.5', 'wan2.1', 'wan2.2', 'wan2.5', 'wan t2v', 'alibaba wan'],
     technicalMarkers: ['moe', 'bilingual', '1080p 30fps', 'mixture of experts'],
-    indicators: /\b(wan[_\s-]?[2]\.?[12]|alibaba\s*wan|moe\s*architecture)\b/i,
+    indicators: /\b(wan[_\s-]?[2]\.?[125]|alibaba\s*wan|moe\s*architecture)\b/i,
   },
 } as const;
 
@@ -246,7 +246,15 @@ interface ModelPatterns {
 /**
  * POE model IDs - the new versioned models that should take priority
  */
-const POE_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'kling-26', 'sora-2', 'veo-4', 'wan-2.2'] as const;
+const POE_MODEL_IDS = [
+  'runway-gen45',
+  'luma-ray3',
+  'kling-26',
+  'sora-2',
+  'veo-4',
+  'wan-2.2',
+  'wan-2.5',
+] as const;
 
 /**
  * Service responsible for detecting target AI video model

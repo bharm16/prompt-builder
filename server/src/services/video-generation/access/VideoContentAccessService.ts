@@ -121,16 +121,16 @@ export class VideoContentAccessService {
   }
 }
 
-export function createVideoContentAccessService(): VideoContentAccessService | null {
-  const configuredSecret = process.env.VIDEO_CONTENT_TOKEN_SECRET;
-  const ttlSeconds = Number.parseInt(
-    process.env.VIDEO_CONTENT_TOKEN_TTL_SECONDS || String(DEFAULT_TOKEN_TTL_SECONDS),
-    10
-  );
-  const ttlMs = Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : DEFAULT_TOKEN_TTL_SECONDS * 1000;
+interface AccessConfig {
+  tokenSecret: string | undefined;
+  tokenTtlSeconds: number;
+}
 
-  if (configuredSecret && configuredSecret.trim().length > 0) {
-    return new VideoContentAccessService({ secret: configuredSecret, ttlMs });
+export function createVideoContentAccessService(config: AccessConfig): VideoContentAccessService | null {
+  const ttlMs = config.tokenTtlSeconds * 1000;
+
+  if (config.tokenSecret && config.tokenSecret.trim().length > 0) {
+    return new VideoContentAccessService({ secret: config.tokenSecret, ttlMs });
   }
 
   if (process.env.NODE_ENV === 'production') {

@@ -1,4 +1,4 @@
-import { Storage } from '@google-cloud/storage';
+import { Storage, type GetSignedUrlConfig } from '@google-cloud/storage';
 import { STORAGE_CONFIG } from '../config/storageConfig';
 import { logger } from '@infrastructure/Logger';
 
@@ -9,9 +9,9 @@ export class SignedUrlService {
   private readonly bucket;
   private readonly log = logger.child({ service: 'SignedUrlService' });
 
-  constructor(storage?: Storage) {
-    this.storage = storage || new Storage();
-    this.bucket = this.storage.bucket(STORAGE_CONFIG.bucketName);
+  constructor(storage: Storage, bucketName: string = STORAGE_CONFIG.bucketName) {
+    this.storage = storage;
+    this.bucket = this.storage.bucket(bucketName);
   }
 
   private async withTiming<T>(
@@ -57,7 +57,10 @@ export class SignedUrlService {
         const file = this.bucket.file(path);
         const expiresAtMs = Date.now() + STORAGE_CONFIG.urlExpiration.upload;
 
-        const options: Record<string, unknown> = {
+        const extensionHeaders: Record<string, string> = {
+          'x-goog-if-generation-match': '0',
+        };
+        const options: GetSignedUrlConfig = {
           version: 'v4',
           action: 'write',
           expires: expiresAtMs,
@@ -65,10 +68,9 @@ export class SignedUrlService {
         };
 
         if (maxSize) {
-          options.extensionHeaders = {
-            'x-goog-content-length-range': `0,${maxSize}`,
-          };
+          extensionHeaders['x-goog-content-length-range'] = `0,${maxSize}`;
         }
+        options.extensionHeaders = extensionHeaders;
 
         const [url] = await file.getSignedUrl(options);
         return {

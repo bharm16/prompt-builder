@@ -21,10 +21,11 @@
  * @requirement 12.5-12.6 - Keyboard navigation support
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { Video } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
+import { safeUrlHost } from '@/utils/url';
 import type { CameraMotionCategory, CameraPath } from '@/features/convergence/types';
 import { CameraMotionOption } from './CameraMotionOption';
 import { CameraMotionErrorBoundary } from './CameraMotionErrorBoundary';
@@ -43,17 +44,6 @@ const CATEGORY_LABELS: Record<CameraMotionCategory | 'all', string> = {
   crane: 'Crane',
   orbital: 'Orbital',
   compound: 'Compound',
-};
-
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
 };
 
 // ============================================================================
@@ -124,6 +114,7 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<CameraMotionCategory | 'all'>('all');
   const pickerStateRef = useRef<string | null>(null);
+  const listboxId = useId();
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
@@ -173,6 +164,35 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
 
   const focusedCameraPathId =
     focusedOptionIndex >= 0 ? cameraPaths[focusedOptionIndex]?.id : undefined;
+  const focusedCameraPathVisible = Boolean(
+    focusedCameraPathId && filteredPaths.some((path) => path.id === focusedCameraPathId)
+  );
+  const activeOptionId = focusedCameraPathVisible
+    ? `${listboxId}-option-${focusedCameraPathId}`
+    : undefined;
+  const rovingTabIndexId =
+    (focusedCameraPathVisible && focusedCameraPathId) ||
+    (selectedCameraMotion && filteredPaths.some((path) => path.id === selectedCameraMotion)
+      ? selectedCameraMotion
+      : filteredPaths[0]?.id);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CameraMotionCategory | 'all', number> = {
+      all: cameraPaths.length,
+      static: 0,
+      pan_tilt: 0,
+      dolly: 0,
+      crane: 0,
+      orbital: 0,
+      compound: 0,
+    };
+
+    cameraPaths.forEach((path) => {
+      counts[path.category] = (counts[path.category] ?? 0) + 1;
+    });
+
+    return counts;
+  }, [cameraPaths]);
 
   const isDisabled = disabled || isLoading;
 
@@ -286,6 +306,7 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
             key={key}
             type="button"
             onClick={() => handleCategoryChange(key as CameraMotionCategory | 'all')}
+            aria-pressed={selectedCategory === key}
             className={cn(
               'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
               selectedCategory === key
@@ -293,7 +314,17 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
                 : 'bg-surface-2 text-muted hover:text-foreground'
             )}
           >
-            {label}
+            <span>{label}</span>
+            <span
+              className={cn(
+                'ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px]',
+                selectedCategory === key
+                  ? 'bg-primary-foreground/15 text-primary-foreground'
+                  : 'bg-surface-3 text-muted'
+              )}
+            >
+              {categoryCounts[key as CameraMotionCategory | 'all'] ?? 0}
+            </span>
           </button>
         ))}
       </div>
@@ -307,21 +338,30 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
         )}
         role="listbox"
         aria-label="Camera motion options"
+        aria-activedescendant={activeOptionId}
       >
-        {filteredPaths.map((cameraPath) => (
-          <CameraMotionOption
-            key={cameraPath.id}
-            cameraPath={cameraPath}
-            imageUrl={imageUrl}
-            depthMapUrl={depthMapUrl}
-            isSelected={selectedCameraMotion === cameraPath.id}
-            isFocused={cameraPath.id === focusedCameraPathId}
-            fallbackMode={fallbackMode}
-            disabled={isDisabled}
-            onSelect={handleSelect}
-            tabIndex={cameraPath.id === focusedCameraPathId ? 0 : -1}
-          />
-        ))}
+        {filteredPaths.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-2/50 p-6 text-center">
+            <div className="text-sm font-medium text-foreground mb-2">No motions in this category</div>
+            <div className="text-xs text-muted">Try another category to explore more options.</div>
+          </div>
+        ) : (
+          filteredPaths.map((cameraPath) => (
+            <CameraMotionOption
+              key={cameraPath.id}
+              optionId={`${listboxId}-option-${cameraPath.id}`}
+              cameraPath={cameraPath}
+              imageUrl={imageUrl}
+              depthMapUrl={depthMapUrl}
+              isSelected={selectedCameraMotion === cameraPath.id}
+              isFocused={cameraPath.id === focusedCameraPathId}
+              fallbackMode={fallbackMode}
+              disabled={isDisabled}
+              onSelect={handleSelect}
+              tabIndex={cameraPath.id === rovingTabIndexId ? 0 : -1}
+            />
+          ))
+        )}
       </div>
 
       {/* Actions Section */}

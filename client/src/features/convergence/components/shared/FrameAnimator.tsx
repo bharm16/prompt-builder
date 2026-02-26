@@ -76,27 +76,24 @@ export const FrameAnimator: React.FC<FrameAnimatorProps> = ({
    * Handle frame updates from the animator
    */
   const handleFrame = useCallback(
-    (frameDataUrl: string) => {
+    (frameDataUrl: string, frameIndex: number) => {
       setCurrentFrame(frameDataUrl);
 
-      // Track frame index for loop detection
-      const frameIndex = frames.indexOf(frameDataUrl);
-      if (frameIndex !== -1) {
-        // Check if we've completed a loop (went from last frame back to first)
-        if (frameIndexRef.current === totalFrames - 1 && frameIndex === 0) {
-          onLoopComplete?.();
+      // Check if we've completed a loop (went from last frame back to first)
+      if (frameIndexRef.current === totalFrames - 1 && frameIndex === 0) {
+        onLoopComplete?.();
 
-          // If not looping, stop after first complete cycle
-          if (!loop && animatorRef.current) {
-            animatorRef.current.stop();
-            setIsPlaying(false);
-            onStop?.();
-          }
+        // If not looping, stop after first complete cycle
+        if (!loop && animatorRef.current) {
+          animatorRef.current.stop();
+          setIsPlaying(false);
+          onStop?.();
         }
-        frameIndexRef.current = frameIndex;
       }
+
+      frameIndexRef.current = frameIndex;
     },
-    [frames, totalFrames, loop, onLoopComplete, onStop]
+    [totalFrames, loop, onLoopComplete, onStop]
   );
 
   /**
@@ -203,7 +200,9 @@ export function useFrameAnimator(
   useEffect(() => {
     if (frames.length === 0) return;
 
-    animatorRef.current = createFrameAnimator(frames, fps, setCurrentFrame);
+    animatorRef.current = createFrameAnimator(frames, fps, (frameDataUrl) => {
+      setCurrentFrame(frameDataUrl);
+    });
 
     return () => {
       if (animatorRef.current) {

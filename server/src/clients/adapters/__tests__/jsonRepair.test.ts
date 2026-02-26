@@ -22,7 +22,8 @@ describe('attemptJsonRepair', () => {
       expect(changes).toContain('Added missing commas between objects');
       const parsed = JSON.parse(repaired) as Array<{ a?: number; b?: number }>;
       expect(parsed).toHaveLength(2);
-      expect(parsed[1].b).toBe(2);
+      expect(parsed[1]).toBeDefined();
+      expect(parsed[1]?.b).toBe(2);
     });
   });
 
@@ -34,6 +35,34 @@ describe('attemptJsonRepair', () => {
 
       expect(repaired).toBe(input);
       expect(changes).toHaveLength(0);
+    });
+
+    it('adds missing closing braces for simple truncated objects', () => {
+      const input = '{"ok":true';
+
+      const { repaired, changes } = attemptJsonRepair(input);
+
+      expect(changes).toContain('Added 1 closing braces');
+      expect(JSON.parse(repaired)).toEqual({ ok: true });
+    });
+
+    it('adds missing closing brackets for simple truncated arrays', () => {
+      const input = '[1,2,3';
+
+      const { repaired, changes } = attemptJsonRepair(input);
+
+      expect(changes).toContain('Added 1 closing brackets');
+      expect(JSON.parse(repaired)).toEqual([1, 2, 3]);
+    });
+
+    it('keeps mixed quoted strings while quoting unquoted keys', () => {
+      const input = '{"name":"test", count: 3}';
+
+      const { repaired, changes } = attemptJsonRepair(input);
+      const parsed = JSON.parse(repaired) as { name: string; count: number };
+
+      expect(changes).toContain('Added quotes to unquoted keys');
+      expect(parsed).toEqual({ name: 'test', count: 3 });
     });
   });
 

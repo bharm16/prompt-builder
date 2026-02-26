@@ -290,9 +290,11 @@ export class AuthRepository {
   private _mapFirebaseUser(firebaseUser: FirebaseUser): User {
     return {
       uid: firebaseUser.uid,
-      email: firebaseUser.email || undefined,
-      displayName: firebaseUser.displayName || undefined,
-      photoURL: firebaseUser.photoURL || undefined,
+      ...(typeof firebaseUser.email === 'string' ? { email: firebaseUser.email } : {}),
+      ...(typeof firebaseUser.displayName === 'string'
+        ? { displayName: firebaseUser.displayName }
+        : {}),
+      ...(typeof firebaseUser.photoURL === 'string' ? { photoURL: firebaseUser.photoURL } : {}),
       emailVerified: firebaseUser.emailVerified,
       isAnonymous: firebaseUser.isAnonymous,
     };

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LEGACY_MAPPINGS, validateSpan } from '@features/span-highlighting/utils/categoryValidators';
 
-const legacyKey = 'cameraMove';
+const legacyKey: keyof typeof LEGACY_MAPPINGS = 'cameraMove';
 
 describe('categoryValidators', () => {
   it('rejects missing span or empty text', () => {
@@ -29,9 +29,13 @@ describe('categoryValidators', () => {
   });
 
   it('rejects spans when text is not found in source', () => {
+    const taxonomyId = LEGACY_MAPPINGS[legacyKey];
+    if (!taxonomyId) {
+      throw new Error(`Missing legacy mapping for ${legacyKey}`);
+    }
     const result = validateSpan({
       text: 'missing',
-      category: LEGACY_MAPPINGS[legacyKey],
+      category: taxonomyId,
       sourceText: 'hello world',
     });
 

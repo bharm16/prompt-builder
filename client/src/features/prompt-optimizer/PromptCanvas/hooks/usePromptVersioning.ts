@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useRef, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
 import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
+import {
+  extractStorageObjectPath,
+  extractVideoContentAssetId,
+  parseGcsSignedUrlExpiryMs,
+} from '@/utils/storageUrl';
 import type { HighlightSnapshot } from '../types';
-import type { PromptHistory } from '../../context/types';
 
 interface UsePromptVersioningOptions {
-  promptHistory: PromptHistory;
+  promptHistory: PromptVersionStore;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
   activeVersionId?: string | null;
@@ -19,6 +23,11 @@ interface UsePromptVersioningOptions {
   effectiveAspectRatio: string | null;
   generationParams: CapabilityValues;
   selectedModel: string;
+}
+
+interface PromptVersionStore {
+  history: PromptHistoryEntry[];
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
 }
 
 interface UpsertVersionOutputParams {
@@ -48,6 +57,18 @@ const toIsoString = (value: number | string): string => {
     return value;
   }
   return new Date().toISOString();
+};
+
+const toExpiresAtIso = (url?: string | null): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  const expiresAtMs = parseGcsSignedUrlExpiryMs(url);
+  return expiresAtMs ? new Date(expiresAtMs).toISOString() : null;
+};
+
+const extractAssetIdFromPath = (path?: string | null): string | null => {
+  if (!path) return null;
+  const parts = path.split('/').filter(Boolean);
+  return parts.length ? (parts[parts.length - 1] ?? null) : null;
 };
 
 /**
@@ -140,7 +161,21 @@ const mergeGenerationsById = (
     // Pick the more complete record
     const incomingScore = generationCompleteness(incomingGen);
     const persistedScore = generationCompleteness(persistedGen);
-    return incomingScore >= persistedScore ? incomingGen : persistedGen;
+    const preferred =
+      incomingScore >= persistedScore ? incomingGen : persistedGen;
+    return {
+      ...preferred,
+      isFavorite:
+        typeof incomingGen.isFavorite === 'boolean'
+          ? incomingGen.isFavorite
+          : typeof persistedGen.isFavorite === 'boolean'
+            ? persistedGen.isFavorite
+            : undefined,
+      generationSettings:
+        incomingGen.generationSettings ??
+        persistedGen.generationSettings ??
+        undefined,
+    };
   });
 
   // Append any persisted generations not present in the incoming array.
@@ -168,17 +203,18 @@ export function usePromptVersioning({
   generationParams,
   selectedModel,
 }: UsePromptVersioningOptions): UsePromptVersioningReturn {
+  const { history, updateEntryVersions } = promptHistory;
   // Track last persisted thumbnail to prevent infinite update loops
   const lastPersistedThumbnailRef = useRef<string | null>(null);
 
   const currentPromptEntry = useMemo(() => {
-    if (!promptHistory?.history?.length) return null;
+    if (!history.length) return null;
     return (
-      promptHistory.history.find((entry) => entry.uuid === currentPromptUuid) ||
-      promptHistory.history.find((entry) => entry.id === currentPromptDocId) ||
+      history.find((entry) => entry.uuid === currentPromptUuid) ||
+      history.find((entry) => entry.id === currentPromptDocId) ||
       null
     );
-  }, [promptHistory, currentPromptUuid, currentPromptDocId]);
+  }, [history, currentPromptUuid, currentPromptDocId]);
 
   const currentVersions = useMemo<PromptVersionEntry[]>(
     () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
@@ -200,9 +236,9 @@ export function usePromptVersioning({
       // Bug 13 fix: read entry from ref to avoid stale docId after draft promotion
       const entry = currentPromptEntryRef.current;
       const resolvedDocId = entry?.id ?? currentPromptDocId;
-      promptHistory.updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
+      updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
-    [promptHistory, currentPromptUuid, currentPromptDocId]
+    [updateEntryVersions, currentPromptUuid, currentPromptDocId]
   );
 
   const createVersionEntry = useCallback(
@@ -228,11 +264,11 @@ export function usePromptVersioning({
         signature,
         prompt,
         timestamp: new Date().toISOString(),
-        highlights: highlights ?? null,
+        ...(typeof highlights !== 'undefined' ? { highlights } : {}),
         ...(editCount > 0 ? { editCount } : {}),
         ...(edits.length ? { edits } : {}),
-        preview: preview ?? null,
-        video: video ?? null,
+        ...(typeof preview !== 'undefined' ? { preview } : {}),
+        ...(typeof video !== 'undefined' ? { video } : {}),
       };
     },
     [currentVersions.length, versionEditCountRef, versionEditsRef]
@@ -256,6 +292,14 @@ export function usePromptVersioning({
               generatedAt: toIsoString(params.generatedAt),
               imageUrl: params.imageUrl ?? null,
               aspectRatio: params.aspectRatio ?? effectiveAspectRatio ?? null,
+              storagePath: params.imageUrl ? extractStorageObjectPath(params.imageUrl) : null,
+              assetId: params.imageUrl
+                ? (() => {
+                    const path = extractStorageObjectPath(params.imageUrl);
+                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+                  })()
+                : null,
+              viewUrlExpiresAt: toExpiresAtIso(params.imageUrl),
             }
           : undefined;
 
@@ -266,6 +310,15 @@ export function usePromptVersioning({
               videoUrl: params.videoUrl ?? null,
               model: selectedModel?.trim() ? selectedModel.trim() : null,
               generationParams: generationParams ?? null,
+              storagePath: params.videoUrl ? extractStorageObjectPath(params.videoUrl) : null,
+              assetId: params.videoUrl
+                ? extractVideoContentAssetId(params.videoUrl) ??
+                  (() => {
+                    const path = extractStorageObjectPath(params.videoUrl);
+                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+                  })()
+                : null,
+              viewUrlExpiresAt: toExpiresAtIso(params.videoUrl),
             }
           : undefined;
 
@@ -273,9 +326,9 @@ export function usePromptVersioning({
         const newVersion = createVersionEntry({
           signature,
           prompt: promptText,
-          highlights: latestHighlightRef.current ?? null,
-          preview: previewPayload ?? null,
-          video: videoPayload ?? null,
+          highlights: latestHighlightRef.current ?? undefined,
+          preview: previewPayload,
+          video: videoPayload,
         });
         persistVersions([...versions, newVersion]);
         resetVersionEdits();
@@ -393,6 +446,12 @@ export function usePromptVersioning({
           generatedAt: new Date().toISOString(),
           imageUrl: thumbnailUrl,
           aspectRatio: target.preview?.aspectRatio ?? null,
+          storagePath: extractStorageObjectPath(thumbnailUrl),
+          assetId: (() => {
+            const path = extractStorageObjectPath(thumbnailUrl);
+            return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+          })(),
+          viewUrlExpiresAt: toExpiresAtIso(thumbnailUrl),
         };
         lastPersistedThumbnailRef.current = thumbnailUrl;
       }

@@ -99,7 +99,7 @@ describe('cameraMotionRenderer', () => {
       animator.start();
 
       expect(onFrame).toHaveBeenCalledTimes(1);
-      expect(onFrame).toHaveBeenCalledWith('frame-a');
+      expect(onFrame).toHaveBeenCalledWith('frame-a', 0);
       expect(requestAnimationFrameMock).toHaveBeenCalledTimes(1);
       expect(animator.isPlaying()).toBe(true);
     });

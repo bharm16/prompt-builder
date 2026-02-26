@@ -15,7 +15,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ConvergenceError } from '@services/convergence/errors';
-import { withCreditReservation, checkCredits } from '@services/convergence/credits/creditHelpers';
+import {
+  withCreditReservation,
+  checkCredits,
+  getCreditBalance,
+} from '@services/convergence/credits/creditHelpers';
 import type { CreditsService } from '@services/convergence/credits/CreditsService';
 import type { CreditReservation } from '@services/convergence/types';
 
@@ -205,6 +209,12 @@ describe('Credit Reservation Pattern', () => {
 
       // Balance equals required should pass
       await expect(checkCredits(creditsService, 'user-123', 10)).resolves.not.toThrow();
+    });
+
+    it('should return current balance via getCreditBalance helper', async () => {
+      creditsService = createMockCreditsService(33);
+
+      await expect(getCreditBalance(creditsService, 'user-123')).resolves.toBe(33);
     });
   });
 

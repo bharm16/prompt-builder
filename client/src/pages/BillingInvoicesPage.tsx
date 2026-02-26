@@ -1,27 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CreditCard, ExternalLink, FileText, RefreshCw, ShieldAlert } from '@promptstudio/system/components/ui';
-import { apiClient } from '@/services/ApiClient';
+import { createBillingPortalSession, fetchInvoices, type InvoiceSummary } from '@/api/billingApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';
-import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
-
-type InvoiceSummary = {
-  id: string;
-  number: string | null;
-  status: string | null;
-  created: number | null;
-  currency: string | null;
-  amountDue: number | null;
-  amountPaid: number | null;
-  hostedInvoiceUrl: string | null;
-  invoicePdf: string | null;
-};
 
 function formatStripeAmount(amountMinor: number | null, currency: string | null): string {
   if (!currency || typeof currency !== 'string') return '—';
@@ -45,31 +32,6 @@ function formatInvoiceDate(epochSeconds: number | null): string {
   });
 }
 
-function normalizeInvoices(payload: unknown): InvoiceSummary[] {
-  if (!payload || typeof payload !== 'object') return [];
-  const invoices = 'invoices' in payload ? (payload as { invoices?: unknown }).invoices : null;
-  if (!Array.isArray(invoices)) return [];
-
-  return invoices
-    .map((invoice): InvoiceSummary | null => {
-      if (!invoice || typeof invoice !== 'object') return null;
-      const record = invoice as Partial<InvoiceSummary>;
-      if (!record.id || typeof record.id !== 'string') return null;
-      return {
-        id: record.id,
-        number: typeof record.number === 'string' ? record.number : null,
-        status: typeof record.status === 'string' ? record.status : null,
-        created: typeof record.created === 'number' ? record.created : null,
-        currency: typeof record.currency === 'string' ? record.currency : null,
-        amountDue: typeof record.amountDue === 'number' ? record.amountDue : null,
-        amountPaid: typeof record.amountPaid === 'number' ? record.amountPaid : null,
-        hostedInvoiceUrl: typeof record.hostedInvoiceUrl === 'string' ? record.hostedInvoiceUrl : null,
-        invoicePdf: typeof record.invoicePdf === 'string' ? record.invoicePdf : null,
-      };
-    })
-    .filter((invoice): invoice is InvoiceSummary => Boolean(invoice));
-}
-
 function resolveInvoiceLabel(status: string | null): { label: string; tone: 'good' | 'warn' | 'neutral' } {
   switch ((status ?? '').toLowerCase()) {
     case 'paid':
@@ -91,18 +53,11 @@ export function BillingInvoicesPage(): React.ReactElement {
   const location = useLocation();
   const log = React.useMemo(() => logger.child('BillingInvoicesPage'), []);
 
-  const [user, setUser] = React.useState<User | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceSummary[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
 
   const signInLink = React.useMemo(() => {
     const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
@@ -114,8 +69,8 @@ export function BillingInvoicesPage(): React.ReactElement {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get('/api/payment/invoices');
-      setInvoices(normalizeInvoices(response));
+      const response = await fetchInvoices();
+      setInvoices(response);
     } catch (err) {
       const info = sanitizeError(err);
       log.error('Failed to load invoices', err instanceof Error ? err : new Error(info.message), { operation: 'loadInvoices' });
@@ -137,8 +92,7 @@ export function BillingInvoicesPage(): React.ReactElement {
     }
     setIsBusy(true);
     try {
-      const response = await apiClient.post('/api/payment/portal', {});
-      const url = (response as { url?: string }).url;
+      const { url } = await createBillingPortalSession();
       if (!url) throw new Error('Missing billing portal URL');
       window.location.href = url;
     } catch (err) {

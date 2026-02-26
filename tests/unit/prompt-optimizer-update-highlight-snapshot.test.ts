@@ -24,8 +24,18 @@ describe('updateHighlightSnapshotForSuggestion', () => {
   it('updates target span and shifts following spans', () => {
     const snapshot: HighlightSnapshot = {
       spans: [
-        { id: 'target', start: 0, end: 5, displayStart: 0, displayEnd: 5 },
-        { id: 'shift', start: 6, end: 11, displayStart: 6, displayEnd: 11 },
+        {
+          start: 0,
+          end: 5,
+          category: 'subject',
+          confidence: 0.9,
+        },
+        {
+          start: 6,
+          end: 11,
+          category: 'subject',
+          confidence: 0.8,
+        },
       ],
       meta: null,
       signature: 'old',
@@ -37,13 +47,25 @@ describe('updateHighlightSnapshotForSuggestion', () => {
       matchEnd: 5,
       replacementText: 'hey',
       nextPrompt: 'hey world',
-      targetSpanId: 'target',
+      targetStart: 0,
+      targetEnd: 5,
+      targetCategory: 'subject',
     });
 
     expect(result).not.toBeNull();
     expect(result?.spans).toEqual([
-      { id: 'target', start: 0, end: 3, displayStart: 0, displayEnd: 3 },
-      { id: 'shift', start: 4, end: 9, displayStart: 4, displayEnd: 9 },
+      {
+        start: 0,
+        end: 3,
+        category: 'subject',
+        confidence: 0.9,
+      },
+      {
+        start: 4,
+        end: 9,
+        category: 'subject',
+        confidence: 0.8,
+      },
     ]);
     expect(result?.signature).toBe('signature');
     expect(result?.updatedAt).toBe('2024-01-01T00:00:00.000Z');
@@ -76,8 +98,8 @@ describe('updateHighlightSnapshotForSuggestion', () => {
   it('drops overlapping spans that are not the target', () => {
     const snapshot: HighlightSnapshot = {
       spans: [
-        { id: 'target', start: 0, end: 5 },
-        { id: 'overlap', start: 3, end: 7 },
+        { start: 0, end: 5, category: 'subject', confidence: 0.9 },
+        { start: 3, end: 7, category: 'subject', confidence: 0.8 },
       ],
       meta: null,
       signature: 'old',
@@ -89,10 +111,13 @@ describe('updateHighlightSnapshotForSuggestion', () => {
       matchEnd: 5,
       replacementText: 'hello',
       nextPrompt: 'hello world',
-      targetSpanId: 'target',
+      targetStart: 0,
+      targetEnd: 5,
+      targetCategory: 'subject',
     });
 
     expect(result?.spans).toHaveLength(1);
-    expect(result?.spans[0]?.id).toBe('target');
+    expect(result?.spans[0]?.start).toBe(0);
+    expect(result?.spans[0]?.end).toBe(5);
   });
 });

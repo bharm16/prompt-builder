@@ -4,28 +4,22 @@
 
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import type { IconProps } from '@promptstudio/system/components/ui';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
+import type {
+  PromptHistoryEntry,
+  PromptVersionEdit,
+  PromptVersionEntry,
+} from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/types/domain/workspace';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
+import type { VideoTier } from '@components/ToolSidebar/types';
 
-export type { PromptHistoryEntry };
+export type { PromptHistoryEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
-
-export interface User {
-  uid: string;
-  [key: string]: unknown;
-}
-
-export interface Mode {
-  id: string;
-  name: string;
-  icon: IconProps['icon'];
-  description: string;
-}
+export type { Mode };
 
 export interface PromptOptimizer {
   inputPrompt: string;
@@ -54,22 +48,21 @@ export interface PromptOptimizer {
   lockedSpans: LockedSpan[];
   optimize: (
     prompt?: string,
-    context?: unknown | null,
-    brainstormContext?: unknown | null,
+    context?: Record<string, unknown> | null,
+    brainstormContext?: Record<string, unknown> | null,
     targetModel?: string,
     options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   compile: (
     prompt: string,
     targetModel?: string,
-    context?: unknown | null
+    context?: Record<string, unknown> | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
   setLockedSpans: (spans: LockedSpan[]) => void;
   addLockedSpan: (span: LockedSpan) => void;
   removeLockedSpan: (spanId: string) => void;
   clearLockedSpans: () => void;
-  [key: string]: unknown;
 }
 
 export interface PromptHistory {
@@ -85,8 +78,9 @@ export interface PromptHistory {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    brainstormContext?: unknown,
-    highlightCache?: unknown,
+    keyframes?: PromptHistoryEntry['keyframes'],
+    brainstormContext?: Record<string, unknown> | null,
+    highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
     title?: string | null
   ) => Promise<{ uuid: string; id: string } | null>;
@@ -94,17 +88,17 @@ export interface PromptHistory {
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
+    keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
   }) => { uuid: string; id: string };
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
-  updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown>) => void;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
-  [key: string]: unknown;
 }
 
 export interface StateSnapshot {
@@ -124,6 +118,8 @@ export interface PromptConfigState {
   setSelectedModel: (model: string) => void;
   generationParams: CapabilityValues;
   setGenerationParams: (params: CapabilityValues) => void;
+  videoTier: VideoTier;
+  setVideoTier: (tier: VideoTier) => void;
 }
 
 export interface PromptUIState {
@@ -211,7 +207,7 @@ export interface PromptActionsState {
 export interface PromptNavigationState {
   // Navigation
   navigate: NavigateFunction;
-  uuid: string | undefined;
+  sessionId: string | undefined;
 }
 
 export type PromptStateContextValue =

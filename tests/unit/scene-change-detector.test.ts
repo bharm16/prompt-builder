@@ -6,9 +6,11 @@ import { extractSceneContext } from '@/utils/sceneChange/sceneContextParser';
 import { detectSceneChange } from '@/utils/sceneChange/sceneChangeApi';
 import { applySceneChangeUpdates } from '@/utils/sceneChange/sceneChangeUpdates';
 
-const logSpies = {
-  error: vi.fn(),
-};
+const { logSpies } = vi.hoisted(() => ({
+  logSpies: {
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@/utils/sceneChange/sceneContextParser', () => ({
   extractSceneContext: vi.fn(),
@@ -144,6 +146,61 @@ describe('sceneChangeDetector', () => {
       mockDetectSceneChange.mockResolvedValue({
         isSceneChange: true,
         confidence: 'low',
+      });
+
+      const result = await detectAndApplySceneChange({
+        originalPrompt: 'Original',
+        updatedPrompt: 'Updated',
+        oldValue: 'Forest',
+        newValue: 'Desert',
+        confirmSceneChange: () => true,
+      });
+
+      expect(result).toBe('Updated');
+      expect(mockApplySceneChangeUpdates).not.toHaveBeenCalled();
+    });
+
+    it('returns baseline prompt when detector reports no scene change', async () => {
+      mockDetectSceneChange.mockResolvedValue({
+        isSceneChange: false,
+        confidence: 'high',
+      });
+
+      const result = await detectAndApplySceneChange({
+        originalPrompt: 'Original',
+        updatedPrompt: 'Updated',
+        oldValue: 'Forest',
+        newValue: 'Desert',
+        confirmSceneChange: () => true,
+      });
+
+      expect(result).toBe('Updated');
+      expect(mockApplySceneChangeUpdates).not.toHaveBeenCalled();
+    });
+
+    it('does not apply updates when user declines confirmation', async () => {
+      mockDetectSceneChange.mockResolvedValue({
+        isSceneChange: true,
+        confidence: 'high',
+        suggestedUpdates: { Location: 'Desert' },
+      });
+
+      const result = await detectAndApplySceneChange({
+        originalPrompt: 'Original',
+        updatedPrompt: 'Updated',
+        oldValue: 'Forest',
+        newValue: 'Desert',
+        confirmSceneChange: () => false,
+      });
+
+      expect(result).toBe('Updated');
+      expect(mockApplySceneChangeUpdates).not.toHaveBeenCalled();
+    });
+
+    it('does not apply updates when detector omits suggestedUpdates', async () => {
+      mockDetectSceneChange.mockResolvedValue({
+        isSceneChange: true,
+        confidence: 'high',
       });
 
       const result = await detectAndApplySceneChange({

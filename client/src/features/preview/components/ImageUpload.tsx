@@ -1,9 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
-import { uploadPreviewImage } from '../api/previewApi';
-
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_BYTES = 10 * 1024 * 1024;
+import { uploadPreviewImage, validatePreviewImageFile } from '../api/previewApi';
 
 export interface ImageUploadResult {
   imageUrl: string;
@@ -29,21 +26,11 @@ export function ImageUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validateFile = (file: File): string | null => {
-    if (!ACCEPTED_TYPES.has(file.type)) {
-      return 'Only PNG, JPEG, and WebP files are supported.';
-    }
-    if (file.size > MAX_BYTES) {
-      return 'Image must be 10MB or smaller.';
-    }
-    return null;
-  };
-
   const handleFile = useCallback(
     async (file: File) => {
-      const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
+      const validation = validatePreviewImageFile(file);
+      if (!validation.valid) {
+        setError(validation.error);
         return;
       }
 

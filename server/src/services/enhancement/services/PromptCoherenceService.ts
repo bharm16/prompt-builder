@@ -185,11 +185,15 @@ const summarizeSpan = (span: CoherenceSpan): string =>
 const sanitizeSpans = (spans: CoherenceSpan[] | undefined): CoherenceSpan[] => {
   if (!Array.isArray(spans)) return [];
   return spans
-    .map((span) => ({
-      ...span,
-      text: span.text ?? span.quote,
-      quote: span.quote ?? span.text,
-    }))
+    .map((span) => {
+      const text = span.text ?? span.quote;
+      const quote = span.quote ?? span.text;
+      return {
+        ...span,
+        ...(text !== undefined ? { text } : {}),
+        ...(quote !== undefined ? { quote } : {}),
+      };
+    })
     .filter((span) => Boolean(summarizeSpan(span)));
 };
 
@@ -393,8 +397,8 @@ export class PromptCoherenceService {
       const llmResult = await this.runLlmCheck({
         beforePrompt,
         afterPrompt,
-        appliedChange,
         spans: spansForCheck,
+        ...(appliedChange !== undefined ? { appliedChange } : {}),
       });
 
       return llmResult;
@@ -450,11 +454,12 @@ export class PromptCoherenceService {
         });
 
         if (matchedTerms.size > 0 && cleaned !== spanText) {
+          const involvedSpanIds = span.id ? [span.id] : null;
           conflicts.push({
             severity: 'low',
             message: 'Technical terms appear in a non-technical span.',
             reasoning: `Found technical terms (${Array.from(matchedTerms).join(', ')}) in a ${span.category || 'misc'} span.`,
-            involvedSpanIds: span.id ? [span.id] : undefined,
+            ...(involvedSpanIds ? { involvedSpanIds } : {}),
             recommendations: [
               {
                 title: 'Remove technical terms from this span',
@@ -476,10 +481,11 @@ export class PromptCoherenceService {
       if (!isContextSpan) {
         const deduped = collapseDuplicateWords(spanText);
         if (deduped !== spanText) {
+          const involvedSpanIds = span.id ? [span.id] : null;
           harmonizations.push({
             message: 'Redundant phrasing detected.',
             reasoning: 'This span repeats descriptors; tightening improves readability.',
-            involvedSpanIds: span.id ? [span.id] : undefined,
+            ...(involvedSpanIds ? { involvedSpanIds } : {}),
             recommendations: [
               {
                 title: 'Collapse repeated words',
@@ -566,10 +572,11 @@ export class PromptCoherenceService {
       const normalized = normalizeText(spanText);
       if (!normalized) return;
       if (seenDuplicates.has(normalized)) {
+        const involvedSpanIds = span.id ? [span.id] : null;
         harmonizations.push({
           message: 'Duplicate span detected.',
           reasoning: 'This descriptor already appears elsewhere in the prompt.',
-          involvedSpanIds: span.id ? [span.id] : undefined,
+          ...(involvedSpanIds ? { involvedSpanIds } : {}),
           recommendations: [
             {
               title: 'Remove duplicate span',
@@ -704,12 +711,11 @@ Span hints (incomplete): ${JSON.stringify(trimmedSpans, null, 2)}`;
     const normalizeFindings = (findings: CoherenceFinding[]): CoherenceFinding[] =>
       findings
         .filter((finding) => Array.isArray(finding.recommendations))
-        .map((finding) => ({
-          ...finding,
-          involvedSpanIds: Array.isArray(finding.involvedSpanIds)
+        .map((finding) => {
+          const involvedSpanIds = Array.isArray(finding.involvedSpanIds)
             ? finding.involvedSpanIds.filter((id) => spanIds.has(id))
-            : undefined,
-          recommendations: finding.recommendations
+            : [];
+          const recommendations = finding.recommendations
             .map((rec) => ({
               ...rec,
               edits: Array.isArray(rec.edits)
@@ -726,15 +732,20 @@ Span hints (incomplete): ${JSON.stringify(trimmedSpans, null, 2)}`;
                     })
                     .filter((edit): edit is CoherenceEdit => Boolean(edit))
                     .filter((edit) => {
-                    if (edit.type === 'replaceSpanText') {
-                      if (!edit.replacementText) return false;
-                    }
-                    return Boolean(edit.spanId || edit.anchorQuote);
-                  })
+                      if (edit.type === 'replaceSpanText') {
+                        if (!edit.replacementText) return false;
+                      }
+                      return Boolean(edit.spanId || edit.anchorQuote);
+                    })
                 : [],
             }))
-            .filter((rec) => rec.edits.length > 0),
-        }))
+            .filter((rec) => rec.edits.length > 0);
+          return {
+            ...finding,
+            ...(involvedSpanIds.length > 0 ? { involvedSpanIds } : {}),
+            recommendations,
+          };
+        })
         .filter((finding) => finding.recommendations.length > 0);
 
     return {

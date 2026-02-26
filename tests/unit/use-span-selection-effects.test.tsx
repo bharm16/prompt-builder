@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import type { MutableRefObject } from 'react';
+import { renderHook, act } from '@testing-library/react';
+import type { RefObject } from 'react';
 
 import { useSpanSelectionEffects } from '@features/prompt-optimizer/PromptCanvas/hooks/useSpanSelectionEffects';
 
@@ -31,16 +31,16 @@ describe('useSpanSelectionEffects', () => {
     vi.useRealTimers();
   });
 
-  it('marks selected span and dims others', async () => {
+  it('marks selected span and dims others', () => {
     const { editor, spanA, spanB } = createEditorWithSpans();
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
     const setState = vi.fn();
 
     const { rerender } = renderHook(useSpanSelectionEffects, {
       initialProps: {
         editorRef,
         enableMLHighlighting: true,
-        selectedSpanId: null,
+        selectedSpanId: null as string | null,
         displayedPrompt: 'Hello world',
         setState,
       },
@@ -56,16 +56,17 @@ describe('useSpanSelectionEffects', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(spanA.classList.contains('value-word--selected')).toBe(true);
-      expect(spanA.dataset.open).toBe('true');
-      expect(spanB.classList.contains('value-word--dimmed')).toBe(true);
-    });
+    expect(spanA.classList.contains('border-2')).toBe(true);
+    expect(spanA.classList.contains('ring-4')).toBe(true);
+    expect(spanA.classList.contains('ring-[var(--highlight-ring)]')).toBe(true);
+    expect(spanA.classList.contains('z-10')).toBe(true);
+    expect(spanA.dataset.open).toBe('true');
+    expect(spanB.classList.contains('opacity-40')).toBe(true);
   });
 
   it('tracks swap timing and clears classes after delay', () => {
     const { editor, spanA } = createEditorWithSpans();
-    const editorRef: MutableRefObject<HTMLElement | null> = { current: editor };
+    const editorRef = { current: editor } as RefObject<HTMLElement>;
     const setState = vi.fn();
 
     const { rerender } = renderHook(useSpanSelectionEffects, {
@@ -92,13 +93,13 @@ describe('useSpanSelectionEffects', () => {
       lastSwapTime: new Date('2024-01-01T00:00:00Z').getTime(),
     });
 
-    expect(spanA.classList.contains('value-word--swapped')).toBe(true);
+    expect(spanA.classList.contains('ps-animate-span-swap')).toBe(true);
 
     act(() => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(spanA.classList.contains('value-word--swapped')).toBe(false);
+    expect(spanA.classList.contains('ps-animate-span-swap')).toBe(false);
 
     act(() => {
       vi.advanceTimersByTime(3000);

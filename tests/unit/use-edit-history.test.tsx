@@ -53,18 +53,13 @@ describe('useEditHistory', () => {
 
     expect(result.current.canUndo).toBe(true);
 
-    let undone;
     act(() => {
-      undone = result.current.undo();
+      const undone = result.current.undo();
+      expect(undone?.prompt).toBe('first');
     });
-
-    expect(undone?.prompt).toBe('first');
-
-    let redone;
     act(() => {
-      redone = result.current.redo();
+      const redone = result.current.redo();
+      expect(redone?.prompt).toBe('second');
     });
-
-    expect(redone?.prompt).toBe('second');
   });
 });

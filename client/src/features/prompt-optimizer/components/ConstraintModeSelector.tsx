@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Select,
   SelectContent,
@@ -45,17 +45,35 @@ export function ConstraintModeSelector({
   isAnalyzing = false,
   className,
 }: ConstraintModeSelectorProps): React.ReactElement {
-  const activeLabel = useMemo(
-    () => MODE_OPTIONS.find((option) => option.id === mode)?.label ?? 'Strict',
+  const resolvedMode = useMemo(
+    () => (MODE_OPTIONS.some((option) => option.id === mode) ? mode : 'strict'),
     [mode]
+  );
+
+  const activeLabel = useMemo(
+    () =>
+      MODE_OPTIONS.find((option) => option.id === resolvedMode)?.label ??
+      'Strict',
+    [resolvedMode]
+  );
+
+  const handleValueChange = useCallback(
+    (value: string) => {
+      const nextMode = MODE_OPTIONS.find((option) => option.id === value)?.id;
+      if (!nextMode || nextMode === resolvedMode) {
+        return;
+      }
+      onChange(nextMode);
+    },
+    [onChange, resolvedMode]
   );
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <span className="text-label-sm text-muted">I2V Mode</span>
       <Select
-        value={mode}
-        onValueChange={(value) => onChange(value as I2VConstraintMode)}
+        value={resolvedMode}
+        onValueChange={handleValueChange}
         disabled={disabled}
       >
         <SelectTrigger
@@ -70,10 +88,14 @@ export function ConstraintModeSelector({
         <SelectContent>
           {MODE_OPTIONS.map((option) => (
             <SelectItem key={option.id} value={option.id}>
-              <div className="flex flex-col text-left">
-                <span className="text-body-sm text-foreground">{option.label}</span>
-                <span className="text-label-xs text-muted">{option.description}</span>
-              </div>
+              <span className="flex flex-col text-left">
+                <span className="text-body-sm text-foreground">
+                  {option.label}
+                </span>
+                <span className="text-label-xs text-muted">
+                  {option.description}
+                </span>
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

@@ -1,11 +1,13 @@
-import React, { lazy, Suspense, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { AppShell } from '@components/navigation/AppShell';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import { ToastProvider } from './components/Toast';
-import { AppShellProvider, useAppShell, type ActiveTool } from './contexts/AppShellContext';
-import { MainWorkspace } from './components/layout/MainWorkspace';
+import { AppShellProvider } from './contexts/AppShellContext';
 import { LoadingDots } from './components/LoadingDots';
+import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
+import { apiClient } from './services/ApiClient';
+import { trackPageView } from './services/analytics';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
@@ -25,6 +27,8 @@ const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').the
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
 const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
 const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
+const MainWorkspace = lazy(() => import('./components/layout/MainWorkspace').then((module) => ({ default: module.MainWorkspace })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 
 function RouteFallback(): React.ReactElement {
   return (
@@ -42,20 +46,54 @@ function MarketingShell(): React.ReactElement {
   );
 }
 
-function WorkspaceRoute({ tool }: { tool: ActiveTool }): React.ReactElement {
-  const { setActiveTool } = useAppShell();
-  const setActiveToolRef = useRef(setActiveTool);
-  setActiveToolRef.current = setActiveTool;
-
-  useEffect(() => {
-    setActiveToolRef.current(tool, { skipWarning: true });
-  }, [tool]);
-
+function WorkspaceRoute(): React.ReactElement {
   return (
     <FeatureErrorBoundary featureName="Main Workspace">
       <MainWorkspace />
     </FeatureErrorBoundary>
   );
+}
+
+function PromptRedirect(): React.ReactElement {
+  const { uuid } = useParams<{ uuid: string }>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!uuid) {
+        navigate('/', { replace: true });
+        return;
+      }
+      try {
+        const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`);
+        const data = (response as { data?: { id: string } }).data;
+        if (!cancelled && data?.id) {
+          navigate(`/session/${data.id}`, { replace: true });
+          return;
+        }
+      } catch {
+        // fall through
+      }
+      if (!cancelled) {
+        navigate('/', { replace: true });
+      }
+    };
+    void resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, uuid]);
+
+  return <RouteFallback />;
+}
+
+function RouteTracker(): React.ReactElement | null {
+  const location = useLocation();
+  useEffect(() => {
+    void trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
 }
 
 function AppRoutes(): React.ReactElement {
@@ -96,11 +134,31 @@ function AppRoutes(): React.ReactElement {
       {/* App routes */}
       <Route
         path="/"
-        element={<WorkspaceRoute tool="studio" />}
+        element={<WorkspaceRoute />}
       />
       <Route
         path="/create"
-        element={<WorkspaceRoute tool="create" />}
+        element={<Navigate to="/" replace />}
+      />
+      <Route
+        path="/session/:sessionId"
+        element={<WorkspaceRoute />}
+      />
+      <Route
+        path="/session/:sessionId/studio"
+        element={<Navigate to="/session/:sessionId" replace />}
+      />
+      <Route
+        path="/session/:sessionId/create"
+        element={<Navigate to="/session/:sessionId" replace />}
+      />
+      <Route
+        path="/session/:sessionId/continuity"
+        element={<Navigate to="/session/:sessionId" replace />}
+      />
+      <Route
+        path="/session/new/continuity"
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/assets"
@@ -111,13 +169,26 @@ function AppRoutes(): React.ReactElement {
         }
       />
       <Route
+        path="/continuity"
+        element={<Navigate to="/" replace />}
+      />
+      <Route
+        path="/continuity/:sessionId"
+        element={<Navigate to="/session/:sessionId" replace />}
+      />
+      <Route
         path="/consistent"
         element={<Navigate to="/" replace />}
       />
       <Route
         path="/prompt/:uuid"
-        element={<WorkspaceRoute tool="studio" />}
+        element={<PromptRedirect />}
       />
+
+      {/* Catch-all 404 — wrapped in MarketingShell for nav/footer */}
+      <Route element={<MarketingShell />}>
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
   );
 }
@@ -129,13 +200,16 @@ function App(): React.ReactElement {
       message="The application encountered an unexpected error. Please refresh the page to continue."
     >
       <ToastProvider>
-        <AppShellProvider>
-          <Router>
-            <Suspense fallback={<RouteFallback />}>
-              <AppRoutes />
-            </Suspense>
-          </Router>
-        </AppShellProvider>
+        <GenerationControlsStoreProvider>
+          <AppShellProvider>
+            <Router>
+              <RouteTracker />
+              <Suspense fallback={<RouteFallback />}>
+                <AppRoutes />
+              </Suspense>
+            </Router>
+          </AppShellProvider>
+        </GenerationControlsStoreProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

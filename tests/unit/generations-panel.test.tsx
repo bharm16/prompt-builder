@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 
 import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel/GenerationsPanel';
 import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 
 const mockUseGenerationsState = vi.fn();
 const mockUseGenerationActions = vi.fn();
@@ -10,6 +11,11 @@ const mockUseGenerationsTimeline = vi.fn();
 const mockUseAssetReferenceImages = vi.fn();
 const mockUseKeyframeWorkflow = vi.fn();
 const mockUseGenerationControlsContext = vi.fn();
+const mockUseWorkspaceSession = vi.fn();
+const mockUsePromptNavigation = vi.fn();
+const mockUsePromptSession = vi.fn();
+const mockUseGenerationControlsStoreState = vi.fn();
+const mockUseGenerationControlsStoreActions = vi.fn();
 
 const generationCardSpy = vi.fn();
 const versionDividerSpy = vi.fn();
@@ -44,8 +50,25 @@ vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
   useGenerationControlsContext: () => mockUseGenerationControlsContext(),
 }));
 
+vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+  useWorkspaceSession: () => mockUseWorkspaceSession(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+  usePromptNavigation: () => mockUsePromptNavigation(),
+  usePromptSession: () => mockUsePromptSession(),
+}));
+
+vi.mock('@features/prompt-optimizer/context/GenerationControlsStore', () => ({
+  useGenerationControlsStoreState: () => mockUseGenerationControlsStoreState(),
+  useGenerationControlsStoreActions: () => mockUseGenerationControlsStoreActions(),
+}));
+
 vi.mock('@features/prompt-optimizer/GenerationsPanel/components/GenerationCard', () => ({
-  GenerationCard: (props: { generation: Generation }) => {
+  GenerationCard: (props: {
+    generation: Generation;
+    onContinueSequence?: ((generation: Generation) => void) | undefined;
+  }) => {
     generationCardSpy(props);
     return <div data-testid="generation-card">{props.generation.id}</div>;
   },
@@ -112,14 +135,54 @@ describe('GenerationsPanel', () => {
     });
     mockUseGenerationControlsContext.mockReturnValue({
       setControls: vi.fn(),
-      keyframes: [],
-      cameraMotion: null,
-      subjectMotion: '',
+      faceSwapPreview: null,
+      onInsufficientCredits: null,
+    });
+    mockUseWorkspaceSession.mockReturnValue({
+      session: { id: 'session-current' },
+      isSequenceMode: false,
+      isStartingSequence: false,
+      startSequence: vi.fn(),
+      currentShot: null,
+      generateShot: vi.fn(),
+      updateShot: vi.fn(),
+    });
+    mockUsePromptNavigation.mockReturnValue({
+      navigate: vi.fn(),
+      sessionId: 'session-current',
+    });
+    mockUsePromptSession.mockReturnValue({
+      currentPromptDocId: 'session-current',
+    });
+    mockUseGenerationControlsStoreState.mockReturnValue({
+      domain: {
+        keyframes: [],
+        cameraMotion: null,
+        subjectMotion: '',
+      },
+    });
+    mockUseGenerationControlsStoreActions.mockReturnValue({
+      setKeyframes: vi.fn(),
     });
   });
 
   describe('error handling', () => {
-    it('disables the run draft action when prompt is empty', () => {
+    it('does not trigger draft generation when prompt is empty', () => {
+      const generateDraft = vi.fn();
+      mockUseGenerationActions.mockReturnValue({
+        generateDraft,
+        generateRender: vi.fn(),
+        generateStoryboard: vi.fn(),
+        retryGeneration: vi.fn(),
+        cancelGeneration: vi.fn(),
+      });
+      const setControls = vi.fn();
+      mockUseGenerationControlsContext.mockReturnValue({
+        setControls,
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
+      });
+
       render(
         <GenerationsPanel
           prompt="   "
@@ -131,13 +194,21 @@ describe('GenerationsPanel', () => {
         />
       );
 
-      const runDraftButton = screen.getByRole('button', { name: /run draft/i });
-      expect(runDraftButton).toBeDisabled();
+      const controls = setControls.mock.calls[0]?.[0] as
+        | { onDraft?: (model: string) => void }
+        | null;
+      expect(controls?.onDraft).toBeTypeOf('function');
+
+      act(() => {
+        controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+      });
+
+      expect(generateDraft).not.toHaveBeenCalled();
     });
   });
 
   describe('edge cases', () => {
-    it('triggers draft generation from empty state', () => {
+    it('triggers draft generation through registered controls', () => {
       const generateDraft = vi.fn();
       mockUseGenerationActions.mockReturnValue({
         generateDraft,
@@ -148,6 +219,12 @@ describe('GenerationsPanel', () => {
       });
 
       const onCreateVersionIfNeeded = vi.fn().mockReturnValue('version-2');
+      const setControls = vi.fn();
+      mockUseGenerationControlsContext.mockReturnValue({
+        setControls,
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
+      });
 
       render(
         <GenerationsPanel
@@ -160,8 +237,15 @@ describe('GenerationsPanel', () => {
         />
       );
 
-      fireEvent.click(screen.getByRole('button', { name: /run draft/i }));
-      expect(generateDraft).toHaveBeenCalledWith('wan-2.2', 'New prompt', {
+      const controls = setControls.mock.calls[0]?.[0] as
+        | { onDraft?: (model: string) => void }
+        | null;
+      expect(controls?.onDraft).toBeTypeOf('function');
+
+      act(() => {
+        controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+      });
+      expect(generateDraft).toHaveBeenCalledWith(VIDEO_DRAFT_MODEL.id, 'New prompt', {
         promptVersionId: 'version-2',
       });
     });
@@ -177,9 +261,8 @@ describe('GenerationsPanel', () => {
       const setControls = vi.fn();
       mockUseGenerationControlsContext.mockReturnValue({
         setControls,
-        keyframes: [],
-        cameraMotion: null,
-        subjectMotion: '',
+        faceSwapPreview: null,
+        onInsufficientCredits: null,
       });
 
       const { unmount } = render(
@@ -210,6 +293,193 @@ describe('GenerationsPanel', () => {
 
       unmount();
       expect(setControls).toHaveBeenCalledWith(null);
+    });
+
+    it('uses video asset id parsed from preview URL when mediaAssetIds contains a storage path', async () => {
+      const startSequence = vi.fn().mockResolvedValue({ sessionId: 'sequence-1', shot: { id: 'shot-1' } });
+      mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-1',
+            mediaUrls: ['https://example.com/api/preview/video/content/asset-123/stream.m3u8'],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 1,
+        },
+      ]);
+
+      render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      await act(async () => {
+        await firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+      });
+
+      expect(startSequence).toHaveBeenCalledWith({
+        sourceVideoId: 'asset-123',
+        prompt: 'Prompt',
+        originSessionId: 'session-current',
+      });
+    });
+
+    it('falls back to storage path when no asset id is available', async () => {
+      const startSequence = vi.fn().mockResolvedValue({ sessionId: 'sequence-2', shot: { id: 'shot-2' } });
+      mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-2',
+            mediaUrls: [
+              'https://storage.googleapis.com/example-bucket/users%2Fuser-1%2Fgeneration%2Fvideo.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Signature=abc',
+            ],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 2,
+        },
+      ]);
+
+      render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      await act(async () => {
+        await firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+      });
+
+      expect(startSequence).toHaveBeenCalledWith({
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+        prompt: 'Prompt',
+        originSessionId: 'session-current',
+      });
+    });
+
+    it('does not navigate into sequence if user changes sessions before sequence startup resolves', async () => {
+      let resolveStartSequence: ((value: { sessionId: string; shot: { id: string } }) => void) | null = null;
+      const startSequence = vi.fn().mockImplementation(
+        () =>
+          new Promise<{ sessionId: string; shot: { id: string } }>((resolve) => {
+            resolveStartSequence = resolve;
+          })
+      );
+      mockUseWorkspaceSession.mockReturnValue({
+        session: { id: 'session-current' },
+        isSequenceMode: false,
+        isStartingSequence: false,
+        startSequence,
+        currentShot: null,
+        generateShot: vi.fn(),
+        updateShot: vi.fn(),
+      });
+      mockUseGenerationsTimeline.mockReturnValue([
+        {
+          type: 'generation',
+          generation: createGeneration({
+            id: 'gen-seq-race',
+            mediaUrls: ['https://example.com/api/preview/video/content/asset-123/stream.m3u8'],
+            mediaAssetIds: ['users/user-1/generations/video.mp4'],
+          }),
+          timestamp: 3,
+        },
+      ]);
+
+      const navigate = vi.fn();
+      mockUsePromptNavigation.mockReturnValue({
+        navigate,
+        sessionId: 'session-current',
+      });
+
+      const view = render(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      const firstCardProps = generationCardSpy.mock.calls[0]?.[0] as
+        | {
+            generation: Generation;
+            onContinueSequence?: ((generation: Generation) => Promise<void>) | undefined;
+          }
+        | undefined;
+      expect(firstCardProps?.onContinueSequence).toBeTypeOf('function');
+
+      const pendingContinue = firstCardProps?.onContinueSequence?.(firstCardProps.generation);
+
+      mockUsePromptNavigation.mockReturnValue({
+        navigate,
+        sessionId: 'session-other',
+      });
+      view.rerender(
+        <GenerationsPanel
+          prompt="Prompt"
+          promptVersionId="version-1"
+          aspectRatio="16:9"
+          versions={[]}
+          onRestoreVersion={vi.fn()}
+          onCreateVersionIfNeeded={vi.fn()}
+        />
+      );
+
+      await act(async () => {
+        resolveStartSequence?.({ sessionId: 'sequence-3', shot: { id: 'shot-3' } });
+        await pendingContinue;
+      });
+
+      expect(navigate).not.toHaveBeenCalledWith('/session/sequence-3?originSessionId=session-current');
     });
   });
 });

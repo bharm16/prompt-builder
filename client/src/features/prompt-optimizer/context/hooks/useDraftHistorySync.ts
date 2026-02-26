@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptHistory, PromptOptimizer } from '../types';
 import { debounce } from '../../utils/debounce';
@@ -65,6 +65,8 @@ export const useDraftHistorySync = ({
   generationParams,
 }: UseDraftHistorySyncOptions): void => {
   const { updateEntryPersisted, history } = promptHistory;
+  const updateEntryPersistedRef = useRef(updateEntryPersisted);
+  updateEntryPersistedRef.current = updateEntryPersisted;
   const debouncedSave = useMemo(
     () =>
       debounce(
@@ -75,7 +77,7 @@ export const useDraftHistorySync = ({
           targetModel: string | null,
           params: CapabilityValues
         ) => {
-          updateEntryPersisted(uuid, docId, {
+          updateEntryPersistedRef.current(uuid, docId, {
             input,
             targetModel,
             generationParams: params,
@@ -83,7 +85,8 @@ export const useDraftHistorySync = ({
         },
         1000 // 1 second debounce
       ),
-    [updateEntryPersisted]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- callback accessed via stable ref
+    []
   );
 
   useEffect(() => {

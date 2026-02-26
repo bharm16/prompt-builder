@@ -66,7 +66,11 @@ describe('useAssetsSidebar', () => {
 
   describe('edge cases', () => {
     it('clears assets and stops loading when the user logs out', async () => {
-      mockAssetsSidebarApi.list.mockResolvedValue({ assets: [createAsset()], total: 1 });
+      mockAssetsSidebarApi.list.mockResolvedValue({
+        assets: [createAsset()],
+        total: 1,
+        byType: { character: 1, style: 0, location: 0, object: 0 },
+      });
 
       const { result } = renderHook(() => useAssetsSidebar());
 

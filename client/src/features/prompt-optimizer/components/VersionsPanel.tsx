@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import {
-  Badge,
   CaretDown,
   CaretLeft,
   Icon,
@@ -102,186 +101,161 @@ export const VersionsPanel = memo(function VersionsPanel({
   // Horizontal layout (bottom drawer)
   if (layout === 'horizontal') {
     const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'}`;
-    const isExpanded = !isCompact;
-    const chevronClass = `ps-transition-transform${isExpanded ? '' : ' rotate-180'}`;
 
-    // Compact horizontal bar - Premium cinematic style
+    // ── Compact: 36px bar with mini preview pills ──
     if (isCompact) {
       return (
-        <div
+        <button
+          type="button"
           className={cn(
-            'flex h-ps-9 w-full items-center justify-between',
-            'px-ps-6',
-            'bg-[rgb(30,31,37)]',
-            'border border-[rgb(41,44,50)]',
-            'rounded-lg',
-            'shadow-[0_2px_8px_rgba(0,0,0,0.15)]'
+            'flex h-9 w-full items-center gap-1.5',
+            'rounded-lg border border-border bg-surface-1',
+            'px-3 text-left',
+            'transition-colors hover:bg-surface-2',
+            'cursor-pointer'
           )}
-          aria-label="Versions"
+          onClick={onExpandDrawer}
+          aria-label={`Expand ${compactLabel}`}
+          title={`Expand ${compactLabel}`}
         >
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-2 text-left"
-            onClick={onExpandDrawer}
-            title="Expand versions"
-            aria-label="Expand versions"
-          >
-            <Icon
-              icon={List}
-              size="sm"
-              weight="bold"
-              aria-hidden="true"
-              className="text-[rgb(170,174,187)]"
-            />
-            <span className="text-[12px] font-semibold text-[rgb(235,236,239)]">
-              Versions
-            </span>
-            <span
-              className={cn(
-                'ml-2 inline-flex items-center justify-center',
-                'rounded-[10px] bg-[rgb(44,48,55)]',
-                'px-2 py-[2px]',
-                'text-[11px] font-medium text-[rgb(170,174,187)]'
-              )}
-              aria-label={compactLabel}
-              title={compactLabel}
-            >
-              {versionCount}
-            </span>
-          </button>
+          <span className="text-[11px] font-semibold text-muted">
+            Versions
+          </span>
+          <span className="text-[10px] font-medium text-faint">
+            {versionCount}
+          </span>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md',
-                'text-[rgb(170,174,187)]',
-                'hover:bg-[rgb(44,48,55)] hover:text-[rgb(235,236,239)]',
-                'transition-colors'
-              )}
-              onClick={(event) => {
-                event.stopPropagation();
-                onCreateVersion();
-              }}
-              aria-label="Create snapshot"
-              title="Create snapshot"
-            >
-              <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className={cn(
-                'group inline-flex h-8 w-8 items-center justify-center rounded-md',
-                'text-[rgb(170,174,187)]',
-                'hover:bg-[rgb(44,48,55)] hover:text-[rgb(235,236,239)]',
-                'transition-colors'
-              )}
-              onClick={onExpandDrawer}
-              aria-label="Expand versions"
-              title="Expand versions"
-            >
-              <Icon
-                icon={CaretDown}
-                size="sm"
-                weight="bold"
-                aria-hidden="true"
-                className="transition-transform duration-200 group-hover:rotate-180"
-              />
-            </button>
+          {/* Mini preview pills */}
+          <div className="ml-1.5 flex items-center gap-1">
+            {orderedVersions.slice(0, 4).map((entry) => {
+              const entryId = resolveEntryId(entry);
+              const isEntrySelected = entryId
+                ? entryId === resolvedSelectedId
+                : false;
+              return (
+                <div
+                  key={entryId ?? entry.label}
+                  className={cn(
+                    'h-4 w-7 overflow-hidden rounded-[3px] bg-surface-2 transition-all duration-150',
+                    isEntrySelected
+                      ? 'ring-1 ring-accent/50'
+                      : 'border border-border'
+                  )}
+                />
+              );
+            })}
+            {orderedVersions.length > 4 ? (
+              <span className="ml-0.5 text-[9px] text-faint">
+                +{orderedVersions.length - 4}
+              </span>
+            ) : null}
           </div>
-        </div>
+
+          <div className="flex-1" />
+          <Icon
+            icon={CaretDown}
+            size="xs"
+            weight="bold"
+            aria-hidden="true"
+            className="rotate-180 text-muted"
+          />
+        </button>
       );
     }
 
-    // Expanded horizontal filmstrip
+    // ── Expanded: 36px header + filmstrip ──
     return (
-      <aside className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] shadow-[0_7px_21px_rgba(0,0,0,0.25)]">
-        {/* Header */}
-        <TooltipProvider delayDuration={120}>
-          <div className="flex h-ps-9 items-center justify-between gap-3 px-ps-6">
-            <div className="flex items-center gap-ps-2">
-              <Icon icon={List} size="sm" weight="bold" className="text-muted" />
-              <span className="text-label-14 font-semibold text-foreground">
-                Versions
-              </span>
-              <Badge variant="subtle" size="xs">
-                {versionCount}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-ps-2">
+      <div className="flex h-full w-full flex-col overflow-hidden">
+        {/* 36px header — no hamburger, no badge pill */}
+        <div className="flex h-9 flex-shrink-0 items-center px-3">
+          <span className="text-[11px] font-semibold text-muted">
+            Versions
+          </span>
+          <span className="ml-1.5 text-[10px] font-medium text-faint">
+            {versionCount}
+          </span>
+
+          <div className="flex-1" />
+
+          <TooltipProvider delayDuration={120}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="canvas"
+                  size="icon-sm"
+                  className="h-6 w-6 [&_svg]:size-3"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreateVersion();
+                  }}
+                  aria-label="Create snapshot"
+                >
+                  <Icon icon={Plus} size="xs" weight="bold" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="ps-glass-subtle border-border/60 text-body-sm text-foreground"
+              >
+                <span>Create snapshot</span>
+              </TooltipContent>
+            </Tooltip>
+
+            {onCollapseDrawer ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
                     variant="canvas"
                     size="icon-sm"
-                    onClick={onCreateVersion}
-                    aria-label="Create snapshot"
+                    className="ml-1 h-6 w-6 [&_svg]:size-[10px]"
+                    onClick={onCollapseDrawer}
+                    aria-label="Collapse versions panel"
                   >
-                    <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
+                    <Icon
+                      icon={CaretDown}
+                      size="xs"
+                      weight="bold"
+                      aria-hidden="true"
+                    />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent
                   side="top"
                   className="ps-glass-subtle border-border/60 text-body-sm text-foreground"
                 >
-                  <span>Create snapshot</span>
+                  <span>Toggle versions (`)</span>
                 </TooltipContent>
               </Tooltip>
-              {onCollapseDrawer ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="canvas"
-                      size="icon-sm"
-                      onClick={onCollapseDrawer}
-                      aria-label="Collapse versions panel"
-                    >
-                      <Icon
-                        icon={CaretDown}
-                        size="sm"
-                        weight="bold"
-                        aria-hidden="true"
-                        className={chevronClass}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    className="ps-glass-subtle border-border/60 text-body-sm text-foreground"
-                  >
-                    <span>Toggle versions (`)</span>
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
-            </div>
-          </div>
-        </TooltipProvider>
+            ) : null}
+          </TooltipProvider>
+        </div>
 
-        {/* Horizontal scrolling filmstrip */}
+        {/* Filmstrip */}
         {orderedVersions.length === 0 ? (
-          <div className="text-label-12 text-muted flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center text-[11px] text-muted">
             No versions yet
           </div>
         ) : (
           <div className="relative flex-1 overflow-hidden">
+            {/* Left fade */}
             <div
               className={cn(
-                'pointer-events-none absolute left-0 top-0 z-10 h-full w-6 bg-gradient-to-r from-[rgb(30,31,37)] to-transparent transition-opacity',
+                'pointer-events-none absolute left-0 top-0 z-10 h-full w-5',
+                'bg-gradient-to-r from-surface-2 to-transparent transition-opacity',
                 horizontalFadeState.showLeft ? 'opacity-100' : 'opacity-0'
               )}
               aria-hidden="true"
             />
+
             <div
               ref={horizontalScrollerRef}
               className={cn(
                 'ps-scrollbar-thin',
-                'flex h-full items-stretch overflow-x-auto',
-                'gap-3',
-                'px-4 pt-3 pb-4',
-                'snap-x snap-mandatory scroll-px-4'
+                'flex h-full items-start overflow-x-auto',
+                'gap-3 px-3 pb-3',
+                'snap-x snap-mandatory scroll-px-3'
               )}
             >
               {orderedVersions.map((entry, index) => {
@@ -307,16 +281,19 @@ export const VersionsPanel = memo(function VersionsPanel({
                 );
               })}
             </div>
+
+            {/* Right fade */}
             <div
               className={cn(
-                'pointer-events-none absolute right-0 top-0 z-10 h-full w-6 bg-gradient-to-l from-[rgb(30,31,37)] to-transparent transition-opacity',
+                'pointer-events-none absolute right-0 top-0 z-10 h-full w-5',
+                'bg-gradient-to-l from-surface-2 to-transparent transition-opacity',
                 horizontalFadeState.showRight ? 'opacity-100' : 'opacity-0'
               )}
               aria-hidden="true"
             />
           </div>
         )}
-      </aside>
+      </div>
     );
   }
 

@@ -9,16 +9,16 @@ describe('PromptImprovement question generation utils', () => {
       const result = generateFallbackQuestions('');
 
       expect(result).toHaveLength(3);
-      expect(result[0].title).toBe('What specific aspects matter most?');
-      expect(result[1].field).toBe('backgroundLevel');
-      expect(result[2].field).toBe('intendedUse');
+      expect(result[0]?.title).toBe('What specific aspects matter most?');
+      expect(result[1]?.field).toBe('backgroundLevel');
+      expect(result[2]?.field).toBe('intendedUse');
     });
 
     it('handles whitespace-only prompts without throwing', () => {
       const result = generateFallbackQuestions('   ');
 
       expect(result).toHaveLength(3);
-      expect(result[0].description).toContain('what particular aspects should be emphasized');
+      expect(result[0]?.description).toContain('what particular aspects should be emphasized');
     });
   });
 
@@ -28,8 +28,8 @@ describe('PromptImprovement question generation utils', () => {
         'Please explain how to migrate a large monolith into microservices with specific steps and trade-offs for a global team';
       const result = generateFallbackQuestions(longPrompt);
 
-      expect(result[0].description).toContain('explain how to migrate a large monolith into microservice...');
-      expect(result[0].description.toLowerCase()).not.toContain('please');
+      expect(result[0]?.description).toContain('explain how to migrate a large monolith into microservice...');
+      expect(result[0]?.description?.toLowerCase()).not.toContain('please');
     });
 
     it('preserves the initial prompt and only appends provided fields', () => {
@@ -71,9 +71,9 @@ describe('PromptImprovement question generation utils', () => {
     it('selects compare prompt messaging when comparison keywords are present', () => {
       const result = generateFallbackQuestions('Compare the costs of AWS and GCP for startups');
 
-      expect(result[0].title).toBe('What comparison criteria matter most?');
-      expect(result[1].title).toBe('How familiar are you with these options?');
-      expect(result[2].title).toBe('What decision are you making?');
-    });
+      expect(result[0]?.title).toBe('What comparison criteria matter most?');
+      expect(result[1]?.title).toBe('How familiar are you with these options?');
+      expect(result[2]?.title).toBe('What decision are you making?');
   });
+});
 });

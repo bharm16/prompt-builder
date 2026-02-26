@@ -24,28 +24,15 @@ describe('asyncHandler', () => {
       expect(next).toHaveBeenCalledWith(error);
     });
 
-    it('catches synchronous thrown errors via Promise.resolve wrapper', async () => {
-      // Promise.resolve(fn()) wraps the return value but fn() is called first.
-      // When fn throws synchronously, it's caught by the try/catch implicitly
-      // created by the await in the test, not by the catch in asyncHandler.
-      // However, the .catch(next) in asyncHandler still gets called because
-      // Promise.resolve(syncThrowingFn()) evaluates to a rejected promise.
+    it('passes synchronous thrown errors to next', () => {
       const error = new Error('sync failure');
       const handler = asyncHandler(() => {
         throw error;
       });
       const next = vi.fn();
 
-      // Need to wait for the catch to process
-      try {
-        await handler(createMockRequest(), createMockResponse(), next);
-      } catch {
-        // The sync throw propagates up
-      }
-
-      // Since Promise.resolve() is called on the thrown error,
-      // .catch(next) is not triggered for sync throws - they propagate.
-      // This test documents that sync throws are NOT caught by asyncHandler.
+      expect(() => handler(createMockRequest(), createMockResponse(), next)).not.toThrow();
+      expect(next).toHaveBeenCalledWith(error);
     });
 
     it('passes non-Error thrown value to next', async () => {

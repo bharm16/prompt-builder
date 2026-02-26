@@ -3,9 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ModelSelectorDropdown } from '@features/prompt-optimizer/components/ModelSelectorDropdown';
-import { useModelRegistry } from '@features/prompt-optimizer/hooks/useModelRegistry';
+import { useModelRegistry } from '@/hooks/useModelRegistry';
 
-vi.mock('@features/prompt-optimizer/hooks/useModelRegistry', () => ({
+vi.mock('@/hooks/useModelRegistry', () => ({
   useModelRegistry: vi.fn(),
 }));
 

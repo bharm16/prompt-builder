@@ -45,7 +45,7 @@ describe('useGenerationsState', () => {
       rerender({ initialGenerations: [], promptVersionId: 'version-1' });
 
       expect(result.current.generations).toHaveLength(1);
-      expect(result.current.generations[0].id).toBe('local-1');
+      expect(result.current.generations[0]?.id).toBe('local-1');
     });
   });
 

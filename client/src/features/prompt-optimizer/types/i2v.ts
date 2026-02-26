@@ -118,6 +118,7 @@ export interface I2VOptimizationResult {
 export interface I2VContext {
   isI2VMode: boolean;
   startImageUrl: string | null;
+  startImageSourcePrompt: string | null;
   observation: ImageObservation | null;
   lockMap: LockMap | null;
   constraintMode: I2VConstraintMode;

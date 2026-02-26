@@ -64,9 +64,18 @@ export function cleanJSONResponse(text: string, isArray: boolean): string {
 }
 
 /**
- * Extract and parse JSON from response text
+ * Extract and parse JSON from response text.
+ *
+ * When `schema` is provided, the parsed value is validated at runtime
+ * (e.g. via Zod `.parse()`), replacing the unchecked `as T` cast with
+ * a true type boundary.
  */
-export function extractAndParse<T>(responseText: string, isArray: boolean): T {
+export function extractAndParse<T>(
+  responseText: string,
+  isArray: boolean,
+  schema?: { parse: (data: unknown) => T }
+): T {
   const cleanedText = cleanJSONResponse(responseText, isArray);
-  return JSON.parse(cleanedText) as T;
+  const raw: unknown = JSON.parse(cleanedText);
+  return schema ? schema.parse(raw) : raw as T;
 }

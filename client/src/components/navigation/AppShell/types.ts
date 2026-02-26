@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { User } from '@hooks/types';
+import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { ToolSidebarProps } from '@components/ToolSidebar/types';
 
 // -----------------------------------------------------------------------------
@@ -57,11 +57,11 @@ export interface TopNavbarProps {
 }
 
 /** Props for main AppShell component */
-export interface AppShellProps extends Partial<Omit<ToolSidebarProps, 'user'>> {
+export interface AppShellProps {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
-  readonly toolSidebarProps?: Partial<Omit<ToolSidebarProps, 'user'>>;
+  readonly toolSidebarProps?: Omit<ToolSidebarProps, 'user'> | undefined;
 }
 
 // -----------------------------------------------------------------------------

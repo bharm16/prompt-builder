@@ -5,6 +5,7 @@
  * Following VideoConceptBuilder pattern: Controlled form component
  */
 
+import type { FormEvent, ReactElement } from 'react';
 import { Loader2, Sparkles } from '@promptstudio/system/components/ui';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
@@ -26,19 +27,21 @@ export function CustomRequestForm({
   onCustomRequestChange = () => {},
   onSubmit = () => {},
   isLoading = false,
-  placeholder = 'Make it more cinematic, brighter, tense, etc.',
+  placeholder,
   helperText = 'Describe the tone, detail, or direction you want to see.',
   ctaLabel = 'Get Suggestions',
   variant = 'default',
-}: CustomRequestFormProps): React.ReactElement {
-  const handleSubmit = (e: React.FormEvent): void => {
+}: CustomRequestFormProps): ReactElement {
+  const defaultPlaceholder = 'Make it more cinematic, brighter, tense, etc.';
+
+  const handleSubmit = (e: FormEvent): void => {
     e.preventDefault();
     onSubmit();
   };
 
   if (variant === 'tokenEditor') {
     const tokenEditorPlaceholder =
-      placeholder || 'e.g. more cinematic, more intense, younger, older';
+      placeholder ?? 'e.g. more cinematic, more intense, younger, older';
     const tokenEditorCtaLabel = ctaLabel || 'Generate more';
 
     return (
@@ -95,7 +98,7 @@ export function CustomRequestForm({
           id="custom-request"
           value={customRequest}
           onChange={(e) => onCustomRequestChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? defaultPlaceholder}
           className="w-full h-10 text-label-12 text-foreground bg-app border border-border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-border-strong"
           maxLength={MAX_REQUEST_LENGTH}
         />

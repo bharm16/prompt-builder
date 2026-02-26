@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { cn } from '@/utils/cn';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
+import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   character: User,
@@ -25,12 +26,43 @@ export function AssetThumbnail({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const primaryImageUrl = primaryImage?.thumbnailUrl || primaryImage?.url;
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
+  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: thumbnailUrl || null,
+    storagePath: primaryImage?.thumbnailPath ?? null,
+    enabled: Boolean(thumbnailUrl || primaryImage?.thumbnailPath),
+  });
+  const { url: resolvedFullUrl } = useResolvedMediaUrl({
+    kind: 'image',
+    url: fullUrl || null,
+    storagePath: primaryImage?.storagePath ?? null,
+    enabled: Boolean(fullUrl || primaryImage?.storagePath),
+  });
+  const preferredThumbnailUrl = resolvedThumbnailUrl || thumbnailUrl;
+  const preferredFullUrl = resolvedFullUrl || fullUrl;
+  const [imageUrl, setImageUrl] = useState(preferredThumbnailUrl || preferredFullUrl);
+  const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
   const triggerLabel = asset.trigger.startsWith('@')
     ? asset.trigger
     : `@${asset.trigger}`;
+
+  useEffect(() => {
+    setImageUrl(preferredThumbnailUrl || preferredFullUrl);
+    setDidTryFull(false);
+  }, [preferredThumbnailUrl, preferredFullUrl, primaryImage?.id]);
+
+  const handleImageError = () => {
+    if (!didTryFull && preferredFullUrl && imageUrl !== preferredFullUrl) {
+      setDidTryFull(true);
+      setImageUrl(preferredFullUrl);
+      return;
+    }
+    setImageUrl('');
+  };
 
   return (
     <button
@@ -46,14 +78,15 @@ export function AssetThumbnail({
       <div
         className={cn(
           'flex aspect-square w-full items-center justify-center overflow-hidden rounded-md',
-          primaryImageUrl ? 'bg-surface-3' : config.bgClass
+          imageUrl ? 'bg-surface-3' : config.bgClass
         )}
       >
-        {primaryImageUrl ? (
+        {imageUrl ? (
           <img
-            src={primaryImageUrl}
+            src={imageUrl}
             alt=""
             className="h-full w-full object-cover"
+            onError={handleImageError}
           />
         ) : (
           <Icon className={cn('h-5 w-5', config.colorClass)} />

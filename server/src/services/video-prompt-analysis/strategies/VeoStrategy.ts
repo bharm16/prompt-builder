@@ -256,30 +256,48 @@ export class VeoStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    
-    // Validate that we received an object (the LLM should have generated JSON for Veo)
-    let schema: Record<string, unknown>;
+    const ir = _ir;
+    const context = _context;
+
+    // Flow edit mode should be deterministic and not depend on LLM shape.
+    const sourceText = ir.raw || (typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt));
+    const editInfo = this.detectEditMode(sourceText);
+    if (editInfo) {
+      changes.push('Detected edit instruction; generated Veo Flow edit schema');
+      return {
+        prompt: this.buildEditSchema(sourceText, editInfo, context) as unknown as Record<
+          string,
+          unknown
+        >,
+        changes,
+      };
+    }
+
+    // Try to preserve valid structured output from the LLM when available.
+    let parsedSchema: unknown;
     if (typeof llmPrompt === 'object' && llmPrompt !== null) {
-      schema = llmPrompt as Record<string, unknown>;
+      parsedSchema = llmPrompt;
     } else {
-      // Fallback: parse if it's a string
       try {
-        schema = JSON.parse(llmPrompt as string);
+        parsedSchema = JSON.parse(llmPrompt as string);
       } catch {
-        // Absolute fallback to a dummy schema if parsing fails
-        schema = {
-          mode: 'generate',
-          subject: { description: String(llmPrompt), action: 'acting naturally' },
-          camera: { type: 'medium', movement: 'static' },
-          environment: { lighting: 'natural' }
-        };
-        changes.push('Failed to parse LLM JSON; used emergency fallback schema');
+        parsedSchema = null;
       }
     }
 
-    return { 
-      prompt: schema, 
-      changes 
+    if (this.isValidSchema(parsedSchema)) {
+      return {
+        prompt: parsedSchema as unknown as Record<string, unknown>,
+        changes,
+      };
+    }
+
+    // Deterministic fallback from extracted IR ensures schema guarantees.
+    const generatedSchema = this.buildGenerateSchema(ir, context);
+    changes.push('Generated Veo schema deterministically from extracted IR');
+    return {
+      prompt: generatedSchema as unknown as Record<string, unknown>,
+      changes,
     };
   }
 
@@ -478,7 +496,12 @@ export class VeoStrategy extends BaseStrategy {
     
     // Construct environment object respecting exactOptionalPropertyTypes
     const environment: { lighting: string; weather?: string; setting?: string } = { lighting };
-    if (ir.environment.weather) environment.weather = ir.environment.weather;
+    let weather = ir.environment.weather;
+    if (!weather) {
+      const weatherMatch = ir.raw.toLowerCase().match(/\b(sunny|cloudy|rainy|snowy|foggy|stormy)\b/);
+      weather = weatherMatch?.[1];
+    }
+    if (weather) environment.weather = weather;
     if (ir.environment.setting) environment.setting = ir.environment.setting;
 
     const schema: VeoPromptSchema = {
@@ -587,7 +610,3 @@ export class VeoStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const veoStrategy = new VeoStrategy();

@@ -1,17 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CacheKeyFactory, type EnhancementCacheParams } from '../CacheKeyFactory';
 
-// Mock the cache service
-vi.mock('@services/cache/CacheService', () => ({
-  cacheService: {
-    generateKey: vi.fn((namespace: string, data: Record<string, unknown>) => {
-      // Simple key generation for testing
-      return `${namespace}:${JSON.stringify(data)}`;
-    }),
-  },
-}));
-
 describe('CacheKeyFactory', () => {
+  const mockGenerateKey = vi.fn((namespace: string, data: Record<string, unknown>) => `${namespace}:${JSON.stringify(data)}`);
+  const mockCacheService = { generateKey: mockGenerateKey };
   const createBaseParams = (): EnhancementCacheParams => ({
     highlightedText: 'test highlight',
     contextBefore: 'before context',
@@ -39,7 +31,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.brainstormSignature = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('string');
@@ -49,7 +41,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.videoConstraints = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -58,7 +50,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.highlightedCategory = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -67,7 +59,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.phraseRole = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -76,7 +68,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.modelTarget = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -85,7 +77,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.promptSection = null;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -94,7 +86,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       (params as unknown as { fullPrompt: undefined }).fullPrompt = undefined;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -103,7 +95,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       (params as unknown as { originalUserPrompt: undefined }).originalUserPrompt = undefined;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toBeDefined();
     });
@@ -114,7 +106,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.editHistory = [];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('"editFingerprint":null');
     });
@@ -125,7 +117,7 @@ describe('CacheKeyFactory', () => {
         { category: 'action', original: 'running', replacement: 'walking' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('editFingerprint');
       expect(result).toContain('action:running');
@@ -143,7 +135,7 @@ describe('CacheKeyFactory', () => {
         { category: 'g', original: '7777777777777', replacement: 'x' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       // Should only contain last 5 (c through g)
       expect(result).not.toContain('a:1111111111');
@@ -157,7 +149,7 @@ describe('CacheKeyFactory', () => {
         { category: 'action', original: 'very long original text here', replacement: 'x' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       // Should contain truncated version
       expect(result).toContain('action:very long ');
@@ -170,7 +162,7 @@ describe('CacheKeyFactory', () => {
         { category: null as unknown as string, original: 'test', replacement: 'x' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('n:test');
     });
@@ -181,7 +173,7 @@ describe('CacheKeyFactory', () => {
         { category: 'action', original: undefined as unknown as string, replacement: 'x' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('action:');
     });
@@ -190,12 +182,11 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.fullPrompt = 'x'.repeat(10000);
 
-      CacheKeyFactory.generateKey('test', params);
+      CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       // The mock captures the call - verify truncation happened
-      const { cacheService } = await import('@services/cache/CacheService');
-      const mockCalls = (cacheService.generateKey as ReturnType<typeof vi.fn>).mock.calls;
-      const mockCall = mockCalls[mockCalls.length - 1]?.[1];
+      const mockCalls = mockGenerateKey.mock.calls;
+      const mockCall = mockCalls[mockCalls.length - 1]?.[1] as { fullPrompt?: string } | undefined;
 
       expect(mockCall?.fullPrompt?.length).toBeLessThan(10000);
     });
@@ -204,11 +195,10 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.originalUserPrompt = 'y'.repeat(1000);
 
-      CacheKeyFactory.generateKey('test', params);
+      CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
-      const { cacheService } = await import('@services/cache/CacheService');
-      const mockCalls = (cacheService.generateKey as ReturnType<typeof vi.fn>).mock.calls;
-      const mockCall = mockCalls[mockCalls.length - 1]?.[1];
+      const mockCalls = mockGenerateKey.mock.calls;
+      const mockCall = mockCalls[mockCalls.length - 1]?.[1] as { originalUserPrompt?: string } | undefined;
 
       expect(mockCall?.originalUserPrompt?.length).toBeLessThanOrEqual(500);
     });
@@ -218,7 +208,7 @@ describe('CacheKeyFactory', () => {
     it('generates key with correct namespace', () => {
       const params = createBaseParams();
 
-      const result = CacheKeyFactory.generateKey('enhancement', params);
+      const result = CacheKeyFactory.generateKey('enhancement', params, mockCacheService as never);
 
       expect(result).toContain('enhancement:');
     });
@@ -227,7 +217,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.highlightedText = 'unique text';
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('unique text');
     });
@@ -237,7 +227,7 @@ describe('CacheKeyFactory', () => {
       params.contextBefore = 'before context here';
       params.contextAfter = 'after context here';
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('before context here');
       expect(result).toContain('after context here');
@@ -247,7 +237,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.isVideoPrompt = true;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('"isVideoPrompt":true');
     });
@@ -256,7 +246,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.videoConstraints = { mode: 'strict', model: 'test' } as never;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('"videoConstraintMode":"strict"');
     });
@@ -265,7 +255,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.spanFingerprint = 'abc123';
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('"spanFingerprint":"abc123"');
     });
@@ -274,7 +264,7 @@ describe('CacheKeyFactory', () => {
       const params = createBaseParams();
       params.highlightWordCount = 5;
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('"highlightWordCount":5');
     });
@@ -286,8 +276,8 @@ describe('CacheKeyFactory', () => {
       const params2 = createBaseParams();
       params2.highlightedText = 'text two';
 
-      const key1 = CacheKeyFactory.generateKey('test', params1);
-      const key2 = CacheKeyFactory.generateKey('test', params2);
+      const key1 = CacheKeyFactory.generateKey('test', params1, mockCacheService as never);
+      const key2 = CacheKeyFactory.generateKey('test', params2, mockCacheService as never);
 
       expect(key1).not.toBe(key2);
     });
@@ -296,8 +286,8 @@ describe('CacheKeyFactory', () => {
       const params1 = createBaseParams();
       const params2 = createBaseParams();
 
-      const key1 = CacheKeyFactory.generateKey('test', params1);
-      const key2 = CacheKeyFactory.generateKey('test', params2);
+      const key1 = CacheKeyFactory.generateKey('test', params1, mockCacheService as never);
+      const key2 = CacheKeyFactory.generateKey('test', params2, mockCacheService as never);
 
       expect(key1).toBe(key2);
     });
@@ -311,7 +301,7 @@ describe('CacheKeyFactory', () => {
         { category: 'subject', original: 'dog', replacement: 'cat' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('action:run|subject:dog');
     });
@@ -322,7 +312,7 @@ describe('CacheKeyFactory', () => {
         { category: null as unknown as string, original: 'test', replacement: 'x' },
       ];
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       expect(result).toContain('n:test');
     });
@@ -335,7 +325,7 @@ describe('CacheKeyFactory', () => {
         replacement: 'x',
       }));
 
-      const result = CacheKeyFactory.generateKey('test', params);
+      const result = CacheKeyFactory.generateKey('test', params, mockCacheService as never);
 
       // Should only have edits 5-9 (last 5)
       expect(result).not.toContain('cat0');

@@ -26,6 +26,8 @@ export const VIDEO_CREDITS_PER_SECOND = {
   // API: $0.05/sec (480p fast)
   [VIDEO_MODELS.DRAFT]: 3.5, // 28 credits/8s, 165% margin
   [VIDEO_MODELS.DRAFT_I2V]: 3.5, // Image-to-video fast
+  [VIDEO_MODELS.DRAFT_I2V_LEGACY]: 3.5, // Wan 2.2 i2v fast
+  [VIDEO_MODELS.DRAFT_I2V_WAN_2_5]: 3.5, // Wan 2.5 i2v
 
   // WAN Pro - Higher quality previews
   // API: $0.09/sec (720p)

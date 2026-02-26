@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import type { PreviewRoutesServices } from '@routes/types';
-import { getAuthenticatedUserId } from '../auth';
 
 type ImageAssetViewServices = Pick<PreviewRoutesServices, 'imageGenerationService'>;
 
@@ -15,7 +14,7 @@ export const createImageAssetViewHandler = ({
       });
     }
 
-    const userId = await getAuthenticatedUserId(req);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -40,7 +39,7 @@ export const createImageAssetViewHandler = ({
       });
     }
 
-    const viewUrl = await imageGenerationService.getImageUrl(assetId);
+    const viewUrl = await imageGenerationService.getImageUrl(assetId, userId);
     if (!viewUrl) {
       return res.status(404).json({
         success: false,
@@ -52,7 +51,8 @@ export const createImageAssetViewHandler = ({
       success: true,
       data: {
         viewUrl,
+        assetId,
+        source: 'preview',
       },
     });
   };
-

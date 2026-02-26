@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { assetApi } from '@/features/assets/api/assetApi';
 import type { ResolvedPrompt } from '@shared/types/asset';
+import type { AssetType } from '@shared/types/asset';
 
 interface ReferenceImage {
   assetId: string;
-  assetType: string;
-  assetName?: string;
+  assetType: AssetType;
+  assetName?: string | undefined;
   imageUrl: string;
 }
 
@@ -24,6 +25,10 @@ export function useAssetReferenceImages(
   const [resolvedPrompt, setResolvedPrompt] = useState<ResolvedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const cancelPendingRequest = useCallback(() => {
+    requestIdRef.current += 1;
+  }, []);
 
   const fetchReferenceImages = useCallback(async () => {
     if (!prompt || !/@[a-zA-Z]/.test(prompt)) {
@@ -34,26 +39,40 @@ export function useAssetReferenceImages(
       return;
     }
 
+    const currentRequestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
 
     try {
       const result = await assetApi.resolve(prompt);
-      setReferenceImages(result.referenceImages || []);
-      setResolvedPrompt(result);
+      if (requestIdRef.current !== currentRequestId) return;
+      const nextReferenceImages: ReferenceImage[] = (result.referenceImages ?? []).map((image) => ({
+        assetId: image.assetId,
+        assetType: image.assetType,
+        imageUrl: image.imageUrl,
+        ...(typeof image.assetName === 'string' ? { assetName: image.assetName } : {}),
+      }));
+      setReferenceImages(nextReferenceImages);
+      setResolvedPrompt(result as unknown as ResolvedPrompt);
     } catch (err) {
+      if (requestIdRef.current !== currentRequestId) return;
       setError(err instanceof Error ? err.message : 'Failed to resolve assets');
       setReferenceImages([]);
       setResolvedPrompt(null);
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   }, [prompt]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(fetchReferenceImages, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [fetchReferenceImages]);
+    return () => {
+      clearTimeout(debounceTimer);
+      cancelPendingRequest();
+    };
+  }, [cancelPendingRequest, fetchReferenceImages]);
 
   return {
     referenceImages,

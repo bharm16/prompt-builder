@@ -20,9 +20,10 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Check, Loader2 } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
-import { renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
+import { buildProxyUrl, renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
 import type { CameraPath } from '@/features/convergence/types';
 import { sanitizeError } from '@/utils/logging';
+import { safeUrlHost } from '@/utils/url';
 import { FrameAnimator } from '../shared/FrameAnimator';
 
 // ============================================================================
@@ -54,17 +55,6 @@ export const CAMERA_MOTION_DESCRIPTIONS: Record<string, string> = {
   reveal: 'Combined push and pan. Builds anticipation for dramatic reveal.',
 };
 
-const safeUrlHost = (url: unknown): string | null => {
-  if (typeof url !== 'string' || url.trim().length === 0) {
-    return null;
-  }
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-};
-
 // ============================================================================
 // Types
 // ============================================================================
@@ -90,6 +80,8 @@ export interface CameraMotionOptionProps {
   className?: string;
   /** Tab index for keyboard navigation */
   tabIndex?: number;
+  /** DOM id for aria-activedescendant wiring */
+  optionId?: string;
 }
 
 // ============================================================================
@@ -116,6 +108,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   onSelect,
   className,
   tabIndex = 0,
+  optionId,
 }) => {
   // State for lazy rendering
   const [frames, setFrames] = useState<string[]>([]);
@@ -123,11 +116,16 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   const [hasRendered, setHasRendered] = useState(false);
   const [renderError, setRenderError] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isPressPreviewing, setIsPressPreviewing] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
   const renderAttemptRef = useRef(0);
   const lastSkipReasonRef = useRef<string | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
@@ -135,6 +133,54 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    updateMotionPreference();
+
+    mediaQuery.addEventListener('change', updateMotionPreference);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateMotionPreference);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const hoverQuery = window.matchMedia('(hover: hover)');
+    const coarseQuery = window.matchMedia('(pointer: coarse)');
+    const updateTouchCapability = () => {
+      const canHover = hoverQuery.matches;
+      const coarsePointer = coarseQuery.matches;
+      const hasTouchPoints = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+      setIsTouchDevice(!canHover && (coarsePointer || hasTouchPoints));
+    };
+    updateTouchCapability();
+
+    hoverQuery.addEventListener('change', updateTouchCapability);
+    coarseQuery.addEventListener('change', updateTouchCapability);
+
+    return () => {
+      hoverQuery.removeEventListener('change', updateTouchCapability);
+      coarseQuery.removeEventListener('change', updateTouchCapability);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
     };
   }, []);
 
@@ -259,6 +305,9 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
    * Handle mouse enter - trigger lazy render
    */
   const handleMouseEnter = useCallback(() => {
+    if (prefersReducedMotion || isTouchDevice) {
+      return;
+    }
     setIsHovering(true);
     if (!fallbackMode && !hasRendered && !isRendering) {
       log.debug('Triggering camera motion preview render on hover', {
@@ -269,7 +318,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       });
       renderFrames();
     }
-  }, [cameraPath.id, fallbackMode, hasRendered, isRendering, renderFrames]);
+  }, [cameraPath.id, fallbackMode, hasRendered, isRendering, prefersReducedMotion, isTouchDevice, renderFrames]);
 
   /**
    * Handle mouse leave
@@ -293,10 +342,54 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     }
   }, [cameraPath.id, fallbackMode, hasRendered, isRendering, renderFrames]);
 
+  const startPressPreview = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (disabled || fallbackMode) {
+        return;
+      }
+
+      const pointerType = event.pointerType;
+      const allowLongPress = pointerType === 'touch' || prefersReducedMotion;
+      if (!allowLongPress) {
+        return;
+      }
+
+      suppressClickRef.current = false;
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+
+      longPressTimerRef.current = window.setTimeout(() => {
+        suppressClickRef.current = true;
+        setIsPressPreviewing(true);
+        if (!hasRendered && !isRendering) {
+          renderFrames();
+        }
+      }, 300);
+    },
+    [disabled, fallbackMode, hasRendered, isRendering, prefersReducedMotion, renderFrames]
+  );
+
+  const stopPressPreview = useCallback(() => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (isPressPreviewing) {
+      setIsPressPreviewing(false);
+    }
+  }, [isPressPreviewing]);
+
   /**
    * Handle click selection
    */
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (disabled) {
       log.warn('Camera motion option click blocked', {
         cameraMotionId: cameraPath.id,
@@ -345,8 +438,22 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   );
 
   // Determine if we should show the animation
-  const showAnimation = !fallbackMode && hasRendered && frames.length > 0 && isHovering;
+  const allowHoverPreview = !prefersReducedMotion && !isTouchDevice;
+  const showAnimation =
+    !fallbackMode &&
+    hasRendered &&
+    frames.length > 0 &&
+    ((allowHoverPreview && isHovering) || isPressPreviewing);
   const showFallbackText = fallbackMode || renderError;
+  const staticPreviewFrame = frames[0] ?? null;
+  const showPreviewHint =
+    !showFallbackText &&
+    !showAnimation &&
+    (prefersReducedMotion || isTouchDevice);
+  const staticImageSrc = buildProxyUrl(staticPreviewFrame ?? imageUrl);
+  const previewHintText = isTouchDevice
+    ? 'Tap and hold to play'
+    : 'Press and hold to play';
 
   // Touch-friendly tap targets: min 44px (Task 35.4)
   // Camera motion options are naturally larger than 44px due to aspect-video
@@ -356,6 +463,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     <button
       type="button"
       role="option"
+      id={optionId}
       aria-selected={isSelected}
       aria-label={`${cameraPath.label}${isSelected ? ' (selected)' : ''}`}
       tabIndex={tabIndex}
@@ -365,6 +473,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onFocus={handleFocus}
+      onPointerDown={startPressPreview}
+      onPointerUp={stopPressPreview}
+      onPointerLeave={stopPressPreview}
+      onPointerCancel={stopPressPreview}
       className={cn(
         'group relative overflow-hidden rounded-lg border-2 transition-all duration-200',
         'aspect-video',
@@ -392,7 +504,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
             {/* Static image when not hovering or not yet rendered */}
             {!showAnimation && (
               <img
-                src={imageUrl}
+                src={staticImageSrc}
                 alt={cameraPath.label}
                 className="h-full w-full object-cover"
               />
@@ -416,17 +528,45 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
                 <Loader2 className="h-8 w-8 animate-spin text-white" />
               </div>
             )}
+
+            {showPreviewHint && (
+              <div className="absolute left-2 top-2 flex flex-col items-start gap-1 text-[11px] text-white/90">
+                <span className="px-2 py-0.5 rounded-full bg-black/50">
+                  Preview available
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-black/40 text-[10px]">
+                  {previewHintText}
+                </span>
+              </div>
+            )}
           </>
         )}
 
         {/* Fallback mode: text description (Task 23.2.2) */}
         {showFallbackText && (
-          <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
-            <div className="text-lg font-medium text-foreground mb-2">
-              {cameraPath.label}
-            </div>
-            <div className="text-sm text-muted line-clamp-3">
-              {CAMERA_MOTION_DESCRIPTIONS[cameraPath.id] || 'Camera motion preview'}
+          <div className="relative flex h-full w-full flex-col items-center justify-center p-4 text-center overflow-hidden">
+            <div
+              className={cn(
+                'absolute inset-0',
+                'bg-gradient-to-br from-surface-2 via-surface-1/70 to-surface-3/80'
+              )}
+              aria-hidden="true"
+            />
+            <div
+              className="absolute inset-0 opacity-40"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 60%)',
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative z-10">
+              <div className="text-lg font-medium text-foreground mb-2">
+                {cameraPath.label}
+              </div>
+              <div className="text-sm text-muted line-clamp-3">
+                {CAMERA_MOTION_DESCRIPTIONS[cameraPath.id] || 'Camera motion preview'}
+              </div>
             </div>
           </div>
         )}

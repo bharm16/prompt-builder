@@ -73,6 +73,9 @@ describe('UploadService', () => {
     const { service } = buildService();
     await expect(
       service.confirmUpload('users/otheruser/file.mp4', 'user123')
-    ).rejects.toThrow('Unauthorized');
+    ).rejects.toMatchObject({
+      message: 'Unauthorized - file does not belong to user',
+      statusCode: 403,
+    });
   });
 });

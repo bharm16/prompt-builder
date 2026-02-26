@@ -7,11 +7,10 @@
 import { snapSpanToTokenBoundaries, type Range } from './tokenBoundaries';
 
 export interface SpanWithOffsets {
-  displayStart?: number;
+  displayStart?: number | undefined;
   start: number;
-  displayEnd?: number;
+  displayEnd?: number | undefined;
   end: number;
-  [key: string]: unknown;
 }
 
 export interface ProcessedSpan<T extends SpanWithOffsets = SpanWithOffsets> {

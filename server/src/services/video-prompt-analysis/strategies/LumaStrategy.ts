@@ -340,7 +340,3 @@ export class LumaStrategy extends BaseStrategy {
   }
 }
 
-/**
- * Singleton instance for convenience
- */
-export const lumaStrategy = new LumaStrategy();

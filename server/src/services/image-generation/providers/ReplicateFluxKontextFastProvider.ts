@@ -7,7 +7,8 @@
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
-import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
+import { sleep as sleepForMs } from '@utils/sleep';
+import { stripPreviewSections } from '@services/image-generation/promptSanitization';
 import type {
   ImagePreviewProvider,
   ImagePreviewRequest,
@@ -119,9 +120,14 @@ const normalizeSeed = (value?: number): number | undefined => {
   return Math.round(value);
 };
 
+interface VideoPromptDetector {
+  isVideoPrompt(prompt: string | null | undefined): boolean;
+}
+
 export interface ReplicateFluxKontextFastProviderOptions {
   apiToken?: string;
   promptTransformer?: VideoToImagePromptTransformer | null;
+  videoPromptDetector?: VideoPromptDetector;
 }
 
 export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
@@ -130,11 +136,11 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
 
   private readonly replicate: ReplicateClient | null;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
-  private readonly videoPromptDetector: VideoPromptDetectionService;
+  private readonly videoPromptDetector: VideoPromptDetector;
   private readonly log = logger.child({ service: 'ReplicateFluxKontextFastProvider' });
 
   constructor(options: ReplicateFluxKontextFastProviderOptions = {}) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const apiToken = options.apiToken;
     this.replicate = apiToken
       ? (new Replicate({
           auth: apiToken,
@@ -142,7 +148,10 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
       : null;
 
     this.promptTransformer = options.promptTransformer ?? null;
-    this.videoPromptDetector = new VideoPromptDetectionService();
+    if (!options.videoPromptDetector) {
+      throw new Error('ReplicateFluxKontextFastProvider requires a videoPromptDetector');
+    }
+    this.videoPromptDetector = options.videoPromptDetector;
   }
 
   public isAvailable(): boolean {
@@ -174,7 +183,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
     }
 
     const aspectRatio = normalizeAspectRatio(request.aspectRatio, hasInputImage);
-    const cleanedPrompt = this.stripPreviewSections(trimmedPrompt);
+    const cleanedPrompt = stripPreviewSections(trimmedPrompt);
 
     let promptForModel = cleanedPrompt;
     let promptWasTransformed = false;
@@ -227,8 +236,9 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
       if (seed !== undefined) {
         input.seed = seed;
       }
-      if (hasInputImage) {
-        input.img_cond_path = request.inputImageUrl?.trim();
+      const inputImageUrl = request.inputImageUrl?.trim();
+      if (hasInputImage && inputImageUrl) {
+        input.img_cond_path = inputImageUrl;
       }
 
       const prediction = await this.createPrediction(input, userId);
@@ -262,7 +272,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
           throw predictionError;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await this.sleep(pollInterval);
         currentPrediction = await this.replicate.predictions.get(prediction.id);
 
         this.log.debug('Polling prediction', {
@@ -444,7 +454,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
     if (!Number.isFinite(ms) || ms <= 0) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await sleepForMs(ms);
   }
 
   private parseReplicateErrorDetail(message: string, fallback: string): string {
@@ -594,31 +604,5 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
     ];
 
     return temporalPatterns.some((pattern) => pattern.test(normalized));
-  }
-
-  private stripPreviewSections(prompt: string): string {
-    if (!prompt) {
-      return prompt;
-    }
-
-    const markers: RegExp[] = [
-      /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
-      /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
-      /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
-      /\r?\n\s*technical specs\s*[:\n]/i,
-      /\r?\n\s*alternative approaches\s*[:\n]/i,
-      /\r?\n\s*variation\s+\d+/i,
-    ];
-
-    let cutIndex = -1;
-    for (const marker of markers) {
-      const match = marker.exec(prompt);
-      if (match && (cutIndex === -1 || match.index < cutIndex)) {
-        cutIndex = match.index;
-      }
-    }
-
-    const stripped = (cutIndex >= 0 ? prompt.slice(0, cutIndex) : prompt).trim();
-    return stripped.length >= 10 ? stripped : prompt.trim();
   }
 }

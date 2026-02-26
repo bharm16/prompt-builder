@@ -49,7 +49,7 @@ export class I2VConstrainedSuggestions {
   ): FilteredSuggestionResult {
     const lockableCategory = CATEGORY_MAPPING[category];
 
-    if (lockableCategory === null) {
+    if (lockableCategory == null) {
       return { suggestions };
     }
 
@@ -75,9 +75,9 @@ export class I2VConstrainedSuggestions {
       return {
         suggestions: filteredSuggestions.map((suggestion) => ({
           ...suggestion,
-          confidence: typeof suggestion.confidence === 'number'
-            ? suggestion.confidence * 0.5
-            : suggestion.confidence,
+          ...(typeof suggestion.confidence === 'number'
+            ? { confidence: suggestion.confidence * 0.5 }
+            : {}),
         })),
       };
     }

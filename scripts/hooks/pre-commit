@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# GitKraken and other GUI clients run hooks with a minimal PATH.
+# Ensure Homebrew Node.js is available.
+if [ -d "/opt/homebrew/bin" ]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+elif [ -d "/usr/local/bin" ]; then
+  export PATH="/usr/local/bin:$PATH"
+fi
+
+echo ">> Pre-commit: type check"
+npx tsc --noEmit
+
+echo ">> Pre-commit: lint (errors only)"
+npx eslint --config config/lint/eslint.config.js . --quiet
+
+echo ">> Pre-commit checks passed"

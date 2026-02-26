@@ -12,6 +12,10 @@ type AsyncHandler = (
 
 export function asyncHandler(fn: AsyncHandler): RequestHandler {
   return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+    try {
+      Promise.resolve(fn(req, res, next)).catch(next);
+    } catch (error) {
+      next(error);
+    }
   };
 }

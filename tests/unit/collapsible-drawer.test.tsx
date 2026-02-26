@@ -33,7 +33,8 @@ vi.mock('@promptstudio/system/components/ui', () => {
 
 describe('CollapsibleDrawer', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.spyOn(window.localStorage, 'setItem');
   });
 
   describe('error handling', () => {
@@ -44,7 +45,7 @@ describe('CollapsibleDrawer', () => {
         </CollapsibleDrawer>
       );
 
-      expect(screen.queryByRole('presentation')).toBeNull();
+      expect(screen.queryByRole('presentation', { hidden: true })).toBeNull();
     });
 
     it('closes on Escape key when open', () => {
@@ -117,7 +118,7 @@ describe('CollapsibleDrawer', () => {
         </CollapsibleDrawer>
       );
 
-      const overlay = screen.getByRole('presentation');
+      const overlay = screen.getByRole('presentation', { hidden: true });
       fireEvent.click(overlay);
 
       expect(onToggle).toHaveBeenCalled();

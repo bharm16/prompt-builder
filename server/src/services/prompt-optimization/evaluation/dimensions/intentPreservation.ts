@@ -43,7 +43,7 @@ export async function evaluateIntentPreservation(
       `REQUIRED_ELEMENTS: ${JSON.stringify(requiredElements || [])}`,
     ].join('\n');
 
-    const resp = await (ai as any).execute('optimize_intent_check', {
+    const resp = await ai.execute('optimize_intent_check', {
       systemPrompt,
       maxTokens: 600,
       temperature: 0,

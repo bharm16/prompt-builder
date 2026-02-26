@@ -11,18 +11,15 @@
     --ps-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
       monospace;
     --ps-font-serif: ui-serif, "Iowan Old Style", "Palatino", "Times New Roman", serif;
-
     --ps-fw-regular: 400;
     --ps-fw-medium: 500;
     --ps-fw-semibold: 600;
     --ps-fw-bold: 700;
-
     --ps-lh-tight: 1.15;
     --ps-lh-snug: 1.25;
     --ps-lh-normal: 1.5; /* Updated: Runway uses 1.5 (21px for 14px text) */
     --ps-lh-relaxed: 1.65;
     --ps-lh-reading: 1.75;
-
     --ps-ls-tight: -0.01em;
     --ps-ls-normal: 0em;
     --ps-ls-label: 0.02em;
@@ -156,26 +153,21 @@
     --ps-surface-1: #1b1e23; /* Updated: Runway panel */
     --ps-surface-2: #2c3037; /* Updated */
     --ps-surface-3: #242a38;
-
     --ps-border: #434651; /* Updated */
     --ps-border-strong: #5a5e6c; /* Updated */
-
     --ps-text: #ebecef; /* Updated: Midjourney text */
     --ps-text-muted: #c6c9d2; /* Updated: Midjourney secondary */
     --ps-text-faint: #aaaebb; /* Updated: Midjourney tertiary */
     --ps-text-ghost: #a1afc5; /* Updated: Runway muted */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
-
     --ps-accent: #ffffff;
     --ps-accent-2: #b3affd; /* Updated: Version indicator accent */
     --ps-accent-runway: #2c22fa; /* New: Runway primary blue */
     --ps-accent-mj: #f2330d; /* New: Midjourney orange */
-
     --ps-success: #4ec7a2;
     --ps-warning: #f5c05c;
     --ps-danger: #fa6e7c;
     --ps-info: var(--ps-accent);
-
     --ps-overlay: rgba(5, 8, 12, 0.68);
 
     /* Brand palette (light UI) */
@@ -190,7 +182,6 @@
     --ps-brand-primary-800: #222222;
     --ps-brand-primary-900: #161616;
     --ps-brand-primary-950: #0b0b0b;
-
     --ps-brand-accent-50: #fff5f7;
     --ps-brand-accent-100: #ffe3ea;
     --ps-brand-accent-200: #ffc0cc;
@@ -202,7 +193,6 @@
     --ps-brand-accent-800: #971e36;
     --ps-brand-accent-900: #711628;
     --ps-brand-accent-950: #4c0e1c;
-
     --ps-brand-secondary-50: #e5fffa;
     --ps-brand-secondary-100: #c0fff1;
     --ps-brand-secondary-200: #8effe6;
@@ -214,7 +204,6 @@
     --ps-brand-secondary-800: #005953;
     --ps-brand-secondary-900: #00433f;
     --ps-brand-secondary-950: #012e2b;
-
     --ps-brand-neutral-50: #ffffff;
     --ps-brand-neutral-100: #f7f7f7;
     --ps-brand-neutral-200: #efefef;
@@ -226,7 +215,6 @@
     --ps-brand-neutral-800: #575757;
     --ps-brand-neutral-900: #373737;
     --ps-brand-neutral-950: #1b1b1b;
-
     --ps-brand-success-50: #e8fff8;
     --ps-brand-success-100: #c5fceb;
     --ps-brand-success-200: #8ff8d7;
@@ -238,7 +226,6 @@
     --ps-brand-success-800: #005f4a;
     --ps-brand-success-900: #004838;
     --ps-brand-success-950: #002f25;
-
     --ps-brand-warning-50: #fff8eb;
     --ps-brand-warning-100: #ffecca;
     --ps-brand-warning-200: #ffd79a;
@@ -250,7 +237,6 @@
     --ps-brand-warning-800: #8c4e0b;
     --ps-brand-warning-900: #6a3a08;
     --ps-brand-warning-950: #422206;
-
     --ps-brand-error-50: #fff2f4;
     --ps-brand-error-100: #ffe3e7;
     --ps-brand-error-200: #ffbfc8;
@@ -262,7 +248,6 @@
     --ps-brand-error-800: #901832;
     --ps-brand-error-900: #6b1125;
     --ps-brand-error-950: #420916;
-
     --ps-brand-info-50: #edf7ff;
     --ps-brand-info-100: #d6ecff;
     --ps-brand-info-200: #add6ff;
@@ -274,7 +259,6 @@
     --ps-brand-info-800: #0b347a;
     --ps-brand-info-900: #072352;
     --ps-brand-info-950: #041633;
-
     --ps-brand-surface-base: #ffffff;
     --ps-brand-surface-subtle: #f7f7f7;
     --ps-brand-surface-elevated: #ffffff;
@@ -473,6 +457,7 @@
       0 0 0 1px rgba(255, 255, 255, 0.04);
     --ps-shadow-lg:
       0 7px 21px rgba(0, 0, 0, 0.25); /* Updated: Midjourney panel shadow */
+
     --ps-shadow-elevated:
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 8px 24px rgba(0, 0, 0, 0.5);
@@ -550,12 +535,10 @@
     --bg-surface: var(--ps-surface-1);
     --bg-surface-2: var(--ps-surface-2);
     --bg-elevated: var(--ps-surface-3);
-
     --border: var(--ps-border);
     --border-default: var(--ps-border);
     --border-subtle: var(--ps-border);
     --border-strong: var(--ps-border-strong);
-
     --text: var(--ps-text);
     --text-primary: var(--ps-text);
     --text-muted: var(--ps-text-muted);
@@ -563,7 +546,6 @@
     --text-faint: var(--ps-text-faint);
     --text-tertiary: var(--ps-text-faint);
     --text-warm: var(--ps-text-warm);
-
     --accent: var(--ps-accent);
     --accent-2: var(--ps-accent-2);
     --accent-cyan: var(--ps-accent);
@@ -571,21 +553,17 @@
     --accent-orange: var(--ps-accent-mj); /* Updated: Midjourney orange */
     --accent-runway: var(--ps-accent-runway); /* New: Runway blue */
     --accent-mj: var(--ps-accent-mj); /* New: Midjourney orange */
-
     --success: var(--ps-success);
     --warning: var(--ps-warning);
     --danger: var(--ps-danger);
     --info: var(--ps-info);
-
     --shadow-sm: var(--ps-shadow-sm);
     --shadow-md: var(--ps-shadow-md);
     --shadow-lg: var(--ps-shadow-lg);
     --shadow-elevated: var(--ps-shadow-elevated);
     --shadow-floating: var(--ps-shadow-floating);
     --shadow-inset: var(--ps-shadow-inset);
-
     --focus-ring: var(--ps-focus-ring);
-
     --s-1: var(--ps-space-1);
     --s-2: var(--ps-space-2);
     --s-3: var(--ps-space-3);
@@ -596,7 +574,6 @@
     --s-8: var(--ps-space-8);
     --s-9: var(--ps-space-9);
     --s-10: var(--ps-space-10);
-
     --space-0: var(--ps-space-0);
     --space-1: var(--ps-space-1);
     --space-2: var(--ps-space-2);
@@ -611,7 +588,6 @@
     --space-11: var(--ps-space-11);
     --space-page: var(--ps-space-page);
     --space-card: var(--ps-space-card);
-
     --spacing-unit: var(--ps-space-1);
     --spacing-xxs: var(--ps-space-1);
     --spacing-xs: var(--ps-space-2);
@@ -621,7 +597,6 @@
     --spacing-xl: var(--ps-space-7);
     --spacing-xxl: var(--ps-space-9);
     --spacing-xxxl: var(--ps-space-11);
-
     --r-none: var(--ps-r-none);
     --r-xs: var(--ps-r-xs);
     --r-sm: var(--ps-r-sm);
@@ -638,16 +613,13 @@
     --r-kbd: var(--ps-r-md);
     --r-panel: var(--ps-r-lg); /* New: 8px for panels (Runway) */
     --r-panel-mj: var(--ps-r-xl); /* New: 12px for panels (Midjourney) */
-
     --radius-1: var(--ps-r-md);
     --radius-2: var(--ps-r-lg);
     --radius-3: var(--ps-r-xl);
     --radius-4: var(--ps-r-2xl);
-
     --font-sans: var(--ps-font-sans);
     --font-display: var(--ps-font-display);
     --font-mono: var(--ps-font-mono);
-
     --fs-10: var(--ps-fs-10);
     --fs-11: var(--ps-fs-11);
     --fs-12: var(--ps-fs-12);
@@ -660,23 +632,19 @@
     --fs-32: var(--ps-fs-32);
     --fs-40: var(--ps-fs-40);
     --fs-56: var(--ps-fs-56);
-
     --fs-00: var(--ps-fs-11);
     --fs-0: var(--ps-fs-12);
     --fs-1: var(--ps-fs-14);
     --fs-2: var(--ps-fs-18);
-
     --lh-tight: var(--ps-lh-tight);
     --lh-snug: var(--ps-lh-snug);
     --lh-normal: var(--ps-lh-normal);
     --lh-relaxed: var(--ps-lh-relaxed);
     --lh-1: var(--ps-lh-normal);
-
     --ls-tight: var(--ps-ls-tight);
     --ls-normal: var(--ps-ls-normal);
     --ls-label: var(--ps-ls-label);
     --ls-chip: var(--ps-ls-label);
-
     --dur-1: var(--ps-dur-1);
     --dur-2: var(--ps-dur-2);
     --dur-3: var(--ps-dur-3);
@@ -687,22 +655,17 @@
     --duration-fast: var(--ps-dur-2);
     --duration-normal: var(--ps-dur-3);
     --duration-slow: var(--ps-dur-4);
-
     --ease-out: var(--ps-ease-out);
     --ease-in: var(--ps-ease-in);
     --ease-inout: var(--ps-ease-inout);
     --ease-linear: var(--ps-ease-linear);
-
     --grad-1: var(--ps-accent);
     --grad-2: var(--ps-accent-2);
     --grad-3: transparent;
-
     --hl-a: rgba(104, 134, 255, 0.12);
     --hl-b: rgba(139, 102, 255, 0.12);
     --hl-c: rgba(104, 134, 255, 0.12);
-
     --blur-glass: var(--ps-blur-md);
-
     --ring-width: var(--ps-bw-3);
     --ring-offset-width: var(--ps-bw-2);
   }

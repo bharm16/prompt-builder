@@ -414,15 +414,15 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * - XML tagging for data segmentation
    */
   span_labeling: {
-    client: process.env.SPAN_PROVIDER || 'qwen',
-    model: process.env.SPAN_MODEL || 'qwen/qwen3-32b',
+    client: process.env.SPAN_PROVIDER || 'gemini',
+    model: process.env.SPAN_MODEL || 'gemini-2.5-flash',
     temperature: 0.1, // Low temperature for reliable JSON
     maxTokens: 4096,
     timeout: 30000,
     responseFormat: 'json_object',
-    fallbackTo: 'gemini',
+    fallbackTo: 'qwen',
     fallbackConfig: {
-      model: 'gemini-2.5-flash',
+      model: 'qwen/qwen3-32b',
       timeout: 45000,
     },
     useSeed: true, // Same text should label identically
@@ -439,6 +439,40 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 16384,
     timeout: 45000,
     useSeed: true,
+  },
+
+  // ============================================================================
+  // Video Prompt Analysis Operations
+  // ============================================================================
+
+  /**
+   * Structured IR extraction for video prompt analysis.
+   */
+  video_prompt_ir_extraction: {
+    client: process.env.VIDEO_PROMPT_IR_PROVIDER || 'gemini',
+    model: process.env.VIDEO_PROMPT_IR_MODEL || 'gemini-2.5-flash',
+    temperature: 0.1,
+    maxTokens: 4096,
+    timeout: 30000,
+    responseFormat: 'json_object',
+    fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
+    useSeed: true,
+    useDeveloperMessage: true,
+  },
+
+  /**
+   * Prompt rewrite for model-specific video prompt optimization.
+   */
+  video_prompt_rewrite: {
+    client: process.env.VIDEO_PROMPT_REWRITE_PROVIDER || 'gemini',
+    model: process.env.VIDEO_PROMPT_REWRITE_MODEL || 'gemini-2.5-flash',
+    temperature: 0.4,
+    maxTokens: 8192,
+    timeout: 45000,
+    fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
+    useDeveloperMessage: true,
   },
 
   // ============================================================================
@@ -521,20 +555,31 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 };
 
+const WAN_2_2_T2V_FAST = 'wan-video/wan-2.2-t2v-fast';
+const WAN_2_2_I2V_FAST = 'wan-video/wan-2.2-i2v-fast';
+const WAN_2_5_I2V = process.env.WAN_2_5_I2V_MODEL || 'wan-video/wan-2.5-i2v';
+const DEFAULT_DRAFT_I2V_MODEL = process.env.DRAFT_I2V_MODEL || WAN_2_5_I2V;
+
 /**
  * Video Models Configuration (Dec 2025 Update)
- * 
+ *
  * Defines the hierarchy of video generation models used in the application.
  */
 export const VIDEO_MODELS = {
   /** ⚡ DRAFT TIER: Extremely cheap ($0.01), fast, decent motion. */
-  DRAFT: "wan-video/wan-2.2-t2v-fast", 
+  DRAFT: WAN_2_2_T2V_FAST,
 
-  /** ⚡ DRAFT TIER i2v: image-to-video fast. */
-  DRAFT_I2V: "wan-video/wan-2.2-i2v-fast",
+  /** ⚡ DRAFT TIER i2v: image-to-video fast (toggle via DRAFT_I2V_MODEL). */
+  DRAFT_I2V: DEFAULT_DRAFT_I2V_MODEL,
+
+  /** ⚡ DRAFT TIER i2v (legacy Wan 2.2). */
+  DRAFT_I2V_LEGACY: WAN_2_2_I2V_FAST,
+
+  /** ⚡ DRAFT TIER i2v (Wan 2.5). */
+  DRAFT_I2V_WAN_2_5: WAN_2_5_I2V,
   
   /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
-  PRO: "wan-video/wan-2.2-t2v-fast", 
+  PRO: WAN_2_2_T2V_FAST,
 
   /** 🌌 FLAGSHIP: OpenAI Sora 2 (text/image → video, audio-capable). */
   SORA_2: "sora-2",

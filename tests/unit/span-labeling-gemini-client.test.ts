@@ -44,8 +44,9 @@ describe('GeminiLlmClient', () => {
     });
 
     const spans = normalized.spans as Array<Record<string, unknown>>;
-    expect(spans[0]?.role).toBe('subject.identity');
-    expect('category' in spans[0]).toBe(false);
+    const firstSpan = spans[0];
+    expect(firstSpan?.role).toBe('subject.identity');
+    expect(firstSpan ? 'category' in firstSpan : false).toBe(false);
   });
 
   it('streams NDJSON spans and ignores invalid lines', async () => {

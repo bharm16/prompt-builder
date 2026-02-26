@@ -4,6 +4,8 @@
 
 import type { CompletionOptions, OpenAiPayload } from './types.ts';
 import { OpenAiMessageBuilder } from './OpenAiMessageBuilder.ts';
+import { hashString } from '@utils/hash';
+import { normalizeOpenAiSchema } from './normalizeSchema.ts';
 
 interface RequestBuilderConfig {
   defaultModel: string;
@@ -38,7 +40,7 @@ export class OpenAiRequestBuilder {
     if (options.seed !== undefined) {
       payload.seed = options.seed;
     } else if (isStructuredOutput) {
-      payload.seed = this.hashString(systemPrompt) % 2147483647;
+      payload.seed = hashString(systemPrompt) % 2147483647;
     }
 
     if (!stream && options.logprobs) {
@@ -51,12 +53,13 @@ export class OpenAiRequestBuilder {
     }
 
     if (options.schema) {
+      const { name, schema } = normalizeOpenAiSchema(options.schema);
       payload.response_format = {
         type: 'json_schema',
         json_schema: {
-          name: 'structured_response',
+          name,
           strict: true,
-          schema: options.schema,
+          schema,
         },
       };
     } else if (options.responseFormat) {
@@ -84,13 +87,4 @@ export class OpenAiRequestBuilder {
     return payload;
   }
 
-  private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash);
-  }
 }

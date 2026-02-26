@@ -14,7 +14,7 @@ This directory contains all documentation for migrating the Prompt Builder codeb
 | [ZOD_PATTERNS.md](./ZOD_PATTERNS.md) | Runtime validation with Zod | Working with API responses or forms |
 | [LOGGING_PATTERNS.md](./LOGGING_PATTERNS.md) | Structured logging standards | Adding debugging, tracing, monitoring |
 | [CLAUDE_CODE_TEMPLATES.md](./CLAUDE_CODE_TEMPLATES.md) | Copy-paste templates for Claude Code | Requesting features via Claude Code |
-| [TEST_PATTERNS.md](./TEST_PATTERNS.md) | TypeScript-specific testing patterns | Writing tests for TS code |
+| [TEST_GUIDE.md](./TEST_GUIDE.md) | Test quality heuristics, TS patterns, and codebase-specific guidance | Writing or generating tests |
 
 ## Quick Start
 

@@ -5,15 +5,14 @@ import type { OptimizationOptions } from '../../types';
 interface PromptOptimizer {
   inputPrompt: string;
   setInputPrompt: (prompt: string) => void;
-  setImprovementContext: (context: unknown) => void;
-  [key: string]: unknown;
+  setImprovementContext: (context: Record<string, unknown> | null) => void;
 }
 
 interface UseImprovementFlowParams {
   promptOptimizer: PromptOptimizer;
   toast: Toast;
   setShowImprover: (show: boolean) => void;
-  handleOptimize: (prompt: string, context: unknown, options?: OptimizationOptions) => void;
+  handleOptimize: (prompt: string, context: Record<string, unknown> | null, options?: OptimizationOptions) => void;
 }
 
 /**
@@ -32,16 +31,21 @@ export function useImprovementFlow({
     context: unknown
   ) => Promise<void>;
 } {
+  const {
+    inputPrompt,
+    setInputPrompt,
+    setImprovementContext,
+  } = promptOptimizer;
   /**
    * Initiate improvement flow
    */
   const handleImproveFirst = useCallback(() => {
-    if (!promptOptimizer.inputPrompt.trim()) {
+    if (!inputPrompt.trim()) {
       toast.warning('Please enter a prompt first');
       return;
     }
     setShowImprover(true);
-  }, [promptOptimizer, toast, setShowImprover]);
+  }, [inputPrompt, toast, setShowImprover]);
 
   /**
    * Handle completion of improvement modal
@@ -49,11 +53,12 @@ export function useImprovementFlow({
   const handleImprovementComplete = useCallback(
     async (enhancedPrompt: string, context: unknown): Promise<void> => {
       setShowImprover(false);
-      promptOptimizer.setImprovementContext(context);
-      promptOptimizer.setInputPrompt(enhancedPrompt);
-      handleOptimize(enhancedPrompt, context);
+      const ctx = (context ?? null) as Record<string, unknown> | null;
+      setImprovementContext(ctx);
+      setInputPrompt(enhancedPrompt);
+      handleOptimize(enhancedPrompt, ctx);
     },
-    [setShowImprover, promptOptimizer, handleOptimize]
+    [setShowImprover, setImprovementContext, setInputPrompt, handleOptimize]
   );
 
   return {

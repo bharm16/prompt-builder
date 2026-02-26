@@ -5,7 +5,7 @@ import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
-import type { User } from '@hooks/types';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
 
 function getSafeRedirect(search: string): string | null {
@@ -30,7 +30,9 @@ function Spinner(): React.ReactElement {
   );
 }
 
-function mapAuthError(error: unknown): string {
+type AuthFlow = 'google' | 'email';
+
+function mapAuthError(error: unknown, flow: AuthFlow): string {
   if (!error || typeof error !== 'object') return 'Something went wrong. Please try again.';
   const code = 'code' in error && typeof error.code === 'string' ? error.code : null;
 
@@ -42,10 +44,37 @@ function mapAuthError(error: unknown): string {
     case 'auth/weak-password':
       return 'Password is too weak. Use at least 6 characters.';
     case 'auth/operation-not-allowed':
-      return 'Email/password sign-up is disabled in Firebase Auth.';
+      return flow === 'google'
+        ? 'Google sign-in is disabled in Firebase Auth. Enable the Google provider in the Firebase console.'
+        : 'Email/password sign-up is disabled in Firebase Auth.';
+    case 'auth/popup-blocked':
+      return 'Google popup was blocked. Allow popups for this tab and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Google popup was closed before sign-up completed.';
+    case 'auth/cancelled-popup-request':
+      return 'Google sign-up popup request was cancelled. Try again.';
+    case 'auth/unauthorized-domain':
+      return 'This localhost domain is not authorized in Firebase Auth settings.';
+    case 'auth/operation-not-supported-in-this-environment':
+    case 'auth/web-storage-unsupported':
+      return 'Google sign-in is not supported in this embedded browser. Use email sign-up here or open the app in a regular browser.';
     default:
       return 'Failed to create account. Please try again.';
   }
+}
+
+function secureEquals(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+
+  for (let i = 0; i < maxLength; i++) {
+    diff |= (leftBytes[i] ?? 0) ^ (rightBytes[i] ?? 0);
+  }
+
+  return diff === 0;
 }
 
 export function SignUpPage(): React.ReactElement {
@@ -55,7 +84,7 @@ export function SignUpPage(): React.ReactElement {
   const redirect = getSafeRedirect(location.search);
   const suppressAutoRedirect = React.useRef(false);
 
-  const [user, setUser] = React.useState<User | null>(null);
+  const user = useAuthUser();
   const [displayName, setDisplayName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -63,13 +92,6 @@ export function SignUpPage(): React.ReactElement {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
 
   React.useEffect(() => {
     if (!user) return;
@@ -95,7 +117,7 @@ export function SignUpPage(): React.ReactElement {
       toast.success(`Welcome, ${name}!`);
       navigate(redirect ?? '/', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'google'));
       toast.error('Failed to create account. Please try again.');
     } finally {
       setIsBusy(false);
@@ -115,7 +137,7 @@ export function SignUpPage(): React.ReactElement {
         setError('Enter your name (optional), email, and password.');
         return;
       }
-      if (password !== confirmPassword) {
+      if (!secureEquals(password, confirmPassword)) {
         setError('Passwords do not match.');
         return;
       }
@@ -137,7 +159,7 @@ export function SignUpPage(): React.ReactElement {
       const query = params.toString();
       navigate(query ? `/email-verification?${query}` : '/email-verification', { replace: true });
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, 'email'));
     } finally {
       setIsBusy(false);
     }

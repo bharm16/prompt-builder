@@ -1,6 +1,7 @@
 import { logger } from '@infrastructure/Logger';
 import type { NextFunction, Request, Response } from 'express';
-import { isConvergenceError } from '@services/convergence';
+import { isDomainError } from '@server/errors/DomainError';
+import type { ApiError, ApiErrorCode } from '@server/types/apiError';
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
 const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
@@ -80,6 +81,22 @@ function redactSensitiveData(obj: unknown): unknown {
  */
 type RequestWithId = Request & { id?: string; body?: Record<string, unknown> };
 
+function toDetailsString(value: unknown): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  try {
+    const redacted = redactSensitiveData(value);
+    return JSON.stringify(redacted);
+  } catch {
+    return String(value);
+  }
+}
+
 export function errorHandler(
   err: unknown,
   req: RequestWithId,
@@ -103,24 +120,27 @@ export function errorHandler(
     }
   }
 
-  // Handle ConvergenceError with proper HTTP status mapping
-  if (isConvergenceError(err)) {
+  // Handle any DomainError subclass (ConvergenceError, VideoProviderError, etc.)
+  if (isDomainError(err)) {
     const statusCode = err.getHttpStatus();
     const userMessage = err.getUserMessage();
+    const details = toDetailsString(err.details);
 
-    logger.warn('Convergence error', {
+    logger.warn(`${err.name}`, {
       ...meta,
       errorCode: err.code,
       statusCode,
-      details: err.details,
+      details,
     });
 
-    res.status(statusCode).json({
-      error: err.code,
-      message: userMessage,
-      details: err.details,
-      requestId: req.id,
-    });
+    const response: ApiError = {
+      error: userMessage,
+      code: err.code as ApiErrorCode,
+      ...(details ? { details } : {}),
+      ...(req.id ? { requestId: req.id } : {}),
+    };
+
+    res.status(statusCode).json(response);
     return;
   }
 
@@ -132,19 +152,21 @@ export function errorHandler(
     (typeof httpErr === 'object' && httpErr !== null
       ? (httpErr.statusCode as number) ?? (httpErr.status as number)
       : undefined) ?? 500;
+  const details =
+    typeof httpErr === 'object' && httpErr !== null && 'details' in httpErr
+      ? toDetailsString(httpErr.details)
+      : undefined;
+  const code =
+    typeof httpErr === 'object' && httpErr !== null && typeof httpErr.code === 'string'
+      ? (httpErr.code as ApiErrorCode)
+      : undefined;
 
-  const errorResponse: Record<string, unknown> = {
+  const errorResponse: ApiError = {
     error: errorObj.message || 'Internal server error',
-    requestId: req.id,
+    ...(code ? { code } : {}),
+    ...(details ? { details } : {}),
+    ...(req.id ? { requestId: req.id } : {}),
   };
-
-  if (process.env.NODE_ENV === 'development') {
-    errorResponse.stack = errorObj.stack;
-  }
-
-  if (typeof httpErr === 'object' && httpErr !== null && 'details' in httpErr) {
-    errorResponse.details = httpErr.details;
-  }
 
   res.status(statusCode).json(errorResponse);
 }

@@ -111,7 +111,7 @@ describe('useTechnicalParams', () => {
     it('returns null and clears state when fewer than three elements are filled', async () => {
       const dispatch = vi.fn() as Dispatch<VideoConceptAction>;
       const { result } = renderHook(() => useTechnicalParams(dispatch));
-      let resolved: Record<string, unknown> | null = undefined;
+      let resolved: Record<string, unknown> | null = null;
 
       await act(async () => {
         resolved = await result.current({ subject: 'cat', action: '' } as Elements);

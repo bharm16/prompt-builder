@@ -47,7 +47,9 @@ describe('Logger', () => {
 
       logger.error('Failure', error, { requestId: 'req-1', extra: 'context' });
 
-      const [meta, message] = mockPinoLogger.error.mock.calls[0];
+      const firstErrorCall = mockPinoLogger.error.mock.calls[0];
+      expect(firstErrorCall).toBeDefined();
+      const [meta, message] = firstErrorCall!;
       expect(message).toBe('Failure');
       expect(meta).toMatchObject({
         requestId: 'req-1',
@@ -84,7 +86,9 @@ describe('Logger', () => {
       middleware(req as any, res as any, next);
       resEmitter.emit('finish');
 
-      const [meta, message] = mockPinoLogger.error.mock.calls[0];
+      const requestErrorCall = mockPinoLogger.error.mock.calls[0];
+      expect(requestErrorCall).toBeDefined();
+      const [meta, message] = requestErrorCall!;
       expect(message).toBe('HTTP Request Error');
       expect(meta).toMatchObject({
         method: 'GET',
@@ -107,7 +111,9 @@ describe('Logger', () => {
         logger.info('Hello');
       });
 
-      const [meta, message] = mockPinoLogger.info.mock.calls[0];
+      const firstInfoCall = mockPinoLogger.info.mock.calls[0];
+      expect(firstInfoCall).toBeDefined();
+      const [meta, message] = firstInfoCall!;
       expect(message).toBe('Hello');
       expect(meta).toMatchObject({ requestId: 'ctx-123' });
     });
@@ -128,7 +134,9 @@ describe('Logger', () => {
 
       logger.info('With stack');
 
-      const [meta] = mockPinoLogger.info.mock.calls[0];
+      const stackInfoCall = mockPinoLogger.info.mock.calls[0];
+      expect(stackInfoCall).toBeDefined();
+      const [meta] = stackInfoCall!;
       expect((meta as { caller?: string }).caller).toContain('server/src/services/Foo.ts');
       expect((meta as { logStack?: string[] }).logStack).toEqual([
         'server/src/services/Foo.ts:10:5',

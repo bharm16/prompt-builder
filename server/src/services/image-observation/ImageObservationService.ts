@@ -7,13 +7,28 @@
 
 import { logger } from '@infrastructure/Logger';
 import { createHash } from 'crypto';
+import { promises as fs } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { ObservationCache } from './cache/ObservationCache';
 import {
-  SHOT_MOVEMENT_COMPATIBILITY,
-  POSITION_MOVEMENT_RISKS,
-  type CameraMovement,
+  SHOT_TYPES,
+  CAMERA_ANGLES,
+  LIGHTING_QUALITIES,
+  SUBJECT_POSITIONS,
 } from '@shared/cinematography';
 import type { AIService } from '@services/prompt-optimization/types';
+import { z } from 'zod';
+import type { CacheService } from '@services/cache/CacheService';
+import {
+  deriveMotionCompatibility,
+  detectAngle,
+  detectLightingQuality,
+  detectShotType,
+  detectSubjectType,
+  detectTimeOfDay,
+  extractSubjectDescription,
+} from './imageObservationHeuristics';
 import type {
   ImageObservation,
   ImageObservationRequest,
@@ -21,17 +36,101 @@ import type {
   SubjectObservation,
   FramingObservation,
   LightingObservation,
-  MotionCompatibility,
 } from './types';
 
+type ImageObservationResponse = {
+  subject?: {
+    type?: SubjectObservation['type'] | undefined;
+    description?: string | undefined;
+    position?: SubjectObservation['position'] | undefined;
+  } | undefined;
+  framing?: {
+    shotType?: FramingObservation['shotType'] | undefined;
+    angle?: FramingObservation['angle'] | undefined;
+  } | undefined;
+  lighting?: {
+    quality?: LightingObservation['quality'] | undefined;
+    timeOfDay?: LightingObservation['timeOfDay'] | undefined;
+  } | undefined;
+  confidence?: number | undefined;
+};
+
+const SUBJECT_TYPES = ['person', 'animal', 'object', 'scene', 'abstract'] as const;
+const TIME_OF_DAY_VALUES = ['day', 'night', 'golden-hour', 'blue-hour', 'indoor', 'unknown'] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const asEnum = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
+  typeof value === 'string' && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+
+const ImageObservationResponseSchema = z
+  .object({
+    subject: z
+      .object({
+        type: z.string().optional(),
+        description: z.string().optional(),
+        position: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    framing: z
+      .object({
+        shotType: z.string().optional(),
+        angle: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    lighting: z
+      .object({
+        quality: z.string().optional(),
+        timeOfDay: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    confidence: z.number().optional(),
+  })
+  .passthrough();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const TEMPLATE_PATH = join(__dirname, 'templates', 'image-observation-prompt.md');
+
+const DEFAULT_SYSTEM_PROMPT = [
+  'Analyze this image for video generation constraints.',
+  'Return JSON only (no markdown, no extra text).',
+  '',
+  '{',
+  '  "subject": {',
+  '    "type": "person|animal|object|scene|abstract",',
+  '    "description": "brief description (10 words max)",',
+  '    "position": "center|left|right|top|bottom|left-third|right-third"',
+  '  },',
+  '  "framing": {',
+  '    "shotType": "extreme-close-up|close-up|medium-close-up|medium|medium-wide|wide|extreme-wide",',
+  '    "angle": "eye-level|low-angle|high-angle|birds-eye|worms-eye|dutch|over-shoulder"',
+  '  },',
+  '  "lighting": {',
+  '    "quality": "natural|artificial|dramatic|flat|mixed",',
+  '    "timeOfDay": "day|night|golden-hour|blue-hour|indoor|unknown"',
+  '  },',
+  '  "confidence": 0.0-1.0',
+  '}',
+  '',
+  'Be precise. Only describe what you clearly see.',
+].join('\n');
+
 export class ImageObservationService {
+  private static cachedPrompt: string | null = null;
   private readonly ai: AIService;
   private readonly cache: ObservationCache;
   private readonly log = logger.child({ service: 'ImageObservationService' });
 
-  constructor(aiService: AIService) {
+  constructor(aiService: AIService, cacheService: CacheService) {
     this.ai = aiService;
-    this.cache = new ObservationCache();
+    this.cache = new ObservationCache(cacheService);
   }
 
   /**
@@ -102,25 +201,25 @@ export class ImageObservationService {
     const lower = prompt.toLowerCase();
 
     const subject: SubjectObservation = {
-      type: this.detectSubjectType(lower),
-      description: this.extractSubjectDescription(prompt),
+      type: detectSubjectType(lower),
+      description: extractSubjectDescription(prompt),
       position: 'center',
       confidence: 0.7,
     };
 
     const framing: FramingObservation = {
-      shotType: this.detectShotType(lower),
-      angle: this.detectAngle(lower),
+      shotType: detectShotType(lower),
+      angle: detectAngle(lower),
       confidence: 0.6,
     };
 
     const lighting: LightingObservation = {
-      quality: this.detectLightingQuality(lower),
-      timeOfDay: this.detectTimeOfDay(lower),
+      quality: detectLightingQuality(lower),
+      timeOfDay: detectTimeOfDay(lower),
       confidence: 0.6,
     };
 
-    const motion = this.deriveMotionCompatibility(framing, subject.position);
+    const motion = deriveMotionCompatibility(framing, subject.position);
 
     return {
       imageHash,
@@ -137,29 +236,18 @@ export class ImageObservationService {
    * Vision path: analyze with multimodal model
    */
   private async analyzeWithVision(image: string, imageHash: string): Promise<ImageObservation> {
-    const systemPrompt = [
-      'Analyze this image for video generation constraints.',
-      'Return JSON only (no markdown, no extra text).',
-      '',
-      '{',
-      '  "subject": {',
-      '    "type": "person|animal|object|scene|abstract",',
-      '    "description": "brief description (10 words max)",',
-      '    "position": "center|left|right|top|bottom|left-third|right-third"',
-      '  },',
-      '  "framing": {',
-      '    "shotType": "extreme-close-up|close-up|medium-close-up|medium|medium-wide|wide|extreme-wide",',
-      '    "angle": "eye-level|low-angle|high-angle|birds-eye|worms-eye|dutch|over-shoulder"',
-      '  },',
-      '  "lighting": {',
-      '    "quality": "natural|artificial|dramatic|flat|mixed",',
-      '    "timeOfDay": "day|night|golden-hour|blue-hour|indoor|unknown"',
-      '  },',
-      '  "confidence": 0.0-1.0',
-      '}',
-      '',
-      'Be precise. Only describe what you clearly see.',
-    ].join('\n');
+    const systemPrompt = await this.loadSystemPrompt();
+
+    // Convert URL to base64 data URI to avoid GCS signed URL expiration issues
+    this.log.debug('Fetching image for base64 conversion', { imageHash });
+    const imageResponse = await fetch(image);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+    }
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const base64String = Buffer.from(arrayBuffer).toString('base64');
+    const base64DataUri = `data:${contentType};base64,${base64String}`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -167,7 +255,7 @@ export class ImageObservationService {
         role: 'user',
         content: [
           { type: 'text', text: 'Analyze the image and return JSON.' },
-          { type: 'image_url', image_url: { url: image } },
+          { type: 'image_url', image_url: { url: base64DataUri } },
         ],
       },
     ];
@@ -202,7 +290,7 @@ export class ImageObservationService {
       confidence: parsed.confidence || 0.8,
     };
 
-    const motion = this.deriveMotionCompatibility(framing, subject.position);
+    const motion = deriveMotionCompatibility(framing, subject.position);
 
     return {
       imageHash,
@@ -232,7 +320,7 @@ export class ImageObservationService {
       timeOfDay: 'unknown',
       confidence: 0.2,
     };
-    const motion = this.deriveMotionCompatibility(framing, subject.position);
+    const motion = deriveMotionCompatibility(framing, subject.position);
     return {
       imageHash,
       observedAt: new Date(),
@@ -244,81 +332,79 @@ export class ImageObservationService {
     };
   }
 
-  /**
-   * Derive motion compatibility from framing and position
-   */
-  private deriveMotionCompatibility(
-    framing: FramingObservation,
-    position: SubjectObservation['position']
-  ): MotionCompatibility {
-    const compatible = SHOT_MOVEMENT_COMPATIBILITY[framing.shotType] || [];
-    const positionRisks = POSITION_MOVEMENT_RISKS[position] || [];
-
-    const recommended = compatible.filter((m) => !positionRisks.includes(m));
-    const risky = positionRisks.filter((m) => compatible.includes(m));
-
-    const risks = risky.map((movement) => ({
-      movement,
-      reason: `Subject is positioned ${position}, ${movement} may cut off subject`,
-    }));
-
-    return { recommended, risky, risks };
-  }
-
-  private detectSubjectType(text: string): SubjectObservation['type'] {
-    if (/\b(man|woman|person|boy|girl|child|people)\b/.test(text)) return 'person';
-    if (/\b(dog|cat|bird|animal|horse)\b/.test(text)) return 'animal';
-    if (/\b(landscape|mountain|ocean|forest|city)\b/.test(text)) return 'scene';
-    return 'object';
-  }
-
-  private extractSubjectDescription(text: string): string {
-    const match = text.match(/^[^,\.]+/);
-    return match ? match[0].slice(0, 50) : 'subject';
-  }
-
-  private detectShotType(text: string): FramingObservation['shotType'] {
-    if (/extreme close[- ]?up|ecu\b/.test(text)) return 'extreme-close-up';
-    if (/close[- ]?up|cu\b/.test(text)) return 'close-up';
-    if (/medium close/.test(text)) return 'medium-close-up';
-    if (/medium wide|mws/.test(text)) return 'medium-wide';
-    if (/\bwide\b|ws\b|establishing/.test(text)) return 'wide';
-    if (/extreme wide|ews/.test(text)) return 'extreme-wide';
-    if (/\bmedium\b|ms\b/.test(text)) return 'medium';
-    return 'medium';
-  }
-
-  private detectAngle(text: string): FramingObservation['angle'] {
-    if (/low angle|worm/.test(text)) return 'low-angle';
-    if (/high angle|bird/.test(text)) return 'high-angle';
-    if (/dutch|tilted/.test(text)) return 'dutch';
-    if (/over.?shoulder|ots/.test(text)) return 'over-shoulder';
-    return 'eye-level';
-  }
-
-  private detectLightingQuality(text: string): LightingObservation['quality'] {
-    if (/dramatic|chiaroscuro|contrast/.test(text)) return 'dramatic';
-    if (/flat|soft|diffuse/.test(text)) return 'flat';
-    if (/artificial|neon|fluorescent/.test(text)) return 'artificial';
-    if (/natural|sun/.test(text)) return 'natural';
-    return 'natural';
-  }
-
-  private detectTimeOfDay(text: string): LightingObservation['timeOfDay'] {
-    if (/golden hour|sunset|sunrise/.test(text)) return 'golden-hour';
-    if (/blue hour|dusk|dawn/.test(text)) return 'blue-hour';
-    if (/night|dark|moon/.test(text)) return 'night';
-    if (/indoor|interior|room/.test(text)) return 'indoor';
-    if (/day|bright|sunny|midday/.test(text)) return 'day';
-    return 'unknown';
-  }
-
-  private parseJsonResponse(text: string): Record<string, any> {
+  private parseJsonResponse(text: string): ImageObservationResponse {
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     try {
-      return JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+      const validated = ImageObservationResponseSchema.safeParse(parsed);
+      if (!validated.success) {
+        this.log.warn('Invalid image observation JSON response', {
+          error: validated.error.message,
+        });
+        return {};
+      }
+      return this.coerceJsonResponse(validated.data);
     } catch {
       return {};
     }
+  }
+
+  private coerceJsonResponse(value: unknown): ImageObservationResponse {
+    if (!isRecord(value)) {
+      return {};
+    }
+
+    const subjectValue = isRecord(value.subject) ? value.subject : undefined;
+    const framingValue = isRecord(value.framing) ? value.framing : undefined;
+    const lightingValue = isRecord(value.lighting) ? value.lighting : undefined;
+
+    const subject: ImageObservationResponse['subject'] | undefined = subjectValue
+      ? {
+          type: asEnum(subjectValue.type, SUBJECT_TYPES),
+          description:
+            typeof subjectValue.description === 'string' ? subjectValue.description : undefined,
+          position: asEnum(subjectValue.position, SUBJECT_POSITIONS),
+        }
+      : undefined;
+
+    const framing: ImageObservationResponse['framing'] | undefined = framingValue
+      ? {
+          shotType: asEnum(framingValue.shotType, SHOT_TYPES),
+          angle: asEnum(framingValue.angle, CAMERA_ANGLES),
+        }
+      : undefined;
+
+    const lighting: ImageObservationResponse['lighting'] | undefined = lightingValue
+      ? {
+          quality: asEnum(lightingValue.quality, LIGHTING_QUALITIES),
+          timeOfDay: asEnum(lightingValue.timeOfDay, TIME_OF_DAY_VALUES),
+        }
+      : undefined;
+
+    return {
+      subject,
+      framing,
+      lighting,
+      confidence: typeof value.confidence === 'number' ? value.confidence : undefined,
+    };
+  }
+
+  private async loadSystemPrompt(): Promise<string> {
+    if (ImageObservationService.cachedPrompt) {
+      return ImageObservationService.cachedPrompt;
+    }
+
+    try {
+      const content = await fs.readFile(TEMPLATE_PATH, 'utf-8');
+      const trimmed = content.trim();
+      ImageObservationService.cachedPrompt = trimmed.length > 0 ? trimmed : DEFAULT_SYSTEM_PROMPT;
+    } catch (error) {
+      this.log.warn('Image observation prompt template missing; using fallback prompt', {
+        error: (error as Error).message,
+      });
+      ImageObservationService.cachedPrompt = DEFAULT_SYSTEM_PROMPT;
+    }
+
+    return ImageObservationService.cachedPrompt;
   }
 }

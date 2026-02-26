@@ -7,7 +7,7 @@
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
-import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
+import { sleep as sleepForMs } from '@utils/sleep';
 import type { ImagePreviewProvider, ImagePreviewRequest, ImagePreviewResult } from './types';
 import { VideoToImagePromptTransformer } from './VideoToImagePromptTransformer';
 
@@ -69,9 +69,14 @@ const normalizeAspectRatio = (value?: string): FluxAspectRatio => {
   return isFluxAspectRatio(trimmed) ? trimmed : DEFAULT_ASPECT_RATIO;
 };
 
+interface VideoPromptDetector {
+  isVideoPrompt(prompt: string | null | undefined): boolean;
+}
+
 export interface ReplicateFluxSchnellProviderOptions {
   apiToken?: string;
   promptTransformer?: VideoToImagePromptTransformer | null;
+  videoPromptDetector?: VideoPromptDetector;
 }
 
 export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
@@ -80,11 +85,11 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
 
   private readonly replicate: ReplicateClient | null;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
-  private readonly videoPromptDetector: VideoPromptDetectionService;
+  private readonly videoPromptDetector: VideoPromptDetector;
   private readonly log = logger.child({ service: 'ReplicateFluxSchnellProvider' });
 
   constructor(options: ReplicateFluxSchnellProviderOptions = {}) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const apiToken = options.apiToken;
     this.replicate = apiToken
       ? (new Replicate({
           auth: apiToken,
@@ -92,7 +97,10 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
       : null;
 
     this.promptTransformer = options.promptTransformer ?? null;
-    this.videoPromptDetector = new VideoPromptDetectionService();
+    if (!options.videoPromptDetector) {
+      throw new Error('ReplicateFluxSchnellProvider requires a videoPromptDetector');
+    }
+    this.videoPromptDetector = options.videoPromptDetector;
   }
 
   public isAvailable(): boolean {
@@ -187,7 +195,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
           throw predictionError;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await this.sleep(pollInterval);
         currentPrediction = await this.replicate.predictions.get(prediction.id);
 
         this.log.debug('Polling prediction', {
@@ -369,7 +377,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
     if (!Number.isFinite(ms) || ms <= 0) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await sleepForMs(ms);
   }
 
   private parseReplicateErrorDetail(message: string, fallback: string): string {

@@ -29,6 +29,7 @@ export function usePromptOptimizerApi(
       skipCache,
       lockedSpans,
       startImage,
+      sourcePrompt,
       constraintMode,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
@@ -55,6 +56,7 @@ export function usePromptOptimizerApi(
           ...(skipCache ? { skipCache } : {}),
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           ...(startImage ? { startImage } : {}),
+          ...(sourcePrompt ? { sourcePrompt } : {}),
           ...(constraintMode ? { constraintMode } : {}),
           ...(signal ? { signal } : {}),
         });

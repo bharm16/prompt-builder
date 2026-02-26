@@ -10,33 +10,22 @@
  */
 
 import React, { useCallback, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { useToast } from '@components/Toast';
-import { getAuthRepository } from '@/repositories';
 import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import type { Asset, AssetType } from '@shared/types/asset';
-import type { PromptHistoryEntry } from '@hooks/types';
-import type { CoherenceRecommendation } from '../types/coherence';
+import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
-import type { ConvergenceHandoff } from '@/features/convergence/types';
-import type { OptimizationOptions } from '../types';
+import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
 import type { CapabilityValues } from '@shared/capabilities';
-import {
-  useCoherenceAnnotations,
-  type CoherenceIssue,
-} from '../components/coherence/useCoherenceAnnotations';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import {
-  useGenerationControlsContext,
-} from '../context/GenerationControlsContext';
-import type { VideoTier } from '@components/ToolSidebar/types';
-import { applyCoherenceRecommendation } from '../utils/applyCoherenceRecommendation';
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '../context/GenerationControlsStore';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
-import { assetApi } from '@/features/assets/api/assetApi';
-import { uploadPreviewImage } from '@/features/preview/api/previewApi';
+import { uploadPreviewImage, validatePreviewImageFile } from '@/features/preview/api/previewApi';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -45,30 +34,61 @@ import {
   useImprovementFlow,
   useConceptBrainstorm,
   useEnhancementSuggestions,
+  usePromptKeyframesSync,
+  useStablePromptContext,
+  usePromptCoherence,
+  useAssetManagement,
+  useEditorShotPromptBinding,
 } from './hooks';
 import { useI2VContext } from '../hooks/useI2VContext';
 import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
+import { WorkspaceSessionProvider, useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import { PromptResultsActionsProvider } from '../context/PromptResultsActionsContext';
+import { PromptInsertionBusProvider } from '../context/PromptInsertionBusContext';
+import {
+  SidebarDataProvider,
+} from './providers/sidebar';
 
 const log = logger.child('PromptOptimizerWorkspace');
+const buildDefaultCameraTransform = (): CameraPath['start'] => ({
+  position: { x: 0, y: 0, z: 0 },
+  rotation: { pitch: 0, yaw: 0, roll: 0 },
+});
 
-export function resolveActiveStatusLabel(params: {
-  inputPrompt: string;
-  displayedPrompt: string;
-  isProcessing: boolean;
-  isRefining: boolean;
-  hasHighlights: boolean;
-}): string {
-  const hasInput = params.inputPrompt.trim().length > 0;
-  const hasOutput = params.displayedPrompt.trim().length > 0;
+const formatCameraMotionLabel = (id: string): string =>
+  id
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 
-  if (params.isRefining) return 'Refining';
-  if (params.isProcessing) return 'Optimizing';
-  if (!hasInput && !hasOutput) return 'Draft';
-  if (hasOutput && params.hasHighlights) return 'Generated';
-  if (hasOutput) return 'Optimized';
-  if (hasInput) return 'Draft';
-  return 'Incomplete';
-}
+const inferCameraMotionCategory = (id: string): CameraMotionCategory => {
+  if (id === 'static') return 'static';
+  if (id.startsWith('pan_') || id.startsWith('tilt_') || id.startsWith('dutch_')) {
+    return 'pan_tilt';
+  }
+  if (['push_in', 'pull_back', 'track_left', 'track_right'].includes(id)) {
+    return 'dolly';
+  }
+  if (id.startsWith('crane_') || id.startsWith('pedestal_')) {
+    return 'crane';
+  }
+  if (id.startsWith('arc_')) {
+    return 'orbital';
+  }
+  if (id === 'reveal') {
+    return 'compound';
+  }
+  return 'static';
+};
+
+const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
+  id: cameraMotionId,
+  label: formatCameraMotionLabel(cameraMotionId),
+  category: inferCameraMotionCategory(cameraMotionId),
+  start: buildDefaultCameraTransform(),
+  end: buildDefaultCameraTransform(),
+  duration: 1,
+});
 
 /**
  * Inner component with access to PromptStateContext
@@ -77,25 +97,13 @@ interface PromptOptimizerContentProps {
   user: User | null;
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null | undefined;
-  mode: 'studio' | 'create';
 }
 
 function PromptOptimizerContent({
   user,
   convergenceHandoff,
-  mode,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
-  const promptInputRef = React.useRef<HTMLTextAreaElement>(null);
-  const [assetEditorState, setAssetEditorState] = React.useState<{
-    mode: 'create' | 'edit';
-    asset?: Asset | null;
-    preselectedType?: AssetType | null;
-  } | null>(null);
-  const [quickCreateState, setQuickCreateState] = React.useState<{
-    isOpen: boolean;
-    prefillTrigger?: string;
-  }>({ isOpen: false });
   // Track if we've already applied the handoff to prevent re-applying
   const handoffAppliedRef = React.useRef<string | null>(null);
 
@@ -106,7 +114,6 @@ function PromptOptimizerContent({
     selectedModel,
     setSelectedModel,
     generationParams,
-    setGenerationParams,
     showResults,
     showSettings,
     setShowSettings,
@@ -125,7 +132,6 @@ function PromptOptimizerContent({
     setPromptContext,
     currentPromptUuid,
     currentPromptDocId,
-    initialHighlights,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setShowResults,
@@ -151,34 +157,58 @@ function PromptOptimizerContent({
     resetEditStacks,
     setDisplayedPromptSilently,
     handleCreateNew,
-    loadFromHistory,
     setOutputSaveState,
     setOutputLastSavedAt,
 
     // Navigation
     navigate,
-    uuid,
+    sessionId,
   } = usePromptState();
   const assetsSidebar = useAssetsSidebar();
   const {
-    controls: generationControls,
-    keyframes,
+    assetEditorState,
+    quickCreateState,
+    handlers: assetManagement,
+  } = useAssetManagement({
+    assets: assetsSidebar.assets,
+    refreshAssets: assetsSidebar.refresh,
+  });
+  const { domain } = useGenerationControlsStoreState();
+  const {
+    setKeyframes,
     addKeyframe,
-    removeKeyframe,
-    clearKeyframes,
-    cameraMotion,
-    subjectMotion,
+    setStartFrame,
+    clearStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
     setCameraMotion,
     setSubjectMotion,
-  } = useGenerationControlsContext();
+  } = useGenerationControlsStoreActions();
+  const keyframes = domain.keyframes;
+  const startFrame = domain.startFrame;
+  const cameraMotion = domain.cameraMotion;
+  const subjectMotion = domain.subjectMotion;
+  const setInputPrompt = promptOptimizer.setInputPrompt;
   const i2vContext = useI2VContext();
-  const [videoTier, setVideoTier] = React.useState<VideoTier>('render');
+  const {
+    hasActiveContinuityShot,
+    currentShotId,
+    currentShot,
+    updateShot,
+  } = useWorkspaceSession();
 
-  useEffect(() => {
-    if (mode === 'create') return;
-    setCameraMotion(null);
-    setSubjectMotion('');
-  }, [mode, setCameraMotion, setSubjectMotion]);
+  const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
+    keyframes,
+    setKeyframes,
+    setStartFrame,
+    clearEndFrame,
+    clearVideoReferences,
+    clearExtendVideo,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
+  });
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -194,11 +224,10 @@ function PromptOptimizerContent({
   }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
 
   /**
-   * Handle convergence handoff - pre-fill prompt when coming from Create mode
+   * Handle convergence handoff - pre-fill prompt when provided
    * (Requirement 17.2: Switch to Studio mode with converged prompt pre-filled)
    */
   useEffect(() => {
-    if (mode !== 'studio') return;
     if (!convergenceHandoff) return;
     
     // Create a unique key for this handoff to prevent re-applying
@@ -211,7 +240,16 @@ function PromptOptimizerContent({
     handoffAppliedRef.current = handoffKey;
     
     // Pre-fill the input prompt with the converged prompt
-    promptOptimizer.setInputPrompt(convergenceHandoff.prompt);
+    setInputPrompt(convergenceHandoff.prompt);
+
+    const handoffCameraMotionId = convergenceHandoff.cameraMotion?.trim();
+    if (handoffCameraMotionId) {
+      setCameraMotion(buildFallbackCameraPath(handoffCameraMotionId));
+    }
+    const handoffSubjectMotion = convergenceHandoff.subjectMotion?.trim();
+    if (handoffSubjectMotion) {
+      setSubjectMotion(handoffSubjectMotion);
+    }
     
     // Clear any existing displayed prompt to show the input
     setDisplayedPromptSilently('');
@@ -227,23 +265,41 @@ function PromptOptimizerContent({
       cameraMotion: convergenceHandoff.cameraMotion,
       hasSubjectMotion: Boolean(convergenceHandoff.subjectMotion),
     });
-  }, [convergenceHandoff, mode, promptOptimizer, setDisplayedPromptSilently, setShowResults, toast]);
-
-  // Stabilize promptContext to prevent infinite loops
-  const stablePromptContext = useMemo(() => {
-    if (!promptContext) return null;
-    return promptContext;
   }, [
-    promptContext?.elements?.subject,
-    promptContext?.elements?.action,
-    promptContext?.elements?.location,
-    promptContext?.elements?.time,
-    promptContext?.elements?.mood,
-    promptContext?.elements?.style,
-    promptContext?.elements?.event,
-    promptContext?.metadata?.format,
-    promptContext?.version,
+    convergenceHandoff,
+    setInputPrompt,
+    setCameraMotion,
+    setSubjectMotion,
+    setDisplayedPromptSilently,
+    setShowResults,
+    toast,
   ]);
+
+  useEditorShotPromptBinding({
+    currentEditorShot: currentShot,
+    hasActiveContinuityShot,
+    promptOptimizer,
+    updateShot,
+    setDisplayedPromptSilently,
+    setShowResults,
+  });
+
+  useEffect(() => {
+    if (!hasActiveContinuityShot || !currentShot) return;
+    const shotModelId = currentShot.modelId?.trim();
+    if (!shotModelId) return;
+    if (selectedModel === shotModelId) return;
+    setSelectedModel(shotModelId);
+  }, [
+    currentShot,
+    currentShot?.id,
+    currentShot?.modelId,
+    hasActiveContinuityShot,
+    selectedModel,
+    setSelectedModel,
+  ]);
+
+  const stablePromptContext = useStablePromptContext(promptContext);
 
   // ============================================================================
   // Custom Hooks - Business Logic Delegation
@@ -251,10 +307,11 @@ function PromptOptimizerContent({
 
   // Load prompt from URL parameter
   const { isLoading } = usePromptLoader({
-    uuid,
+    sessionId,
     currentPromptUuid,
     navigate,
     toast,
+    user,
     promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
@@ -265,6 +322,7 @@ function PromptOptimizerContent({
     setShowResults,
     setSelectedModel,
     setPromptContext,
+    onLoadKeyframes,
     skipLoadFromUrlRef,
   });
 
@@ -294,369 +352,112 @@ function PromptOptimizerContent({
     setCanUndo,
     setCanRedo,
   });
+  const handleCreateNewWithKeyframes = useCallback((): void => {
+    setKeyframes([]);
+    clearStartFrame();
+    clearEndFrame();
+    clearVideoReferences();
+    clearExtendVideo();
+    handleCreateNew();
+  }, [
+    clearEndFrame,
+    clearExtendVideo,
+    clearStartFrame,
+    clearVideoReferences,
+    handleCreateNew,
+    setKeyframes,
+  ]);
 
-  const saveOutputTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedOutputRef = React.useRef<string | null>(null);
-  const promptMetaRef = React.useRef<{ uuid: string | null; docId: string | null }>({
-    uuid: currentPromptUuid,
-    docId: currentPromptDocId,
-  });
-
-  React.useEffect(() => {
-    promptMetaRef.current = { uuid: currentPromptUuid, docId: currentPromptDocId };
-    lastSavedOutputRef.current = null;
-    setOutputSaveState('idle');
-    setOutputLastSavedAt(null);
-    if (saveOutputTimeoutRef.current) {
-      clearTimeout(saveOutputTimeoutRef.current);
-      saveOutputTimeoutRef.current = null;
-    }
-  }, [currentPromptUuid, currentPromptDocId]);
-
-  React.useEffect(() => {
-    return () => {
-      if (saveOutputTimeoutRef.current) {
-        clearTimeout(saveOutputTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleDisplayedPromptChangeWithAutosave = React.useCallback(
-    (newText: string): void => {
-      handleDisplayedPromptChange(newText);
-
-      if (!currentPromptUuid) return;
-      if (isApplyingHistoryRef.current) return;
-      if (lastSavedOutputRef.current === null) {
-        lastSavedOutputRef.current = promptOptimizer.displayedPrompt ?? '';
-      }
-      if (lastSavedOutputRef.current === newText) return;
-
-      if (saveOutputTimeoutRef.current) {
-        clearTimeout(saveOutputTimeoutRef.current);
+  const uploadSidebarImage = useCallback(
+    async (file: File): Promise<{
+      url: string;
+      storagePath?: string;
+      viewUrlExpiresAt?: string;
+    } | null> => {
+      const validation = validatePreviewImageFile(file);
+      if (!validation.valid) {
+        toast.warning(validation.error);
+        return null;
       }
 
-      const scheduledUuid = currentPromptUuid;
-      const scheduledDocId = currentPromptDocId;
-      setOutputSaveState('saving');
-
-      saveOutputTimeoutRef.current = setTimeout(() => {
-        const currentPromptMeta = promptMetaRef.current;
-        if (!scheduledUuid) return;
-        if (isApplyingHistoryRef.current) return;
-        if (
-          currentPromptMeta.uuid !== scheduledUuid ||
-          currentPromptMeta.docId !== scheduledDocId
-        ) {
-          return;
-        }
-        if (lastSavedOutputRef.current === newText) return;
-
-        try {
-          // Fire-and-forget persistence. The underlying repository logs failures.
-          promptHistory.updateEntryOutput(scheduledUuid, scheduledDocId, newText);
-          setOutputSaveState('saved');
-          setOutputLastSavedAt(Date.now());
-        } catch {
-          setOutputSaveState('error');
-        }
-        lastSavedOutputRef.current = newText;
-        saveOutputTimeoutRef.current = null;
-      }, 1000);
-    },
-    [
-      handleDisplayedPromptChange,
-      currentPromptUuid,
-      currentPromptDocId,
-      isApplyingHistoryRef,
-      promptOptimizer.displayedPrompt,
-      promptHistory,
-      setOutputLastSavedAt,
-      setOutputSaveState,
-    ]
-  );
-
-  const handleDuplicate = useCallback(
-    async (entry: PromptHistoryEntry): Promise<void> => {
-      const mode =
-        typeof entry.mode === 'string' && entry.mode.trim()
-          ? entry.mode.trim()
-          : 'video';
-      const result = await promptHistory.saveToHistory(
-        entry.input,
-        entry.output,
-        entry.score ?? null,
-        mode,
-        entry.targetModel ?? null,
-        (entry.generationParams as Record<string, unknown>) ?? null,
-        entry.brainstormContext ?? null,
-        entry.highlightCache ?? null,
-        null,
-        entry.title ?? null
-      );
-
-      if (result?.uuid) {
-        loadFromHistory({
-          id: result.id,
-          uuid: result.uuid,
-          timestamp: new Date().toISOString(),
-          title: entry.title ?? null,
-          input: entry.input,
-          output: entry.output,
-          score: entry.score ?? null,
-          mode,
-          targetModel: entry.targetModel ?? null,
-          generationParams: entry.generationParams ?? null,
-          brainstormContext: entry.brainstormContext ?? null,
-          highlightCache: entry.highlightCache ?? null,
-          versions: Array.isArray(entry.versions) ? entry.versions : [],
-        });
-      }
-    },
-    [promptHistory, loadFromHistory]
-  );
-
-  const handleRename = useCallback(
-    (entry: PromptHistoryEntry, title: string): void => {
-      if (!entry.uuid) return;
-      promptHistory.updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
-    },
-    [promptHistory]
-  );
-
-  const insertTriggerAtCursor = useCallback(
-    (trigger: string, range?: { start: number; end: number }): void => {
-      const input = promptInputRef.current;
-      const currentText = promptOptimizer.inputPrompt;
-      const normalizedTrigger = trigger.startsWith('@') ? trigger : `@${trigger}`;
-
-      if (!input) {
-        promptOptimizer.setInputPrompt(`${currentText}${normalizedTrigger}`);
-        return;
+      const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
+      if (!response.success || !response.data) {
+        throw new Error(response.error || response.message || 'Failed to upload image');
       }
 
-      const isFocused = document.activeElement === input;
-      const start = range?.start ?? (isFocused ? input.selectionStart ?? currentText.length : currentText.length);
-      const end = range?.end ?? (isFocused ? input.selectionEnd ?? currentText.length : currentText.length);
-      const before = currentText.slice(0, start);
-      const after = currentText.slice(end);
-      const needsSpaceBefore = before.length > 0 && !/\s$/.test(before);
-      const needsSpaceAfter = after.length > 0 && !/^\s/.test(after);
-      const insertion = `${needsSpaceBefore ? ' ' : ''}${normalizedTrigger}${
-        needsSpaceAfter ? ' ' : ''
-      }`;
-      const nextText = `${before}${insertion}${after}`;
+      const imageUrl = response.data.viewUrl || response.data.imageUrl;
+      if (!imageUrl) {
+        throw new Error('Upload did not return an image URL');
+      }
 
-      promptOptimizer.setInputPrompt(nextText);
-      const nextCursor = before.length + insertion.length;
-      requestAnimationFrame(() => {
-        input.focus();
-        input.setSelectionRange(nextCursor, nextCursor);
-      });
+      return {
+        url: imageUrl,
+        ...(response.data.storagePath ? { storagePath: response.data.storagePath } : {}),
+        ...(response.data.viewUrlExpiresAt ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt } : {}),
+      };
     },
-    [promptOptimizer]
-  );
-
-  const handleEditAsset = useCallback(
-    (assetId: string): void => {
-      const asset = assetsSidebar.assets.find((item) => item.id === assetId) ?? null;
-      if (!asset) return;
-      setAssetEditorState({ mode: 'edit', asset });
-    },
-    [assetsSidebar.assets]
-  );
-
-  const handleCreateAsset = useCallback((type: AssetType): void => {
-    if (type === 'character') {
-      setQuickCreateState({ isOpen: true });
-      return;
-    }
-    setAssetEditorState({ mode: 'create', preselectedType: type });
-  }, []);
-
-  const handleCreateFromTrigger = useCallback((trigger: string): void => {
-    const trimmed = trigger.replace(/^@/, '');
-    setQuickCreateState({ isOpen: true, prefillTrigger: trimmed });
-  }, []);
-
-  const closeAssetEditor = useCallback(() => {
-    setAssetEditorState(null);
-  }, []);
-
-  const handleAssetCreate = useCallback(
-    async (data: {
-      type: AssetType;
-      trigger: string;
-      name: string;
-      textDefinition?: string;
-      negativePrompt?: string;
-    }): Promise<Asset> => {
-      const asset = await assetApi.create(data);
-      await assetsSidebar.refresh();
-      return asset;
-    },
-    [assetsSidebar]
-  );
-
-  const handleAssetUpdate = useCallback(
-    async (
-      assetId: string,
-      data: { trigger?: string; name?: string; textDefinition?: string; negativePrompt?: string }
-    ): Promise<Asset> => {
-      const asset = await assetApi.update(assetId, data);
-      await assetsSidebar.refresh();
-      return asset;
-    },
-    [assetsSidebar]
-  );
-
-  const handleAddAssetImage = useCallback(
-    async (
-      assetId: string,
-      file: File,
-      metadata: Record<string, string | undefined>
-    ): Promise<void> => {
-      await assetApi.addImage(assetId, file, metadata);
-      await assetsSidebar.refresh();
-    },
-    [assetsSidebar]
-  );
-
-  const handleDeleteAssetImage = useCallback(
-    async (assetId: string, imageId: string): Promise<void> => {
-      await assetApi.deleteImage(assetId, imageId);
-      await assetsSidebar.refresh();
-    },
-    [assetsSidebar]
-  );
-
-  const handleSetPrimaryAssetImage = useCallback(
-    async (assetId: string, imageId: string): Promise<void> => {
-      await assetApi.setPrimaryImage(assetId, imageId);
-      await assetsSidebar.refresh();
-    },
-    [assetsSidebar]
+    [toast]
   );
 
   const handleImageUpload = useCallback(
     async (file: File): Promise<void> => {
-      const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-      const maxBytes = 10 * 1024 * 1024;
-
-      if (!allowedTypes.has(file.type)) {
-        toast.warning('Only PNG, JPEG, and WebP files are supported.');
-        return;
-      }
-      if (file.size > maxBytes) {
-        toast.warning('Image must be 10MB or smaller.');
-        return;
-      }
-
       try {
-        const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
-        if (!response.success || !response.data) {
-          throw new Error(response.error || response.message || 'Failed to upload image');
-        }
-        const imageUrl = response.data.viewUrl || response.data.imageUrl;
-        if (!imageUrl) {
-          throw new Error('Upload did not return an image URL');
-        }
-        addKeyframe({ url: imageUrl, source: 'upload' });
+        const uploaded = await uploadSidebarImage(file);
+        if (!uploaded) return;
+        addKeyframe({
+          url: uploaded.url,
+          source: 'upload',
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Upload failed');
       }
     },
-    [addKeyframe, toast]
+    [addKeyframe, toast, uploadSidebarImage]
   );
 
-  const closeQuickCreate = useCallback(() => {
-    setQuickCreateState({ isOpen: false });
-  }, []);
-
-  const handleQuickCreateComplete = useCallback(
-    async (_asset: Asset): Promise<void> => {
-      await assetsSidebar.refresh();
-      setQuickCreateState({ isOpen: false });
-    },
-    [assetsSidebar]
-  );
-
-  const activeStatusLabel = resolveActiveStatusLabel({
-    inputPrompt: promptOptimizer.inputPrompt,
-    displayedPrompt: promptOptimizer.displayedPrompt,
-    isProcessing: promptOptimizer.isProcessing,
-    isRefining: promptOptimizer.isRefining,
-    hasHighlights: Boolean(initialHighlights),
-  });
-  const activeModelLabel = selectedModel?.trim() ? selectedModel.trim() : 'Default';
-  const promptForGeneration = promptOptimizer.inputPrompt;
-  const isGenerating = generationControls?.isGenerating ?? false;
-  const isGenerationReady = Boolean(generationControls);
-
-  const handleSidebarPromptChange = useCallback(
-    (nextPrompt: string): void => {
-      promptOptimizer.setInputPrompt(nextPrompt);
-      if (promptOptimizer.displayedPrompt?.trim()) {
-        setDisplayedPromptSilently('');
-        setShowResults(false);
+  const handleStartFrameUpload = useCallback(
+    async (file: File): Promise<void> => {
+      try {
+        const uploaded = await uploadSidebarImage(file);
+        if (!uploaded) return;
+        setStartFrame({
+          id: `start-frame-upload-${Date.now()}`,
+          url: uploaded.url,
+          source: 'upload',
+          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
       }
     },
-    [promptOptimizer, setDisplayedPromptSilently, setShowResults]
+    [setStartFrame, toast, uploadSidebarImage]
   );
 
-  const effectiveAspectRatio = useMemo(() => {
-    const fromParams = generationParams?.aspect_ratio;
-    if (typeof fromParams === 'string' && fromParams.trim()) {
-      return fromParams.trim();
+  const clearResultsView = useCallback((): void => {
+    if (promptOptimizer.displayedPrompt?.trim()) {
+      setDisplayedPromptSilently('');
     }
-    return '16:9';
-  }, [generationParams?.aspect_ratio]);
+    setShowResults(false);
+  }, [promptOptimizer.displayedPrompt, setDisplayedPromptSilently, setShowResults]);
 
-  const durationSeconds = useMemo(() => {
-    const durationValue = generationParams?.duration_s;
-    if (typeof durationValue === 'number') {
-      return Number.isFinite(durationValue) ? durationValue : 5;
-    }
-    if (typeof durationValue === 'string') {
-      const parsed = Number.parseFloat(durationValue);
-      return Number.isFinite(parsed) ? parsed : 5;
-    }
-    return 5;
-  }, [generationParams?.duration_s]);
-
-  const handleAspectRatioChange = useCallback(
-    (ratio: string): void => {
-      if (generationParams?.aspect_ratio === ratio) return;
-      setGenerationParams({ ...(generationParams ?? {}), aspect_ratio: ratio });
+  const handleSequenceOptimizationApplied = useCallback(
+    async (optimizedPrompt: string): Promise<void> => {
+      if (!hasActiveContinuityShot || !currentShotId) return;
+      try {
+        await updateShot(currentShotId, { prompt: optimizedPrompt });
+      } catch (error) {
+        log.warn('Failed to persist optimized sequence prompt', {
+          shotId: currentShotId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        toast.error('Failed to save optimized shot prompt');
+      }
     },
-    [generationParams, setGenerationParams]
+    [currentShotId, hasActiveContinuityShot, toast, updateShot]
   );
-
-  const handleDurationChange = useCallback(
-    (nextDuration: number): void => {
-      if (generationParams?.duration_s === nextDuration) return;
-      setGenerationParams({ ...(generationParams ?? {}), duration_s: nextDuration });
-    },
-    [generationParams, setGenerationParams]
-  );
-
-  const handleDraft = useCallback(
-    (model: 'flux-kontext' | 'wan-2.2'): void => {
-      generationControls?.onDraft?.(model);
-    },
-    [generationControls]
-  );
-
-  const handleRender = useCallback(
-    (model: string): void => {
-      generationControls?.onRender?.(model);
-    },
-    [generationControls]
-  );
-
-  const handleStoryboard = useCallback((): void => {
-    generationControls?.onStoryboard?.();
-  }, [generationControls]);
 
   const promptForAssets = useMemo(() => {
     if (showResults && promptOptimizer.displayedPrompt) {
@@ -669,8 +470,9 @@ function PromptOptimizerContent({
     () => ({
       ...(generationParams ?? {}),
       ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
+      ...(subjectMotion.trim() ? { subject_motion: subjectMotion.trim() } : {}),
     }),
-    [generationParams, cameraMotion?.id]
+    [generationParams, cameraMotion?.id, subjectMotion]
   );
 
   // Prompt optimization
@@ -681,7 +483,10 @@ function PromptOptimizerContent({
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframesSync,
+    startFrame,
     startImageUrl: i2vContext.startImageUrl,
+    sourcePrompt: i2vContext.startImageSourcePrompt,
     constraintMode: i2vContext.constraintMode,
     currentPromptUuid,
     setCurrentPromptUuid,
@@ -693,12 +498,8 @@ function PromptOptimizerContent({
     persistedSignatureRef,
     skipLoadFromUrlRef,
     navigate,
+    onOptimizationApplied: handleSequenceOptimizationApplied,
   });
-  const handleSidebarOptimize = useCallback(
-    (promptToOptimize?: string, options?: OptimizationOptions): Promise<void> =>
-      handleOptimize(promptToOptimize, undefined, options),
-    [handleOptimize]
-  );
 
   // Improvement flow
   const { handleImproveFirst, handleImprovementComplete } = useImprovementFlow({
@@ -715,6 +516,7 @@ function PromptOptimizerContent({
     selectedMode,
     selectedModel,
     generationParams: optimizationGenerationParams,
+    keyframes: serializedKeyframesSync,
     setConceptElements,
     setPromptContext,
     setShowBrainstorm,
@@ -730,61 +532,6 @@ function PromptOptimizerContent({
     toast,
   });
 
-  const handleApplyCoherenceFix = useCallback(
-    (recommendation: CoherenceRecommendation, issue: CoherenceIssue): boolean => {
-      const currentPrompt = promptOptimizer.displayedPrompt;
-      if (!currentPrompt) {
-        return false;
-      }
-
-      const result = applyCoherenceRecommendation({
-        recommendation,
-        prompt: currentPrompt,
-        spans: issue.spans,
-        highlightSnapshot: latestHighlightRef.current,
-      });
-
-      if (!result.updatedPrompt) {
-        return false;
-      }
-
-      if (result.updatedSnapshot) {
-        applyInitialHighlightSnapshot(result.updatedSnapshot, {
-          bumpVersion: true,
-          markPersisted: false,
-        });
-      }
-
-      handleDisplayedPromptChange(result.updatedPrompt);
-
-      if (currentPromptUuid) {
-        try {
-          promptHistory.updateEntryOutput(currentPromptUuid, currentPromptDocId, result.updatedPrompt);
-        } catch (error) {
-          const info = sanitizeError(error);
-          log.warn('Failed to persist coherence edits', {
-            operation: 'updateEntryOutput',
-            promptUuid: currentPromptUuid,
-            promptDocId: currentPromptDocId,
-            error: info.message,
-            errorName: info.name,
-          });
-        }
-      }
-
-      return true;
-    },
-    [
-      applyInitialHighlightSnapshot,
-      currentPromptDocId,
-      currentPromptUuid,
-      handleDisplayedPromptChange,
-      latestHighlightRef,
-      promptHistory,
-      promptOptimizer.displayedPrompt,
-    ]
-  );
-
   const {
     issues: coherenceIssues,
     isChecking: isCoherenceChecking,
@@ -796,9 +543,17 @@ function PromptOptimizerContent({
     dismissIssue,
     dismissAll,
     applyFix,
-  } = useCoherenceAnnotations({
-    onApplyFix: handleApplyCoherenceFix,
+    togglePanelExpanded: toggleCoherencePanelExpanded,
+  } = usePromptCoherence({
+    promptOptimizer,
+    latestHighlightRef,
+    applyInitialHighlightSnapshot,
+    handleDisplayedPromptChange,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
     toast,
+    log,
   });
 
   // Enhancement suggestions
@@ -825,7 +580,7 @@ function PromptOptimizerContent({
   useKeyboardShortcuts({
     openShortcuts: () => setShowShortcuts(true),
     openSettings: () => setShowSettings(true),
-    createNew: handleCreateNew,
+    createNew: handleCreateNewWithKeyframes,
     optimize: () => !promptOptimizer.isProcessing && showResults === false && handleOptimize(),
     improveFirst: handleImproveFirst,
     canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),
@@ -858,213 +613,94 @@ function PromptOptimizerContent({
   // ============================================================================
   // Only show the blocking loading UI when we are actively loading a prompt.
   const shouldShowLoading = isLoading;
-  const isDraftDisabled =
-    !promptForGeneration.trim() || !isGenerationReady || isGenerating;
-  const isRenderDisabled =
-    !promptForGeneration.trim() || !isGenerationReady || isGenerating;
-
-  const toggleCoherencePanelExpanded = useCallback(() => {
-    setIsPanelExpanded((prev) => !prev);
-  }, []);
-
-  const toolSidebarProps = useMemo(() => ({
-    history: promptHistory.history,
-    filteredHistory: promptHistory.filteredHistory,
-    isLoadingHistory: promptHistory.isLoadingHistory,
-    searchQuery: promptHistory.searchQuery,
-    onSearchChange: promptHistory.setSearchQuery,
-    onLoadFromHistory: loadFromHistory,
-    onCreateNew: handleCreateNew,
-    onDelete: promptHistory.deleteFromHistory,
-    onDuplicate: handleDuplicate,
-    onRename: handleRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    prompt: promptForGeneration,
-    onPromptChange: handleSidebarPromptChange,
-    onOptimize: handleSidebarOptimize,
-    showResults,
-    isProcessing: promptOptimizer.isProcessing,
-    isRefining: promptOptimizer.isRefining,
-    genericOptimizedPrompt: promptOptimizer.genericOptimizedPrompt ?? null,
-    promptInputRef,
-    onCreateFromTrigger: handleCreateFromTrigger,
-    aspectRatio: effectiveAspectRatio,
-    duration: durationSeconds,
-    selectedModel,
-    onModelChange: setSelectedModel,
-    onAspectRatioChange: handleAspectRatioChange,
-    onDurationChange: handleDurationChange,
-    onDraft: handleDraft,
-    onRender: handleRender,
-    isDraftDisabled,
-    isRenderDisabled,
-    keyframes,
-    onAddKeyframe: addKeyframe,
-    onRemoveKeyframe: removeKeyframe,
-    onClearKeyframes: clearKeyframes,
-    tier: videoTier,
-    onTierChange: setVideoTier,
-    onStoryboard: handleStoryboard,
-    onImageUpload: handleImageUpload,
-    activeDraftModel: generationControls?.activeDraftModel ?? null,
-    showMotionControls: mode === 'create',
-    cameraMotion,
-    onCameraMotionChange: setCameraMotion,
-    subjectMotion,
-    onSubjectMotionChange: setSubjectMotion,
-    assets: assetsSidebar.assets,
-    assetsByType: assetsSidebar.byType,
-    isLoadingAssets: assetsSidebar.isLoading,
-    onInsertTrigger: insertTriggerAtCursor,
-    onEditAsset: handleEditAsset,
-    onCreateAsset: handleCreateAsset,
-  }), [
-    promptHistory.history,
-    promptHistory.filteredHistory,
-    promptHistory.isLoadingHistory,
-    promptHistory.searchQuery,
-    promptHistory.setSearchQuery,
-    loadFromHistory,
-    handleCreateNew,
-    promptHistory.deleteFromHistory,
-    handleDuplicate,
-    handleRename,
-    currentPromptUuid,
-    currentPromptDocId,
-    activeStatusLabel,
-    activeModelLabel,
-    promptForGeneration,
-    handleSidebarPromptChange,
-    handleSidebarOptimize,
-    showResults,
-    promptOptimizer.isProcessing,
-    promptOptimizer.isRefining,
-    promptOptimizer.genericOptimizedPrompt,
-    promptInputRef,
-    handleCreateFromTrigger,
-    effectiveAspectRatio,
-    durationSeconds,
-    selectedModel,
-    setSelectedModel,
-    handleAspectRatioChange,
-    handleDurationChange,
-    handleDraft,
-    handleRender,
-    isDraftDisabled,
-    isRenderDisabled,
-    keyframes,
-    addKeyframe,
-    removeKeyframe,
-    clearKeyframes,
-    videoTier,
-    setVideoTier,
-    handleStoryboard,
-    handleImageUpload,
-    generationControls?.activeDraftModel,
-    mode,
-    cameraMotion,
-    setCameraMotion,
-    subjectMotion,
-    setSubjectMotion,
-    assetsSidebar.assets,
-    assetsSidebar.byType,
-    assetsSidebar.isLoading,
-    insertTriggerAtCursor,
-    handleEditAsset,
-    handleCreateAsset,
-  ]);
-
-  const promptResultsLayoutProps = useMemo(() => ({
-    user,
-    onDisplayedPromptChange: handleDisplayedPromptChangeWithAutosave,
-    onReoptimize: handleOptimize,
-    onFetchSuggestions: fetchEnhancementSuggestions,
-    onSuggestionClick: handleSuggestionClick,
-    onHighlightsPersist: handleHighlightsPersist,
-    onUndo: handleUndo,
-    onRedo: handleRedo,
-    stablePromptContext,
-    suggestionsData,
-    displayedPrompt: promptOptimizer.displayedPrompt,
-    coherenceAffectedSpanIds: affectedSpanIds,
-    coherenceSpanIssueMap: spanIssueMap,
-    coherenceIssues,
-    isCoherenceChecking,
-    isCoherencePanelExpanded: isPanelExpanded,
-    onToggleCoherencePanelExpanded: toggleCoherencePanelExpanded,
-    onDismissCoherenceIssue: dismissIssue,
-    onDismissAllCoherenceIssues: dismissAll,
-    onApplyCoherenceFix: applyFix,
-    onScrollToCoherenceSpan: scrollToSpanById,
-    i2vContext,
-  }), [
-    user,
-    handleDisplayedPromptChangeWithAutosave,
-    handleOptimize,
-    fetchEnhancementSuggestions,
-    handleSuggestionClick,
-    handleHighlightsPersist,
-    handleUndo,
-    handleRedo,
-    stablePromptContext,
-    suggestionsData,
-    promptOptimizer.displayedPrompt,
-    affectedSpanIds,
-    spanIssueMap,
-    coherenceIssues,
-    isCoherenceChecking,
-    isPanelExpanded,
-    toggleCoherencePanelExpanded,
-    dismissIssue,
-    dismissAll,
-    applyFix,
-    scrollToSpanById,
-    i2vContext,
-  ]);
 
   return (
-    <PromptOptimizerWorkspaceView
-      toolSidebarProps={toolSidebarProps}
-      showHistory={showHistory}
-      onToggleHistory={setShowHistory}
-      shouldShowLoading={shouldShowLoading}
-      promptModalsProps={{
-        onImprovementComplete: handleImprovementComplete,
-        onConceptComplete: handleConceptComplete,
-        onSkipBrainstorm: handleSkipBrainstorm,
-      }}
-      quickCreateState={quickCreateState}
-      onQuickCreateClose={closeQuickCreate}
-      onQuickCreateComplete={handleQuickCreateComplete}
-      assetEditorState={assetEditorState}
-      assetEditorHandlers={{
-        onClose: closeAssetEditor,
-        onCreate: handleAssetCreate,
-        onUpdate: handleAssetUpdate,
-        onAddImage: handleAddAssetImage,
-        onDeleteImage: handleDeleteAssetImage,
-        onSetPrimaryImage: handleSetPrimaryAssetImage,
-      }}
-      detectedAssetsPrompt={promptForAssets}
-      detectedAssets={assetsSidebar.assets}
-      onEditAsset={handleEditAsset}
-      onCreateFromTrigger={handleCreateFromTrigger}
-      promptResultsLayoutProps={promptResultsLayoutProps}
-      debugProps={{
-        enabled:
-          false &&
-          (import.meta.env.DEV ||
-            new URLSearchParams(window.location.search).get('debug') === 'true'),
-        inputPrompt: promptOptimizer.inputPrompt,
-        displayedPrompt: promptOptimizer.displayedPrompt,
-        optimizedPrompt: promptOptimizer.optimizedPrompt,
-        selectedMode,
-        promptContext: stablePromptContext,
-      }}
-    />
+    <PromptInsertionBusProvider
+      inputPrompt={promptOptimizer.inputPrompt}
+      setInputPrompt={promptOptimizer.setInputPrompt}
+      clearResultsView={clearResultsView}
+    >
+      <SidebarDataProvider
+        assets={assetsSidebar.assets}
+        assetsByType={assetsSidebar.byType}
+        isLoadingAssets={assetsSidebar.isLoading}
+        onEditAsset={assetManagement.onEditAsset}
+        onCreateAsset={assetManagement.onCreateAsset}
+        onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+        onImageUpload={handleImageUpload}
+        onStartFrameUpload={handleStartFrameUpload}
+        onUploadSidebarImage={uploadSidebarImage}
+      >
+        <PromptResultsActionsProvider
+          currentPromptUuid={currentPromptUuid}
+          currentPromptDocId={currentPromptDocId}
+          displayedPrompt={promptOptimizer.displayedPrompt}
+          isApplyingHistoryRef={isApplyingHistoryRef}
+          handleDisplayedPromptChange={handleDisplayedPromptChange}
+          updateEntryOutput={promptHistory.updateEntryOutput}
+          setOutputSaveState={setOutputSaveState}
+          setOutputLastSavedAt={setOutputLastSavedAt}
+          user={user}
+          onReoptimize={handleOptimize}
+          onFetchSuggestions={fetchEnhancementSuggestions}
+          onSuggestionClick={handleSuggestionClick}
+          onHighlightsPersist={handleHighlightsPersist}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          stablePromptContext={stablePromptContext}
+          suggestionsData={suggestionsData}
+          coherenceAffectedSpanIds={affectedSpanIds}
+          coherenceSpanIssueMap={spanIssueMap}
+          coherenceIssues={coherenceIssues}
+          isCoherenceChecking={isCoherenceChecking}
+          isCoherencePanelExpanded={isPanelExpanded}
+          onToggleCoherencePanelExpanded={toggleCoherencePanelExpanded}
+          onDismissCoherenceIssue={dismissIssue}
+          onDismissAllCoherenceIssues={dismissAll}
+          onApplyCoherenceFix={applyFix}
+          onScrollToCoherenceSpan={scrollToSpanById}
+          i2vContext={i2vContext}
+        >
+          <PromptOptimizerWorkspaceView
+            showHistory={showHistory}
+            onToggleHistory={setShowHistory}
+            shouldShowLoading={shouldShowLoading}
+            promptModalsProps={{
+              onImprovementComplete: handleImprovementComplete,
+              onConceptComplete: handleConceptComplete,
+              onSkipBrainstorm: handleSkipBrainstorm,
+            }}
+            quickCreateState={quickCreateState}
+            onQuickCreateClose={assetManagement.onCloseQuickCreate}
+            onQuickCreateComplete={assetManagement.onQuickCreateComplete}
+            assetEditorState={assetEditorState}
+            assetEditorHandlers={{
+              onClose: assetManagement.onCloseAssetEditor,
+              onCreate: assetManagement.onCreate,
+              onUpdate: assetManagement.onUpdate,
+              onAddImage: assetManagement.onAddImage,
+              onDeleteImage: assetManagement.onDeleteImage,
+              onSetPrimaryImage: assetManagement.onSetPrimaryImage,
+            }}
+            detectedAssetsPrompt={promptForAssets}
+            detectedAssets={assetsSidebar.assets}
+            onEditAsset={assetManagement.onEditAsset}
+            onCreateFromTrigger={assetManagement.onCreateFromTrigger}
+            debugProps={{
+              enabled:
+                false &&
+                (import.meta.env.DEV ||
+                  new URLSearchParams(window.location.search).get('debug') === 'true'),
+              inputPrompt: promptOptimizer.inputPrompt,
+              displayedPrompt: promptOptimizer.displayedPrompt,
+              optimizedPrompt: promptOptimizer.optimizedPrompt,
+              selectedMode,
+              promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
+            }}
+          />
+        </PromptResultsActionsProvider>
+      </SidebarDataProvider>
+    </PromptInsertionBusProvider>
   );
 }
 
@@ -1074,28 +710,20 @@ function PromptOptimizerContent({
 interface PromptOptimizerWorkspaceProps {
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null;
-  mode?: 'studio' | 'create';
 }
 
 function PromptOptimizerWorkspace({
   convergenceHandoff,
-  mode = 'studio',
 }: PromptOptimizerWorkspaceProps): React.ReactElement {
-  const [user, setUser] = React.useState<User | null>(null);
-
-  // Listen for auth state changes
-  React.useEffect(() => {
-    const authRepository = getAuthRepository();
-    const unsubscribe = authRepository.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  const user = useAuthUser();
+  const { sessionId } = useParams<{ sessionId?: string }>();
 
   return (
-    <PromptStateProvider user={user}>
-      <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} mode={mode} />
-    </PromptStateProvider>
+    <WorkspaceSessionProvider {...(sessionId ? { sessionId } : {})}>
+      <PromptStateProvider user={user}>
+        <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
+      </PromptStateProvider>
+    </WorkspaceSessionProvider>
   );
 }
 

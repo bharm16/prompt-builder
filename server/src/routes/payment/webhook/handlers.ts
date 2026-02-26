@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { logger } from '@infrastructure/Logger';
 import type { WebhookHandlerDeps } from '../types';
+import { resolvePlanTierFromPriceIds } from '@config/subscriptionTiers';
 
 type WebhookEventHandlerDeps = Pick<
   WebhookHandlerDeps,
@@ -68,7 +69,11 @@ export const createWebhookEventHandlers = ({
       return;
     }
 
-    await userCreditService.addCredits(userId, credits);
+    await userCreditService.addCredits(userId, credits, {
+      source: 'stripe_checkout',
+      reason: 'one_time_credit_pack',
+      referenceId: session.id,
+    });
     logger.info('Credits funded via Stripe checkout', { userId, credits, sessionId: session.id });
   },
 
@@ -97,11 +102,18 @@ export const createWebhookEventHandlers = ({
           ? (invoice.subscription.id as string)
           : null;
 
+    const invoicePriceIds = (invoice.lines?.data ?? [])
+      .map((line) => line.price?.id)
+      .filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+    const resolvedPlanTier = resolvePlanTierFromPriceIds(invoicePriceIds);
+
     if (stripeCustomerId) {
       try {
         await billingProfileStore.upsertProfile(userId, {
           stripeCustomerId,
           ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+          ...(resolvedPlanTier ? { planTier: resolvedPlanTier } : {}),
+          ...(invoicePriceIds[0] ? { subscriptionPriceId: invoicePriceIds[0] } : {}),
           stripeLivemode: invoice.livemode,
         });
       } catch (error) {
@@ -133,7 +145,11 @@ export const createWebhookEventHandlers = ({
       throw new Error(`Invoice ${invoice.id} paid but credits resolved to 0`);
     }
 
-    await userCreditService.addCredits(userId, credits);
+    await userCreditService.addCredits(userId, credits, {
+      source: 'stripe_invoice',
+      reason: 'subscription_invoice_paid',
+      referenceId: invoice.id,
+    });
     logger.info('Credits funded via Stripe invoice', { userId, credits, invoiceId: invoice.id, eventId });
   },
 });

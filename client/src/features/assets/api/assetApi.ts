@@ -1,5 +1,14 @@
 import type { Asset, AssetListResponse } from '@shared/types/asset';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import {
+  AssetSchema,
+  AssetListResponseSchema,
+  AssetSuggestionSchema,
+  AssetImageUploadResponseSchema,
+  AssetForGenerationSchema,
+  ResolvedPromptSchema,
+  TriggerValidationSchema,
+} from './schemas';
 
 const API_BASE = '/api/assets';
 
@@ -26,7 +35,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to fetch assets');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetListResponseSchema.parse(payload) as AssetListResponse;
   },
 
   async get(assetId: string): Promise<Asset> {
@@ -38,7 +48,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to fetch asset');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async create(data: {
@@ -61,7 +72,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to create asset');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async update(
@@ -86,7 +98,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to update asset');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async delete(assetId: string): Promise<boolean> {
@@ -114,7 +127,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to get suggestions');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetSuggestionSchema.array().parse(payload);
   },
 
   async resolve(prompt: string) {
@@ -131,7 +145,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to resolve prompt');
     }
-    return await response.json();
+    const payload = await response.json();
+    return ResolvedPromptSchema.parse(payload);
   },
 
   async validate(prompt: string) {
@@ -148,7 +163,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to validate triggers');
     }
-    return await response.json();
+    const payload = await response.json();
+    return TriggerValidationSchema.parse(payload);
   },
 
   async addImage(
@@ -174,7 +190,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to upload image');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetImageUploadResponseSchema.parse(payload);
   },
 
   async deleteImage(assetId: string, imageId: string): Promise<boolean> {
@@ -203,7 +220,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Failed to set primary image');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetSchema.parse(payload) as Asset;
   },
 
   async getForGeneration(assetId: string) {
@@ -215,7 +233,8 @@ export const assetApi = {
     if (!response.ok) {
       return await handleError(response, 'Asset not ready for generation');
     }
-    return await response.json();
+    const payload = await response.json();
+    return AssetForGenerationSchema.parse(payload);
   },
 };
 

@@ -2,137 +2,61 @@ import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import { logger } from '@infrastructure/Logger';
 import { parseVideoPreviewRequest } from '@routes/preview/videoRequest';
-import { getVideoCost } from '@config/modelCosts';
-import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
-import type { PreviewRoutesServices } from '@routes/types';
-import type { VideoGenerationOptions } from '@services/video-generation/types';
-import {
-  CAMERA_MOTION_DESCRIPTIONS,
-  CAMERA_PATHS,
-} from '@services/convergence/constants';
-import { getAuthenticatedUserId } from '../auth';
-import { getCapabilityModelIds } from '../availability';
+import { VIDEO_MODELS } from '@config/modelConfig';
+import { sendApiError } from '@middleware/apiErrorResponse';
+import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
+import type { ApiErrorCode } from '@server/types/apiError';
+import { getRuntimeFlags } from '@config/runtime-flags';
+import { resolveVideoGenerateIdempotencyMode } from '@services/idempotency/RequestIdempotencyService';
+import type { VideoModelId } from '@services/video-generation/types';
+import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
+import { assertUrlSafe } from '@server/shared/urlValidation';
 import { scheduleInlineVideoPreviewProcessing } from '../inlineProcessor';
 import { stripVideoPreviewPrompt } from '../prompt';
+import { extractMotionMeta } from './video-generate/motion';
+import { buildVideoRequestPlan, createModelUnavailableError } from './video-generate/requestPlan';
+import { runVideoPreprocessing } from './video-generate/preprocessing';
+import { createVideoRefundManager } from './video-generate/refundManager';
+import { extractPromptTriggers, resolvePromptTriggers } from './video-generate/triggerResolution';
+import type { VideoGenerateServices } from './video-generate/types';
 
-const KEYFRAME_CREDIT_COST = 2;
-const CAMERA_MOTION_KEY = 'camera_motion_id';
-const SUBJECT_MOTION_KEY = 'subject_motion';
 const log = logger.child({ route: 'preview.videoGenerate' });
 
-type VideoGenerateServices = Pick<
-  PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'userCreditService' | 'keyframeService' | 'assetService'
->;
-
-interface MotionContext {
-  cameraMotionId: string | null;
-  cameraMotionText: string | null;
-  subjectMotion: string | null;
-}
-
-const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
-    return null;
+const hasStatusCode = (value: unknown): value is { statusCode: number } => {
+  if (!value || typeof value !== 'object') {
+    return false;
   }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const toTitleCaseFromId = (value: string): string =>
-  value
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-
-const resolveCameraMotionText = (cameraMotionId: string): string => {
-  const description = CAMERA_MOTION_DESCRIPTIONS[cameraMotionId];
-  if (description) {
-    return description;
+  if (!('statusCode' in value)) {
+    return false;
   }
-  const path = CAMERA_PATHS.find((item) => item.id === cameraMotionId);
-  if (path?.label) {
-    return path.label;
-  }
-  return toTitleCaseFromId(cameraMotionId);
-};
-
-const resolveMotionContext = (
-  normalizedParams: Record<string, unknown> | null,
-  rawParams: unknown
-): MotionContext => {
-  const normalizedCameraMotion = normalizeMotionString(
-    normalizedParams?.[CAMERA_MOTION_KEY]
-  );
-  const normalizedSubjectMotion = normalizeMotionString(
-    normalizedParams?.[SUBJECT_MOTION_KEY]
-  );
-
-  const rawRecord =
-    rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : null;
-  const rawCameraMotion =
-    normalizedCameraMotion ?? normalizeMotionString(rawRecord?.[CAMERA_MOTION_KEY]);
-  const rawSubjectMotion =
-    normalizedSubjectMotion ?? normalizeMotionString(rawRecord?.[SUBJECT_MOTION_KEY]);
-
-  return {
-    cameraMotionId: rawCameraMotion,
-    cameraMotionText: rawCameraMotion ? resolveCameraMotionText(rawCameraMotion) : null,
-    subjectMotion: rawSubjectMotion,
-  };
-};
-
-const appendMotionGuidance = (basePrompt: string, motion: MotionContext): string => {
-  const guidanceLines: string[] = [];
-
-  if (motion.cameraMotionText) {
-    guidanceLines.push(`Camera motion: ${motion.cameraMotionText}`);
-  }
-  if (motion.subjectMotion) {
-    guidanceLines.push(`Subject motion: ${motion.subjectMotion}`);
-  }
-
-  if (guidanceLines.length === 0) {
-    return basePrompt;
-  }
-
-  const trimmedPrompt = basePrompt.trim();
-  return `${trimmedPrompt}\n\n${guidanceLines.join('\n')}`;
-};
-
-const extractMotionMeta = (params: unknown) => {
-  const record =
-    params && typeof params === 'object' ? (params as Record<string, unknown>) : null;
-  const cameraMotionId = normalizeMotionString(record?.[CAMERA_MOTION_KEY]);
-  const subjectMotion = normalizeMotionString(record?.[SUBJECT_MOTION_KEY]);
-  return {
-    hasCameraMotion: Boolean(cameraMotionId),
-    cameraMotionId,
-    hasSubjectMotion: Boolean(subjectMotion),
-    subjectMotionLength: subjectMotion?.length ?? 0,
-  } as const;
+  const statusCode = (value as { statusCode?: unknown }).statusCode;
+  return typeof statusCode === 'number' && Number.isFinite(statusCode);
 };
 
 export const createVideoGenerateHandler = ({
   videoGenerationService,
   videoJobStore,
   userCreditService,
+  storageService,
   keyframeService,
+  faceSwapService,
   assetService,
+  requestIdempotencyService,
 }: VideoGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService || !videoJobStore) {
-      return res.status(503).json({
-        success: false,
+      return sendApiError(res, req, 503, {
         error: 'Video generation service is not available',
-        message: 'Video generation queue is not configured',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Video generation queue is not configured',
       });
     }
 
     const parsed = parseVideoPreviewRequest(req.body);
     if (!parsed.ok) {
-      return res.status(parsed.status).json({
-        success: false,
+      return sendApiError(res, req, parsed.status, {
         error: parsed.error,
+        code: GENERATION_ERROR_CODES.INVALID_REQUEST,
       });
     }
 
@@ -141,16 +65,175 @@ export const createVideoGenerateHandler = ({
       aspectRatio,
       model,
       startImage,
+      endImage,
+      referenceImages,
+      extendVideoUrl,
       inputReference,
       generationParams,
-      characterAssetId,
+      characterAssetId: requestedCharacterAssetId,
       autoKeyframe = true,
+      faceSwapAlreadyApplied = false,
     } = parsed.payload;
-    const { cleaned: cleanedPrompt, wasStripped: promptWasStripped } =
-      stripVideoPreviewPrompt(prompt);
-    const userId = await getAuthenticatedUserId(req);
+    let characterAssetId = requestedCharacterAssetId;
+
+    if (startImage) {
+      try {
+        assertUrlSafe(startImage, 'startImage');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid startImage URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (inputReference) {
+      try {
+        assertUrlSafe(inputReference, 'inputReference');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid inputReference URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (endImage) {
+      try {
+        assertUrlSafe(endImage, 'endImage');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid endImage URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (extendVideoUrl) {
+      try {
+        assertUrlSafe(extendVideoUrl, 'extendVideoUrl');
+      } catch (err) {
+        return sendApiError(res, req, 400, {
+          error: 'Invalid extendVideoUrl URL',
+          code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+          details: err instanceof Error ? err.message : 'URL validation failed',
+        });
+      }
+    }
+    if (referenceImages) {
+      for (const ref of referenceImages) {
+        try {
+          assertUrlSafe(ref.url, 'referenceImages[].url');
+        } catch (err) {
+          return sendApiError(res, req, 400, {
+            error: 'Invalid referenceImages URL',
+            code: GENERATION_ERROR_CODES.INVALID_REQUEST,
+            details: err instanceof Error ? err.message : 'URL validation failed',
+          });
+        }
+      }
+    }
+
+    let { cleaned: cleanedPrompt, wasStripped: promptWasStripped } = stripVideoPreviewPrompt(prompt);
+    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     const requestId = (req as Request & { id?: string }).id;
     const rawMotionMeta = extractMotionMeta(generationParams);
+    const promptTriggers = extractPromptTriggers(cleanedPrompt);
+    const uniquePromptTriggerCount = new Set(promptTriggers).size;
+    const hasPromptTriggers = uniquePromptTriggerCount > 0;
+
+    if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
+      return sendApiError(res, req, 401, {
+        error: 'Authentication required',
+        code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
+        details: 'You must be logged in to generate videos.',
+      });
+    }
+
+    const idempotencyMode = resolveVideoGenerateIdempotencyMode();
+    const rawIdempotencyKey = req.get('Idempotency-Key');
+    const idempotencyKey =
+      typeof rawIdempotencyKey === 'string' && rawIdempotencyKey.trim().length > 0
+        ? rawIdempotencyKey.trim()
+        : null;
+    let idempotencyRecordId: string | null = null;
+
+    if (!idempotencyKey && idempotencyMode === 'required') {
+      return sendApiError(res, req, 400, {
+        error: 'Idempotency-Key header is required',
+        code: GENERATION_ERROR_CODES.IDEMPOTENCY_KEY_REQUIRED,
+      });
+    }
+
+    if (idempotencyKey && !requestIdempotencyService) {
+      log.warn('Idempotency key supplied but request idempotency service is unavailable', {
+        requestId,
+        userId,
+      });
+      return sendApiError(res, req, 503, {
+        error: 'Video generation service is not available',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Idempotency service is not configured',
+      });
+    }
+
+    if (!idempotencyKey && idempotencyMode === 'soft') {
+      log.warn('Video generation request missing Idempotency-Key header in soft mode', {
+        requestId,
+        userId,
+      });
+    }
+
+    if (idempotencyKey && requestIdempotencyService) {
+      const claim = await requestIdempotencyService.claimRequest({
+        userId,
+        route: '/api/preview/video/generate',
+        key: idempotencyKey,
+        payload: parsed.payload,
+      });
+
+      if (claim.state === 'replay') {
+        return res.status(claim.snapshot.statusCode).json(claim.snapshot.body);
+      }
+      if (claim.state === 'conflict') {
+        return sendApiError(res, req, 409, {
+          error: 'Idempotency key was already used with a different payload',
+          code: GENERATION_ERROR_CODES.IDEMPOTENCY_CONFLICT,
+        });
+      }
+      if (claim.state === 'in_progress') {
+        return sendApiError(res, req, 409, {
+          error: 'A matching request is already in progress',
+          code: GENERATION_ERROR_CODES.REQUEST_IN_PROGRESS,
+        });
+      }
+
+      idempotencyRecordId = claim.recordId;
+    }
+
+    const triggerResolution = await resolvePromptTriggers({
+      cleanedPrompt,
+      hasPromptTriggers,
+      uniquePromptTriggerCount,
+      userId,
+      requestId,
+      characterAssetId,
+      assetService,
+      log,
+    });
+
+    if (!triggerResolution.ok) {
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markFailed(
+          idempotencyRecordId,
+          triggerResolution.error.payload.code || triggerResolution.error.payload.error
+        );
+      }
+      return sendApiError(res, req, triggerResolution.error.status, triggerResolution.error.payload);
+    }
+
+    cleanedPrompt = triggerResolution.value.cleanedPrompt;
+    characterAssetId = triggerResolution.value.characterAssetId;
 
     log.info('Video preview request received', {
       operation: 'generateVideoPreview',
@@ -163,292 +246,222 @@ export const createVideoGenerateHandler = ({
       hasInputReference: Boolean(inputReference),
       hasCharacterAssetId: Boolean(characterAssetId),
       autoKeyframe,
+      faceSwapAlreadyApplied,
+      hasPromptTriggers,
+      uniquePromptTriggerCount,
+      promptExpandedFromTrigger: triggerResolution.value.promptExpandedFromTrigger,
+      resolvedAssetCount: triggerResolution.value.resolvedAssetCount,
+      resolvedCharacterCount: triggerResolution.value.resolvedCharacterCount,
       ...rawMotionMeta,
     });
-
-    if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-        message: 'You must be logged in to generate videos.',
-      });
-    }
 
     if (!userCreditService) {
       log.error('User credit service is not available - blocking paid feature access', undefined, {
         path: req.path,
       });
-      return res.status(503).json({
-        success: false,
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markFailed(
+          idempotencyRecordId,
+          GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+        );
+      }
+      return sendApiError(res, req, 503, {
         error: 'Video generation service is not available',
-        message: 'Credit service is not configured',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Credit service is not configured',
       });
     }
 
-    let resolvedStartImage = startImage;
-    let generatedKeyframeUrl: string | null = null;
-    let keyframeCost = 0;
-
-    if (characterAssetId && autoKeyframe && !startImage) {
-      if (!keyframeService) {
-        log.warn('Keyframe service unavailable, falling back to direct generation', {
-          requestId,
-          characterAssetId,
-        });
-      } else if (!assetService) {
-        log.warn('Asset service unavailable, falling back to direct generation', {
-          requestId,
-          characterAssetId,
-        });
-      } else {
-        try {
-          log.info('Generating PuLID keyframe for character', {
-            requestId,
-            characterAssetId,
-            userId,
-          });
-
-          const hasKeyframeCredits = await userCreditService.reserveCredits(
-            userId,
-            KEYFRAME_CREDIT_COST
-          );
-          if (!hasKeyframeCredits) {
-            return res.status(402).json({
-              success: false,
-              error: 'Insufficient credits',
-              message: `Character-consistent generation requires ${KEYFRAME_CREDIT_COST} credits for keyframe plus video credits.`,
-            });
-          }
-          keyframeCost = KEYFRAME_CREDIT_COST;
-
-          const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
-
-          if (!characterData.primaryImageUrl) {
-            await userCreditService.refundCredits(userId, keyframeCost);
-            return res.status(400).json({
-              success: false,
-              error: 'Character has no reference image',
-              message:
-                'The character asset must have at least one reference image for face-consistent generation.',
-            });
-          }
-
-          const keyframeResult = await keyframeService.generateKeyframe({
-            prompt: cleanedPrompt,
-            character: {
-              primaryImageUrl: characterData.primaryImageUrl,
-              negativePrompt: characterData.negativePrompt,
-              faceEmbedding: characterData.faceEmbedding,
-            },
-            aspectRatio: aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4' | undefined,
-            faceStrength: 0.7,
-          });
-
-          resolvedStartImage = keyframeResult.imageUrl;
-          generatedKeyframeUrl = keyframeResult.imageUrl;
-
-          log.info('PuLID keyframe generated successfully', {
-            requestId,
-            characterAssetId,
-            keyframeUrl: generatedKeyframeUrl,
-            faceStrength: keyframeResult.faceStrength,
-          });
-        } catch (error) {
-          if (keyframeCost > 0) {
-            await userCreditService.refundCredits(userId, keyframeCost);
-          }
-
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          log.error(
-            'Keyframe generation failed',
-            error instanceof Error ? error : new Error(errorMessage),
-            {
-              requestId,
-              characterAssetId,
-            }
-          );
-
-          return res.status(500).json({
-            success: false,
-            error: 'Keyframe generation failed',
-            message: `Failed to generate character-consistent keyframe: ${errorMessage}`,
-          });
-        }
+    const releaseIdempotencyLock = async (reason: string): Promise<void> => {
+      if (!idempotencyRecordId || !requestIdempotencyService) {
+        return;
       }
+      await requestIdempotencyService.markFailed(idempotencyRecordId, reason);
+    };
+
+    const respondWithError = async (
+      status: number,
+      payload: { error: string; code: ApiErrorCode; details?: string },
+      reason?: string
+    ): Promise<Response> => {
+      await releaseIdempotencyLock(reason || payload.code || payload.error);
+      return sendApiError(res, req, status, payload);
+    };
+
+    const refunds = createVideoRefundManager({
+      userCreditService,
+      userId,
+      requestId,
+      cleanedPrompt,
+      model,
+    });
+
+    const preprocessing = await runVideoPreprocessing({
+      requestId,
+      userId,
+      startImage,
+      characterAssetId,
+      autoKeyframe,
+      faceSwapAlreadyApplied,
+      aspectRatio,
+      cleanedPrompt,
+      services: {
+        userCreditService,
+        keyframeService,
+        faceSwapService,
+        assetService,
+      },
+      refunds,
+      log,
+    });
+
+    if (preprocessing.error) {
+      return await respondWithError(
+        preprocessing.error.status,
+        preprocessing.error.payload,
+        preprocessing.error.payload.code
+      );
     }
+
+    const resolvedStartImage = preprocessing.resolvedStartImage;
+    const generatedKeyframeUrl = preprocessing.generatedKeyframeUrl;
+    const swappedImageUrl = preprocessing.swappedImageUrl;
+    characterAssetId = preprocessing.characterAssetId;
 
     const availability = videoGenerationService.getModelAvailability(model);
     if (!availability.available) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      const report = videoGenerationService.getAvailabilityReport(getCapabilityModelIds());
-      const statusCode = availability.statusCode || 424;
-      return res.status(statusCode).json({
-        success: false,
-        error: 'Video model not available',
-        message: availability.message || 'Requested video model is not available',
-        model: model || 'auto',
-        reason: availability.reason,
-        requiredKey: availability.requiredKey,
-        resolvedModelId: availability.resolvedModelId,
-        availableModels: report.availableModels,
+      await refunds.refundKeyframeCredits('video model unavailable after keyframe reservation');
+      await refunds.refundFaceSwapCredits('video model unavailable after face-swap reservation');
+
+      const snapshot = videoGenerationService.getAvailabilitySnapshot(
+        Object.values(VIDEO_MODELS) as VideoModelId[]
+      );
+      const availableCapabilityModels = Array.from(
+        new Set(
+          snapshot.availableModelIds
+            .map((modelId) => resolveCapabilityModelId(modelId))
+            .filter((modelId): modelId is string => typeof modelId === 'string' && modelId.length > 0)
+        )
+      );
+
+      const unavailable = createModelUnavailableError({
+        availability,
+        availableModelIds: snapshot.availableModelIds,
+        availableCapabilityModels,
       });
+      return await respondWithError(unavailable.status, unavailable.payload, unavailable.payload.code);
     }
 
     const operation = 'generateVideoPreview';
     const costModel = availability.resolvedModelId || model;
 
-    const normalized = normalizeGenerationParams({
+    const planResult = buildVideoRequestPlan({
       generationParams,
+      model,
       operation,
       requestId: requestId || 'unknown',
       userId,
-      ...(model ? { targetModel: model } : {}),
+      costModel,
+      cleanedPrompt,
+      resolvedStartImage,
+      inputReference,
+      endImage,
+      referenceImages,
+      extendVideoUrl,
+      aspectRatio,
+      characterAssetId,
+      faceSwapAlreadyApplied,
+      swappedImageUrl,
     });
 
-    if (normalized.error) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      return res.status(normalized.error.status).json({
-        success: false,
-        error: normalized.error.error,
-        message: normalized.error.details,
-      });
+    if (!planResult.ok) {
+      await refunds.refundKeyframeCredits('video request normalization failed after keyframe reservation');
+      await refunds.refundFaceSwapCredits('video request normalization failed after face-swap reservation');
+      return await respondWithError(planResult.error.status, planResult.error.payload, planResult.error.payload.code);
     }
 
-    const normalizedParams = normalized.normalizedGenerationParams as Record<string, unknown> | null;
-    const paramAspectRatio =
-      normalizedParams && typeof normalizedParams.aspect_ratio === 'string'
-        ? (normalizedParams.aspect_ratio as VideoGenerationOptions['aspectRatio'])
-        : undefined;
-    const paramFps =
-      normalizedParams && typeof normalizedParams.fps === 'number' ? normalizedParams.fps : undefined;
-    const paramDurationS =
-      normalizedParams && typeof normalizedParams.duration_s === 'number'
-        ? normalizedParams.duration_s
-        : undefined;
-    const paramResolution =
-      normalizedParams && typeof normalizedParams.resolution === 'string'
-        ? normalizedParams.resolution
-        : undefined;
-
-    const seconds =
-      paramDurationS != null && ['4', '8', '12'].includes(String(paramDurationS))
-        ? (String(paramDurationS) as VideoGenerationOptions['seconds'])
-        : undefined;
-
-    // Calculate cost based on model and duration (per-second pricing)
-    const durationForCost = paramDurationS ?? 8; // Default to 8 seconds if not specified
-    const videoCost = getVideoCost(costModel, durationForCost);
-
-    const size =
-      typeof paramResolution === 'string' &&
-      (/\d+x\d+/i.test(paramResolution) || /p$/i.test(paramResolution))
-        ? paramResolution
-        : undefined;
-
-    const numFrames =
-      typeof paramDurationS === 'number' && typeof paramFps === 'number'
-        ? Math.max(1, Math.min(300, Math.round(paramDurationS * paramFps)))
-        : undefined;
-
-    const motionContext = resolveMotionContext(normalizedParams, generationParams);
-    const promptWithMotion = appendMotionGuidance(cleanedPrompt, motionContext);
-    const normalizedMotionMeta = extractMotionMeta(normalizedParams);
-    const promptLengthBeforeMotion = cleanedPrompt.trim().length;
-    const promptLengthAfterMotion = promptWithMotion.trim().length;
-    const motionGuidanceAppended = promptLengthAfterMotion > promptLengthBeforeMotion;
+    const plan = planResult.value;
 
     log.info('Resolved motion context for video generation', {
       operation: 'resolveMotionContext',
       requestId,
       userId,
+      hasStartImage: Boolean(resolvedStartImage),
+      hasInputReference: Boolean(inputReference),
+      isI2VRequest: Boolean(resolvedStartImage || inputReference),
       rawHasCameraMotion: rawMotionMeta.hasCameraMotion,
       rawCameraMotionId: rawMotionMeta.cameraMotionId,
       rawHasSubjectMotion: rawMotionMeta.hasSubjectMotion,
       rawSubjectMotionLength: rawMotionMeta.subjectMotionLength,
-      normalizedHasCameraMotion: normalizedMotionMeta.hasCameraMotion,
-      normalizedCameraMotionId: normalizedMotionMeta.cameraMotionId,
-      normalizedHasSubjectMotion: normalizedMotionMeta.hasSubjectMotion,
-      normalizedSubjectMotionLength: normalizedMotionMeta.subjectMotionLength,
-      resolvedCameraMotionId: motionContext.cameraMotionId,
-      resolvedCameraMotionText: motionContext.cameraMotionText,
-      resolvedSubjectMotionLength: motionContext.subjectMotion?.length ?? 0,
-      motionGuidanceAppended,
-      promptLengthBeforeMotion,
-      promptLengthAfterMotion,
+      normalizedHasCameraMotion: plan.normalizedMotionMeta.hasCameraMotion,
+      normalizedCameraMotionId: plan.normalizedMotionMeta.cameraMotionId,
+      normalizedHasSubjectMotion: plan.normalizedMotionMeta.hasSubjectMotion,
+      normalizedSubjectMotionLength: plan.normalizedMotionMeta.subjectMotionLength,
+      resolvedCameraMotionId: plan.motionContext.cameraMotionId,
+      resolvedCameraMotionText: plan.motionContext.cameraMotionText,
+      resolvedSubjectMotionLength: plan.motionContext.subjectMotion?.length ?? 0,
+      disablePromptExtend: plan.disablePromptExtend,
+      motionGuidanceAppended: plan.motionGuidanceAppended,
+      promptLengthBeforeMotion: plan.promptLengthBeforeMotion,
+      promptLengthAfterMotion: plan.promptLengthAfterMotion,
     });
 
-    const hasCredits = await userCreditService.reserveCredits(userId, videoCost);
-    if (!hasCredits) {
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
-      }
-      return res.status(402).json({
-        success: false,
-        error: 'Insufficient credits',
-        message: `This generation requires ${videoCost} credits${keyframeCost > 0 ? ` (plus ${keyframeCost} already reserved for keyframe)` : ''}.`,
+    if (plan.disablePromptExtend) {
+      log.info('Disabling Wan prompt_extend for I2V camera motion', {
+        operation: 'configureWanPromptExtend',
+        requestId,
+        userId,
+        cameraMotionId: plan.motionContext.cameraMotionId,
+        hasStartImage: Boolean(resolvedStartImage),
+        hasInputReference: Boolean(inputReference),
       });
     }
 
-    const options: VideoGenerationOptions = {};
-    const resolvedAspectRatio = paramAspectRatio || aspectRatio;
-    if (resolvedAspectRatio) {
-      options.aspectRatio = resolvedAspectRatio as NonNullable<VideoGenerationOptions['aspectRatio']>;
+    const hasCredits = await userCreditService.reserveCredits(userId, plan.videoCost);
+    if (!hasCredits) {
+      await refunds.refundKeyframeCredits('video credits insufficient after keyframe reservation');
+      await refunds.refundFaceSwapCredits('video credits insufficient after face-swap reservation');
+      const preprocessingCost = refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost;
+      return await respondWithError(402, {
+        error: 'Insufficient credits',
+        code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+        details: `This generation requires ${plan.videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ''}.`,
+      });
     }
-    if (model) {
-      options.model = model as NonNullable<VideoGenerationOptions['model']>;
-    }
-    if (resolvedStartImage) {
-      options.startImage = resolvedStartImage;
-    }
-    if (inputReference) {
-      options.inputReference = inputReference;
-    }
-    if (typeof paramFps === 'number') {
-      options.fps = paramFps;
-    }
-    if (seconds) {
-      options.seconds = seconds;
-    }
-    if (size) {
-      options.size = size;
-    }
-    if (typeof numFrames === 'number') {
-      options.numFrames = numFrames;
-    }
+    refunds.setVideoCost(plan.videoCost);
 
     log.debug('Queueing operation.', {
       operation,
       requestId,
       userId,
-      promptLength: promptWithMotion.length,
-      promptLengthBeforeMotion,
-      promptLengthAfterMotion,
-      motionGuidanceAppended,
+      promptLength: plan.promptWithMotion.length,
+      promptLengthBeforeMotion: plan.promptLengthBeforeMotion,
+      promptLengthAfterMotion: plan.promptLengthAfterMotion,
+      motionGuidanceAppended: plan.motionGuidanceAppended,
       promptWasStripped,
       aspectRatio,
       model,
-      videoCost,
-      keyframeCost,
-      totalCost: videoCost + keyframeCost,
+      videoCost: refunds.ledger.videoCost,
+      keyframeCost: refunds.ledger.keyframeCost,
+      faceSwapCost: refunds.ledger.faceSwapCost,
+      totalCost: refunds.ledger.videoCost + refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost,
       usedKeyframe: Boolean(generatedKeyframeUrl),
-      hasCameraMotion: Boolean(motionContext.cameraMotionId),
-      cameraMotionId: motionContext.cameraMotionId,
-      hasSubjectMotion: Boolean(motionContext.subjectMotion),
-      subjectMotionLength: motionContext.subjectMotion?.length ?? 0,
+      faceSwapApplied: Boolean(swappedImageUrl),
+      hasCameraMotion: Boolean(plan.motionContext.cameraMotionId),
+      cameraMotionId: plan.motionContext.cameraMotionId,
+      hasSubjectMotion: Boolean(plan.motionContext.subjectMotion),
+      subjectMotionLength: plan.motionContext.subjectMotion?.length ?? 0,
+      promptExtend: plan.options.promptExtend ?? null,
     });
 
     try {
       const job = await videoJobStore.createJob({
         userId,
         request: {
-          prompt: promptWithMotion,
-          options,
+          prompt: plan.promptWithMotion,
+          options: plan.options,
         },
-        creditsReserved: videoCost,
+        creditsReserved: refunds.ledger.videoCost,
       });
 
       log.info('Operation queued.', {
@@ -456,57 +469,85 @@ export const createVideoGenerateHandler = ({
         requestId,
         userId,
         jobId: job.id,
-        videoCost,
-        keyframeCost,
+        videoCost: refunds.ledger.videoCost,
+        keyframeCost: refunds.ledger.keyframeCost,
+        faceSwapCost: refunds.ledger.faceSwapCost,
         keyframeUrl: generatedKeyframeUrl,
-        hasCameraMotion: Boolean(motionContext.cameraMotionId),
-        cameraMotionId: motionContext.cameraMotionId,
-        hasSubjectMotion: Boolean(motionContext.subjectMotion),
-        subjectMotionLength: motionContext.subjectMotion?.length ?? 0,
-        promptLengthBeforeMotion,
-        promptLengthAfterMotion,
-        motionGuidanceAppended,
+        faceSwapUrl: swappedImageUrl,
+        hasCameraMotion: Boolean(plan.motionContext.cameraMotionId),
+        cameraMotionId: plan.motionContext.cameraMotionId,
+        hasSubjectMotion: Boolean(plan.motionContext.subjectMotion),
+        subjectMotionLength: plan.motionContext.subjectMotion?.length ?? 0,
+        promptLengthBeforeMotion: plan.promptLengthBeforeMotion,
+        promptLengthAfterMotion: plan.promptLengthAfterMotion,
+        motionGuidanceAppended: plan.motionGuidanceAppended,
       });
 
-      scheduleInlineVideoPreviewProcessing({
-        jobId: job.id,
-        requestId,
-        videoJobStore,
-        videoGenerationService,
-        userCreditService,
-      });
-
-      return res.status(202).json({
-        success: true,
-        jobId: job.id,
-        status: job.status,
-        creditsReserved: videoCost,
-        creditsDeducted: videoCost + keyframeCost,
-        keyframeGenerated: Boolean(generatedKeyframeUrl),
-        keyframeUrl: generatedKeyframeUrl,
-      });
-    } catch (error: unknown) {
-      await userCreditService.refundCredits(userId, videoCost);
-      if (keyframeCost > 0) {
-        await userCreditService.refundCredits(userId, keyframeCost);
+      if (getRuntimeFlags().videoJobInlineEnabled) {
+        scheduleInlineVideoPreviewProcessing({
+          jobId: job.id,
+          requestId,
+          videoJobStore,
+          videoGenerationService,
+          userCreditService,
+          storageService: storageService ?? null,
+        });
       }
 
+      const responsePayload = {
+        jobId: job.id,
+        status: job.status,
+        creditsReserved: refunds.ledger.videoCost,
+        creditsDeducted: refunds.ledger.videoCost + refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost,
+        keyframeGenerated: Boolean(generatedKeyframeUrl),
+        keyframeUrl: generatedKeyframeUrl,
+        faceSwapApplied: Boolean(swappedImageUrl),
+        faceSwapUrl: swappedImageUrl,
+      };
+
+      const responseBody = {
+        success: true,
+        data: responsePayload,
+        ...responsePayload,
+      } as Record<string, unknown>;
+
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markCompleted({
+          recordId: idempotencyRecordId,
+          jobId: job.id,
+          snapshot: {
+            statusCode: 202,
+            body: responseBody,
+          },
+        });
+      }
+
+      return res.status(202).json(responseBody);
+    } catch (error: unknown) {
+      await refunds.refundVideoCredits('video queueing failed');
+      await refunds.refundKeyframeCredits('video queueing failed after keyframe reservation');
+      await refunds.refundFaceSwapCredits('video queueing failed after face-swap reservation');
+
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
+      const statusCode = hasStatusCode(error) ? error.statusCode : 500;
       const errorInstance = error instanceof Error ? error : new Error(errorMessage);
+      const code =
+        statusCode === 503
+          ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+          : GENERATION_ERROR_CODES.GENERATION_FAILED;
 
       log.error('Operation failed.', errorInstance, {
         operation,
         requestId,
         userId,
-        refundAmount: videoCost + keyframeCost,
+        refundAmount: refunds.ledger.videoCost + refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost,
         statusCode,
       });
 
-      return res.status(statusCode).json({
-        success: false,
+      return await respondWithError(statusCode, {
         error: 'Video generation failed',
-        message: errorMessage,
+        code,
+        details: errorMessage,
       });
     }
   };

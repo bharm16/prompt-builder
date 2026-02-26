@@ -13,23 +13,30 @@ export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSche
     return {
       name: 'custom_suggestions',
       strict: true,
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['text'],
-        additionalProperties: false,
-        properties: {
-          text: {
-            type: 'string',
-            description: 'Replacement phrase that fulfills the custom request.',
-          },
-          category: {
-            type: 'string',
-            description: 'Category of the suggestion.',
-          },
-          explanation: {
-            type: 'string',
-            description: 'Why this suggestion fulfills the request.',
+      type: 'object',
+      required: ['suggestions'],
+      additionalProperties: false,
+      properties: {
+        suggestions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['text'],
+            additionalProperties: false,
+            properties: {
+              text: {
+                type: 'string',
+                description: 'Replacement phrase that fulfills the custom request.',
+              },
+              category: {
+                type: 'string',
+                description: 'Category of the suggestion.',
+              },
+              explanation: {
+                type: 'string',
+                description: 'Why this suggestion fulfills the request.',
+              },
+            },
           },
         },
       },

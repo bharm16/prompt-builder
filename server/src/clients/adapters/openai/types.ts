@@ -3,6 +3,7 @@
  */
 
 import type { AIResponse, MessageContent } from '@interfaces/IAIClient';
+export type { AbortControllerResult } from '@clients/utils/abortController';
 
 export interface CompletionOptions {
   userMessage?: string;
@@ -38,12 +39,6 @@ export interface AdapterConfig {
   defaultModel: string;
   defaultTimeout?: number;
   providerName?: string;
-}
-
-export interface AbortControllerResult {
-  controller: AbortController;
-  timeoutId: NodeJS.Timeout;
-  abortedByTimeout: { value: boolean };
 }
 
 export interface OpenAiMessage {

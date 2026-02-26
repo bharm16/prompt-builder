@@ -1,18 +1,18 @@
-import type { PromptVersionEntry } from '@hooks/types';
+import type { PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 export type PromptData = {
   uuid?: string;
   title?: string | null;
   generationParams?: Record<string, unknown> | null;
-  highlightCache?: unknown | null;
+  keyframes?: PromptKeyframe[] | null;
+  highlightCache?: Record<string, unknown> | null;
   versions?: PromptVersionEntry[];
   input: string;
   output: string;
   score?: number | null;
   mode?: string;
   targetModel?: string | null;
-  brainstormContext?: unknown | null;
-  [key: string]: unknown;
+  brainstormContext?: Record<string, unknown> | null;
 };
 
 export type SavedPromptResult = {
@@ -21,10 +21,9 @@ export type SavedPromptResult = {
 };
 
 export type UpdateHighlightsOptions = {
-  highlightCache?: unknown | null;
+  highlightCache?: Record<string, unknown> | null;
   versionEntry?: {
     timestamp?: string;
-    [key: string]: unknown;
   };
 };
 
@@ -33,6 +32,7 @@ export type UpdatePromptOptions = {
   input?: string;
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;
+  keyframes?: PromptKeyframe[] | null;
   mode?: string;
 };
 

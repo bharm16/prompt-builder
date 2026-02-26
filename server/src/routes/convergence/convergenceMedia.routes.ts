@@ -8,10 +8,11 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
 import { Readable } from 'node:stream';
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { logger } from '@infrastructure/Logger';
 import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { asyncHandler } from '@middleware/asyncHandler';
-import { getGCSStorageService } from '@services/convergence/storage';
+import type { GCSStorageService } from '@services/convergence/storage';
 
 const STORAGE_HOST = 'storage.googleapis.com';
 const STORAGE_HOST_SUFFIX = '.storage.googleapis.com';
@@ -63,7 +64,7 @@ const extractObjectPath = (url: URL, bucketName: string): string | null => {
 const sanitizeFilename = (value: string): string =>
   value.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export function createConvergenceMediaRoutes(): Router {
+export function createConvergenceMediaRoutes(getStorageService: () => GCSStorageService): Router {
   const router = express.Router();
 
   router.post(
@@ -92,7 +93,7 @@ export function createConvergenceMediaRoutes(): Router {
 
       const safeName = sanitizeFilename(file.originalname || 'upload.png');
       const destination = `convergence/${userId}/uploads/${Date.now()}-${safeName}`;
-      const storageService = getGCSStorageService();
+      const storageService = getStorageService();
 
       let url: string;
       try {
@@ -124,15 +125,8 @@ export function createConvergenceMediaRoutes(): Router {
     '/proxy',
     asyncHandler(async (req: Request, res: Response) => {
       const urlParam = typeof req.query.url === 'string' ? req.query.url.trim() : '';
-      const bucketName = process.env.GCS_BUCKET_NAME?.trim();
-
-      if (!bucketName) {
-        return res.status(500).json({
-          success: false,
-          error: 'SERVER_CONFIGURATION_ERROR',
-          message: 'GCS_BUCKET_NAME is not configured',
-        });
-      }
+      const storageService = getStorageService();
+      const bucketName = storageService.getBucketName();
 
       if (!urlParam) {
         return res.status(400).json({
@@ -176,7 +170,22 @@ export function createConvergenceMediaRoutes(): Router {
         host: parsedUrl.hostname,
       });
 
-      const upstream = await fetch(parsedUrl.toString(), {
+      let upstreamUrl = parsedUrl.toString();
+      try {
+        const refreshedUrl = await storageService.refreshSignedUrl(upstreamUrl);
+        if (refreshedUrl) {
+          upstreamUrl = refreshedUrl;
+        }
+      } catch (error) {
+        logger.warn('Failed to refresh convergence media proxy URL; using original', {
+          bucketName,
+          objectPath,
+          host: parsedUrl.hostname,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const upstream = await fetch(upstreamUrl, {
         method: req.method === 'HEAD' ? 'HEAD' : 'GET',
         redirect: 'follow',
       });
@@ -202,7 +211,7 @@ export function createConvergenceMediaRoutes(): Router {
         return res.end();
       }
 
-      const stream = Readable.fromWeb(upstream.body as ReadableStream<Uint8Array>);
+      const stream = Readable.fromWeb(upstream.body as unknown as NodeReadableStream<Uint8Array>);
       stream.on('error', (error) => {
         logger.warn('Convergence media proxy stream error', {
           error: error instanceof Error ? error.message : String(error),

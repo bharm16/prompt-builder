@@ -23,7 +23,7 @@ const requestMetadata = new Map<string, RequestMetadata>();
 /**
  * Request interceptor - logs outgoing requests
  */
-export function createRequestLoggingInterceptor() {
+export function createRequestLoggingInterceptor(): (request: BuiltRequest) => BuiltRequest {
   return (request: BuiltRequest): BuiltRequest => {
     const traceId = logger.generateTraceId();
     const url = new URL(request.url, window.location.origin);
@@ -71,7 +71,7 @@ export function createRequestLoggingInterceptor() {
 /**
  * Response interceptor - logs incoming responses
  */
-export function createResponseLoggingInterceptor() {
+export function createResponseLoggingInterceptor(): (response: Response) => Promise<Response> {
   return async (response: Response): Promise<Response> => {
     const url = response.url;
     const metadata = requestMetadata.get(url);
@@ -143,7 +143,7 @@ export function createResponseLoggingInterceptor() {
 /**
  * Error interceptor for fetch failures
  */
-export function createErrorLoggingInterceptor() {
+export function createErrorLoggingInterceptor(): (error: Error) => never {
   return (error: Error): never => {
     logger.error('API Request Failed', error, {
       operation: 'apiRequest',

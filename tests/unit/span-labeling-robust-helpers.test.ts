@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
@@ -26,7 +28,8 @@ import * as SpanValidator from '@server/llm/span-labeling/validation/SpanValidat
 import * as SchemaValidator from '@server/llm/span-labeling/validation/SchemaValidator';
 import * as ProviderDetector from '@server/utils/provider/ProviderDetector';
 import * as ModelInvocation from '@server/llm/span-labeling/services/robust-llm-client/modelInvocation';
-import type { ModelResponse } from '@server/llm/span-labeling/services/robust-llm-client/modelInvocation';
+
+type CallModelAiService = Parameters<typeof callModel>[0]['aiService'];
 
 const setTrackMetrics = (value: boolean) => {
   (SpanLabelingConfig.NLP_FAST_PATH as { TRACK_METRICS: boolean }).TRACK_METRICS = value;
@@ -38,6 +41,10 @@ afterEach(() => {
   setTrackMetrics(originalTrackMetrics);
   vi.restoreAllMocks();
 });
+
+const makeAiService = (
+  execute: CallModelAiService['execute']
+): CallModelAiService => ({ execute } as unknown as CallModelAiService);
 
 describe('defensiveMeta', () => {
   describe('error handling', () => {
@@ -101,9 +108,7 @@ describe('defensiveMeta', () => {
 describe('modelInvocation.callModel', () => {
   describe('error handling', () => {
     it('throws when few-shot payload is not valid JSON', async () => {
-      const aiService = {
-        execute: vi.fn(),
-      } as { execute: (op: string, params: unknown) => Promise<ModelResponse> };
+      const aiService = makeAiService(vi.fn());
 
       await expect(
         callModel({
@@ -122,9 +127,7 @@ describe('modelInvocation.callModel', () => {
     });
 
     it('returns empty text when response has no text or content', async () => {
-      const aiService = {
-        execute: vi.fn().mockResolvedValue({ metadata: {} }),
-      } as { execute: (op: string, params: unknown) => Promise<ModelResponse> };
+      const aiService = makeAiService(vi.fn().mockResolvedValue({ metadata: {} }));
 
       const result = await callModel({
         systemPrompt: 'SYSTEM',
@@ -146,7 +149,7 @@ describe('modelInvocation.callModel', () => {
   describe('edge cases', () => {
     it('includes schema and disables jsonMode when schema is provided', async () => {
       const execute = vi.fn().mockResolvedValue({ text: 'ok', metadata: {} });
-      const aiService = { execute } as { execute: (op: string, params: Record<string, unknown>) => Promise<ModelResponse> };
+      const aiService = makeAiService(execute);
 
       await callModel({
         systemPrompt: 'SYSTEM',
@@ -169,7 +172,7 @@ describe('modelInvocation.callModel', () => {
 
     it('builds message array when few-shot examples are enabled', async () => {
       const execute = vi.fn().mockResolvedValue({ text: 'ok', metadata: {} });
-      const aiService = { execute } as { execute: (op: string, params: Record<string, unknown>) => Promise<ModelResponse> };
+      const aiService = makeAiService(execute);
 
       await callModel({
         systemPrompt: 'SYSTEM',
@@ -186,16 +189,15 @@ describe('modelInvocation.callModel', () => {
       });
 
       const params = execute.mock.calls[0]?.[1] as { messages?: Array<{ role: string; content: string }> };
-      expect(params.messages?.[0]?.role).toBe('system');
-      expect(params.messages?.[params.messages.length - 1]?.role).toBe('user');
+      const messages = params.messages ?? [];
+      expect(messages[0]?.role).toBe('system');
+      expect(messages[messages.length - 1]?.role).toBe('user');
     });
   });
 
   describe('core behavior', () => {
     it('prefers response.text when available', async () => {
-      const aiService = {
-        execute: vi.fn().mockResolvedValue({ text: 'primary', metadata: {} }),
-      } as { execute: (op: string, params: unknown) => Promise<ModelResponse> };
+      const aiService = makeAiService(vi.fn().mockResolvedValue({ text: 'primary', metadata: {} }));
 
       const result = await callModel({
         systemPrompt: 'SYSTEM',
@@ -328,7 +330,7 @@ describe('repair.attemptRepair', () => {
         },
       });
 
-      expect(receivedMeta?.version).toBe('v9');
+      expect(receivedMeta?.['version']).toBe('v9');
     });
 
     it('passes normalized response into validation', async () => {
@@ -367,7 +369,7 @@ describe('repair.attemptRepair', () => {
         injectDefensiveMeta: () => undefined,
       });
 
-      expect(validationInput?.version).toBe('v1');
+      expect(validationInput?.['version']).toBe('v1');
     });
   });
 
