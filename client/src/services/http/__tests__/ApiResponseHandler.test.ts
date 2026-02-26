@@ -4,8 +4,8 @@ import { ApiResponseHandler } from '../ApiResponseHandler';
 
 function createHandler() {
   const errorFactory = {
-    create: vi.fn(({ message, status, response }: { message: string; status?: number; response?: unknown }) =>
-      new ApiError(message, status, response)
+    create: vi.fn(({ message, status, response, code }: { message: string; status?: number; response?: unknown; code?: string }) =>
+      new ApiError(message, status, response, code)
     ),
     createTimeout: vi.fn(() => new ApiError('Request timeout')),
     createNetwork: vi.fn((error: unknown) =>
@@ -48,6 +48,7 @@ describe('ApiResponseHandler', () => {
       message: 'bad request payload',
       status: 400,
       response: { error: 'bad request payload' },
+      code: undefined,
     });
   });
 
@@ -68,6 +69,7 @@ describe('ApiResponseHandler', () => {
       message: 'HTTP 503',
       status: 503,
       response: null,
+      code: undefined,
     });
   });
 

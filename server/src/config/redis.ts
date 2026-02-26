@@ -1,6 +1,10 @@
 import Redis from 'ioredis';
 import { logger } from '@infrastructure/Logger';
 
+export type RedisStatus = 'connected' | 'disconnected' | 'reconnecting' | 'disabled';
+
+let currentRedisStatus: RedisStatus = 'disabled';
+
 /**
  * Create and configure Redis client
  *
@@ -64,12 +68,13 @@ export function createRedisClient(): Redis | null {
       ? new Redis(redisUrl, redisConfig)
       : new Redis(redisConfig);
 
-    // Event handlers
+    // Event handlers with status tracking
     redis.on('connect', () => {
       logger.info('Redis connecting...');
     });
 
     redis.on('ready', () => {
+      currentRedisStatus = 'connected';
       logger.info('Redis connected and ready', {
         host: redis.options.host,
         port: redis.options.port,
@@ -86,14 +91,17 @@ export function createRedisClient(): Redis | null {
     });
 
     redis.on('close', () => {
-      logger.warn('Redis connection closed');
+      currentRedisStatus = 'disconnected';
+      logger.warn('Redis connection closed — cache operations will use in-memory fallback');
     });
 
     redis.on('reconnecting', (delay: number) => {
+      currentRedisStatus = 'reconnecting';
       logger.info('Redis reconnecting', { delay });
     });
 
     redis.on('end', () => {
+      currentRedisStatus = 'disconnected';
       logger.warn('Redis connection ended');
     });
 
@@ -112,6 +120,10 @@ export function createRedisClient(): Redis | null {
 /**
  * Gracefully close Redis connection
  */
+export function getRedisStatus(): RedisStatus {
+  return currentRedisStatus;
+}
+
 export async function closeRedisClient(redis: Redis | null): Promise<void> {
   if (!redis) return;
 

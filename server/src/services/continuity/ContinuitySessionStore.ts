@@ -7,17 +7,29 @@ import {
 } from './continuitySerialization';
 import { SessionStore } from '@services/sessions/SessionStore';
 import type { SessionRecord } from '@services/sessions/types';
+import { DomainError } from '@server/errors/DomainError';
 
-export class ContinuitySessionVersionMismatchError extends Error {
+export class ContinuitySessionVersionMismatchError extends DomainError {
+  readonly code = 'SESSION_VERSION_CONFLICT' as const;
+
   constructor(
     readonly sessionId: string,
     readonly expectedVersion: number,
     readonly actualVersion?: number
   ) {
     super(
-      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? 'unknown'})`
+      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? 'unknown'})`,
+      { sessionId, expectedVersion, actualVersion }
     );
     this.name = 'ContinuitySessionVersionMismatchError';
+  }
+
+  getHttpStatus(): number {
+    return 409;
+  }
+
+  getUserMessage(): string {
+    return 'Your changes conflicted with another edit. Please reload to see the latest version.';
   }
 }
 

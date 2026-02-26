@@ -4,6 +4,7 @@ import type { VideoGenerationService } from '../VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { StorageService } from '@services/storage/StorageService';
+import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
 import type { VideoJobError, VideoJobErrorCategory, VideoJobErrorStage, VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 import type { ProviderCircuitManager } from './ProviderCircuitManager';
@@ -77,6 +78,8 @@ export class VideoJobWorker {
   private isRunning = false;
   private isTicking = false;
   private readonly activeJobs = new Map<string, ActiveJobContext>();
+  private lastRunAt: Date | null = null;
+  private consecutiveFailures = 0;
 
   constructor(
     jobStore: VideoJobStore,
@@ -125,6 +128,26 @@ export class VideoJobWorker {
       clearTimeout(this.timer);
       this.timer = null;
     }
+  }
+
+  getStatus(): WorkerStatus {
+    return {
+      running: this.isRunning,
+      lastRunAt: this.lastRunAt,
+      consecutiveFailures: this.consecutiveFailures,
+    };
+  }
+
+  /** Reset poll interval to base and reschedule — used by circuit breaker recovery to resume fast polling. */
+  resetPollInterval(): void {
+    if (!this.isRunning) return;
+    this.currentPollIntervalMs = this.basePollIntervalMs;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.scheduleNextTick(this.basePollIntervalMs);
+    this.log.info('Poll interval reset by circuit recovery', { pollIntervalMs: this.basePollIntervalMs });
   }
 
   async shutdown(drainTimeoutMs: number): Promise<void> {
@@ -186,7 +209,11 @@ export class VideoJobWorker {
       } else {
         claimedJobs = await this.tickLegacy();
       }
+      this.lastRunAt = new Date();
+      this.consecutiveFailures = 0;
     } catch (error) {
+      this.lastRunAt = new Date();
+      this.consecutiveFailures += 1;
       this.log.error('Video job worker tick failed', error as Error, {
         workerId: this.workerId,
       });

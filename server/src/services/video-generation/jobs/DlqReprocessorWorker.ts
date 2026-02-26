@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
 import type { VideoJobStore } from './VideoJobStore';
 import type { ProviderCircuitManager } from './ProviderCircuitManager';
 import type { DlqEntry } from './types';
@@ -32,6 +33,8 @@ export class DlqReprocessorWorker {
   private currentPollIntervalMs: number;
   private started = false;
   private running = false;
+  private lastRunAt: Date | null = null;
+  private consecutiveFailures = 0;
 
   constructor(jobStore: VideoJobStore, options: DlqReprocessorOptions = {}) {
     this.jobStore = jobStore;
@@ -63,6 +66,26 @@ export class DlqReprocessorWorker {
       clearTimeout(this.timer);
       this.timer = null;
     }
+  }
+
+  getStatus(): WorkerStatus {
+    return {
+      running: this.started,
+      lastRunAt: this.lastRunAt,
+      consecutiveFailures: this.consecutiveFailures,
+    };
+  }
+
+  /** Reset poll interval to base and reschedule — used by circuit breaker recovery to resume fast polling. */
+  resetPollInterval(): void {
+    if (!this.started) return;
+    this.currentPollIntervalMs = this.basePollIntervalMs;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.scheduleNext(this.basePollIntervalMs);
+    this.log.info('Poll interval reset by circuit recovery', { pollIntervalMs: this.basePollIntervalMs });
   }
 
   private scheduleNext(delayMs: number): void {
@@ -123,8 +146,12 @@ export class DlqReprocessorWorker {
         this.metrics?.recordAlert('video_job_dlq_reprocessed_total', { count: processed });
       }
 
+      this.lastRunAt = new Date();
+      this.consecutiveFailures = 0;
       return true;
     } catch (error) {
+      this.lastRunAt = new Date();
+      this.consecutiveFailures += 1;
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.warn('DLQ reprocessor run failed', { error: errorMessage });
       return false;

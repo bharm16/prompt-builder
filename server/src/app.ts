@@ -50,6 +50,7 @@ export function createApp(container: DIContainer): Application {
   configureMiddleware(app, {
     logger: container.resolve('logger'),
     metricsService: container.resolve('metricsService'),
+    redisClient: container.resolve('redisClient'),
   });
 
   // Pre-warm fal.ai depth estimation to reduce cold starts in Create mode.

@@ -90,6 +90,7 @@ describe('createApp', () => {
       expect(configureMiddlewareMock).toHaveBeenCalledWith(appInstance, {
         logger: { token: 'logger' },
         metricsService: { token: 'metricsService' },
+        redisClient: { token: 'redisClient' },
       });
       expect(configureRoutesMock).toHaveBeenCalledWith(appInstance, container);
     });

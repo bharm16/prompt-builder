@@ -74,7 +74,11 @@ export const createOptimizeStreamHandler = (
       return;
     }
 
-    const { signal, sendEvent, markProcessingStarted, close } = createSseChannel(req, res);
+    const { signal: channelSignal, sendEvent, markProcessingStarted, close } = createSseChannel(req, res);
+
+    const STREAM_TIMEOUT_MS = 120_000;
+    const timeoutSignal = AbortSignal.timeout(STREAM_TIMEOUT_MS);
+    const signal = AbortSignal.any([channelSignal, timeoutSignal]);
 
     const startTime = Date.now();
 
@@ -176,6 +180,22 @@ export const createOptimizeStreamHandler = (
 
       close();
     } catch (error: unknown) {
+      if (timeoutSignal.aborted && !res.writableEnded) {
+        logger.warn('Optimize-stream timed out', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+          timeoutMs: STREAM_TIMEOUT_MS,
+        });
+        sendEvent('error', {
+          error: 'Stream timeout exceeded',
+          status: 'timeout',
+        });
+        close();
+        return;
+      }
+
       if (signal.aborted || res.writableEnded) {
         close();
         return;

@@ -61,6 +61,7 @@ export interface StreamWithFetchOptions {
   onError: (error: Error) => void;
   onComplete?: () => void;
   signal?: AbortSignal;
+  maxStreamDurationMs?: number;
 }
 
 export interface OfflineResult {

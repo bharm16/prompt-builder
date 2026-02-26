@@ -19,6 +19,12 @@ interface CreditRefundSweeperOptions {
   maxAttempts: number;
 }
 
+export interface WorkerStatus {
+  running: boolean;
+  lastRunAt: Date | null;
+  consecutiveFailures: number;
+}
+
 export class CreditRefundSweeper {
   private readonly log = logger.child({ service: 'CreditRefundSweeper' });
   private readonly failureStore: RefundFailureStore;
@@ -33,6 +39,8 @@ export class CreditRefundSweeper {
   private currentSweepIntervalMs = 0;
   private started = false;
   private running = false;
+  private lastRunAt: Date | null = null;
+  private consecutiveFailures = 0;
 
   constructor(
     failureStore: RefundFailureStore,
@@ -93,6 +101,14 @@ export class CreditRefundSweeper {
     }
   }
 
+  getStatus(): WorkerStatus {
+    return {
+      running: this.started,
+      lastRunAt: this.lastRunAt,
+      consecutiveFailures: this.consecutiveFailures,
+    };
+  }
+
   private async runOnce(): Promise<boolean> {
     if (this.running) {
       return true;
@@ -147,8 +163,12 @@ export class CreditRefundSweeper {
 
         processed += 1;
       }
+      this.lastRunAt = new Date();
+      this.consecutiveFailures = 0;
       return true;
     } catch (error) {
+      this.lastRunAt = new Date();
+      this.consecutiveFailures += 1;
       this.log.error('Credit refund sweeper run failed', error as Error);
       return false;
     } finally {

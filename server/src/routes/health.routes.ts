@@ -3,6 +3,11 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { metricsAuthMiddleware } from '@middleware/metricsAuth';
 import { logger } from '@infrastructure/Logger';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
+import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
+
+interface WorkerStatusProvider {
+  getStatus(): WorkerStatus;
+}
 
 interface HealthDependencies {
   claudeClient?: { getStats: () => { state: string } } | null;
@@ -20,6 +25,8 @@ interface HealthDependencies {
   checkFirestore?: () => Promise<void>;
   /** Optional Firestore circuit state for readiness gating. */
   firestoreCircuitExecutor?: FirestoreCircuitExecutor;
+  /** Optional background worker status providers for health reporting. */
+  workers?: Record<string, WorkerStatusProvider | null>;
 }
 
 /**
@@ -37,6 +44,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     metricsService,
     checkFirestore,
     firestoreCircuitExecutor,
+    workers,
   } = dependencies;
 
   // GET /health - Basic health check
@@ -147,6 +155,21 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         },
       };
 
+      // Collect background worker statuses (informational — does not gate readiness)
+      const workerStatuses: Record<string, { running: boolean; lastRunAt: string | null; consecutiveFailures: number }> = {};
+      if (workers) {
+        for (const [name, provider] of Object.entries(workers)) {
+          if (provider) {
+            const status = provider.getStatus();
+            workerStatuses[name] = {
+              running: status.running,
+              lastRunAt: status.lastRunAt?.toISOString() ?? null,
+              consecutiveFailures: status.consecutiveFailures,
+            };
+          }
+        }
+      }
+
       const allHealthy = Object.values(checks).every(
         (c) => c.healthy !== false
       );
@@ -163,6 +186,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         status: allHealthy ? 'ready' : 'not ready',
         timestamp: new Date().toISOString(),
         checks,
+        ...(Object.keys(workerStatuses).length > 0 ? { workers: workerStatuses } : {}),
       });
     })
   );

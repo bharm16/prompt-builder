@@ -120,6 +120,19 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Health Routes (no auth required)
   // ============================================================================
 
+  // Resolve worker instances for health status reporting (workers may be null when
+  // disabled by config or when running in the api process role).
+  type StatusProvider = { getStatus(): { running: boolean; lastRunAt: Date | null; consecutiveFailures: number } };
+  const workerEntries: [string, StatusProvider | null][] = [
+    ['creditRefundSweeper', resolveOptionalService<StatusProvider | null>(container, 'creditRefundSweeper', 'health-workers')],
+    ['videoJobWorker', resolveOptionalService<StatusProvider | null>(container, 'videoJobWorker', 'health-workers')],
+    ['dlqReprocessorWorker', resolveOptionalService<StatusProvider | null>(container, 'dlqReprocessorWorker', 'health-workers')],
+  ];
+  const workers: Record<string, StatusProvider> = {};
+  for (const [name, provider] of workerEntries) {
+    if (provider) workers[name] = provider;
+  }
+
   const healthRoutes = createHealthRoutes({
     claudeClient: container.resolve('claudeClient'),
     groqClient: container.resolve('groqClient'),
@@ -132,6 +145,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
         await getFirestore().listCollections();
       });
     },
+    workers,
   });
 
   app.use('/', healthRoutes);

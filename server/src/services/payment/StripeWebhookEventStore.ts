@@ -91,6 +91,16 @@ export class StripeWebhookEventStore {
     );
   }
 
+  async hasProcessedEvent(eventId: string): Promise<boolean> {
+    const doc = await this.firestoreCircuitExecutor.executeRead(
+      'payment.webhook.hasProcessedEvent',
+      async () => await this.collection.doc(eventId).get()
+    );
+    if (!doc.exists) return false;
+    const data = doc.data() as StripeWebhookEventRecord | undefined;
+    return data?.status === 'processed';
+  }
+
   async markProcessed(eventId: string): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(

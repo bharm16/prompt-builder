@@ -28,10 +28,16 @@ export class ApiResponseHandler {
           : null) ||
         `HTTP ${response.status}`;
 
+      const code =
+        errorPayload && typeof errorPayload === 'object' && 'code' in errorPayload && typeof errorPayload.code === 'string'
+          ? errorPayload.code
+          : undefined;
+
       throw this.errorFactory.create({
         message,
         status: response.status,
         response: errorPayload,
+        code,
       });
     }
 

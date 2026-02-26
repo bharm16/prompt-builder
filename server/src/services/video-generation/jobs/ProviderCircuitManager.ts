@@ -40,6 +40,7 @@ export class ProviderCircuitManager {
   private readonly cooldownMs: number;
   private readonly maxSamples: number;
   private readonly metrics: ProviderCircuitManagerOptions['metrics'];
+  private readonly recoveryCallbacks = new Set<(provider: string) => void>();
 
   constructor(options: ProviderCircuitManagerOptions = {}) {
     this.failureRateThreshold =
@@ -72,6 +73,7 @@ export class ProviderCircuitManager {
       record.state = 'half-open';
       record.halfOpenProbeInFlight = false;
       this.log.warn('Provider circuit moved to half-open', { provider });
+      this.notifyRecovery(provider);
     }
 
     if (record.state === 'half-open') {
@@ -98,6 +100,7 @@ export class ProviderCircuitManager {
       record.halfOpenProbeInFlight = false;
       this.log.info('Provider circuit closed after successful half-open probe', { provider });
       this.metrics?.recordAlert?.('video_provider_circuit_closed', { provider });
+      this.notifyRecovery(provider);
       return;
     }
 
@@ -140,6 +143,22 @@ export class ProviderCircuitManager {
       sampleSize: record.outcomes.length,
       cooldownUntilMs: record.cooldownUntilMs,
     };
+  }
+
+  /** Register a callback that fires when any provider recovers (transitions to half-open or closed). Returns an unsubscribe function. */
+  onRecovery(callback: (provider: string) => void): () => void {
+    this.recoveryCallbacks.add(callback);
+    return () => { this.recoveryCallbacks.delete(callback); };
+  }
+
+  private notifyRecovery(provider: string): void {
+    for (const cb of this.recoveryCallbacks) {
+      try {
+        cb(provider);
+      } catch {
+        // Recovery callbacks are best-effort — don't let one failure prevent others
+      }
+    }
   }
 
   private openCircuit(provider: string, record: ProviderCircuitRecord, reason: string): void {

@@ -159,6 +159,7 @@ export class PromptOptimizationApi {
             ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           },
         ...(signal ? { signal } : {}),
+        maxStreamDurationMs: 90_000,
         onMessage: (event, data) => {
           try {
             switch (event) {

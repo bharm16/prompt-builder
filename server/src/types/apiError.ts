@@ -6,7 +6,8 @@ export type ApiErrorCode =
   | 'GENERATION_FAILED'
   | 'IDEMPOTENCY_KEY_REQUIRED'
   | 'IDEMPOTENCY_CONFLICT'
-  | 'REQUEST_IN_PROGRESS';
+  | 'REQUEST_IN_PROGRESS'
+  | 'SESSION_VERSION_CONFLICT';
 
 export interface ApiError {
   error: string;

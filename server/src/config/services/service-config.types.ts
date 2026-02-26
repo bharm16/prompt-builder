@@ -39,6 +39,11 @@ export interface ServiceConfig {
     secretKey: string | undefined;
     webhookSecret: string | undefined;
     priceCreditsJson: string | undefined;
+    webhookReconciliation: {
+      disabled: boolean;
+      intervalSeconds: number;
+      lookbackHours: number;
+    };
   };
   credits: {
     refundSweeper: {

@@ -13,6 +13,8 @@ import type { CapabilitiesProbeService } from '@services/capabilities/Capabiliti
 import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
 import type { CreditReconciliationWorker } from '@services/credits/CreditReconciliationWorker';
 import type { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
+import type { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
+import type { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
 import { getRuntimeFlags } from './runtime-flags';
 
 interface HealthCheckResult {
@@ -364,6 +366,23 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     if (dlqReprocessorWorker) {
       dlqReprocessorWorker.start();
       logger.info('✅ DLQ reprocessor worker started');
+    }
+
+    const webhookReconciliationWorker =
+      container.resolve<WebhookReconciliationWorker | null>('webhookReconciliationWorker');
+    if (webhookReconciliationWorker) {
+      webhookReconciliationWorker.start();
+      logger.info('✅ Webhook reconciliation worker started');
+    }
+
+    // Wire circuit breaker recovery to reset worker poll intervals for fast recovery
+    const providerCircuitManager = container.resolve<ProviderCircuitManager | null>('providerCircuitManager');
+    if (providerCircuitManager && (videoJobWorker || dlqReprocessorWorker)) {
+      providerCircuitManager.onRecovery((provider) => {
+        logger.info('Provider circuit recovery detected, resetting worker poll intervals', { provider });
+        videoJobWorker?.resetPollInterval();
+        dlqReprocessorWorker?.resetPollInterval();
+      });
     }
   } else if (!isTestEnv && !promptOutputOnly && !isWorkerRole) {
     logger.info('ℹ️ Video background services skipped (PROCESS_ROLE=api)');

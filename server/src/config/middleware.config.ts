@@ -17,7 +17,9 @@
 import express, { type Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
+import rateLimit, { type RateLimitRequestHandler, type Store } from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+import type Redis from 'ioredis';
 import compression from 'compression';
 
 import { requestIdMiddleware } from '@middleware/requestId';
@@ -212,7 +214,7 @@ export function applyCompressionMiddleware(app: Application): void {
  * Apply rate limiting middleware
  * Disabled in test environments
  */
-export function applyRateLimitingMiddleware(app: Application): void {
+export function applyRateLimitingMiddleware(app: Application, redisClient?: Redis | null): void {
   const isTestEnv =
     process.env.NODE_ENV === 'test' ||
     !!process.env.VITEST_WORKER_ID ||
@@ -221,6 +223,22 @@ export function applyRateLimitingMiddleware(app: Application): void {
   if (isTestEnv) {
     logger.info('Rate limiting disabled in test environment');
     return;
+  }
+
+  const storeFactory = redisClient
+    ? (prefix: string): Store => new RedisStore({
+        sendCommand: (...args: string[]) => {
+          const [cmd = '', ...rest] = args;
+          return redisClient.call(cmd, ...rest) as never;
+        },
+        prefix: `rl:${prefix}:`,
+      })
+    : undefined;
+
+  if (storeFactory) {
+    logger.info('Rate limiting using Redis store (distributed)');
+  } else {
+    logger.info('Rate limiting using in-memory store (single-instance)');
   }
 
   const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
@@ -257,6 +275,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
     max: generalMax,
     message: 'Too many requests from this IP',
     skip: (req: express.Request) => req.path === '/metrics' || req.path === '/api/role-classify',
+    ...(storeFactory ? { store: storeFactory('general') } : {}),
   });
   app.use(generalLimiter);
 
@@ -270,6 +289,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory('api') } : {}),
     })
   );
 
@@ -283,10 +303,12 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory('llm') } : {}),
     })
   );
 
   // Route-specific burst limiters
+  let burstLimiterIndex = 0;
   const makeBurstLimiter = (
     windowMs: number,
     max: number,
@@ -299,6 +321,7 @@ export function applyRateLimitingMiddleware(app: Application): void {
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      ...(storeFactory ? { store: storeFactory(`burst${burstLimiterIndex++}`) } : {}),
     });
 
   // Video validation endpoint burst limits
@@ -426,6 +449,7 @@ export function applyBodyParserMiddleware(app: Application): void {
 interface MiddlewareServices {
   logger: ILogger;
   metricsService: IMetricsCollector;
+  redisClient?: Redis | null;
 }
 
 /**
@@ -451,8 +475,8 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
   // 3. Compression
   applyCompressionMiddleware(app);
 
-  // 4. Rate limiting
-  applyRateLimitingMiddleware(app);
+  // 4. Rate limiting (uses Redis store when available for distributed enforcement)
+  applyRateLimitingMiddleware(app, services.redisClient);
 
   // 5. CORS
   applyCorsMiddleware(app);

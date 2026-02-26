@@ -264,6 +264,19 @@ export class PaymentService {
     return invoices.data;
   }
 
+  async listRecentEvents(type: string, createdAfterUnix: number): Promise<Stripe.Event[]> {
+    const stripe = this.getStripe();
+    const events: Stripe.Event[] = [];
+    for await (const event of stripe.events.list({
+      type,
+      created: { gte: createdAfterUnix },
+      limit: 100,
+    })) {
+      events.push(event);
+    }
+    return events;
+  }
+
   constructEvent(payload: string | Buffer, signature: string): Stripe.Event {
     const stripe = this.getStripe();
 

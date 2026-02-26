@@ -118,6 +118,7 @@ describe('createApp', () => {
     expect(configureMiddleware).toHaveBeenCalledWith(app, {
       logger: { name: 'logger' },
       metricsService: { name: 'metrics' },
+      redisClient: null,
     });
     expect(configureRoutes).toHaveBeenCalledWith(app, container);
   });

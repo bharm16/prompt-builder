@@ -5,6 +5,7 @@ import { parseVideoPreviewRequest } from '@routes/preview/videoRequest';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
+import type { ApiErrorCode } from '@server/types/apiError';
 import { getRuntimeFlags } from '@config/runtime-flags';
 import { resolveVideoGenerateIdempotencyMode } from '@services/idempotency/RequestIdempotencyService';
 import type { VideoModelId } from '@services/video-generation/types';
@@ -280,7 +281,7 @@ export const createVideoGenerateHandler = ({
 
     const respondWithError = async (
       status: number,
-      payload: { error: string; code: (typeof GENERATION_ERROR_CODES)[keyof typeof GENERATION_ERROR_CODES]; details?: string },
+      payload: { error: string; code: ApiErrorCode; details?: string },
       reason?: string
     ): Promise<Response> => {
       await releaseIdempotencyLock(reason || payload.code || payload.error);

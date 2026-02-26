@@ -163,6 +163,20 @@ When modifying `server/src/config/services.config.ts`, `services.initialize.ts`,
 PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
 
+## Validation Expectations During Development
+
+- After each substantive production code change, run targeted unit tests for the impacted area immediately.
+- Do not defer all testing until commit time; use targeted checks to catch regressions while implementing.
+- Before handoff, run the full validation order below.
+
+## Validation Order Before Handoff
+
+1. `npx tsc --noEmit`
+2. `npm run lint:all`
+3. `npm run test:unit`
+4. `npm run test:e2e` (or targeted e2e spec if scope is narrow)
+5. `npm run build`
+
 ### Commit Scope Rules
 
 - Maximum ~10 files per commit unless it's a mechanical refactor (rename, import path change)

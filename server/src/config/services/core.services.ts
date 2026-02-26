@@ -54,6 +54,11 @@ export function registerCoreServices(container: DIContainer): void {
       secretKey: process.env.STRIPE_SECRET_KEY,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
       priceCreditsJson: process.env.STRIPE_PRICE_CREDITS,
+      webhookReconciliation: {
+        disabled: process.env.WEBHOOK_RECONCILIATION_DISABLED !== 'false',
+        intervalSeconds: resolvePositiveNumber(process.env.WEBHOOK_RECONCILIATION_INTERVAL_SECONDS, 300, 30),
+        lookbackHours: resolvePositiveNumber(process.env.WEBHOOK_RECONCILIATION_LOOKBACK_HOURS, 72, 1),
+      },
     },
     credits: {
       refundSweeper: {
