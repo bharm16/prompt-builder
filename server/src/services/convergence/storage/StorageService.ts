@@ -73,6 +73,12 @@ export interface StorageService {
 // Configuration
 // ============================================================================
 
+let convergenceSignedUrlTtlMs = SESSION_TTL_MS;
+
+export function setConvergenceStorageSignedUrlTtl(ttlSeconds: number): void {
+  convergenceSignedUrlTtlMs = ttlSeconds * 1000;
+}
+
 const CONVERGENCE_STORAGE_CONFIG = {
   /** Default content type for uploaded images */
   defaultContentType: 'image/png',
@@ -80,15 +86,7 @@ const CONVERGENCE_STORAGE_CONFIG = {
   fetchTimeoutMs: 5 * 60 * 1000,
   /** Maximum concurrent uploads in a batch */
   maxConcurrentUploads: 10,
-  /** Signed URL TTL in milliseconds */
-  signedUrlTtlMs: (() => {
-    const defaultTtlSeconds = Math.floor(SESSION_TTL_MS / 1000);
-    const ttlSeconds = Number.parseInt(
-      process.env.CONVERGENCE_STORAGE_SIGNED_URL_TTL_SECONDS || String(defaultTtlSeconds),
-      10
-    );
-    return Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : defaultTtlSeconds * 1000;
-  })(),
+  get signedUrlTtlMs() { return convergenceSignedUrlTtlMs; },
 } as const;
 
 // ============================================================================

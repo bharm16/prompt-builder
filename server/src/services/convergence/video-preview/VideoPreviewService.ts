@@ -132,7 +132,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
   private readonly userId: string;
 
   constructor(options: VideoPreviewServiceOptions) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const apiToken = options.apiToken;
 
     if (apiToken) {
       this.replicate = new Replicate({ auth: apiToken });

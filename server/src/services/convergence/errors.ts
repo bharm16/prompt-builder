@@ -2,6 +2,8 @@
  * Error types for the Visual Convergence feature
  */
 
+import { DomainError } from '@server/errors/DomainError';
+
 /**
  * Error codes for convergence operations
  */
@@ -22,17 +24,13 @@ export type ConvergenceErrorCode =
  * Custom error class for convergence operations
  * Provides structured error information with error codes and optional details
  */
-export class ConvergenceError extends Error {
+export class ConvergenceError extends DomainError {
   public readonly code: ConvergenceErrorCode;
-  public readonly details?: Record<string, unknown>;
 
   constructor(code: ConvergenceErrorCode, details?: Record<string, unknown>) {
-    super(code);
+    super(code, details);
     this.name = 'ConvergenceError';
     this.code = code;
-    if (details !== undefined) {
-      this.details = details;
-    }
 
     // Maintains proper stack trace for where our error was thrown (only available on V8)
     if (Error.captureStackTrace) {
@@ -105,7 +103,7 @@ export class ConvergenceError extends Error {
   /**
    * Converts the error to a JSON-serializable object
    */
-  toJSON(): Record<string, unknown> {
+  override toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       code: this.code,

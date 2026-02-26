@@ -10,9 +10,9 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-// Mock convergence error check
-vi.mock('@services/convergence', () => ({
-  isConvergenceError: vi.fn((err) => {
+// Mock DomainError type guard
+vi.mock('@server/errors/DomainError', () => ({
+  isDomainError: vi.fn((err) => {
     return err && typeof err === 'object' && 'code' in err && 'getHttpStatus' in err;
   }),
 }));
@@ -46,8 +46,9 @@ function createMockResponse(): Response & { statusCode?: number; responseBody?: 
   return res as unknown as Response & { statusCode?: number; responseBody?: unknown };
 }
 
-function createConvergenceError(code: string, httpStatus: number, userMessage: string, details?: unknown) {
+function createDomainError(code: string, httpStatus: number, userMessage: string, details?: unknown) {
   return {
+    name: 'TestDomainError',
     code,
     details,
     getHttpStatus: () => httpStatus,
@@ -187,11 +188,11 @@ describe('errorHandler', () => {
     });
   });
 
-  describe('ConvergenceError handling', () => {
-    it('maps ConvergenceError to proper HTTP status', () => {
+  describe('DomainError handling', () => {
+    it('maps DomainError to proper HTTP status', () => {
       const req = createMockRequest({ id: 'conv-req' });
       const res = createMockResponse();
-      const error = createConvergenceError('SESSION_EXPIRED', 410, 'Session has expired');
+      const error = createDomainError('SESSION_EXPIRED', 410, 'Session has expired');
 
       errorHandler(error, req, res, mockNext);
 
@@ -203,10 +204,10 @@ describe('errorHandler', () => {
       });
     });
 
-    it('includes details from ConvergenceError', () => {
+    it('includes details from DomainError', () => {
       const req = createMockRequest();
       const res = createMockResponse();
-      const error = createConvergenceError(
+      const error = createDomainError(
         'INSUFFICIENT_CREDITS',
         402,
         'Not enough credits',
@@ -218,6 +219,21 @@ describe('errorHandler', () => {
       const body = res.responseBody as { details?: string };
       const parsedDetails = body.details ? JSON.parse(body.details) : undefined;
       expect(parsedDetails).toEqual({ required: 10, available: 5 });
+    });
+
+    it('maps VideoProviderError categories to proper HTTP status', () => {
+      const req = createMockRequest({ id: 'video-req' });
+      const res = createMockResponse();
+      const error = createDomainError('VIDEO_PROVIDER_TIMEOUT', 504, 'Video generation timed out. Please try again.');
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(504);
+      expect(res.responseBody).toMatchObject({
+        error: 'Video generation timed out. Please try again.',
+        code: 'VIDEO_PROVIDER_TIMEOUT',
+        requestId: 'video-req',
+      });
     });
   });
 

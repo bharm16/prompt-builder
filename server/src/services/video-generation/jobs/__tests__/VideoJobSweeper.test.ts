@@ -180,7 +180,7 @@ describe('VideoJobSweeper', () => {
     expect(runOnceSpy).toHaveBeenCalledTimes(3);
   });
 
-  it('factory returns null when disabled or invalid env and returns instance for valid env', () => {
+  it('factory returns null when disabled or invalid config and returns instance for valid config', () => {
     const jobStore = {
       failNextQueuedStaleJob: vi.fn(),
       failNextProcessingStaleJob: vi.fn(),
@@ -188,19 +188,34 @@ describe('VideoJobSweeper', () => {
     };
     const userCreditService = { refundCredits: vi.fn() };
 
-    process.env.VIDEO_JOB_SWEEPER_DISABLED = 'true';
-    expect(createVideoJobSweeper(jobStore as never, userCreditService as never)).toBeNull();
+    expect(
+      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
+        disabled: true,
+        staleQueueSeconds: 300,
+        staleProcessingSeconds: 90,
+        sweepIntervalSeconds: 20,
+        sweepMax: 10,
+      })
+    ).toBeNull();
 
-    process.env.VIDEO_JOB_SWEEPER_DISABLED = 'false';
-    process.env.VIDEO_JOB_SWEEP_INTERVAL_SECONDS = '0';
-    expect(createVideoJobSweeper(jobStore as never, userCreditService as never)).toBeNull();
+    expect(
+      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
+        disabled: false,
+        staleQueueSeconds: 300,
+        staleProcessingSeconds: 90,
+        sweepIntervalSeconds: 0,
+        sweepMax: 10,
+      })
+    ).toBeNull();
 
-    process.env.VIDEO_JOB_STALE_QUEUE_SECONDS = '300';
-    process.env.VIDEO_JOB_STALE_PROCESSING_SECONDS = '90';
-    process.env.VIDEO_JOB_SWEEP_INTERVAL_SECONDS = '20';
-    process.env.VIDEO_JOB_SWEEP_MAX = '10';
-    expect(createVideoJobSweeper(jobStore as never, userCreditService as never)).toBeInstanceOf(
-      VideoJobSweeper
-    );
+    expect(
+      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
+        disabled: false,
+        staleQueueSeconds: 300,
+        staleProcessingSeconds: 90,
+        sweepIntervalSeconds: 20,
+        sweepMax: 10,
+      })
+    ).toBeInstanceOf(VideoJobSweeper);
   });
 });

@@ -59,11 +59,6 @@ function resolvePositiveInt(value: number | undefined, fallback: number): number
   return Number.isFinite(value) && (value as number) > 0 ? Number.parseInt(String(value), 10) : fallback;
 }
 
-function resolveDefaultMaxAttempts(): number {
-  const fromEnv = Number.parseInt(process.env.VIDEO_JOB_MAX_ATTEMPTS || '', 10);
-  return resolvePositiveInt(fromEnv, DEFAULT_MAX_ATTEMPTS);
-}
-
 function resolveProviderFromRequest(request: VideoJobRequest): string {
   const model = request.options?.model;
   if (typeof model === 'string' && model.length > 0) {
@@ -82,9 +77,14 @@ export class VideoJobStore {
   private readonly deadLetterCollection = this.db.collection('video_job_dlq');
   private readonly log = logger.child({ service: 'VideoJobStore' });
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
+  private readonly defaultMaxAttempts: number;
 
-  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+  constructor(
+    firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor(),
+    defaultMaxAttempts: number = DEFAULT_MAX_ATTEMPTS
+  ) {
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
+    this.defaultMaxAttempts = defaultMaxAttempts;
   }
 
   private async withTiming<T>(operation: string, mode: 'read' | 'write', fn: () => Promise<T>): Promise<T> {
@@ -107,7 +107,7 @@ export class VideoJobStore {
   async createJob(input: CreateJobInput): Promise<VideoJobRecord> {
     const now = Date.now();
     const docRef = this.collection.doc();
-    const maxAttempts = resolvePositiveInt(input.maxAttempts, resolveDefaultMaxAttempts());
+    const maxAttempts = resolvePositiveInt(input.maxAttempts, this.defaultMaxAttempts);
     const provider = resolveProviderFromRequest(input.request);
 
     const record = {
@@ -232,7 +232,7 @@ export class VideoJobStore {
             typeof data.attempts === 'number' && Number.isFinite(data.attempts) ? data.attempts + 1 : 1;
           const maxAttempts = resolvePositiveInt(
             typeof data.maxAttempts === 'number' ? data.maxAttempts : undefined,
-            resolveDefaultMaxAttempts()
+            this.defaultMaxAttempts
           );
 
           transaction.update(docRef, {
@@ -595,7 +595,7 @@ export class VideoJobStore {
             typeof data.attempts === 'number' && Number.isFinite(data.attempts) ? data.attempts + 1 : 1;
           const maxAttempts = resolvePositiveInt(
             typeof data.maxAttempts === 'number' ? data.maxAttempts : undefined,
-            resolveDefaultMaxAttempts()
+            this.defaultMaxAttempts
           );
 
           transaction.update(doc.ref, {
@@ -663,7 +663,7 @@ export class VideoJobStore {
       attempts: typeof parsed.attempts === 'number' ? parsed.attempts : 0,
       maxAttempts: resolvePositiveInt(
         typeof parsed.maxAttempts === 'number' ? parsed.maxAttempts : undefined,
-        resolveDefaultMaxAttempts()
+        this.defaultMaxAttempts
       ),
       createdAtMs: parsed.createdAtMs,
       updatedAtMs: parsed.updatedAtMs,

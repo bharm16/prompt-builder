@@ -30,6 +30,37 @@ import type { DepthEstimationProvider, FalDepthResponse } from './types';
 const FAL_DEPTH_MODEL = 'fal-ai/image-preprocessors/depth-anything/v2' as const;
 
 /**
+ * Module-level depth config — populated via setDepthEstimationModuleConfig() at startup.
+ * Defaults are test-safe (warmup disabled).
+ */
+export interface DepthModuleConfig {
+  warmupRetryTimeoutMs: number;
+  falWarmupEnabled: boolean;
+  falWarmupIntervalMs: number;
+  falWarmupImageUrl: string;
+  warmupOnStartup: boolean;
+  warmupTimeoutMs: number;
+  promptOutputOnly: boolean;
+}
+
+const DEFAULT_WARMUP_IMAGE_URL =
+  'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg';
+
+let depthModuleConfig: DepthModuleConfig = {
+  warmupRetryTimeoutMs: 20_000,
+  falWarmupEnabled: false,
+  falWarmupIntervalMs: 120_000,
+  falWarmupImageUrl: DEFAULT_WARMUP_IMAGE_URL,
+  warmupOnStartup: false,
+  warmupTimeoutMs: 60_000,
+  promptOutputOnly: false,
+};
+
+export function setDepthEstimationModuleConfig(config: DepthModuleConfig): void {
+  depthModuleConfig = config;
+}
+
+/**
  * Configuration for depth estimation
  */
 const DEPTH_ESTIMATION_CONFIG = {
@@ -37,14 +68,6 @@ const DEPTH_ESTIMATION_CONFIG = {
   maxRetries: 2,
   /** Base delay for exponential backoff (ms) */
   baseDelayMs: 1000,
-  /** Timeout for cold-start warmup recovery (ms) */
-  warmupRetryTimeoutMs: (() => {
-    const raw = Number.parseInt(process.env.DEPTH_ESTIMATION_WARMUP_RETRY_TIMEOUT_MS || '', 10);
-    if (Number.isFinite(raw) && raw >= 5_000) {
-      return raw;
-    }
-    return 20_000;
-  })(),
   /** Cache TTL in milliseconds (1 hour) */
   cacheTtlMs: 60 * 60 * 1000,
 } as const;
@@ -85,51 +108,16 @@ function setCachedDepthMap(imageUrl: string, depthMapUrl: string): void {
 // Warm Start (fal.ai cold start mitigation)
 // ============================================================================
 
-const FAL_WARM_START_CONFIG = {
-  enabled: (() => {
-    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-      return false;
-    }
-    const flag = process.env.FAL_DEPTH_WARMUP_ENABLED;
-    if (flag === 'true') return true;
-    if (flag === 'false') return false;
-    // Default to enabled in development, disabled in production unless explicitly enabled.
-    return process.env.NODE_ENV !== 'production';
-  })(),
-  intervalMs: (() => {
-    const raw = Number.parseInt(process.env.FAL_DEPTH_WARMUP_INTERVAL_MS || '', 10);
-    if (Number.isFinite(raw) && raw >= 30_000) {
-      return raw;
-    }
-    // Keep warm every 2 minutes by default.
-    return 2 * 60 * 1000;
-  })(),
-  warmupImageUrl:
-    process.env.FAL_DEPTH_WARMUP_IMAGE_URL ||
-    'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
-} as const;
+const getFalWarmStartConfig = () => ({
+  get enabled() { return depthModuleConfig.falWarmupEnabled; },
+  get intervalMs() { return depthModuleConfig.falWarmupIntervalMs; },
+  get warmupImageUrl() { return depthModuleConfig.falWarmupImageUrl || DEFAULT_WARMUP_IMAGE_URL; },
+});
 
-const getDepthStartupWarmupConfig = () =>
-  ({
-    enabled: (() => {
-      if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-        return false;
-      }
-      const flag = process.env.DEPTH_WARMUP_ON_STARTUP;
-      if (flag === 'true') return true;
-      if (flag === 'false') return false;
-      // Default to enabled so cold starts don't cause first-request timeouts.
-      return true;
-    })(),
-    timeoutMs: (() => {
-      const raw = Number.parseInt(process.env.DEPTH_WARMUP_TIMEOUT_MS || '', 10);
-      if (Number.isFinite(raw) && raw >= 5_000) {
-        return raw;
-      }
-      // Allow extra time for cold-start model spin-up.
-      return 60_000;
-    })(),
-  }) as const;
+const getDepthStartupWarmupConfig = () => ({
+  get enabled() { return depthModuleConfig.warmupOnStartup; },
+  get timeoutMs() { return depthModuleConfig.warmupTimeoutMs; },
+});
 
 const warmLog = logger.child({ service: 'FalDepthWarmer' });
 const startupWarmLog = logger.child({ service: 'DepthWarmup' });
@@ -161,21 +149,21 @@ const runFalWarmup = (reason: 'startup' | 'interval'): Promise<void> => {
   }
 
   const startedAt = Date.now();
-  const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+  const warmupImageUrlHost = safeUrlHost(getFalWarmStartConfig().warmupImageUrl);
 
   warmupInFlight = (async () => {
     try {
       warmLog.debug('Starting fal depth warmup', {
         operation: 'falDepthWarmup',
         reason,
-        intervalMs: FAL_WARM_START_CONFIG.intervalMs,
+        intervalMs: getFalWarmStartConfig().intervalMs,
         warmupImageUrlHost,
         lastWarmupAt: lastWarmupAt || null,
       });
 
       await fal.subscribe(FAL_DEPTH_MODEL, {
         input: {
-          image_url: FAL_WARM_START_CONFIG.warmupImageUrl,
+          image_url: getFalWarmStartConfig().warmupImageUrl,
         },
         logs: false,
       });
@@ -218,7 +206,7 @@ export interface DepthWarmupResult {
  * This function is safe to call multiple times; it will only initialize once.
  */
 export function initializeDepthWarmer(): void {
-  if (warmerInitialized || !FAL_WARM_START_CONFIG.enabled) {
+  if (warmerInitialized || !getFalWarmStartConfig().enabled) {
     return;
   }
 
@@ -226,7 +214,7 @@ export function initializeDepthWarmer(): void {
   if (!falApiKey) {
     warmLog.warn('Fal depth warmer skipped: FAL_KEY/FAL_API_KEY not configured', {
       operation: 'falDepthWarmup',
-      enabled: FAL_WARM_START_CONFIG.enabled,
+      enabled: getFalWarmStartConfig().enabled,
     });
     return;
   }
@@ -234,10 +222,10 @@ export function initializeDepthWarmer(): void {
   fal.config({ credentials: falApiKey });
   warmerInitialized = true;
 
-  const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+  const warmupImageUrlHost = safeUrlHost(getFalWarmStartConfig().warmupImageUrl);
   warmLog.info('Fal depth warmer enabled', {
     operation: 'falDepthWarmup',
-    intervalMs: FAL_WARM_START_CONFIG.intervalMs,
+    intervalMs: getFalWarmStartConfig().intervalMs,
     warmupImageUrlHost,
   });
 
@@ -247,7 +235,7 @@ export function initializeDepthWarmer(): void {
 
   warmIntervalId = setInterval(() => {
     void runFalWarmup('interval');
-  }, FAL_WARM_START_CONFIG.intervalMs);
+  }, getFalWarmStartConfig().intervalMs);
 
   if (warmIntervalId && typeof warmIntervalId.unref === 'function') {
     warmIntervalId.unref();
@@ -268,7 +256,7 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
       return { success: false, skipped: true, message: 'disabled' };
     }
 
-    if (process.env.PROMPT_OUTPUT_ONLY === 'true') {
+    if (depthModuleConfig.promptOutputOnly) {
       return { success: false, skipped: true, message: 'PROMPT_OUTPUT_ONLY' };
     }
 
@@ -277,7 +265,7 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
       return { success: false, skipped: true, message: 'no-fal-provider' };
     }
 
-    const warmupImageUrl = FAL_WARM_START_CONFIG.warmupImageUrl;
+    const warmupImageUrl = getFalWarmStartConfig().warmupImageUrl;
     const warmupImageUrlHost = safeUrlHost(warmupImageUrl);
     const timeoutMs = startupWarmupConfig.timeoutMs;
     const startedAt = Date.now();
@@ -507,20 +495,20 @@ export class FalDepthEstimationService implements DepthEstimationService {
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       const beforeWarmupAt = lastWarmupAt;
-      const warmupImageUrlHost = safeUrlHost(FAL_WARM_START_CONFIG.warmupImageUrl);
+      const warmupImageUrlHost = safeUrlHost(getFalWarmStartConfig().warmupImageUrl);
       this.log.warn('fal.ai depth estimation failed on cold start; warming and retrying once', {
         error: errorMessage,
         warmupImageUrlHost,
-        warmupRetryTimeoutMs: DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs,
+        warmupRetryTimeoutMs: depthModuleConfig.warmupRetryTimeoutMs,
       });
 
       try {
-        await withTimeout(runFalWarmup('startup'), DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs);
+        await withTimeout(runFalWarmup('startup'), depthModuleConfig.warmupRetryTimeoutMs);
       } catch (warmupError) {
         const warmupErrorMessage =
           warmupError instanceof Error ? warmupError.message : String(warmupError);
         this.log.warn('Cold-start warmup retry timed out; retrying depth estimation anyway', {
-          warmupRetryTimeoutMs: DEPTH_ESTIMATION_CONFIG.warmupRetryTimeoutMs,
+          warmupRetryTimeoutMs: depthModuleConfig.warmupRetryTimeoutMs,
           error: warmupErrorMessage,
         });
       }

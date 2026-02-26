@@ -6,24 +6,18 @@ import type { ClientResolver } from './ClientResolver';
 
 const DEFAULT_FALLBACK_ORDER = ['openai', 'groq', 'gemini', 'qwen'] as const;
 
-const DEFAULT_PROVIDER_SETTINGS: Record<string, { model: string; timeout: number }> = {
-  openai: {
-    model: process.env.OPENAI_MODEL || DEFAULT_CONFIG.model,
-    timeout: Number.parseInt(process.env.OPENAI_TIMEOUT_MS || String(DEFAULT_CONFIG.timeout), 10),
-  },
-  groq: {
-    model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-    timeout: Number.parseInt(process.env.GROQ_TIMEOUT_MS || '5000', 10),
-  },
-  qwen: {
-    model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
-    timeout: Number.parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
-  },
-  gemini: {
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    timeout: Number.parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
-  },
+let providerSettings: Record<string, { model: string; timeout: number }> = {
+  openai: { model: DEFAULT_CONFIG.model, timeout: DEFAULT_CONFIG.timeout },
+  groq: { model: 'llama-3.1-8b-instant', timeout: 5000 },
+  qwen: { model: 'qwen/qwen3-32b', timeout: 10000 },
+  gemini: { model: 'gemini-2.5-flash', timeout: 30000 },
 };
+
+export function setProviderSettings(
+  settings: Record<string, { model: string; timeout: number }>
+): void {
+  providerSettings = { ...providerSettings, ...settings };
+}
 
 export class ExecutionPlanResolver {
   private readonly loggedAutoFallbacks = new Set<string>();
@@ -144,10 +138,10 @@ export class ExecutionPlanResolver {
   }
 
   private getDefaultProviderModel(provider: string): string {
-    return DEFAULT_PROVIDER_SETTINGS[provider]?.model || DEFAULT_CONFIG.model;
+    return providerSettings[provider]?.model || DEFAULT_CONFIG.model;
   }
 
   private getDefaultProviderTimeout(provider: string): number {
-    return DEFAULT_PROVIDER_SETTINGS[provider]?.timeout || DEFAULT_CONFIG.timeout;
+    return providerSettings[provider]?.timeout || DEFAULT_CONFIG.timeout;
   }
 }

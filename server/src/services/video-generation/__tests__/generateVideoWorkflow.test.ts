@@ -203,13 +203,13 @@ describe('generateVideoWorkflow', () => {
   });
 
   it('enforces the workflow watchdog timeout when provider polling fails to terminate', async () => {
-    vi.useFakeTimers();
-    const previousWorkflow = process.env.VIDEO_WORKFLOW_TIMEOUT_MS;
-    const previousProvider = process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS;
-    try {
-      process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS = '1000';
-      process.env.VIDEO_WORKFLOW_TIMEOUT_MS = '2000';
+    const { setTimeoutPolicyConfig } = await import('../providers/timeoutPolicy');
+    const savedPoll = 1000;
+    const savedWorkflow = 2000;
+    setTimeoutPolicyConfig({ pollTimeoutMs: savedPoll, workflowTimeoutMs: savedWorkflow });
 
+    vi.useFakeTimers();
+    try {
       const providers = createProviderMap({ openai: true });
       providers.openai.generate = vi.fn(
         () =>
@@ -230,16 +230,8 @@ describe('generateVideoWorkflow', () => {
       await vi.advanceTimersByTimeAsync(11_000);
       await assertion;
     } finally {
-      if (previousWorkflow === undefined) {
-        delete process.env.VIDEO_WORKFLOW_TIMEOUT_MS;
-      } else {
-        process.env.VIDEO_WORKFLOW_TIMEOUT_MS = previousWorkflow;
-      }
-      if (previousProvider === undefined) {
-        delete process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS;
-      } else {
-        process.env.VIDEO_PROVIDER_POLL_TIMEOUT_MS = previousProvider;
-      }
+      // Restore defaults
+      setTimeoutPolicyConfig({ pollTimeoutMs: 270_000, workflowTimeoutMs: 300_000 });
       vi.useRealTimers();
     }
   });

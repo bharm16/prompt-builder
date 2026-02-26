@@ -89,7 +89,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
   private readonly log = logger.child({ service: 'ReplicateFluxSchnellProvider' });
 
   constructor(options: ReplicateFluxSchnellProviderOptions = {}) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const apiToken = options.apiToken;
     this.replicate = apiToken
       ? (new Replicate({
           auth: apiToken,

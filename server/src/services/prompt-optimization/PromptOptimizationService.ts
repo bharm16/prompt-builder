@@ -57,7 +57,8 @@ export class PromptOptimizationService {
     cacheService: CacheService,
     videoPromptService: VideoPromptService | null = null,
     imageObservationService: ImageObservationService,
-    templateService?: TemplateService
+    templateService?: TemplateService,
+    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number }
   ) {
     this.ai = aiService;
     this.videoPromptService = videoPromptService;
@@ -68,7 +69,7 @@ export class PromptOptimizationService {
     this.modeDetection = new ModeDetectionService(aiService);
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, resolvedTemplateService);
-    this.shotInterpreter = new ShotInterpreterService(aiService);
+    this.shotInterpreter = new ShotInterpreterService(aiService, shotPlanCacheConfig);
     this.draftService = new DraftGenerationService(aiService);
     this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService

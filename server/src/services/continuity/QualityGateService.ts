@@ -26,13 +26,16 @@ type ClipPipeline = (
 export class QualityGateService {
   private readonly log = logger.child({ service: 'QualityGateService' });
   private readonly faceEmbedding: FaceEmbeddingService | null;
+  private readonly disableClip: boolean;
   private static clipPipelinePromise: Promise<ClipPipeline> | null = null;
 
   constructor(
     faceEmbedding?: FaceEmbeddingService | null,
-    private storage?: StorageService
+    private storage?: StorageService,
+    options?: { disableClip?: boolean }
   ) {
     this.faceEmbedding = faceEmbedding ?? null;
+    this.disableClip = options?.disableClip ?? false;
   }
 
   async evaluate(options: QualityGateOptions): Promise<QualityGateResult> {
@@ -159,7 +162,7 @@ export class QualityGateService {
   }
 
   private async getClipPipeline(): Promise<ClipPipeline | null> {
-    if (process.env.DISABLE_CONTINUITY_CLIP === 'true') {
+    if (this.disableClip) {
       return null;
     }
 

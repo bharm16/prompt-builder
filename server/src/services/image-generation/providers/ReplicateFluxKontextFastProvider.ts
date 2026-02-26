@@ -140,7 +140,7 @@ export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
   private readonly log = logger.child({ service: 'ReplicateFluxKontextFastProvider' });
 
   constructor(options: ReplicateFluxKontextFastProviderOptions = {}) {
-    const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
+    const apiToken = options.apiToken;
     this.replicate = apiToken
       ? (new Replicate({
           auth: apiToken,

@@ -1,7 +1,11 @@
 import Stripe from 'stripe';
 import { logger } from '@infrastructure/Logger';
 
-const PRICE_CREDITS_ENV = 'STRIPE_PRICE_CREDITS';
+interface PaymentServiceConfig {
+  secretKey: string | undefined;
+  webhookSecret: string | undefined;
+  priceCreditsJson: string | undefined;
+}
 
 type PriceCredits = Record<string, number>;
 
@@ -70,11 +74,19 @@ function resolveUserId(metadata: Stripe.Metadata | null | undefined): string | n
 export class PaymentService {
   private stripe: Stripe | null = null;
   private readonly priceCredits: PriceCredits;
+  private readonly webhookSecret: string | undefined;
 
-  constructor() {
-    this.priceCredits = parsePriceCredits(process.env[PRICE_CREDITS_ENV]);
+  constructor(config?: PaymentServiceConfig) {
+    const resolvedConfig = config ?? {
+      secretKey: undefined,
+      webhookSecret: undefined,
+      priceCreditsJson: undefined,
+    };
 
-    const secretKey = process.env.STRIPE_SECRET_KEY;
+    this.priceCredits = parsePriceCredits(resolvedConfig.priceCreditsJson);
+    this.webhookSecret = resolvedConfig.webhookSecret;
+
+    const secretKey = resolvedConfig.secretKey;
 
     if (!secretKey) {
       logger.warn('STRIPE_SECRET_KEY is not configured; payment service disabled');
@@ -253,13 +265,12 @@ export class PaymentService {
   }
 
   constructEvent(payload: string | Buffer, signature: string): Stripe.Event {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const stripe = this.getStripe();
 
-    if (!webhookSecret) {
+    if (!this.webhookSecret) {
       throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
     }
 
-    return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    return stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
   }
 }

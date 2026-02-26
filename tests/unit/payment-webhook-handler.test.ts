@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 const mocks = vi.hoisted(() => ({
   loggerError: vi.fn(),
   loggerInfo: vi.fn(),
+  loggerWarn: vi.fn(),
   handleCheckoutSessionCompleted: vi.fn(),
   handleInvoicePaid: vi.fn(),
 }));
@@ -12,6 +13,8 @@ vi.mock('@infrastructure/Logger', () => ({
   logger: {
     error: mocks.loggerError,
     info: mocks.loggerInfo,
+    warn: mocks.loggerWarn,
+    child: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() })),
   },
 }));
 

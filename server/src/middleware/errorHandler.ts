@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { NextFunction, Request, Response } from 'express';
-import { isConvergenceError } from '@services/convergence';
+import { isDomainError } from '@server/errors/DomainError';
 import type { ApiError, ApiErrorCode } from '@server/types/apiError';
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
@@ -120,13 +120,13 @@ export function errorHandler(
     }
   }
 
-  // Handle ConvergenceError with proper HTTP status mapping
-  if (isConvergenceError(err)) {
+  // Handle any DomainError subclass (ConvergenceError, VideoProviderError, etc.)
+  if (isDomainError(err)) {
     const statusCode = err.getHttpStatus();
     const userMessage = err.getUserMessage();
     const details = toDetailsString(err.details);
 
-    logger.warn('Convergence error', {
+    logger.warn(`${err.name}`, {
       ...meta,
       errorCode: err.code,
       statusCode,

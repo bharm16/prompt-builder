@@ -219,6 +219,7 @@ vi.mock('@infrastructure/Logger', () => ({
     error: mocks.loggerError,
     warn: mocks.loggerWarn,
     info: mocks.loggerInfo,
+    child: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() })),
   },
 }));
 

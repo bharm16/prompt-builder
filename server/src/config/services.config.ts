@@ -6,11 +6,15 @@
  */
 
 import { createContainer, type DIContainer } from '@infrastructure/DIContainer';
-import { registerContinuityServices } from './services/continuity.services.ts';
+import { registerCoreServices } from './services/core.services.ts';
+import { registerCacheServices } from './services/cache.services.ts';
+import { registerStorageServices } from './services/storage.services.ts';
+import { registerCreditServices } from './services/credit.services.ts';
+import { registerVideoJobServices } from './services/video-jobs.services.ts';
+import { registerLLMServices } from './services/llm.services.ts';
 import { registerEnhancementServices } from './services/enhancement.services.ts';
 import { registerGenerationServices } from './services/generation.services.ts';
-import { registerInfrastructureServices } from './services/infrastructure.services.ts';
-import { registerLLMServices } from './services/llm.services.ts';
+import { registerContinuityServices } from './services/continuity.services.ts';
 import { registerSessionServices } from './services/session.services.ts';
 import { getRuntimeFlags } from './runtime-flags.ts';
 
@@ -25,7 +29,16 @@ export async function configureServices(): Promise<DIContainer> {
   const container = createContainer();
   const { enableConvergence } = getRuntimeFlags();
 
-  registerInfrastructureServices(container);
+  // Foundation: logging, metrics, circuit breaker, config
+  registerCoreServices(container);
+  registerCacheServices(container);
+  registerStorageServices(container);
+
+  // Domain infrastructure: credits, video jobs
+  registerCreditServices(container);
+  registerVideoJobServices(container);
+
+  // Business logic: LLM, enhancement, generation
   registerLLMServices(container);
   registerEnhancementServices(container);
   registerGenerationServices(container);

@@ -250,45 +250,34 @@ describe('CreditRefundSweeper', () => {
 });
 
 describe('createCreditRefundSweeper', () => {
-  const originalEnv = { ...process.env };
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-  });
-
-  it('returns null when sweeper is disabled by env', () => {
-    process.env.CREDIT_REFUND_SWEEPER_DISABLED = 'true';
-
+  it('returns null when sweeper is disabled', () => {
     const sweeper = createCreditRefundSweeper(
       {} as never,
-      {} as never
+      {} as never,
+      undefined,
+      { disabled: true, intervalSeconds: 30, maxPerRun: 5, maxAttempts: 8 }
     );
 
     expect(sweeper).toBeNull();
   });
 
-  it('returns null when env numeric values are invalid', () => {
-    process.env.CREDIT_REFUND_SWEEP_INTERVAL_SECONDS = '0';
-    process.env.CREDIT_REFUND_SWEEP_MAX = '0';
-    process.env.CREDIT_REFUND_MAX_ATTEMPTS = '0';
-
+  it('returns null when numeric values are zero', () => {
     const sweeper = createCreditRefundSweeper(
       {} as never,
-      {} as never
+      {} as never,
+      undefined,
+      { disabled: false, intervalSeconds: 0, maxPerRun: 0, maxAttempts: 0 }
     );
 
     expect(sweeper).toBeNull();
   });
 
-  it('creates sweeper when env values are valid', () => {
-    process.env.CREDIT_REFUND_SWEEPER_DISABLED = 'false';
-    process.env.CREDIT_REFUND_SWEEP_INTERVAL_SECONDS = '30';
-    process.env.CREDIT_REFUND_SWEEP_MAX = '5';
-    process.env.CREDIT_REFUND_MAX_ATTEMPTS = '8';
-
+  it('creates sweeper when config values are valid', () => {
     const sweeper = createCreditRefundSweeper(
       {} as never,
-      {} as never
+      {} as never,
+      undefined,
+      { disabled: false, intervalSeconds: 30, maxPerRun: 5, maxAttempts: 8 }
     );
 
     expect(sweeper).toBeInstanceOf(CreditRefundSweeper);

@@ -37,7 +37,8 @@ describe('validateEnv', () => {
   });
 
   it('throws when required base variables are missing', () => {
-    expect(() => validateEnv()).toThrow('Missing required environment variables');
+    expect(() => validateEnv()).toThrow('Environment validation failed');
+    expect(() => validateEnv()).toThrow('VITE_FIREBASE_API_KEY');
   });
 
   it('throws when required production variables are missing', () => {
@@ -45,7 +46,7 @@ describe('validateEnv', () => {
     process.env.VITE_FIREBASE_API_KEY = 'k';
     process.env.VITE_FIREBASE_PROJECT_ID = 'p';
 
-    expect(() => validateEnv()).toThrow('Missing required production env vars');
+    expect(() => validateEnv()).toThrow('ALLOWED_ORIGINS is required in production');
   });
 
   it('warns when no LLM providers are configured', () => {

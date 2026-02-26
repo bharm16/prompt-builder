@@ -20,15 +20,6 @@ import {
 } from '../VideoContentAccessService';
 
 describe('VideoContentAccessService', () => {
-  const originalEnv = { ...process.env };
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = { ...originalEnv };
-  });
 
   it('issues and verifies a valid token payload', () => {
     const service = new VideoContentAccessService({
@@ -75,11 +66,10 @@ describe('VideoContentAccessService', () => {
   });
 
   it('creates service from explicit secret config', () => {
-    process.env.VIDEO_CONTENT_TOKEN_SECRET = 'configured-secret';
-    process.env.VIDEO_CONTENT_TOKEN_TTL_SECONDS = '120';
-    process.env.NODE_ENV = 'production';
-
-    const service = createVideoContentAccessService();
+    const service = createVideoContentAccessService({
+      tokenSecret: 'configured-secret',
+      tokenTtlSeconds: 120,
+    });
 
     expect(service).not.toBeNull();
     const token = service?.issueToken({ assetId: 'asset-1' });
@@ -87,21 +77,33 @@ describe('VideoContentAccessService', () => {
   });
 
   it('returns null in production when no secret is configured', () => {
-    delete process.env.VIDEO_CONTENT_TOKEN_SECRET;
+    const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
-
-    const service = createVideoContentAccessService();
-    expect(service).toBeNull();
+    try {
+      const service = createVideoContentAccessService({
+        tokenSecret: undefined,
+        tokenTtlSeconds: 3600,
+      });
+      expect(service).toBeNull();
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
   });
 
   it('returns ephemeral service outside production when secret is missing', () => {
-    delete process.env.VIDEO_CONTENT_TOKEN_SECRET;
+    const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
+    try {
+      const service = createVideoContentAccessService({
+        tokenSecret: undefined,
+        tokenTtlSeconds: 3600,
+      });
+      expect(service).not.toBeNull();
 
-    const service = createVideoContentAccessService();
-    expect(service).not.toBeNull();
-
-    const token = service?.issueToken({ assetId: 'asset-1' });
-    expect(service?.verifyToken(token as string, 'asset-1')).not.toBeNull();
+      const token = service?.issueToken({ assetId: 'asset-1' });
+      expect(service?.verifyToken(token as string, 'asset-1')).not.toBeNull();
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
   });
 });

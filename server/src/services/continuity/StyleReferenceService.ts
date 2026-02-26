@@ -6,7 +6,6 @@ import { assertUrlSafe } from '@server/shared/urlValidation';
 import type { FrameBridge, StyleMatchOptions, StyleReference } from './types';
 
 const DEFAULT_IP_ADAPTER_MODEL =
-  process.env.IP_ADAPTER_MODEL ||
   'lucataco/ip-adapter-sdxl:cbe488c8df305a99d155b038abdf003a0bba4e82352e561fbaab2c8c9b70a96e';
 
 export const STYLE_STRENGTH_PRESETS = {
@@ -18,11 +17,16 @@ export const STYLE_STRENGTH_PRESETS = {
 
 export class StyleReferenceService {
   private readonly replicate: Replicate;
+  private readonly ipAdapterModel: string;
   private readonly log = logger.child({ service: 'StyleReferenceService' });
 
-  constructor(private storage: StorageService, replicateApiToken?: string) {
-    const auth = replicateApiToken || process.env.REPLICATE_API_TOKEN;
-    this.replicate = new Replicate(auth ? { auth } : {});
+  constructor(
+    private storage: StorageService,
+    replicateApiToken?: string,
+    ipAdapterModel?: string
+  ) {
+    this.replicate = new Replicate(replicateApiToken ? { auth: replicateApiToken } : {});
+    this.ipAdapterModel = ipAdapterModel || DEFAULT_IP_ADAPTER_MODEL;
   }
 
   async createFromVideo(videoId: string, frame: FrameBridge): Promise<StyleReference> {
@@ -59,7 +63,7 @@ export class StyleReferenceService {
 
     const startTime = Date.now();
 
-    const modelId = DEFAULT_IP_ADAPTER_MODEL as `${string}/${string}` | `${string}/${string}:${string}`;
+    const modelId = this.ipAdapterModel as `${string}/${string}` | `${string}/${string}:${string}`;
     const output = (await this.replicate.run(modelId, {
       input: {
         prompt: options.prompt,

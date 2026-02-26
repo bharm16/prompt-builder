@@ -9,7 +9,7 @@ import AssetRepository, { type ReferenceImageMetadataInput } from './AssetReposi
 import ReferenceImageService from './ReferenceImageService';
 import AssetResolverService from './AssetResolverService';
 import TriggerValidationService from './TriggerValidationService';
-import FaceEmbeddingService from './FaceEmbeddingService';
+import type FaceEmbeddingService from './FaceEmbeddingService';
 import { AssetCrudService } from './services/AssetCrudService';
 import { AssetReferenceImageService } from './services/AssetReferenceImageService';
 import { AssetPromptService } from './services/AssetPromptService';
@@ -28,15 +28,9 @@ export class AssetService {
     triggerValidation = new TriggerValidationService(),
     embeddingService: FaceEmbeddingService | null = null
   ) {
-    // Face embedding requires explicit opt-in via ENABLE_FACE_EMBEDDING=true
-    // The feature is disabled by default since the Replicate insightface model is deprecated
-    const enableFaceEmbedding = process.env.ENABLE_FACE_EMBEDDING === 'true';
-    const resolvedEmbeddingService =
-      embeddingService || (enableFaceEmbedding && process.env.REPLICATE_API_TOKEN ? new FaceEmbeddingService() : null);
-
     this.crud = new AssetCrudService(assetRepository, triggerValidation);
-    this.embeddings = resolvedEmbeddingService
-      ? new AssetEmbeddingService(assetRepository, resolvedEmbeddingService, this.crud)
+    this.embeddings = embeddingService
+      ? new AssetEmbeddingService(assetRepository, embeddingService, this.crud)
       : null;
     this.referenceImages = new AssetReferenceImageService(
       assetRepository,

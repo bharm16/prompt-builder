@@ -77,28 +77,23 @@ export class VideoAssetRetentionService {
   }
 }
 
-export function createVideoAssetRetentionService(assetStore: VideoAssetStore): VideoAssetRetentionService | null {
-  const disabled = process.env.VIDEO_ASSET_RETENTION_DISABLED === 'true';
-  if (disabled) {
+interface RetentionConfig {
+  disabled: boolean;
+  retentionHours: number;
+  cleanupIntervalMinutes: number;
+  batchSize: number;
+}
+
+export function createVideoAssetRetentionService(
+  assetStore: VideoAssetStore,
+  config: RetentionConfig
+): VideoAssetRetentionService | null {
+  if (config.disabled) {
     return null;
   }
 
-  const retentionHours = Number.parseInt(
-    process.env.VIDEO_ASSET_RETENTION_HOURS || String(DEFAULT_RETENTION_HOURS),
-    10
-  );
-  const intervalMinutes = Number.parseInt(
-    process.env.VIDEO_ASSET_CLEANUP_INTERVAL_MINUTES || String(DEFAULT_CLEANUP_INTERVAL_MINUTES),
-    10
-  );
-  const batchSize = Number.parseInt(
-    process.env.VIDEO_ASSET_CLEANUP_BATCH_SIZE || String(DEFAULT_BATCH_SIZE),
-    10
-  );
-
-  const maxAgeMs = Number.isFinite(retentionHours) ? retentionHours * 60 * 60 * 1000 : 0;
-  const cleanupIntervalMs = Number.isFinite(intervalMinutes) ? intervalMinutes * 60 * 1000 : 0;
-  const safeBatchSize = Number.isFinite(batchSize) ? batchSize : DEFAULT_BATCH_SIZE;
+  const maxAgeMs = config.retentionHours * 60 * 60 * 1000;
+  const cleanupIntervalMs = config.cleanupIntervalMinutes * 60 * 1000;
 
   if (cleanupIntervalMs <= 0) {
     return null;
@@ -107,6 +102,6 @@ export function createVideoAssetRetentionService(assetStore: VideoAssetStore): V
   return new VideoAssetRetentionService(assetStore, {
     maxAgeMs,
     cleanupIntervalMs,
-    batchSize: safeBatchSize,
+    batchSize: config.batchSize,
   });
 }

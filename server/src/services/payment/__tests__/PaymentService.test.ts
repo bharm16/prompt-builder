@@ -42,19 +42,20 @@ const getStripe = (): Record<string, any> => {
 };
 
 describe('PaymentService', () => {
-  const originalEnv = { ...process.env };
+  const baseConfig = {
+    secretKey: 'sk_test_123',
+    webhookSecret: 'whsec_123',
+    priceCreditsJson: undefined,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.stripeInstances.length = 0;
-    process.env = { ...originalEnv };
-    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   });
 
   describe('price credit mapping', () => {
-    it('returns empty mapping when STRIPE_PRICE_CREDITS is missing', () => {
-      delete process.env.STRIPE_PRICE_CREDITS;
-      const service = new PaymentService();
+    it('returns empty mapping when priceCreditsJson is missing', () => {
+      const service = new PaymentService({ ...baseConfig, priceCreditsJson: undefined });
 
       expect(service.isPriceIdConfigured('price_a')).toBe(false);
       expect(() => service.getCreditsForPriceId('price_a')).toThrow('Unknown Stripe price ID');
@@ -62,8 +63,7 @@ describe('PaymentService', () => {
     });
 
     it('returns empty mapping for invalid JSON', () => {
-      process.env.STRIPE_PRICE_CREDITS = '{bad-json';
-      const service = new PaymentService();
+      const service = new PaymentService({ ...baseConfig, priceCreditsJson: '{bad-json' });
 
       expect(service.isPriceIdConfigured('price_a')).toBe(false);
       expect(mocks.loggerError).toHaveBeenCalledWith(
@@ -73,15 +73,16 @@ describe('PaymentService', () => {
     });
 
     it('parses valid entries and rejects zero/negative/invalid values', () => {
-      process.env.STRIPE_PRICE_CREDITS = JSON.stringify({
-        price_valid_string: '10',
-        price_valid_float: 12.9,
-        price_zero: 0,
-        price_negative: -1,
-        price_invalid_string: 'abc',
+      const service = new PaymentService({
+        ...baseConfig,
+        priceCreditsJson: JSON.stringify({
+          price_valid_string: '10',
+          price_valid_float: 12.9,
+          price_zero: 0,
+          price_negative: -1,
+          price_invalid_string: 'abc',
+        }),
       });
-
-      const service = new PaymentService();
 
       expect(service.isPriceIdConfigured('price_valid_string')).toBe(true);
       expect(service.isPriceIdConfigured('price_valid_float')).toBe(true);
@@ -96,11 +97,10 @@ describe('PaymentService', () => {
 
   describe('invoice credit resolution', () => {
     it('calculates credits and missing IDs while skipping proration/zero lines', () => {
-      process.env.STRIPE_PRICE_CREDITS = JSON.stringify({
-        price_a: 10,
-        price_b: 5,
+      const service = new PaymentService({
+        ...baseConfig,
+        priceCreditsJson: JSON.stringify({ price_a: 10, price_b: 5 }),
       });
-      const service = new PaymentService();
 
       const invoice = {
         lines: {
@@ -124,7 +124,7 @@ describe('PaymentService', () => {
 
   describe('invoice user resolution', () => {
     it('uses invoice.subscription_details metadata first', async () => {
-      const service = new PaymentService();
+      const service = new PaymentService(baseConfig);
       const resolved = await service.resolveUserIdForInvoice({
         subscription_details: { metadata: { userId: '  user-subscription  ' } },
         lines: { data: [] },
@@ -134,7 +134,7 @@ describe('PaymentService', () => {
     });
 
     it('falls back to line metadata when subscription_details metadata is absent', async () => {
-      const service = new PaymentService();
+      const service = new PaymentService(baseConfig);
       const resolved = await service.resolveUserIdForInvoice({
         subscription_details: { metadata: {} },
         lines: {
@@ -146,7 +146,7 @@ describe('PaymentService', () => {
     });
 
     it('fetches subscription metadata when invoice has subscription ID string', async () => {
-      const service = new PaymentService();
+      const service = new PaymentService(baseConfig);
       const stripe = getStripe();
       stripe.subscriptions.retrieve.mockResolvedValue({
         metadata: { userId: 'user-subscription-fetch' },
@@ -165,8 +165,10 @@ describe('PaymentService', () => {
 
   describe('checkout and billing operations', () => {
     it('creates checkout session in subscription mode with subscription metadata', async () => {
-      process.env.STRIPE_PRICE_CREDITS = JSON.stringify({ price_sub: 500 });
-      const service = new PaymentService();
+      const service = new PaymentService({
+        ...baseConfig,
+        priceCreditsJson: JSON.stringify({ price_sub: 500 }),
+      });
       const stripe = getStripe();
       stripe.prices.retrieve.mockResolvedValue({ type: 'recurring', recurring: {} });
       stripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.example.com' });
@@ -197,8 +199,10 @@ describe('PaymentService', () => {
     });
 
     it('creates checkout session in payment mode for one-time prices', async () => {
-      process.env.STRIPE_PRICE_CREDITS = JSON.stringify({ price_one_time: 100 });
-      const service = new PaymentService();
+      const service = new PaymentService({
+        ...baseConfig,
+        priceCreditsJson: JSON.stringify({ price_one_time: 100 }),
+      });
       const stripe = getStripe();
       stripe.prices.retrieve.mockResolvedValue({ type: 'one_time', recurring: null });
       stripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.example.com' });
@@ -217,8 +221,10 @@ describe('PaymentService', () => {
     });
 
     it('throws when checkout session URL is missing', async () => {
-      process.env.STRIPE_PRICE_CREDITS = JSON.stringify({ price_sub: 500 });
-      const service = new PaymentService();
+      const service = new PaymentService({
+        ...baseConfig,
+        priceCreditsJson: JSON.stringify({ price_sub: 500 }),
+      });
       const stripe = getStripe();
       stripe.prices.retrieve.mockResolvedValue({ type: 'recurring', recurring: {} });
       stripe.checkout.sessions.create.mockResolvedValue({});
@@ -229,7 +235,7 @@ describe('PaymentService', () => {
     });
 
     it('creates billing portal session and lists invoices', async () => {
-      const service = new PaymentService();
+      const service = new PaymentService(baseConfig);
       const stripe = getStripe();
       stripe.billingPortal.sessions.create.mockResolvedValue({ url: 'https://portal.example.com' });
       stripe.invoices.list.mockResolvedValue({
@@ -248,8 +254,7 @@ describe('PaymentService', () => {
 
   describe('webhook event construction', () => {
     it('throws when webhook secret is missing', () => {
-      const service = new PaymentService();
-      delete process.env.STRIPE_WEBHOOK_SECRET;
+      const service = new PaymentService({ ...baseConfig, webhookSecret: undefined });
 
       expect(() => service.constructEvent('payload', 'signature')).toThrow(
         'STRIPE_WEBHOOK_SECRET is not configured'
@@ -257,9 +262,8 @@ describe('PaymentService', () => {
     });
 
     it('constructs event with configured webhook secret', () => {
-      const service = new PaymentService();
+      const service = new PaymentService(baseConfig);
       const stripe = getStripe();
-      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123';
       const event = { id: 'evt_1', type: 'invoice.paid' };
       stripe.webhooks.constructEvent.mockReturnValue(event);
 

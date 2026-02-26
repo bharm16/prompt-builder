@@ -7,15 +7,29 @@ type CapabilitiesRegistry = Record<string, Record<string, CapabilitiesSchema>>;
 
 const DEFAULT_REFRESH_MS = 1000 * 60 * 60 * 6; // 6 hours
 
+interface CapabilitiesProbeConfig {
+  probeUrl: string | undefined;
+  probePath: string | undefined;
+  probeRefreshMs: number;
+}
+
 export class CapabilitiesProbeService {
   private readonly log = logger.child({ service: 'CapabilitiesProbeService' });
+  private readonly config: CapabilitiesProbeConfig;
   private refreshTimer: NodeJS.Timeout | null = null;
 
+  constructor(config?: CapabilitiesProbeConfig) {
+    this.config = config ?? {
+      probeUrl: undefined,
+      probePath: undefined,
+      probeRefreshMs: DEFAULT_REFRESH_MS,
+    };
+  }
+
   start(): void {
-    const url = process.env.CAPABILITIES_PROBE_URL;
-    const path = process.env.CAPABILITIES_PROBE_PATH;
-    const refreshMs = Number.parseInt(process.env.CAPABILITIES_PROBE_REFRESH_MS || '', 10);
-    const intervalMs = Number.isFinite(refreshMs) && refreshMs > 0 ? refreshMs : DEFAULT_REFRESH_MS;
+    const url = this.config.probeUrl;
+    const path = this.config.probePath;
+    const intervalMs = this.config.probeRefreshMs > 0 ? this.config.probeRefreshMs : DEFAULT_REFRESH_MS;
 
     if (!url && !path) {
       this.log.debug('Capabilities probe disabled (no URL or path configured)');

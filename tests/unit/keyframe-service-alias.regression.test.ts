@@ -20,7 +20,8 @@ describe('keyframe service alias regression', () => {
 
   it('resolves keyframeService and keyframeGenerationService to the same singleton instance', () => {
     const container = new DIContainer();
-    const config: ServiceConfig = {
+    // Only the fields accessed by generation services are needed for this test.
+    const config = {
       openai: { apiKey: undefined, timeout: 30000, model: 'gpt-4o-mini' },
       groq: { apiKey: undefined, timeout: 30000, model: 'llama-3.3-70b-versatile' },
       qwen: { apiKey: undefined, timeout: 30000, model: 'qwen/qwen3-coder' },
@@ -34,7 +35,8 @@ describe('keyframe service alias regression', () => {
       fal: { apiKey: process.env.FAL_KEY },
       redis: { defaultTTL: 3600, shortTTL: 300, maxMemoryCacheSize: 1000 },
       server: { port: '3001', environment: 'test' },
-    };
+      features: { faceEmbedding: false, promptOutputOnly: false },
+    } as ServiceConfig;
 
     container.registerValue('config', config);
     registerGenerationServices(container);

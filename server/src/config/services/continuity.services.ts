@@ -25,6 +25,7 @@ import {
   StyleAnalysisService,
   StyleReferenceService,
 } from '@services/continuity';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerContinuityServices(container: DIContainer): void {
   container.register('continuitySessionStore', () => new ContinuitySessionStore(), [], { singleton: true });
@@ -38,8 +39,13 @@ export function registerContinuityServices(container: DIContainer): void {
 
   container.register(
     'styleReferenceService',
-    (storageService: AppStorageService) => new StyleReferenceService(storageService),
-    ['storageService'],
+    (storageService: AppStorageService, config: ServiceConfig) =>
+      new StyleReferenceService(
+        storageService,
+        config.replicate.apiToken,
+        config.continuity.ipAdapterModel
+      ),
+    ['storageService', 'config'],
     { singleton: true }
   );
 
@@ -90,9 +96,11 @@ export function registerContinuityServices(container: DIContainer): void {
 
   container.register(
     'qualityGateService',
-    (faceEmbeddingService: FaceEmbeddingService | null, storageService: AppStorageService) =>
-      new QualityGateService(faceEmbeddingService, storageService),
-    ['faceEmbeddingService', 'storageService'],
+    (faceEmbeddingService: FaceEmbeddingService | null, storageService: AppStorageService, config: ServiceConfig) =>
+      new QualityGateService(faceEmbeddingService, storageService, {
+        disableClip: config.continuity.disableClip,
+      }),
+    ['faceEmbeddingService', 'storageService', 'config'],
     { singleton: true }
   );
 

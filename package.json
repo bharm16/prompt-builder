@@ -125,6 +125,7 @@
   "scripts": {
     "dev": "vite --config config/build/vite.config.ts",
     "server": "tsx --tsconfig server/tsconfig.json server/index.ts",
+    "server:dev": "tsx watch --tsconfig server/tsconfig.json --clear-screen --exclude \"**/*.test.ts\" --exclude \"**/__tests__/**\" --exclude \"**/models/*.onnx\" server/index.ts",
     "server:e2e": "NODE_ENV=test tsx --tsconfig server/tsconfig.json server/index.ts",
     "dev:e2e": "NODE_ENV=test tsx --tsconfig server/tsconfig.json server/index.ts & vite --config config/build/vite.config.ts",
     "download-models": "bash scripts/download-models.sh",

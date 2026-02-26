@@ -38,20 +38,14 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 import { CapabilitiesProbeService } from '../CapabilitiesProbeService';
 
 describe('CapabilitiesProbeService', () => {
-  const originalEnv = { ...process.env };
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env = { ...originalEnv };
-    delete process.env.CAPABILITIES_PROBE_URL;
-    delete process.env.CAPABILITIES_PROBE_PATH;
-    delete process.env.CAPABILITIES_PROBE_REFRESH_MS;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
     global.fetch = originalFetch;
     vi.useRealTimers();
   });
@@ -68,8 +62,6 @@ describe('CapabilitiesProbeService', () => {
   });
 
   it('loads registry from URL and updates dynamic registry', async () => {
-    process.env.CAPABILITIES_PROBE_URL = 'https://capabilities.example.com/registry.json';
-    process.env.CAPABILITIES_PROBE_REFRESH_MS = '1000';
     global.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -79,7 +71,11 @@ describe('CapabilitiesProbeService', () => {
       }),
     })) as unknown as typeof fetch;
 
-    const service = new CapabilitiesProbeService();
+    const service = new CapabilitiesProbeService({
+      probeUrl: 'https://capabilities.example.com/registry.json',
+      probePath: undefined,
+      probeRefreshMs: 1000,
+    });
     service.start();
     await vi.runOnlyPendingTimersAsync();
 
@@ -99,8 +95,6 @@ describe('CapabilitiesProbeService', () => {
   });
 
   it('loads registry from file and updates dynamic registry', async () => {
-    process.env.CAPABILITIES_PROBE_PATH = '/tmp/registry.json';
-    process.env.CAPABILITIES_PROBE_REFRESH_MS = '1000';
     mocks.readFile.mockResolvedValue(
       JSON.stringify({
         wan: {
@@ -109,7 +103,11 @@ describe('CapabilitiesProbeService', () => {
       })
     );
 
-    const service = new CapabilitiesProbeService();
+    const service = new CapabilitiesProbeService({
+      probeUrl: undefined,
+      probePath: '/tmp/registry.json',
+      probeRefreshMs: 1000,
+    });
     service.start();
     await vi.runOnlyPendingTimersAsync();
 
@@ -130,10 +128,13 @@ describe('CapabilitiesProbeService', () => {
   });
 
   it('handles refresh failures without throwing', async () => {
-    process.env.CAPABILITIES_PROBE_URL = 'https://capabilities.example.com/registry.json';
     global.fetch = vi.fn(async () => ({ ok: false, status: 500 })) as unknown as typeof fetch;
 
-    const service = new CapabilitiesProbeService();
+    const service = new CapabilitiesProbeService({
+      probeUrl: 'https://capabilities.example.com/registry.json',
+      probePath: undefined,
+      probeRefreshMs: 60_000,
+    });
     service.start();
     await vi.runOnlyPendingTimersAsync();
 
@@ -147,11 +148,13 @@ describe('CapabilitiesProbeService', () => {
   });
 
   it('stops refresh interval when stop is called', async () => {
-    process.env.CAPABILITIES_PROBE_URL = 'https://capabilities.example.com/registry.json';
-    process.env.CAPABILITIES_PROBE_REFRESH_MS = '1000';
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({}) })) as unknown as typeof fetch;
 
-    const service = new CapabilitiesProbeService();
+    const service = new CapabilitiesProbeService({
+      probeUrl: 'https://capabilities.example.com/registry.json',
+      probePath: undefined,
+      probeRefreshMs: 1000,
+    });
     service.start();
     await vi.runOnlyPendingTimersAsync();
     expect(vi.getTimerCount()).toBeGreaterThan(0);

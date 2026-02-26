@@ -32,17 +32,13 @@ const createStore = (cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>()
   }) as unknown as VideoAssetStore;
 
 describe('VideoAssetRetentionService', () => {
-  const originalEnv = { ...process.env };
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    process.env = { ...originalEnv };
   });
 
   it('runOnce computes cutoff and logs cleanup count when assets are deleted', async () => {
@@ -146,21 +142,33 @@ describe('VideoAssetRetentionService', () => {
     expect(mocks.loggerWarn).toHaveBeenCalledWith('Video asset retention disabled (maxAgeMs <= 0)');
   });
 
-  it('factory returns null for disabled or invalid interval and builds service for valid env', () => {
+  it('factory returns null for disabled or invalid interval and builds service for valid config', () => {
     const store = createStore();
 
-    process.env.VIDEO_ASSET_RETENTION_DISABLED = 'true';
-    expect(createVideoAssetRetentionService(store)).toBeNull();
+    expect(
+      createVideoAssetRetentionService(store, {
+        disabled: true,
+        retentionHours: 24,
+        cleanupIntervalMinutes: 15,
+        batchSize: 100,
+      })
+    ).toBeNull();
 
-    process.env.VIDEO_ASSET_RETENTION_DISABLED = 'false';
-    process.env.VIDEO_ASSET_CLEANUP_INTERVAL_MINUTES = '0';
-    expect(createVideoAssetRetentionService(store)).toBeNull();
+    expect(
+      createVideoAssetRetentionService(store, {
+        disabled: false,
+        retentionHours: 24,
+        cleanupIntervalMinutes: 0,
+        batchSize: 100,
+      })
+    ).toBeNull();
 
-    process.env.VIDEO_ASSET_RETENTION_HOURS = '12';
-    process.env.VIDEO_ASSET_CLEANUP_INTERVAL_MINUTES = '5';
-    process.env.VIDEO_ASSET_CLEANUP_BATCH_SIZE = '44';
-
-    const service = createVideoAssetRetentionService(store);
+    const service = createVideoAssetRetentionService(store, {
+      disabled: false,
+      retentionHours: 12,
+      cleanupIntervalMinutes: 5,
+      batchSize: 44,
+    });
     expect(service).toBeInstanceOf(VideoAssetRetentionService);
   });
 });

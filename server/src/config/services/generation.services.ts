@@ -32,6 +32,7 @@ import { ProviderCircuitManager } from '@services/video-generation/jobs/Provider
 import { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
 import type { VideoAssetStore } from '@services/video-generation/storage';
 import type { StorageService } from '@services/storage/StorageService';
+import { setTimeoutPolicyConfig } from '@services/video-generation/providers/timeoutPolicy';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 import type { ServiceConfig } from './service-config.types.ts';
 
@@ -118,7 +119,8 @@ export function registerGenerationServices(container: DIContainer): void {
     (
       replicateProvider: ReplicateFluxSchnellProvider | null,
       kontextProvider: ReplicateFluxKontextFastProvider | null,
-      imageAssetStore: ImageAssetStore
+      imageAssetStore: ImageAssetStore,
+      config: ServiceConfig
     ) => {
       const providers = [replicateProvider, kontextProvider].filter(Boolean) as ImagePreviewProvider[];
 
@@ -127,21 +129,19 @@ export function registerGenerationServices(container: DIContainer): void {
         return null;
       }
 
-      const selection = resolveImagePreviewProviderSelection(
-        process.env.IMAGE_PREVIEW_PROVIDER
-      );
-      if (process.env.IMAGE_PREVIEW_PROVIDER && !selection) {
+      const vp = config.videoProviders;
+      const selection = resolveImagePreviewProviderSelection(vp.imagePreviewProvider);
+      if (vp.imagePreviewProvider && !selection) {
         logger.warn('Invalid IMAGE_PREVIEW_PROVIDER value', {
-          value: process.env.IMAGE_PREVIEW_PROVIDER,
+          value: vp.imagePreviewProvider,
         });
       }
 
-      const fallbackOrder = parseImagePreviewProviderOrder(
-        process.env.IMAGE_PREVIEW_PROVIDER_ORDER
-      );
-      if (process.env.IMAGE_PREVIEW_PROVIDER_ORDER && fallbackOrder.length === 0) {
+      const rawOrder = vp.imagePreviewProviderOrder.join(',') || undefined;
+      const fallbackOrder = parseImagePreviewProviderOrder(rawOrder);
+      if (vp.imagePreviewProviderOrder.length > 0 && fallbackOrder.length === 0) {
         logger.warn('No valid IMAGE_PREVIEW_PROVIDER_ORDER entries found', {
-          value: process.env.IMAGE_PREVIEW_PROVIDER_ORDER,
+          value: vp.imagePreviewProviderOrder.join(','),
         });
       }
 
@@ -152,7 +152,7 @@ export function registerGenerationServices(container: DIContainer): void {
         fallbackOrder,
       });
     },
-    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider', 'imageAssetStore']
+    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider', 'imageAssetStore', 'config']
   );
 
   container.register(
@@ -178,15 +178,14 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'videoGenerationService',
-    (videoAssetStore: VideoAssetStore) => {
-      const apiToken = process.env.REPLICATE_API_TOKEN;
-      const openAIKey = process.env.OPENAI_API_KEY;
-      const lumaApiKey = process.env.LUMA_API_KEY || process.env.LUMAAI_API_KEY;
-      const klingApiKey = process.env.KLING_API_KEY;
-      const klingBaseUrl = process.env.KLING_API_BASE_URL;
-      const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-      const geminiBaseUrl = process.env.GEMINI_BASE_URL;
-      if (!apiToken && !openAIKey && !lumaApiKey && !klingApiKey && !geminiApiKey) {
+    (videoAssetStore: VideoAssetStore, config: ServiceConfig) => {
+      setTimeoutPolicyConfig({
+        pollTimeoutMs: config.videoProviders.pollTimeoutMs,
+        workflowTimeoutMs: config.videoProviders.workflowTimeoutMs,
+      });
+
+      const creds = config.videoProviders.credentials;
+      if (!creds.replicateApiToken && !creds.openAIKey && !creds.lumaApiKey && !creds.klingApiKey && !creds.geminiApiKey) {
         logger.warn(
           'No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY or LUMAAI_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)'
         );
@@ -194,16 +193,16 @@ export function registerGenerationServices(container: DIContainer): void {
       }
       return new VideoGenerationService({
         assetStore: videoAssetStore,
-        ...(apiToken ? { apiToken } : {}),
-        ...(openAIKey ? { openAIKey } : {}),
-        ...(lumaApiKey ? { lumaApiKey } : {}),
-        ...(klingApiKey ? { klingApiKey } : {}),
-        ...(klingBaseUrl ? { klingBaseUrl } : {}),
-        ...(geminiApiKey ? { geminiApiKey } : {}),
-        ...(geminiBaseUrl ? { geminiBaseUrl } : {}),
+        ...(creds.replicateApiToken ? { apiToken: creds.replicateApiToken } : {}),
+        ...(creds.openAIKey ? { openAIKey: creds.openAIKey } : {}),
+        ...(creds.lumaApiKey ? { lumaApiKey: creds.lumaApiKey } : {}),
+        ...(creds.klingApiKey ? { klingApiKey: creds.klingApiKey } : {}),
+        ...(creds.klingBaseUrl ? { klingBaseUrl: creds.klingBaseUrl } : {}),
+        ...(creds.geminiApiKey ? { geminiApiKey: creds.geminiApiKey } : {}),
+        ...(creds.geminiBaseUrl ? { geminiBaseUrl: creds.geminiBaseUrl } : {}),
       });
     },
-    ['videoAssetStore']
+    ['videoAssetStore', 'config']
   );
 
   container.register(
@@ -238,6 +237,7 @@ export function registerGenerationServices(container: DIContainer): void {
       return new KeyframeGenerationService({
         falApiKey: falKey,
         ...(replicateToken ? { apiToken: replicateToken } : {}),
+        enableFaceEmbedding: config.features.faceEmbedding,
       });
     },
     ['config'],
@@ -296,28 +296,24 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     'capabilitiesProbeService',
-    () => new CapabilitiesProbeService(),
-    [],
+    (config: ServiceConfig) => new CapabilitiesProbeService(config.capabilities),
+    ['config'],
     { singleton: true }
   );
 
   container.register(
     'providerCircuitManager',
-    (metricsService: MetricsService) => {
-      const failureRateThreshold = Number.parseFloat(process.env.VIDEO_PROVIDER_CIRCUIT_FAILURE_RATE || '0.6');
-      const minVolume = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_MIN_VOLUME || '20', 10);
-      const cooldownMs = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_COOLDOWN_MS || '60000', 10);
-      const maxSamples = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_MAX_SAMPLES || '50', 10);
-
+    (metricsService: MetricsService, config: ServiceConfig) => {
+      const pc = config.videoJobs.providerCircuit;
       return new ProviderCircuitManager({
-        failureRateThreshold: Number.isFinite(failureRateThreshold) ? failureRateThreshold : 0.6,
-        minVolume: Number.isFinite(minVolume) ? minVolume : 20,
-        cooldownMs: Number.isFinite(cooldownMs) ? cooldownMs : 60_000,
-        maxSamples: Number.isFinite(maxSamples) ? maxSamples : 50,
+        failureRateThreshold: pc.failureRateThreshold,
+        minVolume: pc.minVolume,
+        cooldownMs: pc.cooldownMs,
+        maxSamples: pc.maxSamples,
         metrics: metricsService,
       });
     },
-    ['metricsService'],
+    ['metricsService', 'config'],
     { singleton: true }
   );
 
@@ -329,44 +325,35 @@ export function registerGenerationServices(container: DIContainer): void {
       creditService: UserCreditService,
       storageService: StorageService,
       metricsService: MetricsService,
-      providerCircuitManager: ProviderCircuitManager
+      providerCircuitManager: ProviderCircuitManager,
+      config: ServiceConfig
     ) => {
       if (!videoGenerationService) {
         return null;
       }
 
-      const pollIntervalMs = Number.parseInt(process.env.VIDEO_JOB_POLL_INTERVAL_MS || '2000', 10);
-      const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '60', 10);
-      const maxConcurrent = Number.parseInt(process.env.VIDEO_JOB_MAX_CONCURRENT || '2', 10);
-      const heartbeatIntervalMs = Number.parseInt(
-        process.env.VIDEO_JOB_HEARTBEAT_INTERVAL_MS || '20000',
-        10
-      );
-      const perProviderMaxConcurrent = Number.parseInt(
-        process.env.VIDEO_JOB_PER_PROVIDER_MAX_CONCURRENT || '',
-        10
-      );
-
+      const wc = config.videoJobs.worker;
       return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, storageService, {
-        pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
-        leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 60000,
-        maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
-        heartbeatIntervalMs: Number.isFinite(heartbeatIntervalMs) ? heartbeatIntervalMs : 20000,
+        pollIntervalMs: wc.pollIntervalMs,
+        leaseMs: wc.leaseSeconds * 1000,
+        maxConcurrent: wc.maxConcurrent,
+        heartbeatIntervalMs: wc.heartbeatIntervalMs,
+        ...(config.videoJobs.hostname ? { hostname: config.videoJobs.hostname } : {}),
         providerCircuitManager,
-        ...(Number.isFinite(perProviderMaxConcurrent) && perProviderMaxConcurrent > 0
-          ? { perProviderMaxConcurrent }
+        ...(wc.perProviderMaxConcurrent !== undefined
+          ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
           : {}),
         metrics: metricsService,
       });
     },
-    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService', 'providerCircuitManager']
+    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService', 'providerCircuitManager', 'config']
   );
 
   container.register(
     'videoJobSweeper',
-    (videoJobStore: VideoJobStore, creditService: UserCreditService, metricsService: MetricsService) =>
-      createVideoJobSweeper(videoJobStore, creditService, metricsService),
-    ['videoJobStore', 'userCreditService', 'metricsService'],
+    (videoJobStore: VideoJobStore, creditService: UserCreditService, metricsService: MetricsService, config: ServiceConfig) =>
+      createVideoJobSweeper(videoJobStore, creditService, metricsService, config.videoJobs.sweeper),
+    ['videoJobStore', 'userCreditService', 'metricsService', 'config'],
     { singleton: true }
   );
 
@@ -375,24 +362,22 @@ export function registerGenerationServices(container: DIContainer): void {
     (
       videoJobStore: VideoJobStore,
       providerCircuitManager: ProviderCircuitManager,
-      metricsService: MetricsService
+      metricsService: MetricsService,
+      config: ServiceConfig
     ) => {
-      const disabled = process.env.VIDEO_DLQ_REPROCESSOR_DISABLED === 'true';
-      if (disabled) {
+      const dlq = config.videoJobs.dlqReprocessor;
+      if (dlq.disabled) {
         return null;
       }
 
-      const pollIntervalMs = Number.parseInt(process.env.VIDEO_DLQ_POLL_INTERVAL_MS || '30000', 10);
-      const maxEntriesPerRun = Number.parseInt(process.env.VIDEO_DLQ_MAX_ENTRIES_PER_RUN || '5', 10);
-
       return new DlqReprocessorWorker(videoJobStore, {
-        pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 30_000,
-        maxEntriesPerRun: Number.isFinite(maxEntriesPerRun) ? maxEntriesPerRun : 5,
+        pollIntervalMs: dlq.pollIntervalMs,
+        maxEntriesPerRun: dlq.maxEntriesPerRun,
         providerCircuitManager,
         metrics: metricsService,
       });
     },
-    ['videoJobStore', 'providerCircuitManager', 'metricsService'],
+    ['videoJobStore', 'providerCircuitManager', 'metricsService', 'config'],
     { singleton: true }
   );
 }

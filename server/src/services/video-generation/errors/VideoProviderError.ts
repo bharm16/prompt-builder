@@ -1,10 +1,12 @@
+import { DomainError } from '@server/errors/DomainError';
+
 type VideoProviderErrorCategory = 'provider' | 'timeout' | 'validation' | 'auth' | 'rate_limit' | 'unknown';
 
 interface VideoProviderErrorOptions {
   provider: string;
   message: string;
   statusCode?: number;
-  code?: string;
+  providerCode?: string;
   retryable?: boolean;
   category?: VideoProviderErrorCategory;
   cause?: unknown;
@@ -97,23 +99,68 @@ function isRetryable(category: VideoProviderErrorCategory, statusCode: number | 
   return true;
 }
 
-export class VideoProviderError extends Error {
+const CATEGORY_CODES: Record<VideoProviderErrorCategory, string> = {
+  auth: 'VIDEO_PROVIDER_AUTH',
+  rate_limit: 'VIDEO_PROVIDER_RATE_LIMIT',
+  validation: 'VIDEO_PROVIDER_VALIDATION',
+  timeout: 'VIDEO_PROVIDER_TIMEOUT',
+  provider: 'VIDEO_PROVIDER_ERROR',
+  unknown: 'VIDEO_PROVIDER_ERROR',
+};
+
+const CATEGORY_HTTP_STATUS: Record<VideoProviderErrorCategory, number> = {
+  auth: 403,
+  rate_limit: 429,
+  validation: 400,
+  timeout: 504,
+  provider: 502,
+  unknown: 500,
+};
+
+const CATEGORY_USER_MESSAGE: Record<VideoProviderErrorCategory, string> = {
+  auth: 'Authentication failed with video provider.',
+  rate_limit: 'Video provider rate limit reached. Please try again later.',
+  validation: 'Invalid video generation request.',
+  timeout: 'Video generation timed out. Please try again.',
+  provider: 'Video generation failed. Please try again.',
+  unknown: 'Video generation failed. Please try again.',
+};
+
+export class VideoProviderError extends DomainError {
+  readonly code: string;
   readonly provider: string;
   readonly statusCode: number | undefined;
-  readonly code: string | undefined;
+  readonly providerCode: string | undefined;
   readonly retryable: boolean;
   readonly category: VideoProviderErrorCategory;
   override readonly cause: unknown;
 
   constructor(options: VideoProviderErrorOptions) {
-    super(options.message);
+    const category = options.category ?? categorize(options.statusCode, options.message);
+    const retryable = options.retryable ?? isRetryable(category, options.statusCode);
+    super(options.message, {
+      provider: options.provider,
+      category,
+      retryable,
+      ...(options.providerCode !== undefined ? { providerCode: options.providerCode } : {}),
+      ...(options.statusCode !== undefined ? { statusCode: options.statusCode } : {}),
+    });
     this.name = 'VideoProviderError';
     this.provider = options.provider;
     this.statusCode = options.statusCode;
-    this.code = options.code;
-    this.category = options.category ?? categorize(options.statusCode, options.message);
-    this.retryable = options.retryable ?? isRetryable(this.category, options.statusCode);
+    this.providerCode = options.providerCode;
+    this.category = category;
+    this.code = CATEGORY_CODES[this.category];
+    this.retryable = retryable;
     this.cause = options.cause;
+  }
+
+  getHttpStatus(): number {
+    return this.statusCode ?? CATEGORY_HTTP_STATUS[this.category];
+  }
+
+  getUserMessage(): string {
+    return CATEGORY_USER_MESSAGE[this.category];
   }
 }
 
@@ -128,13 +175,13 @@ export function toVideoProviderError(error: unknown, provider: string): VideoPro
 
   const message = normalizeMessage(error);
   const statusCode = extractStatusCode(error);
-  const code = extractCode(error);
+  const providerCode = extractCode(error);
 
   return new VideoProviderError({
     provider,
     message,
     ...(typeof statusCode === 'number' ? { statusCode } : {}),
-    ...(code ? { code } : {}),
+    ...(providerCode ? { providerCode } : {}),
     cause: error,
   });
 }

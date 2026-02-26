@@ -18,7 +18,7 @@ export class FaceEmbeddingService {
       return;
     }
 
-    const token = apiToken || process.env.REPLICATE_API_TOKEN;
+    const token = apiToken;
     if (!token) {
       throw new Error(
         'Replicate provider is not configured. REPLICATE_API_TOKEN is required.'

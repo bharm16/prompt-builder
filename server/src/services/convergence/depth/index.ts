@@ -8,6 +8,7 @@
  */
 
 export type { DepthEstimationService, DepthEstimationServiceOptions } from './DepthEstimationService';
+export type { DepthModuleConfig } from './DepthEstimationService';
 export type { DepthEstimationProvider, FalDepthResponse } from './types';
 export {
   FalDepthEstimationService,
@@ -16,5 +17,6 @@ export {
   getDepthWarmupStatus,
   getStartupWarmupPromise,
   initializeDepthWarmer,
+  setDepthEstimationModuleConfig,
   warmupDepthEstimationOnStartup,
 } from './DepthEstimationService';

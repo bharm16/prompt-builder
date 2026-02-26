@@ -137,42 +137,30 @@ export class CreditReconciliationWorker {
   }
 }
 
+interface ReconciliationConfig {
+  disabled: boolean;
+  incrementalIntervalSeconds: number;
+  fullIntervalHours: number;
+  maxIntervalSeconds: number;
+  backoffFactor: number;
+}
+
 export function createCreditReconciliationWorker(
   reconciliationService: CreditReconciliationService,
-  metrics?: {
+  metrics: {
     recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
-  }
+  } | undefined,
+  config: ReconciliationConfig,
 ): CreditReconciliationWorker | null {
-  if (process.env.CREDIT_RECONCILIATION_DISABLED === 'true') {
+  if (config.disabled) {
     return null;
   }
 
-  const parsePositiveInt = (raw: string | undefined, fallback: number): number => {
-    const parsed = Number.parseInt(raw || '', 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-  };
-
-  const incrementalSeconds = parsePositiveInt(
-    process.env.CREDIT_RECONCILIATION_INCREMENTAL_INTERVAL_SECONDS,
-    DEFAULT_INCREMENTAL_INTERVAL_MS / 1000
-  );
-  const fullPassHours = parsePositiveInt(
-    process.env.CREDIT_RECONCILIATION_FULL_INTERVAL_HOURS,
-    DEFAULT_FULL_PASS_INTERVAL_MS / (60 * 60 * 1000)
-  );
-  const maxIntervalSeconds = parsePositiveInt(
-    process.env.CREDIT_RECONCILIATION_MAX_INTERVAL_SECONDS,
-    DEFAULT_MAX_INTERVAL_MS / 1000
-  );
-  const backoffFactorRaw = Number.parseFloat(process.env.CREDIT_RECONCILIATION_BACKOFF_FACTOR || '');
-  const backoffFactor =
-    Number.isFinite(backoffFactorRaw) && backoffFactorRaw > 1 ? backoffFactorRaw : DEFAULT_BACKOFF_FACTOR;
-
   return new CreditReconciliationWorker(reconciliationService, {
-    incrementalIntervalMs: incrementalSeconds * 1000,
-    fullPassIntervalMs: fullPassHours * 60 * 60 * 1000,
-    maxIntervalMs: maxIntervalSeconds * 1000,
-    backoffFactor,
+    incrementalIntervalMs: config.incrementalIntervalSeconds * 1000,
+    fullPassIntervalMs: config.fullIntervalHours * 60 * 60 * 1000,
+    maxIntervalMs: config.maxIntervalSeconds * 1000,
+    backoffFactor: config.backoffFactor,
     ...(metrics ? { metrics } : {}),
   });
 }

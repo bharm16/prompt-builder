@@ -6,6 +6,7 @@ import { GroqLlamaAdapter } from '@clients/adapters/GroqLlamaAdapter';
 import { GroqQwenAdapter } from '@clients/adapters/GroqQwenAdapter';
 import { OpenAICompatibleAdapter } from '@clients/adapters/OpenAICompatibleAdapter';
 import { AIModelService } from '@services/ai-model/index';
+import { setProviderSettings } from '@services/ai-model/routing/ExecutionPlan';
 import { ConcurrencyLimiter, parseEnvInt } from '@services/concurrency/ConcurrencyService';
 import type { MetricsService } from '@infrastructure/MetricsService';
 import type { ServiceConfig } from './service-config.types.ts';
@@ -166,15 +167,25 @@ export function registerLLMServices(container: DIContainer): void {
       claudeClient: LLMClient | null,
       groqClient: LLMClient | null,
       qwenClient: LLMClient | null,
-      geminiClient: LLMClient | null
-    ) => new AIModelService({
-      clients: {
-        openai: claudeClient,
-        groq: groqClient,
-        qwen: qwenClient,
-        gemini: geminiClient,
-      },
-    }),
-    ['claudeClient', 'groqClient', 'qwenClient', 'geminiClient']
+      geminiClient: LLMClient | null,
+      config: ServiceConfig
+    ) => {
+      setProviderSettings({
+        openai: { model: config.openai.model, timeout: config.openai.timeout },
+        groq: { model: config.groq.model, timeout: config.groq.timeout },
+        qwen: { model: config.qwen.model, timeout: config.qwen.timeout },
+        gemini: { model: config.gemini.model, timeout: config.gemini.timeout },
+      });
+
+      return new AIModelService({
+        clients: {
+          openai: claudeClient,
+          groq: groqClient,
+          qwen: qwenClient,
+          gemini: geminiClient,
+        },
+      });
+    },
+    ['claudeClient', 'groqClient', 'qwenClient', 'geminiClient', 'config']
   );
 }

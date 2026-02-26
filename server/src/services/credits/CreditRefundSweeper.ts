@@ -157,30 +157,25 @@ export class CreditRefundSweeper {
   }
 }
 
+interface RefundSweeperConfig {
+  disabled: boolean;
+  intervalSeconds: number;
+  maxPerRun: number;
+  maxAttempts: number;
+}
+
 export function createCreditRefundSweeper(
   failureStore: RefundFailureStore,
   userCreditService: UserCreditService,
-  metricsService?: SweeperMetrics,
+  metricsService: SweeperMetrics | undefined,
+  config: RefundSweeperConfig,
 ): CreditRefundSweeper | null {
-  if (process.env.CREDIT_REFUND_SWEEPER_DISABLED === 'true') {
+  if (config.disabled) {
     return null;
   }
 
-  const sweepIntervalSeconds = Number.parseInt(
-    process.env.CREDIT_REFUND_SWEEP_INTERVAL_SECONDS || String(DEFAULT_SWEEP_INTERVAL_SECONDS),
-    10
-  );
-  const sweepMax = Number.parseInt(
-    process.env.CREDIT_REFUND_SWEEP_MAX || String(DEFAULT_SWEEP_MAX),
-    10
-  );
-  const maxAttempts = Number.parseInt(
-    process.env.CREDIT_REFUND_MAX_ATTEMPTS || String(DEFAULT_MAX_ATTEMPTS),
-    10
-  );
-
-  const sweepIntervalMs = Number.isFinite(sweepIntervalSeconds) ? sweepIntervalSeconds * 1000 : 0;
-  if (sweepIntervalMs <= 0 || sweepMax <= 0 || maxAttempts <= 0) {
+  const sweepIntervalMs = config.intervalSeconds * 1000;
+  if (sweepIntervalMs <= 0 || config.maxPerRun <= 0 || config.maxAttempts <= 0) {
     return null;
   }
 
@@ -188,7 +183,7 @@ export function createCreditRefundSweeper(
     sweepIntervalMs,
     maxSweepIntervalMs: sweepIntervalMs * 8,
     backoffFactor: 2,
-    maxPerRun: sweepMax,
-    maxAttempts,
+    maxPerRun: config.maxPerRun,
+    maxAttempts: config.maxAttempts,
   }, metricsService);
 }

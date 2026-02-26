@@ -5,6 +5,7 @@ import AssetService from '@services/asset/AssetService';
 import AssetRepository from '@services/asset/AssetRepository';
 import AssetResolverService from '@services/asset/AssetResolverService';
 import AssetReferenceImageService from '@services/asset/ReferenceImageService';
+import type { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import { PaymentService } from '@services/payment/PaymentService';
@@ -12,6 +13,7 @@ import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventSto
 import ReferenceImageService from '@services/reference-images/ReferenceImageService';
 import { SessionService } from '@services/sessions/SessionService';
 import { SessionStore } from '@services/sessions/SessionStore';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerSessionServices(container: DIContainer): void {
   container.register(
@@ -21,7 +23,12 @@ export function registerSessionServices(container: DIContainer): void {
     ['firestoreCircuitExecutor'],
     { singleton: true }
   );
-  container.register('paymentService', () => new PaymentService(), [], { singleton: true });
+  container.register(
+    'paymentService',
+    (config: ServiceConfig) => new PaymentService(config.stripe),
+    ['config'],
+    { singleton: true }
+  );
   container.register(
     'stripeWebhookEventStore',
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
@@ -40,19 +47,20 @@ export function registerSessionServices(container: DIContainer): void {
 
   container.register(
     'assetService',
-    (gcsBucket: Bucket, gcsBucketName: string) => {
+    (gcsBucket: Bucket, gcsBucketName: string, faceEmbeddingService: FaceEmbeddingService | null, config: ServiceConfig) => {
       try {
         const repository = new AssetRepository({ bucket: gcsBucket, bucketName: gcsBucketName });
         const resolver = new AssetResolverService(repository);
         const referenceImages = new AssetReferenceImageService();
-        return new AssetService(repository, referenceImages, resolver);
+        const embeddingService = config.features.faceEmbedding ? faceEmbeddingService : null;
+        return new AssetService(repository, referenceImages, resolver, undefined, embeddingService);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('Asset service disabled', { error: errorMessage });
         return null;
       }
     },
-    ['gcsBucket', 'gcsBucketName'],
+    ['gcsBucket', 'gcsBucketName', 'faceEmbeddingService', 'config'],
     { singleton: true }
   );
 

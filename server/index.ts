@@ -17,7 +17,7 @@ import './instrument.mjs';
 
 import { existsSync, readdirSync } from 'node:fs';
 import dotenv from 'dotenv';
-import { validateEnv } from '@utils/validateEnv';
+import { parseEnv, emitEnvWarnings } from '@config/env';
 import { logger } from '@infrastructure/Logger';
 import { configureServices, initializeServices } from '@config/services.config';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig';
@@ -66,7 +66,8 @@ async function bootstrap() {
     // 1. Validate Environment
     // ========================================================================
     logger.info('Validating environment variables...');
-    validateEnv();
+    const validatedEnv = parseEnv();
+    emitEnvWarnings(validatedEnv);
     logger.info('✅ Environment variables validated successfully');
     assertSpanLabelingModelsPresent();
 

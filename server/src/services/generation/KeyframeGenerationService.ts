@@ -51,6 +51,7 @@ export class KeyframeGenerationService {
     pulidProvider?: FalPulidKeyframeProvider;
     apiToken?: string;
     falApiKey?: string;
+    enableFaceEmbedding?: boolean;
   } = {}) {
     // PuLID provider (preferred)
     this.pulidProvider = options.pulidProvider ?? new FalPulidKeyframeProvider(
@@ -61,12 +62,12 @@ export class KeyframeGenerationService {
     if (options.replicate) {
       this.replicate = options.replicate;
     } else {
-      const token = options.apiToken || process.env.REPLICATE_API_TOKEN;
+      const token = options.apiToken;
       this.replicate = token ? new Replicate({ auth: token }) : null;
     }
 
     // Embedding service for face validation (requires explicit opt-in)
-    const enableFaceEmbedding = process.env.ENABLE_FACE_EMBEDDING === 'true';
+    const enableFaceEmbedding = options.enableFaceEmbedding ?? false;
     if (options.embeddingService) {
       this.embeddingService = options.embeddingService;
     } else if (enableFaceEmbedding && this.replicate) {

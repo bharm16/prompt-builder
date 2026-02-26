@@ -21,6 +21,7 @@ import { VideoPromptService } from '@services/video-prompt-analysis/index';
 import { AIServiceVideoPromptLlmGateway } from '@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway';
 import { MultimodalAssetManager } from '@services/video-prompt-analysis/services/MultimodalAssetManager';
 import { VideoConceptService } from '@services/video-concept/VideoConceptService';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register(
@@ -31,9 +32,9 @@ export function registerEnhancementServices(container: DIContainer): void {
 
   container.register(
     'videoService',
-    (videoPromptLlmGateway: AIServiceVideoPromptLlmGateway) =>
-      new VideoPromptService({ videoPromptLlmGateway }),
-    ['videoPromptLlmGateway']
+    (videoPromptLlmGateway: AIServiceVideoPromptLlmGateway, config: ServiceConfig) =>
+      new VideoPromptService({ videoPromptLlmGateway, promptOutputOnly: config.features.promptOutputOnly }),
+    ['videoPromptLlmGateway', 'config']
   );
   container.register('multimodalAssetManager', () => new MultimodalAssetManager(), []);
   container.register('brainstormBuilder', () => new BrainstormContextBuilder(), []);
@@ -65,10 +66,20 @@ export function registerEnhancementServices(container: DIContainer): void {
       cacheService: CacheService,
       videoService: VideoPromptService,
       imageObservationService: ImageObservationService,
-      templateService: TemplateService
-    ) =>
-      new PromptOptimizationService(aiService, cacheService, videoService, imageObservationService, templateService),
-    ['aiService', 'cacheService', 'videoService', 'imageObservationService', 'templateService']
+      templateService: TemplateService,
+      config: ServiceConfig
+    ) => {
+      const po = config.promptOptimization;
+      return new PromptOptimizationService(
+        aiService,
+        cacheService,
+        videoService,
+        imageObservationService,
+        templateService,
+        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax }
+      );
+    },
+    ['aiService', 'cacheService', 'videoService', 'imageObservationService', 'templateService', 'config']
   );
 
   container.register(

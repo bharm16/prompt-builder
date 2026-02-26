@@ -72,8 +72,8 @@ function killProcess(child) {
 }
 
 async function main() {
-  console.log('[dev:start] Starting backend…');
-  const server = spawnNpm(['run', 'server'], 'server');
+  console.log('[dev:start] Starting backend (watch mode)…');
+  const server = spawnNpm(['run', 'server:dev'], 'server');
 
   let serverExited = false;
   server.on('exit', () => {

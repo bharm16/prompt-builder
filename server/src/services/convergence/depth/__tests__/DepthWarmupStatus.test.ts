@@ -54,9 +54,20 @@ describe('Depth warmup status', () => {
       },
     });
 
-    const { getDepthWarmupStatus, warmupDepthEstimationOnStartup } = await import(
+    const { getDepthWarmupStatus, warmupDepthEstimationOnStartup, setDepthEstimationModuleConfig } = await import(
       '../DepthEstimationService'
     );
+
+    // Enable warmup via module config (no longer reads process.env)
+    setDepthEstimationModuleConfig({
+      warmupRetryTimeoutMs: 20_000,
+      falWarmupEnabled: true,
+      falWarmupIntervalMs: 120_000,
+      falWarmupImageUrl: 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+      warmupOnStartup: true,
+      warmupTimeoutMs: 60_000,
+      promptOutputOnly: false,
+    });
 
     expect(getDepthWarmupStatus().lastWarmupAt).toBe(0);
 

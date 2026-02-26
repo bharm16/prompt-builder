@@ -10,6 +10,7 @@ import type { ProviderCircuitManager } from './ProviderCircuitManager';
 
 interface VideoJobWorkerOptions {
   workerId?: string;
+  hostname?: string;
   pollIntervalMs: number;
   leaseMs: number;
   maxConcurrent: number;
@@ -93,7 +94,7 @@ export class VideoJobWorker {
     this.pollBackoffFactor = options.backoffFactor ?? 1.5;
     this.leaseMs = options.leaseMs;
     this.maxConcurrent = options.maxConcurrent;
-    this.workerId = options.workerId || process.env.HOSTNAME || `video-worker-${uuidv4()}`;
+    this.workerId = options.workerId || options.hostname || `video-worker-${uuidv4()}`;
     this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
     this.currentPollIntervalMs = this.basePollIntervalMs;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 20_000;

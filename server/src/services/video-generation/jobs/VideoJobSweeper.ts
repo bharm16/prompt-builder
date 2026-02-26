@@ -186,56 +186,31 @@ export class VideoJobSweeper {
   }
 }
 
+interface SweeperConfig {
+  disabled: boolean;
+  staleQueueSeconds: number;
+  staleProcessingSeconds: number;
+  sweepIntervalSeconds: number;
+  sweepMax: number;
+}
+
 export function createVideoJobSweeper(
   jobStore: VideoJobStore,
   userCreditService: UserCreditService,
-  metrics?: {
+  metrics: {
     recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
-  }
+  } | undefined,
+  config: SweeperConfig
 ): VideoJobSweeper | null {
-  const disabled = process.env.VIDEO_JOB_SWEEPER_DISABLED === 'true';
-  if (disabled) {
+  if (config.disabled) {
     return null;
   }
 
-  const queueTimeoutSecondsRaw = Number.parseInt(
-    process.env.VIDEO_JOB_STALE_QUEUE_SECONDS || '',
-    10
-  );
-  const queueTimeoutMinutesRaw = Number.parseInt(process.env.VIDEO_JOB_STALE_QUEUE_MINUTES || '', 10);
-  const queueTimeoutSeconds = Number.isFinite(queueTimeoutSecondsRaw)
-    ? queueTimeoutSecondsRaw
-    : Number.isFinite(queueTimeoutMinutesRaw)
-      ? queueTimeoutMinutesRaw * 60
-      : DEFAULT_QUEUE_TIMEOUT_SECONDS;
-  const processingGraceSecondsRaw = Number.parseInt(
-    process.env.VIDEO_JOB_STALE_PROCESSING_SECONDS || '',
-    10
-  );
-  const processingGraceMinutesRaw = Number.parseInt(
-    process.env.VIDEO_JOB_STALE_PROCESSING_MINUTES || '',
-    10
-  );
-  const processingGraceSeconds = Number.isFinite(processingGraceSecondsRaw)
-    ? processingGraceSecondsRaw
-    : Number.isFinite(processingGraceMinutesRaw)
-      ? processingGraceMinutesRaw * 60
-      : DEFAULT_PROCESSING_GRACE_SECONDS;
-  const sweepIntervalSeconds = Number.parseInt(
-    process.env.VIDEO_JOB_SWEEP_INTERVAL_SECONDS || String(DEFAULT_SWEEP_INTERVAL_SECONDS),
-    10
-  );
-  const maxJobsPerRun = Number.parseInt(
-    process.env.VIDEO_JOB_SWEEP_MAX || String(DEFAULT_MAX_JOBS_PER_RUN),
-    10
-  );
+  const queueTimeoutMs = config.staleQueueSeconds * 1000;
+  const processingGraceMs = config.staleProcessingSeconds * 1000;
+  const sweepIntervalMs = config.sweepIntervalSeconds * 1000;
 
-  const queueTimeoutMs = Number.isFinite(queueTimeoutSeconds) ? queueTimeoutSeconds * 1000 : 0;
-  const processingGraceMs = Number.isFinite(processingGraceSeconds) ? processingGraceSeconds * 1000 : 0;
-  const sweepIntervalMs = Number.isFinite(sweepIntervalSeconds) ? sweepIntervalSeconds * 1000 : 0;
-  const safeMaxJobs = Number.isFinite(maxJobsPerRun) ? maxJobsPerRun : DEFAULT_MAX_JOBS_PER_RUN;
-
-  if (queueTimeoutMs <= 0 || processingGraceMs <= 0 || sweepIntervalMs <= 0 || safeMaxJobs <= 0) {
+  if (queueTimeoutMs <= 0 || processingGraceMs <= 0 || sweepIntervalMs <= 0 || config.sweepMax <= 0) {
     return null;
   }
 
@@ -245,7 +220,7 @@ export function createVideoJobSweeper(
     sweepIntervalMs,
     maxSweepIntervalMs: sweepIntervalMs * 8,
     backoffFactor: 2,
-    maxJobsPerRun: safeMaxJobs,
+    maxJobsPerRun: config.sweepMax,
     ...(metrics ? { metrics } : {}),
   });
 }

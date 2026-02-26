@@ -4,7 +4,8 @@ import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import type { Bucket } from '@google-cloud/storage';
 import type { LLMClient } from '@clients/LLMClient';
 import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
-import { warmupDepthEstimationOnStartup } from '@services/convergence/depth';
+import { warmupDepthEstimationOnStartup, setDepthEstimationModuleConfig } from '@services/convergence/depth';
+import type { ServiceConfig } from './services/service-config.types.ts';
 import type { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
@@ -247,6 +248,19 @@ export async function initializeServices(container: DIContainer): Promise<DICont
         : 'prewarm disabled or GLiNER disabled';
     logger.info('ℹ️ GLiNER warmup skipped', { reason });
   }
+
+  // Configure depth estimation module before warmup
+  const config = container.resolve<ServiceConfig>('config');
+  const depthConfig = config.convergence.depth;
+  setDepthEstimationModuleConfig({
+    warmupRetryTimeoutMs: depthConfig.warmupRetryTimeoutMs,
+    falWarmupEnabled: depthConfig.falWarmupEnabled,
+    falWarmupIntervalMs: depthConfig.falWarmupIntervalMs,
+    falWarmupImageUrl: depthConfig.falWarmupImageUrl || 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+    warmupOnStartup: depthConfig.warmupOnStartup,
+    warmupTimeoutMs: depthConfig.warmupTimeoutMs,
+    promptOutputOnly: config.features.promptOutputOnly,
+  });
 
   const logDepthWarmupResult = (
     depthWarmup: Awaited<ReturnType<typeof warmupDepthEstimationOnStartup>>

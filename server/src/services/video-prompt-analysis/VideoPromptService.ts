@@ -37,6 +37,7 @@ export interface VideoPromptServiceDeps {
   taxonomyValidator?: TaxonomyValidationService;
   strategyRegistry?: StrategyRegistry;
   videoPromptLlmGateway?: VideoPromptLlmGateway | null;
+  promptOutputOnly?: boolean;
 }
 
 /**
@@ -79,6 +80,7 @@ export class VideoPromptService {
       const createAnalyzer = (): VideoPromptAnalyzer =>
         new VideoPromptAnalyzer({
           llmExtractor: new LlmIrExtractor(deps.videoPromptLlmGateway ?? null),
+          ...(deps.promptOutputOnly != null ? { promptOutputOnly: deps.promptOutputOnly } : {}),
         });
       const createRewriter = (): VideoPromptLLMRewriter =>
         new VideoPromptLLMRewriter(deps.videoPromptLlmGateway ?? null);
