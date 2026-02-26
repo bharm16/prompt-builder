@@ -13,6 +13,8 @@ interface VideoJobSweeperOptions {
   queueTimeoutMs: number;
   processingGraceMs: number;
   sweepIntervalMs: number;
+  maxSweepIntervalMs?: number;
+  backoffFactor?: number;
   maxJobsPerRun: number;
   metrics?: {
     recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
@@ -24,11 +26,15 @@ export class VideoJobSweeper {
   private readonly userCreditService: UserCreditService;
   private readonly queueTimeoutMs: number;
   private readonly processingGraceMs: number;
-  private readonly sweepIntervalMs: number;
+  private readonly baseSweepIntervalMs: number;
+  private readonly maxSweepIntervalMs: number;
+  private readonly backoffFactor: number;
   private readonly maxJobsPerRun: number;
   private readonly metrics?: VideoJobSweeperOptions['metrics'];
   private readonly log = logger.child({ service: 'VideoJobSweeper' });
   private timer: NodeJS.Timeout | null = null;
+  private currentSweepIntervalMs = 0;
+  private started = false;
   private running = false;
 
   constructor(
@@ -40,33 +46,59 @@ export class VideoJobSweeper {
     this.userCreditService = userCreditService;
     this.queueTimeoutMs = options.queueTimeoutMs;
     this.processingGraceMs = options.processingGraceMs;
-    this.sweepIntervalMs = options.sweepIntervalMs;
+    this.baseSweepIntervalMs = options.sweepIntervalMs;
+    this.maxSweepIntervalMs = options.maxSweepIntervalMs ?? Math.max(this.baseSweepIntervalMs * 8, 120_000);
+    this.backoffFactor = options.backoffFactor ?? 2;
     this.maxJobsPerRun = options.maxJobsPerRun;
     this.metrics = options.metrics;
+    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
   }
 
   start(): void {
-    if (this.timer) {
+    if (this.started) {
       return;
     }
+    this.started = true;
+    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+    this.scheduleNext(0);
+  }
 
-    this.timer = setInterval(() => {
-      void this.runOnce();
-    }, this.sweepIntervalMs);
+  private scheduleNext(delayMs: number): void {
+    if (!this.started) {
+      return;
+    }
+    this.timer = setTimeout(() => {
+      void this.runLoop();
+    }, delayMs);
+  }
 
-    void this.runOnce();
+  private async runLoop(): Promise<void> {
+    if (!this.started) {
+      return;
+    }
+    const success = await this.runOnce();
+    if (success) {
+      this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+    } else {
+      this.currentSweepIntervalMs = Math.min(
+        this.maxSweepIntervalMs,
+        Math.round(this.currentSweepIntervalMs * this.backoffFactor)
+      );
+    }
+    this.scheduleNext(this.currentSweepIntervalMs);
   }
 
   stop(): void {
+    this.started = false;
     if (this.timer) {
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.timer = null;
     }
   }
 
-  private async runOnce(): Promise<void> {
+  private async runOnce(): Promise<boolean> {
     if (this.running) {
-      return;
+      return true;
     }
 
     this.running = true;
@@ -83,9 +115,11 @@ export class VideoJobSweeper {
         this.log.info('Stale video jobs cleaned up', { processed });
         this.metrics?.recordAlert('video_job_sweeper_stale_reclaimed', { processed });
       }
+      return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.warn('Failed to sweep stale video jobs', { error: errorMessage });
+      return false;
     } finally {
       this.running = false;
     }
@@ -209,6 +243,8 @@ export function createVideoJobSweeper(
     queueTimeoutMs,
     processingGraceMs,
     sweepIntervalMs,
+    maxSweepIntervalMs: sweepIntervalMs * 8,
+    backoffFactor: 2,
     maxJobsPerRun: safeMaxJobs,
     ...(metrics ? { metrics } : {}),
   });

@@ -1,5 +1,9 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
+import {
+  FirestoreCircuitExecutor,
+  getFirestoreCircuitExecutor,
+} from '@services/firestore/FirestoreCircuitExecutor';
 
 export type CreditRefundFailureStatus = 'pending' | 'processing' | 'resolved' | 'escalated';
 
@@ -31,49 +35,56 @@ export interface UpsertRefundFailureInput {
 export class RefundFailureStore {
   private readonly db = getFirestore();
   private readonly collection = this.db.collection('credit_refund_failures');
+  private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
+
+  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+    this.firestoreCircuitExecutor = firestoreCircuitExecutor;
+  }
 
   async upsertFailure(input: UpsertRefundFailureInput): Promise<void> {
     const now = Date.now();
     const docRef = this.collection.doc(input.refundKey);
 
     try {
-      await this.db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(docRef);
+      await this.firestoreCircuitExecutor.executeWrite('credits.refundFailure.upsert', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(docRef);
 
-        if (!snapshot.exists) {
-          transaction.set(docRef, {
-            refundKey: input.refundKey,
+          if (!snapshot.exists) {
+            transaction.set(docRef, {
+              refundKey: input.refundKey,
+              userId: input.userId,
+              amount: input.amount,
+              ...(input.reason ? { reason: input.reason } : {}),
+              status: 'pending' as CreditRefundFailureStatus,
+              attempts: 0,
+              ...(input.lastError ? { lastError: input.lastError } : {}),
+              ...(input.metadata ? { metadata: input.metadata } : {}),
+              createdAtMs: now,
+              updatedAtMs: now,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            return;
+          }
+
+          const data = snapshot.data();
+          if (data?.status === 'resolved') {
+            return;
+          }
+
+          transaction.update(docRef, {
             userId: input.userId,
             amount: input.amount,
             ...(input.reason ? { reason: input.reason } : {}),
             status: 'pending' as CreditRefundFailureStatus,
-            attempts: 0,
             ...(input.lastError ? { lastError: input.lastError } : {}),
             ...(input.metadata ? { metadata: input.metadata } : {}),
-            createdAtMs: now,
             updatedAtMs: now,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
-          return;
-        }
-
-        const data = snapshot.data();
-        if (data?.status === 'resolved') {
-          return;
-        }
-
-        transaction.update(docRef, {
-          userId: input.userId,
-          amount: input.amount,
-          ...(input.reason ? { reason: input.reason } : {}),
-          status: 'pending' as CreditRefundFailureStatus,
-          ...(input.lastError ? { lastError: input.lastError } : {}),
-          ...(input.metadata ? { metadata: input.metadata } : {}),
-          updatedAtMs: now,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
+        })
+      );
     } catch (error) {
       logger.error('Failed to upsert credit refund failure', error as Error, {
         refundKey: input.refundKey,
@@ -89,7 +100,10 @@ export class RefundFailureStore {
     scanLimit: number
   ): Promise<CreditRefundFailureRecord | null> {
     try {
-      const snapshot = await this.collection.where('status', '==', 'pending').limit(scanLimit).get();
+      const snapshot = await this.firestoreCircuitExecutor.executeRead(
+        'credits.refundFailure.claim.queryPending',
+        async () => await this.collection.where('status', '==', 'pending').limit(scanLimit).get()
+      );
       if (snapshot.empty) {
         return null;
       }
@@ -103,45 +117,49 @@ export class RefundFailureStore {
         });
 
       for (const doc of docs) {
-        const claimed = await this.db.runTransaction(async (transaction) => {
-          const docRef = this.collection.doc(doc.id);
-          const fresh = await transaction.get(docRef);
-          if (!fresh.exists) {
-            return null;
-          }
+        const claimed = await this.firestoreCircuitExecutor.executeWrite(
+          'credits.refundFailure.claim.transaction',
+          async () =>
+            await this.db.runTransaction(async (transaction) => {
+              const docRef = this.collection.doc(doc.id);
+              const fresh = await transaction.get(docRef);
+              if (!fresh.exists) {
+                return null;
+              }
 
-          const data = fresh.data();
-          if (!data || data.status !== 'pending') {
-            return null;
-          }
+              const data = fresh.data();
+              if (!data || data.status !== 'pending') {
+                return null;
+              }
 
-          const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
-          if (attempts >= maxAttempts) {
-            transaction.update(docRef, {
-              status: 'escalated' as CreditRefundFailureStatus,
-              escalatedAtMs: Date.now(),
-              updatedAtMs: Date.now(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            return null;
-          }
+              const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+              if (attempts >= maxAttempts) {
+                transaction.update(docRef, {
+                  status: 'escalated' as CreditRefundFailureStatus,
+                  escalatedAtMs: Date.now(),
+                  updatedAtMs: Date.now(),
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                return null;
+              }
 
-          const now = Date.now();
-          transaction.update(docRef, {
-            status: 'processing' as CreditRefundFailureStatus,
-            processingStartedAtMs: now,
-            updatedAtMs: now,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+              const now = Date.now();
+              transaction.update(docRef, {
+                status: 'processing' as CreditRefundFailureStatus,
+                processingStartedAtMs: now,
+                updatedAtMs: now,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
 
-          return this.toRecord({
-            ...data,
-            refundKey: doc.id,
-            status: 'processing',
-            processingStartedAtMs: now,
-            updatedAtMs: now,
-          });
-        });
+              return this.toRecord({
+                ...data,
+                refundKey: doc.id,
+                status: 'processing',
+                processingStartedAtMs: now,
+                updatedAtMs: now,
+              });
+            })
+        );
 
         if (claimed) {
           return claimed;
@@ -159,66 +177,78 @@ export class RefundFailureStore {
   }
 
   async markResolved(refundKey: string): Promise<void> {
-    await this.collection.doc(refundKey).set(
-      {
-        status: 'resolved' as CreditRefundFailureStatus,
-        resolvedAtMs: Date.now(),
-        updatedAtMs: Date.now(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
+    await this.firestoreCircuitExecutor.executeWrite(
+      'credits.refundFailure.markResolved',
+      async () =>
+        await this.collection.doc(refundKey).set(
+          {
+            status: 'resolved' as CreditRefundFailureStatus,
+            resolvedAtMs: Date.now(),
+            updatedAtMs: Date.now(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        )
     );
   }
 
   async releaseForRetry(refundKey: string, lastError: string): Promise<void> {
-    await this.db.runTransaction(async (transaction) => {
-      const docRef = this.collection.doc(refundKey);
-      const snapshot = await transaction.get(docRef);
-      if (!snapshot.exists) {
-        return;
-      }
+    await this.firestoreCircuitExecutor.executeWrite(
+      'credits.refundFailure.releaseForRetry',
+      async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const docRef = this.collection.doc(refundKey);
+          const snapshot = await transaction.get(docRef);
+          if (!snapshot.exists) {
+            return;
+          }
 
-      const data = snapshot.data();
-      if (!data) {
-        return;
-      }
+          const data = snapshot.data();
+          if (!data) {
+            return;
+          }
 
-      const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
-      const now = Date.now();
-      transaction.update(docRef, {
-        status: 'pending' as CreditRefundFailureStatus,
-        attempts: attempts + 1,
-        lastError,
-        updatedAtMs: now,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
+          const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+          const now = Date.now();
+          transaction.update(docRef, {
+            status: 'pending' as CreditRefundFailureStatus,
+            attempts: attempts + 1,
+            lastError,
+            updatedAtMs: now,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        })
+    );
   }
 
   async markEscalated(refundKey: string, lastError: string): Promise<void> {
-    await this.db.runTransaction(async (transaction) => {
-      const docRef = this.collection.doc(refundKey);
-      const snapshot = await transaction.get(docRef);
-      if (!snapshot.exists) {
-        return;
-      }
+    await this.firestoreCircuitExecutor.executeWrite(
+      'credits.refundFailure.markEscalated',
+      async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const docRef = this.collection.doc(refundKey);
+          const snapshot = await transaction.get(docRef);
+          if (!snapshot.exists) {
+            return;
+          }
 
-      const data = snapshot.data();
-      if (!data) {
-        return;
-      }
+          const data = snapshot.data();
+          if (!data) {
+            return;
+          }
 
-      const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
-      const now = Date.now();
-      transaction.update(docRef, {
-        status: 'escalated' as CreditRefundFailureStatus,
-        attempts: attempts + 1,
-        lastError,
-        escalatedAtMs: now,
-        updatedAtMs: now,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
+          const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+          const now = Date.now();
+          transaction.update(docRef, {
+            status: 'escalated' as CreditRefundFailureStatus,
+            attempts: attempts + 1,
+            lastError,
+            escalatedAtMs: now,
+            updatedAtMs: now,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        })
+    );
   }
 
   private toRecord(

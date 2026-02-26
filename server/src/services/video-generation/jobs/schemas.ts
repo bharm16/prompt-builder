@@ -64,6 +64,7 @@ export const VideoJobRecordSchema = z.object({
   userId: z.string(),
   request: VideoJobRequestSchema,
   creditsReserved: z.number().nonnegative(),
+  provider: z.string().optional(),
   attempts: z.number().int().nonnegative().optional(),
   maxAttempts: z.number().int().positive().optional(),
   createdAtMs: z.number(),

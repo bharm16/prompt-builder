@@ -13,6 +13,7 @@ import type { VideoContentAccessService } from '@services/video-generation/acces
 import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
 import type { FaceSwapService } from '@services/generation/FaceSwapService';
 import type { AssetService } from '@services/asset/AssetService';
+import type { RequestIdempotencyService } from '@services/idempotency/RequestIdempotencyService';
 
 export interface PreviewStorageService {
   saveFromUrl: (
@@ -77,6 +78,7 @@ export interface PreviewRoutesServices {
   keyframeService?: KeyframeGenerationService | null;
   faceSwapService?: FaceSwapService | null;
   assetService?: AssetService | null;
+  requestIdempotencyService?: RequestIdempotencyService | null;
 }
 
 /**

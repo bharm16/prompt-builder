@@ -28,6 +28,8 @@ import { VideoGenerationService } from '@services/video-generation/VideoGenerati
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
+import { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
+import { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
 import type { VideoAssetStore } from '@services/video-generation/storage';
 import type { StorageService } from '@services/storage/StorageService';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
@@ -300,13 +302,34 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
+    'providerCircuitManager',
+    (metricsService: MetricsService) => {
+      const failureRateThreshold = Number.parseFloat(process.env.VIDEO_PROVIDER_CIRCUIT_FAILURE_RATE || '0.6');
+      const minVolume = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_MIN_VOLUME || '20', 10);
+      const cooldownMs = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_COOLDOWN_MS || '60000', 10);
+      const maxSamples = Number.parseInt(process.env.VIDEO_PROVIDER_CIRCUIT_MAX_SAMPLES || '50', 10);
+
+      return new ProviderCircuitManager({
+        failureRateThreshold: Number.isFinite(failureRateThreshold) ? failureRateThreshold : 0.6,
+        minVolume: Number.isFinite(minVolume) ? minVolume : 20,
+        cooldownMs: Number.isFinite(cooldownMs) ? cooldownMs : 60_000,
+        maxSamples: Number.isFinite(maxSamples) ? maxSamples : 50,
+        metrics: metricsService,
+      });
+    },
+    ['metricsService'],
+    { singleton: true }
+  );
+
+  container.register(
     'videoJobWorker',
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
       storageService: StorageService,
-      metricsService: MetricsService
+      metricsService: MetricsService,
+      providerCircuitManager: ProviderCircuitManager
     ) => {
       if (!videoGenerationService) {
         return null;
@@ -319,16 +342,24 @@ export function registerGenerationServices(container: DIContainer): void {
         process.env.VIDEO_JOB_HEARTBEAT_INTERVAL_MS || '20000',
         10
       );
+      const perProviderMaxConcurrent = Number.parseInt(
+        process.env.VIDEO_JOB_PER_PROVIDER_MAX_CONCURRENT || '',
+        10
+      );
 
       return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, storageService, {
         pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
         leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 60000,
         maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
         heartbeatIntervalMs: Number.isFinite(heartbeatIntervalMs) ? heartbeatIntervalMs : 20000,
+        providerCircuitManager,
+        ...(Number.isFinite(perProviderMaxConcurrent) && perProviderMaxConcurrent > 0
+          ? { perProviderMaxConcurrent }
+          : {}),
         metrics: metricsService,
       });
     },
-    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService']
+    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService', 'providerCircuitManager']
   );
 
   container.register(
@@ -336,6 +367,32 @@ export function registerGenerationServices(container: DIContainer): void {
     (videoJobStore: VideoJobStore, creditService: UserCreditService, metricsService: MetricsService) =>
       createVideoJobSweeper(videoJobStore, creditService, metricsService),
     ['videoJobStore', 'userCreditService', 'metricsService'],
+    { singleton: true }
+  );
+
+  container.register(
+    'dlqReprocessorWorker',
+    (
+      videoJobStore: VideoJobStore,
+      providerCircuitManager: ProviderCircuitManager,
+      metricsService: MetricsService
+    ) => {
+      const disabled = process.env.VIDEO_DLQ_REPROCESSOR_DISABLED === 'true';
+      if (disabled) {
+        return null;
+      }
+
+      const pollIntervalMs = Number.parseInt(process.env.VIDEO_DLQ_POLL_INTERVAL_MS || '30000', 10);
+      const maxEntriesPerRun = Number.parseInt(process.env.VIDEO_DLQ_MAX_ENTRIES_PER_RUN || '5', 10);
+
+      return new DlqReprocessorWorker(videoJobStore, {
+        pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 30_000,
+        maxEntriesPerRun: Number.isFinite(maxEntriesPerRun) ? maxEntriesPerRun : 5,
+        providerCircuitManager,
+        metrics: metricsService,
+      });
+    },
+    ['videoJobStore', 'providerCircuitManager', 'metricsService'],
     { singleton: true }
   );
 }

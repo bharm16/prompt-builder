@@ -13,6 +13,7 @@ export type VideoGenerateServices = Pick<
   | 'keyframeService'
   | 'faceSwapService'
   | 'assetService'
+  | 'requestIdempotencyService'
 >;
 
 export interface VideoErrorPayload {

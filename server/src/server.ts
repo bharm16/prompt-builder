@@ -18,10 +18,80 @@ import type { DIContainer } from './infrastructure/DIContainer.ts';
 import type { SpanLabelingCacheService } from './services/cache/SpanLabelingCacheService.ts';
 import type { CapabilitiesProbeService } from './services/capabilities/CapabilitiesProbeService.ts';
 import type { CreditRefundSweeper } from './services/credits/CreditRefundSweeper.ts';
+import type { CreditReconciliationWorker } from './services/credits/CreditReconciliationWorker.ts';
 import type { VideoJobWorker } from './services/video-generation/jobs/VideoJobWorker.ts';
 import type { VideoJobSweeper } from './services/video-generation/jobs/VideoJobSweeper.ts';
 import type { VideoAssetRetentionService } from './services/video-generation/storage/VideoAssetRetentionService.ts';
 import { getRuntimeFlags } from './config/runtime-flags.ts';
+
+const OPERATIONAL_REJECTION_CODES = new Set([
+  'aborted',
+  'cancelled',
+  'deadline-exceeded',
+  'eai_again',
+  'econnrefused',
+  'econnreset',
+  'enotfound',
+  'etimedout',
+  'resource-exhausted',
+  'unavailable',
+]);
+
+const OPERATIONAL_REJECTION_HINTS = [
+  'aborted',
+  'cancelled',
+  'connection reset',
+  'deadline exceeded',
+  'rate limit',
+  'resource exhausted',
+  'service unavailable',
+  'temporarily unavailable',
+  'timed out',
+  'timeout',
+];
+
+function toError(reason: unknown): Error {
+  if (reason instanceof Error) {
+    return reason;
+  }
+
+  return new Error(String(reason));
+}
+
+function isFatalUnhandledRejection(reason: unknown): boolean {
+  if (!reason || typeof reason !== 'object') {
+    return false;
+  }
+
+  const error = toError(reason);
+  const fatalFlag = (reason as { fatal?: unknown }).fatal;
+  if (fatalFlag === true) {
+    return true;
+  }
+
+  if (
+    error instanceof TypeError ||
+    error instanceof ReferenceError ||
+    error instanceof SyntaxError ||
+    error instanceof RangeError
+  ) {
+    return true;
+  }
+
+  const codeRaw = (reason as { code?: unknown }).code;
+  const code =
+    typeof codeRaw === 'string' && codeRaw.trim().length > 0 ? codeRaw.trim().toLowerCase() : null;
+  if (code && OPERATIONAL_REJECTION_CODES.has(code)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  if (OPERATIONAL_REJECTION_HINTS.some((hint) => message.includes(hint))) {
+    return false;
+  }
+
+  return false;
+}
 
 /**
  * Start the HTTP server
@@ -78,6 +148,7 @@ export async function startServer(
  * @param {DIContainer} container - Dependency injection container
  */
 export function setupGracefulShutdown(server: Server, container: DIContainer): void {
+  const runtimeFlags = getRuntimeFlags();
   const resolveOptional = <T>(serviceName: string): T | null => {
     try {
       return container.resolve<T>(serviceName);
@@ -102,6 +173,10 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
 
         const creditRefundSweeper = resolveOptional<CreditRefundSweeper | null>('creditRefundSweeper');
         creditRefundSweeper?.stop();
+
+        const creditReconciliationWorker =
+          resolveOptional<CreditReconciliationWorker | null>('creditReconciliationWorker');
+        creditReconciliationWorker?.stop();
 
         const videoAssetRetentionService =
           resolveOptional<VideoAssetRetentionService | null>('videoAssetRetentionService');
@@ -156,7 +231,33 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled rejection', undefined, { reason, promise });
-    shutdown('UNHANDLED_REJECTION');
+    const error = toError(reason);
+    const shouldShutdown =
+      runtimeFlags.unhandledRejectionMode === 'strict' || isFatalUnhandledRejection(reason);
+
+    if (shouldShutdown) {
+      logger.error('Unhandled rejection (fatal)', error, {
+        mode: runtimeFlags.unhandledRejectionMode,
+        promise,
+      });
+      shutdown('UNHANDLED_REJECTION_FATAL');
+      return;
+    }
+
+    logger.error('Unhandled rejection (non-fatal)', error, {
+      mode: runtimeFlags.unhandledRejectionMode,
+      promise,
+    });
+    try {
+      const metrics = resolveOptional<{ recordAlert?: (name: string, metadata?: Record<string, unknown>) => void }>(
+        'metricsService'
+      );
+      metrics?.recordAlert?.('unhandled_rejection_non_fatal', {
+        mode: runtimeFlags.unhandledRejectionMode,
+        errorName: error.name,
+      });
+    } catch {
+      // Ignore metrics failures while handling unhandled rejections.
+    }
   });
 }

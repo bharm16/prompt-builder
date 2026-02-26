@@ -6,6 +6,7 @@ export interface RuntimeFlags {
   videoJobInlineEnabled: boolean;
   videoWorkerShutdownDrainSeconds: number;
   allowUnhealthyGemini: boolean;
+  unhandledRejectionMode: 'classified' | 'strict';
 }
 
 function isTrue(value: string | undefined): boolean {
@@ -26,6 +27,10 @@ function resolvePositiveInt(value: string | undefined, fallback: number): number
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function resolveUnhandledRejectionMode(value: string | undefined): 'classified' | 'strict' {
+  return value === 'strict' ? 'strict' : 'classified';
+}
+
 export function getRuntimeFlags(env: NodeJS.ProcessEnv = process.env): RuntimeFlags {
   const processRole = resolveProcessRole(env);
 
@@ -37,5 +42,6 @@ export function getRuntimeFlags(env: NodeJS.ProcessEnv = process.env): RuntimeFl
     videoJobInlineEnabled: isTrue(env.VIDEO_JOB_INLINE_ENABLED),
     videoWorkerShutdownDrainSeconds: resolvePositiveInt(env.VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS, 45),
     allowUnhealthyGemini: isTrue(env.ALLOW_UNHEALTHY_GEMINI) || isTrue(env.GEMINI_ALLOW_UNHEALTHY),
+    unhandledRejectionMode: resolveUnhandledRejectionMode(env.UNHANDLED_REJECTION_MODE),
   };
 }

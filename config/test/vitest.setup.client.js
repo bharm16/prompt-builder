@@ -3,6 +3,7 @@ import { expect, afterEach, vi } from 'vitest';
 // Ensure all tests run with test environment semantics
 process.env.NODE_ENV = 'test';
 process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'prompt-builder-test-bucket';
+process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE = process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE || 'soft';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 

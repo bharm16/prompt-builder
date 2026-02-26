@@ -51,7 +51,7 @@ const createJob = (id: string, creditsReserved: number): VideoJobRecord => ({
 });
 
 const getRunOnce = (sweeper: VideoJobSweeper) =>
-  (sweeper as unknown as { runOnce: () => Promise<void> }).runOnce.bind(sweeper);
+  (sweeper as unknown as { runOnce: () => Promise<boolean> }).runOnce.bind(sweeper);
 
 describe('VideoJobSweeper', () => {
   const originalEnv = { ...process.env };
@@ -145,7 +145,7 @@ describe('VideoJobSweeper', () => {
       maxJobsPerRun: 5,
     });
 
-    await expect(getRunOnce(sweeper)()).resolves.toBeUndefined();
+    await expect(getRunOnce(sweeper)()).resolves.toBe(false);
     expect(mocks.loggerWarn).toHaveBeenCalledWith('Failed to sweep stale video jobs', {
       error: 'query failed',
     });
@@ -164,13 +164,15 @@ describe('VideoJobSweeper', () => {
       sweepIntervalMs: 1_000,
       maxJobsPerRun: 5,
     });
-    const runOnceSpy = vi.spyOn(sweeper as never, 'runOnce').mockResolvedValue(undefined);
+    const runOnceSpy = vi.spyOn(sweeper as never, 'runOnce').mockResolvedValue(true);
 
     sweeper.start();
     sweeper.start();
+    expect(runOnceSpy).toHaveBeenCalledTimes(0);
+    await vi.advanceTimersByTimeAsync(1);
     expect(runOnceSpy).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(2_100);
+    await vi.advanceTimersByTimeAsync(2_000);
     expect(runOnceSpy).toHaveBeenCalledTimes(3);
 
     sweeper.stop();

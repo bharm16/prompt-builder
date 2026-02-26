@@ -216,9 +216,8 @@ describe('CreditRefundSweeper', () => {
     );
   });
 
-  it('starts and stops interval only once when called repeatedly', () => {
-    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
-    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+  it('starts and stops interval only once when called repeatedly', async () => {
+    vi.useFakeTimers();
 
     const failureStore = {
       claimNextPending: vi.fn().mockResolvedValue(null),
@@ -231,17 +230,22 @@ describe('CreditRefundSweeper', () => {
       { refundCredits: vi.fn().mockResolvedValue(true) } as never,
       { sweepIntervalMs: 60_000, maxPerRun: 10, maxAttempts: 20 }
     );
+    const runOnceSpy = vi.spyOn(sweeper as never, 'runOnce').mockResolvedValue(true);
 
     sweeper.start();
     sweeper.start();
-    sweeper.stop();
-    sweeper.stop();
+    expect(runOnceSpy).toHaveBeenCalledTimes(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(runOnceSpy).toHaveBeenCalledTimes(1);
 
-    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(runOnceSpy).toHaveBeenCalledTimes(2);
 
-    setIntervalSpy.mockRestore();
-    clearIntervalSpy.mockRestore();
+    sweeper.stop();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(runOnceSpy).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
   });
 });
 

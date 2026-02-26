@@ -186,7 +186,12 @@ describe('previewApi', () => {
           characterAssetId: 'asset-1',
           autoKeyframe: true,
         }),
-        { timeout: API_CONFIG.timeout.video }
+        expect.objectContaining({
+          timeout: API_CONFIG.timeout.video,
+          headers: expect.objectContaining({
+            'Idempotency-Key': expect.any(String),
+          }),
+        })
       );
     });
 

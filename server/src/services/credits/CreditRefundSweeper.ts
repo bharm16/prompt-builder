@@ -13,6 +13,8 @@ const DEFAULT_MAX_ATTEMPTS = 20;
 
 interface CreditRefundSweeperOptions {
   sweepIntervalMs: number;
+  maxSweepIntervalMs?: number;
+  backoffFactor?: number;
   maxPerRun: number;
   maxAttempts: number;
 }
@@ -21,11 +23,15 @@ export class CreditRefundSweeper {
   private readonly log = logger.child({ service: 'CreditRefundSweeper' });
   private readonly failureStore: RefundFailureStore;
   private readonly userCreditService: UserCreditService;
-  private readonly sweepIntervalMs: number;
+  private readonly baseSweepIntervalMs: number;
+  private readonly maxSweepIntervalMs: number;
+  private readonly backoffFactor: number;
   private readonly maxPerRun: number;
   private readonly maxAttempts: number;
   private readonly metrics: SweeperMetrics | undefined;
   private timer: NodeJS.Timeout | null = null;
+  private currentSweepIntervalMs = 0;
+  private started = false;
   private running = false;
 
   constructor(
@@ -36,36 +42,60 @@ export class CreditRefundSweeper {
   ) {
     this.failureStore = failureStore;
     this.userCreditService = userCreditService;
-    this.sweepIntervalMs = options.sweepIntervalMs;
+    this.baseSweepIntervalMs = options.sweepIntervalMs;
+    this.maxSweepIntervalMs = options.maxSweepIntervalMs ?? Math.max(this.baseSweepIntervalMs * 8, 120_000);
+    this.backoffFactor = options.backoffFactor ?? 2;
     this.maxPerRun = options.maxPerRun;
     this.maxAttempts = options.maxAttempts;
     this.metrics = metricsService;
+    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
   }
 
   start(): void {
-    if (this.timer) {
+    if (this.started) {
       return;
     }
+    this.started = true;
+    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+    this.scheduleNext(0);
+  }
 
-    this.timer = setInterval(() => {
-      void this.runOnce();
-    }, this.sweepIntervalMs);
+  private scheduleNext(delayMs: number): void {
+    if (!this.started) {
+      return;
+    }
+    this.timer = setTimeout(() => {
+      void this.runLoop();
+    }, delayMs);
+  }
 
-    void this.runOnce();
+  private async runLoop(): Promise<void> {
+    if (!this.started) {
+      return;
+    }
+    const success = await this.runOnce();
+    if (success) {
+      this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+    } else {
+      this.currentSweepIntervalMs = Math.min(
+        this.maxSweepIntervalMs,
+        Math.round(this.currentSweepIntervalMs * this.backoffFactor)
+      );
+    }
+    this.scheduleNext(this.currentSweepIntervalMs);
   }
 
   stop(): void {
-    if (!this.timer) {
-      return;
+    this.started = false;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
     }
-
-    clearInterval(this.timer);
-    this.timer = null;
   }
 
-  private async runOnce(): Promise<void> {
+  private async runOnce(): Promise<boolean> {
     if (this.running) {
-      return;
+      return true;
     }
     this.running = true;
 
@@ -117,8 +147,10 @@ export class CreditRefundSweeper {
 
         processed += 1;
       }
+      return true;
     } catch (error) {
       this.log.error('Credit refund sweeper run failed', error as Error);
+      return false;
     } finally {
       this.running = false;
     }
@@ -154,6 +186,8 @@ export function createCreditRefundSweeper(
 
   return new CreditRefundSweeper(failureStore, userCreditService, {
     sweepIntervalMs,
+    maxSweepIntervalMs: sweepIntervalMs * 8,
+    backoffFactor: 2,
     maxPerRun: sweepMax,
     maxAttempts,
   }, metricsService);

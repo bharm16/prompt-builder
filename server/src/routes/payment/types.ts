@@ -1,4 +1,5 @@
 import type { BillingProfileStore } from '@services/payment/BillingProfileStore';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import type { PaymentService } from '@services/payment/PaymentService';
 import type { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
 
@@ -26,6 +27,7 @@ export interface PaymentRouteServices {
   billingProfileStore: BillingProfileStore;
   webhookEventStore: StripeWebhookEventStore;
   userCreditService: PaymentUserCreditService;
+  firestoreCircuitExecutor?: Pick<FirestoreCircuitExecutor, 'isWriteAllowed' | 'getRetryAfterSeconds'>;
 }
 
 export interface PaymentRouteDeps {

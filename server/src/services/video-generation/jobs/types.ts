@@ -44,6 +44,7 @@ export interface VideoJobRecord {
   userId: string;
   request: VideoJobRequest;
   creditsReserved: number;
+  provider?: string;
   attempts: number;
   maxAttempts: number;
   createdAtMs: number;
@@ -56,4 +57,20 @@ export interface VideoJobRecord {
   lastHeartbeatAtMs?: number;
   releasedAtMs?: number;
   releaseReason?: string;
+}
+
+export const DLQ_STATUSES = ['pending', 'processing', 'reprocessed', 'escalated'] as const;
+export type DlqStatus = typeof DLQ_STATUSES[number];
+
+export interface DlqEntry {
+  id: string;
+  jobId: string;
+  userId: string;
+  request: VideoJobRequest;
+  creditsReserved: number;
+  provider: string;
+  error: VideoJobError;
+  source: string;
+  dlqAttempt: number;
+  maxDlqAttempts: number;
 }

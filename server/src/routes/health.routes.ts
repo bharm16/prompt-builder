@@ -2,6 +2,7 @@ import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { metricsAuthMiddleware } from '@middleware/metricsAuth';
 import { logger } from '@infrastructure/Logger';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 
 interface HealthDependencies {
   claudeClient?: { getStats: () => { state: string } } | null;
@@ -17,6 +18,8 @@ interface HealthDependencies {
   };
   /** Optional Firestore connectivity check. Skipped when not provided (e.g. tests). */
   checkFirestore?: () => Promise<void>;
+  /** Optional Firestore circuit state for readiness gating. */
+  firestoreCircuitExecutor?: FirestoreCircuitExecutor;
 }
 
 /**
@@ -26,7 +29,15 @@ interface HealthDependencies {
  */
 export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
-  const { claudeClient, groqClient, geminiClient, cacheService, metricsService, checkFirestore } = dependencies;
+  const {
+    claudeClient,
+    groqClient,
+    geminiClient,
+    cacheService,
+    metricsService,
+    checkFirestore,
+    firestoreCircuitExecutor,
+  } = dependencies;
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
@@ -63,9 +74,22 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       const claudeStats = claudeClient?.getStats();
       const groqStats = groqClient?.getStats();
       const geminiStats = geminiClient?.getStats();
+      const firestoreCircuitSnapshot = firestoreCircuitExecutor?.getReadinessSnapshot();
 
       let firestoreHealthy = true;
       let firestoreMessage: string | undefined;
+      if (firestoreCircuitSnapshot?.degraded) {
+        firestoreHealthy = false;
+        if (firestoreCircuitSnapshot.state === 'open') {
+          firestoreMessage = 'Firestore circuit is open';
+        } else if (firestoreCircuitSnapshot.failureRate >= firestoreCircuitSnapshot.thresholds.failureRate) {
+          firestoreMessage = `Firestore failure rate ${Math.round(firestoreCircuitSnapshot.failureRate * 100)}% exceeds threshold`;
+        } else if (
+          firestoreCircuitSnapshot.latencyMeanMs >= firestoreCircuitSnapshot.thresholds.latencyMs
+        ) {
+          firestoreMessage = `Firestore mean latency ${Math.round(firestoreCircuitSnapshot.latencyMeanMs)}ms exceeds threshold`;
+        }
+      }
       if (checkFirestore) {
         try {
           await Promise.race([
@@ -80,9 +104,20 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
 
       const checks = {
         cache: { healthy: cacheHealth },
-        firestore: checkFirestore
-          ? (firestoreHealthy ? { healthy: true } : { healthy: false, message: `Firestore unreachable: ${firestoreMessage}` })
-          : { healthy: true, enabled: false, message: 'Firestore check not configured' },
+        firestore:
+          checkFirestore || firestoreCircuitSnapshot
+            ? {
+                healthy: firestoreHealthy,
+                ...(firestoreMessage ? { message: firestoreMessage } : {}),
+                ...(firestoreCircuitSnapshot
+                  ? {
+                      circuitState: firestoreCircuitSnapshot.state,
+                      failureRate: firestoreCircuitSnapshot.failureRate,
+                      latencyMeanMs: firestoreCircuitSnapshot.latencyMeanMs,
+                    }
+                  : {}),
+              }
+            : { healthy: true, enabled: false, message: 'Firestore check not configured' },
         openAI: claudeStats ? {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,

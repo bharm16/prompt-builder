@@ -10,6 +10,8 @@ import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSw
 import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import type { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
+import type { CreditReconciliationWorker } from '@services/credits/CreditReconciliationWorker';
+import type { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
 import { getRuntimeFlags } from './runtime-flags';
 
 interface HealthCheckResult {
@@ -295,6 +297,13 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.info('✅ Credit refund sweeper started');
     }
 
+    const creditReconciliationWorker =
+      container.resolve<CreditReconciliationWorker | null>('creditReconciliationWorker');
+    if (creditReconciliationWorker) {
+      creditReconciliationWorker.start();
+      logger.info('✅ Credit reconciliation worker started');
+    }
+
     const videoAssetRetentionService =
       container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
     if (videoAssetRetentionService) {
@@ -315,6 +324,12 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.info('✅ Video job worker started');
     } else if (videoJobWorker && workerDisabled) {
       logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
+    }
+
+    const dlqReprocessorWorker = container.resolve<DlqReprocessorWorker | null>('dlqReprocessorWorker');
+    if (dlqReprocessorWorker) {
+      dlqReprocessorWorker.start();
+      logger.info('✅ DLQ reprocessor worker started');
     }
   } else if (!isTestEnv && !promptOutputOnly && !isWorkerRole) {
     logger.info('ℹ️ Video background services skipped (PROCESS_ROLE=api)');

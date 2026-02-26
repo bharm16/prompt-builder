@@ -6,6 +6,7 @@ import { VIDEO_MODELS } from '@config/modelConfig';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import { getRuntimeFlags } from '@config/runtime-flags';
+import { resolveVideoGenerateIdempotencyMode } from '@services/idempotency/RequestIdempotencyService';
 import type { VideoModelId } from '@services/video-generation/types';
 import { resolveModelId as resolveCapabilityModelId } from '@services/capabilities/modelProviders';
 import { assertUrlSafe } from '@server/shared/urlValidation';
@@ -39,6 +40,7 @@ export const createVideoGenerateHandler = ({
   keyframeService,
   faceSwapService,
   assetService,
+  requestIdempotencyService,
 }: VideoGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService || !videoJobStore) {
@@ -147,6 +149,67 @@ export const createVideoGenerateHandler = ({
       });
     }
 
+    const idempotencyMode = resolveVideoGenerateIdempotencyMode();
+    const rawIdempotencyKey = req.get('Idempotency-Key');
+    const idempotencyKey =
+      typeof rawIdempotencyKey === 'string' && rawIdempotencyKey.trim().length > 0
+        ? rawIdempotencyKey.trim()
+        : null;
+    let idempotencyRecordId: string | null = null;
+
+    if (!idempotencyKey && idempotencyMode === 'required') {
+      return sendApiError(res, req, 400, {
+        error: 'Idempotency-Key header is required',
+        code: GENERATION_ERROR_CODES.IDEMPOTENCY_KEY_REQUIRED,
+      });
+    }
+
+    if (idempotencyKey && !requestIdempotencyService) {
+      log.warn('Idempotency key supplied but request idempotency service is unavailable', {
+        requestId,
+        userId,
+      });
+      return sendApiError(res, req, 503, {
+        error: 'Video generation service is not available',
+        code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+        details: 'Idempotency service is not configured',
+      });
+    }
+
+    if (!idempotencyKey && idempotencyMode === 'soft') {
+      log.warn('Video generation request missing Idempotency-Key header in soft mode', {
+        requestId,
+        userId,
+      });
+    }
+
+    if (idempotencyKey && requestIdempotencyService) {
+      const claim = await requestIdempotencyService.claimRequest({
+        userId,
+        route: '/api/preview/video/generate',
+        key: idempotencyKey,
+        payload: parsed.payload,
+      });
+
+      if (claim.state === 'replay') {
+        return res.status(claim.snapshot.statusCode).json(claim.snapshot.body);
+      }
+      if (claim.state === 'conflict') {
+        return sendApiError(res, req, 409, {
+          error: 'Idempotency key was already used with a different payload',
+          code: GENERATION_ERROR_CODES.IDEMPOTENCY_CONFLICT,
+        });
+      }
+      if (claim.state === 'in_progress') {
+        return sendApiError(res, req, 409, {
+          error: 'A matching request is already in progress',
+          code: GENERATION_ERROR_CODES.REQUEST_IN_PROGRESS,
+        });
+      }
+
+      idempotencyRecordId = claim.recordId;
+    }
+
     const triggerResolution = await resolvePromptTriggers({
       cleanedPrompt,
       hasPromptTriggers,
@@ -159,6 +222,12 @@ export const createVideoGenerateHandler = ({
     });
 
     if (!triggerResolution.ok) {
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markFailed(
+          idempotencyRecordId,
+          triggerResolution.error.payload.code || triggerResolution.error.payload.error
+        );
+      }
       return sendApiError(res, req, triggerResolution.error.status, triggerResolution.error.payload);
     }
 
@@ -189,12 +258,34 @@ export const createVideoGenerateHandler = ({
       log.error('User credit service is not available - blocking paid feature access', undefined, {
         path: req.path,
       });
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markFailed(
+          idempotencyRecordId,
+          GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
+        );
+      }
       return sendApiError(res, req, 503, {
         error: 'Video generation service is not available',
         code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
         details: 'Credit service is not configured',
       });
     }
+
+    const releaseIdempotencyLock = async (reason: string): Promise<void> => {
+      if (!idempotencyRecordId || !requestIdempotencyService) {
+        return;
+      }
+      await requestIdempotencyService.markFailed(idempotencyRecordId, reason);
+    };
+
+    const respondWithError = async (
+      status: number,
+      payload: { error: string; code: (typeof GENERATION_ERROR_CODES)[keyof typeof GENERATION_ERROR_CODES]; details?: string },
+      reason?: string
+    ): Promise<Response> => {
+      await releaseIdempotencyLock(reason || payload.code || payload.error);
+      return sendApiError(res, req, status, payload);
+    };
 
     const refunds = createVideoRefundManager({
       userCreditService,
@@ -224,7 +315,11 @@ export const createVideoGenerateHandler = ({
     });
 
     if (preprocessing.error) {
-      return sendApiError(res, req, preprocessing.error.status, preprocessing.error.payload);
+      return await respondWithError(
+        preprocessing.error.status,
+        preprocessing.error.payload,
+        preprocessing.error.payload.code
+      );
     }
 
     const resolvedStartImage = preprocessing.resolvedStartImage;
@@ -253,7 +348,7 @@ export const createVideoGenerateHandler = ({
         availableModelIds: snapshot.availableModelIds,
         availableCapabilityModels,
       });
-      return sendApiError(res, req, unavailable.status, unavailable.payload);
+      return await respondWithError(unavailable.status, unavailable.payload, unavailable.payload.code);
     }
 
     const operation = 'generateVideoPreview';
@@ -281,7 +376,7 @@ export const createVideoGenerateHandler = ({
     if (!planResult.ok) {
       await refunds.refundKeyframeCredits('video request normalization failed after keyframe reservation');
       await refunds.refundFaceSwapCredits('video request normalization failed after face-swap reservation');
-      return sendApiError(res, req, planResult.error.status, planResult.error.payload);
+      return await respondWithError(planResult.error.status, planResult.error.payload, planResult.error.payload.code);
     }
 
     const plan = planResult.value;
@@ -326,7 +421,7 @@ export const createVideoGenerateHandler = ({
       await refunds.refundKeyframeCredits('video credits insufficient after keyframe reservation');
       await refunds.refundFaceSwapCredits('video credits insufficient after face-swap reservation');
       const preprocessingCost = refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost;
-      return sendApiError(res, req, 402, {
+      return await respondWithError(402, {
         error: 'Insufficient credits',
         code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
         details: `This generation requires ${plan.videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ''}.`,
@@ -409,11 +504,24 @@ export const createVideoGenerateHandler = ({
         faceSwapUrl: swappedImageUrl,
       };
 
-      return res.status(202).json({
+      const responseBody = {
         success: true,
         data: responsePayload,
         ...responsePayload,
-      });
+      } as Record<string, unknown>;
+
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markCompleted({
+          recordId: idempotencyRecordId,
+          jobId: job.id,
+          snapshot: {
+            statusCode: 202,
+            body: responseBody,
+          },
+        });
+      }
+
+      return res.status(202).json(responseBody);
     } catch (error: unknown) {
       await refunds.refundVideoCredits('video queueing failed');
       await refunds.refundKeyframeCredits('video queueing failed after keyframe reservation');
@@ -435,7 +543,7 @@ export const createVideoGenerateHandler = ({
         statusCode,
       });
 
-      return sendApiError(res, req, statusCode, {
+      return await respondWithError(statusCode, {
         error: 'Video generation failed',
         code,
         details: errorMessage,

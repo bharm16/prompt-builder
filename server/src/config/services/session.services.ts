@@ -5,6 +5,7 @@ import AssetService from '@services/asset/AssetService';
 import AssetRepository from '@services/asset/AssetRepository';
 import AssetResolverService from '@services/asset/AssetResolverService';
 import AssetReferenceImageService from '@services/asset/ReferenceImageService';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import { PaymentService } from '@services/payment/PaymentService';
 import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
@@ -13,9 +14,21 @@ import { SessionService } from '@services/sessions/SessionService';
 import { SessionStore } from '@services/sessions/SessionStore';
 
 export function registerSessionServices(container: DIContainer): void {
-  container.registerValue('billingProfileStore', new BillingProfileStore());
+  container.register(
+    'billingProfileStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
+      new BillingProfileStore(firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
   container.register('paymentService', () => new PaymentService(), [], { singleton: true });
-  container.register('stripeWebhookEventStore', () => new StripeWebhookEventStore(), [], { singleton: true });
+  container.register(
+    'stripeWebhookEventStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
+      new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
   container.register('sessionStore', () => new SessionStore(), [], { singleton: true });
 
   container.register(

@@ -58,6 +58,14 @@ function requireNonEmptyString(value: unknown, name: string): asserts value is s
   }
 }
 
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const randomPart = Math.random().toString(36).slice(2);
+  return `video-${Date.now()}-${randomPart}`;
+}
+
 export type PreviewProvider =
   | 'replicate-flux-schnell'
   | 'replicate-flux-kontext-fast'
@@ -380,6 +388,7 @@ export interface GenerateVideoPreviewOptions {
   characterAssetId?: string | undefined;
   autoKeyframe?: boolean | undefined;
   faceSwapAlreadyApplied?: boolean | undefined;
+  idempotencyKey?: string | undefined;
 }
 
 /**
@@ -414,6 +423,10 @@ export async function generateVideoPreview(
     ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
     ...(options?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
   };
+  const idempotencyKey =
+    options?.idempotencyKey && options.idempotencyKey.trim().length > 0
+      ? options.idempotencyKey.trim()
+      : generateIdempotencyKey();
 
   log.info('Video preview request started', {
     operation: VIDEO_OPERATION,
@@ -441,6 +454,9 @@ export async function generateVideoPreview(
       payload,
       {
         timeout: API_CONFIG.timeout.video,
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
       }
     )) as unknown;
 

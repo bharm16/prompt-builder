@@ -1,5 +1,9 @@
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
+import {
+  FirestoreCircuitExecutor,
+  getFirestoreCircuitExecutor,
+} from '@services/firestore/FirestoreCircuitExecutor';
 
 const DEFAULT_HISTORY_LIMIT = 50;
 const MAX_HISTORY_LIMIT = 100;
@@ -43,9 +47,14 @@ type TransactionPayloadInput = {
 };
 
 export class UserCreditService {
-  private db = getFirestore();
-  private collection = this.db.collection('users');
-  private refundCollection = this.db.collection('credit_refunds');
+  private readonly db = getFirestore();
+  private readonly collection = this.db.collection('users');
+  private readonly refundCollection = this.db.collection('credit_refunds');
+  private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
+
+  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+    this.firestoreCircuitExecutor = firestoreCircuitExecutor;
+  }
 
   private isApiKeyUser(userId: string): boolean {
     return userId.startsWith('api-key:');
@@ -96,37 +105,39 @@ export class UserCreditService {
     const normalizedCost = Math.max(0, Math.trunc(cost));
 
     try {
-      return await this.db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(userRef);
+      return await this.firestoreCircuitExecutor.executeWrite('credits.reserveCredits', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(userRef);
 
-        if (!snapshot.exists) {
-          return false;
-        }
+          if (!snapshot.exists) {
+            return false;
+          }
 
-        const data = snapshot.data();
-        const currentCredits = data?.credits ?? 0;
+          const data = snapshot.data();
+          const currentCredits = data?.credits ?? 0;
 
-        if (currentCredits < normalizedCost) {
-          return false;
-        }
+          if (currentCredits < normalizedCost) {
+            return false;
+          }
 
-        transaction.update(userRef, {
-          credits: admin.firestore.FieldValue.increment(-normalizedCost),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+          transaction.update(userRef, {
+            credits: admin.firestore.FieldValue.increment(-normalizedCost),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-        this.writeTransaction(
-          transaction,
-          userRef,
-          this.buildTransactionPayload({
-            type: 'reserve',
-            amount: -normalizedCost,
-            source: 'generation',
-          })
-        );
+          this.writeTransaction(
+            transaction,
+            userRef,
+            this.buildTransactionPayload({
+              type: 'reserve',
+              amount: -normalizedCost,
+              source: 'generation',
+            })
+          );
 
-        return true;
-      });
+          return true;
+        })
+      );
     } catch (error) {
       logger.error('Credit reservation failed', error as Error, { userId, cost: normalizedCost });
       throw new Error('Failed to process credit transaction');
@@ -151,14 +162,59 @@ export class UserCreditService {
       const userRef = this.collection.doc(userId);
 
       if (!refundKey) {
+        await this.firestoreCircuitExecutor.executeWrite('credits.refundCredits.noKey', async () =>
+          await this.db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(userRef);
+            if (!snapshot.exists) {
+              throw new Error(`Missing user: ${userId}`);
+            }
+
+            transaction.update(userRef, {
+              credits: admin.firestore.FieldValue.increment(normalizedCost),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            this.writeTransaction(
+              transaction,
+              userRef,
+              this.buildTransactionPayload({
+                type: 'refund',
+                amount: normalizedCost,
+                source: 'generation',
+                reason: options?.reason,
+              })
+            );
+          })
+        );
+
+        return true;
+      }
+
+      const refundRef = this.refundCollection.doc(refundKey);
+
+      await this.firestoreCircuitExecutor.executeWrite('credits.refundCredits.idempotent', async () =>
         await this.db.runTransaction(async (transaction) => {
-          const snapshot = await transaction.get(userRef);
-          if (!snapshot.exists) {
+          const existingRefund = await transaction.get(refundRef);
+          if (existingRefund.exists) {
+            return;
+          }
+
+          const userSnapshot = await transaction.get(userRef);
+          if (!userSnapshot.exists) {
             throw new Error(`Missing user: ${userId}`);
           }
 
           transaction.update(userRef, {
             credits: admin.firestore.FieldValue.increment(normalizedCost),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          transaction.set(refundRef, {
+            refundKey,
+            userId,
+            amount: normalizedCost,
+            ...(options?.reason ? { reason: options.reason } : {}),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
@@ -170,52 +226,11 @@ export class UserCreditService {
               amount: normalizedCost,
               source: 'generation',
               reason: options?.reason,
+              referenceId: refundKey,
             })
           );
-        });
-
-        return true;
-      }
-
-      const refundRef = this.refundCollection.doc(refundKey);
-
-      await this.db.runTransaction(async (transaction) => {
-        const existingRefund = await transaction.get(refundRef);
-        if (existingRefund.exists) {
-          return;
-        }
-
-        const userSnapshot = await transaction.get(userRef);
-        if (!userSnapshot.exists) {
-          throw new Error(`Missing user: ${userId}`);
-        }
-
-        transaction.update(userRef, {
-          credits: admin.firestore.FieldValue.increment(normalizedCost),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        transaction.set(refundRef, {
-          refundKey,
-          userId,
-          amount: normalizedCost,
-          ...(options?.reason ? { reason: options.reason } : {}),
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        this.writeTransaction(
-          transaction,
-          userRef,
-          this.buildTransactionPayload({
-            type: 'refund',
-            amount: normalizedCost,
-            source: 'generation',
-            reason: options?.reason,
-            referenceId: refundKey,
-          })
-        );
-      });
+        })
+      );
 
       return true;
     } catch (error) {
@@ -229,7 +244,10 @@ export class UserCreditService {
   }
 
   async getBalance(userId: string): Promise<number> {
-    const snapshot = await this.collection.doc(userId).get();
+    const snapshot = await this.firestoreCircuitExecutor.executeRead(
+      'credits.getBalance',
+      async () => await this.collection.doc(userId).get()
+    );
     return snapshot.data()?.credits ?? 0;
   }
 
@@ -250,34 +268,36 @@ export class UserCreditService {
     }
 
     try {
-      await this.db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(userRef);
+      await this.firestoreCircuitExecutor.executeWrite('credits.addCredits', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(userRef);
 
-        if (!snapshot.exists) {
-          transaction.set(userRef, {
-            credits: normalizedAmount,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          transaction.update(userRef, {
-            credits: admin.firestore.FieldValue.increment(normalizedAmount),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+          if (!snapshot.exists) {
+            transaction.set(userRef, {
+              credits: normalizedAmount,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            transaction.update(userRef, {
+              credits: admin.firestore.FieldValue.increment(normalizedAmount),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
 
-        this.writeTransaction(
-          transaction,
-          userRef,
-          this.buildTransactionPayload({
-            type: 'add',
-            amount: normalizedAmount,
-            source: options?.source ?? 'billing',
-            reason: options?.reason,
-            referenceId: options?.referenceId,
-          })
-        );
-      });
+          this.writeTransaction(
+            transaction,
+            userRef,
+            this.buildTransactionPayload({
+              type: 'add',
+              amount: normalizedAmount,
+              source: options?.source ?? 'billing',
+              reason: options?.reason,
+              referenceId: options?.referenceId,
+            })
+          );
+        })
+      );
 
       logger.info('Credits added successfully', { userId, amount: normalizedAmount });
     } catch (error) {
@@ -295,36 +315,38 @@ export class UserCreditService {
     const userRef = this.collection.doc(userId);
 
     try {
-      return await this.db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(userRef);
-        if (snapshot.exists) {
-          return false;
-        }
+      return await this.firestoreCircuitExecutor.executeWrite('credits.ensureStarterGrant', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(userRef);
+          if (snapshot.exists) {
+            return false;
+          }
 
-        const now = Date.now();
+          const now = Date.now();
 
-        transaction.set(userRef, {
-          credits: resolvedStarterCredits,
-          starterGrantCredits: resolvedStarterCredits,
-          starterGrantGrantedAtMs: now,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+          transaction.set(userRef, {
+            credits: resolvedStarterCredits,
+            starterGrantCredits: resolvedStarterCredits,
+            starterGrantGrantedAtMs: now,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-        this.writeTransaction(
-          transaction,
-          userRef,
-          this.buildTransactionPayload({
-            type: 'starter_grant',
-            amount: resolvedStarterCredits,
-            source: 'starter-grant',
-            reason: 'free_tier_starter',
-            createdAtMs: now,
-          })
-        );
+          this.writeTransaction(
+            transaction,
+            userRef,
+            this.buildTransactionPayload({
+              type: 'starter_grant',
+              amount: resolvedStarterCredits,
+              source: 'starter-grant',
+              reason: 'free_tier_starter',
+              createdAtMs: now,
+            })
+          );
 
-        return true;
-      });
+          return true;
+        })
+      );
     } catch (error) {
       logger.error('Failed to ensure starter grant', error as Error, {
         userId,
@@ -335,7 +357,10 @@ export class UserCreditService {
   }
 
   async getStarterGrantInfo(userId: string): Promise<StarterGrantInfo> {
-    const snapshot = await this.collection.doc(userId).get();
+    const snapshot = await this.firestoreCircuitExecutor.executeRead(
+      'credits.getStarterGrantInfo',
+      async () => await this.collection.doc(userId).get()
+    );
     const data = snapshot.data() as Record<string, unknown> | undefined;
 
     const starterGrantCredits =
@@ -356,12 +381,16 @@ export class UserCreditService {
   async listCreditTransactions(userId: string, limit: number): Promise<CreditTransactionRecord[]> {
     const normalizedLimit = this.sanitizeHistoryLimit(limit);
 
-    const snapshot = await this.collection
-      .doc(userId)
-      .collection('credit_transactions')
-      .orderBy('createdAtMs', 'desc')
-      .limit(normalizedLimit)
-      .get();
+    const snapshot = await this.firestoreCircuitExecutor.executeRead(
+      'credits.listCreditTransactions',
+      async () =>
+        await this.collection
+          .doc(userId)
+          .collection('credit_transactions')
+          .orderBy('createdAtMs', 'desc')
+          .limit(normalizedLimit)
+          .get()
+    );
 
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;

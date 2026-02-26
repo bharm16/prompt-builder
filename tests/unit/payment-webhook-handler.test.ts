@@ -26,6 +26,7 @@ import { createStripeWebhookHandler } from '@routes/payment/webhook/handler';
 
 const createRes = (): Response =>
   ({
+    setHeader: vi.fn().mockReturnThis(),
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
     send: vi.fn().mockReturnThis(),
@@ -134,6 +135,42 @@ describe('createStripeWebhookHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Webhook handling failed' });
+  });
+
+  it('returns 503 when Firestore write gate is open before claiming event', async () => {
+    const paymentService = {
+      constructEvent: vi.fn().mockReturnValue({
+        id: 'evt_gate_1',
+        type: 'invoice.paid',
+        livemode: false,
+      }),
+    };
+    const webhookEventStore = {
+      claimEvent: vi.fn(),
+    };
+    const handler = createStripeWebhookHandler({
+      paymentService: paymentService as never,
+      webhookEventStore: webhookEventStore as never,
+      billingProfileStore: {} as never,
+      userCreditService: {} as never,
+      firestoreCircuitExecutor: {
+        isWriteAllowed: () => false,
+        getRetryAfterSeconds: () => 15,
+      } as never,
+    });
+    const req = {
+      headers: { 'stripe-signature': 'sig_123' },
+      body: 'payload',
+    } as unknown as Request;
+    const res = createRes();
+
+    await handler(req, res);
+
+    expect(webhookEventStore.claimEvent).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Webhook handling deferred while datastore recovers',
+    });
   });
 
   it('returns 409 when duplicate event is currently in progress', async () => {

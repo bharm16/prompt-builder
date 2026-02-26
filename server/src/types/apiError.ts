@@ -3,7 +3,10 @@ export type ApiErrorCode =
   | 'INVALID_REQUEST'
   | 'INSUFFICIENT_CREDITS'
   | 'SERVICE_UNAVAILABLE'
-  | 'GENERATION_FAILED';
+  | 'GENERATION_FAILED'
+  | 'IDEMPOTENCY_KEY_REQUIRED'
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'REQUEST_IN_PROGRESS';
 
 export interface ApiError {
   error: string;

@@ -6,6 +6,7 @@ import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { StorageService } from '@services/storage/StorageService';
 import type { VideoJobError, VideoJobErrorCategory, VideoJobErrorStage, VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
+import type { ProviderCircuitManager } from './ProviderCircuitManager';
 
 interface VideoJobWorkerOptions {
   workerId?: string;
@@ -15,6 +16,8 @@ interface VideoJobWorkerOptions {
   maxPollIntervalMs?: number;
   backoffFactor?: number;
   heartbeatIntervalMs?: number;
+  providerCircuitManager?: ProviderCircuitManager;
+  perProviderMaxConcurrent?: number;
   metrics?: {
     recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
   };
@@ -62,10 +65,13 @@ export class VideoJobWorker {
   private readonly maxConcurrent: number;
   private readonly workerId: string;
   private readonly heartbeatIntervalMs: number;
+  private readonly providerCircuitManager: ProviderCircuitManager | undefined;
+  private readonly perProviderMaxConcurrent: number;
   private readonly metrics?: VideoJobWorkerOptions['metrics'];
   private readonly log: ReturnType<typeof logger.child>;
   private timer: NodeJS.Timeout | null = null;
   private activeCount = 0;
+  private readonly activeProviderCounts = new Map<string, number>();
   private currentPollIntervalMs: number;
   private isRunning = false;
   private isTicking = false;
@@ -91,6 +97,8 @@ export class VideoJobWorker {
     this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
     this.currentPollIntervalMs = this.basePollIntervalMs;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 20_000;
+    this.providerCircuitManager = options.providerCircuitManager;
+    this.perProviderMaxConcurrent = options.perProviderMaxConcurrent ?? Math.max(1, Math.ceil(this.maxConcurrent / 2));
     this.metrics = options.metrics;
   }
 
@@ -172,17 +180,10 @@ export class VideoJobWorker {
     let claimedJobs = 0;
     let shouldScheduleNextTick = false;
     try {
-      while (this.activeCount < this.maxConcurrent) {
-        const job = await this.jobStore.claimNextJob(this.workerId, this.leaseMs);
-        if (!job) {
-          break;
-        }
-
-        claimedJobs += 1;
-        this.activeCount += 1;
-        void this.processJob(job).finally(() => {
-          this.activeCount = Math.max(0, this.activeCount - 1);
-        });
+      if (this.providerCircuitManager) {
+        claimedJobs = await this.tickProviderAware();
+      } else {
+        claimedJobs = await this.tickLegacy();
       }
     } catch (error) {
       this.log.error('Video job worker tick failed', error as Error, {
@@ -206,6 +207,96 @@ export class VideoJobWorker {
     if (shouldScheduleNextTick) {
       this.scheduleNextTick(this.currentPollIntervalMs);
     }
+  }
+
+  private async tickLegacy(): Promise<number> {
+    let claimed = 0;
+    while (this.activeCount < this.maxConcurrent) {
+      const job = await this.jobStore.claimNextJob(this.workerId, this.leaseMs);
+      if (!job) {
+        break;
+      }
+      claimed += 1;
+      this.startJob(job);
+    }
+    return claimed;
+  }
+
+  private async tickProviderAware(): Promise<number> {
+    const providers = this.buildDispatchableProviders();
+    let claimed = 0;
+
+    for (const provider of providers) {
+      if (this.activeCount >= this.maxConcurrent) {
+        break;
+      }
+
+      const activeForProvider = this.activeProviderCounts.get(provider) ?? 0;
+      let slotsAvailable = Math.min(
+        this.perProviderMaxConcurrent - activeForProvider,
+        this.maxConcurrent - this.activeCount
+      );
+
+      while (slotsAvailable > 0) {
+        const job = await this.jobStore.claimNextJob(this.workerId, this.leaseMs, provider);
+        if (!job) {
+          break;
+        }
+
+        this.providerCircuitManager!.markDispatched(provider);
+        claimed += 1;
+        this.startJob(job);
+        slotsAvailable -= 1;
+      }
+    }
+
+    // Attempt to claim untagged/unknown-provider jobs with remaining global slots
+    if (this.activeCount < this.maxConcurrent) {
+      const unknownJob = await this.jobStore.claimNextJob(this.workerId, this.leaseMs, 'unknown');
+      if (unknownJob) {
+        claimed += 1;
+        this.startJob(unknownJob);
+      }
+    }
+
+    return claimed;
+  }
+
+  private buildDispatchableProviders(): string[] {
+    const allProviders = ['replicate', 'openai', 'luma', 'kling', 'gemini'];
+    const dispatchable: string[] = [];
+
+    for (const provider of allProviders) {
+      if (this.providerCircuitManager!.canDispatch(provider)) {
+        dispatchable.push(provider);
+      } else {
+        this.log.debug('Skipping circuit-open provider', { provider });
+      }
+    }
+
+    // Shuffle for fairness (Fisher-Yates)
+    for (let i = dispatchable.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [dispatchable[i], dispatchable[j]] = [dispatchable[j]!, dispatchable[i]!];
+    }
+
+    return dispatchable;
+  }
+
+  private startJob(job: VideoJobRecord): void {
+    const provider = job.provider ?? 'unknown';
+    this.activeCount += 1;
+    this.activeProviderCounts.set(provider, (this.activeProviderCounts.get(provider) ?? 0) + 1);
+
+    void this.processJob(job).finally(() => {
+      this.activeCount = Math.max(0, this.activeCount - 1);
+      const current = this.activeProviderCounts.get(provider) ?? 1;
+      if (current <= 1) {
+        this.activeProviderCounts.delete(provider);
+      } else {
+        this.activeProviderCounts.set(provider, current - 1);
+      }
+    });
   }
 
   private classifyError(error: StageAwareError, job: VideoJobRecord): VideoJobError {
@@ -395,6 +486,10 @@ export class VideoJobWorker {
         userId: job.userId,
         assetId: result.assetId,
       });
+
+      if (this.providerCircuitManager && job.provider && job.provider !== 'unknown') {
+        this.providerCircuitManager.recordSuccess(job.provider);
+      }
     } catch (error) {
       const stageAware = withStage(error, (error as StageAwareError)?.stage || 'unknown');
       const jobError = this.classifyError(stageAware, job);
@@ -409,6 +504,15 @@ export class VideoJobWorker {
         category: jobError.category,
         stage: jobError.stage,
       });
+
+      if (
+        this.providerCircuitManager &&
+        job.provider &&
+        job.provider !== 'unknown' &&
+        (jobError.stage === 'generation' || jobError.category === 'provider' || jobError.category === 'timeout')
+      ) {
+        this.providerCircuitManager.recordFailure(job.provider);
+      }
       if (jobError.stage === 'persistence') {
         this.metrics?.recordAlert('video_job_persistence_failure', {
           jobId: job.id,

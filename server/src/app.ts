@@ -39,6 +39,9 @@ export function createApp(container: DIContainer): Application {
     webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
     billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
     userCreditService: container.resolve<PaymentRouteServices['userCreditService']>('userCreditService'),
+    firestoreCircuitExecutor: container.resolve<NonNullable<PaymentRouteServices['firestoreCircuitExecutor']>>(
+      'firestoreCircuitExecutor'
+    ),
   };
   app.use('/api/payment', createWebhookRoutes(paymentRouteServices));
 

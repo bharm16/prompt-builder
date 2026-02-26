@@ -19,6 +19,7 @@ import { apiAuthMiddleware } from '@middleware/apiAuth';
 import { errorHandler } from '@middleware/errorHandler';
 import { createBatchMiddleware } from '@middleware/requestBatching';
 import { createStarterCreditsMiddleware } from '@middleware/starterCredits';
+import { createFirestoreWriteGateMiddleware } from '@middleware/firestoreWriteGate';
 
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
@@ -42,6 +43,7 @@ import type { ContinuitySessionService } from '@services/continuity/ContinuitySe
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import type { PreviewRoutesServices } from '@routes/types';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { getRuntimeFlags } from './runtime-flags';
 
 type RequestWithId = Request & {
@@ -71,6 +73,7 @@ function resolveOptionalService<T>(
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
   const { promptOutputOnly } = getRuntimeFlags();
+  const firestoreCircuitExecutor = container.resolve<FirestoreCircuitExecutor>('firestoreCircuitExecutor');
   const convergenceStorageService = promptOutputOnly
     ? null
     : resolveOptionalService<GCSStorageService | null>(
@@ -123,10 +126,18 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     geminiClient: container.resolve('geminiClient'),
     cacheService: container.resolve('cacheService'),
     metricsService: container.resolve('metricsService'),
-    checkFirestore: async () => { await getFirestore().listCollections(); },
+    firestoreCircuitExecutor,
+    checkFirestore: async () => {
+      await firestoreCircuitExecutor.executeRead('health.ready.firestoreProbe', async () => {
+        await getFirestore().listCollections();
+      });
+    },
   });
 
   app.use('/', healthRoutes);
+
+  // Firestore write gate: fail-closed for all mutating /api routes.
+  app.use('/api', createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));
 
   if (!promptOutputOnly) {
     if (convergenceStorageService) {
@@ -234,6 +245,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
       keyframeService: container.resolve('keyframeService'),
       faceSwapService: container.resolve('faceSwapService'),
       assetService: container.resolve('assetService'),
+      requestIdempotencyService: container.resolve('requestIdempotencyService'),
     });
     app.use('/api/preview', apiAuthMiddleware, starterCreditsMiddleware, previewRoutes);
   }
@@ -247,6 +259,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
     billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
     userCreditService,
+    firestoreCircuitExecutor,
   };
   const paymentRoutes = createPaymentRoutes(paymentRouteServices);
   app.use('/api/payment', apiAuthMiddleware, starterCreditsMiddleware, paymentRoutes);

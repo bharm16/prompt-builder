@@ -8,8 +8,11 @@ import { CacheService } from '@services/cache/CacheService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { RedisClient } from '@services/cache/types';
 import { UserCreditService } from '@services/credits/UserCreditService';
+import { CreditReconciliationService } from '@services/credits/CreditReconciliationService';
+import { createCreditReconciliationWorker } from '@services/credits/CreditReconciliationWorker';
 import { createCreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
-import { getRefundFailureStore } from '@services/credits/RefundFailureStore';
+import { RefundFailureStore, setRefundFailureStore } from '@services/credits/RefundFailureStore';
+import { FirestoreCircuitExecutor, setFirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import { StorageService } from '@services/storage/StorageService';
 import { createImageAssetStore } from '@services/image-generation/storage';
@@ -18,6 +21,7 @@ import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { createVideoAssetStore, type VideoAssetStore } from '@services/video-generation/storage';
 import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import { createGCSStorageService } from '@services/convergence/storage';
+import { RequestIdempotencyService } from '@services/idempotency/RequestIdempotencyService';
 import { resolveFalApiKey } from '@utils/falApiKey';
 import { createRedisClient } from '../redis.ts';
 import type { ServiceConfig } from './service-config.types.ts';
@@ -28,16 +32,103 @@ function resolveSignedUrlTtlMs(rawSeconds: string | undefined, fallbackMs: numbe
 }
 
 export function registerInfrastructureServices(container: DIContainer): void {
+  const resolvePositiveNumber = (
+    raw: string | undefined,
+    fallback: number,
+    min = 0
+  ): number => {
+    const parsed = Number.parseFloat(raw || '');
+    return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
+  };
+
   container.registerValue('logger', logger);
   container.register('metricsService', () => new MetricsService(), [], { singleton: true });
+  container.register(
+    'firestoreCircuitExecutor',
+    (metricsService: MetricsService) => {
+      const executor = new FirestoreCircuitExecutor({
+        timeoutMs: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_TIMEOUT_MS, 3000, 1),
+        errorThresholdPercentage: resolvePositiveNumber(
+          process.env.FIRESTORE_CIRCUIT_ERROR_THRESHOLD_PERCENT,
+          50,
+          1
+        ),
+        resetTimeoutMs: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_RESET_TIMEOUT_MS, 15000, 1),
+        volumeThreshold: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_MIN_VOLUME, 20, 1),
+        maxRetries: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_MAX_RETRIES, 2, 0),
+        retryBaseDelayMs: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_RETRY_BASE_DELAY_MS, 120, 1),
+        retryJitterMs: resolvePositiveNumber(process.env.FIRESTORE_CIRCUIT_RETRY_JITTER_MS, 80, 0),
+        readinessMaxFailureRate: resolvePositiveNumber(
+          process.env.FIRESTORE_READINESS_MAX_FAILURE_RATE,
+          0.5,
+          0
+        ),
+        readinessMaxLatencyMs: resolvePositiveNumber(
+          process.env.FIRESTORE_READINESS_MAX_LATENCY_MS,
+          1500,
+          1
+        ),
+        metricsCollector: metricsService,
+      });
+      setFirestoreCircuitExecutor(executor);
+      return executor;
+    },
+    ['metricsService'],
+    { singleton: true }
+  );
   container.register(
     'cacheService',
     (metricsService: MetricsService) => new CacheService({}, metricsService),
     ['metricsService'],
     { singleton: true }
   );
-  container.register('userCreditService', () => new UserCreditService(), [], { singleton: true });
-  container.register('refundFailureStore', () => getRefundFailureStore(), [], { singleton: true });
+  container.register(
+    'userCreditService',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) => new UserCreditService(firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
+  container.register(
+    'creditReconciliationService',
+    (
+      userCreditService: UserCreditService,
+      firestoreCircuitExecutor: FirestoreCircuitExecutor,
+      metricsService: MetricsService
+    ) =>
+      new CreditReconciliationService(userCreditService, firestoreCircuitExecutor, {
+        incrementalScanLimit: resolvePositiveNumber(
+          process.env.CREDIT_RECONCILIATION_INCREMENTAL_SCAN_LIMIT,
+          500,
+          1
+        ),
+        fullPassPageSize: resolvePositiveNumber(
+          process.env.CREDIT_RECONCILIATION_FULL_PAGE_SIZE,
+          200,
+          1
+        ),
+        metrics: metricsService,
+      }),
+    ['userCreditService', 'firestoreCircuitExecutor', 'metricsService'],
+    { singleton: true }
+  );
+  container.register(
+    'creditReconciliationWorker',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DI registration boundary is runtime-resolved
+    (creditReconciliationService: any, metricsService: MetricsService) =>
+      createCreditReconciliationWorker(creditReconciliationService, metricsService),
+    ['creditReconciliationService', 'metricsService'],
+    { singleton: true }
+  );
+  container.register(
+    'refundFailureStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) => {
+      const store = new RefundFailureStore(firestoreCircuitExecutor);
+      setRefundFailureStore(store);
+      return store;
+    },
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
 
   container.register(
     'creditRefundSweeper',
@@ -118,8 +209,32 @@ export function registerInfrastructureServices(container: DIContainer): void {
     ['gcsBucket'],
     { singleton: true }
   );
-  container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
+  container.register(
+    'videoJobStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) => new VideoJobStore(firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
   container.register('videoContentAccessService', () => createVideoContentAccessService(), [], { singleton: true });
+
+  container.register(
+    'requestIdempotencyService',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
+      new RequestIdempotencyService(firestoreCircuitExecutor, {
+        pendingLockTtlMs: resolvePositiveNumber(
+          process.env.VIDEO_GENERATE_IDEMPOTENCY_PENDING_TTL_MS,
+          6 * 60 * 1000,
+          60_000
+        ),
+        replayTtlMs: resolvePositiveNumber(
+          process.env.VIDEO_GENERATE_IDEMPOTENCY_REPLAY_TTL_MS,
+          24 * 60 * 60 * 1000,
+          60_000
+        ),
+      }),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
 
   container.register(
     'videoAssetRetentionService',

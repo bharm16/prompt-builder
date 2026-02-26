@@ -1,10 +1,17 @@
 import type { DocumentData, Query } from 'firebase-admin/firestore';
 import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
+import {
+  FirestoreCircuitExecutor,
+  getFirestoreCircuitExecutor,
+} from '@services/firestore/FirestoreCircuitExecutor';
 import { VideoJobRecordSchema } from './schemas';
-import type { VideoJobError, VideoJobRecord, VideoJobRequest } from './types';
+import type { DlqEntry, VideoJobError, VideoJobRecord, VideoJobRequest } from './types';
+import { resolveProviderForModel } from '../providers/ProviderRegistry';
+import type { VideoModelId } from '../types';
 
 const DEFAULT_MAX_ATTEMPTS = 3;
+const DEFAULT_PROVIDER = 'unknown';
 const SLOW_FIRESTORE_OPERATION_MS = 1_000;
 
 interface CreateJobInput {
@@ -57,16 +64,36 @@ function resolveDefaultMaxAttempts(): number {
   return resolvePositiveInt(fromEnv, DEFAULT_MAX_ATTEMPTS);
 }
 
+function resolveProviderFromRequest(request: VideoJobRequest): string {
+  const model = request.options?.model;
+  if (typeof model === 'string' && model.length > 0) {
+    try {
+      return resolveProviderForModel(model as VideoModelId);
+    } catch {
+      return DEFAULT_PROVIDER;
+    }
+  }
+  return DEFAULT_PROVIDER;
+}
+
 export class VideoJobStore {
   private readonly db = getFirestore();
   private readonly collection = this.db.collection('video_jobs');
   private readonly deadLetterCollection = this.db.collection('video_job_dlq');
   private readonly log = logger.child({ service: 'VideoJobStore' });
+  private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
 
-  private async withTiming<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+    this.firestoreCircuitExecutor = firestoreCircuitExecutor;
+  }
+
+  private async withTiming<T>(operation: string, mode: 'read' | 'write', fn: () => Promise<T>): Promise<T> {
     const startedAt = Date.now();
     try {
-      return await fn();
+      if (mode === 'write') {
+        return await this.firestoreCircuitExecutor.executeWrite(`videoJobStore.${operation}`, fn);
+      }
+      return await this.firestoreCircuitExecutor.executeRead(`videoJobStore.${operation}`, fn);
     } finally {
       const durationMs = Date.now() - startedAt;
       if (durationMs >= SLOW_FIRESTORE_OPERATION_MS) {
@@ -81,19 +108,21 @@ export class VideoJobStore {
     const now = Date.now();
     const docRef = this.collection.doc();
     const maxAttempts = resolvePositiveInt(input.maxAttempts, resolveDefaultMaxAttempts());
+    const provider = resolveProviderFromRequest(input.request);
 
     const record = {
       status: 'queued',
       userId: input.userId,
       request: input.request,
       creditsReserved: input.creditsReserved,
+      provider,
       attempts: 0,
       maxAttempts,
       createdAtMs: now,
       updatedAtMs: now,
     };
 
-    await this.withTiming('createJob', async () => {
+    await this.withTiming('createJob', 'write', async () => {
       await docRef.set({
         ...record,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -105,7 +134,7 @@ export class VideoJobStore {
   }
 
   async getJob(jobId: string): Promise<VideoJobRecord | null> {
-    const snapshot = await this.withTiming('getJob', async () => this.collection.doc(jobId).get());
+    const snapshot = await this.withTiming('getJob', 'read', async () => await this.collection.doc(jobId).get());
     if (!snapshot.exists) {
       return null;
     }
@@ -113,8 +142,8 @@ export class VideoJobStore {
   }
 
   async findJobByAssetId(assetId: string): Promise<VideoJobRecord | null> {
-    const snapshot = await this.withTiming('findJobByAssetId', async () =>
-      this.collection.where('result.assetId', '==', assetId).limit(1).get()
+    const snapshot = await this.withTiming('findJobByAssetId', 'read', async () =>
+      await this.collection.where('result.assetId', '==', assetId).limit(1).get()
     );
 
     if (snapshot.empty) {
@@ -160,8 +189,12 @@ export class VideoJobStore {
     });
   }
 
-  async claimNextJob(workerId: string, leaseMs: number): Promise<VideoJobRecord | null> {
-    const queuedQuery = this.collection.where('status', '==', 'queued').orderBy('createdAtMs', 'asc').limit(1);
+  async claimNextJob(workerId: string, leaseMs: number, provider?: string): Promise<VideoJobRecord | null> {
+    let queuedQuery: Query = this.collection.where('status', '==', 'queued');
+    if (provider) {
+      queuedQuery = queuedQuery.where('provider', '==', provider);
+    }
+    queuedQuery = queuedQuery.orderBy('createdAtMs', 'asc').limit(1);
 
     const queued = await this.claimFromQuery(queuedQuery, workerId, leaseMs);
     if (queued) {
@@ -179,9 +212,9 @@ export class VideoJobStore {
   }
 
   async claimJob(jobId: string, workerId: string, leaseMs: number): Promise<VideoJobRecord | null> {
-    return await this.withTiming('claimJob', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('claimJob', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -226,17 +259,17 @@ export class VideoJobStore {
             updatedAtMs: now,
           });
         })
-        .catch((error: Error) => {
-          logger.error('Failed to claim video job by id', error, { jobId, workerId });
-          return null;
-        })
-    );
+      );
+    } catch (error) {
+      logger.error('Failed to claim video job by id', error as Error, { jobId, workerId });
+      return null;
+    }
   }
 
   async renewLease(jobId: string, workerId: string, leaseMs: number): Promise<boolean> {
-    return await this.withTiming('renewLease', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('renewLease', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -258,17 +291,17 @@ export class VideoJobStore {
 
           return true;
         })
-        .catch((error: Error) => {
-          logger.error('Failed to renew video job lease', error, { jobId, workerId });
-          return false;
-        })
-    );
+      );
+    } catch (error) {
+      logger.error('Failed to renew video job lease', error as Error, { jobId, workerId });
+      return false;
+    }
   }
 
   async releaseClaim(jobId: string, workerId: string, reason: string): Promise<boolean> {
-    return await this.withTiming('releaseClaim', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('releaseClaim', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -294,18 +327,18 @@ export class VideoJobStore {
 
           return true;
         })
-        .catch((error: Error) => {
-          logger.error('Failed to release claimed video job', error, { jobId, workerId, reason });
-          return false;
-        })
-    );
+      );
+    } catch (error) {
+      logger.error('Failed to release claimed video job', error as Error, { jobId, workerId, reason });
+      return false;
+    }
   }
 
   async requeueForRetry(jobId: string, workerId: string, error: VideoJobError): Promise<boolean> {
     const normalizedError = toVideoJobError(error);
-    return await this.withTiming('requeueForRetry', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('requeueForRetry', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -332,19 +365,19 @@ export class VideoJobStore {
 
           return true;
         })
-        .catch((txError: Error) => {
-          logger.error('Failed to requeue video job for retry', txError, { jobId, workerId });
-          return false;
-        })
-    );
+      );
+    } catch (txError) {
+      logger.error('Failed to requeue video job for retry', txError as Error, { jobId, workerId });
+      return false;
+    }
   }
 
   async markCompleted(jobId: string, result: VideoJobRecord['result']): Promise<boolean> {
     const now = Date.now();
 
-    return await this.withTiming('markCompleted', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('markCompleted', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -369,20 +402,20 @@ export class VideoJobStore {
 
           return true;
         })
-        .catch((error: Error) => {
-          logger.error('Failed to mark video job completed', error, { jobId });
-          return false;
-        })
-    );
+      );
+    } catch (error) {
+      logger.error('Failed to mark video job completed', error as Error, { jobId });
+      return false;
+    }
   }
 
   async markFailed(jobId: string, error: VideoJobErrorInput): Promise<boolean> {
     const now = Date.now();
     const normalizedError = toVideoJobError(error);
 
-    return await this.withTiming('markFailed', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('markFailed', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(jobId);
           const snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
@@ -406,11 +439,11 @@ export class VideoJobStore {
 
           return true;
         })
-        .catch((txError: Error) => {
-          logger.error('Failed to mark video job failed', txError, { jobId });
-          return false;
-        })
-    );
+      );
+    } catch (txError) {
+      logger.error('Failed to mark video job failed', txError as Error, { jobId });
+      return false;
+    }
   }
 
   async enqueueDeadLetter(
@@ -420,7 +453,11 @@ export class VideoJobStore {
   ): Promise<void> {
     const now = Date.now();
     const normalizedError = toVideoJobError(error);
-    await this.withTiming('enqueueDeadLetter', async () => {
+    const isRetryable = normalizedError.retryable !== false;
+    const initialBackoffMs = 30_000;
+    const maxDlqAttempts = 3;
+
+    await this.withTiming('enqueueDeadLetter', 'write', async () => {
       await this.deadLetterCollection.doc(job.id).set(
         {
           jobId: job.id,
@@ -430,8 +467,14 @@ export class VideoJobStore {
           maxAttempts: job.maxAttempts,
           request: job.request,
           creditsReserved: job.creditsReserved,
+          provider: job.provider ?? 'unknown',
           error: normalizedError,
           source,
+          dlqStatus: isRetryable ? 'pending' : 'escalated',
+          dlqAttempt: 0,
+          maxDlqAttempts,
+          nextRetryAtMs: isRetryable ? now + initialBackoffMs : 0,
+          lastDlqError: null,
           createdAtMs: now,
           updatedAtMs: now,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -442,10 +485,96 @@ export class VideoJobStore {
     });
   }
 
+  async claimNextDlqEntry(nowMs: number): Promise<DlqEntry | null> {
+    const query = this.deadLetterCollection
+      .where('dlqStatus', '==', 'pending')
+      .where('nextRetryAtMs', '<=', nowMs)
+      .orderBy('nextRetryAtMs', 'asc')
+      .limit(1);
+
+    try {
+      return await this.withTiming('claimNextDlqEntry', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(query);
+          if (snapshot.empty) {
+            return null;
+          }
+
+          const doc = snapshot.docs[0];
+          if (!doc) {
+            return null;
+          }
+          const data = doc.data();
+          if (!data || data.dlqStatus !== 'pending') {
+            return null;
+          }
+
+          const now = Date.now();
+          transaction.update(doc.ref, {
+            dlqStatus: 'processing',
+            updatedAtMs: now,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          return {
+            id: doc.id,
+            jobId: data.jobId as string,
+            userId: data.userId as string,
+            request: data.request as VideoJobRequest,
+            creditsReserved: typeof data.creditsReserved === 'number' ? data.creditsReserved : 0,
+            provider: typeof data.provider === 'string' ? data.provider : 'unknown',
+            error: data.error as VideoJobError,
+            source: data.source as DeadLetterSource,
+            dlqAttempt: typeof data.dlqAttempt === 'number' ? data.dlqAttempt : 0,
+            maxDlqAttempts: typeof data.maxDlqAttempts === 'number' ? data.maxDlqAttempts : 3,
+          } satisfies DlqEntry;
+        })
+      );
+    } catch (error) {
+      this.log.error('Failed to claim DLQ entry', error as Error);
+      return null;
+    }
+  }
+
+  async markDlqReprocessed(dlqId: string): Promise<void> {
+    const now = Date.now();
+    await this.withTiming('markDlqReprocessed', 'write', async () => {
+      await this.deadLetterCollection.doc(dlqId).update({
+        dlqStatus: 'reprocessed',
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  async markDlqFailed(dlqId: string, attempt: number, maxAttempts: number, errorMessage: string): Promise<void> {
+    const now = Date.now();
+    const escalate = attempt + 1 >= maxAttempts;
+    const backoffMs = Math.min(300_000, 30_000 * Math.pow(2, attempt));
+
+    await this.withTiming('markDlqFailed', 'write', async () => {
+      await this.deadLetterCollection.doc(dlqId).update({
+        dlqStatus: escalate ? 'escalated' : 'pending',
+        dlqAttempt: attempt + 1,
+        nextRetryAtMs: escalate ? 0 : now + backoffMs,
+        lastDlqError: errorMessage,
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  async getDlqBacklogCount(): Promise<number> {
+    const snapshot = await this.withTiming('getDlqBacklogCount', 'read', async () =>
+      await this.deadLetterCollection.where('dlqStatus', '==', 'pending').count().get()
+    );
+    return snapshot.data().count;
+  }
+
   private async claimFromQuery(query: Query, workerId: string, leaseMs: number): Promise<VideoJobRecord | null> {
-    return await this.withTiming('claimFromQuery', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('claimFromQuery', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const snapshot = await transaction.get(query);
           if (snapshot.empty) {
             return null;
@@ -493,11 +622,11 @@ export class VideoJobStore {
             updatedAtMs: now,
           });
         })
-        .catch((error: Error) => {
-          logger.error('Failed to claim video job', error);
-          return null;
-        })
-    );
+      );
+    } catch (error) {
+      logger.error('Failed to claim video job', error as Error);
+      return null;
+    }
   }
 
   private parseJob(id: string, data: DocumentData | undefined): VideoJobRecord {
@@ -530,6 +659,7 @@ export class VideoJobStore {
         options: normalizedOptions,
       },
       creditsReserved: parsed.creditsReserved,
+      ...(typeof parsed.provider === 'string' ? { provider: parsed.provider } : {}),
       attempts: typeof parsed.attempts === 'number' ? parsed.attempts : 0,
       maxAttempts: resolvePositiveInt(
         typeof parsed.maxAttempts === 'number' ? parsed.maxAttempts : undefined,
@@ -569,9 +699,9 @@ export class VideoJobStore {
 
   private async failFromQuery(query: Query, error: VideoJobError): Promise<VideoJobRecord | null> {
     const normalizedError = toVideoJobError(error);
-    return await this.withTiming('failFromQuery', async () =>
-      this.db
-        .runTransaction(async (transaction) => {
+    try {
+      return await this.withTiming('failFromQuery', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
           const snapshot = await transaction.get(query);
           if (snapshot.empty) {
             return null;
@@ -604,13 +734,13 @@ export class VideoJobStore {
             updatedAtMs: now,
           });
         })
-        .catch((txError: Error) => {
-          logger.error('Failed to mark stale video job failed', txError, {
-            reason: normalizedError.message,
-            code: normalizedError.code,
-          });
-          return null;
-        })
-    );
+      );
+    } catch (txError) {
+      logger.error('Failed to mark stale video job failed', txError as Error, {
+        reason: normalizedError.message,
+        code: normalizedError.code,
+      });
+      return null;
+    }
   }
 }
