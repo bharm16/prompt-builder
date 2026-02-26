@@ -55,8 +55,6 @@ export class ContinuitySessionStore {
       hasContinuity: true,
     };
 
-    await this.sessionStore.save(unifiedSession);
-
     if (typeof expectedVersion === 'number') {
       const newVersion = expectedVersion + 1;
       await this.db.runTransaction(async (transaction) => {
@@ -69,6 +67,7 @@ export class ContinuitySessionStore {
         if (typeof actualVersion === 'number' && actualVersion !== expectedVersion) {
           throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, actualVersion);
         }
+        this.sessionStore.saveInTransaction(transaction, unifiedSession);
         transaction.set(
           docRef,
           {
@@ -82,27 +81,34 @@ export class ContinuitySessionStore {
       return newVersion;
     }
 
-    const docSnapshot = await docRef.get();
-    if (docSnapshot.exists) {
-      await docRef.set(
-        {
-          ...payload,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          version: admin.firestore.FieldValue.increment(1),
-        },
-        { merge: true }
-      );
-      const stored = docSnapshot.data() as StoredContinuitySession | undefined;
-      return typeof stored?.version === 'number' ? stored.version + 1 : 1;
-    }
+    return await this.db.runTransaction(async (transaction) => {
+      const docSnapshot = await transaction.get(docRef);
+      this.sessionStore.saveInTransaction(transaction, unifiedSession);
 
-    await docRef.set({
-      ...payload,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      version: 1,
+      if (docSnapshot.exists) {
+        const stored = docSnapshot.data() as StoredContinuitySession | undefined;
+        const currentVersion = typeof stored?.version === 'number' ? stored.version : 0;
+        const newVersion = currentVersion + 1;
+        transaction.set(
+          docRef,
+          {
+            ...payload,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            version: newVersion,
+          },
+          { merge: true }
+        );
+        return newVersion;
+      }
+
+      transaction.set(docRef, {
+        ...payload,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        version: 1,
+      });
+      return 1;
     });
-    return 1;
   }
 
   async get(sessionId: string): Promise<ContinuitySession | null> {

@@ -55,7 +55,7 @@ describe('runTwoStageFlow', () => {
     expect(draftService.generateDraft).toHaveBeenCalledWith(
       'user prompt',
       'video',
-      { shot_type: 'wide' },
+      null,
       null,
       undefined,
       undefined
@@ -85,80 +85,52 @@ describe('runTwoStageFlow', () => {
     );
   });
 
-  it('falls back to single-stage optimization when draft streaming is unavailable', async () => {
+  it('throws when draft streaming is unavailable instead of falling back to single-stage', async () => {
     const log = createLogMock();
     const draftService = {
       supportsStreaming: vi.fn().mockReturnValue(false),
       generateDraft: vi.fn(),
     };
-    const optimize = vi.fn().mockResolvedValue({
-      prompt: 'single-stage output',
-      inputMode: 't2v',
-      metadata: { source: 'single-stage' },
-    });
+    const optimize = vi.fn();
 
-    const result = await runTwoStageFlow({
-      request: {
-        prompt: 'user prompt',
-        mode: 'video',
-      },
-      log,
-      shotInterpreter: { interpret: vi.fn().mockResolvedValue(null) } as never,
-      draftService: draftService as never,
-      optimize,
-    });
-
-    expect(optimize).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: 'user prompt',
+    await expect(
+      runTwoStageFlow({
+        request: {
+          prompt: 'user prompt',
+          mode: 'video',
+        },
+        log,
+        shotInterpreter: { interpret: vi.fn().mockResolvedValue(null) } as never,
+        draftService: draftService as never,
+        optimize,
       })
-    );
-    expect(result).toEqual({
-      draft: 'single-stage output',
-      refined: 'single-stage output',
-      metadata: {
-        usedFallback: true,
-        source: 'single-stage',
-      },
-    });
+    ).rejects.toThrow('Two-stage optimization unavailable: draft streaming not supported');
+
+    expect(optimize).not.toHaveBeenCalled();
   });
 
-  it('falls back to single-stage when draft generation fails', async () => {
+  it('throws when draft generation fails instead of falling back to single-stage', async () => {
     const log = createLogMock();
     const draftService = {
       supportsStreaming: vi.fn().mockReturnValue(true),
       generateDraft: vi.fn().mockRejectedValue(new Error('groq unavailable')),
     };
-    const optimize = vi.fn().mockResolvedValue({
-      prompt: 'fallback output',
-      inputMode: 't2v',
-      metadata: { source: 'fallback' },
-    });
+    const optimize = vi.fn();
 
-    const result = await runTwoStageFlow({
-      request: {
-        prompt: 'user prompt',
-        mode: 'video',
-      },
-      log,
-      shotInterpreter: { interpret: vi.fn().mockResolvedValue(null) } as never,
-      draftService: draftService as never,
-      optimize,
-    });
+    await expect(
+      runTwoStageFlow({
+        request: {
+          prompt: 'user prompt',
+          mode: 'video',
+        },
+        log,
+        shotInterpreter: { interpret: vi.fn().mockResolvedValue(null) } as never,
+        draftService: draftService as never,
+        optimize,
+      })
+    ).rejects.toThrow('Two-stage optimization failed: groq unavailable');
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        draft: 'fallback output',
-        refined: 'fallback output',
-        usedFallback: true,
-        error: 'groq unavailable',
-      })
-    );
-    expect(optimize).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: 'user prompt',
-      })
-    );
+    expect(optimize).not.toHaveBeenCalled();
   });
 
   it('throws AbortError when signal is already aborted', async () => {

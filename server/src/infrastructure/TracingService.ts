@@ -2,7 +2,8 @@ import { trace, context, SpanStatusCode, type Span, type Tracer, type Attributes
 import { resourceFromAttributes, defaultResource, type Resource } from '@opentelemetry/resources';
 import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { SimpleSpanProcessor, BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
@@ -79,11 +80,28 @@ export class TracingService {
       });
       const resource = baseResource.merge(customResource);
 
-      // Create span processor
-      // In production, use BatchSpanProcessor with OTLP exporter
-      // For now, use Console exporter for development
-      const exporter = new ConsoleSpanExporter();
-      const spanProcessor = new SimpleSpanProcessor(exporter);
+      // Select exporter and processor based on environment.
+      // When OTEL_EXPORTER_OTLP_ENDPOINT is set, use BatchSpanProcessor + OTLP
+      // for async, non-blocking trace export to Jaeger/Tempo/Datadog/etc.
+      // Otherwise, fall back to ConsoleSpanExporter for development.
+      const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+      const spanProcessor = otlpEndpoint
+        ? new BatchSpanProcessor(
+            new OTLPTraceExporter({
+              url: `${otlpEndpoint}/v1/traces`,
+              ...(process.env.OTEL_EXPORTER_OTLP_HEADERS
+                ? { headers: this._parseOtlpHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS) }
+                : {}),
+              timeoutMillis: Number(process.env.OTEL_EXPORTER_OTLP_TIMEOUT) || 10000,
+            }),
+            {
+              maxQueueSize: 2048,
+              maxExportBatchSize: 512,
+              scheduledDelayMillis: 5000,
+              exportTimeoutMillis: 30000,
+            }
+          )
+        : new SimpleSpanProcessor(new ConsoleSpanExporter());
 
       // Create tracer provider with resource and span processor
       this.provider = new NodeTracerProvider({
@@ -128,6 +146,8 @@ export class TracingService {
       logger.info('OpenTelemetry tracing initialized', {
         serviceName: this.config.serviceName,
         environment: this.config.environment,
+        exporter: otlpEndpoint ? 'otlp' : 'console',
+        ...(otlpEndpoint ? { otlpEndpoint } : {}),
       });
     } catch (error) {
       logger.error('Failed to initialize tracing', error instanceof Error ? error : new Error(String(error)));
@@ -267,6 +287,20 @@ export class TracingService {
 
       next();
     };
+  }
+
+  /**
+   * Parse OTLP headers from the "key=value,key2=value2" env var format.
+   */
+  private _parseOtlpHeaders(raw: string): Record<string, string> {
+    const headers: Record<string, string> = {};
+    for (const pair of raw.split(',')) {
+      const eqIdx = pair.indexOf('=');
+      if (eqIdx > 0) {
+        headers[pair.slice(0, eqIdx).trim()] = pair.slice(eqIdx + 1).trim();
+      }
+    }
+    return headers;
   }
 
   /**

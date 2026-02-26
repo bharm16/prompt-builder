@@ -62,7 +62,7 @@ interface UseHistoryPersistenceReturn {
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
   updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown> | null) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
@@ -367,15 +367,9 @@ export function useHistoryPersistence({
   );
 
   const updateEntryOutput = useCallback(
-    (uuid: string, docId: string | null, output: string) => {
-      updateOutput(user?.uid, uuid, docId, output)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist output update', {
-          error: error instanceof Error ? error.message : String(error),
-          uuid,
-          docId,
-        });
-      });
+    async (uuid: string, docId: string | null, output: string): Promise<void> => {
       updateEntry(uuid, { output });
+      await updateOutput(user?.uid, uuid, docId, output);
     },
     [user, updateEntry]
   );

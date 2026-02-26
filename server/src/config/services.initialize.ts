@@ -1,6 +1,6 @@
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
+import { getAuth, getFirestore } from '@infrastructure/firebaseAdmin';
 import type { Bucket } from '@google-cloud/storage';
 import type { LLMClient } from '@clients/LLMClient';
 import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
@@ -77,7 +77,7 @@ async function validateLLMClient(
 }
 
 async function runInfrastructureStartupChecks(container: DIContainer): Promise<void> {
-  const auth = admin.auth();
+  const auth = getAuth();
   await auth.listUsers(1);
 
   const firestore = getFirestore();
@@ -203,6 +203,26 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       );
       throw new Error(`Service initialization failed for ${serviceName}: ${errorMessage}`);
     }
+  }
+
+  // Pre-warm LLM provider connections in the background (non-blocking).
+  // Health checks above validate credentials sequentially; this parallel pass
+  // ensures TCP+TLS sessions are established for all surviving clients so the
+  // first user request doesn't pay the cold-connection penalty (~100-300ms).
+  const llmClientsToWarm = [claudeClient, groqClient, qwenClient, geminiClient]
+    .filter((c): c is LLMClient => c !== null);
+  if (llmClientsToWarm.length > 0 && !isTestEnv) {
+    Promise.allSettled(
+      llmClientsToWarm.map(client =>
+        client.healthCheck().catch(() => { /* best-effort warmup */ })
+      )
+    ).then(results => {
+      const warmed = results.filter(r => r.status === 'fulfilled').length;
+      logger.info('LLM connection pre-warming complete', {
+        warmed,
+        total: llmClientsToWarm.length,
+      });
+    });
   }
 
   const capabilitiesProbe = container.resolve<CapabilitiesProbeService | null>('capabilitiesProbeService');

@@ -10,7 +10,7 @@
  * Single Responsibility: Orchestrate the prompt optimization workflow
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { logger } from '../services/LoggingService';
 import type { Toast } from './types';
@@ -106,6 +106,8 @@ export const usePromptOptimizer = (
     addLockedSpan,
     removeLockedSpan,
     clearLockedSpans,
+    snapshotForRollback,
+    rollback,
     startOptimization,
     resetPrompt,
     setIsProcessing,
@@ -151,8 +153,13 @@ export const usePromptOptimizer = (
       });
       logger.startTimer('optimize');
 
-      startOptimization();
-      setIsProcessing(true);
+      // Wrap non-urgent state updates in startTransition so React can yield
+      // to higher-priority work (e.g., keyboard input) between commits.
+      startTransition(() => {
+        snapshotForRollback();
+        startOptimization();
+        setIsProcessing(true);
+      });
 
       try {
         markOptimizationStart();
@@ -170,6 +177,7 @@ export const usePromptOptimizer = (
           setQualityScore,
           setPreviewPrompt,
           setPreviewAspectRatio,
+          rollback,
         };
 
         const overrideModel =
@@ -243,6 +251,7 @@ export const usePromptOptimizer = (
           useTwoStage,
         });
         toast.error('Failed to optimize. Make sure the server is running.');
+        rollback();
         return null;
       } finally {
         if (requestId === requestIdRef.current) {
@@ -262,6 +271,8 @@ export const usePromptOptimizer = (
       toast,
       useTwoStage,
       selectedMode,
+      snapshotForRollback,
+      rollback,
       startOptimization,
       setIsProcessing,
       setDraftPrompt,

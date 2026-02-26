@@ -23,8 +23,11 @@ const applyPatch = (current: StoreRecord, patch: StoreRecord): StoreRecord => {
 
 const mocks = vi.hoisted(() => ({
   legacyRecords: new Map<string, StoreRecord>(),
+  unifiedRecords: new Map<string, StoreRecord>(),
   sessionStore: {
     save: vi.fn(),
+    saveInTransaction: vi.fn(),
+    getDocRef: vi.fn(),
     get: vi.fn(),
     findContinuityByUser: vi.fn(),
     delete: vi.fn(),
@@ -145,11 +148,17 @@ describe('ContinuitySessionStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.legacyRecords.clear();
+    mocks.unifiedRecords.clear();
     mocks.sessionStore.get.mockResolvedValue(null);
     mocks.sessionStore.findContinuityByUser.mockResolvedValue([]);
+    mocks.sessionStore.saveInTransaction.mockImplementation(
+      (_tx: unknown, session: { id: string; [key: string]: unknown }) => {
+        mocks.unifiedRecords.set(session.id, session as unknown as StoreRecord);
+      }
+    );
   });
 
-  it('saves new sessions to unified and legacy stores', async () => {
+  it('saves new sessions to unified and legacy stores in a single transaction', async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -159,13 +168,15 @@ describe('ContinuitySessionStore', () => {
     expect(legacy).toBeDefined();
     expect(legacy?.userId).toBe('user-1');
     expect(legacy?.version).toBe(1);
-    expect(mocks.sessionStore.save).toHaveBeenCalledWith(
+    expect(mocks.sessionStore.saveInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         id: session.id,
         hasContinuity: true,
         continuity: session,
       })
     );
+    expect(mocks.unifiedRecords.has(session.id)).toBe(true);
   });
 
   it('increments legacy version when saving existing sessions', async () => {
@@ -181,6 +192,7 @@ describe('ContinuitySessionStore', () => {
     await store.save(session);
 
     expect(mocks.legacyRecords.get(session.id)?.version).toBe(5);
+    expect(mocks.sessionStore.saveInTransaction).toHaveBeenCalled();
   });
 
   it('supports optimistic versioned save and rejects mismatches', async () => {
@@ -199,6 +211,32 @@ describe('ContinuitySessionStore', () => {
     await expect(store.saveWithVersion(session, 1)).rejects.toBeInstanceOf(
       ContinuitySessionVersionMismatchError
     );
+  });
+
+  it('does not commit unified write when versioned save fails', async () => {
+    const store = new ContinuitySessionStore();
+    const session = buildSession();
+
+    mocks.legacyRecords.set(session.id, {
+      ...serializeContinuitySession(session),
+      createdAtMs: session.createdAt.getTime(),
+      updatedAtMs: session.updatedAt.getTime(),
+      version: 3,
+    });
+
+    // saveInTransaction should NOT be reached when version check throws
+    mocks.sessionStore.saveInTransaction.mockImplementation(() => {
+      mocks.unifiedRecords.set(session.id, { written: true });
+    });
+
+    await expect(store.saveWithVersion(session, 1)).rejects.toBeInstanceOf(
+      ContinuitySessionVersionMismatchError
+    );
+
+    // The version check throws before saveInTransaction is called,
+    // so unified store should NOT have the write
+    expect(mocks.unifiedRecords.has(session.id)).toBe(false);
+    expect(mocks.sessionStore.saveInTransaction).not.toHaveBeenCalled();
   });
 
   it('returns unified continuity session when available', async () => {

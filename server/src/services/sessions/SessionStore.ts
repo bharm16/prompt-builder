@@ -24,28 +24,50 @@ export class SessionStore {
   private readonly db = getFirestore();
   private readonly collection = this.db.collection('sessions');
 
+  getDocRef(sessionId: string): FirebaseFirestore.DocumentReference {
+    return this.collection.doc(sessionId);
+  }
+
   async save(session: SessionRecord): Promise<void> {
     const docRef = this.collection.doc(session.id);
     const payload = this.toStored(session);
-    const now = Date.now();
 
-    const snapshot = await docRef.get();
-    if (snapshot.exists) {
-      await docRef.set(
-        {
-          ...payload,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-      return;
-    }
+    await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      if (snapshot.exists) {
+        transaction.set(
+          docRef,
+          {
+            ...payload,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        return;
+      }
 
-    await docRef.set({
-      ...payload,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      transaction.set(docRef, {
+        ...payload,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     });
+  }
+
+  saveInTransaction(
+    transaction: FirebaseFirestore.Transaction,
+    session: SessionRecord
+  ): void {
+    const docRef = this.collection.doc(session.id);
+    const payload = this.toStored(session);
+    transaction.set(
+      docRef,
+      {
+        ...payload,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
   }
 
   async get(sessionId: string): Promise<SessionRecord | null> {

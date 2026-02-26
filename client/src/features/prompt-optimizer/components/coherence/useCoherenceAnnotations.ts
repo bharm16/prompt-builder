@@ -189,12 +189,17 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
     setIssues((prev) => prev.filter((issue) => !issue.dismissed));
   }, []);
 
+  const togglePanelExpanded = useCallback(() => {
+    setIsPanelExpanded((prev) => !prev);
+  }, []);
+
   return {
     issues: activeIssues,
     allIssues: issues,
     isChecking,
     isPanelExpanded,
     setIsPanelExpanded,
+    togglePanelExpanded,
     affectedSpanIds,
     spanIssueMap,
     activeIssueCount,

@@ -103,6 +103,17 @@ vi.mock('@infrastructure/firebaseAdmin', () => ({
           createQuery([{ field, operator, value }]),
       };
     },
+    runTransaction: async (fn: (tx: unknown) => Promise<void>) => {
+      const tx = {
+        get: (docRef: ReturnType<typeof createDocRef>) => docRef.get(),
+        set: (
+          docRef: ReturnType<typeof createDocRef>,
+          data: StoreRecord,
+          options?: { merge?: boolean }
+        ) => docRef.set(data, options),
+      };
+      await fn(tx);
+    },
   }),
 }));
 

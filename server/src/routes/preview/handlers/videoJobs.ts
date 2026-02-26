@@ -8,6 +8,17 @@ type VideoJobsServices = Pick<
   'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService' | 'storageService'
 >;
 
+function estimateProgress(status: string, createdAtMs: number): number | null {
+  if (status === 'completed') return 100;
+  if (status === 'failed') return null;
+  if (status === 'queued') return 5;
+  // 'processing': estimate 10–95 based on elapsed time (assume ~3 min typical)
+  const elapsedMs = Date.now() - createdAtMs;
+  const typicalMs = 180_000; // 3 minutes
+  const raw = 10 + Math.floor((elapsedMs / typicalMs) * 85);
+  return Math.max(10, Math.min(95, raw));
+}
+
 export const createVideoJobsHandler = ({
   videoGenerationService,
   videoJobStore,
@@ -141,6 +152,8 @@ export const createVideoJobsHandler = ({
       }
     }
 
+    response.progress = estimateProgress(job.status, job.createdAtMs);
+    response.createdAtMs = job.createdAtMs;
     response.attempts = job.attempts;
     response.maxAttempts = job.maxAttempts;
     if (typeof job.lastHeartbeatAtMs === 'number') {

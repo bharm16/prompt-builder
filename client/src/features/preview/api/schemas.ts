@@ -119,6 +119,8 @@ export const VideoJobStatusResponseSchema = z
     success: z.boolean(),
     jobId: z.string(),
     status: z.enum(['queued', 'processing', 'completed', 'failed']),
+    progress: z.number().nullable().optional(),
+    createdAtMs: z.number().optional(),
     videoUrl: z.string().optional(),
     assetId: z.string().optional(),
     contentType: z.string().optional(),

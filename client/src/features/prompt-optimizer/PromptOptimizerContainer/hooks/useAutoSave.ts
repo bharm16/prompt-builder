@@ -90,15 +90,16 @@ export function useAutoSave({
         }
         if (lastSavedOutputRef.current === newText) return;
 
-        try {
-          // Fire-and-forget persistence. The underlying repository logs failures.
-          updateEntryOutputRef.current(scheduledUuid, scheduledDocId, newText);
-          setOutputSaveState('saved');
-          setOutputLastSavedAt(Date.now());
-        } catch {
-          setOutputSaveState('error');
-        }
-        lastSavedOutputRef.current = newText;
+        void (async () => {
+          try {
+            await updateEntryOutputRef.current(scheduledUuid, scheduledDocId, newText);
+            lastSavedOutputRef.current = newText;
+            setOutputSaveState('saved');
+            setOutputLastSavedAt(Date.now());
+          } catch {
+            setOutputSaveState('error');
+          }
+        })();
         saveOutputTimeoutRef.current = null;
       }, 1000);
     },

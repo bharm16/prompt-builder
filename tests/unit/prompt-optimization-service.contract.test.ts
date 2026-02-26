@@ -214,7 +214,7 @@ describe('PromptOptimizationService contract', () => {
     expect(onRefinedChunk).toHaveBeenCalledWith('refined-delta');
   });
 
-  it('falls back to single-stage optimization when draft streaming is unavailable', async () => {
+  it('throws when draft streaming is unavailable instead of falling back to single-stage', async () => {
     const service = createService();
 
     (service as unknown as { draftService: unknown }).draftService = {
@@ -222,25 +222,16 @@ describe('PromptOptimizationService contract', () => {
       generateDraft: vi.fn(),
     };
 
-    vi.spyOn(service, 'optimize').mockResolvedValue({
-      prompt: 'single-stage prompt',
-      inputMode: 't2v',
-      metadata: { source: 'single-stage' },
-    });
+    vi.spyOn(service, 'optimize');
 
-    const result = await service.optimizeTwoStage({
-      prompt: 'fallback please',
-      skipCache: true,
-    });
+    await expect(
+      service.optimizeTwoStage({
+        prompt: 'fallback please',
+        skipCache: true,
+      })
+    ).rejects.toThrow('Two-stage optimization unavailable: draft streaming not supported');
 
-    expect(result).toMatchObject({
-      draft: 'single-stage prompt',
-      refined: 'single-stage prompt',
-      metadata: {
-        usedFallback: true,
-        source: 'single-stage',
-      },
-    });
+    expect(service.optimize).not.toHaveBeenCalled();
   });
 
   it('throws when compilePrompt is called without a compilation service', async () => {

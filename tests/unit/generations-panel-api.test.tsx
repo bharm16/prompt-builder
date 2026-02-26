@@ -138,7 +138,8 @@ describe('waitForVideoJob', () => {
         'Timed out waiting for video generation'
       );
 
-      vi.setSystemTime(6 * 60 * 1000 + 1);
+      // Jump clock past MAX_WAIT_MS (20 min) so next poll triggers timeout
+      vi.setSystemTime(20 * 60 * 1000 + 1);
       await vi.advanceTimersByTimeAsync(2000);
 
       await rejection;

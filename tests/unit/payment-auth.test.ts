@@ -17,11 +17,9 @@ vi.mock('@infrastructure/Logger', () => ({
 }));
 
 vi.mock('@infrastructure/firebaseAdmin', () => ({
-  admin: {
-    auth: () => ({
-      verifyIdToken: mocks.verifyIdToken,
-    }),
-  },
+  getAuth: () => ({
+    verifyIdToken: mocks.verifyIdToken,
+  }),
 }));
 
 import { resolveUserId } from '@routes/payment/auth';

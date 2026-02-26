@@ -37,6 +37,7 @@ const NULL_METRICS: ConcurrencyMetrics = {
 interface ConcurrencyLimiterOptions {
   maxConcurrent?: number;
   queueTimeout?: number;
+  maxQueueLength?: number;
   enableCancellation?: boolean;
   metricsService?: ConcurrencyMetrics;
 }
@@ -60,6 +61,7 @@ interface LimiterStats {
   totalQueued: number;
   totalCancelled: number;
   totalTimedOut: number;
+  totalRejected: number;
   maxQueueLength: number;
   avgQueueTime: number;
   queueTimes: number[];
@@ -75,6 +77,7 @@ interface QueueStatus {
 export class ConcurrencyLimiter {
   private readonly maxConcurrent: number;
   private readonly queueTimeout: number;
+  private readonly maxQueueLength: number;
   private readonly enableCancellation: boolean;
   private activeCount: number;
   private readonly queue: QueueItem<unknown>[];
@@ -86,12 +89,14 @@ export class ConcurrencyLimiter {
    * @param options - Configuration options
    * @param options.maxConcurrent - Maximum concurrent requests (default: 5)
    * @param options.queueTimeout - Max time in queue before rejection (default: 30000ms)
+   * @param options.maxQueueLength - Maximum queue depth before rejecting immediately (default: 20)
    * @param options.enableCancellation - Enable request cancellation (default: true)
    * @param options.metricsService - Optional metrics collector for recording gauge/histogram data
    */
   constructor(options: ConcurrencyLimiterOptions = {}) {
     this.maxConcurrent = options.maxConcurrent || 5;
     this.queueTimeout = options.queueTimeout || 30000; // 30 seconds
+    this.maxQueueLength = options.maxQueueLength || 20;
     this.enableCancellation = options.enableCancellation !== false;
     this.metrics = options.metricsService ?? NULL_METRICS;
 
@@ -110,6 +115,7 @@ export class ConcurrencyLimiter {
       totalQueued: 0,
       totalCancelled: 0,
       totalTimedOut: 0,
+      totalRejected: 0,
       maxQueueLength: 0,
       avgQueueTime: 0,
       queueTimes: [],
@@ -118,6 +124,7 @@ export class ConcurrencyLimiter {
     logger.debug('ConcurrencyLimiter initialized', {
       maxConcurrent: this.maxConcurrent,
       queueTimeout: this.queueTimeout,
+      maxQueueLength: this.maxQueueLength,
       enableCancellation: this.enableCancellation,
     });
   }
@@ -138,6 +145,26 @@ export class ConcurrencyLimiter {
     // Check if we can execute immediately
     if (this.activeCount < this.maxConcurrent) {
       return await this._executeImmediately(fn, requestId);
+    }
+
+    // Reject immediately if queue is full (load-shedding)
+    if (this.queue.length >= this.maxQueueLength) {
+      this.stats.totalRejected++;
+      this.metrics.recordGauge('request_queue_length', this.queue.length);
+
+      logger.warn('Request rejected — queue full', {
+        requestId,
+        queueLength: this.queue.length,
+        maxQueueLength: this.maxQueueLength,
+        activeCount: this.activeCount,
+      });
+
+      const error = new Error(
+        `Server busy: ${this.queue.length} requests queued. Try again shortly.`
+      ) as Error & { code?: string; retryAfter?: number };
+      error.code = 'QUEUE_FULL';
+      error.retryAfter = 5;
+      throw error;
     }
 
     // Queue the request

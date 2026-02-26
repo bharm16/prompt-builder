@@ -1,7 +1,10 @@
 import { getVideoPreviewStatus } from '@/features/preview/api/previewApi';
+import type { VideoJobStatus } from '@/features/preview/api/previewApi';
 
-const POLL_INTERVAL_MS = 2000;
-const MAX_WAIT_MS = 6 * 60 * 1000;
+const POLL_INTERVAL_ACTIVE_MS = 2_000;
+const POLL_INTERVAL_EXTENDED_MS = 8_000;
+const ACTIVE_PHASE_MS = 6 * 60 * 1_000;
+const MAX_WAIT_MS = 20 * 60 * 1_000;
 
 export interface VideoJobResult {
   videoUrl: string;
@@ -11,9 +14,15 @@ export interface VideoJobResult {
   assetId?: string;
 }
 
+export interface VideoJobProgressUpdate {
+  status: VideoJobStatus;
+  progress: number | null;
+}
+
 export async function waitForVideoJob(
   jobId: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  onProgress?: (update: VideoJobProgressUpdate) => void
 ): Promise<VideoJobResult | null> {
   const startTime = Date.now();
   while (true) {
@@ -23,6 +32,9 @@ export async function waitForVideoJob(
     if (!status.success) {
       throw new Error(status.error || status.message || 'Failed to fetch video status');
     }
+
+    onProgress?.({ status: status.status, progress: status.progress ?? null });
+
     if (status.status === 'completed' && status.videoUrl) {
       const result: VideoJobResult = {
         videoUrl: status.videoUrl,
@@ -41,11 +53,15 @@ export async function waitForVideoJob(
     if (status.status === 'failed') {
       throw new Error(status.error || 'Video generation failed');
     }
-    if (Date.now() - startTime > MAX_WAIT_MS) {
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs > MAX_WAIT_MS) {
       throw new Error('Timed out waiting for video generation');
     }
+    const interval = elapsedMs > ACTIVE_PHASE_MS
+      ? POLL_INTERVAL_EXTENDED_MS
+      : POLL_INTERVAL_ACTIVE_MS;
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, POLL_INTERVAL_MS);
+      const timer = setTimeout(resolve, interval);
       signal.addEventListener(
         'abort',
         () => {

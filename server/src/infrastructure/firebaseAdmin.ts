@@ -72,6 +72,11 @@ function initializeFirebaseAdmin(): admin.app.App {
   }
 }
 
+export function getAuth(): admin.auth.Auth {
+  initializeFirebaseAdmin();
+  return admin.auth();
+}
+
 export function getFirestore(): FirebaseFirestore.Firestore {
   const app = initializeFirebaseAdmin();
   return admin.firestore(app);

@@ -9,12 +9,17 @@ import {
   resolveProviderForModel,
 } from '@services/capabilities';
 
+/** Cache-Control for deterministic, user-agnostic capability data. */
+const CACHE_1H = 'public, max-age=3600';
+const CACHE_1D = 'public, max-age=86400';
+
 export function createCapabilitiesRoutes(): Router {
   const router = express.Router();
 
   router.get(
     '/providers',
     asyncHandler(async (_req, res) => {
+      res.setHeader('Cache-Control', CACHE_1D);
       res.json({ providers: listProviders() });
     })
   );
@@ -23,6 +28,7 @@ export function createCapabilitiesRoutes(): Router {
     '/registry',
     asyncHandler(async (_req, res) => {
       const { getCapabilitiesRegistry } = await import('@services/capabilities');
+      res.setHeader('Cache-Control', CACHE_1D);
       res.json(getCapabilitiesRegistry());
     })
   );
@@ -35,6 +41,7 @@ export function createCapabilitiesRoutes(): Router {
         res.status(400).json({ error: 'provider is required' });
         return;
       }
+      res.setHeader('Cache-Control', CACHE_1D);
       res.json({ provider, models: listModels(provider) });
     })
   );
@@ -85,6 +92,7 @@ export function createCapabilitiesRoutes(): Router {
         return;
       }
 
+      res.setHeader('Cache-Control', CACHE_1H);
       res.json(schema);
     })
   );

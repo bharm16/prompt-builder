@@ -10,11 +10,9 @@ const { verifyIdTokenMock, loggerMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('@infrastructure/firebaseAdmin', () => ({
-  admin: {
-    auth: () => ({
-      verifyIdToken: verifyIdTokenMock,
-    }),
-  },
+  getAuth: () => ({
+    verifyIdToken: verifyIdTokenMock,
+  }),
 }));
 
 vi.mock('@infrastructure/Logger', () => ({

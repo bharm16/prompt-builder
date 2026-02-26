@@ -543,6 +543,7 @@ function PromptOptimizerContent({
     dismissIssue,
     dismissAll,
     applyFix,
+    togglePanelExpanded: toggleCoherencePanelExpanded,
   } = usePromptCoherence({
     promptOptimizer,
     latestHighlightRef,
@@ -653,7 +654,7 @@ function PromptOptimizerContent({
           coherenceIssues={coherenceIssues}
           isCoherenceChecking={isCoherenceChecking}
           isCoherencePanelExpanded={isPanelExpanded}
-          onToggleCoherencePanelExpanded={() => setIsPanelExpanded((prev) => !prev)}
+          onToggleCoherencePanelExpanded={toggleCoherencePanelExpanded}
           onDismissCoherenceIssue={dismissIssue}
           onDismissAllCoherenceIssues={dismissAll}
           onApplyCoherenceFix={applyFix}

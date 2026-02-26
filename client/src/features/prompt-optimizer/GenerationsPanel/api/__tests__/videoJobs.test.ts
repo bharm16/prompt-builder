@@ -110,10 +110,13 @@ describe('waitForVideoJob', () => {
       ).rejects.toThrow('Video generation completed but no URL was returned');
     });
 
-    it('throws timeout error after MAX_WAIT_MS (6 minutes)', async () => {
-      const MAX_WAIT_MS = 6 * 60 * 1000;
-      const POLL_INTERVAL_MS = 2000;
-      const pollsNeeded = Math.ceil(MAX_WAIT_MS / POLL_INTERVAL_MS) + 1;
+    it('throws timeout error after MAX_WAIT_MS (20 minutes)', async () => {
+      const MAX_WAIT_MS = 20 * 60 * 1000;
+      // Active phase: 6 min at 2s intervals = 180 polls
+      // Extended phase: 14 min at 8s intervals = 105 polls
+      // Total: ~285 polls, but we can just advance the full 20 min
+      const CHUNK_MS = 30_000; // Advance in 30s chunks for speed
+      const chunks = Math.ceil(MAX_WAIT_MS / CHUNK_MS) + 1;
 
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
         mockStatusResponse({ status: 'processing' })
@@ -121,21 +124,19 @@ describe('waitForVideoJob', () => {
 
       const promise = waitForVideoJob('job-123', abortController.signal);
 
-      // Advance time in smaller chunks to allow polling to happen
-      // Use Promise.race to catch rejection as soon as it happens
       let caught = false;
       const catchPromise = promise.catch((error: Error) => {
         caught = true;
         expect(error.message).toBe('Timed out waiting for video generation');
       });
 
-      for (let i = 0; i < pollsNeeded && !caught; i++) {
-        await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+      for (let i = 0; i < chunks && !caught; i++) {
+        await vi.advanceTimersByTimeAsync(CHUNK_MS);
       }
 
       await catchPromise;
       expect(caught).toBe(true);
-    }, 15000); // Increase test timeout
+    }, 30000); // Increase test timeout for 20-min simulation
   });
 
   describe('edge cases', () => {
@@ -199,6 +200,108 @@ describe('waitForVideoJob', () => {
       const result = await promise;
       expect(result).toMatchObject({ videoUrl: 'https://example.com/video.mp4' });
     });
+  });
+
+  describe('adaptive polling', () => {
+    it('widens interval to 8s after 6 minutes', async () => {
+      vi.mocked(getVideoPreviewStatus).mockResolvedValue(
+        mockStatusResponse({ status: 'processing' })
+      );
+
+      const promise = waitForVideoJob('job-123', abortController.signal);
+
+      // Advance past the active phase (6 minutes).
+      // At exactly 360s, elapsedMs === ACTIVE_PHASE_MS (strict >), so one more
+      // 2s poll fires before the transition to 8s.
+      const ACTIVE_PHASE_MS = 6 * 60 * 1_000;
+      const CHUNK_MS = 2_000;
+      const activeChunks = ACTIVE_PHASE_MS / CHUNK_MS;
+      for (let i = 0; i < activeChunks; i++) {
+        await vi.advanceTimersByTimeAsync(CHUNK_MS);
+      }
+
+      // Fire the last 2s timer (elapsedMs=360s, still uses 2s interval)
+      // and then the transition poll at 362s (elapsedMs>360s → sets 8s timer)
+      await vi.advanceTimersByTimeAsync(CHUNK_MS);
+
+      const callsAfterTransition = vi.mocked(getVideoPreviewStatus).mock.calls.length;
+
+      // In extended phase: advance 2s — should NOT trigger a poll (interval is 8s)
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(vi.mocked(getVideoPreviewStatus).mock.calls.length - callsAfterTransition).toBe(0);
+
+      // Advance 6s more (total 8s since transition poll) — should trigger exactly 1 poll
+      await vi.advanceTimersByTimeAsync(6_000);
+      expect(vi.mocked(getVideoPreviewStatus).mock.calls.length - callsAfterTransition).toBe(1);
+
+      abortController.abort();
+      await promise;
+    }, 30000);
+
+    it('invokes onProgress callback with server progress', async () => {
+      let callCount = 0;
+      vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
+        callCount++;
+        if (callCount < 3) {
+          return mockStatusResponse({ status: 'processing', progress: callCount * 30 });
+        }
+        return mockStatusResponse({
+          status: 'completed',
+          videoUrl: 'https://example.com/video.mp4',
+          progress: 100,
+        });
+      });
+
+      const onProgress = vi.fn();
+      const promise = waitForVideoJob('job-123', abortController.signal, onProgress);
+
+      await vi.advanceTimersByTimeAsync(0); // First poll
+      await vi.advanceTimersByTimeAsync(2000); // Second poll
+      await vi.advanceTimersByTimeAsync(2000); // Third poll (completes)
+
+      await promise;
+
+      expect(onProgress).toHaveBeenCalledTimes(3);
+      expect(onProgress).toHaveBeenCalledWith({ status: 'processing', progress: 30 });
+      expect(onProgress).toHaveBeenCalledWith({ status: 'processing', progress: 60 });
+      expect(onProgress).toHaveBeenCalledWith({ status: 'completed', progress: 100 });
+    });
+
+    it('does not throw at 6 minutes — continues polling in extended phase', async () => {
+      // Active phase: 181 polls over 362s (2s interval).
+      // Extended phase: 8s interval. After 182 polls, completing on poll 190
+      // would be at roughly 362 + (8 * 8) = 426s ≈ 7.1 min.
+      let callCount = 0;
+      vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
+        callCount++;
+        if (callCount > 185) {
+          return mockStatusResponse({
+            status: 'completed',
+            videoUrl: 'https://example.com/video.mp4',
+          });
+        }
+        return mockStatusResponse({ status: 'processing' });
+      });
+
+      const promise = waitForVideoJob('job-123', abortController.signal);
+
+      // Advance through active phase in 30s chunks (faster than 2s chunks)
+      const ACTIVE_MS = 6 * 60 * 1_000 + 4_000; // 364s — past transition
+      const CHUNK_MS = 30_000;
+      const activeChunks = Math.ceil(ACTIVE_MS / CHUNK_MS);
+      for (let i = 0; i < activeChunks; i++) {
+        await vi.advanceTimersByTimeAsync(CHUNK_MS);
+      }
+
+      // Continue in extended phase with 8s chunks until completion
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(8_000);
+        if (callCount > 185) break;
+      }
+
+      const result = await promise;
+      expect(result).toMatchObject({ videoUrl: 'https://example.com/video.mp4' });
+    }, 30000);
   });
 
   describe('core behavior', () => {

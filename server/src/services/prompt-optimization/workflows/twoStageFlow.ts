@@ -43,43 +43,8 @@ export const runTwoStageFlow = async ({
 
   throwIfAborted(signal);
 
-  let shotPlan = null;
-  try {
-    shotPlan = await shotInterpreter.interpret(prompt, signal);
-  } catch (interpError) {
-    log.warn('Shot interpretation failed, proceeding without shot plan', {
-      operation,
-      error: (interpError as Error).message,
-    });
-  }
-
-  throwIfAborted(signal);
-
   if (!draftService.supportsStreaming()) {
-    log.warn('Draft streaming not available, falling back to single-stage optimization', {
-      operation,
-    });
-    let fallbackMetadata: Record<string, unknown> | null = null;
-    const result = await optimize({
-      prompt,
-      mode: finalMode,
-      ...(targetModel ? { targetModel } : {}),
-      context,
-      brainstormContext,
-      generationParams,
-      skipCache,
-      lockedSpans,
-      onMetadata: (metadata) => {
-        fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
-      },
-      ...(signal ? { signal } : {}),
-    });
-    const fallbackPrompt = result.prompt;
-    return {
-      draft: fallbackPrompt,
-      refined: fallbackPrompt,
-      metadata: { usedFallback: true, ...(fallbackMetadata || result.metadata || {}) },
-    };
+    throw new Error('Two-stage optimization unavailable: draft streaming not supported');
   }
 
   try {
@@ -87,14 +52,28 @@ export const runTwoStageFlow = async ({
 
     throwIfAborted(signal);
 
-    const draft = await draftService.generateDraft(
-      prompt,
-      finalMode,
-      shotPlan,
-      generationParams,
-      signal,
-      onDraftChunk ? (delta) => onDraftChunk(delta) : undefined
-    );
+    // Run shot interpretation in parallel with draft generation.
+    // The shot plan is optional — if interpretation is slower than drafting
+    // or fails, the draft proceeds without it. The shot plan still reaches
+    // the refinement stage where it has more structural impact.
+    const [shotPlanResult, draft] = await Promise.all([
+      shotInterpreter.interpret(prompt, signal).catch((interpError: unknown) => {
+        log.warn('Shot interpretation failed, proceeding without shot plan', {
+          operation,
+          error: (interpError as Error).message,
+        });
+        return null;
+      }),
+      draftService.generateDraft(
+        prompt,
+        finalMode,
+        null,
+        generationParams,
+        signal,
+        onDraftChunk ? (delta) => onDraftChunk(delta) : undefined
+      ),
+    ]);
+    const shotPlan = shotPlanResult;
 
     const draftDuration = Math.round(performance.now() - draftStartTime);
 
@@ -177,41 +156,15 @@ export const runTwoStageFlow = async ({
       });
       throw error;
     }
-    log.error('Two-stage optimization failed, falling back to single-stage', error as Error, {
+    log.error('Two-stage optimization failed', error as Error, {
       operation,
       duration: Math.round(performance.now() - startTime),
       mode: finalMode,
     });
 
-    let fallbackMetadata: Record<string, unknown> | null = null;
-    const result = await optimize({
-      prompt,
-      mode: finalMode,
-      ...(targetModel ? { targetModel } : {}),
-      context,
-      brainstormContext,
-      generationParams,
-      skipCache,
-      lockedSpans,
-      shotPlan,
-      shotPlanAttempted: true,
-      onMetadata: (metadata) => {
-        fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
-      },
-      ...(signal ? { signal } : {}),
-    });
-    const fallbackPrompt = result.prompt;
-    return {
-      draft: fallbackPrompt,
-      refined: fallbackPrompt,
-      metadata: {
-        mode: finalMode,
-        usedFallback: true,
-        shotPlan,
-        ...(fallbackMetadata || {}),
-      },
-      usedFallback: true,
-      error: (error as Error).message,
-    };
+    const cause = error as Error;
+    const wrapped = new Error(`Two-stage optimization failed: ${cause.message}`);
+    wrapped.cause = cause;
+    throw wrapped;
   }
 };

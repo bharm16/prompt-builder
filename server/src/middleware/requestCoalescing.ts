@@ -113,7 +113,33 @@ function stableStringify(value: unknown, seen: WeakSet<object> = new WeakSet()):
   return JSON.stringify(String(value));
 }
 
+/**
+ * Fast-path canonicalization for parsed JSON objects with a `prompt` field.
+ * Avoids the expensive deep-traversal of stableStringify for the common case
+ * (optimization requests) by hashing only the differentiating fields.
+ */
+function tryFastCanonicalizeBody(body: unknown): string | null {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return null;
+  }
+
+  const obj = body as Record<string, unknown>;
+  if (typeof obj.prompt !== 'string') {
+    return null;
+  }
+
+  const mode = typeof obj.mode === 'string' ? obj.mode : '';
+  const targetModel = typeof obj.targetModel === 'string' ? obj.targetModel : '';
+  const skipCache = obj.skipCache === true ? '1' : '0';
+  return `fast:${obj.prompt}|${mode}|${targetModel}|${skipCache}`;
+}
+
 function canonicalizeBody(body: unknown): string {
+  const fast = tryFastCanonicalizeBody(body);
+  if (fast !== null) {
+    return fast;
+  }
+
   if (typeof body === 'string') {
     return stableStringify(parseMaybeJson(body));
   }

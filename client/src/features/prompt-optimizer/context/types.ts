@@ -96,7 +96,7 @@ export interface PromptHistory {
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
   updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown>) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
 }

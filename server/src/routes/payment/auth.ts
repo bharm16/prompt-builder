@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { admin } from '@infrastructure/firebaseAdmin';
+import { getAuth } from '@infrastructure/firebaseAdmin';
 import { extractFirebaseToken } from '@utils/auth';
 
 interface PaymentRequestWithAuth extends Request {
@@ -18,7 +18,7 @@ export async function resolveUserId(req: Request): Promise<string | null> {
   const token = extractFirebaseToken(req);
   if (token) {
     try {
-      const decoded = await admin.auth().verifyIdToken(token);
+      const decoded = await getAuth().verifyIdToken(token);
       const uid = decoded.uid;
       reqWithAuth.user = { uid };
       return uid;

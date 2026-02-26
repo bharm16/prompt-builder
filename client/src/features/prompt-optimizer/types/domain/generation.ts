@@ -32,6 +32,7 @@ export interface Generation {
   characterAssetId?: string | null | undefined;
   faceSwapApplied?: boolean | null | undefined;
   faceSwapUrl?: string | null | undefined;
+  serverProgress?: number | null | undefined;
   isFavorite?: boolean | undefined;
   generationSettings?: GenerationSettingsSnapshot | null | undefined;
   error?: string | null | undefined;

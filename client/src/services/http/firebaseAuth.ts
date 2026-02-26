@@ -8,7 +8,7 @@ const AUTH_READY_TIMEOUT_MS = 3000;
 
 let authReadyPromise: Promise<void> | null = null;
 
-const waitForAuthReady = async (): Promise<void> => {
+export const waitForAuthReady = async (): Promise<void> => {
   if (!authReadyPromise) {
     authReadyPromise = new Promise((resolve) => {
       const timeoutId = setTimeout(resolve, AUTH_READY_TIMEOUT_MS);

@@ -28,6 +28,7 @@ export interface PromptOptimizerActions {
   setQualityScore: (score: number | null) => void;
   setPreviewPrompt: (prompt: string | null) => void;
   setPreviewAspectRatio: (ratio: string | null) => void;
+  rollback: () => void;
 }
 
 export interface OptimizationOutcome {
@@ -297,21 +298,18 @@ export async function runTwoStageOptimization({
         operation: 'optimize',
         mode: selectedMode,
       });
-      actions.setIsRefining(false);
-      actions.setIsProcessing(false);
+      actions.rollback();
     },
   });
 
   const totalDuration = logger.endTimer('optimize');
 
   if (result.usedFallback) {
-    log.info('Two-stage optimization fell back to single-stage', {
+    log.warn('Two-stage optimization returned fallback result', {
       operation: 'optimize',
       usedFallback: true,
     });
-    toast.warning(
-      'Fast optimization unavailable. Using standard optimization (this may take longer).'
-    );
+    toast.error('Optimization failed. Please try again.');
   }
 
   log.info('Two-stage optimization completed', {

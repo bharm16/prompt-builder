@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { admin } from '@infrastructure/firebaseAdmin';
+import { getAuth } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 
 /**
@@ -65,7 +65,7 @@ export async function apiAuthMiddleware(
 
   if (firebaseToken) {
     try {
-      const decoded = await admin.auth().verifyIdToken(firebaseToken);
+      const decoded = await getAuth().verifyIdToken(firebaseToken);
       req.user = { uid: decoded.uid };
       logger.info('API request authenticated via Firebase token', {
         ip: req.ip,

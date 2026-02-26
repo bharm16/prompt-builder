@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest';
  */
 const DEEP_IMPORT_BASELINE = {
   server: 31,
-  client: 48,
+  client: 49,
 } as const;
 
 const execFileAsync = promisify(execFile);

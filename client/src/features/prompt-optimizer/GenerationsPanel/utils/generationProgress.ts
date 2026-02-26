@@ -28,5 +28,10 @@ export const getGenerationProgressPercent = (
     )
   );
 
-  return Math.max(timePercent, urlPercent);
+  const serverPercent =
+    typeof generation.serverProgress === 'number'
+      ? Math.max(0, Math.min(99, generation.serverProgress))
+      : 0;
+
+  return Math.max(timePercent, urlPercent, serverPercent);
 };

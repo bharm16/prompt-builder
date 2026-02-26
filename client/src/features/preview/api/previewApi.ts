@@ -363,6 +363,8 @@ export interface VideoJobStatusResponse {
   success: boolean;
   jobId: string;
   status: VideoJobStatus;
+  progress?: number | null;
+  createdAtMs?: number;
   videoUrl?: string;
   assetId?: string;
   contentType?: string;

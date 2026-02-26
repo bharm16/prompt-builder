@@ -113,6 +113,8 @@ function createStateHookResult() {
     addLockedSpan: vi.fn(),
     removeLockedSpan: vi.fn(),
     clearLockedSpans: vi.fn(),
+    snapshotForRollback: vi.fn(),
+    rollback: vi.fn(),
     startOptimization: vi.fn(),
     resetPrompt: vi.fn(),
     finishProcessing: vi.fn(),

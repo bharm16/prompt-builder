@@ -40,6 +40,7 @@ function createMockActions(): PromptOptimizerActions {
     setQualityScore: vi.fn(),
     setPreviewPrompt: vi.fn(),
     setPreviewAspectRatio: vi.fn(),
+    rollback: vi.fn(),
   };
 }
 
@@ -327,7 +328,7 @@ describe('runTwoStageOptimization', () => {
       expect(calculateQualityScore).toHaveBeenCalledWith('raw input', 'refined prompt output');
     });
 
-    it('shows fallback warning toast when usedFallback is true', async () => {
+    it('shows fallback error toast when usedFallback is true', async () => {
       const toast = createMockToast();
       const optimizeWithFallback = vi.fn().mockResolvedValue({
         refined: 'fallback result',
@@ -350,7 +351,7 @@ describe('runTwoStageOptimization', () => {
         calculateQualityScore: vi.fn().mockReturnValue(70),
       });
 
-      expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('Fast optimization unavailable'));
+      expect(toast.error).toHaveBeenCalledWith('Optimization failed. Please try again.');
     });
 
     it('sets previewPrompt from metadata', async () => {

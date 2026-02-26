@@ -506,7 +506,12 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          const jobResult = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
+            dispatch({
+              type: 'UPDATE_GENERATION',
+              payload: { id: generation.id, updates: { serverProgress: update.progress } },
+            });
+          });
           videoUrl = jobResult?.videoUrl ?? null;
           videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
           videoAssetId = jobResult?.assetId ?? videoAssetId;
@@ -825,7 +830,12 @@ export function useGenerationActions(
             generationId: generation.id,
             jobId: response.jobId,
           });
-          const jobResult = await waitForVideoJob(response.jobId, controller.signal);
+          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
+            dispatch({
+              type: 'UPDATE_GENERATION',
+              payload: { id: generation.id, updates: { serverProgress: update.progress } },
+            });
+          });
           videoUrl = jobResult?.videoUrl ?? null;
           videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
           videoAssetId = jobResult?.assetId ?? videoAssetId;
