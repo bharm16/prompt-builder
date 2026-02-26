@@ -284,3 +284,47 @@ These are architectural constraints, not styling opinions.
 - Integration tests: `.agents/skills/integration-test/SKILL.md`
 - Architecture rules: `docs/architecture/CLAUDE_CODE_RULES.md`
 - Root CLAUDE.md: `CLAUDE.md`
+
+## Cursor Cloud specific instructions
+
+### Services Overview
+
+| Service | Port | Command | Notes |
+|---------|------|---------|-------|
+| Vite client | 5173 | `npm run dev` | React frontend; works independently of the server |
+| Express API | 3001 | `npm run server` | Requires Firebase Admin credentials (see below) |
+| Both | 5173+3001 | `npm start` | Concurrently runs both via `scripts/dev/start.ts` |
+
+### Firebase Credentials (Server Startup Blocker)
+
+The Express server runs `admin.auth().listUsers()` and `firestore.listCollections()` on every startup (in `server/src/config/services.initialize.ts`). Without a valid Firebase service account, the server exits with `FATAL: Application failed to start`. This check is **only** skipped when `NODE_ENV=test`.
+
+To start the server, you need **one** of:
+- `FIREBASE_SERVICE_ACCOUNT_JSON` env var containing the full service account JSON
+- `FIREBASE_SERVICE_ACCOUNT_PATH` env var pointing to an existing JSON file on disk
+- `GOOGLE_APPLICATION_CREDENTIALS` env var pointing to an existing JSON file on disk
+
+If these secrets are configured but reference file paths that don't exist on disk, the server will fail.
+
+### Running Without the Server
+
+The Vite client (`npm run dev`) runs independently and renders the full UI. API calls to `/api/*` and `/llm/*` will fail, but all frontend-only development (components, styling, state management) works fine.
+
+### Key Environment Config
+
+- `PROMPT_OUTPUT_ONLY=true` in `.env` disables video generation routes and skips GLiNER model download requirement.
+- Redis is optional; comment out `REDIS_URL` to use in-memory cache fallback.
+- The `.env` file is created from `.env.example` with placeholder Firebase values.
+
+### Commands Reference
+
+Standard commands are documented in root `CLAUDE.md` under **Commands**. Key ones:
+- Lint: `npm run lint` (ESLint), `npm run lint:css` (Stylelint), `npm run lint:all` (both)
+- Type check: `npx tsc --noEmit`
+- Unit tests: `npm run test:unit` (Vitest, ~5700+ tests)
+- Build: `npm run build` (Vite production build)
+- Pre-commit checks run automatically via git hooks installed by `npm install` (`prepare` script)
+
+### Pre-existing Test Failures
+
+There are 5 pre-existing unit test failures related to `LlmClientFactory` provider detection and `DepthEstimationService` availability checks. These are not environment-related.
