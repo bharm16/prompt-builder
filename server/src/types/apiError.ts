@@ -1,17 +1,8 @@
-export type ApiErrorCode =
-  | 'AUTH_REQUIRED'
-  | 'INVALID_REQUEST'
-  | 'INSUFFICIENT_CREDITS'
-  | 'SERVICE_UNAVAILABLE'
-  | 'GENERATION_FAILED'
-  | 'IDEMPOTENCY_KEY_REQUIRED'
-  | 'IDEMPOTENCY_CONFLICT'
-  | 'REQUEST_IN_PROGRESS'
-  | 'SESSION_VERSION_CONFLICT';
-
-export interface ApiError {
-  error: string;
-  code?: ApiErrorCode;
-  details?: string;
-  requestId?: string;
-}
+/**
+ * Re-export canonical API error types from the shared contract layer.
+ *
+ * Previously this file was the sole definition.  It now re-exports so that
+ * existing `import { ApiErrorCode } from '@server/types/apiError'` statements
+ * continue to work without modification.
+ */
+export type { ApiErrorCode, ApiErrorResponse as ApiError } from '@shared/types/api';

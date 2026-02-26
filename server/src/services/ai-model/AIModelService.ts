@@ -1,8 +1,11 @@
 import { logger } from '@infrastructure/Logger';
 import { ModelConfig, shouldUseSeed } from '@config/modelConfig';
+import { calculateLLMCost } from '@config/llmCosts';
 import { hashString } from '@utils/hash';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
 import { AIClientError, type IAIClient, type AIResponse, type CompletionOptions } from '@interfaces/IAIClient';
+import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
+import { LLMUnavailableError } from './LLMUnavailableError';
 import { buildRequestOptions } from './request/RequestOptionsBuilder';
 import { buildResponseFormat } from './request/ResponseFormatBuilder';
 import { ClientResolver } from './routing/ClientResolver';
@@ -38,8 +41,10 @@ export class AIModelService {
   private readonly clientResolver: ClientResolver;
   private readonly planResolver: ExecutionPlanResolver;
   private readonly hasAnyClient: boolean;
+  private readonly metrics: IMetricsCollector | undefined;
 
-  constructor({ clients }: { clients: ClientsMap }) {
+  constructor({ clients, metrics }: { clients: ClientsMap; metrics?: IMetricsCollector }) {
+    this.metrics = metrics;
     if (!clients || typeof clients !== 'object') {
       throw new Error('AIModelService requires clients object');
     }
@@ -79,7 +84,7 @@ export class AIModelService {
     }
 
     if (!this.hasAnyClient) {
-      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+      throw new LLMUnavailableError('No AI providers configured; enable at least one LLM provider');
     }
 
     const plan = this.planResolver.resolve(operation);
@@ -131,6 +136,7 @@ export class AIModelService {
       ...(responseFormat ? { responseFormat } : {}),
     });
 
+    const start = Date.now();
     try {
       logger.debug('Executing AI operation', {
         operation,
@@ -143,16 +149,22 @@ export class AIModelService {
       });
 
       const response = await client.complete(params.systemPrompt, requestOptions);
+      const durationMs = Date.now() - start;
+
+      this._recordMetrics(operation, config.client, requestOptions.model, response, durationMs, true);
 
       logger.debug('AI operation completed', {
         operation,
         client: config.client,
         success: true,
+        durationMs,
       });
 
       return response;
 
     } catch (error: unknown) {
+      const durationMs = Date.now() - start;
+      this._recordMetrics(operation, config.client, requestOptions.model, undefined, durationMs, false);
       const err = error as { message: string; statusCode?: number; isRetryable?: boolean };
 
       // Some providers/models reject `logprobs`; retry once without it.
@@ -233,7 +245,7 @@ export class AIModelService {
    */
   async stream(operation: string, params: StreamParams): Promise<string> {
     if (!this.hasAnyClient) {
-      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+      throw new LLMUnavailableError('No AI providers configured; enable at least one LLM provider');
     }
 
     const plan = this.planResolver.resolve(operation);
@@ -348,12 +360,23 @@ export class AIModelService {
         ...(fallbackConfig ? { fallbackConfig } : {}),
       });
 
+      const fallbackModel = fallbackConfig?.model || fallbackOptions.model || primaryConfig.model;
+      const fallbackStart = Date.now();
       const response = await client.complete(systemPrompt, fallbackOptions);
+      const fallbackDurationMs = Date.now() - fallbackStart;
+
+      // Normalize response — some providers populate content[] instead of text
+      if (!response.text && response.content?.length) {
+        response.text = response.content[0]?.text || '';
+      }
+
+      this._recordMetrics(operation, fallbackClient, fallbackModel, response, fallbackDurationMs, true);
 
       logger.info('Fallback succeeded', {
         operation,
         fallbackClient,
         model: fallbackConfig?.model || 'client-default',
+        durationMs: fallbackDurationMs,
       });
 
       return response;
@@ -368,6 +391,41 @@ export class AIModelService {
         error: err.message,
       });
       throw fallbackError;
+    }
+  }
+
+  /**
+   * Record LLM observability metrics (call latency, token usage, cost).
+   * All metrics calls are guarded — no-ops when metrics collector is absent.
+   */
+  private _recordMetrics(
+    operation: string,
+    provider: string,
+    model: string,
+    response: AIResponse | undefined,
+    durationMs: number,
+    success: boolean
+  ): void {
+    if (!this.metrics) return;
+
+    this.metrics.recordLLMCall?.(operation, provider, durationMs, success);
+
+    if (response?.metadata?.usage) {
+      const usage = response.metadata.usage as {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+      };
+      const inputTokens = usage.prompt_tokens ?? 0;
+      const outputTokens = usage.completion_tokens ?? 0;
+
+      if (inputTokens > 0 || outputTokens > 0) {
+        this.metrics.recordLLMTokens?.(operation, provider, inputTokens, outputTokens);
+        this.metrics.recordLLMCost?.(
+          operation,
+          provider,
+          calculateLLMCost(model, inputTokens, outputTokens)
+        );
+      }
     }
   }
 

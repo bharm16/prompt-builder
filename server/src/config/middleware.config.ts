@@ -252,7 +252,7 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
     ? RATE_LIMIT_CONFIG.llm.dev
     : RATE_LIMIT_CONFIG.llm.prod;
 
-  // JSON handler for rate limit responses
+  // JSON handler for rate limit responses — conforms to ApiErrorResponse shape
   const rateLimitJSONHandler = (
     req: express.Request,
     res: express.Response,
@@ -261,10 +261,9 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
   ): void => {
     const retryAfter = res.getHeader('Retry-After');
     res.status(options.statusCode).json({
-      error: 'Too Many Requests',
-      message: options.message,
-      retryAfter,
-      path: req.path,
+      error: options.message,
+      code: 'RATE_LIMITED',
+      details: retryAfter ? `Retry after ${String(retryAfter)}s` : undefined,
       requestId: (req as express.Request & { id?: string }).id,
     });
   };
@@ -274,6 +273,8 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
     windowMs: RATE_LIMIT_CONFIG.general.windowMs,
     max: generalMax,
     message: 'Too many requests from this IP',
+    standardHeaders: true,
+    legacyHeaders: false,
     skip: (req: express.Request) => req.path === '/metrics' || req.path === '/api/role-classify',
     ...(storeFactory ? { store: storeFactory('general') } : {}),
   });
@@ -361,6 +362,8 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
       windowMs: RATE_LIMIT_CONFIG.health.windowMs,
       max: RATE_LIMIT_CONFIG.health.max,
       message: 'Too many health check requests, please slow down',
+      standardHeaders: true,
+      legacyHeaders: false,
     })
   );
 

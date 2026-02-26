@@ -24,6 +24,7 @@ import { createFirestoreWriteGateMiddleware } from '@middleware/firestoreWriteGa
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
 import { createHealthRoutes } from '@routes/health.routes';
+import { createOpenApiDevRoute } from '../openapi/devRoute.ts';
 import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import type { StorageRoutesService } from '@routes/storage.routes';
@@ -149,6 +150,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   });
 
   app.use('/', healthRoutes);
+
+  // OpenAPI spec (dev only — returns null in production, not mounted)
+  const openApiRoute = createOpenApiDevRoute();
+  if (openApiRoute) {
+    app.use('/api-docs', openApiRoute);
+  }
 
   // Firestore write gate: fail-closed for all mutating /api routes.
   app.use('/api', createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));

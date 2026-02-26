@@ -21,7 +21,7 @@ describe('schemas/common', () => {
     expect(() => TimestampSchema.parse('01/01/2025')).toThrow();
   });
 
-  it('ApiResponseSchema validates wrapped data and optional error object', () => {
+  it('ApiResponseSchema validates success and failure variants', () => {
     const schema = ApiResponseSchema(
       z.object({
         value: z.string(),
@@ -41,20 +41,18 @@ describe('schemas/common', () => {
 
     const failureResult = schema.parse({
       success: false,
-      data: { value: 'fallback', count: 0 },
-      error: {
-        code: 'GENERIC_FAILURE',
-        message: 'Something failed',
-      },
+      error: 'Something failed',
+      code: 'INVALID_REQUEST',
     });
 
-    expect(failureResult.error).toEqual({
-      code: 'GENERIC_FAILURE',
-      message: 'Something failed',
+    expect(failureResult).toMatchObject({
+      success: false,
+      error: 'Something failed',
+      code: 'INVALID_REQUEST',
     });
   });
 
-  it('ApiResponseSchema rejects invalid error shape and invalid data payload', () => {
+  it('ApiResponseSchema rejects invalid data payload and missing error on failure', () => {
     const schema = ApiResponseSchema(
       z.object({
         value: z.string(),
@@ -71,8 +69,6 @@ describe('schemas/common', () => {
     expect(() =>
       schema.parse({
         success: false,
-        data: { value: 'ok' },
-        error: { code: 'ONLY_CODE' },
       })
     ).toThrow();
   });

@@ -46,42 +46,26 @@ export function createSuggestionsHandlers({
         isVideoPrompt: context.isVideoPrompt,
       });
 
-      try {
-        const evaluation = await llmJudge.evaluateSuggestions({
-          suggestions,
-          context,
-          ...(resolvedRubric ? { rubricType: resolvedRubric } : {}),
-        });
+      const evaluation = await llmJudge.evaluateSuggestions({
+        suggestions,
+        context,
+        ...(resolvedRubric ? { rubricType: resolvedRubric } : {}),
+      });
 
-        const responseTime = Math.round(performance.now() - startTime);
+      const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info('Operation completed.', {
-          operation,
-          requestId,
-          userId,
-          duration: responseTime,
-          overallScore: evaluation.overallScore,
-        });
+      logger.info('Operation completed.', {
+        operation,
+        requestId,
+        userId,
+        duration: responseTime,
+        overallScore: evaluation.overallScore,
+      });
 
-        return res.json({
-          evaluation,
-          responseTime,
-        });
-      } catch (error) {
-        const responseTime = Math.round(performance.now() - startTime);
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Operation failed.', errorObj, {
-          operation,
-          requestId,
-          duration: responseTime,
-        });
-
-        return res.status(500).json({
-          error: 'Evaluation failed',
-          message: errorObj.message,
-          responseTime,
-        });
-      }
+      return res.json({
+        evaluation,
+        responseTime,
+      });
     },
 
     async evaluateSingle(req, res) {
@@ -101,51 +85,34 @@ export function createSuggestionsHandlers({
       const { suggestion, context, rubric } = validation.data;
       const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
-      try {
-        logger.debug('Starting operation.', {
-          operation,
-          requestId,
-          userId,
-          suggestionLength: suggestion.length,
-          rubric: resolvedRubric || 'auto-detect',
-        });
+      logger.debug('Starting operation.', {
+        operation,
+        requestId,
+        userId,
+        suggestionLength: suggestion.length,
+        rubric: resolvedRubric || 'auto-detect',
+      });
 
-        const evaluation = await llmJudge.evaluateSingleSuggestion(
-          suggestion,
-          context,
-          resolvedRubric
-        );
+      const evaluation = await llmJudge.evaluateSingleSuggestion(
+        suggestion,
+        context,
+        resolvedRubric
+      );
 
-        const responseTime = Math.round(performance.now() - startTime);
+      const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info('Operation completed.', {
-          operation,
-          requestId,
-          userId,
-          duration: responseTime,
-          overallScore: evaluation.overallScore,
-        });
+      logger.info('Operation completed.', {
+        operation,
+        requestId,
+        userId,
+        duration: responseTime,
+        overallScore: evaluation.overallScore,
+      });
 
-        return res.json({
-          evaluation,
-          responseTime,
-        });
-      } catch (error) {
-        const responseTime = Math.round(performance.now() - startTime);
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Operation failed.', errorObj, {
-          operation,
-          requestId,
-          userId,
-          duration: responseTime,
-        });
-
-        return res.status(500).json({
-          error: 'Evaluation failed',
-          message: errorObj.message,
-          responseTime,
-        });
-      }
+      return res.json({
+        evaluation,
+        responseTime,
+      });
     },
 
     async compare(req, res) {
@@ -164,50 +131,34 @@ export function createSuggestionsHandlers({
       const { setA, setB, context, rubric } = validation.data;
       const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
-      try {
-        logger.debug('Starting operation.', {
-          operation,
-          requestId,
-          setACount: setA.length,
-          setBCount: setB.length,
-        });
+      logger.debug('Starting operation.', {
+        operation,
+        requestId,
+        setACount: setA.length,
+        setBCount: setB.length,
+      });
 
-        const comparison = await llmJudge.compareSuggestionSets(
-          setA,
-          setB,
-          context,
-          resolvedRubric
-        );
+      const comparison = await llmJudge.compareSuggestionSets(
+        setA,
+        setB,
+        context,
+        resolvedRubric
+      );
 
-        const responseTime = Math.round(performance.now() - startTime);
+      const responseTime = Math.round(performance.now() - startTime);
 
-        logger.info('Operation completed.', {
-          operation,
-          requestId,
-          duration: responseTime,
-          winner: comparison.winner,
-          scoreDifference: comparison.scoreDifference,
-        });
+      logger.info('Operation completed.', {
+        operation,
+        requestId,
+        duration: responseTime,
+        winner: comparison.winner,
+        scoreDifference: comparison.scoreDifference,
+      });
 
-        return res.json({
-          comparison,
-          responseTime,
-        });
-      } catch (error) {
-        const responseTime = Math.round(performance.now() - startTime);
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Operation failed.', errorObj, {
-          operation,
-          requestId,
-          duration: responseTime,
-        });
-
-        return res.status(500).json({
-          error: 'Evaluation failed',
-          message: errorObj.message,
-          responseTime,
-        });
-      }
+      return res.json({
+        comparison,
+        responseTime,
+      });
     },
 
     getRubrics(req, res) {

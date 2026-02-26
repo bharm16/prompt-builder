@@ -71,6 +71,13 @@ export class ApiClient {
     this.responseInterceptors.use(interceptor);
   }
 
+  /**
+   * Send a request and return the parsed JSON response.
+   *
+   * Runs the full interceptor chain and delegates response parsing to the
+   * {@link ApiResponseHandler}.  Use {@link rawRequest} instead when you
+   * need the raw `Response` (e.g. for streaming or custom Zod validation).
+   */
   async request(endpoint: string, options: RequestOptions = {}): Promise<unknown> {
     const builtRequest = this.requestBuilder.build(endpoint, options);
     const interceptedRequest = await this.requestInterceptors.run(builtRequest);
@@ -80,6 +87,27 @@ export class ApiClient {
       const response = await this.transport.send(url, init);
       const processedResponse = await this.responseInterceptors.run(response);
       return await this.responseHandler.handle(processedResponse);
+    } catch (error) {
+      throw this.responseHandler.mapError(error);
+    }
+  }
+
+  /**
+   * Send a request and return the raw `Response` object.
+   *
+   * Runs request interceptors (auth headers), retry transport, and response
+   * interceptors — but does **not** parse the body or throw on non-OK status.
+   * Use this for streaming responses, custom Zod validation, or any case
+   * where the caller needs full control over response processing.
+   */
+  async rawRequest(endpoint: string, options: RequestOptions = {}): Promise<Response> {
+    const builtRequest = this.requestBuilder.build(endpoint, options);
+    const interceptedRequest = await this.requestInterceptors.run(builtRequest);
+    const { url, init } = interceptedRequest;
+
+    try {
+      const response = await this.transport.send(url, init);
+      return await this.responseInterceptors.run(response);
     } catch (error) {
       throw this.responseHandler.mapError(error);
     }

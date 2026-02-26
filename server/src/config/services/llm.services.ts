@@ -168,7 +168,8 @@ export function registerLLMServices(container: DIContainer): void {
       groqClient: LLMClient | null,
       qwenClient: LLMClient | null,
       geminiClient: LLMClient | null,
-      config: ServiceConfig
+      config: ServiceConfig,
+      metricsService: MetricsService
     ) => {
       setProviderSettings({
         openai: { model: config.openai.model, timeout: config.openai.timeout },
@@ -184,8 +185,9 @@ export function registerLLMServices(container: DIContainer): void {
           qwen: qwenClient,
           gemini: geminiClient,
         },
+        metrics: metricsService,
       });
     },
-    ['claudeClient', 'groqClient', 'qwenClient', 'geminiClient', 'config']
+    ['claudeClient', 'groqClient', 'qwenClient', 'geminiClient', 'config', 'metricsService']
   );
 }

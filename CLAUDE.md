@@ -163,11 +163,15 @@ When modifying `server/src/config/services.config.ts`, `services.initialize.ts`,
 PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
 
-## Validation Expectations During Development
+## Primary Workflows
 
-- After each substantive production code change, run targeted unit tests for the impacted area immediately.
-- Do not defer all testing until commit time; use targeted checks to catch regressions while implementing.
-- Before handoff, run the full validation order below.
+### 1) Feature Workflow
+1. Read relevant scope docs and impacted modules first (`client/`, `server/`, `shared/`).
+2. Implement using established patterns:
+   - Frontend: `client/src/components/VideoConceptBuilder/` style (orchestrator + hooks + api + components).
+   - Backend: `server/src/services/prompt-optimization/` style (thin orchestrator + specialized services).
+3. Add/update tests close to changed behavior.
+4. Run targeted verification first, then full checks before handoff.
 
 ## Validation Order Before Handoff
 

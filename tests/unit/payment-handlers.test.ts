@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
+import { PaymentError } from '@routes/payment/PaymentError';
 
 const mocks = vi.hoisted(() => ({
   resolveUserId: vi.fn(),
@@ -247,7 +248,7 @@ describe('createPaymentHandlers', () => {
       expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
     });
 
-    it('returns 400 when user has no billing profile', async () => {
+    it('throws PaymentError when user has no billing profile', async () => {
       mocks.resolveUserId.mockResolvedValue('user-1');
       const handlers = createHandlers({
         billingProfileStore: {
@@ -257,10 +258,8 @@ describe('createPaymentHandlers', () => {
       const req = { headers: {} } as Request;
       const res = createRes();
 
-      await handlers.createPortalSession(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'No billing profile found' });
+      await expect(handlers.createPortalSession(req, res)).rejects.toThrow(PaymentError);
+      await expect(handlers.createPortalSession(req, res)).rejects.toThrow('No billing profile found');
     });
 
     it('creates portal session when customer exists', async () => {
@@ -320,7 +319,7 @@ describe('createPaymentHandlers', () => {
       expect(res.json).toHaveBeenCalledWith({ error: 'Invalid priceId' });
     });
 
-    it('validates priceId and returns 400 for unknown price', async () => {
+    it('throws PaymentError for unknown priceId', async () => {
       mocks.resolveUserId.mockResolvedValue('user-1');
       const handlers = createHandlers({
         paymentService: {
@@ -333,10 +332,8 @@ describe('createPaymentHandlers', () => {
       } as Request;
       const res = createRes();
 
-      await handlers.createCheckoutSession(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Unknown priceId' });
+      await expect(handlers.createCheckoutSession(req, res)).rejects.toThrow(PaymentError);
+      await expect(handlers.createCheckoutSession(req, res)).rejects.toThrow('Unknown priceId');
     });
 
     it('creates customer when billing profile is missing and persists it', async () => {

@@ -57,6 +57,10 @@ export class MetricsService implements IMetricsCollector {
   private modelRecommendationRequestsTotal: promClient.Counter<string>;
   private modelRecommendationEventsTotal: promClient.Counter<string>;
   private modelRecommendationTimeToGeneration: promClient.Histogram<string>;
+  private llmOperationDuration: promClient.Histogram<string>;
+  private llmTokensTotal: promClient.Counter<string>;
+  private llmCostDollarsTotal: promClient.Counter<string>;
+  private llmRepairAppliedTotal: promClient.Counter<string>;
 
   constructor() {
     this.register = new promClient.Registry();
@@ -289,6 +293,36 @@ export class MetricsService implements IMetricsCollector {
       help: 'Time from recommendation to generation start in milliseconds',
       labelNames: ['followed'],
       buckets: [100, 250, 500, 1000, 2000, 5000, 10000, 20000, 40000],
+      registers: [this.register],
+    });
+
+    // LLM operation metrics (provider-agnostic, covers OpenAI/Gemini/Groq/Qwen)
+    this.llmOperationDuration = new promClient.Histogram({
+      name: 'llm_operation_duration_seconds',
+      help: 'Duration of LLM operations in seconds by operation and provider',
+      labelNames: ['operation', 'provider', 'status'],
+      buckets: [0.5, 1, 2, 5, 10, 15, 20, 30, 45, 60],
+      registers: [this.register],
+    });
+
+    this.llmTokensTotal = new promClient.Counter({
+      name: 'llm_tokens_total',
+      help: 'Total tokens consumed by LLM operations',
+      labelNames: ['type', 'operation', 'provider'],
+      registers: [this.register],
+    });
+
+    this.llmCostDollarsTotal = new promClient.Counter({
+      name: 'llm_cost_dollars_total',
+      help: 'Estimated LLM API cost in dollars',
+      labelNames: ['operation', 'provider'],
+      registers: [this.register],
+    });
+
+    this.llmRepairAppliedTotal = new promClient.Counter({
+      name: 'llm_repair_applied_total',
+      help: 'Total JSON repair attempts on LLM responses',
+      labelNames: ['operation', 'repair_type'],
       registers: [this.register],
     });
   }
@@ -575,6 +609,45 @@ export class MetricsService implements IMetricsCollector {
     this.modelRecommendationTimeToGeneration.observe({
       followed: typeof followed === 'boolean' ? String(followed) : 'unknown',
     }, durationMs);
+  }
+
+  /**
+   * Record an LLM API call with latency and status
+   */
+  recordLLMCall(operation: string, provider: string, durationMs: number, success: boolean): void {
+    const status = success ? 'success' : 'error';
+    this.llmOperationDuration.observe(
+      { operation, provider, status },
+      durationMs / 1000
+    );
+  }
+
+  /**
+   * Record LLM token usage per operation and provider
+   */
+  recordLLMTokens(operation: string, provider: string, inputTokens: number, outputTokens: number): void {
+    if (inputTokens > 0) {
+      this.llmTokensTotal.inc({ type: 'input', operation, provider }, inputTokens);
+    }
+    if (outputTokens > 0) {
+      this.llmTokensTotal.inc({ type: 'output', operation, provider }, outputTokens);
+    }
+  }
+
+  /**
+   * Record estimated LLM cost in dollars
+   */
+  recordLLMCost(operation: string, provider: string, costDollars: number): void {
+    if (costDollars > 0) {
+      this.llmCostDollarsTotal.inc({ operation, provider }, costDollars);
+    }
+  }
+
+  /**
+   * Record a JSON repair event
+   */
+  recordLLMRepair(operation: string, repairType: string): void {
+    this.llmRepairAppliedTotal.inc({ operation, repair_type: repairType });
   }
 }
 

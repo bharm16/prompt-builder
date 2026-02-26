@@ -62,7 +62,7 @@ describe('suggestions handlers', () => {
     );
   });
 
-  it('returns 500 when evaluate judge call fails', async () => {
+  it('propagates error when evaluate judge call fails', async () => {
     llmJudge.evaluateSuggestions.mockRejectedValue(new Error('judge offline'));
 
     const req = createMockRequest({
@@ -71,15 +71,7 @@ describe('suggestions handlers', () => {
     });
     const res = createMockResponse();
 
-    await handlers.evaluate(req, res);
-
-    expect(res.statusCode).toBe(500);
-    expect(res.payload).toEqual(
-      expect.objectContaining({
-        error: 'Evaluation failed',
-        message: 'judge offline',
-      })
-    );
+    await expect(handlers.evaluate(req, res)).rejects.toThrow('judge offline');
   });
 
   it('routes explicit rubric to evaluateSuggestions', async () => {

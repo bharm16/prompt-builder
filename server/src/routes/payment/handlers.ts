@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import type { PaymentRouteDeps } from './types';
 import { resolveUserId } from './auth';
+import { PaymentError } from './PaymentError';
 
 export interface PaymentHandlers {
   getStatus: (req: Request, res: Response) => Promise<Response | void>;
@@ -22,26 +23,20 @@ export const createPaymentHandlers = ({
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    try {
-      const [profile, starterGrantInfo] = await Promise.all([
-        billingProfileStore.getProfile(userId),
-        userCreditService.getStarterGrantInfo(userId),
-      ]);
-      const isSubscribed = Boolean(
-        profile?.stripeSubscriptionId || profile?.subscriptionPriceId || profile?.planTier
-      );
+    const [profile, starterGrantInfo] = await Promise.all([
+      billingProfileStore.getProfile(userId),
+      userCreditService.getStarterGrantInfo(userId),
+    ]);
+    const isSubscribed = Boolean(
+      profile?.stripeSubscriptionId || profile?.subscriptionPriceId || profile?.planTier
+    );
 
-      return res.json({
-        planTier: profile?.planTier ?? null,
-        isSubscribed,
-        starterGrantCredits: starterGrantInfo.starterGrantCredits,
-        starterGrantGrantedAtMs: starterGrantInfo.starterGrantGrantedAtMs,
-      });
-    } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to load billing status', errorInstance, { userId });
-      return res.status(500).json({ error: 'Failed to load billing status' });
-    }
+    return res.json({
+      planTier: profile?.planTier ?? null,
+      isSubscribed,
+      starterGrantCredits: starterGrantInfo.starterGrantCredits,
+      starterGrantGrantedAtMs: starterGrantInfo.starterGrantGrantedAtMs,
+    });
   },
 
   async listCreditHistory(req, res) {
@@ -59,14 +54,8 @@ export const createPaymentHandlers = ({
           : Number.NaN;
     const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
 
-    try {
-      const transactions = await userCreditService.listCreditTransactions(userId, limit);
-      return res.json({ transactions });
-    } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to load credit history', errorInstance, { userId, limit });
-      return res.status(500).json({ error: 'Failed to load credit history' });
-    }
+    const transactions = await userCreditService.listCreditTransactions(userId, limit);
+    return res.json({ transactions });
   },
 
   async listInvoices(req, res) {
@@ -75,32 +64,26 @@ export const createPaymentHandlers = ({
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    try {
-      const profile = await billingProfileStore.getProfile(userId);
-      const stripeCustomerId = profile?.stripeCustomerId;
-      if (!stripeCustomerId) {
-        return res.json({ invoices: [] });
-      }
-
-      const invoices = await paymentService.listInvoices(stripeCustomerId, 20);
-      return res.json({
-        invoices: invoices.map((invoice) => ({
-          id: invoice.id,
-          number: invoice.number ?? null,
-          status: invoice.status ?? null,
-          created: typeof invoice.created === 'number' ? invoice.created : null,
-          currency: invoice.currency ?? null,
-          amountDue: typeof invoice.amount_due === 'number' ? invoice.amount_due : null,
-          amountPaid: typeof invoice.amount_paid === 'number' ? invoice.amount_paid : null,
-          hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
-          invoicePdf: invoice.invoice_pdf ?? null,
-        })),
-      });
-    } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to list invoices', errorInstance, { userId });
-      return res.status(500).json({ error: 'Failed to load invoices' });
+    const profile = await billingProfileStore.getProfile(userId);
+    const stripeCustomerId = profile?.stripeCustomerId;
+    if (!stripeCustomerId) {
+      return res.json({ invoices: [] });
     }
+
+    const invoices = await paymentService.listInvoices(stripeCustomerId, 20);
+    return res.json({
+      invoices: invoices.map((invoice) => ({
+        id: invoice.id,
+        number: invoice.number ?? null,
+        status: invoice.status ?? null,
+        created: typeof invoice.created === 'number' ? invoice.created : null,
+        currency: invoice.currency ?? null,
+        amountDue: typeof invoice.amount_due === 'number' ? invoice.amount_due : null,
+        amountPaid: typeof invoice.amount_paid === 'number' ? invoice.amount_paid : null,
+        hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+        invoicePdf: invoice.invoice_pdf ?? null,
+      })),
+    });
   },
 
   async createPortalSession(req, res) {
@@ -109,28 +92,22 @@ export const createPaymentHandlers = ({
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    try {
-      const profile = await billingProfileStore.getProfile(userId);
-      const stripeCustomerId = profile?.stripeCustomerId;
-      if (!stripeCustomerId) {
-        return res.status(400).json({ error: 'No billing profile found' });
-      }
-
-      const origin = req.headers.origin || process.env.FRONTEND_URL;
-      if (!origin) {
-        return res.status(500).json({ error: 'Billing return URL is not configured' });
-      }
-
-      const session = await paymentService.createBillingPortalSession(
-        stripeCustomerId,
-        `${origin}/settings/billing`
-      );
-      return res.json(session);
-    } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to create billing portal session', errorInstance, { userId });
-      return res.status(500).json({ error: 'Failed to create billing portal session' });
+    const profile = await billingProfileStore.getProfile(userId);
+    const stripeCustomerId = profile?.stripeCustomerId;
+    if (!stripeCustomerId) {
+      throw new PaymentError('NO_BILLING_PROFILE', 'No billing profile found');
     }
+
+    const origin = req.headers.origin || process.env.FRONTEND_URL;
+    if (!origin) {
+      throw new PaymentError('BILLING_URL_NOT_CONFIGURED', 'Billing return URL is not configured');
+    }
+
+    const session = await paymentService.createBillingPortalSession(
+      stripeCustomerId,
+      `${origin}/settings/billing`
+    );
+    return res.json(session);
   },
 
   async createCheckoutSession(req, res) {
@@ -147,50 +124,40 @@ export const createPaymentHandlers = ({
 
     const normalizedPriceId = priceId.trim();
     if (!paymentService.isPriceIdConfigured(normalizedPriceId)) {
-      return res.status(400).json({ error: 'Unknown priceId' });
+      throw new PaymentError('UNKNOWN_PRICE_ID', 'Unknown priceId', { priceId: normalizedPriceId });
     }
 
     const origin = req.headers.origin || process.env.FRONTEND_URL;
     if (!origin) {
-      logger.error('Missing origin for checkout return URL');
-      return res.status(500).json({ error: 'Billing return URL is not configured' });
+      throw new PaymentError('BILLING_URL_NOT_CONFIGURED', 'Billing return URL is not configured');
     }
 
+    let stripeCustomerId: string | undefined;
     try {
-      let stripeCustomerId: string | undefined;
-      try {
-        const profile = await billingProfileStore.getProfile(userId);
-        if (profile?.stripeCustomerId) {
-          stripeCustomerId = profile.stripeCustomerId;
-        } else {
-          const customer = await paymentService.createCustomer(userId);
-          stripeCustomerId = customer.id;
-          await billingProfileStore.upsertProfile(userId, {
-            stripeCustomerId: customer.id,
-            stripeLivemode: customer.livemode,
-          });
-        }
-      } catch (error: unknown) {
-        logger.warn('Failed to ensure Stripe customer; checkout will create one automatically', {
-          userId,
-          error: (error as Error).message,
+      const profile = await billingProfileStore.getProfile(userId);
+      if (profile?.stripeCustomerId) {
+        stripeCustomerId = profile.stripeCustomerId;
+      } else {
+        const customer = await paymentService.createCustomer(userId);
+        stripeCustomerId = customer.id;
+        await billingProfileStore.upsertProfile(userId, {
+          stripeCustomerId: customer.id,
+          stripeLivemode: customer.livemode,
         });
       }
-
-      const session = await paymentService.createCheckoutSession(
-        userId,
-        normalizedPriceId,
-        `${origin}/settings/billing`,
-        stripeCustomerId
-      );
-      return res.json(session);
     } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to create checkout session', errorInstance, {
+      logger.warn('Failed to ensure Stripe customer; checkout will create one automatically', {
         userId,
-        priceId: normalizedPriceId,
+        error: (error as Error).message,
       });
-      return res.status(500).json({ error: 'Failed to create checkout session' });
     }
+
+    const session = await paymentService.createCheckoutSession(
+      userId,
+      normalizedPriceId,
+      `${origin}/settings/billing`,
+      stripeCustomerId
+    );
+    return res.json(session);
   },
 });

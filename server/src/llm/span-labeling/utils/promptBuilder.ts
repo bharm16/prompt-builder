@@ -25,6 +25,7 @@ import { logger } from '@infrastructure/Logger';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { PROMPT_VERSIONS } from '../promptVersions';
 
 // OpenAI-specific imports
 import {
@@ -114,27 +115,44 @@ export function buildSystemPrompt(
   const normalizedProvider = provider.toLowerCase();
 
   if (templateVersion && templateVersion.toLowerCase().startsWith('i2v')) {
+    logger.debug('Building span labeling prompt', {
+      promptVersion: PROMPT_VERSIONS.I2V_SPAN_LABELING,
+      provider: normalizedProvider,
+      templateVersion,
+    });
     return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${loadI2VPromptTemplate()}`.trim();
   }
-  
+
   let basePrompt: string;
-  
+  let promptVersion: string;
+
   if (normalizedProvider === 'openai') {
     // OpenAI: Minimal prompt, rules in schema descriptions
     basePrompt = OPENAI_MINIMAL_PROMPT;
-    logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
+    promptVersion = PROMPT_VERSIONS.SPAN_LABELING;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+    });
   } else if (normalizedProvider === 'gemini') {
     // Gemini: Use the lightweight test prompt for fast span extraction
     basePrompt = GEMINI_SIMPLE_SYSTEM_PROMPT;
-    logger.debug('Using Gemini simple prompt');
+    promptVersion = PROMPT_VERSIONS.GEMINI_SIMPLE;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+    });
     return basePrompt.trim();
   } else {
     // Groq/Llama 3: Full prompt, rules in system message
     // When json_schema is active, remove redundant format instructions
     basePrompt = getGroqSystemPrompt(useJsonSchema);
-    logger.debug('Using Groq prompt', { 
-      useJsonSchema, 
-      optimized: useJsonSchema ? 'format-instructions-removed' : 'full-prompt'
+    promptVersion = PROMPT_VERSIONS.SPAN_LABELING;
+    logger.debug('Building span labeling prompt', {
+      promptVersion,
+      provider: normalizedProvider,
+      useJsonSchema,
+      optimized: useJsonSchema ? 'format-instructions-removed' : 'full-prompt',
     });
   }
   

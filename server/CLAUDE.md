@@ -3,7 +3,7 @@
 Express API server for the Vidra video prompt editor.
 
 Commit protocol, TypeScript rules, and change scope limits are defined in the root `CLAUDE.md` — all rules apply here.
-Also follow root validation expectations: run targeted unit tests after each substantive change and run the full validation order before handoff.
+Root `AGENTS.md` rules apply here — especially the non-negotiable rules and commit protocol.
 
 ## Stack
 

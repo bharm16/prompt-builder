@@ -4,7 +4,7 @@
  * Handles common LLM response formats like markdown code fences
  * and provides safe parsing with error handling.
  */
-import { attemptJsonRepair } from '@clients/adapters/jsonRepair';
+import { attemptJsonRepair, assessRepairCompleteness } from '@clients/adapters/jsonRepair';
 import { cleanJSONResponse } from '@utils/JsonExtractor';
 
 export interface UserPayloadParams {
@@ -16,7 +16,7 @@ export interface UserPayloadParams {
 }
 
 type ParseResult =
-  | { ok: true; value: unknown }
+  | { ok: true; value: unknown; repairMeta?: { isLikelyTruncated: boolean; reason?: string } }
   | { ok: false; error: string };
 
 /**
@@ -72,9 +72,12 @@ export function parseJson(raw: string): ParseResult {
     if (result.ok) return result;
   }
 
-  const { repaired } = attemptJsonRepair(newlineEscaped);
-  result = tryParseJson(repaired);
-  if (result.ok) return result;
+  const repairResult = attemptJsonRepair(newlineEscaped);
+  result = tryParseJson(repairResult.repaired);
+  if (result.ok) {
+    const completeness = assessRepairCompleteness(repairResult);
+    return { ...result, repairMeta: completeness };
+  }
 
   return result;
 }
