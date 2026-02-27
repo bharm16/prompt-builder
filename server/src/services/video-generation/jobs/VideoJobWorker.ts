@@ -14,6 +14,7 @@ import { RetryPolicy } from '@server/utils/RetryPolicy';
 interface VideoJobWorkerOptions {
   workerId?: string;
   hostname?: string;
+  processRole?: string;
   pollIntervalMs: number;
   leaseMs: number;
   maxConcurrent: number;
@@ -22,6 +23,13 @@ interface VideoJobWorkerOptions {
   heartbeatIntervalMs?: number;
   providerCircuitManager?: ProviderCircuitManager;
   perProviderMaxConcurrent?: number;
+  workerHeartbeatStore?: {
+    reportHeartbeat: (
+      workerId: string,
+      metadata?: { hostname?: string; processRole?: string }
+    ) => Promise<void>;
+    markStopped: (workerId: string) => Promise<void>;
+  };
   metrics?: {
     recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
   };
@@ -49,12 +57,16 @@ export class VideoJobWorker {
   private readonly leaseMs: number;
   private readonly maxConcurrent: number;
   private readonly workerId: string;
+  private readonly hostname: string | undefined;
+  private readonly processRole: string;
   private readonly heartbeatIntervalMs: number;
   private readonly providerCircuitManager: ProviderCircuitManager | undefined;
   private readonly perProviderMaxConcurrent: number;
+  private readonly workerHeartbeatStore: VideoJobWorkerOptions['workerHeartbeatStore'];
   private readonly metrics?: VideoJobWorkerOptions['metrics'];
   private readonly log: ReturnType<typeof logger.child>;
   private timer: NodeJS.Timeout | null = null;
+  private workerHeartbeatTimer: NodeJS.Timeout | null = null;
   private activeCount = 0;
   private readonly activeProviderCounts = new Map<string, number>();
   private currentPollIntervalMs: number;
@@ -80,12 +92,15 @@ export class VideoJobWorker {
     this.pollBackoffFactor = options.backoffFactor ?? 1.5;
     this.leaseMs = options.leaseMs;
     this.maxConcurrent = options.maxConcurrent;
+    this.hostname = options.hostname;
+    this.processRole = options.processRole ?? 'worker';
     this.workerId = options.workerId || options.hostname || `video-worker-${uuidv4()}`;
     this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
     this.currentPollIntervalMs = this.basePollIntervalMs;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 20_000;
     this.providerCircuitManager = options.providerCircuitManager;
     this.perProviderMaxConcurrent = options.perProviderMaxConcurrent ?? Math.max(1, Math.ceil(this.maxConcurrent / 2));
+    this.workerHeartbeatStore = options.workerHeartbeatStore;
     this.metrics = options.metrics;
   }
 
@@ -102,14 +117,33 @@ export class VideoJobWorker {
       maxConcurrent: this.maxConcurrent,
       heartbeatIntervalMs: this.heartbeatIntervalMs,
     });
+    if (this.workerHeartbeatStore) {
+      this.reportWorkerHeartbeat();
+      this.workerHeartbeatTimer = setInterval(() => {
+        this.reportWorkerHeartbeat();
+      }, this.heartbeatIntervalMs);
+      this.workerHeartbeatTimer.unref?.();
+    }
     this.scheduleNextTick(0);
   }
 
   stop(): void {
     this.isRunning = false;
+    if (this.workerHeartbeatTimer) {
+      clearInterval(this.workerHeartbeatTimer);
+      this.workerHeartbeatTimer = null;
+    }
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
+    }
+    if (this.workerHeartbeatStore) {
+      void this.workerHeartbeatStore.markStopped(this.workerId).catch((error) => {
+        this.log.warn('Failed to record worker stopped heartbeat', {
+          workerId: this.workerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
   }
 
@@ -168,6 +202,21 @@ export class VideoJobWorker {
     });
 
     await Promise.allSettled(releases);
+  }
+
+  private reportWorkerHeartbeat(): void {
+    if (!this.workerHeartbeatStore) {
+      return;
+    }
+    void this.workerHeartbeatStore.reportHeartbeat(this.workerId, {
+      ...(this.hostname ? { hostname: this.hostname } : {}),
+      processRole: this.processRole,
+    }).catch((error) => {
+      this.log.warn('Failed to record worker heartbeat', {
+        workerId: this.workerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   private scheduleNextTick(delayMs: number): void {
@@ -453,7 +502,7 @@ export class VideoJobWorker {
           assetId: result.assetId,
           recovery: 'manual — asset exists at storagePath',
         });
-        const refundKey = buildRefundKey(['video-job', job.id, 'completion-failure']);
+        const refundKey = buildRefundKey(['video-job', job.id, 'video']);
         await refundWithGuard({
           userCreditService: this.userCreditService,
           userId: job.userId,

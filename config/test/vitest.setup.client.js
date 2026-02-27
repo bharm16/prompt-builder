@@ -12,6 +12,8 @@ expect.extend(matchers);
 
 // Cleanup after each test
 afterEach(() => {
+  // Prevent fake timers from leaking between tests (breaks userEvent.type and other async flows).
+  vi.useRealTimers();
   cleanup();
 });
 

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
+import type { ApiErrorCode } from '@server/types/apiError';
 import type { PreviewRoutesServices } from '@routes/types';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { ResolvedPrompt } from '@shared/types/asset';
@@ -10,7 +11,10 @@ import { parseImageStoryboardGenerateRequest } from '../imageStoryboardRequest';
 
 type ImageStoryboardGenerateServices = Pick<
   PreviewRoutesServices,
-  'storyboardPreviewService' | 'userCreditService' | 'assetService'
+  | 'storyboardPreviewService'
+  | 'userCreditService'
+  | 'assetService'
+  | 'requestIdempotencyService'
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
@@ -61,6 +65,7 @@ export const createImageStoryboardGenerateHandler = ({
   storyboardPreviewService,
   userCreditService,
   assetService,
+  requestIdempotencyService,
 }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
@@ -98,11 +103,73 @@ export const createImageStoryboardGenerateHandler = ({
       });
     }
 
+    const rawIdempotencyKey = req.get('Idempotency-Key');
+    const idempotencyKey =
+      typeof rawIdempotencyKey === 'string' && rawIdempotencyKey.trim().length > 0
+        ? rawIdempotencyKey.trim()
+        : null;
+    let idempotencyRecordId: string | null = null;
+
+    const releaseIdempotencyLock = async (reason: string): Promise<void> => {
+      if (!idempotencyRecordId || !requestIdempotencyService) {
+        return;
+      }
+      await requestIdempotencyService.markFailed(idempotencyRecordId, reason);
+    };
+
+    const respondWithError = async (
+      status: number,
+      payload: { error: string; code: ApiErrorCode; details?: string }
+    ): Promise<Response> => {
+      await releaseIdempotencyLock(payload.code || payload.error);
+      return sendApiError(res, req, status, payload);
+    };
+
+    if (idempotencyKey) {
+      if (!requestIdempotencyService) {
+        logger.warn('Idempotency key supplied but request idempotency service is unavailable', {
+          userId,
+          requestId,
+          path: req.path,
+        });
+        return sendApiError(res, req, 503, {
+          error: 'Storyboard generation service is not available',
+          code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
+          details: 'Idempotency service is not configured',
+        });
+      }
+
+      const claim = await requestIdempotencyService.claimRequest({
+        userId,
+        route: '/api/preview/generate/storyboard',
+        key: idempotencyKey,
+        payload: parsedRequest.data,
+      });
+
+      if (claim.state === 'replay') {
+        return res.status(claim.snapshot.statusCode).json(claim.snapshot.body);
+      }
+      if (claim.state === 'conflict') {
+        return sendApiError(res, req, 409, {
+          error: 'Idempotency key was already used with a different payload',
+          code: GENERATION_ERROR_CODES.IDEMPOTENCY_CONFLICT,
+        });
+      }
+      if (claim.state === 'in_progress') {
+        return sendApiError(res, req, 409, {
+          error: 'A matching request is already in progress',
+          code: GENERATION_ERROR_CODES.REQUEST_IN_PROGRESS,
+        });
+      }
+
+      idempotencyRecordId = claim.recordId;
+    }
+
     if (!userCreditService) {
       logger.error('User credit service is not available - blocking preview access', undefined, {
         path: req.path,
       });
-      return sendApiError(res, req, 503, {
+      return await respondWithError(503, {
         error: 'Storyboard generation service is not available',
         code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
         details: 'Credit service is not configured',
@@ -137,7 +204,7 @@ export const createImageStoryboardGenerateHandler = ({
             path: req.path,
           }
         );
-        return sendApiError(res, req, 500, {
+        return await respondWithError(500, {
           error: 'Storyboard prompt resolution failed',
           code: GENERATION_ERROR_CODES.GENERATION_FAILED,
           details: errorMessage,
@@ -186,7 +253,7 @@ export const createImageStoryboardGenerateHandler = ({
         previewCost,
         storyboardFrames,
       });
-      return sendApiError(res, req, 402, {
+      return await respondWithError(402, {
         error: 'Insufficient credits',
         code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
         details: `This storyboard requires ${previewCost} credit${previewCost === 1 ? '' : 's'}.`,
@@ -219,7 +286,7 @@ export const createImageStoryboardGenerateHandler = ({
         imageHosts,
       });
 
-      return res.json({
+      const responseBody = {
         success: true,
         data: {
           imageUrls: result.imageUrls,
@@ -227,7 +294,19 @@ export const createImageStoryboardGenerateHandler = ({
           deltas: result.deltas,
           baseImageUrl: result.baseImageUrl,
         },
-      });
+      } as Record<string, unknown>;
+
+      if (idempotencyRecordId && requestIdempotencyService) {
+        await requestIdempotencyService.markCompleted({
+          recordId: idempotencyRecordId,
+          snapshot: {
+            statusCode: 200,
+            body: responseBody,
+          },
+        });
+      }
+
+      return res.json(responseBody);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = hasStatusCode(error) ? error.statusCode : 500;
@@ -252,7 +331,7 @@ export const createImageStoryboardGenerateHandler = ({
         aspectRatio,
       });
 
-      return sendApiError(res, req, statusCode, {
+      return await respondWithError(statusCode, {
         error: 'Storyboard generation failed',
         code: isServiceUnavailable
           ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE

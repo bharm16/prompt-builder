@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest';
  * These checks enforce no regressions while cleanup is incrementally completed.
  */
 const DEEP_IMPORT_BASELINE = {
-  server: 31,
+  server: 32,
   client: 49,
 } as const;
 

@@ -81,6 +81,10 @@ export type ConstitutionalReviewLike = (
   signal?: AbortSignal | undefined
 ) => Promise<string>;
 
+export type QualityGateMetricsLike = {
+  recordOptimizationQualityGate(score: number, triggered: boolean): void;
+};
+
 export interface OptimizeFlowArgs {
   request: OptimizationRequest;
   log: ILogger;
@@ -96,6 +100,7 @@ export interface OptimizeFlowArgs {
     optimizedPrompt: string,
     mode: OptimizationMode
   ) => void;
+  metricsService?: QualityGateMetricsLike | null;
 }
 
 export type DraftGenerationLike = {

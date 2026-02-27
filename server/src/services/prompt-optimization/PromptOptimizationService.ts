@@ -27,6 +27,7 @@ import type {
   ShotPlan,
 } from './types';
 import type { I2VConstraintMode } from './types/i2v';
+import type { QualityGateMetricsLike } from './workflows/types';
 import { runI2vFlow } from './workflows/i2vFlow';
 import { runTwoStageFlow } from './workflows/twoStageFlow';
 import { runOptimizeFlow } from './workflows/optimizeFlow';
@@ -50,6 +51,7 @@ export class PromptOptimizationService {
   private readonly imageObservation: ImageObservationService;
   private readonly i2vStrategy: I2VMotionStrategy;
   private readonly templateVersions: typeof OptimizationConfig.templateVersions;
+  private readonly metricsService: QualityGateMetricsLike | null;
   private readonly log: ILogger;
 
   constructor(
@@ -58,7 +60,8 @@ export class PromptOptimizationService {
     videoPromptService: VideoPromptService | null = null,
     imageObservationService: ImageObservationService,
     templateService?: TemplateService,
-    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number }
+    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number },
+    metricsService?: QualityGateMetricsLike | null
   ) {
     this.ai = aiService;
     this.videoPromptService = videoPromptService;
@@ -77,6 +80,7 @@ export class PromptOptimizationService {
       : null;
     this.imageObservation = imageObservationService;
     this.i2vStrategy = new I2VMotionStrategy(aiService);
+    this.metricsService = metricsService ?? null;
 
     this.templateVersions = OptimizationConfig.templateVersions;
 
@@ -156,6 +160,7 @@ export class PromptOptimizationService {
         this.applyConstitutionalAI(nextPrompt, mode, signal),
       logOptimizationMetrics: (originalPrompt, optimizedPrompt, mode) =>
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
+      metricsService: this.metricsService,
     });
   }
 

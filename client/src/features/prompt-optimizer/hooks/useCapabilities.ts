@@ -18,6 +18,20 @@ interface UseCapabilitiesOptions {
   enabled?: boolean;
 }
 
+const CAPABILITIES_UNSUPPORTED_MODELS = new Set([
+  'flux-kontext',
+  'replicate-flux-schnell',
+  'replicate-flux-kontext-fast',
+]);
+
+const isUnsupportedCapabilitiesModel = (modelId: string): boolean => {
+  const normalized = modelId.trim().toLowerCase();
+  return (
+    CAPABILITIES_UNSUPPORTED_MODELS.has(normalized) ||
+    normalized.startsWith('replicate-flux-')
+  );
+};
+
 const resolveLabel = (selectedModel?: string, resolvedModel?: string): string => {
   if (!selectedModel) {
     return 'Auto-detect';
@@ -54,6 +68,12 @@ export const useCapabilities = (
     const newTarget = resolveTarget(selectedModel);
     setTarget(newTarget);
     if (!enabled) {
+      return;
+    }
+    if (isUnsupportedCapabilitiesModel(newTarget.model)) {
+      setSchema(null);
+      setError(null);
+      setIsLoading(false);
       return;
     }
     let active = true;

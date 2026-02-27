@@ -1,7 +1,6 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Request, Response } from 'express';
 import { buildRefundKey } from '@services/credits/refundGuard';
 import { createImageGenerateHandler } from '@routes/preview/handlers/imageGenerate';
 import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
@@ -84,27 +83,18 @@ describe('imageGenerate refunds', () => {
       } as never,
       assetService: null as never,
     });
-    const req = {
-      id: 'req-img-insufficient-1',
-      path: '/preview/generate',
-      body: { prompt: 'A dramatic portrait' },
-      user: { uid: 'user-1' },
-    } as unknown as Request;
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn().mockReturnThis(),
-    } as unknown as Response;
-
-    await handler(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(402);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: 'Insufficient credits',
-        code: 'INSUFFICIENT_CREDITS',
-        requestId: 'req-img-insufficient-1',
-      })
+    const app = createApp(handler, 'req-img-insufficient-1');
+    const response = await runSupertestOrSkip(() =>
+      request(app).post('/preview/generate').send({ prompt: 'A dramatic portrait' })
     );
+    if (!response) return;
+
+    expect(response.status).toBe(402);
+    expect(response.body).toMatchObject({
+      error: 'Insufficient credits',
+      code: 'INSUFFICIENT_CREDITS',
+      requestId: 'req-img-insufficient-1',
+    });
     expect(reserveCreditsMock).toHaveBeenCalledWith('user-1', 1);
     expect(generatePreviewMock).not.toHaveBeenCalled();
     expect(refundCreditsMock).not.toHaveBeenCalled();

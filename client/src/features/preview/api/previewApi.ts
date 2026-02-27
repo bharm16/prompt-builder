@@ -205,7 +205,12 @@ export async function generatePreview(
         ? { outputQuality: resolvedOptions.outputQuality }
         : {}),
     },
-    isKontext ? { timeout: 60000 } : {}
+    {
+      ...(isKontext ? { timeout: 60000 } : {}),
+      headers: {
+        'Idempotency-Key': generateIdempotencyKey(),
+      },
+    }
   )) as unknown;
 
   return GeneratePreviewResponseSchema.parse(payload) as GeneratePreviewResponse;
@@ -233,6 +238,9 @@ export async function generateStoryboardPreview(
     },
     {
       timeout: API_CONFIG.timeout.storyboard,
+      headers: {
+        'Idempotency-Key': generateIdempotencyKey(),
+      },
     }
   )) as unknown;
 
@@ -251,6 +259,10 @@ export async function faceSwapPreview(options: {
     characterAssetId: options.characterAssetId.trim(),
     targetImageUrl: options.targetImageUrl.trim(),
     ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+  }, {
+    headers: {
+      'Idempotency-Key': generateIdempotencyKey(),
+    },
   })) as unknown;
 
   const parsed = FaceSwapPreviewResponseSchema.parse(payload) as FaceSwapPreviewResponse;

@@ -55,9 +55,15 @@ export function registerCoreServices(container: DIContainer): void {
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
       priceCreditsJson: process.env.STRIPE_PRICE_CREDITS,
       webhookReconciliation: {
-        disabled: process.env.WEBHOOK_RECONCILIATION_DISABLED !== 'false',
+        disabled: process.env.WEBHOOK_RECONCILIATION_DISABLED === 'true',
         intervalSeconds: resolvePositiveNumber(process.env.WEBHOOK_RECONCILIATION_INTERVAL_SECONDS, 300, 30),
         lookbackHours: resolvePositiveNumber(process.env.WEBHOOK_RECONCILIATION_LOOKBACK_HOURS, 72, 1),
+      },
+      profileRepair: {
+        disabled: process.env.BILLING_PROFILE_REPAIR_DISABLED === 'true',
+        intervalSeconds: resolvePositiveNumber(process.env.BILLING_PROFILE_REPAIR_INTERVAL_SECONDS, 60, 1),
+        maxPerRun: resolvePositiveNumber(process.env.BILLING_PROFILE_REPAIR_MAX_PER_RUN, 25, 1),
+        maxAttempts: resolvePositiveNumber(process.env.BILLING_PROFILE_REPAIR_MAX_ATTEMPTS, 20, 1),
       },
     },
     credits: {

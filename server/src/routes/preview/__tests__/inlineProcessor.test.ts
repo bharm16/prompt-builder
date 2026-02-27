@@ -379,6 +379,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
     // RetryPolicy calls markCompleted 3 times (1 initial + 2 retries)
     expect(jobStore.markCompleted.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(mocks.buildRefundKey).toHaveBeenCalledWith(['video-job', 'job-1', 'video']);
     // Credits refunded because the video exists in GCS but job was not marked
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({

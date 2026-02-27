@@ -21,6 +21,7 @@ import { VideoPromptService } from '@services/video-prompt-analysis/index';
 import { AIServiceVideoPromptLlmGateway } from '@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway';
 import { MultimodalAssetManager } from '@services/video-prompt-analysis/services/MultimodalAssetManager';
 import { VideoConceptService } from '@services/video-concept/VideoConceptService';
+import type { MetricsService } from '@infrastructure/MetricsService';
 import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerEnhancementServices(container: DIContainer): void {
@@ -67,7 +68,8 @@ export function registerEnhancementServices(container: DIContainer): void {
       videoService: VideoPromptService,
       imageObservationService: ImageObservationService,
       templateService: TemplateService,
-      config: ServiceConfig
+      config: ServiceConfig,
+      metricsService: MetricsService
     ) => {
       const po = config.promptOptimization;
       return new PromptOptimizationService(
@@ -76,10 +78,11 @@ export function registerEnhancementServices(container: DIContainer): void {
         videoService,
         imageObservationService,
         templateService,
-        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax }
+        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax },
+        metricsService
       );
     },
-    ['aiService', 'cacheService', 'videoService', 'imageObservationService', 'templateService', 'config']
+    ['aiService', 'cacheService', 'videoService', 'imageObservationService', 'templateService', 'config', 'metricsService']
   );
 
   container.register(

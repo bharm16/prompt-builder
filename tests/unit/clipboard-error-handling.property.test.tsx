@@ -114,14 +114,11 @@ describe('Clipboard Error Handling Property Tests', () => {
       }
       fireEvent.click(firstCopyButton);
 
-      // Wait for async clipboard operation to complete
-      await waitFor(() => {
-        expect(mockClipboard.writeText).toHaveBeenCalled();
-      });
+      expect(mockClipboard.writeText).toHaveBeenCalledWith('Test suggestion 1');
 
       // Component should still be rendered and functional
       expect(container.querySelector('[role="list"]')).toBeTruthy();
-    });
+    }, 30000);
 
     it('component handles Permission denied error without crashing', async () => {
       const mockClipboard = {

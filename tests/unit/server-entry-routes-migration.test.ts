@@ -237,6 +237,36 @@ describe('health.routes', () => {
     expect(ready.body.checks.firestore.circuitState).toBe('open');
   });
 
+  it('reports not ready when video execution path check fails', async () => {
+    const deps = {
+      claudeClient: { getStats: () => ({ state: 'CLOSED' }) },
+      groqClient: null,
+      geminiClient: null,
+      cacheService: {
+        isHealthy: () => true,
+        getCacheStats: () => ({ hits: 1, misses: 0 }),
+      },
+      metricsService: {
+        register: { contentType: 'text/plain' },
+        getMetrics: async () => 'metrics',
+      },
+      checkVideoExecutionPath: async () => ({
+        healthy: false,
+        message: 'No active video worker heartbeats detected while inline processing is disabled',
+        activeWorkerCount: 0,
+      }),
+    };
+
+    const app = express();
+    app.use(createHealthRoutes(deps));
+
+    const ready = await runSupertestOrSkip(() => request(app).get('/health/ready'));
+    if (!ready) return;
+    expect(ready.status).toBe(503);
+    expect(ready.body.status).toBe('not ready');
+    expect(ready.body.checks.videoExecution.healthy).toBe(false);
+  });
+
   it('protects metrics and stats endpoints with token', async () => {
     process.env.METRICS_TOKEN = 'secret-token';
 

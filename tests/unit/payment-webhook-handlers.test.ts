@@ -42,7 +42,7 @@ describe('createWebhookEventHandlers', () => {
         metadata: { userId: 'user-1' },
         customer: 'cus_1',
         subscription: 'sub_1',
-      } as any);
+      } as any, 'evt_sub_1');
 
       expect(billingProfileStore.upsertProfile).toHaveBeenCalledWith('user-1', {
         stripeCustomerId: 'cus_1',
@@ -56,10 +56,18 @@ describe('createWebhookEventHandlers', () => {
       const billingProfileStore = {
         upsertProfile: vi.fn().mockRejectedValue(new Error('db down')),
       };
+      const paymentConsistencyStore = {
+        enqueueBillingProfileRepair: vi.fn().mockResolvedValue(undefined),
+      };
+      const metricsService = {
+        recordAlert: vi.fn(),
+      };
       const handlers = createWebhookEventHandlers({
         paymentService: {} as never,
         billingProfileStore: billingProfileStore as never,
         userCreditService: {} as never,
+        paymentConsistencyStore: paymentConsistencyStore as never,
+        metricsService: metricsService as never,
       });
 
       await handlers.handleCheckoutSessionCompleted({
@@ -69,7 +77,7 @@ describe('createWebhookEventHandlers', () => {
         metadata: { userId: 'user-1' },
         customer: 'cus_1',
         subscription: 'sub_1',
-      } as any);
+      } as any, 'evt_sub_2');
 
       expect(mocks.loggerError).toHaveBeenCalledWith(
         'Failed to persist billing profile from checkout',
@@ -77,6 +85,26 @@ describe('createWebhookEventHandlers', () => {
         expect.objectContaining({
           userId: 'user-1',
           sessionId: 'cs_1',
+        })
+      );
+      expect(paymentConsistencyStore.enqueueBillingProfileRepair).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repairKey: 'checkout:cs_1',
+          source: 'checkout',
+          userId: 'user-1',
+          stripeCustomerId: 'cus_1',
+          stripeSubscriptionId: 'sub_1',
+          referenceId: 'cs_1',
+          eventId: 'evt_sub_2',
+        })
+      );
+      expect(metricsService.recordAlert).toHaveBeenCalledWith(
+        'billing_profile_repair_queued',
+        expect.objectContaining({
+          source: 'checkout',
+          userId: 'user-1',
+          referenceId: 'cs_1',
+          eventId: 'evt_sub_2',
         })
       );
     });
@@ -99,7 +127,7 @@ describe('createWebhookEventHandlers', () => {
           creditAmount: '120',
         },
         client_reference_id: null,
-      } as any);
+      } as any, 'evt_pay_1');
 
       expect(userCreditService.addCredits).toHaveBeenCalledWith('user-2', 120, {
         source: 'stripe_checkout',
@@ -108,54 +136,84 @@ describe('createWebhookEventHandlers', () => {
       });
     });
 
-    it('does not grant credits when one-time checkout metadata is invalid', async () => {
+    it('quarantines one-time checkout when credit metadata is invalid', async () => {
       const userCreditService = {
         addCredits: vi.fn(),
+      };
+      const paymentConsistencyStore = {
+        recordUnresolvedEvent: vi.fn().mockResolvedValue(undefined),
       };
       const handlers = createWebhookEventHandlers({
         paymentService: {} as never,
         billingProfileStore: {} as never,
         userCreditService: userCreditService as never,
+        paymentConsistencyStore: paymentConsistencyStore as never,
       });
 
-      await handlers.handleCheckoutSessionCompleted({
-        id: 'cs_3',
-        mode: 'payment',
-        metadata: {
-          userId: 'user-3',
-          creditAmount: '0',
-        },
-      } as any);
+      await expect(
+        handlers.handleCheckoutSessionCompleted(
+          {
+            id: 'cs_3',
+            mode: 'payment',
+            livemode: false,
+            metadata: {
+              userId: 'user-3',
+              creditAmount: '0',
+            },
+          } as any,
+          'evt_pay_bad_1'
+        )
+      ).rejects.toThrow('Checkout session missing credit metadata');
 
       expect(userCreditService.addCredits).not.toHaveBeenCalled();
-      expect(mocks.loggerWarn).toHaveBeenCalled();
+      expect(paymentConsistencyStore.recordUnresolvedEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'evt_pay_bad_1',
+          eventType: 'checkout.session.completed',
+          stripeObjectId: 'cs_3',
+        })
+      );
     });
   });
 
   describe('handleInvoicePaid', () => {
-    it('returns early when user cannot be resolved', async () => {
+    it('quarantines invoice.paid when user cannot be resolved', async () => {
       const paymentService = {
         resolveUserIdForInvoice: vi.fn().mockResolvedValue(null),
+      };
+      const paymentConsistencyStore = {
+        recordUnresolvedEvent: vi.fn().mockResolvedValue(undefined),
       };
       const handlers = createWebhookEventHandlers({
         paymentService: paymentService as never,
         billingProfileStore: {} as never,
         userCreditService: {} as never,
+        paymentConsistencyStore: paymentConsistencyStore as never,
       });
 
-      await handlers.handleInvoicePaid(
-        {
-          id: 'in_1',
-          lines: { data: [] },
-        } as any,
-        'evt_1'
-      );
+      await expect(
+        handlers.handleInvoicePaid(
+          {
+            id: 'in_1',
+            lines: { data: [] },
+            livemode: false,
+          } as any,
+          'evt_1'
+        )
+      ).rejects.toThrow('Invoice paid without user metadata');
 
       expect(mocks.loggerWarn).toHaveBeenCalledWith(
         'Invoice paid without user metadata',
         expect.objectContaining({
           invoiceId: 'in_1',
           eventId: 'evt_1',
+        })
+      );
+      expect(paymentConsistencyStore.recordUnresolvedEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'evt_1',
+          eventType: 'invoice.paid',
+          stripeObjectId: 'in_1',
         })
       );
     });
@@ -290,6 +348,12 @@ describe('createWebhookEventHandlers', () => {
       const billingProfileStore = {
         upsertProfile: vi.fn().mockRejectedValue(new Error('db down')),
       };
+      const paymentConsistencyStore = {
+        enqueueBillingProfileRepair: vi.fn().mockResolvedValue(undefined),
+      };
+      const metricsService = {
+        recordAlert: vi.fn(),
+      };
       const userCreditService = {
         addCredits: vi.fn().mockResolvedValue(undefined),
       };
@@ -297,6 +361,8 @@ describe('createWebhookEventHandlers', () => {
         paymentService: paymentService as never,
         billingProfileStore: billingProfileStore as never,
         userCreditService: userCreditService as never,
+        paymentConsistencyStore: paymentConsistencyStore as never,
+        metricsService: metricsService as never,
       });
 
       await handlers.handleInvoicePaid(
@@ -319,6 +385,26 @@ describe('createWebhookEventHandlers', () => {
         expect.objectContaining({
           userId: 'user-1',
           invoiceId: 'in_6',
+          eventId: 'evt_6',
+        })
+      );
+      expect(paymentConsistencyStore.enqueueBillingProfileRepair).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repairKey: 'invoice:in_6',
+          source: 'invoice',
+          userId: 'user-1',
+          stripeCustomerId: 'cus_1',
+          stripeSubscriptionId: 'sub_1',
+          referenceId: 'in_6',
+          eventId: 'evt_6',
+        })
+      );
+      expect(metricsService.recordAlert).toHaveBeenCalledWith(
+        'billing_profile_repair_queued',
+        expect.objectContaining({
+          source: 'invoice',
+          userId: 'user-1',
+          referenceId: 'in_6',
           eventId: 'evt_6',
         })
       );

@@ -78,6 +78,13 @@ describe('redis config', () => {
     expect(redisCtorMock).not.toHaveBeenCalled();
   });
 
+  it('returns null when no REDIS_URL or REDIS_HOST is set', () => {
+    const redis = createRedisClient();
+
+    expect(redis).toBeNull();
+    expect(redisCtorMock).not.toHaveBeenCalled();
+  });
+
   it('creates redis client and connects with URL override', async () => {
     process.env.REDIS_URL = 'redis://localhost:6379';
 
@@ -91,7 +98,17 @@ describe('redis config', () => {
     );
   });
 
+  it('creates redis client when REDIS_HOST is set', () => {
+    process.env.REDIS_HOST = '10.0.0.5';
+
+    const redis = createRedisClient();
+
+    expect(redis).toBeTruthy();
+    expect(redisCtorMock).toHaveBeenCalledTimes(1);
+  });
+
   it('closes redis client gracefully via quit', async () => {
+    process.env.REDIS_URL = 'redis://localhost:6379';
     const redis = createRedisClient();
 
     await closeRedisClient(redis);
@@ -101,6 +118,7 @@ describe('redis config', () => {
   });
 
   it('forces disconnect when quit fails', async () => {
+    process.env.REDIS_URL = 'redis://localhost:6379';
     const redis = createRedisClient();
     quitMock.mockRejectedValueOnce(new Error('quit failed'));
 

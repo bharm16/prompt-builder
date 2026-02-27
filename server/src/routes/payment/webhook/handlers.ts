@@ -2,23 +2,45 @@ import type Stripe from 'stripe';
 import { logger } from '@infrastructure/Logger';
 import type { WebhookHandlerDeps } from '../types';
 import { resolvePlanTierFromPriceIds } from '@config/subscriptionTiers';
+import { WebhookUnresolvedError } from './errors';
 
 type WebhookEventHandlerDeps = Pick<
   WebhookHandlerDeps,
-  'paymentService' | 'billingProfileStore' | 'userCreditService'
+  | 'paymentService'
+  | 'billingProfileStore'
+  | 'userCreditService'
+  | 'paymentConsistencyStore'
+  | 'metricsService'
 >;
 
 export interface WebhookEventHandlers {
-  handleCheckoutSessionCompleted: (session: Stripe.Checkout.Session) => Promise<void>;
+  handleCheckoutSessionCompleted: (session: Stripe.Checkout.Session, eventId: string) => Promise<void>;
   handleInvoicePaid: (invoice: Stripe.Invoice, eventId: string) => Promise<void>;
+}
+
+interface UnresolvedEventInput {
+  eventId: string;
+  eventType: string;
+  reason: string;
+  livemode: boolean;
+  stripeObjectId?: string;
+  userId?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export const createWebhookEventHandlers = ({
   paymentService,
   billingProfileStore,
   userCreditService,
+  paymentConsistencyStore,
+  metricsService,
 }: WebhookEventHandlerDeps): WebhookEventHandlers => ({
-  async handleCheckoutSessionCompleted(session) {
+  async handleCheckoutSessionCompleted(session, eventId) {
+    const markUnresolved = async (input: UnresolvedEventInput): Promise<never> => {
+      await paymentConsistencyStore?.recordUnresolvedEvent(input);
+      throw new WebhookUnresolvedError(input.reason);
+    };
+
     if (session.mode === 'subscription') {
       const userId = session.metadata?.userId || session.client_reference_id || null;
       const stripeCustomerId =
@@ -46,6 +68,36 @@ export const createWebhookEventHandlers = ({
             userId,
             sessionId: session.id,
           });
+          try {
+            await paymentConsistencyStore?.enqueueBillingProfileRepair({
+              repairKey: `checkout:${session.id}`,
+              source: 'checkout',
+              userId,
+              stripeCustomerId,
+              ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+              stripeLivemode: session.livemode,
+              eventId,
+              referenceId: session.id,
+            });
+            metricsService?.recordAlert('billing_profile_repair_queued', {
+              source: 'checkout',
+              userId,
+              referenceId: session.id,
+              eventId,
+            });
+          } catch (repairError) {
+            logger.error('Failed to enqueue billing profile repair from checkout', repairError as Error, {
+              userId,
+              sessionId: session.id,
+              eventId,
+            });
+            metricsService?.recordAlert('billing_profile_repair_enqueue_failed', {
+              source: 'checkout',
+              userId,
+              referenceId: session.id,
+              eventId,
+            });
+          }
         }
       }
 
@@ -61,12 +113,32 @@ export const createWebhookEventHandlers = ({
 
     if (!userId) {
       logger.warn('Checkout session missing user identifier', { sessionId: session.id });
-      return;
+      return await markUnresolved({
+        eventId,
+        eventType: 'checkout.session.completed',
+        reason: 'Checkout session missing user identifier',
+        livemode: session.livemode,
+        stripeObjectId: session.id,
+        metadata: {
+          mode: session.mode,
+          hasClientReferenceId: Boolean(session.client_reference_id),
+        },
+      });
     }
 
     if (!Number.isFinite(credits) || credits <= 0) {
       logger.warn('Checkout session missing credit metadata', { sessionId: session.id });
-      return;
+      return await markUnresolved({
+        eventId,
+        eventType: 'checkout.session.completed',
+        reason: 'Checkout session missing credit metadata',
+        livemode: session.livemode,
+        stripeObjectId: session.id,
+        userId,
+        metadata: {
+          creditAmount: session.metadata?.creditAmount ?? null,
+        },
+      });
     }
 
     await userCreditService.addCredits(userId, credits, {
@@ -86,7 +158,18 @@ export const createWebhookEventHandlers = ({
         subscriptionId: invoice.subscription,
         customerId: invoice.customer,
       });
-      return;
+      await paymentConsistencyStore?.recordUnresolvedEvent({
+        eventId,
+        eventType: 'invoice.paid',
+        reason: 'Invoice paid without user metadata',
+        livemode: invoice.livemode,
+        stripeObjectId: invoice.id,
+        metadata: {
+          subscriptionId: invoice.subscription ?? null,
+          customerId: invoice.customer ?? null,
+        },
+      });
+      throw new WebhookUnresolvedError('Invoice paid without user metadata');
     }
 
     const stripeCustomerId =
@@ -122,6 +205,38 @@ export const createWebhookEventHandlers = ({
           invoiceId: invoice.id,
           eventId,
         });
+        try {
+          await paymentConsistencyStore?.enqueueBillingProfileRepair({
+            repairKey: `invoice:${invoice.id}`,
+            source: 'invoice',
+            userId,
+            stripeCustomerId,
+            ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+            ...(resolvedPlanTier ? { planTier: resolvedPlanTier } : {}),
+            ...(invoicePriceIds[0] ? { subscriptionPriceId: invoicePriceIds[0] } : {}),
+            stripeLivemode: invoice.livemode,
+            eventId,
+            referenceId: invoice.id,
+          });
+          metricsService?.recordAlert('billing_profile_repair_queued', {
+            source: 'invoice',
+            userId,
+            referenceId: invoice.id,
+            eventId,
+          });
+        } catch (repairError) {
+          logger.error('Failed to enqueue billing profile repair from invoice', repairError as Error, {
+            userId,
+            invoiceId: invoice.id,
+            eventId,
+          });
+          metricsService?.recordAlert('billing_profile_repair_enqueue_failed', {
+            source: 'invoice',
+            userId,
+            referenceId: invoice.id,
+            eventId,
+          });
+        }
       }
     }
 

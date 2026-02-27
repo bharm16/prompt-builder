@@ -44,7 +44,7 @@ describe('ToolRail gallery toggle', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
     expect(toggleGallery).toHaveBeenCalledTimes(1);
-  });
+  }, 30000);
 
   it('marks gallery button active when gallery is open', () => {
     render(

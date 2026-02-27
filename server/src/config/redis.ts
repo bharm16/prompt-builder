@@ -31,6 +31,12 @@ export function createRedisClient(): Redis | null {
     return null;
   }
 
+  // Redis is optional — fall back to in-memory when not explicitly configured
+  if (!process.env.REDIS_URL && !process.env.REDIS_HOST) {
+    logger.info('Redis not configured (no REDIS_URL or REDIS_HOST); using in-memory fallback');
+    return null;
+  }
+
   try {
     const password = process.env.REDIS_PASSWORD;
     const redisConfig = {

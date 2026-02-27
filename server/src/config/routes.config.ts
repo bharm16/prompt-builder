@@ -20,6 +20,7 @@ import { errorHandler } from '@middleware/errorHandler';
 import { createBatchMiddleware } from '@middleware/requestBatching';
 import { createStarterCreditsMiddleware } from '@middleware/starterCredits';
 import { createFirestoreWriteGateMiddleware } from '@middleware/firestoreWriteGate';
+import { createRouteTimeout } from '@middleware/routeTimeout';
 
 // Import routes
 import { createAPIRoutes } from '@routes/api.routes';
@@ -32,6 +33,8 @@ import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
 import type { PaymentRouteServices } from '@routes/payment/types';
+import type { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
+import type { VideoWorkerHeartbeatStore } from '@services/video-generation/jobs/VideoWorkerHeartbeatStore';
 import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
 import { createMotionRoutes } from '@routes/motion.routes';
 import { CAMERA_PATHS } from '@services/convergence/constants';
@@ -73,7 +76,8 @@ function resolveOptionalService<T>(
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
-  const { promptOutputOnly } = getRuntimeFlags();
+  const runtimeFlags = getRuntimeFlags();
+  const { promptOutputOnly } = runtimeFlags;
   const firestoreCircuitExecutor = container.resolve<FirestoreCircuitExecutor>('firestoreCircuitExecutor');
   const convergenceStorageService = promptOutputOnly
     ? null
@@ -116,6 +120,48 @@ export function registerRoutes(app: Application, container: DIContainer): void {
         'video-concept'
       );
   const starterCreditsMiddleware = createStarterCreditsMiddleware(userCreditService);
+  const videoWorkerHeartbeatStore = promptOutputOnly
+    ? null
+    : resolveOptionalService<VideoWorkerHeartbeatStore | null>(
+        container,
+        'videoWorkerHeartbeatStore',
+        'health-video-workers'
+      );
+  const videoWorkerHeartbeatMaxAgeMs = Number.parseInt(
+    process.env.VIDEO_WORKER_HEARTBEAT_MAX_AGE_MS || '',
+    10
+  );
+  const resolvedVideoWorkerHeartbeatMaxAgeMs =
+    Number.isFinite(videoWorkerHeartbeatMaxAgeMs) && videoWorkerHeartbeatMaxAgeMs > 0
+      ? videoWorkerHeartbeatMaxAgeMs
+      : 90_000;
+  const checkVideoExecutionPath =
+    !promptOutputOnly && !runtimeFlags.videoJobInlineEnabled
+      ? async () => {
+          if (!videoWorkerHeartbeatStore) {
+            return {
+              healthy: false,
+              message: 'Video worker heartbeat store is unavailable',
+            };
+          }
+          const summary = await videoWorkerHeartbeatStore.getActiveWorkerSummary(
+            resolvedVideoWorkerHeartbeatMaxAgeMs
+          );
+          if (summary.activeWorkerCount === 0) {
+            return {
+              healthy: false,
+              message: 'No active video worker heartbeats detected while inline processing is disabled',
+              activeWorkerCount: 0,
+              heartbeatMaxAgeMs: resolvedVideoWorkerHeartbeatMaxAgeMs,
+            };
+          }
+          return {
+            healthy: true,
+            activeWorkerCount: summary.activeWorkerCount,
+            heartbeatMaxAgeMs: resolvedVideoWorkerHeartbeatMaxAgeMs,
+          };
+        }
+      : null;
 
   // ============================================================================
   // Health Routes (no auth required)
@@ -128,6 +174,8 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     ['creditRefundSweeper', resolveOptionalService<StatusProvider | null>(container, 'creditRefundSweeper', 'health-workers')],
     ['videoJobWorker', resolveOptionalService<StatusProvider | null>(container, 'videoJobWorker', 'health-workers')],
     ['dlqReprocessorWorker', resolveOptionalService<StatusProvider | null>(container, 'dlqReprocessorWorker', 'health-workers')],
+    ['webhookReconciliationWorker', resolveOptionalService<StatusProvider | null>(container, 'webhookReconciliationWorker', 'health-workers')],
+    ['billingProfileRepairWorker', resolveOptionalService<StatusProvider | null>(container, 'billingProfileRepairWorker', 'health-workers')],
   ];
   const workers: Record<string, StatusProvider> = {};
   for (const [name, provider] of workerEntries) {
@@ -146,6 +194,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
         await getFirestore().listCollections();
       });
     },
+    ...(checkVideoExecutionPath ? { checkVideoExecutionPath } : {}),
     workers,
   });
 
@@ -192,7 +241,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     modelIntelligenceMetrics: container.resolve('metricsService'),
   });
 
-  app.use('/api', apiAuthMiddleware, apiRoutes);
+  app.use('/api', apiAuthMiddleware, createRouteTimeout(30_000), apiRoutes);
 
   // ============================================================================
   // Motion Routes (auth required)
@@ -275,11 +324,23 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Payment Routes (auth required)
   // ============================================================================
 
+  const paymentConsistencyStore = resolveOptionalService<PaymentConsistencyStore | null>(
+    container,
+    'paymentConsistencyStore',
+    'payment'
+  );
+  const paymentMetricsService = resolveOptionalService<NonNullable<PaymentRouteServices['metricsService']> | null>(
+    container,
+    'metricsService',
+    'payment'
+  );
   const paymentRouteServices: PaymentRouteServices = {
     paymentService: container.resolve<PaymentRouteServices['paymentService']>('paymentService'),
     webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
     billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
     userCreditService,
+    ...(paymentConsistencyStore ? { paymentConsistencyStore } : {}),
+    ...(paymentMetricsService ? { metricsService: paymentMetricsService } : {}),
     firestoreCircuitExecutor,
   };
   const paymentRoutes = createPaymentRoutes(paymentRouteServices);

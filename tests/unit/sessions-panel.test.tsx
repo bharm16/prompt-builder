@@ -106,7 +106,6 @@ describe('SessionsPanel', () => {
 
   describe('error handling', () => {
     it('warns when trying to copy an empty prompt', async () => {
-      const user = userEvent.setup();
       const entry = createEntry({ input: '   ', output: '   ' });
 
       render(
@@ -122,7 +121,7 @@ describe('SessionsPanel', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'Copy' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
 
       expect(toastMocks.warning).toHaveBeenCalledWith('Nothing to copy yet.');
     });
@@ -154,7 +153,6 @@ describe('SessionsPanel', () => {
     });
 
     it('blocks empty rename submissions with a warning', async () => {
-      const user = userEvent.setup();
       const entry = createEntry({ input: 'My prompt' });
 
       render(
@@ -171,12 +169,12 @@ describe('SessionsPanel', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'Rename' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
 
       const input = screen.getByPlaceholderText('Prompt title');
       fireEvent.change(input, { target: { value: '   ' } });
 
-      await user.click(screen.getByRole('button', { name: 'Save' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
       expect(toastMocks.warning).toHaveBeenCalledWith('Title cannot be empty.');
       expect(onRename).not.toHaveBeenCalled();

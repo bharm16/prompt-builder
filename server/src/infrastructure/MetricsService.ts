@@ -61,6 +61,8 @@ export class MetricsService implements IMetricsCollector {
   private llmTokensTotal: promClient.Counter<string>;
   private llmCostDollarsTotal: promClient.Counter<string>;
   private llmRepairAppliedTotal: promClient.Counter<string>;
+  private optimizationQualityGateTotal: promClient.Counter<string>;
+  private optimizationQualityGateScore: promClient.Histogram<string>;
 
   constructor() {
     this.register = new promClient.Registry();
@@ -323,6 +325,22 @@ export class MetricsService implements IMetricsCollector {
       name: 'llm_repair_applied_total',
       help: 'Total JSON repair attempts on LLM responses',
       labelNames: ['operation', 'repair_type'],
+      registers: [this.register],
+    });
+
+    // Optimization quality gate metrics
+    this.optimizationQualityGateTotal = new promClient.Counter({
+      name: 'optimization_quality_gate_total',
+      help: 'Total optimization quality gate evaluations',
+      labelNames: ['outcome'],
+      registers: [this.register],
+    });
+
+    this.optimizationQualityGateScore = new promClient.Histogram({
+      name: 'optimization_quality_gate_score',
+      help: 'Quality assessment scores at the gate decision point',
+      labelNames: ['outcome'],
+      buckets: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
       registers: [this.register],
     });
   }
@@ -648,6 +666,17 @@ export class MetricsService implements IMetricsCollector {
    */
   recordLLMRepair(operation: string, repairType: string): void {
     this.llmRepairAppliedTotal.inc({ operation, repair_type: repairType });
+  }
+
+  /**
+   * Record optimization quality gate evaluation.
+   * Tracks both the outcome (triggered vs passed) and the score distribution
+   * so we can measure how often the iterative retry loop fires.
+   */
+  recordOptimizationQualityGate(score: number, triggered: boolean): void {
+    const outcome = triggered ? 'triggered' : 'passed';
+    this.optimizationQualityGateTotal.inc({ outcome });
+    this.optimizationQualityGateScore.observe({ outcome }, score);
   }
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import { MAX_REQUEST_LENGTH } from '@components/SuggestionsPanel/config/panelConfig';
 import { cn } from '@/utils/cn';
@@ -26,6 +26,9 @@ type PromptCanvasSuggestionsPanelProps = Pick<
   | 'onCustomRequestSubmit'
   | 'isCustomRequestDisabled'
   | 'isCustomLoading'
+  | 'responseMetadata'
+  | 'onCopyAllDebug'
+  | 'isBulkCopyLoading'
   | 'isInlineLoading'
   | 'isInlineError'
   | 'inlineErrorMessage'
@@ -55,6 +58,9 @@ export function PromptCanvasSuggestionsPanel({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   isInlineLoading,
   isInlineError,
   inlineErrorMessage,
@@ -64,6 +70,31 @@ export function PromptCanvasSuggestionsPanel({
   i2vMotionAlternatives,
   onLockedAlternativeClick,
 }: PromptCanvasSuggestionsPanelProps): React.ReactElement | null {
+  const [isDebugCopied, setIsDebugCopied] = useState(false);
+  const debugPayload = useMemo(() => {
+    if (!import.meta.env.DEV) {
+      return null;
+    }
+    const candidate = responseMetadata?._debug;
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+    return candidate as Record<string, unknown>;
+  }, [responseMetadata]);
+
+  const handleCopyDebug = useCallback(() => {
+    if (!debugPayload || typeof navigator === 'undefined' || !navigator.clipboard) {
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(JSON.stringify(debugPayload, null, 2))
+      .then(() => {
+        setIsDebugCopied(true);
+        window.setTimeout(() => setIsDebugCopied(false), 1200);
+      });
+  }, [debugPayload]);
+
   if (!selectedSpanId) {
     return null;
   }
@@ -79,6 +110,25 @@ export function PromptCanvasSuggestionsPanel({
           <span className="bg-surface-3 text-label-sm text-muted inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5">
             {suggestionCount}
           </span>
+          {debugPayload && (
+            <button
+              type="button"
+              className="text-label-sm text-muted hover:text-foreground transition-colors"
+              onClick={handleCopyDebug}
+            >
+              {isDebugCopied ? 'Copied!' : 'Copy Debug'}
+            </button>
+          )}
+          {import.meta.env.DEV && onCopyAllDebug && (
+            <button
+              type="button"
+              className="text-label-sm text-muted hover:text-foreground transition-colors"
+              onClick={onCopyAllDebug}
+              disabled={isBulkCopyLoading}
+            >
+              {isBulkCopyLoading ? 'Copying All...' : 'Copy All Debug'}
+            </button>
+          )}
         </div>
         <div className="text-muted hidden items-center gap-1 sm:flex" aria-hidden="true">
           <span className="border-border bg-surface-3 text-label-sm text-muted rounded-md border px-2 py-0.5 font-semibold">

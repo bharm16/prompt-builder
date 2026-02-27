@@ -13,6 +13,7 @@ const {
   billingProfileStoreMock,
   webhookEventStoreMock,
   userCreditServiceMock,
+  paymentConsistencyStoreMock,
 } = vi.hoisted(() => {
   const paymentServiceMock = {
     listInvoices: vi.fn(),
@@ -43,11 +44,22 @@ const {
     ensureStarterGrant: vi.fn(),
   };
 
+  const paymentConsistencyStoreMock = {
+    recordUnresolvedEvent: vi.fn(),
+    getUnresolvedSummary: vi.fn(),
+    enqueueBillingProfileRepair: vi.fn(),
+    claimNextBillingProfileRepair: vi.fn(),
+    markBillingProfileRepairResolved: vi.fn(),
+    releaseBillingProfileRepairForRetry: vi.fn(),
+    markBillingProfileRepairEscalated: vi.fn(),
+  };
+
   return {
     paymentServiceMock,
     billingProfileStoreMock,
     webhookEventStoreMock,
     userCreditServiceMock,
+    paymentConsistencyStoreMock,
   };
 });
 
@@ -61,6 +73,10 @@ vi.mock('@services/payment/BillingProfileStore', () => ({
 
 vi.mock('@services/payment/StripeWebhookEventStore', () => ({
   StripeWebhookEventStore: vi.fn(() => webhookEventStoreMock),
+}));
+
+vi.mock('@services/payment/PaymentConsistencyStore', () => ({
+  PaymentConsistencyStore: vi.fn(() => paymentConsistencyStoreMock),
 }));
 
 vi.mock('@services/credits/UserCreditService', () => ({
@@ -143,6 +159,13 @@ describe('Payment Routes (full-stack integration)', () => {
     webhookEventStoreMock.claimEvent.mockResolvedValue({ state: 'claimed' });
     webhookEventStoreMock.markProcessed.mockResolvedValue(undefined);
     webhookEventStoreMock.markFailed.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.recordUnresolvedEvent.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.getUnresolvedSummary.mockResolvedValue({ openCount: 0, oldestOpenAgeMs: null });
+    paymentConsistencyStoreMock.enqueueBillingProfileRepair.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.claimNextBillingProfileRepair.mockResolvedValue(null);
+    paymentConsistencyStoreMock.markBillingProfileRepairResolved.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.releaseBillingProfileRepairForRetry.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.markBillingProfileRepairEscalated.mockResolvedValue(undefined);
 
     userCreditServiceMock.addCredits.mockResolvedValue(undefined);
     userCreditServiceMock.ensureStarterGrant.mockResolvedValue(false);

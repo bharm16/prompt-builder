@@ -16,6 +16,7 @@ import type { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqRe
 import type { VideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
 import type { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
 import type { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
+import type { BillingProfileRepairWorker } from '@services/payment/BillingProfileRepairWorker';
 import { getRuntimeFlags } from './runtime-flags';
 
 interface HealthCheckResult {
@@ -79,18 +80,39 @@ async function validateLLMClient(
   }
 }
 
+export const STARTUP_CHECK_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  return Promise.race([
+    fn(),
+    new Promise<never>((_, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Infrastructure check '${label}' timed out after ${STARTUP_CHECK_TIMEOUT_MS}ms`)),
+        STARTUP_CHECK_TIMEOUT_MS
+      );
+      timer.unref();
+    }),
+  ]);
+}
+
 async function runInfrastructureStartupChecks(container: DIContainer): Promise<void> {
-  const auth = getAuth();
-  await auth.listUsers(1);
+  await withTimeout('firebase-auth', async () => {
+    const auth = getAuth();
+    await auth.listUsers(1);
+  });
 
-  const firestore = getFirestore();
-  await firestore.listCollections();
+  await withTimeout('firestore', async () => {
+    const firestore = getFirestore();
+    await firestore.listCollections();
+  });
 
-  const bucket = container.resolve<Bucket>('gcsBucket');
-  const [exists] = await bucket.exists();
-  if (!exists) {
-    throw new Error(`Configured GCS bucket does not exist: ${bucket.name}`);
-  }
+  await withTimeout('gcs-bucket', async () => {
+    const bucket = container.resolve<Bucket>('gcsBucket');
+    const [exists] = await bucket.exists();
+    if (!exists) {
+      throw new Error(`Configured GCS bucket does not exist: ${bucket.name}`);
+    }
+  });
 }
 
 /**
@@ -380,6 +402,13 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     if (webhookReconciliationWorker) {
       webhookReconciliationWorker.start();
       logger.info('✅ Webhook reconciliation worker started');
+    }
+
+    const billingProfileRepairWorker =
+      container.resolve<BillingProfileRepairWorker | null>('billingProfileRepairWorker');
+    if (billingProfileRepairWorker) {
+      billingProfileRepairWorker.start();
+      logger.info('✅ Billing profile repair worker started');
     }
 
     // Wire circuit breaker recovery to reset worker poll intervals for fast recovery

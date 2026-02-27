@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { ElementCard } from '../ElementCard';
 import type { ElementConfig } from '../types';
@@ -134,9 +133,8 @@ describe('ElementCard', () => {
   });
 
   describe('core behavior', () => {
-    it('invokes onValueChange when example is clicked', async () => {
+    it('invokes onValueChange when example is clicked', () => {
       const onValueChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <ElementCard
@@ -154,16 +152,15 @@ describe('ElementCard', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'example one' }));
+      fireEvent.click(screen.getByRole('button', { name: 'example one' }));
 
       expect(onValueChange).toHaveBeenCalledWith('subject', 'example one');
       expect(screen.getByRole('button', { name: /^AI$/ })).toBeInTheDocument();
     });
 
-    it('triggers input and AI actions for descriptor cards', async () => {
+    it('triggers input and AI actions for descriptor cards', () => {
       const onValueChange = vi.fn();
       const onFetchSuggestions = vi.fn(async () => {});
-      const user = userEvent.setup();
 
       render(
         <ElementCard
@@ -188,12 +185,12 @@ describe('ElementCard', () => {
       );
 
       const descriptorInput = screen.getByPlaceholderText('Descriptor 1 placeholder');
-      await user.type(descriptorInput, ' sparkling');
+      fireEvent.change(descriptorInput, { target: { value: ' sparkling' } });
 
       expect(onValueChange).toHaveBeenCalled();
       expect(screen.getByText('Physical')).toBeInTheDocument();
 
-      await user.click(screen.getAllByRole('button', { name: /ai fill/i })[0]!);
+      fireEvent.click(screen.getAllByRole('button', { name: /ai fill/i })[0]!);
       expect(onFetchSuggestions).toHaveBeenCalledWith('subjectDescriptor1' as ElementKey);
     });
   });

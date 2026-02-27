@@ -24,6 +24,7 @@ export interface EnhancementSuggestionsResponse<TSuggestion = string> {
   suggestions: TSuggestion[];
   isPlaceholder: boolean;
   metadata?: Record<string, unknown> | null;
+  _debug?: Record<string, unknown> | null;
 }
 
 export interface EnhancementSuggestionsFetchOptions {
@@ -41,11 +42,13 @@ export async function requestEnhancementSuggestions(
   }
 
   const authHeaders = await buildFirebaseAuthHeaders();
+  const debugHeaders = import.meta.env.DEV ? { 'x-debug': 'true' } : {};
   const response = await fetchFn('/api/get-enhancement-suggestions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...authHeaders,
+      ...debugHeaders,
     },
     body: JSON.stringify(payload),
     ...(options.signal ? { signal: options.signal } : {}),
@@ -61,12 +64,14 @@ export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
     suggestions?: TSuggestion[];
     isPlaceholder?: boolean;
     metadata?: Record<string, unknown> | null;
+    _debug?: Record<string, unknown> | null;
   };
 
   return {
     suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
     isPlaceholder: data?.isPlaceholder ?? false,
     ...(data?.metadata ? { metadata: data.metadata } : {}),
+    ...(data?._debug ? { _debug: data._debug } : {}),
   };
 }
 

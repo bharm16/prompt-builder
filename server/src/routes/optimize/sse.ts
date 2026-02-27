@@ -7,7 +7,19 @@ interface SseChannel {
   close: () => void;
 }
 
-export const createSseChannel = (req: Request, res: Response): SseChannel => {
+export interface SseChannelOptions {
+  /** Interval (ms) between heartbeat comments. 0 disables. Default: 15000. */
+  heartbeatIntervalMs?: number;
+  /** Max idle time (ms) with no sendEvent call before aborting. 0 disables. Default: 20000. */
+  idleTimeoutMs?: number;
+}
+
+export const createSseChannel = (
+  req: Request,
+  res: Response,
+  options: SseChannelOptions = {}
+): SseChannel => {
+  const { heartbeatIntervalMs = 15_000, idleTimeoutMs = 20_000 } = options;
   const internalAbortController = new AbortController();
   let clientConnected = true;
   let processingStarted = false;
@@ -32,10 +44,41 @@ export const createSseChannel = (req: Request, res: Response): SseChannel => {
   res.on('close', onClientDisconnect);
   req.on('aborted', onClientDisconnect);
 
+  // ── Idle timeout: aborts the stream if no sendEvent call within the window ──
+  let idleTimer: NodeJS.Timeout | null = null;
+
+  const resetIdleTimer = (): void => {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (idleTimeoutMs > 0) {
+      idleTimer = setTimeout(() => {
+        if (!internalAbortController.signal.aborted) {
+          internalAbortController.abort();
+        }
+      }, idleTimeoutMs);
+    }
+  };
+
+  resetIdleTimer();
+
+  // ── Heartbeat: prevents proxy/LB idle disconnects ──
+  const heartbeatTimer =
+    heartbeatIntervalMs > 0
+      ? setInterval(() => {
+          if (!internalAbortController.signal.aborted && !res.writableEnded && clientConnected) {
+            try {
+              res.write(': heartbeat\n\n');
+            } catch {
+              /* ignore write errors on dead connections */
+            }
+          }
+        }, heartbeatIntervalMs)
+      : null;
+
   const sendEvent = (eventType: string, data: unknown): void => {
     if (internalAbortController.signal.aborted || res.writableEnded || !clientConnected) {
       return;
     }
+    resetIdleTimer();
     try {
       res.write(`event: ${eventType}\n`);
       res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -48,6 +91,8 @@ export const createSseChannel = (req: Request, res: Response): SseChannel => {
   };
 
   const close = (): void => {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    if (idleTimer) clearTimeout(idleTimer);
     res.removeListener('close', onClientDisconnect);
     req.removeListener('aborted', onClientDisconnect);
     if (!res.writableEnded) {

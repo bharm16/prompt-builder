@@ -63,6 +63,18 @@ interface UseSuggestionFetchParams {
 const log = logger.child('useSuggestionFetch');
 export { mergeSuggestions } from '../utils/mergeSuggestions';
 
+function buildResponseMetadata(response: {
+  metadata?: Record<string, unknown> | null;
+  _debug?: Record<string, unknown> | null;
+}): Record<string, unknown> | null {
+  const merged = {
+    ...(response.metadata ?? {}),
+    ...(response._debug ? { _debug: response._debug } : {}),
+  };
+
+  return Object.keys(merged).length > 0 ? merged : null;
+}
+
 /**
  * Hook for fetching enhancement suggestions
  * 
@@ -229,7 +241,7 @@ export function useSuggestionFetch({
           range: range ?? null,
           offsets: offsets ?? null,
           metadata: metadata ?? null,
-          responseMetadata: cached.metadata ?? null,
+          responseMetadata: buildResponseMetadata(cached),
           allLabeledSpans: normalizedLabeledSpans,
           setSuggestions: updateSuggestions,
           onSuggestionClick: handleSuggestionClick,
@@ -289,7 +301,7 @@ export function useSuggestionFetch({
             isError: false,
             errorMessage: null,
             isPlaceholder: cachedResult.isPlaceholder,
-            responseMetadata: cachedResult.metadata ?? null,
+            responseMetadata: buildResponseMetadata(cachedResult),
             onRetry: retryFn,
           };
         });

@@ -22,6 +22,7 @@ interface CreditRefundSweeperOptions {
 export interface WorkerStatus {
   running: boolean;
   lastRunAt: Date | null;
+  lastSuccessfulRunAt?: Date | null;
   consecutiveFailures: number;
 }
 
@@ -40,6 +41,7 @@ export class CreditRefundSweeper {
   private started = false;
   private running = false;
   private lastRunAt: Date | null = null;
+  private lastSuccessfulRunAt: Date | null = null;
   private consecutiveFailures = 0;
 
   constructor(
@@ -81,16 +83,28 @@ export class CreditRefundSweeper {
     if (!this.started) {
       return;
     }
-    const success = await this.runOnce();
-    if (success) {
-      this.currentSweepIntervalMs = this.baseSweepIntervalMs;
-    } else {
+    try {
+      const success = await this.runOnce();
+      if (success) {
+        this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+      } else {
+        this.currentSweepIntervalMs = Math.min(
+          this.maxSweepIntervalMs,
+          Math.round(this.currentSweepIntervalMs * this.backoffFactor)
+        );
+      }
+    } catch (error) {
+      this.consecutiveFailures += 1;
+      this.log.error('Worker loop failed unexpectedly', error as Error);
+      this.metrics?.recordAlert('worker_loop_crash', { worker: 'CreditRefundSweeper' });
       this.currentSweepIntervalMs = Math.min(
         this.maxSweepIntervalMs,
         Math.round(this.currentSweepIntervalMs * this.backoffFactor)
       );
     }
-    this.scheduleNext(this.currentSweepIntervalMs);
+    if (this.started) {
+      this.scheduleNext(this.currentSweepIntervalMs);
+    }
   }
 
   stop(): void {
@@ -105,6 +119,7 @@ export class CreditRefundSweeper {
     return {
       running: this.started,
       lastRunAt: this.lastRunAt,
+      lastSuccessfulRunAt: this.lastSuccessfulRunAt,
       consecutiveFailures: this.consecutiveFailures,
     };
   }
@@ -163,7 +178,9 @@ export class CreditRefundSweeper {
 
         processed += 1;
       }
-      this.lastRunAt = new Date();
+      const now = new Date();
+      this.lastRunAt = now;
+      this.lastSuccessfulRunAt = now;
       this.consecutiveFailures = 0;
       return true;
     } catch (error) {

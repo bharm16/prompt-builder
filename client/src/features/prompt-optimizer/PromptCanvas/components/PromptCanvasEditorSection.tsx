@@ -94,6 +94,9 @@ type PromptCanvasEditorSectionProps = Pick<
   | 'onCustomRequestSubmit'
   | 'isCustomRequestDisabled'
   | 'isCustomLoading'
+  | 'responseMetadata'
+  | 'onCopyAllDebug'
+  | 'isBulkCopyLoading'
   | 'isInlineLoading'
   | 'isInlineError'
   | 'inlineErrorMessage'
@@ -172,6 +175,9 @@ export function PromptCanvasEditorSection({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   isInlineLoading,
   isInlineError,
   inlineErrorMessage,
@@ -489,6 +495,9 @@ export function PromptCanvasEditorSection({
             onCustomRequestSubmit={onCustomRequestSubmit}
             isCustomRequestDisabled={isCustomRequestDisabled}
             isCustomLoading={isCustomLoading}
+            responseMetadata={responseMetadata ?? null}
+            {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+            {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
             isInlineLoading={isInlineLoading}
             isInlineError={isInlineError}
             inlineErrorMessage={inlineErrorMessage}

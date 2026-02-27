@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CapabilitiesSchema } from '@shared/capabilities';
 
@@ -201,20 +201,16 @@ describe('GenerationControlsPanel', () => {
       expect(onRender).not.toHaveBeenCalled();
     });
 
-    it('disables generate when image tab has no keyframes', async () => {
-      const user = userEvent.setup();
-
+    it('disables generate when image tab has no keyframes', () => {
       renderPanel({
         prompt: 'Has prompt',
         keyframes: [],
       });
 
-      await user.click(screen.getByRole('button', { name: 'Image' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Image' }));
 
       const generateButton = screen.getByRole('button', { name: 'Generate' });
-      await waitFor(() => {
-        expect(generateButton).toBeDisabled();
-      });
+      expect(generateButton).toBeDisabled();
     });
 
     it('disables uploads when keyframe limit is reached', () => {

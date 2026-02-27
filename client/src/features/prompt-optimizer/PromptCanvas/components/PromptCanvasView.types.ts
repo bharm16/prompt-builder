@@ -85,6 +85,9 @@ export interface PromptCanvasViewProps {
   onCustomRequestSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   isCustomRequestDisabled: boolean;
   isCustomLoading: boolean;
+  responseMetadata?: Record<string, unknown> | null;
+  onCopyAllDebug?: (() => void) | undefined;
+  isBulkCopyLoading?: boolean | undefined;
   isInlineLoading: boolean;
   isInlineError: boolean;
   inlineErrorMessage: string;
@@ -133,4 +136,5 @@ export interface PromptCanvasViewProps {
   onToggleExportMenu: (open: boolean) => void;
   onExport: (format: ExportFormat) => void;
   onShare: () => void;
+  onEnhance?: (() => void) | undefined;
 }

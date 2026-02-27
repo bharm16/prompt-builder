@@ -26,6 +26,8 @@ export class FetchHttpTransport {
 
     let lastError: Error | undefined;
 
+    const retryAllowed = this._isRetryAllowed(init);
+
     for (let attempt = 0; attempt <= this.retry.maxRetries; attempt++) {
       // Abort-aware: don't retry if signal is already aborted
       if (init.signal?.aborted) {
@@ -37,6 +39,7 @@ export class FetchHttpTransport {
 
         // Only retry on retryable status codes
         if (
+          retryAllowed &&
           attempt < this.retry.maxRetries &&
           this.retry.retryableStatuses.includes(response.status)
         ) {
@@ -55,11 +58,13 @@ export class FetchHttpTransport {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         // Retry network errors (fetch throws on network failure)
-        if (attempt < this.retry.maxRetries) {
+        if (retryAllowed && attempt < this.retry.maxRetries) {
           const delay = this._getBackoffDelay(attempt);
           await this._sleep(delay, init.signal ?? undefined);
           continue;
         }
+
+        break;
       }
     }
 
@@ -83,6 +88,38 @@ export class FetchHttpTransport {
     const base = this.retry.retryDelay * Math.pow(2, attempt);
     const jitter = base * 0.25 * (Math.random() * 2 - 1);
     return Math.round(base + jitter);
+  }
+
+  /**
+   * Only retry safe methods by default. Mutating requests are retried only
+   * when the caller supplies an Idempotency-Key header.
+   */
+  private _isRetryAllowed(init: RequestInit): boolean {
+    const method = (init.method ?? 'GET').toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+      return true;
+    }
+
+    return this._hasHeader(init.headers, 'Idempotency-Key');
+  }
+
+  private _hasHeader(
+    headers: HeadersInit | undefined,
+    target: string
+  ): boolean {
+    if (!headers) {
+      return false;
+    }
+
+    if (headers instanceof Headers) {
+      return headers.has(target);
+    }
+
+    if (Array.isArray(headers)) {
+      return headers.some(([key]) => key.toLowerCase() === target.toLowerCase());
+    }
+
+    return Object.keys(headers).some((key) => key.toLowerCase() === target.toLowerCase());
   }
 
   /** Sleep that aborts early if the signal fires. */

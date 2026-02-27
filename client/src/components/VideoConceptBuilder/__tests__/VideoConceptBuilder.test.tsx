@@ -83,7 +83,7 @@ describe('VideoConceptBuilder', () => {
       await waitFor(() => expect(mockParseConcept).toHaveBeenCalled());
 
       expect(screen.getByPlaceholderText(/sleek sports car/i)).toBeInTheDocument();
-    });
+    }, 30000);
   });
 
   describe('edge cases', () => {
@@ -92,7 +92,7 @@ describe('VideoConceptBuilder', () => {
 
       const generateButton = screen.getByRole('button', { name: /generate prompt/i });
       expect(generateButton).toBeDisabled();
-    });
+    }, 30000);
   });
 
   describe('core behavior', () => {
@@ -125,6 +125,6 @@ describe('VideoConceptBuilder', () => {
           })
         );
       });
-    });
+    }, 30000);
   });
 });

@@ -25,8 +25,10 @@ import { StoryboardFramePlanner } from '@services/image-generation/storyboard/St
 import { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
 import { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
+import { VideoWorkerHeartbeatStore } from '@services/video-generation/jobs/VideoWorkerHeartbeatStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import { createVideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
@@ -320,6 +322,13 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
+    'videoWorkerHeartbeatStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) => new VideoWorkerHeartbeatStore(firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
+
+  container.register(
     'videoJobWorker',
     (
       videoJobStore: VideoJobStore,
@@ -328,6 +337,7 @@ export function registerGenerationServices(container: DIContainer): void {
       storageService: StorageService,
       metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
+      videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
       config: ServiceConfig
     ) => {
       if (!videoGenerationService) {
@@ -340,15 +350,26 @@ export function registerGenerationServices(container: DIContainer): void {
         leaseMs: wc.leaseSeconds * 1000,
         maxConcurrent: wc.maxConcurrent,
         heartbeatIntervalMs: wc.heartbeatIntervalMs,
+        processRole: 'worker',
         ...(config.videoJobs.hostname ? { hostname: config.videoJobs.hostname } : {}),
         providerCircuitManager,
+        workerHeartbeatStore: videoWorkerHeartbeatStore,
         ...(wc.perProviderMaxConcurrent !== undefined
           ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
           : {}),
         metrics: metricsService,
       });
     },
-    ['videoJobStore', 'videoGenerationService', 'userCreditService', 'storageService', 'metricsService', 'providerCircuitManager', 'config']
+    [
+      'videoJobStore',
+      'videoGenerationService',
+      'userCreditService',
+      'storageService',
+      'metricsService',
+      'providerCircuitManager',
+      'videoWorkerHeartbeatStore',
+      'config',
+    ]
   );
 
   container.register(

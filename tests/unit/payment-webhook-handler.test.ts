@@ -237,7 +237,8 @@ describe('createStripeWebhookHandler', () => {
     await handler(req, res);
 
     expect(mocks.handleCheckoutSessionCompleted).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'cs_1' })
+      expect.objectContaining({ id: 'cs_1' }),
+      'evt_1'
     );
     expect(webhookEventStore.markProcessed).toHaveBeenCalledWith('evt_1');
     expect(webhookEventStore.markFailed).not.toHaveBeenCalled();

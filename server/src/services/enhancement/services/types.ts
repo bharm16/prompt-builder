@@ -328,6 +328,37 @@ export interface GroupedSuggestions {
   suggestions: Suggestion[];
 }
 
+export interface EnhancementDebugContext {
+  fullPrompt: string;
+  selectedSpan: string;
+  category: string | null;
+  categoryConfidence: number | null;
+  systemPromptSent: string;
+  design: string;
+  slot: string;
+  isVideoPrompt: boolean;
+  isPlaceholder: boolean;
+  modelTarget: string | null;
+  promptSection: string | null;
+  phraseRole: string | null;
+  rawAiSuggestions: Suggestion[];
+  finalSuggestions: Suggestion[];
+  processingNotes: {
+    contrastiveDecoding: boolean;
+    diversityEnforced: boolean;
+    alignmentFallback: boolean;
+    usedFallback: boolean;
+    fallbackSourceCount: number;
+  };
+  spanContext: {
+    spanAnchors: string;
+    nearbySpanHints: string;
+  };
+  videoConstraints: VideoConstraints | null;
+  temperature: number;
+  metrics: EnhancementMetrics;
+}
+
 /**
  * Final result structure
  */
@@ -341,6 +372,7 @@ export interface EnhancementResult {
   appliedVideoConstraints?: VideoConstraints;
   noSuggestionsReason?: string;
   metadata?: Record<string, unknown>;
+  _debug?: EnhancementDebugContext;
 }
 
 /**
@@ -463,6 +495,7 @@ export interface EnhancementRequestParams {
     lockMap: LockMap;
     constraintMode?: I2VConstraintMode;
   } | null;
+  debug?: boolean;
 }
 
 /**

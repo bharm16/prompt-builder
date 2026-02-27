@@ -137,7 +137,7 @@ export function scheduleInlineVideoPreviewProcessing({
             assetId: result.assetId,
             recovery: 'manual — asset exists at storagePath',
           });
-          const refundKey = buildRefundKey(['video-job', jobId, 'completion-failure']);
+          const refundKey = buildRefundKey(['video-job', jobId, 'video']);
           await refundWithGuard({
             userCreditService,
             userId: claimed.userId,

@@ -90,7 +90,7 @@ function isFatalUnhandledRejection(reason: unknown): boolean {
     return false;
   }
 
-  return false;
+  return true;
 }
 
 /**
@@ -123,9 +123,11 @@ export async function startServer(
       });
 
       // Configure server timeouts
+      // Invariant: headersTimeout > keepAliveTimeout. server.timeout is disabled
+      // because per-route timeouts and SSE idle timeout handle request-level enforcement.
       server.keepAliveTimeout = 125000; // 125 seconds
       server.headersTimeout = 126000;   // 126 seconds
-      server.timeout = 120000;          // 120 seconds (2 minutes)
+      server.timeout = 0;               // Disabled — per-route timeouts handle this
 
       // Handle server errors
       server.on('error', (error) => {

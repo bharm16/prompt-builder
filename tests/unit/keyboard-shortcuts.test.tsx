@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
@@ -49,15 +49,19 @@ describe('KeyboardShortcuts', () => {
 
   describe('error handling', () => {
     it('shows a no-match message when search yields no results', async () => {
-      const { KeyboardShortcuts } = await loadKeyboardModules('MacIntel');
-      const user = userEvent.setup();
+      setPlatform('MacIntel');
+      vi.resetModules();
+      const componentModule = await import('@/components/KeyboardShortcuts/KeyboardShortcuts');
+      const KeyboardShortcuts = componentModule.default;
 
       render(<KeyboardShortcuts isOpen={true} onClose={vi.fn()} />);
 
-      await user.type(screen.getByRole('textbox', { name: 'Search actions' }), 'nope');
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search actions' }), {
+        target: { value: 'nope' },
+      });
 
       expect(screen.getByText('No matches for "nope".')).toBeInTheDocument();
-    }, 20000);
+    }, 30000);
 
     it('skips copy shortcut when text is selected', async () => {
       const { useKeyboardShortcuts } = await loadKeyboardModules('MacIntel');

@@ -9,6 +9,8 @@ export const createStripeWebhookHandler = ({
   webhookEventStore,
   billingProfileStore,
   userCreditService,
+  paymentConsistencyStore,
+  metricsService,
   firestoreCircuitExecutor,
 }: WebhookHandlerDeps) =>
   async (req: Request, res: Response): Promise<Response | void> => {
@@ -66,13 +68,15 @@ export const createStripeWebhookHandler = ({
       paymentService,
       billingProfileStore,
       userCreditService,
+      ...(paymentConsistencyStore ? { paymentConsistencyStore } : {}),
+      ...(metricsService ? { metricsService } : {}),
     });
 
     try {
       switch (event.type) {
         case 'checkout.session.completed': {
           const session = event.data.object as Stripe.Checkout.Session;
-          await handleCheckoutSessionCompleted(session);
+          await handleCheckoutSessionCompleted(session, event.id);
           break;
         }
         case 'invoice.paid': {

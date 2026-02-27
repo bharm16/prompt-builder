@@ -8,6 +8,8 @@ import AssetReferenceImageService from '@services/asset/ReferenceImageService';
 import type { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
+import { createBillingProfileRepairWorker } from '@services/payment/BillingProfileRepairWorker';
+import { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
 import { PaymentService } from '@services/payment/PaymentService';
 import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
 import { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
@@ -40,12 +42,19 @@ export function registerSessionServices(container: DIContainer): void {
     { singleton: true }
   );
   container.register(
+    'paymentConsistencyStore',
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) => new PaymentConsistencyStore(firestoreCircuitExecutor),
+    ['firestoreCircuitExecutor'],
+    { singleton: true }
+  );
+  container.register(
     'webhookReconciliationWorker',
     (
       paymentService: PaymentService,
       webhookEventStore: StripeWebhookEventStore,
       billingProfileStore: BillingProfileStore,
       userCreditService: UserCreditService,
+      paymentConsistencyStore: PaymentConsistencyStore,
       metricsService: MetricsService,
       config: ServiceConfig
     ) => {
@@ -62,6 +71,7 @@ export function registerSessionServices(container: DIContainer): void {
         webhookEventStore,
         billingProfileStore,
         userCreditService,
+        paymentConsistencyStore,
         {
           pollIntervalMs,
           lookbackHours: wrc.lookbackHours,
@@ -69,7 +79,31 @@ export function registerSessionServices(container: DIContainer): void {
         }
       );
     },
-    ['paymentService', 'stripeWebhookEventStore', 'billingProfileStore', 'userCreditService', 'metricsService', 'config'],
+    [
+      'paymentService',
+      'stripeWebhookEventStore',
+      'billingProfileStore',
+      'userCreditService',
+      'paymentConsistencyStore',
+      'metricsService',
+      'config',
+    ],
+    { singleton: true }
+  );
+  container.register(
+    'billingProfileRepairWorker',
+    (
+      paymentConsistencyStore: PaymentConsistencyStore,
+      billingProfileStore: BillingProfileStore,
+      metricsService: MetricsService,
+      config: ServiceConfig
+    ) => createBillingProfileRepairWorker(
+      paymentConsistencyStore,
+      billingProfileStore,
+      metricsService,
+      config.stripe.profileRepair
+    ),
+    ['paymentConsistencyStore', 'billingProfileStore', 'metricsService', 'config'],
     { singleton: true }
   );
   container.register('sessionStore', () => new SessionStore(), [], { singleton: true });

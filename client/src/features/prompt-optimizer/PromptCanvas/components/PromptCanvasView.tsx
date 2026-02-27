@@ -74,6 +74,9 @@ export function PromptCanvasView({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   isInlineLoading,
   isInlineError,
   inlineErrorMessage,
@@ -119,6 +122,7 @@ export function PromptCanvasView({
   onToggleExportMenu,
   onExport,
   onShare,
+  onEnhance,
 }: PromptCanvasViewProps): React.ReactElement {
   if (FEATURES.CANVAS_FIRST_LAYOUT) {
     return (
@@ -173,10 +177,14 @@ export function PromptCanvasView({
         onCustomRequestSubmit={onCustomRequestSubmit}
         isCustomRequestDisabled={isCustomRequestDisabled}
         isCustomLoading={isCustomLoading}
+        responseMetadata={responseMetadata ?? null}
+        {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+        {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
         showI2VLockIndicator={showI2VLockIndicator}
         resolvedI2VReason={resolvedI2VReason}
         i2vMotionAlternatives={i2vMotionAlternatives}
         onLockedAlternativeClick={onLockedAlternativeClick}
+        {...(onEnhance ? { onEnhance } : {})}
       />
     );
   }
@@ -326,6 +334,9 @@ export function PromptCanvasView({
                       onCustomRequestSubmit={onCustomRequestSubmit}
                       isCustomRequestDisabled={isCustomRequestDisabled}
                       isCustomLoading={isCustomLoading}
+                      responseMetadata={responseMetadata ?? null}
+                      {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+                      {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
                       isInlineLoading={isInlineLoading}
                       isInlineError={isInlineError}
                       inlineErrorMessage={inlineErrorMessage}

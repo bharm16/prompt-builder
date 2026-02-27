@@ -18,6 +18,7 @@ import { createWebhookRoutes } from './routes/payment.routes.ts';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import type { PaymentRouteServices } from '@routes/payment/types';
 import { initializeDepthWarmer } from '@services/convergence/depth';
+import type { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
 
 /**
  * Create and configure the Express application
@@ -39,6 +40,8 @@ export function createApp(container: DIContainer): Application {
     webhookEventStore: container.resolve<PaymentRouteServices['webhookEventStore']>('stripeWebhookEventStore'),
     billingProfileStore: container.resolve<PaymentRouteServices['billingProfileStore']>('billingProfileStore'),
     userCreditService: container.resolve<PaymentRouteServices['userCreditService']>('userCreditService'),
+    paymentConsistencyStore: container.resolve<PaymentConsistencyStore>('paymentConsistencyStore'),
+    metricsService: container.resolve<NonNullable<PaymentRouteServices['metricsService']>>('metricsService'),
     firestoreCircuitExecutor: container.resolve<NonNullable<PaymentRouteServices['firestoreCircuitExecutor']>>(
       'firestoreCircuitExecutor'
     ),

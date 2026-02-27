@@ -15,7 +15,9 @@ const cpuCount = typeof availableParallelism === 'function' ? availableParalleli
 const defaultServerThreads = clamp(1, 8, cpuCount - 1);
 const serverMaxThreads = parsePositiveInt(process.env.VITEST_SERVER_MAX_THREADS) ?? defaultServerThreads;
 
-const defaultClientForks = clamp(1, 4, Math.floor(cpuCount / 2));
+// Keep jsdom suites below high parallelism: too many client forks has been causing
+// timeout flakes in interaction-heavy tests under full-suite load.
+const defaultClientForks = clamp(1, 2, Math.floor(cpuCount / 2));
 const clientMaxForks = parsePositiveInt(process.env.VITEST_CLIENT_MAX_FORKS) ?? defaultClientForks;
 
 const serverPool = process.env.VITEST_SERVER_POOL === 'vmThreads' ? 'vmThreads' : 'threads';

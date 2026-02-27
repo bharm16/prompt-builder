@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 import { KeyframeWorkflow } from '../components/KeyframeWorkflow';
 
@@ -50,9 +49,7 @@ describe('KeyframeWorkflow', () => {
   });
 
   describe('edge cases', () => {
-    it('uses a fallback model when the target model lacks image support', async () => {
-      const user = userEvent.setup();
-
+    it('uses a fallback model when the target model lacks image support', () => {
       render(
         <KeyframeWorkflow
           prompt="A test prompt"
@@ -63,9 +60,9 @@ describe('KeyframeWorkflow', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'Select Frame' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select Frame' }));
       expect(screen.getByText('custom-model does not support i2v. Using Sora 2.')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Generate video from this frame' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Generate video from this frame' }));
 
       expect(videoPreviewSpy).toHaveBeenCalledWith(expect.objectContaining({ model: 'sora-2' }));
     });
@@ -92,19 +89,17 @@ describe('KeyframeWorkflow', () => {
   });
 
   describe('core behavior', () => {
-    it('transitions from frame selection to video generation', async () => {
-      const user = userEvent.setup();
-
+    it('transitions from frame selection to video generation', () => {
       render(
         <KeyframeWorkflow
           prompt="A test prompt"
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'Select Frame' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select Frame' }));
       expect(screen.getByText('Frame 1 selected')).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Generate video from this frame' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Generate video from this frame' }));
 
       expect(screen.getByTestId('video-preview')).toBeInTheDocument();
     });

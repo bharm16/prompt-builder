@@ -30,6 +30,9 @@ describe('KontextFrameStrip', () => {
 
       const img = screen.getByAltText('Frame 1');
       fireEvent.error(img);
+      await waitFor(() => {
+        expect(mockResolveMediaUrl).toHaveBeenCalled();
+      });
 
       const buttons = screen.getAllByRole('button');
       const firstButton = buttons[0];
@@ -38,6 +41,7 @@ describe('KontextFrameStrip', () => {
 
       await waitFor(() => {
         expect(firstButton).toBeDisabled();
+        expect(screen.getByText('Failed')).toBeInTheDocument();
       });
 
       fireEvent.click(firstButton);

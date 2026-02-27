@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { AssetTypeSection } from '@features/prompt-optimizer/components/AssetsSidebar/AssetTypeSection';
 import type { Asset } from '@shared/types/asset';
@@ -48,8 +47,7 @@ describe('AssetTypeSection', () => {
   });
 
   describe('error handling', () => {
-    it('shows empty state and triggers create when expanded and empty', async () => {
-      const user = userEvent.setup();
+    it('shows empty state and triggers create when expanded and empty', () => {
       render(
         <AssetTypeSection
           type="character"
@@ -63,14 +61,13 @@ describe('AssetTypeSection', () => {
       );
 
       expect(screen.getByText(/No character assets yet/i)).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: /Add Character/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Add Character/i }));
       expect(onCreateAsset).toHaveBeenCalled();
     });
   });
 
   describe('edge cases', () => {
-    it('calls onToggle when the header button is clicked', async () => {
-      const user = userEvent.setup();
+    it('calls onToggle when the header button is clicked', () => {
       render(
         <AssetTypeSection
           type="character"
@@ -83,14 +80,13 @@ describe('AssetTypeSection', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: /character/i }));
+      fireEvent.click(screen.getByRole('button', { name: /character/i }));
       expect(onToggle).toHaveBeenCalled();
     });
   });
 
   describe('core behavior', () => {
-    it('renders assets and wires insert/edit/create actions', async () => {
-      const user = userEvent.setup();
+    it('renders assets and wires insert/edit/create actions', () => {
       const hero = createAsset({ id: 'asset-hero', trigger: '@hero' });
 
       render(
@@ -107,13 +103,13 @@ describe('AssetTypeSection', () => {
 
       expect(screen.getByTestId('asset-asset-hero')).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Insert' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Insert' }));
       expect(onInsertTrigger).toHaveBeenCalledWith('@hero');
 
-      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
       expect(onEditAsset).toHaveBeenCalledWith('asset-hero');
 
-      await user.click(screen.getByRole('button', { name: 'Add' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Add' }));
       expect(onCreateAsset).toHaveBeenCalled();
     });
   });

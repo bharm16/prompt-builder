@@ -81,12 +81,16 @@ interface CanvasWorkspaceProps {
   onCustomRequestSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   isCustomRequestDisabled: boolean;
   isCustomLoading: boolean;
+  responseMetadata?: Record<string, unknown> | null;
+  onCopyAllDebug?: () => void;
+  isBulkCopyLoading?: boolean;
   showI2VLockIndicator: boolean;
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
   onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
   onReuseGeneration: (generation: Generation) => void;
   onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
+  onEnhance?: () => void;
 }
 
 const parseDurationSeconds = (generationParams: Record<string, unknown>): number => {
@@ -148,12 +152,16 @@ export function CanvasWorkspace({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   showI2VLockIndicator,
   resolvedI2VReason,
   i2vMotionAlternatives,
   onLockedAlternativeClick,
   onReuseGeneration,
   onToggleGenerationFavorite,
+  onEnhance,
 }: CanvasWorkspaceProps): React.ReactElement {
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
@@ -319,6 +327,7 @@ export function CanvasWorkspace({
           {...(generationDomain?.onUploadSidebarImage
             ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
             : {})}
+          {...(onEnhance ? { onEnhance } : {})}
         />
 
         {domain.startFrame ? (
@@ -400,6 +409,9 @@ export function CanvasWorkspace({
               onCustomRequestSubmit={onCustomRequestSubmit}
               isCustomRequestDisabled={isCustomRequestDisabled}
               isCustomLoading={isCustomLoading}
+              responseMetadata={responseMetadata ?? null}
+              {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+              {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
               showI2VLockIndicator={showI2VLockIndicator}
               resolvedI2VReason={resolvedI2VReason}
               i2vMotionAlternatives={i2vMotionAlternatives}
@@ -423,6 +435,7 @@ export function CanvasWorkspace({
               {...(generationDomain?.onUploadSidebarImage
                 ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
                 : {})}
+              {...(onEnhance ? { onEnhance } : {})}
             />
           </div>
         </div>

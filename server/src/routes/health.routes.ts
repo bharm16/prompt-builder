@@ -1,12 +1,20 @@
 import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { metricsAuthMiddleware } from '@middleware/metricsAuth';
+import { createRouteTimeout } from '@middleware/routeTimeout';
 import { logger } from '@infrastructure/Logger';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
 
 interface WorkerStatusProvider {
   getStatus(): WorkerStatus;
+}
+
+interface VideoExecutionCheckResult {
+  healthy: boolean;
+  message?: string;
+  activeWorkerCount?: number;
+  heartbeatMaxAgeMs?: number;
 }
 
 interface HealthDependencies {
@@ -27,6 +35,8 @@ interface HealthDependencies {
   firestoreCircuitExecutor?: FirestoreCircuitExecutor;
   /** Optional background worker status providers for health reporting. */
   workers?: Record<string, WorkerStatusProvider | null>;
+  /** Optional readiness gate for video execution path health. */
+  checkVideoExecutionPath?: () => Promise<VideoExecutionCheckResult>;
 }
 
 /**
@@ -36,6 +46,7 @@ interface HealthDependencies {
  */
 export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
+  const healthTimeout = createRouteTimeout(5_000);
   const {
     claudeClient,
     groqClient,
@@ -45,10 +56,11 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     checkFirestore,
     firestoreCircuitExecutor,
     workers,
+    checkVideoExecutionPath,
   } = dependencies;
 
   // GET /health - Basic health check
-  router.get('/health', (req, res) => {
+  router.get('/health', healthTimeout, (req, res) => {
     const requestId = req.id;
     logger.debug('Health check request', {
       operation: 'health',
@@ -65,6 +77,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
   // GET /health/ready - Readiness check (checks dependencies)
   router.get(
     '/health/ready',
+    healthTimeout,
     asyncHandler(async (req, res) => {
       const startTime = performance.now();
       const operation = 'healthReady';
@@ -107,6 +120,38 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         } catch (err) {
           firestoreHealthy = false;
           firestoreMessage = err instanceof Error ? err.message : 'unknown error';
+        }
+      }
+
+      let videoExecutionCheck:
+        | {
+            healthy: boolean;
+            enabled: boolean;
+            message?: string;
+            activeWorkerCount?: number;
+            heartbeatMaxAgeMs?: number;
+          }
+        | undefined;
+      if (checkVideoExecutionPath) {
+        try {
+          const result = await checkVideoExecutionPath();
+          videoExecutionCheck = {
+            healthy: result.healthy,
+            enabled: true,
+            ...(result.message ? { message: result.message } : {}),
+            ...(typeof result.activeWorkerCount === 'number'
+              ? { activeWorkerCount: result.activeWorkerCount }
+              : {}),
+            ...(typeof result.heartbeatMaxAgeMs === 'number'
+              ? { heartbeatMaxAgeMs: result.heartbeatMaxAgeMs }
+              : {}),
+          };
+        } catch (error) {
+          videoExecutionCheck = {
+            healthy: false,
+            enabled: true,
+            message: error instanceof Error ? error.message : 'unknown error',
+          };
         }
       }
 
@@ -153,6 +198,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
           enabled: false,
           message: 'Gemini API not configured',
         },
+        ...(videoExecutionCheck ? { videoExecution: videoExecutionCheck } : {}),
       };
 
       // Collect background worker statuses (informational — does not gate readiness)
@@ -192,7 +238,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
   );
 
   // GET /health/live - Liveness check (always returns OK if server is running)
-  router.get('/health/live', (req, res) => {
+  router.get('/health/live', healthTimeout, (req, res) => {
     const requestId = req.id;
     logger.debug('Liveness check request', {
       operation: 'healthLive',
@@ -208,6 +254,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
   // GET /metrics - Prometheus metrics endpoint (protected)
   router.get(
     '/metrics',
+    healthTimeout,
     metricsAuthMiddleware,
     asyncHandler(async (req, res) => {
       const requestId = req.id;
@@ -223,7 +270,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
   );
 
   // GET /stats - Application statistics (JSON format, protected)
-  router.get('/stats', metricsAuthMiddleware, (req, res) => {
+  router.get('/stats', healthTimeout, metricsAuthMiddleware, (req, res) => {
     const startTime = performance.now();
     const operation = 'stats';
     const requestId = req.id;

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { ButtonHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { PromptImprovementForm } from '@/PromptImprovementForm/PromptImprovementForm';
@@ -98,8 +97,7 @@ describe('PromptImprovementForm', () => {
       expect(button).toBeDisabled();
     });
 
-    it('allows skipping context and sends empty answers', async () => {
-      const user = userEvent.setup();
+    it('allows skipping context and sends empty answers', () => {
       const onComplete = vi.fn();
       mockUseQuestionGeneration.mockReturnValue({
         questions,
@@ -109,7 +107,7 @@ describe('PromptImprovementForm', () => {
 
       render(<PromptImprovementForm onComplete={onComplete} initialPrompt="Draft" />);
 
-      await user.click(screen.getByRole('button', { name: 'Skip and optimize without context' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Skip and optimize without context' }));
 
       expect(onComplete).toHaveBeenCalledWith('Draft', {
         specificAspects: '',
@@ -120,8 +118,7 @@ describe('PromptImprovementForm', () => {
   });
 
   describe('core behavior', () => {
-    it('builds an enhanced prompt when answers are provided', async () => {
-      const user = userEvent.setup();
+    it('builds an enhanced prompt when answers are provided', () => {
       const onComplete = vi.fn();
       mockUseQuestionGeneration.mockReturnValue({
         questions,
@@ -131,8 +128,8 @@ describe('PromptImprovementForm', () => {
 
       render(<PromptImprovementForm onComplete={onComplete} initialPrompt="Draft" />);
 
-      await user.click(screen.getByRole('button', { name: 'Example focus' }));
-      await user.click(screen.getByRole('button', { name: 'Optimize with Context' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Example focus' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Optimize with Context' }));
 
       expect(onComplete).toHaveBeenCalledWith(
         expect.stringContaining('Specific Focus: Example focus'),

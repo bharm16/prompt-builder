@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ButtonHTMLAttributes } from 'react';
 
 import DebugButton from '@/components/DebugButton';
@@ -52,19 +51,20 @@ describe('DebugButton', () => {
         isCapturing: false,
       }));
 
-      const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
 
-      await user.click(screen.getByRole('button', { name: /debug capture/i }));
+      fireEvent.click(screen.getByRole('button', { name: /debug capture/i }));
 
-      expect(window.alert).toHaveBeenCalledWith(
-        'Failed to capture debug data. Check console for details.'
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to capture debug data',
-        expect.any(Error),
-        expect.objectContaining({ component: 'DebugButton', operation: 'handleCapture' })
-      );
+      await waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          'Failed to capture debug data. Check console for details.'
+        );
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          'Failed to capture debug data',
+          expect.any(Error),
+          expect.objectContaining({ component: 'DebugButton', operation: 'handleCapture' })
+        );
+      });
     });
 
     it('alerts and logs when export fails', async () => {
@@ -76,10 +76,9 @@ describe('DebugButton', () => {
         isCapturing: false,
       }));
 
-      const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
 
-      await user.click(screen.getByRole('button', { name: /export json/i }));
+      fireEvent.click(screen.getByRole('button', { name: /export json/i }));
 
       expect(window.alert).toHaveBeenCalledWith('No debug data to export. Capture data first.');
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -116,14 +115,13 @@ describe('DebugButton', () => {
         isCapturing: true,
       }));
 
-      const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
 
       const captureButton = screen.getByText('Capturing...').closest('button');
       if (!captureButton) {
         throw new Error('Capture button not found');
       }
-      await user.click(captureButton);
+      fireEvent.click(captureButton);
 
       expect(capturePromptData).not.toHaveBeenCalled();
     });
@@ -138,10 +136,9 @@ describe('DebugButton', () => {
         isCapturing: false,
       }));
 
-      const user = userEvent.setup();
       render(<DebugButton inputPrompt="Prompt" />);
 
-      await user.click(screen.getByRole('button', { name: /debug capture/i }));
+      fireEvent.click(screen.getByRole('button', { name: /debug capture/i }));
 
       expect(capturePromptData).toHaveBeenCalled();
       expect(screen.getByText('Debug Capture')).toBeInTheDocument();

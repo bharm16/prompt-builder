@@ -9,6 +9,7 @@ const {
   webhookEventStoreMock,
   billingProfileStoreMock,
   userCreditServiceMock,
+  paymentConsistencyStoreMock,
 } = vi.hoisted(() => {
   const paymentServiceMock = {
     constructEvent: vi.fn(),
@@ -39,11 +40,22 @@ const {
     getBalance: vi.fn(),
   };
 
+  const paymentConsistencyStoreMock = {
+    recordUnresolvedEvent: vi.fn(),
+    getUnresolvedSummary: vi.fn(),
+    enqueueBillingProfileRepair: vi.fn(),
+    claimNextBillingProfileRepair: vi.fn(),
+    markBillingProfileRepairResolved: vi.fn(),
+    releaseBillingProfileRepairForRetry: vi.fn(),
+    markBillingProfileRepairEscalated: vi.fn(),
+  };
+
   return {
     paymentServiceMock,
     webhookEventStoreMock,
     billingProfileStoreMock,
     userCreditServiceMock,
+    paymentConsistencyStoreMock,
   };
 });
 
@@ -57,6 +69,10 @@ vi.mock('@services/payment/StripeWebhookEventStore', () => ({
 
 vi.mock('@services/payment/BillingProfileStore', () => ({
   BillingProfileStore: vi.fn(() => billingProfileStoreMock),
+}));
+
+vi.mock('@services/payment/PaymentConsistencyStore', () => ({
+  PaymentConsistencyStore: vi.fn(() => paymentConsistencyStoreMock),
 }));
 
 vi.mock('@services/credits/UserCreditService', () => ({
@@ -106,6 +122,13 @@ describe('Payment Webhook Route (full-stack integration)', () => {
     billingProfileStoreMock.upsertProfile.mockResolvedValue(undefined);
 
     userCreditServiceMock.grantCredits.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.recordUnresolvedEvent.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.getUnresolvedSummary.mockResolvedValue({ openCount: 0, oldestOpenAgeMs: null });
+    paymentConsistencyStoreMock.enqueueBillingProfileRepair.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.claimNextBillingProfileRepair.mockResolvedValue(null);
+    paymentConsistencyStoreMock.markBillingProfileRepairResolved.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.releaseBillingProfileRepairForRetry.mockResolvedValue(undefined);
+    paymentConsistencyStoreMock.markBillingProfileRepairEscalated.mockResolvedValue(undefined);
   });
 
   it('POST /api/payment/webhook returns 400 when signature header is missing', async () => {

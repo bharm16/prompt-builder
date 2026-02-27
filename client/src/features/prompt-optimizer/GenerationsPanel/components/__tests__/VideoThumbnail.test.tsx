@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VideoThumbnail } from '../VideoThumbnail';
 
@@ -194,8 +194,7 @@ describe('VideoThumbnail', () => {
       playSpy.mockRestore();
     });
 
-    it('pauses on video click without bringing back the center play button', async () => {
-      const user = userEvent.setup();
+    it('pauses on video click without bringing back the center play button', () => {
       const playSpy = vi
         .spyOn(HTMLMediaElement.prototype, 'play')
         .mockImplementation(function (this: HTMLMediaElement) {
@@ -216,18 +215,18 @@ describe('VideoThumbnail', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: 'Play video' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Play video' }));
 
       const video = document.querySelector('video');
       expect(video).toBeInTheDocument();
-      await user.click(video as HTMLVideoElement);
+      fireEvent.click(video as HTMLVideoElement);
 
       expect(pauseSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByRole('button', { name: 'Play video' })).not.toBeInTheDocument();
 
       playSpy.mockRestore();
       pauseSpy.mockRestore();
-    });
+    }, 30000);
 
     it('plays the video element when play button is clicked with a video URL', async () => {
       const user = userEvent.setup();

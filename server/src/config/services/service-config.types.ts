@@ -44,6 +44,12 @@ export interface ServiceConfig {
       intervalSeconds: number;
       lookbackHours: number;
     };
+    profileRepair: {
+      disabled: boolean;
+      intervalSeconds: number;
+      maxPerRun: number;
+      maxAttempts: number;
+    };
   };
   credits: {
     refundSweeper: {

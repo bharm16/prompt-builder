@@ -383,8 +383,6 @@ describe('SequenceWorkspace', () => {
   });
 
   it('builds scene proxy from available source shot', async () => {
-    const user = userEvent.setup();
-
     render(
       <SequenceWorkspace
         promptText="Second shot prompt"
@@ -395,13 +393,17 @@ describe('SequenceWorkspace', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /create scene proxy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create scene proxy/i }));
 
-    expect(createSceneProxyMock).toHaveBeenCalledWith({
-      sourceShotId: 'shot-1',
-      sourceVideoId: 'users/user-1/generations/video.mp4',
-    });
-    expect(toastSuccessMock).toHaveBeenCalledWith('Scene proxy is ready for continuity generation.');
+    await waitFor(() =>
+      expect(createSceneProxyMock).toHaveBeenCalledWith({
+        sourceShotId: 'shot-1',
+        sourceVideoId: 'users/user-1/generations/video.mp4',
+      })
+    );
+    await waitFor(() =>
+      expect(toastSuccessMock).toHaveBeenCalledWith('Scene proxy is ready for continuity generation.')
+    );
   });
 
   it('uses generation camera motion when previewing angle without shot camera', async () => {

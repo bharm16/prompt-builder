@@ -111,6 +111,7 @@ export async function fetchEnhancementSuggestions({
       suggestions: data.suggestions || [],
       isPlaceholder: data.isPlaceholder || false,
       ...(data.metadata ? { metadata: data.metadata } : {}),
+      ...(data._debug ? { _debug: data._debug } : {}),
     };
   } catch (error: unknown) {
     clearTimeout(timeoutId);

@@ -86,7 +86,11 @@ describe('previewApi', () => {
           prompt: 'A prompt',
           aspectRatio: '16:9',
         }),
-        {}
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Idempotency-Key': expect.any(String),
+          }),
+        })
       );
     });
 
@@ -128,7 +132,12 @@ describe('previewApi', () => {
           speedMode: 'Juiced',
           outputQuality: 80,
         }),
-        { timeout: 60000 }
+        expect.objectContaining({
+          timeout: 60000,
+          headers: expect.objectContaining({
+            'Idempotency-Key': expect.any(String),
+          }),
+        })
       );
     });
 
@@ -149,7 +158,12 @@ describe('previewApi', () => {
           speedMode: 'Real Time',
           seed: 7,
         }),
-        { timeout: API_CONFIG.timeout.storyboard }
+        expect.objectContaining({
+          timeout: API_CONFIG.timeout.storyboard,
+          headers: expect.objectContaining({
+            'Idempotency-Key': expect.any(String),
+          }),
+        })
       );
     });
 

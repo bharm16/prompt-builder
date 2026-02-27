@@ -47,6 +47,11 @@ export function registerEnhancementSuggestionsRoute(
         editHistory,
         i2vContext,
       } = req.body;
+      const debugHeader = req.headers['x-debug'];
+      const debugRequested = Array.isArray(debugHeader)
+        ? debugHeader.includes('true')
+        : debugHeader === 'true';
+      const debug = debugRequested && process.env.NODE_ENV !== 'production';
 
       logger.info('Enhancement suggestions request received', {
         operation,
@@ -78,6 +83,7 @@ export function registerEnhancementSuggestionsRoute(
           nearbySpans,
           editHistory,
           i2vContext,
+          debug,
         });
 
         const suggestionCount = countSuggestions(result.suggestions);

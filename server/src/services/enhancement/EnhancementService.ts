@@ -167,6 +167,7 @@ export class EnhancementService {
     nearbySpans = [],
     editHistory = [],
     i2vContext = null,
+    debug = false,
   }: EnhancementRequestParams): Promise<EnhancementResult> {
     const metrics: EnhancementMetrics = {
       total: 0,
@@ -284,7 +285,7 @@ export class EnhancementService {
       const cached = await this.cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
       metrics.cacheCheck = Date.now() - cacheStart;
 
-      if (cached) {
+      if (cached && !debug) {
         metrics.cache = true;
         metrics.total = Date.now() - startTotal;
         metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
@@ -302,6 +303,13 @@ export class EnhancementService {
           suggestionCount: this._countSuggestions(cached.suggestions),
         });
         return cached;
+      }
+
+      if (cached && debug) {
+        this.log.debug('Bypassing cache for debug request.', {
+          operation,
+          cacheCheckTime: metrics.cacheCheck,
+        });
       }
 
       const isPlaceholder = detectPlaceholder(
@@ -353,6 +361,9 @@ export class EnhancementService {
       });
       
       const suggestions = generationResult.suggestions;
+      const rawSuggestionsSnapshot = Array.isArray(suggestions)
+        ? suggestions.map((suggestion) => ({ ...suggestion }))
+        : [];
       metrics.groqCall = generationResult.groqCallTime;
       metrics.usedContrastiveDecoding = generationResult.usedContrastiveDecoding;
 
@@ -459,6 +470,45 @@ export class EnhancementService {
         modelTarget,
         promptSection,
       });
+
+      if (debug && process.env.NODE_ENV !== 'production') {
+        const systemPromptSent =
+          typeof promptResult === 'string'
+            ? promptResult
+            : ((promptResult as { systemPrompt?: string }).systemPrompt ?? '');
+        result._debug = {
+          fullPrompt,
+          selectedSpan: highlightedText,
+          category: highlightedCategory ?? null,
+          categoryConfidence: highlightedCategoryConfidence ?? null,
+          systemPromptSent,
+          // Design/slot are currently resolved inside private prompt builder internals.
+          design: '',
+          slot: '',
+          isVideoPrompt,
+          isPlaceholder,
+          modelTarget,
+          promptSection,
+          phraseRole,
+          rawAiSuggestions: rawSuggestionsSnapshot,
+          finalSuggestions: processingResult.suggestionsToUse.map((suggestion) => ({ ...suggestion })),
+          processingNotes: {
+            contrastiveDecoding: generationResult.usedContrastiveDecoding,
+            diversityEnforced:
+              processingResult.suggestionsToUse.length !== rawSuggestionsSnapshot.length,
+            alignmentFallback: processingResult.alignmentFallbackApplied,
+            usedFallback: processingResult.usedFallback,
+            fallbackSourceCount: processingResult.fallbackSourceCount,
+          },
+          spanContext: {
+            spanAnchors: spanContext.spanAnchors ?? '',
+            nearbySpanHints: spanContext.nearbySpanHints ?? '',
+          },
+          videoConstraints: videoConstraints ?? null,
+          temperature,
+          metrics: { ...metrics },
+        };
+      }
 
       return result;
     } catch (error) {

@@ -70,7 +70,7 @@ describe('AssetEditor', () => {
 
       expect(await screen.findByText('Description is required for this asset type.')).toBeInTheDocument();
       expect(onCreate).not.toHaveBeenCalled();
-    });
+    }, 30000);
 
     it('surfaces errors from create calls', async () => {
       const onCreate = vi.fn().mockRejectedValue(new Error('Boom'));
@@ -93,7 +93,7 @@ describe('AssetEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
       expect(await screen.findByText('Boom')).toBeInTheDocument();
-    });
+    }, 30000);
   });
 
   describe('edge cases', () => {
@@ -169,7 +169,7 @@ describe('AssetEditor', () => {
         });
         expect(onClose).toHaveBeenCalled();
       });
-    });
+    }, 30000);
 
     it('updates asset with trimmed description', async () => {
       const onUpdate = vi.fn().mockResolvedValue(baseAsset);

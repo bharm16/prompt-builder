@@ -13,6 +13,7 @@ export const runOptimizeFlow = async ({
   optimizeIteratively,
   applyConstitutionalAI,
   logOptimizationMetrics,
+  metricsService,
 }: OptimizeFlowArgs) => {
   const startTime = performance.now();
   const operation = 'optimize';
@@ -158,7 +159,10 @@ export const runOptimizeFlow = async ({
       qualityAssessment: qualityAssessmentResult,
     });
 
-    if (!useIterativeRefinement && qualityAssessmentResult.score < qualityThreshold) {
+    const qualityGateTriggered = !useIterativeRefinement && qualityAssessmentResult.score < qualityThreshold;
+    metricsService?.recordOptimizationQualityGate(qualityAssessmentResult.score, qualityGateTriggered);
+
+    if (qualityGateTriggered) {
       const initialScore = qualityAssessmentResult.score;
       log.warn('Quality gate failed, attempting bounded refinement', {
         operation,

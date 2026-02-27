@@ -74,16 +74,27 @@ export class CreditReconciliationWorker {
       return;
     }
 
-    const ok = await this.runOnce();
-    if (ok) {
-      this.currentIntervalMs = this.incrementalIntervalMs;
-    } else {
+    try {
+      const ok = await this.runOnce();
+      if (ok) {
+        this.currentIntervalMs = this.incrementalIntervalMs;
+      } else {
+        this.currentIntervalMs = Math.min(
+          this.maxIntervalMs,
+          Math.round(this.currentIntervalMs * this.backoffFactor)
+        );
+      }
+    } catch (error) {
+      this.log.error('Worker loop failed unexpectedly', error as Error);
+      this.metrics?.recordAlert?.('worker_loop_crash', { worker: 'CreditReconciliationWorker' });
       this.currentIntervalMs = Math.min(
         this.maxIntervalMs,
         Math.round(this.currentIntervalMs * this.backoffFactor)
       );
     }
-    this.scheduleNext(this.currentIntervalMs);
+    if (this.started) {
+      this.scheduleNext(this.currentIntervalMs);
+    }
   }
 
   private async runOnce(): Promise<boolean> {

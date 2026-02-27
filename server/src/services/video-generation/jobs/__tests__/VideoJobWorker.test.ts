@@ -95,6 +95,48 @@ describe('VideoJobWorker', () => {
     vi.clearAllMocks();
   });
 
+  it('reports worker heartbeat and marks worker stopped on shutdown', async () => {
+    vi.useFakeTimers();
+    const jobStore: MinimalJobStore = {
+      claimNextJob: vi.fn().mockResolvedValue(null),
+      markCompleted: vi.fn(),
+      markFailed: vi.fn(),
+      requeueForRetry: vi.fn(),
+      enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+      releaseClaim: vi.fn().mockResolvedValue(true),
+      renewLease: vi.fn().mockResolvedValue(true),
+    };
+    const workerHeartbeatStore = {
+      reportHeartbeat: vi.fn().mockResolvedValue(undefined),
+      markStopped: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const worker = new VideoJobWorker(
+      jobStore as never,
+      { generateVideo: vi.fn() } as never,
+      { refundCredits: vi.fn() } as never,
+      { saveFromUrl: mocks.saveFromUrl } as never,
+      {
+        workerId: 'worker-a',
+        pollIntervalMs: 1_000,
+        leaseMs: 60_000,
+        maxConcurrent: 1,
+        heartbeatIntervalMs: 1_000,
+        workerHeartbeatStore,
+      }
+    );
+
+    worker.start();
+    expect(workerHeartbeatStore.reportHeartbeat).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(2_200);
+    expect(workerHeartbeatStore.reportHeartbeat).toHaveBeenCalledTimes(3);
+
+    worker.stop();
+    expect(workerHeartbeatStore.markStopped).toHaveBeenCalledWith('worker-a');
+    vi.useRealTimers();
+  });
+
   it('marks job completed with required storage metadata when generation succeeds', async () => {
     const generationResult: VideoGenerationResult = {
       assetId: 'asset-1',
@@ -276,6 +318,7 @@ describe('VideoJobWorker', () => {
 
       // RetryPolicy attempts markCompleted multiple times
       expect(jobStore.markCompleted.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(mocks.buildRefundKey).toHaveBeenCalledWith(['video-job', 'job-1', 'video']);
       // Credits refunded because video exists in GCS but job not marked completed
       expect(mocks.refundWithGuard).toHaveBeenCalledWith(
         expect.objectContaining({

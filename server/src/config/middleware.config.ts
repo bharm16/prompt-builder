@@ -210,11 +210,28 @@ export function applyCompressionMiddleware(app: Application): void {
   app.use(compression(COMPRESSION_CONFIG));
 }
 
+/** Narrow metrics interface for rate-limit alerting. */
+interface RateLimitMetrics {
+  recordAlert(name: string, metadata?: Record<string, unknown>): void;
+}
+
+/**
+ * Divisor applied to rate limits when Redis is unavailable.
+ * In-memory stores are per-process, so the effective limit in a multi-instance
+ * deployment is (configured limit * instance count). Dividing by this factor
+ * makes in-memory fallback conservative.
+ */
+export const FALLBACK_LIMIT_DIVISOR = 4;
+
 /**
  * Apply rate limiting middleware
  * Disabled in test environments
  */
-export function applyRateLimitingMiddleware(app: Application, redisClient?: Redis | null): void {
+export function applyRateLimitingMiddleware(
+  app: Application,
+  redisClient?: Redis | null,
+  metricsService?: RateLimitMetrics | null
+): void {
   const isTestEnv =
     process.env.NODE_ENV === 'test' ||
     !!process.env.VITEST_WORKER_ID ||
@@ -225,7 +242,13 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
     return;
   }
 
-  const storeFactory = redisClient
+  // Only use Redis for rate limiting when the connection is actually ready.
+  // With lazyConnect, the client may exist but not yet be connected — sending
+  // commands in that state (with enableOfflineQueue: false) causes unhandled
+  // promise rejections from the RedisStore constructor.
+  const redisReady = redisClient && redisClient.status === 'ready';
+
+  const storeFactory = redisReady
     ? (prefix: string): Store => new RedisStore({
         sendCommand: (...args: string[]) => {
           const [cmd = '', ...rest] = args;
@@ -235,22 +258,31 @@ export function applyRateLimitingMiddleware(app: Application, redisClient?: Redi
       })
     : undefined;
 
+  const usingFallback = !storeFactory;
+
   if (storeFactory) {
     logger.info('Rate limiting using Redis store (distributed)');
   } else {
-    logger.info('Rate limiting using in-memory store (single-instance)');
+    logger.warn('Rate limiting using in-memory store (single-instance) — limits reduced', {
+      divisor: FALLBACK_LIMIT_DIVISOR,
+    });
+    metricsService?.recordAlert('rate_limit_redis_fallback');
   }
 
   const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
-  const generalMax = isDevEnv
-    ? RATE_LIMIT_CONFIG.general.dev
-    : RATE_LIMIT_CONFIG.general.prod;
-  const apiMax = isDevEnv
-    ? RATE_LIMIT_CONFIG.api.dev
-    : RATE_LIMIT_CONFIG.api.prod;
-  const llmMax = isDevEnv
-    ? RATE_LIMIT_CONFIG.llm.dev
-    : RATE_LIMIT_CONFIG.llm.prod;
+
+  const applyFallback = (limit: number): number =>
+    usingFallback ? Math.max(1, Math.floor(limit / FALLBACK_LIMIT_DIVISOR)) : limit;
+
+  const generalMax = applyFallback(
+    isDevEnv ? RATE_LIMIT_CONFIG.general.dev : RATE_LIMIT_CONFIG.general.prod
+  );
+  const apiMax = applyFallback(
+    isDevEnv ? RATE_LIMIT_CONFIG.api.dev : RATE_LIMIT_CONFIG.api.prod
+  );
+  const llmMax = applyFallback(
+    isDevEnv ? RATE_LIMIT_CONFIG.llm.dev : RATE_LIMIT_CONFIG.llm.prod
+  );
 
   // JSON handler for rate limit responses — conforms to ApiErrorResponse shape
   const rateLimitJSONHandler = (
@@ -479,7 +511,10 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
   applyCompressionMiddleware(app);
 
   // 4. Rate limiting (uses Redis store when available for distributed enforcement)
-  applyRateLimitingMiddleware(app, services.redisClient);
+  const metricsForRateLimit = 'recordAlert' in services.metricsService
+    ? (services.metricsService as unknown as RateLimitMetrics)
+    : null;
+  applyRateLimitingMiddleware(app, services.redisClient, metricsForRateLimit);
 
   // 5. CORS
   applyCorsMiddleware(app);

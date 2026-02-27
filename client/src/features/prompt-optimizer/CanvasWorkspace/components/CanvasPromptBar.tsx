@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from '@promptstudio/system/components/ui';
 import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
@@ -57,6 +57,9 @@ interface CanvasPromptBarProps {
   onCustomRequestSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   isCustomRequestDisabled: boolean;
   isCustomLoading: boolean;
+  responseMetadata?: Record<string, unknown> | null;
+  onCopyAllDebug?: (() => void) | undefined;
+  isBulkCopyLoading?: boolean | undefined;
   showI2VLockIndicator: boolean;
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
@@ -115,6 +118,9 @@ export function CanvasPromptBar({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   showI2VLockIndicator,
   resolvedI2VReason,
   i2vMotionAlternatives,
@@ -131,7 +137,31 @@ export function CanvasPromptBar({
 }: CanvasPromptBarProps): React.ReactElement {
   const [isFocused, setIsFocused] = useState(false);
   const [isSuggestionTrayCollapsed, setIsSuggestionTrayCollapsed] = useState(false);
+  const [isDebugCopied, setIsDebugCopied] = useState(false);
   const previousSelectedSpanIdRef = useRef<string | null>(null);
+  const debugPayload = useMemo(() => {
+    if (!import.meta.env.DEV) {
+      return null;
+    }
+    const candidate = responseMetadata?._debug;
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+    return candidate as Record<string, unknown>;
+  }, [responseMetadata]);
+
+  const handleCopyDebug = useCallback(() => {
+    if (!debugPayload || typeof navigator === 'undefined' || !navigator.clipboard) {
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(JSON.stringify(debugPayload, null, 2))
+      .then(() => {
+        setIsDebugCopied(true);
+        window.setTimeout(() => setIsDebugCopied(false), 1200);
+      });
+  }, [debugPayload]);
 
   useEffect(() => {
     return addPromptFocusIntentListener(() => {
@@ -197,11 +227,36 @@ export function CanvasPromptBar({
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-[10px] font-semibold tracking-[0.05em] text-[#8B92A5]">
-                  {selectionLabel ? `Replace \"${selectionLabel}\"` : 'Replace selection'}
+                  {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                 </span>
                 <span className="rounded-full bg-[#1A1C22] px-2 py-0.5 text-[9px] font-semibold text-[#555B6E]">
                   {suggestionCount}
                 </span>
+                {debugPayload ? (
+                  <button
+                    type="button"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium text-[#555B6E] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleCopyDebug();
+                    }}
+                  >
+                    {isDebugCopied ? 'Copied!' : 'Copy Debug'}
+                  </button>
+                ) : null}
+                {import.meta.env.DEV && onCopyAllDebug ? (
+                  <button
+                    type="button"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium text-[#555B6E] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCopyAllDebug();
+                    }}
+                    disabled={isBulkCopyLoading}
+                  >
+                    {isBulkCopyLoading ? 'Copying All...' : 'Copy All Debug'}
+                  </button>
+                ) : null}
               </div>
               <div className="flex items-center gap-1">
                 <button
