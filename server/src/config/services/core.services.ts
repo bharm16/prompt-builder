@@ -172,6 +172,12 @@ export function registerCoreServices(container: DIContainer): void {
         tokenSecret: process.env.VIDEO_CONTENT_TOKEN_SECRET,
         tokenTtlSeconds: resolvePositiveNumber(process.env.VIDEO_CONTENT_TOKEN_TTL_SECONDS, 3600, 1),
       },
+      reconciler: {
+        disabled: process.env.VIDEO_ASSET_RECONCILER_DISABLED !== 'false',
+        orphanThresholdMs: resolvePositiveNumber(process.env.VIDEO_ASSET_RECONCILER_ORPHAN_THRESHOLD_MS, 3_600_000, 1),
+        reconcileIntervalMs: resolvePositiveNumber(process.env.VIDEO_ASSET_RECONCILER_INTERVAL_MS, 300_000, 1),
+        maxObjectsPerRun: resolvePositiveNumber(process.env.VIDEO_ASSET_RECONCILER_MAX_PER_RUN, 50, 1),
+      },
     },
     imageAssets: {
       storage: {

@@ -374,6 +374,8 @@ export interface VideoJobStatusResponse {
   sizeBytes?: number;
   inputMode?: 't2v' | 'i2v';
   startImageUrl?: string;
+  resolvedAspectRatio?: string;
+  serverTimeoutMs?: number;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;

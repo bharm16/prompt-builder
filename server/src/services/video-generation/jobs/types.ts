@@ -42,6 +42,7 @@ export interface VideoJobRecord {
   id: string;
   status: VideoJobStatus;
   userId: string;
+  requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
   provider?: string;

@@ -61,6 +61,11 @@ async function resolveSoraInputReference(inputReference: string, log: LogSink): 
   return response;
 }
 
+function deriveAspectRatioFromSize(size: SoraVideoSize): string {
+  if (size === '720x1280' || size === '1024x1792') return '9:16';
+  return '16:9';
+}
+
 export async function generateSoraVideo(
   openai: OpenAI,
   prompt: string,
@@ -68,7 +73,7 @@ export async function generateSoraVideo(
   options: VideoGenerationOptions,
   assetStore: VideoAssetStore,
   log: LogSink
-): Promise<StoredVideoAsset> {
+): Promise<{ asset: StoredVideoAsset; resolvedAspectRatio?: string }> {
   const timeoutMs = getProviderPollTimeoutMs();
   const resolvedInputReference = options.inputReference || options.startImage;
   const inputReference = resolvedInputReference
@@ -103,5 +108,7 @@ export async function generateSoraVideo(
   const response = await openai.videos.downloadContent(video.id);
   const contentType = response.headers.get('content-type') || 'video/mp4';
   const stream = toNodeReadableStream(response.body as ReadableStream<Uint8Array> | null);
-  return await assetStore.storeFromStream(stream, contentType);
+  const asset = await assetStore.storeFromStream(stream, contentType);
+  const resolvedAspectRatio = deriveAspectRatioFromSize(size);
+  return { asset, resolvedAspectRatio };
 }

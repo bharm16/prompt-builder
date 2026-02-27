@@ -1,3 +1,4 @@
+import type { Bucket } from '@google-cloud/storage';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import type { MetricsService } from '@infrastructure/MetricsService';
@@ -28,6 +29,7 @@ import { VideoGenerationService } from '@services/video-generation/VideoGenerati
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
 import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
+import { createVideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
 import { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
 import { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
 import type { VideoAssetStore } from '@services/video-generation/storage';
@@ -378,6 +380,20 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ['videoJobStore', 'providerCircuitManager', 'metricsService', 'config'],
+    { singleton: true }
+  );
+
+  container.register(
+    'videoJobReconciler',
+    (gcsBucket: Bucket, videoJobStore: VideoJobStore, metricsService: MetricsService, config: ServiceConfig) =>
+      createVideoJobReconciler(
+        gcsBucket,
+        config.videoAssets.storage.basePath,
+        videoJobStore,
+        metricsService,
+        config.videoAssets.reconciler
+      ),
+    ['gcsBucket', 'videoJobStore', 'metricsService', 'config'],
     { singleton: true }
   );
 }

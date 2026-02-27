@@ -2,6 +2,8 @@ import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
+import { classifyError, withStage } from '@services/video-generation/jobs/classifyError';
+import { RetryPolicy } from '@server/utils/RetryPolicy';
 
 interface InlinePreviewProcessorParams {
   jobId: string;
@@ -48,7 +50,29 @@ export function scheduleInlineVideoPreviewProcessing({
         userId: claimed.userId,
       });
 
+      let heartbeatTimer: NodeJS.Timeout | null = null;
       try {
+        // Start heartbeat to prevent sweeper from reclaiming the job
+        const heartbeatIntervalMs = Math.floor(leaseMs / 3);
+        heartbeatTimer = setInterval(() => {
+          void videoJobStore.renewLease(jobId, workerId, leaseMs)
+            .then((renewed) => {
+              if (!renewed) {
+                logger.warn('Inline preview heartbeat skipped (lease lost)', {
+                  jobId,
+                  workerId,
+                });
+              }
+            })
+            .catch((err) => {
+              logger.warn('Inline preview heartbeat failed', {
+                jobId,
+                workerId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+        }, heartbeatIntervalMs);
+
         const result = await videoGenerationService.generateVideo(
           claimed.request.prompt,
           claimed.request.options
@@ -84,13 +108,47 @@ export function scheduleInlineVideoPreviewProcessing({
           sizeBytes: storageResult.sizeBytes,
         };
 
-        const marked = await videoJobStore.markCompleted(jobId, resultWithStorage);
-        if (!marked) {
-          logger.warn('Inline preview job completion skipped (status changed)', {
+        let marked = false;
+        try {
+          marked = await RetryPolicy.execute(
+            () => videoJobStore.markCompleted(jobId, resultWithStorage),
+            {
+              maxRetries: 2,
+              getDelayMs: (attempt) => 100 * 2 ** (attempt - 1),
+              logRetries: true,
+            }
+          );
+        } catch (retryError) {
+          logger.error('Inline markCompleted failed after retries — video stored but job not updated', retryError instanceof Error ? retryError : undefined, {
             jobId,
             workerId,
             userId: claimed.userId,
+            storagePath: storageResult.storagePath,
             assetId: result.assetId,
+          });
+        }
+
+        if (!marked) {
+          logger.error('Inline preview completion failed — refunding credits', undefined, {
+            jobId,
+            workerId,
+            userId: claimed.userId,
+            storagePath: storageResult.storagePath,
+            assetId: result.assetId,
+            recovery: 'manual — asset exists at storagePath',
+          });
+          const refundKey = buildRefundKey(['video-job', jobId, 'completion-failure']);
+          await refundWithGuard({
+            userCreditService,
+            userId: claimed.userId,
+            amount: claimed.creditsReserved,
+            refundKey,
+            reason: 'inline markCompleted failed after retries',
+            metadata: {
+              jobId,
+              workerId,
+              storagePath: storageResult.storagePath,
+            },
           });
           return;
         }
@@ -102,34 +160,52 @@ export function scheduleInlineVideoPreviewProcessing({
           assetId: result.assetId,
         });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorInstance = error instanceof Error ? error : new Error(errorMessage);
+        const stageAware = withStage(error, 'generation');
+        const classifiedError = classifyError(stageAware, {
+          request: claimed.request,
+          attempts: claimed.attempts,
+        });
+
+        const errorInstance = error instanceof Error ? error : new Error(classifiedError.message);
         logger.error('Inline preview job failed', errorInstance, {
           jobId,
           workerId,
           userId: claimed.userId,
-          errorMessage,
+          errorMessage: classifiedError.message,
+          retryable: classifiedError.retryable,
+          category: classifiedError.category,
         });
 
-        const marked = await videoJobStore.markFailed(jobId, {
-          message: errorMessage,
-          code: 'VIDEO_JOB_INLINE_FAILED',
-          category: 'infrastructure',
+        const hasAttemptsRemaining = claimed.attempts < claimed.maxAttempts;
+        if (classifiedError.retryable && hasAttemptsRemaining) {
+          const requeued = await videoJobStore.requeueForRetry(jobId, workerId, classifiedError);
+          if (requeued) {
+            logger.info('Inline preview job requeued for retry', {
+              jobId,
+              workerId,
+              userId: claimed.userId,
+              attempt: claimed.attempts,
+              maxAttempts: claimed.maxAttempts,
+            });
+          } else {
+            logger.warn('Inline preview job requeue skipped (status changed)', {
+              jobId,
+              workerId,
+              userId: claimed.userId,
+            });
+          }
+          return;
+        }
+
+        const terminalError = {
+          ...classifiedError,
           retryable: false,
-          stage: 'generation',
-          attempt: claimed.attempts,
-        });
+        };
+        const marked = await videoJobStore.markFailed(jobId, terminalError);
         if (marked) {
           await videoJobStore.enqueueDeadLetter(
             claimed,
-            {
-              message: errorMessage,
-              code: 'VIDEO_JOB_INLINE_FAILED',
-              category: 'infrastructure',
-              retryable: false,
-              stage: 'generation',
-              attempt: claimed.attempts,
-            },
+            terminalError,
             'inline-terminal'
           );
           const refundKey = buildRefundKey(['video-job', jobId, 'video']);
@@ -150,6 +226,10 @@ export function scheduleInlineVideoPreviewProcessing({
             workerId,
             userId: claimed.userId,
           });
+        }
+      } finally {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
         }
       }
     })();

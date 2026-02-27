@@ -141,6 +141,41 @@ const createQuery = (
 });
 
 vi.mock(
+  '@services/firestore/FirestoreCircuitExecutor',
+  () => {
+    const passThrough = {
+      executeRead: async (_name: string, fn: () => Promise<unknown>) => fn(),
+      executeWrite: async (_name: string, fn: () => Promise<unknown>) => fn(),
+    };
+    return {
+      FirestoreCircuitExecutor: vi.fn(() => passThrough),
+      getFirestoreCircuitExecutor: vi.fn(() => passThrough),
+    };
+  }
+);
+
+vi.mock(
+  '@services/video-models/ModelRegistry',
+  () => ({
+    resolveGenerationModelSelection: vi.fn(() => ({ modelId: 'wan-video/wan-2.2-t2v-fast', source: 'default' })),
+    resolveGenerationModelId: vi.fn((input: string) => input),
+    isKnownGenerationModelInput: vi.fn(() => true),
+    isOpenAISoraModelId: vi.fn((id: string) => id.includes('sora')),
+    isLumaModelId: vi.fn((id: string) => id.includes('luma')),
+    isKlingModelId: vi.fn((id: string) => id.includes('kling')),
+    isVeoModelId: vi.fn((id: string) => id.includes('veo')),
+    resolveProviderForGenerationModel: vi.fn((modelId: string) => {
+      if (modelId.includes('sora')) return 'openai';
+      if (modelId.includes('kling')) return 'kling';
+      if (modelId.includes('veo')) return 'gemini';
+      if (modelId.includes('luma')) return 'luma';
+      return 'replicate';
+    }),
+    resolvePromptModelId: vi.fn(() => null),
+  })
+);
+
+vi.mock(
   '@infrastructure/Logger',
   () => ({
     logger: {

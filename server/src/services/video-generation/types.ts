@@ -68,6 +68,10 @@ export interface VideoGenerationResult {
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
   seed?: number;
+  /** The actual aspect ratio used by the provider (may differ from the requested one). */
+  resolvedAspectRatio?: string;
+  /** Provider-reported cost for this generation (if available). */
+  providerCost?: { amount: number; currency: string; unit: string };
 }
 
 export interface VideoProviderAvailability {

@@ -16,6 +16,7 @@ const SLOW_FIRESTORE_OPERATION_MS = 1_000;
 
 interface CreateJobInput {
   userId: string;
+  requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
   maxAttempts?: number;
@@ -113,6 +114,7 @@ export class VideoJobStore {
     const record = {
       status: 'queued',
       userId: input.userId,
+      ...(input.requestId ? { requestId: input.requestId } : {}),
       request: input.request,
       creditsReserved: input.creditsReserved,
       provider,

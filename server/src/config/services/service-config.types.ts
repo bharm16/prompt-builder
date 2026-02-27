@@ -107,6 +107,12 @@ export interface ServiceConfig {
       tokenSecret: string | undefined;
       tokenTtlSeconds: number;
     };
+    reconciler: {
+      disabled: boolean;
+      orphanThresholdMs: number;
+      reconcileIntervalMs: number;
+      maxObjectsPerRun: number;
+    };
   };
   imageAssets: {
     storage: {

@@ -72,11 +72,11 @@ export async function generateVideoWorkflow(
     if (!provider) {
       throw new Error(`No provider registered for model: ${modelId}`);
     }
-    const { asset, seed } = await withWatchdog(
+    const { asset, seed, resolvedAspectRatio, providerCost } = await withWatchdog(
       provider.generate(prompt, modelId, options, assetStore, log),
       workflowTimeoutMs
     );
-    return formatResult(asset, inputMode, startImageUrl, seed);
+    return formatResult(asset, inputMode, startImageUrl, seed, resolvedAspectRatio, providerCost);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log.error('Video generation failed', error instanceof Error ? error : new Error(errorMessage));
@@ -88,7 +88,9 @@ function formatResult(
   asset: StoredVideoAsset,
   inputMode?: VideoGenerationResult['inputMode'],
   startImageUrl?: string,
-  seed?: number
+  seed?: number,
+  resolvedAspectRatio?: string,
+  providerCost?: VideoGenerationResult['providerCost']
 ): VideoGenerationResult {
   return {
     assetId: asset.id,
@@ -97,5 +99,7 @@ function formatResult(
     ...(inputMode ? { inputMode } : {}),
     ...(startImageUrl ? { startImageUrl } : {}),
     ...(seed !== undefined ? { seed } : {}),
+    ...(resolvedAspectRatio ? { resolvedAspectRatio } : {}),
+    ...(providerCost ? { providerCost } : {}),
   };
 }

@@ -47,6 +47,12 @@ export const VideoJobResultSchema = z.object({
   viewUrl: z.string().optional(),
   viewUrlExpiresAt: z.string().optional(),
   sizeBytes: z.number().optional(),
+  resolvedAspectRatio: z.string().optional(),
+  providerCost: z.object({
+    amount: z.number(),
+    currency: z.string(),
+    unit: z.string(),
+  }).optional(),
 });
 
 export const VideoJobErrorSchema = z.object({
@@ -62,6 +68,7 @@ export const VideoJobErrorSchema = z.object({
 export const VideoJobRecordSchema = z.object({
   status: z.enum(VIDEO_JOB_STATUSES),
   userId: z.string(),
+  requestId: z.string().optional(),
   request: VideoJobRequestSchema,
   creditsReserved: z.number().nonnegative(),
   provider: z.string().optional(),

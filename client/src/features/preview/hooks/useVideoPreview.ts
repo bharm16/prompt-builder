@@ -286,6 +286,7 @@ export function useVideoPreview({
 
 async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<string | null> {
   const startTime = Date.now();
+  let adaptiveTimeoutMs = MAX_WAIT_MS;
 
   while (true) {
     if (signal.aborted) {
@@ -302,6 +303,14 @@ async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<stri
       throw new Error(status.error || status.message || 'Failed to fetch video job status');
     }
 
+    // Adapt timeout based on server-reported single-attempt budget
+    if (status.serverTimeoutMs) {
+      adaptiveTimeoutMs = Math.max(
+        Math.ceil(status.serverTimeoutMs * 1.2),
+        MAX_WAIT_MS
+      );
+    }
+
     if (status.status === 'completed' && status.videoUrl) {
       return status.videoUrl;
     }
@@ -314,7 +323,7 @@ async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<stri
       throw new Error(status.error || 'Video generation failed');
     }
 
-    if (Date.now() - startTime > MAX_WAIT_MS) {
+    if (Date.now() - startTime > adaptiveTimeoutMs) {
       throw new Error('Timed out waiting for video preview');
     }
 

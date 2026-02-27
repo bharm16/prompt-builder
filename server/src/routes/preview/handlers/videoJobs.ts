@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { isIP } from 'node:net';
 import type { PreviewRoutesServices } from '@routes/types';
 import { buildVideoContentUrl } from '../content';
+import { getWorkflowWatchdogTimeoutMs } from '@services/video-generation/providers/timeoutPolicy';
 
 type VideoJobsServices = Pick<
   PreviewRoutesServices,
@@ -77,6 +78,7 @@ export const createVideoJobsHandler = ({
       status: job.status,
       creditsReserved: job.creditsReserved,
       creditsDeducted: job.creditsReserved,
+      ...(job.requestId ? { requestId: job.requestId } : {}),
     };
 
     if (job.status === 'completed' && job.result) {
@@ -128,6 +130,9 @@ export const createVideoJobsHandler = ({
       if (job.result.startImageUrl) {
         response.startImageUrl = job.result.startImageUrl;
       }
+      if (job.result.resolvedAspectRatio) {
+        response.resolvedAspectRatio = job.result.resolvedAspectRatio;
+      }
     }
 
     if (job.status === 'failed') {
@@ -156,6 +161,7 @@ export const createVideoJobsHandler = ({
     response.createdAtMs = job.createdAtMs;
     response.attempts = job.attempts;
     response.maxAttempts = job.maxAttempts;
+    response.serverTimeoutMs = getWorkflowWatchdogTimeoutMs();
     if (typeof job.lastHeartbeatAtMs === 'number') {
       response.lastHeartbeatAtMs = job.lastHeartbeatAtMs;
     }

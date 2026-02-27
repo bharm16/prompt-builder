@@ -28,6 +28,24 @@ vi.mock('@services/credits/refundGuard', () => ({
   refundWithGuard: mocks.refundWithGuard,
 }));
 
+// Inline RetryPolicy mock — no sleep delays, pure retry logic
+vi.mock('@server/utils/RetryPolicy', () => ({
+  RetryPolicy: {
+    execute: async <T>(fn: () => Promise<T>, options?: { maxRetries?: number }): Promise<T> => {
+      const maxRetries = options?.maxRetries ?? 2;
+      let lastError: Error | null = null;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await fn();
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+        }
+      }
+      throw lastError;
+    },
+  },
+}));
+
 type MinimalJobStore = {
   claimNextJob: ReturnType<typeof vi.fn>;
   markCompleted: ReturnType<typeof vi.fn>;
@@ -214,6 +232,117 @@ describe('VideoJobWorker', () => {
         retryable: false,
       })
     );
+  });
+
+  describe('markCompleted retry + refund (Finding 2)', () => {
+    const storagePayload = {
+      storagePath: 'users/user-1/generation/video.mp4',
+      viewUrl: 'https://cdn.example.com/view/video.mp4',
+      expiresAt: '2026-02-11T00:00:00.000Z',
+      sizeBytes: 987,
+      contentType: 'video/mp4',
+      createdAt: '2026-02-11T00:00:00.000Z',
+    };
+    const generationResult: VideoGenerationResult = {
+      assetId: 'asset-1',
+      videoUrl: 'https://provider.example.com/video.mp4',
+      contentType: 'video/mp4',
+      inputMode: 't2v',
+    };
+
+    async function runRetryTest(
+      jobStore: MinimalJobStore,
+      generateVideo: ReturnType<typeof vi.fn>,
+      job?: VideoJobRecord
+    ): Promise<void> {
+      mocks.saveFromUrl.mockResolvedValue(storagePayload);
+      const worker = createWorker(jobStore, generateVideo);
+      await runProcessJob(worker, job ?? createJob());
+    }
+
+    it('regression: markCompleted failure refunds credits', async () => {
+      const generateVideo = vi.fn().mockResolvedValue(generationResult);
+      const jobStore: MinimalJobStore = {
+        claimNextJob: vi.fn(),
+        markCompleted: vi.fn().mockRejectedValue(new Error('Firestore transaction failed')),
+        markFailed: vi.fn(),
+        requeueForRetry: vi.fn(),
+        enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+        releaseClaim: vi.fn().mockResolvedValue(true),
+        renewLease: vi.fn().mockResolvedValue(true),
+      };
+
+      await runRetryTest(jobStore, generateVideo);
+
+      // RetryPolicy attempts markCompleted multiple times
+      expect(jobStore.markCompleted.mock.calls.length).toBeGreaterThanOrEqual(2);
+      // Credits refunded because video exists in GCS but job not marked completed
+      expect(mocks.refundWithGuard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          amount: 7,
+          reason: 'video job markCompleted failed after retries',
+        })
+      );
+    });
+
+    it('markCompleted returning false triggers refund with storage path for recovery', async () => {
+      const generateVideo = vi.fn().mockResolvedValue(generationResult);
+      const jobStore: MinimalJobStore = {
+        claimNextJob: vi.fn(),
+        markCompleted: vi.fn().mockResolvedValue(false),
+        markFailed: vi.fn(),
+        requeueForRetry: vi.fn(),
+        enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+        releaseClaim: vi.fn().mockResolvedValue(true),
+        renewLease: vi.fn().mockResolvedValue(true),
+      };
+
+      await runRetryTest(jobStore, generateVideo);
+
+      expect(mocks.refundWithGuard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          amount: 7,
+          metadata: expect.objectContaining({
+            storagePath: 'users/user-1/generation/video.mp4',
+          }),
+        })
+      );
+      expect(mocks.loggerError).toHaveBeenCalledWith(
+        'Video job completion failed — refunding credits',
+        undefined,
+        expect.objectContaining({
+          storagePath: 'users/user-1/generation/video.mp4',
+          recovery: 'manual — asset exists at storagePath',
+        })
+      );
+    });
+
+    it('markCompleted succeeds on retry after Firestore transient error', async () => {
+      const generateVideo = vi.fn().mockResolvedValue(generationResult);
+      const jobStore: MinimalJobStore = {
+        claimNextJob: vi.fn(),
+        markCompleted: vi.fn()
+          .mockRejectedValueOnce(new Error('Firestore transient error'))
+          .mockResolvedValueOnce(true),
+        markFailed: vi.fn(),
+        requeueForRetry: vi.fn(),
+        enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
+        releaseClaim: vi.fn().mockResolvedValue(true),
+        renewLease: vi.fn().mockResolvedValue(true),
+      };
+
+      await runRetryTest(jobStore, generateVideo);
+
+      // Retried and succeeded — no refund
+      expect(jobStore.markCompleted).toHaveBeenCalledTimes(2);
+      expect(mocks.refundWithGuard).not.toHaveBeenCalled();
+      expect(mocks.loggerInfo).toHaveBeenCalledWith(
+        'Video job completed',
+        expect.objectContaining({ jobId: 'job-1' })
+      );
+    });
   });
 
   it('releases active jobs when shutdown drain timeout is exceeded', async () => {

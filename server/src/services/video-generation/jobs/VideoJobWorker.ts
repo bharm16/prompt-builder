@@ -5,9 +5,11 @@ import type { UserCreditService } from '@services/credits/UserCreditService';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { StorageService } from '@services/storage/StorageService';
 import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
-import type { VideoJobError, VideoJobErrorCategory, VideoJobErrorStage, VideoJobRecord } from './types';
+import type { VideoJobError, VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 import type { ProviderCircuitManager } from './ProviderCircuitManager';
+import { classifyError, normalizeErrorMessage, withStage, type StageAwareError } from './classifyError';
+import { RetryPolicy } from '@server/utils/RetryPolicy';
 
 interface VideoJobWorkerOptions {
   workerId?: string;
@@ -30,29 +32,10 @@ interface ActiveJobContext {
   startedAtMs: number;
 }
 
-interface StageAwareError extends Error {
-  stage: VideoJobErrorStage;
-}
-
 function sleep(delayMs: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, delayMs);
   });
-}
-
-function withStage(error: unknown, stage: VideoJobErrorStage): StageAwareError {
-  if (error instanceof Error) {
-    const stageError = error as StageAwareError;
-    stageError.stage = stage;
-    return stageError;
-  }
-  const stageError = new Error(String(error)) as StageAwareError;
-  stageError.stage = stage;
-  return stageError;
-}
-
-function normalizeErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export class VideoJobWorker {
@@ -327,65 +310,8 @@ export class VideoJobWorker {
     });
   }
 
-  private classifyError(error: StageAwareError, job: VideoJobRecord): VideoJobError {
-    const message = normalizeErrorMessage(error);
-    const lowered = message.toLowerCase();
-    const stage = error.stage || 'unknown';
-    const provider = typeof job.request.options?.model === 'string' ? job.request.options.model : undefined;
-
-    let category: VideoJobErrorCategory = 'unknown';
-    let code = 'VIDEO_JOB_FAILED';
-    let retryable = true;
-
-    if (stage === 'persistence') {
-      category = 'storage';
-      code = 'VIDEO_JOB_STORAGE_FAILED';
-      retryable = true;
-    } else if (
-      lowered.includes('timeout') ||
-      lowered.includes('timed out') ||
-      lowered.includes('etimedout')
-    ) {
-      category = 'timeout';
-      code = 'VIDEO_JOB_TIMEOUT';
-      retryable = true;
-    } else if (
-      lowered.includes('rate limit') ||
-      lowered.includes('429') ||
-      lowered.includes('unavailable') ||
-      lowered.includes('temporar')
-    ) {
-      category = 'provider';
-      code = 'VIDEO_JOB_PROVIDER_RETRYABLE';
-      retryable = true;
-    } else if (
-      lowered.includes('invalid') ||
-      lowered.includes('unsupported') ||
-      lowered.includes('validation') ||
-      lowered.includes('bad request')
-    ) {
-      category = 'validation';
-      code = 'VIDEO_JOB_VALIDATION_FAILED';
-      retryable = false;
-    } else if (stage === 'generation') {
-      category = 'provider';
-      code = 'VIDEO_JOB_PROVIDER_FAILED';
-      retryable = true;
-    } else {
-      category = 'infrastructure';
-      code = 'VIDEO_JOB_INFRA_FAILED';
-      retryable = true;
-    }
-
-    return {
-      message,
-      code,
-      category,
-      retryable,
-      stage,
-      ...(provider ? { provider } : {}),
-      attempt: job.attempts,
-    };
+  private classifyJobError(error: StageAwareError, job: VideoJobRecord) {
+    return classifyError(error, job);
   }
 
   private async processJob(job: VideoJobRecord): Promise<void> {
@@ -499,12 +425,46 @@ export class VideoJobWorker {
         sizeBytes: storageResult.sizeBytes,
       };
 
-      const marked = await this.jobStore.markCompleted(job.id, resultWithStorage);
-      if (!marked) {
-        this.log.warn('Video job completion skipped (status changed)', {
+      let marked = false;
+      try {
+        marked = await RetryPolicy.execute(
+          () => this.jobStore.markCompleted(job.id, resultWithStorage),
+          {
+            maxRetries: 2,
+            getDelayMs: (attempt) => 100 * 2 ** (attempt - 1),
+            logRetries: true,
+          }
+        );
+      } catch (retryError) {
+        this.log.error('markCompleted failed after retries — video stored but job record not updated', retryError instanceof Error ? retryError : undefined, {
           jobId: job.id,
           userId: job.userId,
+          storagePath: storageResult.storagePath,
           assetId: result.assetId,
+        });
+      }
+
+      if (!marked) {
+        // Video is in GCS but the job record was not updated — refund credits and alert ops
+        this.log.error('Video job completion failed — refunding credits', undefined, {
+          jobId: job.id,
+          userId: job.userId,
+          storagePath: storageResult.storagePath,
+          assetId: result.assetId,
+          recovery: 'manual — asset exists at storagePath',
+        });
+        const refundKey = buildRefundKey(['video-job', job.id, 'completion-failure']);
+        await refundWithGuard({
+          userCreditService: this.userCreditService,
+          userId: job.userId,
+          amount: job.creditsReserved,
+          refundKey,
+          reason: 'video job markCompleted failed after retries',
+          metadata: {
+            jobId: job.id,
+            workerId: this.workerId,
+            storagePath: storageResult.storagePath,
+          },
         });
         return;
       }
@@ -520,7 +480,7 @@ export class VideoJobWorker {
       }
     } catch (error) {
       const stageAware = withStage(error, (error as StageAwareError)?.stage || 'unknown');
-      const jobError = this.classifyError(stageAware, job);
+      const jobError = this.classifyJobError(stageAware, job);
       const hasAttemptsRemaining = job.attempts < job.maxAttempts;
 
       this.log.error('Video job attempt failed', stageAware, {

@@ -13,6 +13,7 @@ import type { CapabilitiesProbeService } from '@services/capabilities/Capabiliti
 import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
 import type { CreditReconciliationWorker } from '@services/credits/CreditReconciliationWorker';
 import type { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
+import type { VideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
 import type { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
 import type { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
 import { getRuntimeFlags } from './runtime-flags';
@@ -366,6 +367,12 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     if (dlqReprocessorWorker) {
       dlqReprocessorWorker.start();
       logger.info('✅ DLQ reprocessor worker started');
+    }
+
+    const videoJobReconciler = container.resolve<VideoJobReconciler | null>('videoJobReconciler');
+    if (videoJobReconciler) {
+      videoJobReconciler.start();
+      logger.info('✅ Video job reconciler started');
     }
 
     const webhookReconciliationWorker =

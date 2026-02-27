@@ -36,7 +36,7 @@ export interface VideoProvider {
     options: VideoGenerationOptions,
     assetStore: VideoAssetStore,
     log: LogSink
-  ) => Promise<{ asset: StoredVideoAsset; seed?: number }>;
+  ) => Promise<{ asset: StoredVideoAsset; seed?: number; resolvedAspectRatio?: string; providerCost?: { amount: number; currency: string; unit: string } }>;
 }
 
 export type VideoProviderMap = Record<VideoProviderId, VideoProvider>;
@@ -112,7 +112,7 @@ export function createVideoProviders(
         if (!openai) {
           throw new Error('Sora video generation requires OPENAI_API_KEY.');
         }
-        const asset = await generateSoraVideo(
+        const { asset, resolvedAspectRatio } = await generateSoraVideo(
           openai,
           prompt,
           modelId as SoraModelId,
@@ -120,7 +120,7 @@ export function createVideoProviders(
           assetStore,
           providerLog
         );
-        return { asset };
+        return { asset, ...(resolvedAspectRatio ? { resolvedAspectRatio } : {}) };
       },
     },
     luma: {
@@ -144,7 +144,7 @@ export function createVideoProviders(
         if (!klingApiKey) {
           throw new Error('Kling video generation requires KLING_API_KEY.');
         }
-        const url = await generateKlingVideo(
+        const { url, resolvedAspectRatio } = await generateKlingVideo(
           klingApiKey,
           klingBaseUrl,
           prompt,
@@ -153,7 +153,7 @@ export function createVideoProviders(
           providerLog
         );
         const asset = await storeVideoFromUrl(assetStore, url, providerLog);
-        return { asset };
+        return { asset, ...(resolvedAspectRatio ? { resolvedAspectRatio } : {}) };
       },
     },
     gemini: {

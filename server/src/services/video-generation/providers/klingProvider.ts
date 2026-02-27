@@ -298,7 +298,7 @@ export async function generateKlingVideo(
   modelId: KlingModelId,
   options: VideoGenerationOptions,
   log: LogSink
-): Promise<string> {
+): Promise<{ url: string; resolvedAspectRatio?: string }> {
   if (options.startImage) {
     return generateKlingImageToVideo(apiKey, baseUrl, prompt, modelId, options, log);
   }
@@ -314,7 +314,8 @@ export async function generateKlingVideo(
   const taskId = await createKlingTask(baseUrl, apiKey, input);
   log.info('Kling t2v generation started', { modelId, taskId });
 
-  return await waitForKlingVideo(baseUrl, apiKey, taskId);
+  const url = await waitForKlingVideo(baseUrl, apiKey, taskId);
+  return { url, ...(aspectRatio ? { resolvedAspectRatio: aspectRatio } : {}) };
 }
 
 async function generateKlingImageToVideo(
@@ -324,7 +325,7 @@ async function generateKlingImageToVideo(
   modelId: KlingModelId,
   options: VideoGenerationOptions,
   log: LogSink
-): Promise<string> {
+): Promise<{ url: string; resolvedAspectRatio?: string }> {
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
   const duration = resolveKlingDuration(options.seconds);
   const input: KlingImageToVideoInput = {
@@ -345,5 +346,6 @@ async function generateKlingImageToVideo(
     hasEndImage: Boolean(options.endImage),
   });
 
-  return await waitForKlingImageToVideo(baseUrl, apiKey, taskId);
+  const url = await waitForKlingImageToVideo(baseUrl, apiKey, taskId);
+  return { url, ...(aspectRatio ? { resolvedAspectRatio: aspectRatio } : {}) };
 }

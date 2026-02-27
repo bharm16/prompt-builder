@@ -202,6 +202,47 @@ describe('generateVideoWorkflow', () => {
     });
   });
 
+  it('propagates resolvedAspectRatio from provider to result', async () => {
+    const providers = createProviderMap({ kling: true });
+    const assetStore = createAssetStore();
+    const log = createLog();
+    providers.kling.generate = vi.fn(async () => ({
+      asset: {
+        id: 'asset-ar',
+        url: 'https://example.com/ar.mp4',
+        contentType: 'video/mp4',
+        createdAt: Date.now(),
+      },
+      resolvedAspectRatio: '16:9',
+    }));
+
+    const result = await generateVideoWorkflow(
+      'wide shot',
+      { model: 'kling-v2-1-master', aspectRatio: '21:9' },
+      providers,
+      assetStore,
+      log
+    );
+
+    expect(result.resolvedAspectRatio).toBe('16:9');
+  });
+
+  it('omits resolvedAspectRatio when provider does not return one', async () => {
+    const providers = createProviderMap({ openai: true });
+    const assetStore = createAssetStore();
+    const log = createLog();
+
+    const result = await generateVideoWorkflow(
+      'simple prompt',
+      { model: 'sora-2' },
+      providers,
+      assetStore,
+      log
+    );
+
+    expect(result.resolvedAspectRatio).toBeUndefined();
+  });
+
   it('enforces the workflow watchdog timeout when provider polling fails to terminate', async () => {
     const { setTimeoutPolicyConfig } = await import('../providers/timeoutPolicy');
     const savedPoll = 1000;

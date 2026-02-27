@@ -457,6 +457,7 @@ export const createVideoGenerateHandler = ({
     try {
       const job = await videoJobStore.createJob({
         userId,
+        ...(requestId ? { requestId } : {}),
         request: {
           prompt: plan.promptWithMotion,
           options: plan.options,
