@@ -18,6 +18,7 @@ import { useAuthUser } from '@hooks/useAuthUser';
 import type { User } from '../context/types';
 import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import { useAssetsSidebar } from '../components/AssetsSidebar';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import {
@@ -81,6 +82,23 @@ const inferCameraMotionCategory = (id: string): CameraMotionCategory => {
   return 'static';
 };
 
+interface HydratedPromptHistoryInput {
+  id?: string;
+  uuid: string;
+  title?: string | null;
+  input?: string;
+  output?: string;
+  score?: number | null;
+  mode?: string;
+  targetModel?: string | null;
+  generationParams?: string | Record<string, unknown> | null;
+  keyframes?: PromptHistoryEntry['keyframes'];
+  brainstormContext?: string | Record<string, unknown> | null;
+  highlightCache?: Record<string, unknown> | null;
+  timestamp?: string;
+  versions?: PromptVersionEntry[];
+}
+
 const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
   id: cameraMotionId,
   label: formatCameraMotionLabel(cameraMotionId),
@@ -95,12 +113,14 @@ const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
  */
 interface PromptOptimizerContentProps {
   user: User | null;
+  isAuthResolved: boolean;
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null | undefined;
 }
 
 function PromptOptimizerContent({
   user,
+  isAuthResolved,
   convergenceHandoff,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
@@ -112,8 +132,10 @@ function PromptOptimizerContent({
     // State
     selectedMode,
     selectedModel,
+    setSelectedMode,
     setSelectedModel,
     generationParams,
+    setGenerationParams,
     showResults,
     showSettings,
     setShowSettings,
@@ -207,6 +229,7 @@ function PromptOptimizerContent({
     clearExtendVideo,
     currentPromptUuid,
     currentPromptDocId,
+    isLoadingHistory: promptHistory.isLoadingHistory,
     promptHistory,
   });
 
@@ -300,6 +323,66 @@ function PromptOptimizerContent({
   ]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
+  const promptHistoryEntries = promptHistory.history;
+  const createPromptHistoryDraft = promptHistory.createDraft;
+  const updatePromptHistoryEntryLocal = promptHistory.updateEntryLocal;
+
+  const upsertHistoryEntryFromSessionLoad = useCallback(
+    (entry: HydratedPromptHistoryInput, sessionDocId: string): void => {
+      const uuid = typeof entry.uuid === 'string' ? entry.uuid.trim() : '';
+      if (!uuid) return;
+
+      const mode = typeof entry.mode === 'string' && entry.mode.trim() ? entry.mode.trim() : 'video';
+      const generationParams =
+        entry.generationParams && typeof entry.generationParams === 'object'
+          ? entry.generationParams
+          : null;
+
+      const existing = promptHistoryEntries.find((item) => item.uuid === uuid);
+      if (!existing) {
+        createPromptHistoryDraft({
+          mode,
+          targetModel: entry.targetModel ?? null,
+          generationParams,
+          keyframes: entry.keyframes ?? null,
+          uuid,
+        });
+      }
+
+      const normalizedContext =
+        typeof entry.brainstormContext === 'string'
+          ? (() => {
+              try {
+                const parsed = JSON.parse(entry.brainstormContext) as unknown;
+                return parsed && typeof parsed === 'object'
+                  ? (parsed as Record<string, unknown>)
+                  : null;
+              } catch {
+                return null;
+              }
+            })()
+          : entry.brainstormContext && typeof entry.brainstormContext === 'object'
+            ? entry.brainstormContext
+            : null;
+
+      updatePromptHistoryEntryLocal(uuid, {
+        id: entry.id ?? sessionDocId,
+        timestamp: entry.timestamp ?? new Date().toISOString(),
+        title: entry.title ?? null,
+        input: entry.input ?? '',
+        output: entry.output ?? '',
+        score: entry.score ?? null,
+        mode,
+        targetModel: entry.targetModel ?? null,
+        generationParams,
+        keyframes: entry.keyframes ?? null,
+        brainstormContext: normalizedContext,
+        highlightCache: entry.highlightCache ?? null,
+        versions: Array.isArray(entry.versions) ? entry.versions : [],
+      });
+    },
+    [promptHistoryEntries, createPromptHistoryDraft, updatePromptHistoryEntryLocal]
+  );
 
   // ============================================================================
   // Custom Hooks - Business Logic Delegation
@@ -308,6 +391,7 @@ function PromptOptimizerContent({
   // Load prompt from URL parameter
   const { isLoading } = usePromptLoader({
     sessionId,
+    isAuthResolved,
     currentPromptUuid,
     navigate,
     toast,
@@ -320,7 +404,10 @@ function PromptOptimizerContent({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedMode,
     setSelectedModel,
+    setGenerationParams,
+    upsertHistoryEntry: upsertHistoryEntryFromSessionLoad,
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,
@@ -715,13 +802,22 @@ interface PromptOptimizerWorkspaceProps {
 function PromptOptimizerWorkspace({
   convergenceHandoff,
 }: PromptOptimizerWorkspaceProps): React.ReactElement {
-  const user = useAuthUser();
+  const [isAuthResolved, setIsAuthResolved] = React.useState(false);
+  const user = useAuthUser({
+    onChange: () => {
+      setIsAuthResolved(true);
+    },
+  });
   const { sessionId } = useParams<{ sessionId?: string }>();
 
   return (
     <WorkspaceSessionProvider {...(sessionId ? { sessionId } : {})}>
       <PromptStateProvider user={user}>
-        <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
+        <PromptOptimizerContent
+          user={user}
+          isAuthResolved={isAuthResolved}
+          convergenceHandoff={convergenceHandoff}
+        />
       </PromptStateProvider>
     </WorkspaceSessionProvider>
   );

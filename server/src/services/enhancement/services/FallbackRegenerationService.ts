@@ -68,22 +68,8 @@ export class FallbackRegenerationService {
       temperature,
     } = params;
 
-    // Early return if we have valid suggestions or this isn't a video prompt
-    if (sanitizedSuggestions.length > 0 || !isVideoPrompt) {
-      const result: FallbackRegenerationResult = {
-        suggestions: sanitizedSuggestions,
-        usedFallback: false,
-        sourceCount: 0,
-      };
-      if (videoConstraints) {
-        result.constraints = videoConstraints;
-      }
-      return result;
-    }
-    
-    // For placeholders: only skip fallback if we actually have suggestions
-    // If placeholder generation failed (0 suggestions), allow fallback to try
-    if (isPlaceholder && sanitizedSuggestions.length > 0) {
+    // Early return only when we already have valid suggestions
+    if (sanitizedSuggestions.length > 0) {
       const result: FallbackRegenerationResult = {
         suggestions: sanitizedSuggestions,
         usedFallback: false,

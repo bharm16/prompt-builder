@@ -241,7 +241,14 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     modelIntelligenceMetrics: container.resolve('metricsService'),
   });
 
-  app.use('/api', apiAuthMiddleware, createRouteTimeout(30_000), apiRoutes);
+  app.use(
+    '/api',
+    apiAuthMiddleware,
+    createRouteTimeout(30_000, {
+      shouldApply: (req) => !(req.path === '/preview' || req.path.startsWith('/preview/')),
+    }),
+    apiRoutes
+  );
 
   // ============================================================================
   // Motion Routes (auth required)

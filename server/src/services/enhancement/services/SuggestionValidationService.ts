@@ -129,11 +129,17 @@ export class SuggestionValidationService {
       const wordCount = this.videoService.countWords(text);
 
       if (context.isPlaceholder) {
-        const constraints = context.videoConstraints || {
+        const fallbackVideoConstraints =
+          context.isVideoPrompt && !context.videoConstraints
+            ? this._getVideoPlaceholderFallbackConstraints(context.highlightedText)
+            : undefined;
+        const constraints = {
           minWords: 1,
           maxWords: 4,
           maxSentences: 1,
           disallowTerminalPunctuation: true,
+          ...(fallbackVideoConstraints || {}),
+          ...(context.videoConstraints || {}),
         };
 
         const minWords = Number.isFinite(constraints.minWords)
@@ -264,7 +270,7 @@ export class SuggestionValidationService {
       filteredCount: suggestions.length - sanitized.length,
     });
 
-    return sanitized;
+    return this._applyPreferredWordCountHeuristics(sanitized, context);
   }
 
   /**
@@ -316,6 +322,65 @@ export class SuggestionValidationService {
     });
     
     return validated;
+  }
+
+  private _getVideoPlaceholderFallbackConstraints(
+    highlightedText: string | undefined
+  ): ReturnType<VideoService['getVideoReplacementConstraints']> | undefined {
+    const highlightWordCount = highlightedText
+      ? this.videoService.countWords(highlightedText)
+      : undefined;
+
+    try {
+      return this.videoService.getVideoReplacementConstraints({
+        ...(highlightWordCount !== undefined ? { highlightWordCount } : {}),
+        ...(highlightedText ? { highlightedText } : {}),
+      });
+    } catch (error) {
+      this.log.warn('Failed to derive fallback video constraints for placeholder sanitization', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
+  private _applyPreferredWordCountHeuristics(
+    suggestions: Suggestion[],
+    context: SanitizationContext
+  ): Suggestion[] {
+    if (!context.isVideoPrompt || suggestions.length === 0 || !context.highlightedText) {
+      return suggestions;
+    }
+
+    const targetWords = this.videoService.countWords(context.highlightedText);
+    if (targetWords <= 0) {
+      return suggestions;
+    }
+
+    const preferredMin = Math.max(1, Math.floor(targetWords * 0.5));
+    const preferredMax = Math.max(preferredMin, Math.ceil(targetWords * 1.5));
+
+    const ranked = suggestions
+      .map((suggestion, index) => {
+        const suggestionWordCount = this.videoService.countWords(suggestion.text);
+        const distance = Math.abs(suggestionWordCount - targetWords) / Math.max(targetWords, 1);
+        return { suggestion, index, suggestionWordCount, distance };
+      })
+      .sort((a, b) => a.distance - b.distance || a.index - b.index);
+
+    if (ranked.length > 3) {
+      const inPreferredRange = ranked.filter(
+        (entry) =>
+          entry.suggestionWordCount >= preferredMin &&
+          entry.suggestionWordCount <= preferredMax
+      );
+
+      if (inPreferredRange.length >= 3) {
+        return inPreferredRange.map((entry) => entry.suggestion);
+      }
+    }
+
+    return ranked.map((entry) => entry.suggestion);
   }
 
   /**

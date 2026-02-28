@@ -44,6 +44,58 @@ const isLikelyVideoUrl = (url: string): boolean => {
 const normalizeNonEmpty = (value: string | null | undefined): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 
+const toEpochMs = (value: string | null | undefined): number | null => {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildVersionMediaFallbackGeneration = (
+  version: PromptVersionEntry
+): Generation | null => {
+  const videoUrl = normalizeNonEmpty(version.video?.videoUrl ?? null);
+  const previewUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
+
+  if (!videoUrl && !previewUrl) {
+    return null;
+  }
+
+  const mediaType: Generation['mediaType'] = videoUrl ? 'video' : 'image';
+  const mediaUrl = videoUrl ?? previewUrl;
+  if (!mediaUrl) return null;
+
+  const mediaRef = videoUrl
+    ? normalizeNonEmpty(version.video?.storagePath ?? version.video?.assetId ?? null)
+    : normalizeNonEmpty(version.preview?.storagePath ?? version.preview?.assetId ?? null);
+
+  const completedAt = toEpochMs(
+    (videoUrl ? version.video?.generatedAt : version.preview?.generatedAt) ?? version.timestamp
+  );
+  const createdAt = toEpochMs(version.timestamp) ?? completedAt ?? Date.now();
+
+  return {
+    id: `version-media-${version.versionId}`,
+    tier: 'render',
+    status: 'completed',
+    model: normalizeNonEmpty(version.video?.model ?? null) ?? 'unknown',
+    prompt: version.prompt ?? '',
+    promptVersionId: version.versionId,
+    createdAt,
+    completedAt: completedAt ?? createdAt,
+    mediaType,
+    mediaUrls: [mediaUrl],
+    ...(mediaRef ? { mediaAssetIds: [mediaRef] } : {}),
+    ...(videoUrl && previewUrl ? { thumbnailUrl: previewUrl } : {}),
+    ...(version.video?.generationParams
+      ? {
+          generationSettings: {
+            generationParams: version.video.generationParams,
+          },
+        }
+      : {}),
+  };
+};
+
 const resolveThumbnailUrl = (
   generation: Generation,
   versionPreviewImageUrl: string | null
@@ -168,12 +220,19 @@ export function buildGalleryGenerationEntries({
 }: BuildGalleryGenerationEntriesOptions): GalleryGenerationEntry[] {
   const versionGenerations: VersionGenerationSource[] = [];
   for (const version of versions) {
-    if (!Array.isArray(version.generations) || version.generations.length === 0) continue;
     const timestamp = Date.parse(version.timestamp);
     const versionTimestamp = Number.isFinite(timestamp) ? timestamp : null;
     const promptSpans = parsePromptSpans(version.highlights);
     const versionPreviewImageUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
-    for (const generation of version.generations) {
+    const explicitGenerations =
+      Array.isArray(version.generations) && version.generations.length > 0
+        ? version.generations
+        : null;
+    const generations = explicitGenerations ?? (() => {
+      const fallback = buildVersionMediaFallbackGeneration(version);
+      return fallback ? [fallback] : [];
+    })();
+    for (const generation of generations) {
       versionGenerations.push({
         generation,
         promptSpans,

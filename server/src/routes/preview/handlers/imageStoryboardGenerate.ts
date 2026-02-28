@@ -122,6 +122,15 @@ export const createImageStoryboardGenerateHandler = ({
       payload: { error: string; code: ApiErrorCode; details?: string }
     ): Promise<Response> => {
       await releaseIdempotencyLock(payload.code || payload.error);
+      if (res.headersSent || res.writableEnded) {
+        logger.warn('Storyboard response already started before error payload could be sent', {
+          userId,
+          path: req.path,
+          status,
+          code: payload.code,
+        });
+        return res;
+      }
       return sendApiError(res, req, status, payload);
     };
 

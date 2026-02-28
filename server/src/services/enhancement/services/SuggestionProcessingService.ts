@@ -160,7 +160,11 @@ export class SuggestionProcessingService {
     const fallbackSourceCount = fallbackResult.sourceCount;
 
     if (suggestionsToUse.length === 0) {
-      const descriptorResult = this.applyDescriptorFallbacks(suggestionsToUse, params.highlightedText);
+      const descriptorResult = this.applyDescriptorFallbacks(
+        suggestionsToUse,
+        params.highlightedText,
+        params.fullPrompt
+      );
       suggestionsToUse = descriptorResult.suggestions;
       if (descriptorResult.usedFallback) {
         usedFallback = true;
@@ -190,7 +194,8 @@ export class SuggestionProcessingService {
    */
   applyDescriptorFallbacks(
     suggestions: Suggestion[],
-    highlightedText: string
+    highlightedText: string,
+    fullPrompt: string
   ): DescriptorFallbackResult {
     if (suggestions.length > 0) {
       return {
@@ -205,12 +210,18 @@ export class SuggestionProcessingService {
       taxonomyId?: string | null;
       confidence: number;
     };
-    const isDescriptorPhrase = descriptorDetection.confidence > 0.4;
+    const highlightedWordCount = highlightedText
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+    const isDescriptorPhrase =
+      descriptorDetection.confidence >= 0.7 && highlightedWordCount >= 3;
 
     logger.debug('Descriptor detection', {
       isDescriptorPhrase,
       category: descriptorDetection.category,
       confidence: descriptorDetection.confidence,
+      highlightedWordCount,
     });
 
     if (!isDescriptorPhrase || !descriptorDetection.category) {
@@ -221,16 +232,23 @@ export class SuggestionProcessingService {
       };
     }
 
-    const descriptorFallbacks = getCategoryFallbacks(descriptorDetection.category);
+    const baseDescriptorFallbacks = getCategoryFallbacks(descriptorDetection.category) as Suggestion[];
+    const childSceneDetected = this._isChildScene(fullPrompt);
+    const descriptorFallbacks = childSceneDetected
+      ? baseDescriptorFallbacks.filter(
+          (fallback) => !this._containsAdultOrIncompatibleTerms(fallback.text)
+        )
+      : baseDescriptorFallbacks;
 
     if (descriptorFallbacks.length > 0) {
       logger.info('Using descriptor category fallbacks', {
         category: descriptorDetection.category,
         count: descriptorFallbacks.length,
+        childSceneDetected,
       });
 
       return {
-        suggestions: descriptorFallbacks as Suggestion[],
+        suggestions: descriptorFallbacks,
         usedFallback: true,
         isDescriptorPhrase,
         descriptorCategory: descriptorDetection.category,
@@ -242,6 +260,19 @@ export class SuggestionProcessingService {
       usedFallback: false,
       isDescriptorPhrase,
     };
+  }
+
+  private _isChildScene(fullPrompt: string): boolean {
+    if (typeof fullPrompt !== 'string' || !fullPrompt.trim()) {
+      return false;
+    }
+    return /\b(baby|child|infant|toddler|newborn|kid)\b/i.test(fullPrompt);
+  }
+
+  private _containsAdultOrIncompatibleTerms(text: string): boolean {
+    return /\b(weathered|athletic build|steel wrench|leather journal|graying temples|calloused|broad shoulders|wooden cane|fedora)\b/i.test(
+      text
+    );
   }
 
   /**

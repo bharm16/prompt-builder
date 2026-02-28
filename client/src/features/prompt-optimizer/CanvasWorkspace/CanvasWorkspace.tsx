@@ -59,6 +59,7 @@ interface CanvasWorkspaceProps {
   onAutocompleteSelect: (asset: AssetSuggestion) => void;
   onAutocompleteClose: () => void;
   onAutocompleteIndexChange: (index: number) => void;
+  enableMLHighlighting: boolean;
   selectedSpanId: string | null;
   suggestionCount: number;
   suggestionsListRef: React.RefObject<HTMLDivElement>;
@@ -130,6 +131,7 @@ export function CanvasWorkspace({
   onAutocompleteSelect,
   onAutocompleteClose,
   onAutocompleteIndexChange,
+  enableMLHighlighting,
   selectedSpanId,
   suggestionCount,
   suggestionsListRef,
@@ -279,8 +281,17 @@ export function CanvasWorkspace({
   const isEmptySession = useMemo(() => {
     const hasGenerations = galleryEntries.length > 0 || heroGeneration !== null;
     const hasStartFrame = Boolean(domain.startFrame);
-    return !hasGenerations && !hasStartFrame;
-  }, [galleryEntries.length, heroGeneration, domain.startFrame]);
+    const hasHydratedSessionPrompt =
+      enableMLHighlighting &&
+      prompt.trim().length > 0;
+    return !hasGenerations && !hasStartFrame && !hasHydratedSessionPrompt;
+  }, [
+    enableMLHighlighting,
+    galleryEntries.length,
+    heroGeneration,
+    domain.startFrame,
+    prompt,
+  ]);
 
   const galleryOpen = true;
 
@@ -309,7 +320,15 @@ export function CanvasWorkspace({
 
         <NewSessionView
           editorRef={editorRef}
+          onTextSelection={onTextSelection}
+          onHighlightClick={onHighlightClick}
+          onHighlightMouseDown={onHighlightMouseDown}
+          onHighlightMouseEnter={onHighlightMouseEnter}
+          onHighlightMouseLeave={onHighlightMouseLeave}
+          onCopyEvent={onCopyEvent}
           onInput={onInput}
+          onEditorKeyDown={onEditorKeyDown}
+          onEditorBlur={onEditorBlur}
           prompt={prompt}
           renderModelId={renderModelId}
           renderModelOptions={renderModelOptions}

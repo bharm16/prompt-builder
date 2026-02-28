@@ -46,6 +46,10 @@ export function createHighlightWrapper(
   getCategoryColor?: (category?: string) => HighlightColor | undefined
 ): HTMLSpanElement {
   const el = root.ownerDocument.createElement('span');
+  const resolvedSpanId =
+    typeof span.id === 'string' && span.id.trim().length > 0
+      ? span.id
+      : `${span.start}-${span.end}-${span.category || span.role || 'span'}`;
   
   // Set CSS class
   el.className = getHighlightClassName(span.category);
@@ -53,7 +57,7 @@ export function createHighlightWrapper(
   // Set core dataset attributes
   el.dataset[DATASET_KEYS.CATEGORY] = span.category;
   el.dataset[DATASET_KEYS.SOURCE] = span.source;
-  el.dataset[DATASET_KEYS.SPAN_ID] = span.id;
+  el.dataset[DATASET_KEYS.SPAN_ID] = resolvedSpanId;
   el.dataset[DATASET_KEYS.START] = String(span.start);
   el.dataset[DATASET_KEYS.END] = String(span.end);
   el.dataset[DATASET_KEYS.START_DISPLAY] = String(highlightStart);

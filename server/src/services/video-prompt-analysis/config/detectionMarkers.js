@@ -21,6 +21,40 @@ export const DETECTION_MARKERS = {
     'variation 2 (different lighting/mood)',
   ],
 
+  // Natural-language cinematographic markers
+  CINEMATOGRAPHIC: [
+    'camera',
+    'close-up',
+    'close up',
+    'wide shot',
+    'medium shot',
+    'eye-level',
+    'eye level',
+    'low angle',
+    'high angle',
+    'tracking shot',
+    'dolly',
+    'pan',
+    'tilt',
+    'zoom',
+    'focus pull',
+    'depth of field',
+    'handheld',
+    'steadicam',
+    'crane shot',
+    'aerial shot',
+    'pov',
+    'slow motion',
+    'time-lapse',
+    'frame',
+    'cinematic',
+    'lens',
+    'bokeh',
+    'rack focus',
+    'establishing shot',
+    'over-the-shoulder',
+  ],
+
   // Technical field markers
   TECHNICAL_FIELDS: [
     'duration:',
@@ -37,5 +71,5 @@ export const DETECTION_THRESHOLDS = {
   // Minimum technical fields for detection
   MIN_TECH_FIELDS_WITH_SPECS: 2,
   MIN_TECH_FIELDS_WITH_ALTERNATIVES: 3,
+  CINEMATOGRAPHIC_THRESHOLD: 2,
 };
-

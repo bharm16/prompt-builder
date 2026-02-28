@@ -13,6 +13,7 @@ type UsePromptKeyframesSyncParams = {
   clearExtendVideo: () => void;
   currentPromptUuid: string | null | undefined;
   currentPromptDocId: string | null | undefined;
+  isLoadingHistory: boolean;
   promptHistory: Pick<PromptHistory, 'history' | 'updateEntryPersisted'>;
 };
 
@@ -30,6 +31,7 @@ export function usePromptKeyframesSync({
   clearExtendVideo,
   currentPromptUuid,
   currentPromptDocId,
+  isLoadingHistory,
   promptHistory,
 }: UsePromptKeyframesSyncParams): UsePromptKeyframesSyncResult {
   const { history, updateEntryPersisted } = promptHistory;
@@ -39,6 +41,11 @@ export function usePromptKeyframesSync({
     docId: currentPromptDocId ?? null,
   });
   const localWritePendingRef = useRef(false);
+  const historySyncPendingRef = useRef(false);
+  const hasRemoteSession = useMemo(() => {
+    const normalized = currentPromptDocId?.trim() ?? '';
+    return normalized.length > 0 && !normalized.startsWith('draft-');
+  }, [currentPromptDocId]);
 
   useEffect(() => {
     keyframesRef.current = keyframes;
@@ -49,6 +56,11 @@ export function usePromptKeyframesSync({
       localWritePendingRef.current = false;
       return;
     }
+
+    if (isLoadingHistory && hasRemoteSession) {
+      return;
+    }
+
     if (!currentPromptUuid) {
       if (keyframesRef.current.length) {
         setKeyframes([]);
@@ -60,6 +72,10 @@ export function usePromptKeyframesSync({
     }
     const entry = history.find((item) => item.uuid === currentPromptUuid);
     if (!entry) {
+      if (hasRemoteSession) {
+        // Keep keyframes loaded from direct session fetch until history catches up.
+        return;
+      }
       if (keyframesRef.current.length) {
         setKeyframes([]);
       }
@@ -68,8 +84,19 @@ export function usePromptKeyframesSync({
       clearExtendVideo();
       return;
     }
+    const normalizedCurrentDocId = currentPromptDocId?.trim() ?? '';
+    const normalizedEntryDocId = typeof entry.id === 'string' ? entry.id.trim() : '';
+    if (
+      hasRemoteSession &&
+      normalizedCurrentDocId.length > 0 &&
+      normalizedEntryDocId.length > 0 &&
+      normalizedEntryDocId !== normalizedCurrentDocId
+    ) {
+      return;
+    }
     const nextKeyframes = hydrateKeyframes(entry.keyframes ?? []);
     if (areKeyframesEqual(nextKeyframes, keyframesRef.current)) return;
+    historySyncPendingRef.current = true;
     setKeyframes(nextKeyframes);
   }, [
     clearEndFrame,
@@ -77,6 +104,9 @@ export function usePromptKeyframesSync({
     clearVideoReferences,
     currentPromptUuid,
     history,
+    hasRemoteSession,
+    isLoadingHistory,
+    currentPromptDocId,
     setKeyframes,
   ]);
 
@@ -94,13 +124,32 @@ export function usePromptKeyframesSync({
   useEffect(() => {
     const { uuid, docId } = keyframeSessionRef.current;
     if (!uuid) return;
+
+    const normalizedDocId = docId?.trim() ?? '';
+    const isRemoteDocId = normalizedDocId.length > 0 && !normalizedDocId.startsWith('draft-');
+    if (isLoadingHistory && isRemoteDocId) {
+      return;
+    }
+
     const entry = history.find((item) => item.uuid === uuid);
     if (!entry) return;
+    const normalizedEntryDocId = typeof entry.id === 'string' ? entry.id.trim() : '';
+    if (
+      isRemoteDocId &&
+      normalizedEntryDocId.length > 0 &&
+      normalizedEntryDocId !== normalizedDocId
+    ) {
+      return;
+    }
+    if (historySyncPendingRef.current) {
+      historySyncPendingRef.current = false;
+      return;
+    }
     const serialized = serializeKeyframes(keyframes);
     if (areKeyframesEqual(serialized, entry.keyframes ?? [])) return;
     localWritePendingRef.current = true;
     updateEntryPersisted(uuid, docId, { keyframes: serialized });
-  }, [keyframes, history, updateEntryPersisted]);
+  }, [keyframes, history, isLoadingHistory, updateEntryPersisted]);
 
   const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
 

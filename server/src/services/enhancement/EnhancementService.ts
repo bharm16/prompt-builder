@@ -218,6 +218,7 @@ export class EnhancementService {
       const spanContext = this._buildSpanContext({
         allLabeledSpans,
         nearbySpans,
+        fullPrompt,
         highlightedText,
         highlightedCategory: highlightedCategory ?? null,
         phraseRole,
@@ -685,12 +686,14 @@ export class EnhancementService {
   private _buildSpanContext({
     allLabeledSpans,
     nearbySpans,
+    fullPrompt,
     highlightedText,
     highlightedCategory,
     phraseRole,
   }: {
     allLabeledSpans: LabeledSpan[];
     nearbySpans: NearbySpan[];
+    fullPrompt: string;
     highlightedText: string;
     highlightedCategory: string | null;
     phraseRole: string | null;
@@ -719,17 +722,41 @@ export class EnhancementService {
         text: (span.text || '').replace(/\s+/g, ' ').trim(),
         category: span.category || span.role || 'unknown',
         confidence: typeof span.confidence === 'number' ? span.confidence : 0,
+        start: typeof span.start === 'number' ? span.start : undefined,
+        end: typeof span.end === 'number' ? span.end : undefined,
       }))
       .filter((span) => span.text && span.text.toLowerCase() !== normalizedHighlight);
 
-    const anchorByCategory = new Map<string, { text: string; confidence: number }>();
+    const clauses = this._findClauseBoundaries(fullPrompt);
+    const highlightRange = this._resolveSpanRange(fullPrompt, highlightedText);
+    const highlightClauseIndex = this._findClauseIndex(clauses, highlightRange);
+
+    const sameClauseAnchors = new Map<string, { text: string; confidence: number }>();
+    const promptWideAnchors = new Map<string, { text: string; confidence: number }>();
     for (const span of anchorCandidates) {
       const parent = getParentCategory(span.category) || span.category;
       if (!parent) continue;
       if (highlightParent && parent === highlightParent) continue;
-      const existing = anchorByCategory.get(parent);
+
+      const spanRange = this._resolveSpanRange(fullPrompt, span.text, span.start, span.end);
+      const spanClauseIndex = this._findClauseIndex(clauses, spanRange);
+      const anchorPool =
+        highlightClauseIndex !== null && spanClauseIndex === highlightClauseIndex
+          ? sameClauseAnchors
+          : promptWideAnchors;
+
+      const existing = anchorPool.get(parent);
       if (!existing || span.confidence > existing.confidence) {
-        anchorByCategory.set(parent, { text: span.text, confidence: span.confidence });
+        anchorPool.set(parent, { text: span.text, confidence: span.confidence });
+      }
+    }
+
+    const anchorByCategory = new Map<string, { text: string; confidence: number }>(
+      sameClauseAnchors
+    );
+    for (const [category, anchor] of promptWideAnchors.entries()) {
+      if (!anchorByCategory.has(category)) {
+        anchorByCategory.set(category, anchor);
       }
     }
 
@@ -774,6 +801,100 @@ export class EnhancementService {
       lockedSpanCategories,
       guidanceSpans,
     };
+  }
+
+  private _findClauseBoundaries(fullPrompt: string): Array<{ start: number; end: number }> {
+    if (typeof fullPrompt !== 'string' || !fullPrompt.trim()) {
+      return [];
+    }
+
+    const clauseRanges: Array<{ start: number; end: number }> = [];
+    const delimiterPattern = /[.;]|\bwhile\b|\bas\b|\band\b/gi;
+    let clauseStart = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = delimiterPattern.exec(fullPrompt)) !== null) {
+      const clauseEnd = match.index;
+      const trimmed = this._trimRange(fullPrompt, clauseStart, clauseEnd - 1);
+      if (trimmed) {
+        clauseRanges.push(trimmed);
+      }
+      clauseStart = match.index + match[0].length;
+    }
+
+    const trailingClause = this._trimRange(
+      fullPrompt,
+      clauseStart,
+      fullPrompt.length - 1
+    );
+    if (trailingClause) {
+      clauseRanges.push(trailingClause);
+    }
+
+    if (clauseRanges.length === 0) {
+      const wholeRange = this._trimRange(fullPrompt, 0, fullPrompt.length - 1);
+      return wholeRange ? [wholeRange] : [];
+    }
+
+    return clauseRanges;
+  }
+
+  private _trimRange(
+    text: string,
+    start: number,
+    end: number
+  ): { start: number; end: number } | null {
+    let trimmedStart = Math.max(0, start);
+    let trimmedEnd = Math.min(text.length - 1, end);
+
+    while (trimmedStart <= trimmedEnd && /\s/.test(text[trimmedStart] || '')) {
+      trimmedStart += 1;
+    }
+    while (trimmedEnd >= trimmedStart && /\s/.test(text[trimmedEnd] || '')) {
+      trimmedEnd -= 1;
+    }
+
+    return trimmedStart <= trimmedEnd ? { start: trimmedStart, end: trimmedEnd } : null;
+  }
+
+  private _resolveSpanRange(
+    fullPrompt: string,
+    spanText: string,
+    start?: number,
+    end?: number
+  ): { start: number; end: number } | null {
+    if (Number.isFinite(start) && Number.isFinite(end) && (end as number) > (start as number)) {
+      const boundedStart = Math.max(0, start as number);
+      const boundedEnd = Math.min(fullPrompt.length - 1, (end as number) - 1);
+      return boundedStart <= boundedEnd
+        ? { start: boundedStart, end: boundedEnd }
+        : null;
+    }
+
+    const normalizedText = spanText.trim().toLowerCase();
+    if (!normalizedText) return null;
+    const index = fullPrompt.toLowerCase().indexOf(normalizedText);
+    if (index < 0) return null;
+    return { start: index, end: index + normalizedText.length - 1 };
+  }
+
+  private _findClauseIndex(
+    clauses: Array<{ start: number; end: number }>,
+    spanRange: { start: number; end: number } | null
+  ): number | null {
+    if (!spanRange || clauses.length === 0) {
+      return null;
+    }
+
+    for (let i = 0; i < clauses.length; i += 1) {
+      const clause = clauses[i];
+      if (!clause) continue;
+      if (spanRange.start >= clause.start && spanRange.start <= clause.end) {
+        return i;
+      }
+    }
+
+    return null;
   }
 
   private _countSuggestions(suggestions: EnhancementResult['suggestions'] | undefined): number {

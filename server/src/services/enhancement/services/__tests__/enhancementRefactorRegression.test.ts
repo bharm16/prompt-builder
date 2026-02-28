@@ -59,7 +59,7 @@ describe('enhancement refactor regressions', () => {
       const { service } = createService();
       const suggestions: Suggestion[] = [{ text: 'keep me', category: 'style.aesthetic' }];
 
-      const result = service.applyDescriptorFallbacks(suggestions, 'ignored');
+      const result = service.applyDescriptorFallbacks(suggestions, 'ignored', 'ignored');
 
       expect(result.suggestions).toEqual(suggestions);
       expect(result.usedFallback).toBe(false);

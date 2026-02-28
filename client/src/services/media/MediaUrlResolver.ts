@@ -38,6 +38,19 @@ const EXPIRY_SAFETY_WINDOW_MS = 2 * 60 * 1000;
 const PREVIEW_ROUTE_PREFIX = '/api/preview/';
 const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
 
+const getErrorStatus = (error: unknown): number | null => {
+  if (!error || typeof error !== 'object') return null;
+  const maybeStatus = (error as { status?: unknown }).status;
+  return typeof maybeStatus === 'number' && Number.isFinite(maybeStatus) ? maybeStatus : null;
+};
+
+const isTransientApiFailure = (error: unknown): boolean => {
+  const status = getErrorStatus(error);
+  if (status === 429) return true;
+  if (status !== null && status >= 500 && status <= 599) return true;
+  return false;
+};
+
 const parseCandidateUrl = (rawUrl: string): URL | null => {
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
@@ -243,6 +256,9 @@ export async function resolveMediaUrl(req: MediaUrlRequest): Promise<MediaUrlRes
 
       return { url: null, source: 'unknown' };
     } catch (error) {
+      if (isTransientApiFailure(error)) {
+        throw error;
+      }
       log.warn('Failed to resolve media URL', {
         kind: resolvedReq.kind,
         storagePath: resolvedReq.storagePath ?? null,

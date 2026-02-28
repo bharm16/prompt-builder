@@ -39,6 +39,57 @@ export interface HighlightMetadata {
   [key: string]: unknown;
 }
 
+interface SpanIdParts {
+  spanId?: string | null | undefined;
+  start?: string | number | null | undefined;
+  end?: string | number | null | undefined;
+  category?: string | null | undefined;
+}
+
+function parseOffset(value: string | number | null | undefined): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+/**
+ * Resolve a robust span id for click/selection flows.
+ * Falls back to offset-based key when backend span.id is missing.
+ */
+export function resolveHighlightSpanId({
+  spanId,
+  start,
+  end,
+  category,
+}: SpanIdParts): string | null {
+  const normalizedSpanId =
+    typeof spanId === 'string' &&
+    spanId.trim().length > 0 &&
+    spanId !== 'undefined' &&
+    spanId !== 'null'
+      ? spanId
+      : null;
+
+  if (normalizedSpanId) {
+    return normalizedSpanId;
+  }
+
+  const startOffset = parseOffset(start);
+  const endOffset = parseOffset(end);
+  if (startOffset === null || endOffset === null) {
+    return null;
+  }
+
+  const categoryPart =
+    typeof category === 'string' && category.trim().length > 0 ? category.trim() : 'span';
+  return `${startOffset}-${endOffset}-${categoryPart}`;
+}
+
 export interface ParseResult {
   spans?: Array<{ id?: string | undefined }>;
   displayText?: string;
@@ -59,7 +110,7 @@ export function extractHighlightMetadata(
   const {
     category,
     source,
-    spanId,
+    spanId: rawSpanId,
     start,
     end,
     startGrapheme,
@@ -72,10 +123,17 @@ export function extractHighlightMetadata(
     idempotencyKey,
   } = node.dataset;
 
+  const resolvedSpanId = resolveHighlightSpanId({
+    spanId: rawSpanId,
+    start,
+    end,
+    category,
+  });
+
   const metadata: HighlightMetadata = {
     category: category || null,
     source: source || null,
-    spanId: spanId || null,
+    spanId: resolvedSpanId,
     start: start ? Number(start) : -1,
     end: end ? Number(end) : -1,
     startGrapheme: startGrapheme ? Number(startGrapheme) : -1,

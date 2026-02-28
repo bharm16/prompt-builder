@@ -3,7 +3,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { SessionDto } from '@shared/types/session';
 import type { ContinuitySession, ContinuityShot } from '@/features/continuity/types';
-import { WorkspaceSessionProvider, useWorkspaceSession } from '../WorkspaceSessionContext';
+import {
+  WorkspaceSessionProvider,
+  useWorkspaceSession,
+  __resetWorkspaceSessionFetchStateForTests,
+} from '../WorkspaceSessionContext';
 
 const mockApiGet = vi.hoisted(() => vi.fn());
 const mockCreateSession = vi.hoisted(() => vi.fn());
@@ -108,6 +112,7 @@ const draftWrapper =
 describe('WorkspaceSessionContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetWorkspaceSessionFetchStateForTests();
     mockApiGet.mockResolvedValue({ data: buildSession() });
     mockCreateSession.mockResolvedValue(buildContinuitySession());
     mockCreateSceneProxy.mockResolvedValue(buildContinuitySessionWithProxy());

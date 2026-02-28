@@ -7,7 +7,15 @@ import { CanvasSettingsRow } from './CanvasSettingsRow';
 
 interface NewSessionViewProps {
   editorRef: React.RefObject<HTMLDivElement>;
+  onTextSelection: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseEnter: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseLeave: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onCopyEvent: (event: React.ClipboardEvent<HTMLDivElement>) => void;
   onInput: (event: React.FormEvent<HTMLDivElement>) => void;
+  onEditorKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onEditorBlur: (event: React.FocusEvent<HTMLDivElement>) => void;
   prompt: string;
   renderModelId: string;
   renderModelOptions: Array<{ id: string; label: string }>;
@@ -23,7 +31,15 @@ interface NewSessionViewProps {
 
 export function NewSessionView({
   editorRef,
+  onTextSelection,
+  onHighlightClick,
+  onHighlightMouseDown,
+  onHighlightMouseEnter,
+  onHighlightMouseLeave,
+  onCopyEvent,
   onInput,
+  onEditorKeyDown,
+  onEditorBlur,
   prompt,
   renderModelId,
   renderModelOptions,
@@ -82,6 +98,12 @@ export function NewSessionView({
               )}
               <div
                 ref={editorRef}
+                onMouseUp={onTextSelection}
+                onClick={onHighlightClick}
+                onMouseDown={onHighlightMouseDown}
+                onMouseMove={onHighlightMouseEnter}
+                onMouseLeave={onHighlightMouseLeave}
+                onCopy={onCopyEvent}
                 contentEditable
                 suppressContentEditableWarning
                 role="textbox"
@@ -89,8 +111,12 @@ export function NewSessionView({
                 aria-multiline="true"
                 className="min-h-[56px] max-h-[180px] overflow-y-auto text-[15px] leading-[1.7] text-[#E2E6EF] caret-[#6C5CE7] outline-none [&:empty]:min-h-[56px]"
                 onInput={onInput}
+                onKeyDown={onEditorKeyDown}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onBlur={(event) => {
+                  setIsFocused(false);
+                  onEditorBlur(event);
+                }}
               />
             </div>
 

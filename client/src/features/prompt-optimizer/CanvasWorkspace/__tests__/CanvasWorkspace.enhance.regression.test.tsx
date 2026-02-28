@@ -100,7 +100,7 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   generationsPanelProps: {
     prompt: 'baby driving a car',
     versions: [],
-    promptVersionId: 'version-1',
+    promptVersionId: '',
   } as unknown as GenerationsPanelProps,
   copied: false,
   canUndo: false,
@@ -149,6 +149,7 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
+  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],
@@ -166,5 +167,23 @@ describe('regression: canvas enhance callback wiring', () => {
     await user.click(screen.getByTestId('new-session-enhance'));
 
     expect(onEnhance).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders interactive canvas when hydrated output is present even without prompt version id', () => {
+    const props = buildProps();
+    render(
+      <CanvasWorkspace
+        {...props}
+        enableMLHighlighting
+        generationsPanelProps={{
+          ...(props.generationsPanelProps as GenerationsPanelProps),
+          prompt: 'The camera tracks a subject through warm golden light.',
+          promptVersionId: '',
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('new-session-enhance')).not.toBeInTheDocument();
+    expect(screen.getByTestId('canvas-prompt-bar')).toBeInTheDocument();
   });
 });

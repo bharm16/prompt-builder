@@ -155,6 +155,7 @@ export function PromptCanvasView({
         onAutocompleteSelect={onAutocompleteSelect}
         onAutocompleteClose={onAutocompleteClose}
         onAutocompleteIndexChange={onAutocompleteIndexChange}
+        enableMLHighlighting={enableMLHighlighting}
         selectedSpanId={selectedSpanId}
         suggestionCount={suggestionCount}
         suggestionsListRef={suggestionsListRef}

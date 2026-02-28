@@ -121,28 +121,63 @@ export class SuggestionGenerationService {
     const groqStart = Date.now();
     const { provider = 'groq', developerMessage, useStrictSchema, reasoningEffort } = params;
 
-    const providerSchema = getEnhancementSchema(params.isPlaceholder, { provider });
-    const enforceOptions: Parameters<typeof StructuredOutputEnforcer.enforceJSON>[2] = {
-      schema: providerSchema as
-        | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
+    let activeProvider: 'openai' | 'groq' | 'qwen' = provider;
+    let activeSchema = getEnhancementSchema(params.isPlaceholder, {
+      provider: activeProvider,
+    }) as OutputSchema;
+    const buildEnforceOptions = (
+      selectedProvider: 'openai' | 'groq' | 'qwen',
+      schema: OutputSchema
+    ): Parameters<typeof StructuredOutputEnforcer.enforceJSON>[2] => ({
+      schema: schema as
+        | {
+            type: 'object' | 'array';
+            required?: string[];
+            items?: { required?: string[] };
+            additionalProperties?: boolean;
+          }
         | null,
       isArray: true,
       maxTokens: 2048,
       maxRetries: 2,
       temperature: params.temperature,
       operation: 'enhance_suggestions',
-      provider,
-      ...(provider === 'openai' && developerMessage ? { developerMessage } : {}),
-      ...(provider === 'openai' && useStrictSchema ? { useStrictSchema } : {}),
-      ...(provider === 'qwen' && !reasoningEffort ? { reasoningEffort: 'none' } : {}),
+      provider: selectedProvider,
+      ...(selectedProvider === 'openai' && developerMessage ? { developerMessage } : {}),
+      ...(selectedProvider === 'openai' && useStrictSchema ? { useStrictSchema } : {}),
+      ...(selectedProvider === 'qwen' && !reasoningEffort ? { reasoningEffort: 'none' } : {}),
       ...(reasoningEffort ? { reasoningEffort } : {}),
-    };
+    });
 
-    let suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-      this.ai,
-      params.systemPrompt,
-      enforceOptions
-    );
+    let suggestions: Suggestion[];
+    try {
+      suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+        this.ai,
+        params.systemPrompt,
+        buildEnforceOptions(activeProvider, activeSchema)
+      );
+    } catch (error) {
+      if (!this._shouldRetryWithGroq(activeProvider, error)) {
+        throw error;
+      }
+
+      logger.warn('Primary suggestion generation failed with malformed JSON; retrying with Groq', {
+        provider: activeProvider,
+        operation: 'enhance_suggestions',
+        reason: error instanceof Error ? error.message : String(error),
+      });
+
+      activeProvider = 'groq';
+      activeSchema = getEnhancementSchema(params.isPlaceholder, {
+        provider: activeProvider,
+      }) as OutputSchema;
+
+      suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+        this.ai,
+        params.systemPrompt,
+        buildEnforceOptions(activeProvider, activeSchema)
+      );
+    }
 
     let usedContrastiveDecoding = false;
     const diversityMetrics = Array.isArray(suggestions)
@@ -154,10 +189,10 @@ export class SuggestionGenerationService {
       (diversityMetrics.avgSimilarity > 0.6 || diversityMetrics.maxSimilarity > 0.85);
 
     const shouldAttemptContrastive =
-      provider !== 'openai' &&
+      activeProvider !== 'openai' &&
       this.contrastiveDiversity.shouldUseContrastiveDecoding({
         systemPrompt: params.systemPrompt,
-        schema: providerSchema as OutputSchema,
+        schema: activeSchema as OutputSchema,
         isVideoPrompt: params.isVideoPrompt,
         isPlaceholder: params.isPlaceholder,
         highlightedText: params.highlightedText,
@@ -168,7 +203,7 @@ export class SuggestionGenerationService {
       const contrastiveSuggestions =
         await this.contrastiveDiversity.generateWithContrastiveDecoding({
           systemPrompt: params.systemPrompt,
-          schema: providerSchema as OutputSchema,
+          schema: activeSchema as OutputSchema,
           isVideoPrompt: params.isVideoPrompt,
           isPlaceholder: params.isPlaceholder,
           highlightedText: params.highlightedText,
@@ -218,9 +253,10 @@ export class SuggestionGenerationService {
       zeroShotActive: true,
       hasPoisonousText,
       sampleSuggestions,
-      provider,
-      usedStrictSchema: useStrictSchema && provider === 'openai',
-      usedDeveloperRole: !!(developerMessage && provider === 'openai'),
+      provider: activeProvider,
+      ...(activeProvider !== provider ? { fallbackFromProvider: provider } : {}),
+      usedStrictSchema: useStrictSchema && activeProvider === 'openai',
+      usedDeveloperRole: !!(developerMessage && activeProvider === 'openai'),
     });
 
     if (hasPoisonousText && Array.isArray(suggestions)) {
@@ -239,7 +275,7 @@ export class SuggestionGenerationService {
         highlightedText: params.highlightedText,
         filteredCount,
         poisonousTexts: suggestions.filter(s => isPoisonous(s.text)).map(s => s.text),
-        provider,
+        provider: activeProvider,
       });
 
       // Relaxed: Allow them through if the model reasoned they were okay
@@ -251,5 +287,17 @@ export class SuggestionGenerationService {
       groqCallTime,
       usedContrastiveDecoding,
     };
+  }
+
+  private _shouldRetryWithGroq(
+    provider: 'openai' | 'groq' | 'qwen',
+    error: unknown
+  ): boolean {
+    if (provider !== 'qwen') {
+      return false;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    return /json_validate_failed|failed to generate json|invalid json/i.test(message);
   }
 }

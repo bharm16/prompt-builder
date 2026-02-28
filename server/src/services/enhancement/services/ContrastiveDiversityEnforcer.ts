@@ -1,6 +1,7 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { detectProvider, type ProviderType } from '@utils/provider/ProviderDetector';
+import { normalizeVisualSynonym } from '@services/enhancement/config/synonymClusters';
 import type {
   Suggestion,
   AIService,
@@ -387,14 +388,32 @@ export class ContrastiveDiversityEnforcer {
   }
 
   /**
-   * Calculate Jaccard similarity between two texts
+   * Calculate semantic-aware Jaccard similarity between two texts
    * @private
    */
   private _jaccardSimilarity(text1: string, text2: string): number {
-    const set1 = new Set(String(text1).toLowerCase().split(/\s+/));
-    const set2 = new Set(String(text2).toLowerCase().split(/\s+/));
+    const rawSet1 = new Set(this._tokenize(text1, false));
+    const rawSet2 = new Set(this._tokenize(text2, false));
+    const rawSimilarity = this._calculateSetJaccard(rawSet1, rawSet2);
 
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const normalizedSet1 = new Set(this._tokenize(text1, true));
+    const normalizedSet2 = new Set(this._tokenize(text2, true));
+    const normalizedSimilarity = this._calculateSetJaccard(normalizedSet1, normalizedSet2);
+
+    return Math.max(rawSimilarity, normalizedSimilarity);
+  }
+
+  private _tokenize(text: string, normalizeSynonyms: boolean): string[] {
+    return String(text)
+      .toLowerCase()
+      .split(/\s+/)
+      .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ''))
+      .filter(Boolean)
+      .map((word) => (normalizeSynonyms ? normalizeVisualSynonym(word) : word));
+  }
+
+  private _calculateSetJaccard(set1: Set<string>, set2: Set<string>): number {
+    const intersection = new Set([...set1].filter((token) => set2.has(token)));
     const union = new Set([...set1, ...set2]);
 
     if (union.size === 0) return 0;

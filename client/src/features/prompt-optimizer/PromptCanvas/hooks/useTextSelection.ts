@@ -11,6 +11,7 @@ import {
   findHighlightNode,
   extractHighlightMetadata,
   createHighlightRange,
+  resolveHighlightSpanId,
 } from '@features/prompt-optimizer/utils/highlightInteractionHelpers';
 import type { ParseResult, SuggestionPayload, SpanClickPayload } from '../types';
 import { logger } from '@/services/LoggingService';
@@ -111,7 +112,12 @@ export function useTextSelection({
         displayText: parseResult.displayText,
       });
       const wordText = node.textContent?.trim() ?? '';
-      const spanId = metadata?.spanId || node.dataset?.spanId || null;
+      const spanId = resolveHighlightSpanId({
+        spanId: metadata?.spanId ?? node.dataset?.spanId ?? null,
+        start: metadata?.start ?? node.dataset?.start,
+        end: metadata?.end ?? node.dataset?.end,
+        category: metadata?.category ?? node.dataset?.category ?? null,
+      });
 
       // Update selected span state
       if (onSpanSelect && spanId) {

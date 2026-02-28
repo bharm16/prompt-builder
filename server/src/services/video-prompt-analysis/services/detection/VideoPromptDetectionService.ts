@@ -20,9 +20,6 @@ export class VideoPromptDetectionService {
       });
       return false;
     }
-    if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
-      return false;
-    }
 
     const normalized = normalizeText(fullPrompt);
 
@@ -33,6 +30,15 @@ export class VideoPromptDetectionService {
       return true;
     }
 
+    // If this looks like JSON but failed structured checks, do not fall through
+    // to natural-language marker heuristics.
+    if (this._looksLikeJson(normalized)) {
+      this.log.debug('JSON-like prompt missing required video fields', {
+        operation,
+      });
+      return false;
+    }
+
     // Check legacy markers
     if (this._hasLegacyMarkers(normalized)) {
       return true;
@@ -40,6 +46,14 @@ export class VideoPromptDetectionService {
 
     // Check modern template markers
     if (this._hasModernMarkers(normalized)) {
+      return true;
+    }
+
+    // Check natural-language cinematographic markers
+    if (this._hasCinematographicLanguage(normalized)) {
+      this.log.debug('Video prompt detected via cinematographic language', {
+        operation,
+      });
       return true;
     }
 
@@ -74,6 +88,17 @@ export class VideoPromptDetectionService {
     return DETECTION_MARKERS.MODERN.some((marker) => 
       normalizedText.includes(marker)
     );
+  }
+
+  /**
+   * Check for natural-language cinematographic language
+   */
+  private _hasCinematographicLanguage(normalizedText: string): boolean {
+    const matches = DETECTION_MARKERS.CINEMATOGRAPHIC.filter((marker) =>
+      normalizedText.includes(marker)
+    );
+
+    return matches.length >= DETECTION_THRESHOLDS.CINEMATOGRAPHIC_THRESHOLD;
   }
 
   /**
@@ -122,6 +147,14 @@ export class VideoPromptDetectionService {
       hasSubject &&
       (hasCamera || hasAction) &&
       (hasEnvironment || hasLighting || hasStyle)
+    );
+  }
+
+  private _looksLikeJson(normalizedText: string): boolean {
+    const trimmed = normalizedText.trim();
+    return (
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
     );
   }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getPromptRepositoryForUser } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
+import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
@@ -18,9 +19,13 @@ const isRemoteSessionId = (value: string): boolean => {
 interface PromptData {
   id?: string;
   uuid: string;
+  title?: string | null;
   input?: string;
   output?: string;
+  score?: number | null;
+  mode?: string;
   targetModel?: string | null;
+  generationParams?: Record<string, unknown> | string | null;
   keyframes?: PromptKeyframe[] | null;
   highlightCache?: {
     signature?: string;
@@ -43,6 +48,7 @@ interface PromptOptimizer {
 
 interface UsePromptLoaderParams {
   sessionId: string | null | undefined;
+  isAuthResolved?: boolean;
   currentPromptUuid: string | null | undefined;
   navigate: ReturnType<typeof useNavigate>;
   toast: Toast;
@@ -58,17 +64,40 @@ interface UsePromptLoaderParams {
   setCurrentPromptDocId: (id: string | null) => void;
   setCurrentPromptUuid: (uuid: string) => void;
   setShowResults: (show: boolean) => void;
+  setSelectedMode?: (mode: string) => void;
   setSelectedModel: (model: string) => void;
+  setGenerationParams?: (params: CapabilityValues) => void;
+  upsertHistoryEntry?: (entry: PromptData, sessionId: string) => void;
   setPromptContext: (context: PromptContext | null) => void;
   onLoadKeyframes?: (keyframes: PromptKeyframe[] | null | undefined) => void;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
+
+const parseCapabilityValues = (value: PromptData['generationParams']): CapabilityValues => {
+  if (value && typeof value === 'object') {
+    return value as CapabilityValues;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as CapabilityValues;
+      }
+    } catch {
+      // Keep fallback for malformed payloads; session hydration should remain usable.
+    }
+  }
+
+  return {} as CapabilityValues;
+};
 
 /**
  * Custom hook for loading prompts from session route parameters
  */
 export function usePromptLoader({
   sessionId,
+  isAuthResolved = true,
   navigate,
   toast,
   user,
@@ -80,7 +109,10 @@ export function usePromptLoader({
   setCurrentPromptDocId,
   setCurrentPromptUuid,
   setShowResults,
+  setSelectedMode,
   setSelectedModel,
+  setGenerationParams,
+  upsertHistoryEntry,
   setPromptContext,
   onLoadKeyframes,
   skipLoadFromUrlRef,
@@ -117,6 +149,16 @@ export function usePromptLoader({
         return;
       }
 
+      if (isRemoteSessionId(normalizedSessionId) && !isAuthResolved) {
+        setIsLoading(true);
+        return;
+      }
+
+      if (isRemoteSessionId(normalizedSessionId) && !user?.uid) {
+        setIsLoading(true);
+        return;
+      }
+
       const sessionKey = `${normalizedSessionId}::${user?.uid ?? 'anonymous'}`;
       if (!isRemoteSessionId(normalizedSessionId)) {
         lastLoadedSessionKeyRef.current = sessionKey;
@@ -142,6 +184,7 @@ export function usePromptLoader({
         if (cancelled) return;
 
         if (promptData) {
+          const parsedGenerationParams = parseCapabilityValues(promptData.generationParams);
           setInputPrompt(promptData.input || '');
           setOptimizedPrompt(promptData.output || '');
           setDisplayedPromptSilently(promptData.output || '');
@@ -151,7 +194,21 @@ export function usePromptLoader({
           setCurrentPromptUuid(promptData.uuid);
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);
+          if (typeof promptData.mode === 'string' && promptData.mode.trim()) {
+            setSelectedMode?.(promptData.mode.trim());
+          }
           setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
+          setGenerationParams?.(parsedGenerationParams);
+          upsertHistoryEntry?.(
+            {
+              ...promptData,
+              generationParams:
+                Object.keys(parsedGenerationParams).length > 0
+                  ? (parsedGenerationParams as Record<string, unknown>)
+                  : null,
+            },
+            normalizedSessionId
+          );
           onLoadKeyframes?.(promptData.keyframes);
 
           const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
@@ -222,6 +279,7 @@ export function usePromptLoader({
     };
   }, [
     sessionId,
+    isAuthResolved,
     navigate,
     user?.uid,
     isAuthenticated,
@@ -232,7 +290,10 @@ export function usePromptLoader({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedMode,
     setSelectedModel,
+    setGenerationParams,
+    upsertHistoryEntry,
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,

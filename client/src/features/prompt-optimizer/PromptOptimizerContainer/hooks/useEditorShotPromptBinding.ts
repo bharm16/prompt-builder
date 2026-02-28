@@ -53,7 +53,7 @@ export function useEditorShotPromptBinding({
   }, [debouncedPersistPrompt]);
 
   useEffect(() => {
-    if (!currentEditorShot) {
+    if (!currentEditorShot || !hasActiveContinuityShot) {
       lastSyncedShotIdRef.current = null;
       return;
     }
@@ -66,11 +66,12 @@ export function useEditorShotPromptBinding({
     debouncedPersistPrompt.cancel();
 
     const nextPrompt = currentEditorShot.userPrompt ?? '';
-    if (inputPrompt !== nextPrompt) {
+    const shouldSyncInputFromShot = inputPrompt !== nextPrompt;
+    if (shouldSyncInputFromShot) {
       setInputPrompt(nextPrompt);
     }
 
-    if (displayedPrompt.trim()) {
+    if (shouldSyncInputFromShot && displayedPrompt.trim()) {
       setDisplayedPromptSilently('');
       setShowResults(false);
     }
@@ -79,6 +80,7 @@ export function useEditorShotPromptBinding({
     displayedPrompt,
     inputPrompt,
     setInputPrompt,
+    hasActiveContinuityShot,
     setDisplayedPromptSilently,
     setShowResults,
     debouncedPersistPrompt,
