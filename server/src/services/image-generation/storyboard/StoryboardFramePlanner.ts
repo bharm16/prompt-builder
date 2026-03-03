@@ -165,23 +165,30 @@ export class StoryboardFramePlanner {
           expectedCount,
           STORYBOARD_FRAME_TIMESTAMPS
         );
-        const repairVisionResponse = await this.visionLlmClient.complete(repairSystemPrompt, {
-          messages: [
-            { role: 'system', content: repairSystemPrompt },
-            {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: dataUrl } },
-                { type: 'text', text: repairUserMessage },
-              ],
-            },
-          ],
-          maxTokens: 400,
-          temperature: 0,
-          timeout: this.visionTimeoutMs,
-          jsonMode: true,
-        });
-        return extractResponseText(repairVisionResponse);
+        try {
+          const repairVisionResponse = await this.visionLlmClient.complete(repairSystemPrompt, {
+            messages: [
+              { role: 'system', content: repairSystemPrompt },
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: dataUrl } },
+                  { type: 'text', text: repairUserMessage },
+                ],
+              },
+            ],
+            maxTokens: 400,
+            temperature: 0,
+            timeout: this.visionTimeoutMs,
+            jsonMode: true,
+          });
+          return extractResponseText(repairVisionResponse);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.log.warn('Vision repair request failed, falling back to text-only', {
+            error: message,
+          });
+        }
       }
     }
 
@@ -223,23 +230,31 @@ export class StoryboardFramePlanner {
     }
 
     const systemPrompt = buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
-    const response = await visionClient.complete(systemPrompt, {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: dataUrl } },
-            { type: 'text', text: buildVisionDeltaUserPrompt(prompt) },
-          ],
-        },
-      ],
-      maxTokens: 400,
-      temperature: 0.4,
-      timeout: this.visionTimeoutMs,
-      jsonMode: true,
-    });
-    return extractResponseText(response);
+    try {
+      const response = await visionClient.complete(systemPrompt, {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: dataUrl } },
+              { type: 'text', text: buildVisionDeltaUserPrompt(prompt) },
+            ],
+          },
+        ],
+        maxTokens: 400,
+        temperature: 0.4,
+        timeout: this.visionTimeoutMs,
+        jsonMode: true,
+      });
+      return extractResponseText(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log.warn('Vision plan request failed, falling back to text-only', {
+        error: message,
+      });
+      return this.requestTextPlan(prompt, expectedCount);
+    }
   }
 
   private parseDeltas(
