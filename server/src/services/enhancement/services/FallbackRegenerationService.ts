@@ -27,6 +27,12 @@ interface ValidationService {
     isPlaceholder?: boolean;
     isVideoPrompt?: boolean;
     videoConstraints?: VideoConstraints;
+    highlightedCategory?: string | null;
+    lockedSpanCategories?: string[];
+    contextBefore?: string;
+    contextAfter?: string;
+    spanAnchors?: string;
+    nearbySpanHints?: string;
   }): Suggestion[];
 }
 
@@ -210,6 +216,10 @@ export class FallbackRegenerationService {
       videoConstraints?: VideoConstraints;
       highlightedCategory?: string | null;
       lockedSpanCategories?: string[];
+      contextBefore?: string;
+      contextAfter?: string;
+      spanAnchors?: string;
+      nearbySpanHints?: string;
     } = {
       isPlaceholder,
       isVideoPrompt,
@@ -223,6 +233,18 @@ export class FallbackRegenerationService {
     }
     if (lockedSpanCategories && lockedSpanCategories.length > 0) {
       sanitizationContext.lockedSpanCategories = lockedSpanCategories;
+    }
+    if (requestParams.contextBefore !== undefined) {
+      sanitizationContext.contextBefore = requestParams.contextBefore;
+    }
+    if (requestParams.contextAfter !== undefined) {
+      sanitizationContext.contextAfter = requestParams.contextAfter;
+    }
+    if (requestParams.spanAnchors !== undefined) {
+      sanitizationContext.spanAnchors = requestParams.spanAnchors;
+    }
+    if (requestParams.nearbySpanHints !== undefined) {
+      sanitizationContext.nearbySpanHints = requestParams.nearbySpanHints;
     }
     
     const fallbackSanitized = this.validationService.sanitizeSuggestions(

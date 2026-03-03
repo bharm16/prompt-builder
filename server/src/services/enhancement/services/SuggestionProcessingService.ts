@@ -165,27 +165,46 @@ export class SuggestionProcessingService {
 
     const minSuggestionTarget = params.isVideoPrompt ? 3 : 0;
     if (minSuggestionTarget > 0 && suggestionsToUse.length < minSuggestionTarget) {
-      const topUpFallbackParams: FallbackRegenerationParams = {
-        ...fallbackParams,
-        sanitizedSuggestions: [],
-      };
-      if (activeConstraints) {
-        topUpFallbackParams.videoConstraints = activeConstraints;
-      }
+      let topUpAttempts = 0;
+      let topUpConstraints = activeConstraints || params.videoConstraints || undefined;
 
-      const topUpResult =
-        await this.fallbackRegeneration.attemptFallbackRegeneration(topUpFallbackParams);
+      while (suggestionsToUse.length < minSuggestionTarget && topUpAttempts < 3) {
+        topUpAttempts += 1;
+        const beforeCount = suggestionsToUse.length;
 
-      suggestionsToUse = this._mergeAndResanitizeSuggestions(
-        suggestionsToUse,
-        topUpResult.suggestions,
-        sanitizationContext
-      );
-      if (topUpResult.constraints) {
-        activeConstraints = topUpResult.constraints;
+        const topUpFallbackParams: FallbackRegenerationParams = {
+          ...fallbackParams,
+          sanitizedSuggestions: [],
+        };
+        if (topUpConstraints) {
+          topUpFallbackParams.videoConstraints = topUpConstraints;
+        }
+
+        const topUpResult =
+          await this.fallbackRegeneration.attemptFallbackRegeneration(topUpFallbackParams);
+
+        suggestionsToUse = this._mergeAndResanitizeSuggestions(
+          suggestionsToUse,
+          topUpResult.suggestions,
+          sanitizationContext
+        );
+        if (topUpResult.constraints) {
+          activeConstraints = topUpResult.constraints;
+          topUpConstraints = topUpResult.constraints;
+        }
+        usedFallback = usedFallback || topUpResult.usedFallback;
+        fallbackSourceCount += topUpResult.sourceCount;
+
+        const gainedSuggestions = suggestionsToUse.length > beforeCount;
+        const exhaustedAttempt =
+          topUpResult.sourceCount === 0 &&
+          topUpResult.suggestions.length === 0 &&
+          !topUpResult.usedFallback;
+
+        if (!gainedSuggestions && exhaustedAttempt) {
+          break;
+        }
       }
-      usedFallback = usedFallback || topUpResult.usedFallback;
-      fallbackSourceCount += topUpResult.sourceCount;
     }
 
     if (suggestionsToUse.length === 0) {

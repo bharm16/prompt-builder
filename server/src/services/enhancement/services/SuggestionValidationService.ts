@@ -34,14 +34,40 @@ export class SuggestionValidationService {
   };
   private readonly cameraMovementTerms =
     /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|push[-\s]?in|pull[-\s]?out|arc)\b/i;
+  private readonly shotFramingTerms =
+    /\b(shot|close[-\s]?up|medium shot|wide shot|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|high[-\s]?angle|low[-\s]?angle|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt)\b/i;
   private readonly cameraFocusTerms =
     /\b(focus|depth of field|dof|bokeh|defocus|blur|shallow|rack focus|selective focus)\b/i;
+  private readonly cameraTechniqueTerms =
+    /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|steadicam|shot|close[-\s]?up|wide[-\s]?angle|high[-\s]?angle|low[-\s]?angle|bird'?s[-\s]?eye|lens|mm|framing)\b/i;
   private readonly lightSourceClauseTerms =
-    /\b(from|through|window|rear window|windshield|backseat|overhead|sidelight|backlight|key light|rim light|sunlight|neon|candlelight)\b/i;
+    /\b(from|through|window|rear window|windshield|backseat|overhead|side[-\s]?light(?:ing)?|back[-\s]?light(?:ing)?|front[-\s]?light(?:ing)?|key light|rim light|sunlight|neon|candlelight)\b/i;
+  private readonly lightingClauseVerbTerms =
+    /\b(create|creating|casting|streams?|streaming|pouring|bouncing|to create)\b/i;
+  private readonly styleStrongCueTerms =
+    /\b(style|aesthetic|look|tone|palette|grade|grading|grain|noir|neo-noir|documentary|verit[eé]|retro|vintage|kodachrome|8mm|16mm|35mm|cinematic|painterly|watercolor|impressionist|oil|ink|sepia|chiaroscuro|hyperreal|surreal|cyberpunk|cartoon|animation|diorama|pastel|monochrome|technicolor|dream(?:like)?|fantasy|whimsy|wonder|nostalg(?:ia|ic)|realism)\b/i;
+  private readonly lightingQualityCueTerms =
+    /\b(light|lighting|shadow|glow|lumin(?:ous|ance)|radian(?:t|ce)|illuminat|warmth|brightness|dim(?:ness)?|diffus(?:e|ed|ion)|ambient|backlit|rim[-\s]?lit|high[-\s]?key|low[-\s]?key|sunlit|moonlit|golden[-\s]?hour)\b/i;
+  private readonly lightingDirectionTerms =
+    /\b(left|right|front|rear|back|overhead|top[-\s]?lit|under[-\s]?lit|side[-\s]?lit|back[-\s]?lit|key|rim)\b/i;
+  private readonly vehicleInteriorTerms =
+    /\b(car|vehicle|driver|seat|steering|wheel|window|windows|dashboard|cockpit|cabin|front seat|backseat|passenger seat|truck|van|bus|kart|go-kart|convertible|tractor|train|boat|airplane|stroller|tricycle)\b/i;
+  private readonly vehicleInteriorAnchorTerms =
+    /\b(driver'?s seat|passenger seat|front seat|backseat|dashboard|steering wheel|cockpit|cabin|car interior|inside the car|inside the vehicle)\b/i;
   private readonly environmentMotionSubjectTerms =
     /\b(tree|trees|leaf|leaves|branch|branches|grass|waves?|water|wind|breeze|clouds?|rain|snow|mist|fog)\b/i;
+  private readonly humanSubjectTerms =
+    /\b(baby|infant|toddler|child|kid|boy|girl|person|man|woman|human)\b/i;
+  private readonly nonHumanIdentityTerms =
+    /\b(puppy|dog|kitten|cat|bunny|rabbit|duckling|duck|bird|animal|creature|elephant|horse|bear|wolf|fox|lion|tiger|deer)\b/i;
+  private readonly fantasyOrRoleShiftTerms =
+    /\b(cartoon|anime|mascot|puppet|doll|clown|robot|android|alien|monster)\b/i;
+  private readonly weatherGentleAirTerms =
+    /\b(breeze|wind|air current|draft|gust|zephyr)\b/i;
+  private readonly weatherDisruptiveTerms =
+    /\b(snow|snowfall|blizzard|hail|storm|thunder|rain|downpour|fog|mist|hurricane|tornado)\b/i;
   private readonly humanBodyActionTerms =
-    /\b(clapping|grinning|smiling|waving|nodding|laughing|twisting body|look behind|reaching out|bouncing|feet|hands in the air)\b/i;
+    /\b(clapping|grinning|smiling|waving|nodding|laughing|twisting body|look behind|reaching out|bouncing|tapping|tap(?:s|ping)?|reaching|reach(?:es|ing)?|wriggling|wriggle(?:s|ing)?|tiny fingers?|dashboard|steering wheel|hands?|arms?|feet)\b/i;
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -286,6 +312,10 @@ export class SuggestionValidationService {
         return;
       }
 
+      if (this._hasSubjectClassDrift(text, extendedContext)) {
+        return;
+      }
+
       sanitized.push({
         ...suggestionObj,
         text,
@@ -448,6 +478,17 @@ export class SuggestionValidationService {
       return !this.cameraFocusTerms.test(text);
     }
 
+    if (category === 'shot.type') {
+      const hasShotFraming = this.shotFramingTerms.test(text);
+      const hasMovementLanguage =
+        this.cameraMovementTerms.test(text) ||
+        /\b(moving|move|alongside|following|tracking)\b/i.test(text);
+      if (!hasShotFraming) {
+        return true;
+      }
+      return hasMovementLanguage;
+    }
+
     const highlightedWordCount = this.videoService.countWords(context.highlightedText || '');
     const suggestionWordCount = this.videoService.countWords(text);
     const isAdjectiveLikeLightingSlot =
@@ -458,9 +499,60 @@ export class SuggestionValidationService {
         context.contextAfter.trim().startsWith(','));
 
     if (isAdjectiveLikeLightingSlot) {
+      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+        return true;
+      }
       const looksLikeSourceClause =
-        suggestionWordCount > 3 && this.lightSourceClauseTerms.test(text);
+        this.lightSourceClauseTerms.test(text) &&
+        (suggestionWordCount >= 4 || this.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
+        return true;
+      }
+      if (!this.lightingQualityCueTerms.test(text)) {
+        return true;
+      }
+    }
+
+    if (category === 'lighting.source') {
+      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+        return true;
+      }
+      if (!this.lightingQualityCueTerms.test(text)) {
+        return true;
+      }
+      const hasSourceOrDirection =
+        this.lightSourceClauseTerms.test(text) || this.lightingDirectionTerms.test(text);
+      if (!hasSourceOrDirection) {
+        return true;
+      }
+    }
+
+    if (category === 'style.aesthetic') {
+      if (!this.styleStrongCueTerms.test(text)) {
+        return true;
+      }
+    }
+
+    if (category === 'environment.location') {
+      const localContext = [
+        context.highlightedText || '',
+        context.contextBefore || '',
+        context.contextAfter || '',
+        context.spanAnchors || '',
+        context.nearbySpanHints || '',
+      ].join(' ');
+      const sourceLooksVehicleInterior = this.vehicleInteriorAnchorTerms.test(localContext);
+      if (sourceLooksVehicleInterior && !this.vehicleInteriorTerms.test(text)) {
+        return true;
+      }
+    }
+
+    if (category === 'environment.weather') {
+      const highlighted = (context.highlightedText || '').toLowerCase();
+      if (
+        this.weatherGentleAirTerms.test(highlighted) &&
+        this.weatherDisruptiveTerms.test(text.toLowerCase())
+      ) {
         return true;
       }
     }
@@ -487,6 +579,37 @@ export class SuggestionValidationService {
       return false;
     }
 
-    return this.humanBodyActionTerms.test(text.toLowerCase());
+    return (
+      this.humanBodyActionTerms.test(text.toLowerCase()) ||
+      this.humanSubjectTerms.test(text.toLowerCase())
+    );
+  }
+
+  private _hasSubjectClassDrift(text: string, context: ExtendedSanitizationContext): boolean {
+    const category = (context.highlightedCategory || '').toLowerCase();
+    if (!category.startsWith('subject.')) {
+      return false;
+    }
+
+    const localContext = [
+      context.highlightedText || '',
+      context.contextBefore || '',
+      context.contextAfter || '',
+      context.spanAnchors || '',
+      context.nearbySpanHints || '',
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    const hasHumanIdentityContext = this.humanSubjectTerms.test(localContext);
+    if (!hasHumanIdentityContext) {
+      return false;
+    }
+
+    const lowerText = text.toLowerCase();
+    return (
+      this.nonHumanIdentityTerms.test(lowerText) ||
+      this.fantasyOrRoleShiftTerms.test(lowerText)
+    );
   }
 }

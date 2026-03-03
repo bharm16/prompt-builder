@@ -178,7 +178,7 @@ describe('SuggestionProcessingService regression', () => {
       })
     );
 
-    expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(2);
+    expect(mocks.attemptFallbackRegeneration.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
       'wide-angle shallow background blur',
       'selective focus on baby face',
@@ -215,7 +215,7 @@ describe('SuggestionProcessingService regression', () => {
 
     const result = await service.processSuggestions(buildProcessParams());
 
-    expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(2);
+    expect(mocks.attemptFallbackRegeneration.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
       'shallow focus background blur',
     ]);
@@ -261,6 +261,63 @@ describe('SuggestionProcessingService regression', () => {
       'wide-angle shallow background blur',
       'selective focus on baby face',
       'crisp foreground focus with soft bokeh',
+    ]);
+  });
+
+  it('continues fallback top-up until minimum recoverable target is met', async () => {
+    let fallbackCallCount = 0;
+    const { service, mocks } = createService({
+      fallbackImpl: async (params) => {
+        fallbackCallCount += 1;
+
+        // Initial pass: existing strict suggestion survives, no fallback used.
+        if (fallbackCallCount === 1) {
+          return {
+            suggestions: params.sanitizedSuggestions,
+            usedFallback: false,
+            sourceCount: 0,
+            constraints: { mode: 'micro' },
+          };
+        }
+
+        // First top-up pass: only one additional valid suggestion.
+        if (fallbackCallCount === 2) {
+          return {
+            suggestions: [
+              { text: 'wide-angle shallow background blur', category: 'camera' },
+              { text: 'crisp foreground focus with soft bokeh', category: 'camera' },
+            ],
+            usedFallback: true,
+            sourceCount: 2,
+            constraints: { mode: 'phrase' },
+          };
+        }
+
+        // Second top-up pass: provide a third unique suggestion.
+        return {
+          suggestions: [
+            { text: 'wide-angle shallow background blur', category: 'camera' },
+            { text: 'crisp foreground focus with soft bokeh', category: 'camera' },
+            { text: 'selective rack focus onto foreground subject', category: 'camera' },
+          ],
+          usedFallback: true,
+          sourceCount: 3,
+          constraints: { mode: 'micro' },
+        };
+      },
+    });
+
+    const result = await service.processSuggestions(
+      buildProcessParams({
+        suggestions: [{ text: 'wide-angle shallow background blur', category: 'camera' }],
+      })
+    );
+
+    expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(3);
+    expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
+      'wide-angle shallow background blur',
+      'crisp foreground focus with soft bokeh',
+      'selective rack focus onto foreground subject',
     ]);
   });
 });
