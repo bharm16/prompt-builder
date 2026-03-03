@@ -33,7 +33,7 @@ describe('FallbackStrategyService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns null when current mode is micro (no fallbacks available)', () => {
+    it('falls back to phrase when current mode is micro', () => {
       const service = createService();
       const result = service.getVideoFallbackConstraints(
         { mode: 'micro', minWords: 2, maxWords: 8, maxSentences: 1, slotDescriptor: 'test' },
@@ -41,7 +41,8 @@ describe('FallbackStrategyService', () => {
         new Set(),
         mockGetConstraints
       );
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.mode).toBe('phrase');
     });
 
     it('handles null currentConstraints by using default fallback order', () => {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SuggestionGenerationService } from '../SuggestionGenerationService';
-import { PROMPT_MODES } from '../../constants';
+import { PROMPT_MODES } from '@services/enhancement/constants';
 import type { AIService } from '../types';
 
 const mockEnforceJSON = vi.hoisted(() => vi.fn());

@@ -122,11 +122,11 @@ This matches the organizational pattern used in `video-concept/services/`.
 ```
 server/src/services/video-prompt/
 ├── config/
-│   ├── detectionMarkers.js      (41 lines)
-│   ├── categoryMapping.js       (83 lines)
-│   ├── constraintModes.js       (154 lines)
-│   ├── fallbackStrategy.js      (27 lines)
-│   └── categoryGuidance.js      (127 lines)
+│   ├── detectionMarkers.ts      (41 lines)
+│   ├── categoryMapping.ts       (83 lines)
+│   ├── constraintModes.ts       (154 lines)
+│   ├── fallbackStrategy.ts      (27 lines)
+│   └── categoryGuidance.ts      (127 lines)
 ├── utils/
 │   └── textHelpers.js           (44 lines)
 ├── services/
@@ -144,11 +144,11 @@ server/src/services/video-prompt/
 #### Extracted Components
 
 **Configuration Files (5 files, 432 lines total)**:
-1. **detectionMarkers.js** - Video prompt detection patterns
-2. **categoryMapping.js** - Category to role mappings
-3. **constraintModes.js** - All constraint mode configurations
-4. **fallbackStrategy.js** - Fallback order configuration
-5. **categoryGuidance.js** - Category-specific guidance
+1. **detectionMarkers.ts** - Video prompt detection patterns
+2. **categoryMapping.ts** - Category to role mappings
+3. **constraintModes.ts** - All constraint mode configurations
+4. **fallbackStrategy.ts** - Fallback order configuration
+5. **categoryGuidance.ts** - Category-specific guidance
 
 **Utilities (1 file, 44 lines)**:
 - **textHelpers.js** - Pure functions: `countWords`, `isSentence`, `normalizeText`
@@ -211,10 +211,10 @@ server/src/services/video-prompt/
 - Constraint generation logic testable without dependencies
 
 ### ✅ Maintainability
-- Adding new constraint modes: Update `constraintModes.js`
-- Adding new categories: Update `categoryMapping.js` and `categoryGuidance.js`
-- Changing detection logic: Modify `detectionMarkers.js`
-- Adjusting fallback strategy: Update `fallbackStrategy.js`
+- Adding new constraint modes: Update `constraintModes.ts`
+- Adding new categories: Update `categoryMapping.ts` and `categoryGuidance.ts`
+- Changing detection logic: Modify `detectionMarkers.ts`
+- Adjusting fallback strategy: Update `fallbackStrategy.ts`
 
 ### ✅ Reusability
 - Text utilities can be used elsewhere

@@ -1,11 +1,16 @@
-import { TAXONOMY } from '#shared/taxonomy.ts';
+import { TAXONOMY } from '#shared/taxonomy';
 
 /**
  * Category mapping patterns for video phrase role detection
  * Now uses TAXONOMY constants as single source of truth
  */
 
-export const CATEGORY_PATTERNS = {
+interface CategoryPatternConfig {
+  pattern: RegExp;
+  role: string;
+}
+
+export const CATEGORY_PATTERNS: Record<string, CategoryPatternConfig> = {
 // ============================================================================
 // SUBJECT GROUP (Entity)
 // ============================================================================

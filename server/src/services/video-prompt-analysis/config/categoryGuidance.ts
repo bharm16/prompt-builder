@@ -3,7 +3,18 @@
  * Provides detailed technical guidance for each production category
  */
 
-export const CATEGORY_GUIDANCE = {
+type GuidanceCategory =
+  | 'lighting'
+  | 'camera'
+  | 'subject'
+  | 'wardrobe'
+  | 'location'
+  | 'color'
+  | 'style'
+  | 'action'
+  | 'technical';
+
+export const CATEGORY_GUIDANCE: Record<GuidanceCategory, string[]> = {
   /**
    * Lighting-specific guidance
    */
@@ -113,7 +124,7 @@ export const CATEGORY_GUIDANCE = {
 /**
  * Mapping of role keywords to guidance categories
  */
-export const GUIDANCE_MAPPING = {
+export const GUIDANCE_MAPPING: Record<string, GuidanceCategory> = {
   subject: 'subject',
   character: 'subject',
   person: 'subject',

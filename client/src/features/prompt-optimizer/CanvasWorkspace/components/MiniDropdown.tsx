@@ -54,10 +54,10 @@ export function MiniDropdown<T extends string | number>({
         type="button"
         onClick={handleToggle}
         className={cn(
-          'inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-lg border-none px-2.5 text-[11px] font-medium transition-colors',
+          'inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
           open
-            ? 'bg-[rgba(255,255,255,0.03)] text-[#8B92A5]'
-            : 'bg-transparent text-[#555B6E] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#8B92A5]'
+            ? 'bg-[#22252C] text-[#E2E6EF]'
+            : 'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]'
         )}
       >
         {icon}

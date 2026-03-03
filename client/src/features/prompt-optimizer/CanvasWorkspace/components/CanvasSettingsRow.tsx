@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Sparkles, Folder, X } from '@promptstudio/system/components/ui';
+import { Eye, MagicWand, Images, X } from '@promptstudio/system/components/ui';
 import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
 import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, STORYBOARD_COST } from '@/components/ToolSidebar/config/modelConfig';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
@@ -51,23 +51,25 @@ function BarBtn({
   accent,
   onClick,
   className,
+  ...buttonProps
 }: {
   children: React.ReactNode;
   active?: boolean;
   accent?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
-}): React.ReactElement {
+} & React.ButtonHTMLAttributes<HTMLButtonElement>): React.ReactElement {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-lg border-none px-2.5 text-xs transition-colors ${
+      {...buttonProps}
+      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-[#2A2D35] px-2.5 text-xs transition-colors ${
         accent
-          ? 'font-semibold text-[#6C5CE7] hover:bg-[#1C1E26]'
+          ? 'bg-[#1C1E26] font-semibold text-[#E2E6EF] hover:bg-[#22252C]'
           : active
-            ? 'bg-[#1C1E26] font-medium text-[#E2E6EF]'
-            : 'bg-transparent font-medium text-[#555B6E] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
+            ? 'bg-[#1C1E26] font-semibold text-[#E2E6EF]'
+            : 'bg-[#1C1E26] font-semibold text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]'
       } ${className ?? ''}`}
     >
       {children}
@@ -214,7 +216,7 @@ export function CanvasSettingsRow({
         ) : null}
 
         {domain.extendVideo ? (
-          <div className="inline-flex h-[30px] items-center gap-1 rounded-lg bg-[#1C1E26] pl-2.5 pr-1 text-xs font-medium text-[#E2E6EF]">
+          <div className="inline-flex h-[30px] items-center gap-1 rounded-full border border-[#2A2D35] bg-[#1C1E26] pl-2.5 pr-1 text-xs font-semibold text-[#E2E6EF]">
             <svg
               width="11"
               height="11"
@@ -242,7 +244,7 @@ export function CanvasSettingsRow({
 
         {/* Assets */}
         <BarBtn onClick={(e) => e.stopPropagation()}>
-          <span className="flex opacity-60"><Folder size={13} /></span>
+          <span className="flex"><Images size={13} weight="fill" /></span>
           Assets
         </BarBtn>
 
@@ -266,6 +268,9 @@ export function CanvasSettingsRow({
         {/* AI Enhance */}
         <BarBtn
           accent
+          className="w-[68px] justify-center px-0"
+          aria-label="Enhance prompt"
+          title="Enhance"
           {...(onEnhance
             ? {
                 onClick: (event: React.MouseEvent) => {
@@ -275,8 +280,7 @@ export function CanvasSettingsRow({
               }
             : {})}
         >
-          <Sparkles size={13} />
-          Enhance
+          <MagicWand size={14} />
         </BarBtn>
       </div>
 
@@ -285,37 +289,38 @@ export function CanvasSettingsRow({
         <button
           type="button"
           data-testid="canvas-preview-button"
-          className="inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-[9px] border border-[#22252C] bg-transparent px-2.5 text-[11px] font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3D46] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C] sm:px-3.5 sm:text-xs"
+          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-[#2A2D35] bg-[#1C1E26] text-[#E2E6EF] transition-colors hover:bg-[#22252C] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C]"
           onClick={() => controls?.onStoryboard?.()}
           disabled={previewDisabled}
+          aria-label={`Preview storyboard ${STORYBOARD_COST} credits`}
+          title={`Preview · ${STORYBOARD_COST} cr`}
         >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="5" height="4" rx="0.8"/><rect x="7" y="2.5" width="5" height="4" rx="0.8"/><rect x="1" y="7.5" width="5" height="4" rx="0.8"/><rect x="7" y="7.5" width="5" height="4" rx="0.8"/></svg>
-          Preview · {STORYBOARD_COST} cr
+          <Eye size={14} />
         </button>
 
         {/* Generate button (primary) */}
         <button
           type="button"
           data-testid="canvas-generate-button"
-          className={`inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-[9px] px-3 text-[11px] font-bold tracking-[0.01em] transition-opacity hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-60 sm:px-[18px] sm:text-xs ${
-            isWan
-              ? 'border border-[#E2E6EF] bg-transparent text-[#E2E6EF]'
-              : 'border-none bg-[#E2E6EF] text-[#0D0E12]'
-          }`}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-[#C3C7D0] text-[#0D0E12] transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
+          aria-label={`${isWan ? 'Draft' : 'Generate'} ${creditCost} credits`}
+          title={`${isWan ? 'Draft' : 'Generate'} · ${creditCost} cr`}
         >
-          {isWan ? (
-            <>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 1v3M6 8v3M9 3L7.5 5.5M4.5 6.5L3 9M3 3l1.5 2.5M7.5 6.5L9 9"/></svg>
-              Draft · {creditCost} cr
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 2l-1 3.5L1 6.5l3.5 1L5.5 11l1-3.5L10 6.5 6.5 5.5z"/><path d="M10.5 1l-.5 1.5L8.5 3l1.5.5.5 1.5.5-1.5L13 3l-1.5-.5z"/></svg>
-              Generate · {creditCost} cr
-            </>
-          )}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M8 1.25C8.35 1.25 8.66 1.48 8.76 1.82L10.04 6.02L14.2 7.28C14.55 7.39 14.78 7.7 14.78 8.05C14.78 8.4 14.55 8.71 14.2 8.82L10.04 10.08L8.76 14.28C8.66 14.62 8.35 14.85 8 14.85C7.65 14.85 7.34 14.62 7.24 14.28L5.96 10.08L1.8 8.82C1.45 8.71 1.22 8.4 1.22 8.05C1.22 7.7 1.45 7.39 1.8 7.28L5.96 6.02L7.24 1.82C7.34 1.48 7.65 1.25 8 1.25Z"
+              fill="currentColor"
+            />
+            <circle cx="12.7" cy="3.2" r="1.05" fill="currentColor" />
+          </svg>
         </button>
       </div>
     </div>

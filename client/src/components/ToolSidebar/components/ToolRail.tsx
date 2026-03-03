@@ -19,7 +19,7 @@ export function ToolRail({
   const { status, isLoading: isLoadingStatus } = useBillingStatus();
   const workspace = useSidebarWorkspaceDomain();
   const [showRailHint, setShowRailHint] = useState(false);
-  const headerItem = toolNavItems.find((item) => item.variant === 'header');
+  const sessionsItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
   const displayName = typeof user?.displayName === 'string' ? user.displayName.trim() : '';
@@ -67,24 +67,17 @@ export function ToolRail({
 
   return (
     <aside
-      className="flex h-full w-14 flex-none flex-col items-center border-r border-[#1A1C22] bg-[#0D0E12] py-2.5"
+      className="flex h-full w-60 flex-none flex-col items-stretch border-r border-[#1A1C22] bg-black px-2.5 py-2.5"
       aria-label="Tool navigation"
     >
-      {/* ── Header (hamburger → sessions toggle) ── */}
-      {headerItem && (
-        <ToolNavButton
-          icon={headerItem.icon}
-          label={headerItem.label}
-          isActive={activePanel === 'sessions'}
-          onClick={() => handlePanelChange('sessions')}
-          variant="header"
-        />
-      )}
+      <div className="px-3.5 py-3">
+        <span className="text-[19px] font-bold tracking-tight text-[#E2E6EF]">Vidra</span>
+      </div>
 
-      <div className="mx-auto my-1.5 h-px w-7 bg-[#1A1C22]" aria-hidden="true" />
+      <div className="mx-1 my-1.5 h-px bg-[#1A1C22]" aria-hidden="true" />
 
       {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
-      <nav className="flex flex-col items-center gap-0.5" aria-label="Tool panels">
+      <nav className="flex flex-col items-stretch gap-0.5" aria-label="Tool panels">
         {navItems.map((item) => (
           <ToolNavButton
             key={item.id}
@@ -102,16 +95,35 @@ export function ToolRail({
             onClick={workspace.toggleGallery}
           />
         ) : null}
+        <div className="mx-1 my-1.5 h-px bg-[#1A1C22]" aria-hidden="true" />
+        {sessionsItem ? (
+          <ToolNavButton
+            icon={sessionsItem.icon}
+            label={sessionsItem.label}
+            isActive={activePanel === 'sessions'}
+            onClick={() => handlePanelChange('sessions')}
+            variant="header"
+          />
+        ) : null}
       </nav>
 
       <div className="flex-1" />
 
       {/* ── Bottom: Home + Avatar ── */}
-      <div className="flex w-full flex-col items-center gap-1.5 pb-1">
+      <div className="flex w-full flex-col items-stretch gap-1.5 pb-1">
+        <Link
+          to="/home"
+          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-[#E2E6EF] transition-colors hover:bg-[#1C1E26] hover:text-[#E2E6EF]"
+          aria-label="Home"
+        >
+          <Home className="h-5 w-5 shrink-0" weight="bold" />
+          <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">Home</span>
+        </Link>
+
         {showRailHint ? (
           <button
             type="button"
-            className="mx-1 w-[48px] rounded-md border border-[#1A1C22] bg-[#111318] px-1 py-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-amber-400"
+            className="mx-1 rounded-md border border-[#1A1C22] bg-[#111318] px-1 py-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-amber-400"
             onClick={dismissRailHint}
             title="Dismiss credit onboarding hint"
           >
@@ -148,14 +160,6 @@ export function ToolRail({
               </span>
             </>
           )}
-        </Link>
-
-        <Link
-          to="/home"
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#151720]"
-          aria-label="Home"
-        >
-          <Home className="h-3.5 w-3.5 text-[#555B6E]" />
         </Link>
 
         {photoURL ? (

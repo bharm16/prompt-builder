@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
-import { CONSTRAINT_THRESHOLDS } from '@services/video-prompt-analysis/config/constraintModes.js';
+import { CONSTRAINT_THRESHOLDS } from '@services/video-prompt-analysis/config/constraintModes';
 import type { Suggestion, ValidationParams, CategoryAlignmentResult } from './types.js';
 
 /**

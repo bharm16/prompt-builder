@@ -2,12 +2,25 @@
  * Constraint mode configurations for video prompt replacements
  * Each mode defines bounds, requirements, and guidance for suggestion generation
  */
+import type { ConstraintConfig } from '@services/video-prompt-analysis/types';
+
+type ConstraintMode = 'micro' | 'lighting' | 'camera' | 'location' | 'style' | 'phrase' | 'sentence';
+
+type ConstraintTemplate = Omit<ConstraintConfig, 'slotDescriptor'>;
+
+type ConstraintModeGenerator = (
+  highlightWordCount: number,
+  slotDescriptor: string
+) => ConstraintConfig;
 
 /**
  * Generate constraint configuration with proper bounds
  */
-function createConstraint(config, highlightWordCount, slotDescriptor) {
-  const ensureBounds = (min, max) => {
+function createConstraint(
+  config: ConstraintTemplate,
+  slotDescriptor: string
+): ConstraintConfig {
+  const ensureBounds = (min: number, max: number): { min: number; max: number } => {
     const lower = Math.max(1, Math.round(min));
     const upper = Math.max(lower, Math.round(max));
     return { min: lower, max: upper };
@@ -27,7 +40,7 @@ function createConstraint(config, highlightWordCount, slotDescriptor) {
 /**
  * Constraint mode generators
  */
-export const CONSTRAINT_MODES = {
+export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> = {
   /**
    * Micro mode: 2-8 word noun phrase (expanded for camera/shot descriptions)
    */
@@ -43,7 +56,7 @@ export const CONSTRAINT_MODES = {
       'Avoid verbs; keep the replacement as a noun phrase',
     ],
     extraRequirements: ['Keep it a noun phrase (no verbs)'],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Lighting mode: 6-14 word lighting clause
@@ -59,7 +72,7 @@ export const CONSTRAINT_MODES = {
       'Include color temperature or mood language',
     ],
     extraRequirements: ['Mention light source + direction', 'Reference color temperature or mood'],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Camera mode: 6-12 word camera clause
@@ -75,7 +88,7 @@ export const CONSTRAINT_MODES = {
       'Stay in the same tense and perspective as the template',
     ],
     extraRequirements: ['Include a lens or focal length', 'Reference camera movement'],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Location mode: 6-14 word location beat
@@ -91,7 +104,7 @@ export const CONSTRAINT_MODES = {
       'Mention time of day or atmospheric detail',
     ],
     extraRequirements: ['Include a sensory or atmospheric hook'],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Style mode: 5-12 word stylistic phrase
@@ -107,7 +120,7 @@ export const CONSTRAINT_MODES = {
       'Keep it tightly scoped to the highlighted span',
     ],
     extraRequirements: [],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Phrase mode: 5-12 word cinematic clause
@@ -123,7 +136,7 @@ export const CONSTRAINT_MODES = {
       'Avoid expanding beyond the surrounding sentence',
     ],
     extraRequirements: [],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 
   /**
    * Sentence mode: 10-25 word cinematic sentence
@@ -139,7 +152,7 @@ export const CONSTRAINT_MODES = {
       'Keep it punchy—no compound sentences',
     ],
     extraRequirements: [],
-  }, highlightWordCount, slotDescriptor),
+  }, slotDescriptor),
 };
 
 /**
@@ -150,5 +163,4 @@ export const CONSTRAINT_THRESHOLDS = {
   SENTENCE_WORDS: 12,
   PHRASE_MAX_WORDS: 8,
   MIN_CATEGORY_CONFIDENCE: 0.45,
-};
-
+} as const;

@@ -12,16 +12,17 @@ export const FALLBACK_ORDER = {
   camera: ['micro'],
   location: ['micro'],
   style: ['micro'],
-  micro: [], // No fallback for micro (already most constrained)
+  micro: ['phrase'], // Retry a slightly broader phrase mode when micro is too strict
   default: ['phrase', 'micro'],
-};
+} as const;
 
 /**
  * Get fallback modes for a given constraint mode
- * @param {string} mode - Current constraint mode
- * @returns {Array} Array of fallback modes
+ * @param mode - Current constraint mode
+ * @returns Array of fallback modes
  */
-export function getFallbackModes(mode) {
-  return FALLBACK_ORDER[mode] || FALLBACK_ORDER.default;
+export function getFallbackModes(mode: string): string[] {
+  const fallbackModes =
+    FALLBACK_ORDER[mode as keyof typeof FALLBACK_ORDER] ?? FALLBACK_ORDER.default;
+  return [...fallbackModes];
 }
-

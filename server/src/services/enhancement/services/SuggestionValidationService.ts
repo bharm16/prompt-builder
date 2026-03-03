@@ -4,6 +4,13 @@ import { getParentCategory } from '@shared/taxonomy';
 import { getAllExampleTexts } from '../config/EnhancementExamples';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
 
+type ExtendedSanitizationContext = SanitizationContext & {
+  contextBefore?: string;
+  contextAfter?: string;
+  spanAnchors?: string;
+  nearbySpanHints?: string;
+};
+
 /**
  * SuggestionValidationService
  * 
@@ -15,12 +22,26 @@ import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService 
 export class SuggestionValidationService {
   private readonly log = logger.child({ service: 'SuggestionValidationService' });
   private readonly exampleTexts = getAllExampleTexts();
+  private readonly compatibleLockedCategories: Record<string, Set<string>> = {
+    camera: new Set(['shot']),
+    shot: new Set(['camera']),
+  };
   private readonly lockedCategoryPatterns: Record<string, RegExp> = {
     camera: /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing)\b/i,
     shot: /\b(wide shot|medium shot|close[-\s]?up|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|shot|angle)\b/i,
     lighting: /\b(lighting|shadow|glow|illuminat|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
     technical: /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
   };
+  private readonly cameraMovementTerms =
+    /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|push[-\s]?in|pull[-\s]?out|arc)\b/i;
+  private readonly cameraFocusTerms =
+    /\b(focus|depth of field|dof|bokeh|defocus|blur|shallow|rack focus|selective focus)\b/i;
+  private readonly lightSourceClauseTerms =
+    /\b(from|through|window|rear window|windshield|backseat|overhead|sidelight|backlight|key light|rim light|sunlight|neon|candlelight)\b/i;
+  private readonly environmentMotionSubjectTerms =
+    /\b(tree|trees|leaf|leaves|branch|branches|grass|waves?|water|wind|breeze|clouds?|rain|snow|mist|fog)\b/i;
+  private readonly humanBodyActionTerms =
+    /\b(clapping|grinning|smiling|waving|nodding|laughing|twisting body|look behind|reaching out|bouncing|feet|hands in the air)\b/i;
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -52,6 +73,7 @@ export class SuggestionValidationService {
     });
 
     const sanitized: Suggestion[] = [];
+    const extendedContext = context as ExtendedSanitizationContext;
     const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
     const disallowedTemplatePatterns = [
       /\bmain prompt\b/i,
@@ -233,16 +255,18 @@ export class SuggestionValidationService {
 
       if (context.lockedSpanCategories && context.lockedSpanCategories.length > 0) {
         const targetParent =
-          getParentCategory(context.highlightedCategory) ||
-          context.highlightedCategory ||
-          '';
+          (getParentCategory(context.highlightedCategory) || context.highlightedCategory || '').toLowerCase();
+        const compatibleSiblings = this.compatibleLockedCategories[targetParent] || new Set<string>();
         const lockedParents = Array.from(
           new Set(
             context.lockedSpanCategories
-              .map((category) => getParentCategory(category) || category)
+              .map((category) => (getParentCategory(category) || category).toLowerCase())
               .filter(Boolean)
           )
-        ).filter((category) => category && category !== targetParent);
+        ).filter(
+          (category) =>
+            category && category !== targetParent && !compatibleSiblings.has(category)
+        );
 
         const hasConflict = lockedParents.some((category) => {
           const pattern = this.lockedCategoryPatterns[category];
@@ -252,6 +276,14 @@ export class SuggestionValidationService {
         if (hasConflict) {
           return;
         }
+      }
+
+      if (this._failsSlotFitGuard(text, extendedContext)) {
+        return;
+      }
+
+      if (this._hasActorDrift(text, extendedContext)) {
+        return;
       }
 
       sanitized.push({
@@ -404,5 +436,57 @@ export class SuggestionValidationService {
       category,
       suggestions: items
     }));
+  }
+
+  private _failsSlotFitGuard(text: string, context: ExtendedSanitizationContext): boolean {
+    const category = (context.highlightedCategory || '').toLowerCase();
+
+    if (category === 'camera.focus') {
+      if (this.cameraMovementTerms.test(text)) {
+        return true;
+      }
+      return !this.cameraFocusTerms.test(text);
+    }
+
+    const highlightedWordCount = this.videoService.countWords(context.highlightedText || '');
+    const suggestionWordCount = this.videoService.countWords(text);
+    const isAdjectiveLikeLightingSlot =
+      category === 'lighting.quality' ||
+      (category.startsWith('lighting.') &&
+        highlightedWordCount <= 2 &&
+        typeof context.contextAfter === 'string' &&
+        context.contextAfter.trim().startsWith(','));
+
+    if (isAdjectiveLikeLightingSlot) {
+      const looksLikeSourceClause =
+        suggestionWordCount > 3 && this.lightSourceClauseTerms.test(text);
+      if (looksLikeSourceClause) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private _hasActorDrift(text: string, context: ExtendedSanitizationContext): boolean {
+    const category = (context.highlightedCategory || '').toLowerCase();
+    if (!category.startsWith('action')) {
+      return false;
+    }
+
+    const localContext = [
+      context.contextBefore || '',
+      context.contextAfter || '',
+      context.spanAnchors || '',
+      context.nearbySpanHints || '',
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    if (!this.environmentMotionSubjectTerms.test(localContext)) {
+      return false;
+    }
+
+    return this.humanBodyActionTerms.test(text.toLowerCase());
   }
 }

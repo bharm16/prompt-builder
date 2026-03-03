@@ -35,11 +35,11 @@ video-prompt-analysis/
 │       ├── FallbackStrategyService.js
 │       └── CategoryGuidanceService.js
 ├── config/                        # Configuration files
-│   ├── detectionMarkers.js
-│   ├── categoryMapping.js
-│   ├── constraintModes.js
-│   ├── fallbackStrategy.js
-│   └── categoryGuidance.js
+│   ├── detectionMarkers.ts
+│   ├── categoryMapping.ts
+│   ├── constraintModes.ts
+│   ├── fallbackStrategy.ts
+│   └── categoryGuidance.ts
 ├── utils/                         # Utility functions
 │   └── textHelpers.js
 └── __tests__/                     # Integration tests
@@ -257,11 +257,11 @@ This service is primarily used by:
 
 All configuration is externalized to `config/` directory:
 
-- **detectionMarkers.js**: Patterns for video prompt detection
-- **categoryMapping.js**: Category to phrase role mappings
-- **constraintModes.js**: Constraint mode definitions
-- **fallbackStrategy.js**: Fallback order configuration
-- **categoryGuidance.js**: Category-specific guidance strings
+- **detectionMarkers.ts**: Patterns for video prompt detection
+- **categoryMapping.ts**: Category to phrase role mappings
+- **constraintModes.ts**: Constraint mode definitions
+- **fallbackStrategy.ts**: Fallback order configuration
+- **categoryGuidance.ts**: Category-specific guidance strings
 
 ## Testing
 

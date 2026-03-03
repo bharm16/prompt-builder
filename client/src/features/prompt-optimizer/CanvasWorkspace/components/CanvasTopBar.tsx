@@ -8,16 +8,11 @@ interface CanvasTopBarProps {
 }
 
 export function CanvasTopBar({
-  title = 'Vidra',
   sessionName = 'Untitled session',
   credits,
 }: CanvasTopBarProps): React.ReactElement {
   return (
     <div className="flex h-12 flex-shrink-0 items-center gap-3 px-4">
-      <span className="text-[15.4px] font-bold tracking-tight text-[#E2E6EF]">
-        {title}
-      </span>
-
       <div className="flex-1" />
 
       <button

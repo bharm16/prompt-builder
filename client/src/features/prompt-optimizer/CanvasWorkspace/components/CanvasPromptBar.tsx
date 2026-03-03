@@ -180,9 +180,9 @@ export function CanvasPromptBar({
   const shouldRenderSuggestionTray = Boolean(selectedSpanId);
 
   return (
-    <div className="mx-auto w-[55%] flex-shrink-0 pb-4 pt-1">
+    <div className="mx-auto w-[55%] flex-shrink-0 pb-4 pt-5">
       <div
-        className={`rounded-[14px] border bg-[#141519] px-4 py-3.5 transition-colors ${
+        className={`rounded-[24px] border bg-[#141519] px-4 py-3.5 transition-colors ${
           isFocused ? 'border-[#6C5CE744]' : 'border-[#22252C]'
         }`}
         onClick={() => {

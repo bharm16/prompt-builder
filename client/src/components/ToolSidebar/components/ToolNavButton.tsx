@@ -17,10 +17,10 @@ interface ToolNavButtonProps {
 /**
  * Rail navigation button matching v5 mockup.
  *
- * - Header variant: 36×36 icon-only button (hamburger menu)
- * - Default variant: 44px wide, icon + 9px label, rounded-lg
- * - Active: white text + subtle bg (#1C1E26)
- * - Inactive: muted text (#555B6E), hover bg (#151720)
+ * - Header variant: full-width row button
+ * - Default variant: full-width row button, icon + label
+ * - Active: brighter bg (#22252C)
+ * - Inactive: base bg (#1C1E26)
  */
 export function ToolNavButton({
   icon: IconComponent,
@@ -34,15 +34,16 @@ export function ToolNavButton({
       <button
         type="button"
         className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-lg border transition-colors',
+          'flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left transition-colors',
           isActive
-            ? 'border-[#22252C] bg-[#1C1E26] text-[#E2E6EF]'
-            : 'border-[#1A1C22] bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
+            ? 'bg-[#22252C] text-[#E2E6EF]'
+            : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
         )}
         onClick={onClick}
         aria-label={label}
       >
-        <IconComponent className="h-4 w-4" />
+        <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
+        <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
       </button>
     );
   }
@@ -51,17 +52,17 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        'flex w-11 flex-col items-center gap-[3px] rounded-lg py-[7px] transition-all',
+        'flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left transition-colors',
         isActive
-          ? 'bg-[#1C1E26] text-[#E2E6EF]'
-          : 'bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
+          ? 'bg-[#22252C] text-[#E2E6EF]'
+          : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
       )}
       onClick={onClick}
       aria-label={label}
       aria-pressed={isActive}
     >
-      <IconComponent className="h-4 w-4" />
-      <span className="text-[9px] font-medium tracking-[0.03em]">{label}</span>
+      <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
+      <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
     </button>
   );
 }

@@ -2,7 +2,13 @@
  * Configuration for video prompt detection markers
  */
 
-export const DETECTION_MARKERS = {
+type DetectionMarkerGroup =
+  | 'LEGACY'
+  | 'MODERN'
+  | 'CINEMATOGRAPHIC'
+  | 'TECHNICAL_FIELDS';
+
+export const DETECTION_MARKERS: Record<DetectionMarkerGroup, string[]> = {
   // Legacy template markers (original format)
   LEGACY: [
     '**main prompt:**',
@@ -72,4 +78,4 @@ export const DETECTION_THRESHOLDS = {
   MIN_TECH_FIELDS_WITH_SPECS: 2,
   MIN_TECH_FIELDS_WITH_ALTERNATIVES: 3,
   CINEMATOGRAPHIC_THRESHOLD: 2,
-};
+} as const;

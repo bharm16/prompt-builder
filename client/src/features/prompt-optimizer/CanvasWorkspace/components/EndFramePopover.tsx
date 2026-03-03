@@ -93,8 +93,8 @@ export function EndFramePopover({
         type="button"
         data-testid="end-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-lg border-none px-2.5 text-xs font-medium transition-colors',
-          'bg-transparent text-[#555B6E] hover:bg-[#1C1E26] hover:text-[#E2E6EF]',
+          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
+          'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]',
           disabled && 'cursor-not-allowed opacity-60'
         )}
         onClick={() => {

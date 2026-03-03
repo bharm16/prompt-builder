@@ -372,7 +372,7 @@ export function CanvasWorkspace({
       <CanvasTopBar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden px-3">
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-1">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-0">
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}
             renderModelId={renderModelId}
@@ -380,10 +380,10 @@ export function CanvasWorkspace({
             recommendedModelId={recommendedModelId}
             efficientModelId={efficientModelId}
             onModelChange={handleModelChange}
-            className="bottom-6 left-5"
+            className="bottom-0 left-5"
           />
 
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-4">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-8">
             <CanvasHeroViewer generation={heroGeneration} />
 
             <CanvasPromptBar

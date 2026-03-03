@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { X, Image } from '@promptstudio/system/components/ui';
+import { X, Image, Plus } from '@promptstudio/system/components/ui';
 import type { CameraPath } from '@/features/convergence/types';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import { cn } from '@/utils/cn';
@@ -87,8 +87,8 @@ export function StartFramePopover({
         type="button"
         data-testid="start-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-lg border-none px-2.5 text-xs font-medium transition-colors',
-          'bg-transparent text-[#555B6E] hover:bg-[#1C1E26] hover:text-[#E2E6EF]',
+          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
+          'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]',
           disabled && 'cursor-not-allowed opacity-60'
         )}
         onClick={() => {
@@ -114,8 +114,9 @@ export function StartFramePopover({
           </>
         ) : (
           <>
-            <span className="flex opacity-60">
+            <span className="relative flex h-[13px] w-[13px]">
               <Image size={13} />
+              <Plus size={8} className="absolute -bottom-1 -right-1 rounded-full bg-[#141519] p-[1px]" />
             </span>
             Start frame
           </>
