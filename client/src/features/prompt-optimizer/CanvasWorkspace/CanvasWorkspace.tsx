@@ -383,7 +383,7 @@ export function CanvasWorkspace({
             className="bottom-0 left-5"
           />
 
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-8">
+          <div className={`relative flex min-h-0 flex-1 flex-col overflow-hidden pt-8 ${heroGeneration ? '' : 'justify-center'}`}>
             <CanvasHeroViewer generation={heroGeneration} />
 
             <CanvasPromptBar

@@ -41,7 +41,7 @@ const resolveAspectRatio = (generation: Generation | null): string => {
 
 export function CanvasHeroViewer({
   generation,
-}: CanvasHeroViewerProps): React.ReactElement {
+}: CanvasHeroViewerProps): React.ReactElement | null {
   const rawPrimaryMediaUrl = useMemo(
     () => normalizeUrl(generation?.mediaUrls[0] ?? null),
     [generation?.mediaUrls]
@@ -101,6 +101,10 @@ export function CanvasHeroViewer({
   const aspectRatio = useMemo(() => resolveAspectRatio(generation), [generation]);
   const isVideo = generation?.mediaType === 'video' && Boolean(resolvedVideoUrl);
   const previewUrl = isVideo ? resolvedVideoUrl : resolvedImageUrl;
+
+  // Don't render the viewer chrome when there are no generations at all.
+  // The prompt bar fills the space instead of showing an empty player shell.
+  if (!generation) return null;
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-[#0D0E12]">

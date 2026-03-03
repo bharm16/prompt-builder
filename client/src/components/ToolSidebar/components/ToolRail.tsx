@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import { GridFour, Home } from '@promptstudio/system/components/ui';
 import { Link, useLocation } from 'react-router-dom';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
 import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
-import { cn } from '@/utils/cn';
 import { useSidebarWorkspaceDomain } from '../context';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
@@ -15,10 +13,8 @@ export function ToolRail({
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
-  const { balance, isLoading } = useCreditBalance();
   const { status, isLoading: isLoadingStatus } = useBillingStatus();
   const workspace = useSidebarWorkspaceDomain();
-  const [showRailHint, setShowRailHint] = useState(false);
   const sessionsItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
@@ -28,33 +24,14 @@ export function ToolRail({
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
   const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
   const userActionLabel = user ? 'Account' : 'Sign in';
-  const onboardingKey = useMemo(
-    () => (user?.uid ? `credit-onboarding-dismissed:${user.uid}` : null),
-    [user?.uid]
-  );
-
-  useEffect(() => {
-    if (!onboardingKey) {
-      setShowRailHint(false);
-      return;
-    }
-    try {
-      setShowRailHint(localStorage.getItem(onboardingKey) !== '1');
-    } catch {
-      setShowRailHint(false);
-    }
-  }, [onboardingKey]);
-
-  const dismissRailHint = (): void => {
-    if (onboardingKey) {
-      try {
-        localStorage.setItem(onboardingKey, '1');
-      } catch {
-        // Ignore storage failures; still hide the hint for this render.
-      }
-    }
-    setShowRailHint(false);
-  };
+  const planLabel = useMemo((): string => {
+    if (isLoadingStatus) return '…';
+    if (!user) return 'Sign in';
+    if (!status?.isSubscribed) return 'Free';
+    const tier = status.planTier;
+    if (!tier) return 'Free';
+    return tier.charAt(0).toUpperCase() + tier.slice(1);
+  }, [user, status, isLoadingStatus]);
 
   const handlePanelChange = (panelId: typeof activePanel): void => {
     if (panelId === 'sessions') {
@@ -109,8 +86,8 @@ export function ToolRail({
 
       <div className="flex-1" />
 
-      {/* ── Bottom: Home + Avatar ── */}
-      <div className="flex w-full flex-col items-stretch gap-1.5 pb-1">
+      {/* ── Bottom: Home + Profile ── */}
+      <div className="flex w-full flex-col items-stretch gap-0.5 pb-2.5">
         <Link
           to="/home"
           className="flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-[#E2E6EF] transition-colors hover:bg-[#1C1E26] hover:text-[#E2E6EF]"
@@ -120,65 +97,35 @@ export function ToolRail({
           <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">Home</span>
         </Link>
 
-        {showRailHint ? (
-          <button
-            type="button"
-            className="mx-1 rounded-md border border-[#1A1C22] bg-[#111318] px-1 py-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-amber-400"
-            onClick={dismissRailHint}
-            title="Dismiss credit onboarding hint"
-          >
-            Credits
-          </button>
-        ) : null}
+        <div className="mx-1 my-1 h-px bg-[#1A1C22]" aria-hidden="true" />
 
+        {/* ── Profile row ── */}
         <Link
-          to="/billing"
-          className="flex h-8 w-full flex-col items-center justify-center rounded-lg transition-colors hover:bg-[#151720]"
-          aria-label={`${balance ?? 0} credits - ${
-            status?.isSubscribed ? 'subscribed plan' : 'free plan'
-          } - view billing`}
+          to={userActionLink}
+          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-[#1C1E26]"
+          aria-label={userActionLabel}
         >
-          {isLoading ? (
-            <div className="h-2.5 w-6 animate-pulse rounded bg-[#1A1C22]" />
+          {photoURL ? (
+            <img
+              src={photoURL}
+              alt=""
+              className="h-8 w-8 flex-none rounded-lg object-cover"
+              referrerPolicy="no-referrer"
+            />
           ) : (
-            <>
-              <span
-                className={cn(
-                  'text-[10px] font-bold tabular-nums leading-none',
-                  balance === 0 || balance === null ? 'text-amber-400' : 'text-[#8B92A5]'
-                )}
-              >
-                {balance ?? 0}
-              </span>
-              <span
-                className={cn(
-                  'mt-0.5 text-[8px] leading-none',
-                  status?.isSubscribed ? 'text-[#8B92A5]' : 'text-[#555B6E]'
-                )}
-              >
-                {isLoadingStatus ? 'cr' : `cr · ${status?.isSubscribed ? 'sub' : 'free'}`}
-              </span>
-            </>
+            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-[#2A2D35]">
+              <span className="text-[13px] font-bold text-white">{initial}</span>
+            </div>
           )}
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[13px] font-medium leading-none text-[#E2E6EF]">
+              {displayName || email || 'Account'}
+            </span>
+            <span className="text-[11px] leading-none text-[#555B6E]">
+              {planLabel}
+            </span>
+          </div>
         </Link>
-
-        {photoURL ? (
-          <Link
-            to={userActionLink}
-            aria-label={userActionLabel}
-            className="mt-1.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
-          >
-            <img src={photoURL} alt="" className="h-7 w-7 rounded-full" referrerPolicy="no-referrer" />
-          </Link>
-        ) : (
-          <Link
-            to={userActionLink}
-            aria-label={userActionLabel}
-            className="mt-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#8B5CF6]"
-          >
-            <span className="text-[11px] font-bold text-white">{initial}</span>
-          </Link>
-        )}
       </div>
     </aside>
   );

@@ -180,9 +180,9 @@ export function CanvasPromptBar({
   const shouldRenderSuggestionTray = Boolean(selectedSpanId);
 
   return (
-    <div className="mx-auto w-[55%] flex-shrink-0 pb-4 pt-5">
+    <div className="mx-auto w-[68%] flex-shrink-0 pb-4 pt-5">
       <div
-        className={`rounded-[24px] border bg-[#141519] px-4 py-3.5 transition-colors ${
+        className={`rounded-[24px] border bg-[#141519] px-4 py-3 transition-colors ${
           isFocused ? 'border-[#6C5CE744]' : 'border-[#22252C]'
         }`}
         onClick={() => {
@@ -193,7 +193,7 @@ export function CanvasPromptBar({
         <div className="relative">
           <PromptEditor
             ref={editorRef}
-            className="min-h-[56px] max-h-[180px] overflow-y-auto text-sm leading-[1.75] text-[#8B92A5] outline-none"
+            className="ps-scrollbar-hide min-h-[56px] max-h-[180px] overflow-y-auto text-sm leading-[1.75] text-[#8B92A5] outline-none"
             onTextSelection={onTextSelection}
             onHighlightClick={onHighlightClick}
             onHighlightMouseDown={onHighlightMouseDown}
