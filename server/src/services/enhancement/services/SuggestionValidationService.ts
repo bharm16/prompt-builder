@@ -98,7 +98,8 @@ export class SuggestionValidationService {
       isPlaceholder: context.isPlaceholder,
     });
 
-    const sanitized: Suggestion[] = [];
+    const primary: Suggestion[] = [];
+    const deprioritized: Suggestion[] = [];
     const extendedContext = context as ExtendedSanitizationContext;
     const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
     const disallowedTemplatePatterns = [
@@ -304,35 +305,34 @@ export class SuggestionValidationService {
         }
       }
 
-      if (this._failsSlotFitGuard(text, extendedContext)) {
-        return;
-      }
+      // Soft guards: deprioritize instead of rejecting outright
+      const failsSoftGuard =
+        this._failsSlotFitGuard(text, extendedContext) ||
+        this._hasActorDrift(text, extendedContext) ||
+        this._hasSubjectClassDrift(text, extendedContext);
 
-      if (this._hasActorDrift(text, extendedContext)) {
-        return;
-      }
-
-      if (this._hasSubjectClassDrift(text, extendedContext)) {
-        return;
-      }
-
-      sanitized.push({
+      const target = failsSoftGuard ? deprioritized : primary;
+      target.push({
         ...suggestionObj,
         text,
       });
     });
 
     const duration = Math.round(performance.now() - startTime);
-    
+
     this.log.info('Suggestions sanitized', {
       operation,
       duration,
       inputCount: suggestions.length,
-      outputCount: sanitized.length,
-      filteredCount: suggestions.length - sanitized.length,
+      primaryCount: primary.length,
+      deprioritizedCount: deprioritized.length,
+      filteredCount: suggestions.length - primary.length - deprioritized.length,
     });
 
-    return this._applyPreferredWordCountHeuristics(sanitized, context);
+    // Apply word count heuristics to primary suggestions only;
+    // deprioritized suggestions always sort to the end
+    const primaryRanked = this._applyPreferredWordCountHeuristics(primary, context);
+    return [...primaryRanked, ...deprioritized];
   }
 
   /**
@@ -438,7 +438,13 @@ export class SuggestionValidationService {
       );
 
       if (inPreferredRange.length >= 3) {
-        return inPreferredRange.map((entry) => entry.suggestion);
+        // Keep out-of-range suggestions at the end instead of dropping them
+        const outOfRange = ranked.filter(
+          (entry) =>
+            entry.suggestionWordCount < preferredMin ||
+            entry.suggestionWordCount > preferredMax
+        );
+        return [...inPreferredRange, ...outOfRange].map((entry) => entry.suggestion);
       }
     }
 

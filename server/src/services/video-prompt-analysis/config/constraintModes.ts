@@ -63,7 +63,7 @@ export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> =
    */
   lighting: (highlightWordCount, slotDescriptor) => createConstraint({
     mode: 'lighting',
-    minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
+    minWords: Math.max(4, Math.min(8, highlightWordCount + 1)),
     maxWords: Math.min(14, Math.max(9, highlightWordCount + 4)),
     maxSentences: 1,
     formRequirement: 'Single lighting clause covering source, direction, and color temperature',

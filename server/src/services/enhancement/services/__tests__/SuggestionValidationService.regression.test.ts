@@ -41,7 +41,7 @@ describe('SuggestionValidationService regression', () => {
     expect(result.map((item) => item.text)).toContain('very soft warm interior glow');
   });
 
-  it('prefers highlighted-word-count-adjacent suggestions when enough candidates exist', () => {
+  it('ranks word-count-adjacent suggestions first and keeps out-of-range at the end', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -59,8 +59,10 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
-    expect(result.length).toBe(3);
-    expect(result.every((item) => {
+    // All 5 survive; preferred-range suggestions appear first
+    expect(result.length).toBe(5);
+    const firstThree = result.slice(0, 3);
+    expect(firstThree.every((item) => {
       const wc = item.text.trim().split(/\s+/).length;
       return wc >= 2 && wc <= 6;
     })).toBe(true);
@@ -88,7 +90,7 @@ describe('SuggestionValidationService regression', () => {
     );
   });
 
-  it('filters movement-heavy suggestions when the highlighted slot is camera focus', () => {
+  it('deprioritizes movement-heavy suggestions when the highlighted slot is camera focus', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -104,12 +106,14 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
+    // Both survive; focus-appropriate suggestion ranks first
     expect(result.map((item) => item.text)).toEqual([
       'shallow depth of field with creamy bokeh',
+      '50mm dolly out with background blur',
     ]);
   });
 
-  it('rejects human-action drift when action context anchors to environment motion', () => {
+  it('deprioritizes human-action drift when action context anchors to environment motion', () => {
     const service = createService();
 
     const contextualInput = {
@@ -137,12 +141,14 @@ describe('SuggestionValidationService regression', () => {
       contextualInput
     );
 
+    // Environment-appropriate suggestion ranks first; drifted suggestion deprioritized
     expect(result.map((item) => item.text)).toEqual([
       'branches swaying in the breeze',
+      'grinning and clapping hands',
     ]);
   });
 
-  it('filters long clause-style replacements for adjective-like slots', () => {
+  it('deprioritizes long clause-style replacements for adjective-like slots', () => {
     const service = createService();
 
     const contextualInput = {
@@ -172,10 +178,14 @@ describe('SuggestionValidationService regression', () => {
       contextualInput
     );
 
-    expect(result.map((item) => item.text)).toEqual(['soft glow']);
+    // Quality-appropriate suggestion ranks first
+    expect(result.map((item) => item.text)).toEqual([
+      'soft glow',
+      'diffused sidelight from the left',
+    ]);
   });
 
-  it('keeps human actor class for subject identity replacements when context is explicitly human', () => {
+  it('deprioritizes non-human subject class drift when context is explicitly human', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -196,12 +206,14 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
+    // Human-matching suggestion ranks first; non-human deprioritized
     expect(result.map((item) => item.text)).toEqual([
       'giggling toddler with bright pigtails',
+      'curious puppy with floppy ears',
     ]);
   });
 
-  it('rejects movement-style clauses for shot framing slots', () => {
+  it('deprioritizes movement-style clauses for shot framing slots', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -217,12 +229,14 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
+    // Static framing suggestion ranks first; movement clause deprioritized
     expect(result.map((item) => item.text)).toEqual([
       'high-angle close-up with soft focus',
+      'tracking shot moving alongside the car',
     ]);
   });
 
-  it('rejects human-action drift for environment movement actions', () => {
+  it('deprioritizes human-action drift for environment movement actions', () => {
     const service = createService();
 
     const contextualInput = {
@@ -252,10 +266,11 @@ describe('SuggestionValidationService regression', () => {
 
     expect(result.map((item) => item.text)).toEqual([
       'branches swaying in the breeze',
+      'taps the dashboard with tiny fingers',
     ]);
   });
 
-  it('rejects source-direction lighting clauses for lighting quality slots', () => {
+  it('deprioritizes source-direction lighting clauses for lighting quality slots', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -273,10 +288,11 @@ describe('SuggestionValidationService regression', () => {
 
     expect(result.map((item) => item.text)).toEqual([
       'soft diffused amber warmth',
+      'side lighting to create dramatic shadows',
     ]);
   });
 
-  it('rejects scene-content drift in style slots even when camera words appear', () => {
+  it('deprioritizes scene-content drift in style slots even when camera words appear', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -293,12 +309,12 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
-    expect(result.map((item) => item.text)).toEqual([
-      'vintage Kodachrome slide with warm tones',
-    ]);
+    // Style-appropriate suggestion first; drifted ones deprioritized
+    expect(result.length).toBe(3);
+    expect(result[0]!.text).toBe('vintage Kodachrome slide with warm tones');
   });
 
-  it('rejects camera/environment drift for lighting quality slots', () => {
+  it('deprioritizes camera/environment drift for lighting quality slots', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -315,12 +331,12 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
-    expect(result.map((item) => item.text)).toEqual([
-      'soft diffused amber warmth',
-    ]);
+    // Lighting-appropriate suggestion first; drifted ones deprioritized
+    expect(result.length).toBe(3);
+    expect(result[0]!.text).toBe('soft diffused amber warmth');
   });
 
-  it('uses surrounding context to enforce vehicle-interior location coherence', () => {
+  it('deprioritizes non-vehicle-interior suggestions when context is inside a vehicle', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -342,8 +358,10 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
+    // Vehicle-interior suggestion first; non-vehicle deprioritized
     expect(result.map((item) => item.text)).toEqual([
       'backseat of a vintage station wagon',
+      'tranquil lakeside dock at sunset',
     ]);
   });
 
@@ -374,7 +392,7 @@ describe('SuggestionValidationService regression', () => {
     ]);
   });
 
-  it('rejects camera-shot drift in lighting source slots', () => {
+  it('deprioritizes camera-shot drift in lighting source slots', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -392,10 +410,11 @@ describe('SuggestionValidationService regression', () => {
 
     expect(result.map((item) => item.text)).toEqual([
       'backlit golden sun through the rear window',
+      'high-angle wide shot with soft focus',
     ]);
   });
 
-  it('rejects non-human and role-shift drift for subject emotion slots in human context', () => {
+  it('deprioritizes non-human and role-shift drift for subject emotion slots in human context', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -417,12 +436,12 @@ describe('SuggestionValidationService regression', () => {
       }
     );
 
-    expect(result.map((item) => item.text)).toEqual([
-      'beaming child with sparkling eyes',
-    ]);
+    // Human-matching suggestion first; non-human and fantasy-shift deprioritized
+    expect(result.length).toBe(3);
+    expect(result[0]!.text).toBe('beaming child with sparkling eyes');
   });
 
-  it('rejects disruptive weather swaps when source weather is a breeze-like condition', () => {
+  it('deprioritizes disruptive weather swaps when source weather is a breeze-like condition', () => {
     const service = createService();
 
     const result = service.sanitizeSuggestions(
@@ -440,6 +459,50 @@ describe('SuggestionValidationService regression', () => {
 
     expect(result.map((item) => item.text)).toEqual([
       'soft, whispering zephyr',
+      'gentle snowfall blanketing the park',
     ]);
+  });
+
+  // --- Tiered validation regression tests ---
+
+  it('returns deprioritized suggestions when all primary suggestions are filtered by hard checks', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'high-angle wide shot with soft focus' },
+        { text: 'tracking camera along the corridor' },
+      ],
+      {
+        highlightedText: 'warm natural glow',
+        highlightedCategory: 'lighting.source',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+      }
+    );
+
+    // Both fail slot fit guard (camera terms in lighting slot) but survive as deprioritized
+    expect(result.length).toBe(2);
+  });
+
+  it('never returns suggestions that fail hard validation checks', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'warm natural glow' },                           // identical to highlight
+        { text: 'rewrite the entire prompt section' },           // meta-language
+        { text: 'consider using alternative approaches here' },  // template artifact + conversational prefix
+        { text: 'soft amber warmth' },                           // valid
+      ],
+      {
+        highlightedText: 'warm natural glow',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+      }
+    );
+
+    // Only the valid suggestion passes hard checks
+    expect(result.map((item) => item.text)).toEqual(['soft amber warmth']);
   });
 });
