@@ -418,6 +418,7 @@ export class CleanPromptBuilder {
       '2. One continuous action only (no sequences like "walks then runs")',
       '3. Actions must be camera-visible physical behavior',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      '5. Return ONLY the action verb/phrase. Do NOT repeat the object that follows the highlighted text in the surrounding context.',
       'DIVERSITY: Vary the physical behavior or staging, not just intensity.',
       ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
       ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',

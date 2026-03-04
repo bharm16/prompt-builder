@@ -171,6 +171,9 @@ export class SuggestionValidationService {
         if (!text) return;
       }
 
+      // Strip trailing object overlap for action spans
+      text = this._stripContinuationOverlap(text, extendedContext);
+
       if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
         return; // violates One Clip, One Action guidance
       }
@@ -589,6 +592,39 @@ export class SuggestionValidationService {
       this.humanBodyActionTerms.test(text.toLowerCase()) ||
       this.humanSubjectTerms.test(text.toLowerCase())
     );
+  }
+
+  /**
+   * Strip trailing tokens from a suggestion that overlap with the start of contextAfter.
+   * Only applies to action-category spans where the LLM may absorb the trailing object.
+   */
+  _stripContinuationOverlap(text: string, context: ExtendedSanitizationContext): string {
+    const category = (context.highlightedCategory || '').toLowerCase();
+    if (!category.startsWith('action')) return text;
+
+    const after = context.contextAfter?.trim();
+    if (!after) return text;
+
+    const afterTokens = after.toLowerCase().split(/\s+/).slice(0, 6);
+    const suggestionTokens = text.toLowerCase().split(/\s+/);
+
+    if (afterTokens.length < 2 || suggestionTokens.length < 2) return text;
+
+    // Check if the suggestion's tail matches the continuation's head
+    // Try match lengths from 5 down to 2
+    const maxMatch = Math.min(5, afterTokens.length, suggestionTokens.length - 1);
+    for (let n = maxMatch; n >= 2; n--) {
+      const suggestionTail = suggestionTokens.slice(-n);
+      const continuationHead = afterTokens.slice(0, n);
+      if (suggestionTail.every((t, i) => t === continuationHead[i])) {
+        // Strip the overlapping tail, preserving original casing
+        const originalTokens = text.split(/\s+/);
+        const stripped = originalTokens.slice(0, originalTokens.length - n).join(' ').trim();
+        if (stripped) return stripped;
+      }
+    }
+
+    return text;
   }
 
   private _hasSubjectClassDrift(text: string, context: ExtendedSanitizationContext): boolean {

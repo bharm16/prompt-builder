@@ -142,8 +142,9 @@ describe('SuggestionValidationService regression', () => {
     );
 
     // Environment-appropriate suggestion ranks first; drifted suggestion deprioritized
+    // "in the breeze" is stripped because it overlaps with contextAfter
     expect(result.map((item) => item.text)).toEqual([
-      'branches swaying in the breeze',
+      'branches swaying',
       'grinning and clapping hands',
     ]);
   });
