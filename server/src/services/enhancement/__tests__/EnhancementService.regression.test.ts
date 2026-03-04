@@ -6,6 +6,7 @@ import type {
   CategoryAligner,
   DiversityEnforcer,
   PromptBuilder,
+  Suggestion,
   ValidationService,
   VideoService,
 } from '../services/types';
@@ -40,6 +41,7 @@ function createService(): EnhancementService {
 
   const diversityEnforcer = {
     ensureDiverseSuggestions: vi.fn(async () => []),
+    filterOriginalEchoes: vi.fn((suggestions: Suggestion[]) => suggestions),
   } as unknown as DiversityEnforcer;
 
   const categoryAligner = {

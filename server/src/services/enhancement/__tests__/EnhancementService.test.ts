@@ -82,6 +82,7 @@ function createService() {
 
   const diversityEnforcer = {
     ensureDiverseSuggestions: vi.fn(async (suggestions: Suggestion[]) => suggestions),
+    filterOriginalEchoes: vi.fn((suggestions: Suggestion[]) => suggestions),
   } as unknown as DiversityEnforcer;
 
   const categoryAligner = {

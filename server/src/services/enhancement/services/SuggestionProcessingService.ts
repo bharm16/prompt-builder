@@ -94,8 +94,13 @@ export class SuggestionProcessingService {
       ? params.suggestions
       : await this.diversityEnforcer.ensureDiverseSuggestions(params.suggestions);
 
-    const alignmentResult = this.applyCategoryAlignment(
+    const echoFiltered = this.diversityEnforcer.filterOriginalEchoes(
       diverseSuggestions,
+      params.highlightedText
+    );
+
+    const alignmentResult = this.applyCategoryAlignment(
+      echoFiltered,
       params.highlightedCategory,
       params.highlightedText,
       params.highlightedCategoryConfidence ?? null

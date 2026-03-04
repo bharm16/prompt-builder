@@ -151,6 +151,83 @@ export class SuggestionDiversityEnforcer {
   }
 
   /**
+   * Stop words excluded from echo comparison (common glue words)
+   */
+  private static readonly STOP_WORDS = new Set([
+    'a', 'an', 'the', 'with', 'and', 'of', 'in', 'on', 'for', 'to', 'by',
+    'at', 'from', 'is', 'are', 'was', 'were', 'be', 'its', 'it', 'or',
+  ]);
+
+  /**
+   * Filter suggestions that echo the original highlighted text.
+   *
+   * Prevents "same concept + modifier" suggestions like:
+   *   original "medium close" → suggestion "medium close-up with 85mm lens"
+   *
+   * Uses Jaccard similarity on stop-word-stripped token sets plus
+   * core concept containment to detect echoes.
+   */
+  filterOriginalEchoes(suggestions: Suggestion[], originalText: string): Suggestion[] {
+    if (!originalText || suggestions.length === 0) return suggestions;
+
+    const originalTokens = SuggestionDiversityEnforcer.tokenize(originalText);
+    if (originalTokens.size === 0) return suggestions;
+
+    const coreConcept = SuggestionDiversityEnforcer.extractCoreConcept(originalText);
+    const isSingleWord = originalText.trim().split(/\s+/).length === 1;
+
+    const filtered = suggestions.filter((suggestion) => {
+      const suggestionTokens = SuggestionDiversityEnforcer.tokenize(suggestion.text);
+      if (suggestionTokens.size === 0) return true;
+
+      const intersection = new Set(
+        [...originalTokens].filter((t) => suggestionTokens.has(t))
+      );
+      const union = new Set([...originalTokens, ...suggestionTokens]);
+      const jaccard = union.size > 0 ? intersection.size / union.size : 0;
+
+      if (isSingleWord) {
+        return jaccard <= 0.6;
+      }
+
+      // For multi-word originals, use a threshold that catches
+      // "same concept + modifier" echoes while allowing genuinely different suggestions
+      return !(jaccard >= 0.45 && coreConcept !== null && suggestionTokens.has(coreConcept));
+    });
+
+    if (filtered.length < suggestions.length) {
+      logger.info('Filtered original echoes', {
+        original: originalText,
+        removed: suggestions.length - filtered.length,
+        remaining: filtered.length,
+      });
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Tokenize text: lowercase, split on whitespace/hyphens, remove stop words
+   */
+  private static tokenize(text: string): Set<string> {
+    return new Set(
+      text
+        .toLowerCase()
+        .split(/[\s\-]+/)
+        .filter((t) => t.length > 0 && !SuggestionDiversityEnforcer.STOP_WORDS.has(t))
+    );
+  }
+
+  /**
+   * Extract the core concept — the longest non-stop-word token
+   */
+  private static extractCoreConcept(text: string): string | null {
+    const tokens = [...SuggestionDiversityEnforcer.tokenize(text)];
+    if (tokens.length === 0) return null;
+    return tokens.reduce((longest, t) => (t.length > longest.length ? t : longest), tokens[0]!);
+  }
+
+  /**
    * Calculate similarity between two texts using Jaccard similarity
    * @param text1 - First text
    * @param text2 - Second text

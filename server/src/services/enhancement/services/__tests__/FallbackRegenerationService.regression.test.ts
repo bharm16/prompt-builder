@@ -40,6 +40,7 @@ describe('FallbackRegenerationService regression', () => {
 
     const diversityEnforcer = {
       ensureDiverseSuggestions: vi.fn(async (suggestions: Suggestion[]) => suggestions),
+      filterOriginalEchoes: vi.fn((suggestions: Suggestion[]) => suggestions),
     };
 
     const service = new FallbackRegenerationService(

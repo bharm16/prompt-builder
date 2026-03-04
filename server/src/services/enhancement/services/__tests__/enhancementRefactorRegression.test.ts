@@ -15,6 +15,7 @@ import type { FallbackRegenerationService } from '../FallbackRegenerationService
 function createService(validationOverrides: Partial<ValidationService> = {}) {
   const diversityEnforcer: DiversityEnforcer = {
     ensureDiverseSuggestions: vi.fn(async (suggestions: Suggestion[]) => suggestions),
+    filterOriginalEchoes: vi.fn((suggestions: Suggestion[]) => suggestions),
   };
 
   const validationService: ValidationService = {

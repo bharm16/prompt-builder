@@ -451,6 +451,7 @@ export interface ValidationService {
  */
 export interface DiversityEnforcer {
   ensureDiverseSuggestions(suggestions: Suggestion[]): Promise<Suggestion[]>;
+  filterOriginalEchoes(suggestions: Suggestion[], originalText: string): Suggestion[];
 }
 
 /**
