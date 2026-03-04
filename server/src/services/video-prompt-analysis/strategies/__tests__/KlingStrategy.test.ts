@@ -40,7 +40,7 @@ vi.mock('../../services/rewriter/VideoPromptLLMRewriter', () => ({
 const makeResult = (prompt: string): PromptOptimizationResult => ({
   prompt,
   metadata: {
-    modelId: 'kling-26',
+    modelId: 'kling-2.1',
     pipelineVersion: '2.0.0',
     phases: [],
     warnings: [],
@@ -151,40 +151,19 @@ describe('KlingStrategy', () => {
     });
   });
 
-  describe('augment - mandatory audio constraints', () => {
-    it('injects mandatory audio constraints when missing', () => {
-      // Call normalize first to initialize metadata pipeline
+  describe('augment - conditional audio constraints', () => {
+    it('does not inject audio triggers when prompt does not request audio', () => {
       strategy.normalize('A warrior stands in heavy rain');
-      const input = makeResult('A warrior stands in heavy rain');
-      const result = strategy.augment(input);
-      expect(result.prompt).toContain('A warrior stands in heavy rain');
-      expect(result.prompt).toContain('synced lips');
+      const result = strategy.augment(makeResult('A warrior stands in heavy rain'));
+      expect(result.metadata.triggersInjected).toEqual([]);
+      expect(result.prompt).toBe('A warrior stands in heavy rain');
+    });
+
+    it('injects audio quality constraints when audio is requested', () => {
+      strategy.normalize('Character says "hello" with dialogue audio');
+      const result = strategy.augment(makeResult('Character says "hello" with dialogue audio'));
       expect(result.prompt).toContain('natural speech');
       expect(result.prompt).toContain('high fidelity audio');
-    });
-
-    it('records injected mandatory constraints in triggersInjected', () => {
-      strategy.normalize('test prompt');
-      const input = makeResult('test prompt');
-      const result = strategy.augment(input);
-      expect(result.metadata.triggersInjected).toEqual(
-        expect.arrayContaining(['synced lips', 'natural speech', 'high fidelity audio'])
-      );
-    });
-
-    it('records augment phase changes for injected constraints', () => {
-      strategy.normalize('test prompt');
-      const input = makeResult('test prompt');
-      const result = strategy.augment(input);
-      const augmentPhase = result.metadata.phases.find(p => p.phase === 'augment');
-      expect(augmentPhase).toBeDefined();
-      expect(augmentPhase?.changes).toEqual(
-        expect.arrayContaining([
-          'Injected mandatory constraint: "synced lips"',
-          'Injected mandatory constraint: "natural speech"',
-          'Injected mandatory constraint: "high fidelity audio"',
-        ])
-      );
     });
   });
 
@@ -196,17 +175,17 @@ describe('KlingStrategy', () => {
     it('can be called multiple times without error', () => {
       strategy.resetEntityRegistry();
       strategy.resetEntityRegistry();
-      expect(strategy.modelId).toBe('kling-26');
+      expect(strategy.modelId).toBe('kling-2.1');
     });
   });
 
   describe('identity', () => {
-    it('has modelId kling-26', () => {
-      expect(strategy.modelId).toBe('kling-26');
+    it('has modelId kling-2.1', () => {
+      expect(strategy.modelId).toBe('kling-2.1');
     });
 
-    it('has modelName Kling AI 2.6', () => {
-      expect(strategy.modelName).toBe('Kling AI 2.6');
+    it('has modelName Kling 2.1', () => {
+      expect(strategy.modelName).toBe('Kling 2.1');
     });
   });
 });

@@ -49,6 +49,19 @@ export const createOptimizeStreamHandler = (
     const normalizedTargetModel = normalizeTargetModel(targetModel);
     const normalizedContext = normalizeContext(context);
     const normalizedLockedSpans = normalizeLockedSpans(lockedSpans);
+    if (
+      typeof targetModel === 'string' &&
+      normalizedTargetModel &&
+      targetModel.trim().toLowerCase() !== normalizedTargetModel
+    ) {
+      logger.warn('Deprecated targetModel alias normalized', {
+        operation,
+        requestId,
+        userId,
+        requestedTargetModel: targetModel,
+        normalizedTargetModel,
+      });
+    }
 
     if (typeof startImage === 'string' && startImage.trim().length > 0) {
       res.status(400).json({
@@ -148,11 +161,19 @@ export const createOptimizeStreamHandler = (
         },
       };
       const result = await promptOptimizationService.optimizeTwoStage(optimizeRequest);
+      const streamMetadata = {
+        ...(result.metadata || {}),
+        ...(normalizedTargetModel ? { normalizedModelId: normalizedTargetModel } : {}),
+        intentLockPassed:
+          typeof result.metadata?.intentLockPassed === 'boolean'
+            ? result.metadata.intentLockPassed
+            : true,
+      };
 
       sendEvent('refined', {
         refined: result.refined,
         status: 'complete',
-        metadata: result.metadata,
+        metadata: streamMetadata,
         timestamp: Date.now(),
       });
 

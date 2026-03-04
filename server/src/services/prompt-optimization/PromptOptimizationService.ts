@@ -11,6 +11,8 @@ import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
 import { TemplateService } from './services/TemplateService';
+import { IntentLockService } from './services/IntentLockService';
+import { PromptLintGateService } from './services/PromptLintGateService';
 import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
 import type { ImageObservationService } from '@services/image-observation';
 import type { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
@@ -52,6 +54,9 @@ export class PromptOptimizationService {
   private readonly i2vStrategy: I2VMotionStrategy;
   private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly metricsService: QualityGateMetricsLike | null;
+  private readonly intentLock: IntentLockService;
+  private readonly promptLint: PromptLintGateService;
+  private readonly pipelineV2Enabled: boolean;
   private readonly log: ILogger;
 
   constructor(
@@ -81,6 +86,9 @@ export class PromptOptimizationService {
     this.imageObservation = imageObservationService;
     this.i2vStrategy = new I2VMotionStrategy(aiService);
     this.metricsService = metricsService ?? null;
+    this.intentLock = new IntentLockService();
+    this.promptLint = new PromptLintGateService();
+    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== 'false';
 
     this.templateVersions = OptimizationConfig.templateVersions;
 
@@ -88,6 +96,7 @@ export class PromptOptimizationService {
       operation: 'constructor',
       availableClients: this.ai.getAvailableClients?.(),
       strategies: this.strategyFactory.getSupportedModes(),
+      pipelineV2Enabled: this.pipelineV2Enabled,
     });
   }
 
@@ -161,6 +170,29 @@ export class PromptOptimizationService {
       logOptimizationMetrics: (originalPrompt, optimizedPrompt, mode) =>
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
       metricsService: this.metricsService,
+      intentLock: this.pipelineV2Enabled
+        ? this.intentLock
+        : {
+            enforceIntentLock: ({ optimizedPrompt, originalPrompt, shotPlan }) => {
+              void originalPrompt;
+              void shotPlan;
+              return {
+                prompt: optimizedPrompt,
+                passed: true,
+                repaired: false,
+                required: { subject: null, action: null },
+              };
+            },
+          },
+      promptLint: this.pipelineV2Enabled
+        ? this.promptLint
+        : {
+            enforce: ({ prompt }) => ({
+              prompt,
+              lint: { ok: true, errors: [], warnings: [], wordCount: prompt.split(/\s+/).length },
+              repaired: false,
+            }),
+          },
     });
   }
 
@@ -195,12 +227,44 @@ export class PromptOptimizationService {
     metadata: Record<string, unknown> | null;
     targetModel: string;
   }> {
-    void context;
     if (!this.compilationService) {
       throw new Error('Video prompt service unavailable');
     }
 
-    return this.compilationService.compilePrompt(prompt, targetModel);
+    const compilation = await this.compilationService.compilePrompt(prompt, targetModel);
+    let compiledPrompt = compilation.compiledPrompt;
+    let metadata = compilation.metadata;
+
+    if (this.pipelineV2Enabled) {
+      const originalPrompt = this.resolveOriginalPromptForCompile(context, prompt);
+      const intent = this.intentLock.enforceIntentLock({
+        originalPrompt,
+        optimizedPrompt: compiledPrompt,
+        shotPlan: null,
+      });
+      compiledPrompt = intent.prompt;
+
+      const lint = this.promptLint.enforce({
+        prompt: compiledPrompt,
+        modelId: compilation.targetModel,
+      });
+      compiledPrompt = lint.prompt;
+
+      metadata = {
+        ...(metadata || {}),
+        intentLockPassed: intent.passed,
+        intentLockRepaired: intent.repaired,
+        requiredIntent: intent.required,
+        promptLint: lint.lint,
+        promptLintRepaired: lint.repaired,
+      };
+    }
+
+    return {
+      ...compilation,
+      compiledPrompt,
+      metadata,
+    };
   }
 
   /**
@@ -290,6 +354,28 @@ export class PromptOptimizationService {
       lengthChange: optimizedPrompt.length - originalPrompt.length,
       lengthChangePercent: ((optimizedPrompt.length / originalPrompt.length - 1) * 100).toFixed(1),
     });
+  }
+
+  private resolveOriginalPromptForCompile(context: unknown | null | undefined, fallbackPrompt: string): string {
+    if (!context || typeof context !== 'object') {
+      return fallbackPrompt;
+    }
+
+    const contextRecord = context as Record<string, unknown>;
+    const originalPromptCandidate = contextRecord.originalPrompt;
+    if (typeof originalPromptCandidate === 'string' && originalPromptCandidate.trim().length > 0) {
+      return originalPromptCandidate.trim();
+    }
+
+    const originalUserPromptCandidate = contextRecord.originalUserPrompt;
+    if (
+      typeof originalUserPromptCandidate === 'string' &&
+      originalUserPromptCandidate.trim().length > 0
+    ) {
+      return originalUserPromptCandidate.trim();
+    }
+
+    return fallbackPrompt;
   }
 }
 

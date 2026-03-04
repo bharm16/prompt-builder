@@ -7,6 +7,7 @@ import { evaluateTechnicalDensity } from './dimensions/technicalDensity';
 import { evaluateWordCountCompliance } from './dimensions/wordCountCompliance';
 import { labelOptimizedSpans } from './integrations/spanLabeling';
 import { normalizeText } from './utils/text';
+import { PromptLintGateService } from '../services/PromptLintGateService';
 
 export interface OptimizationTestCase {
   id: string;
@@ -42,6 +43,8 @@ export interface OptimizationQualityResult {
 }
 
 export class OptimizationQualityEvaluator {
+  private readonly promptLint = new PromptLintGateService();
+
   constructor(private readonly ai: AIModelService) {}
 
   async evaluateCase(testCase: OptimizationTestCase, optimized: string): Promise<OptimizationQualityResult> {
@@ -51,7 +54,8 @@ export class OptimizationQualityEvaluator {
       this.ai,
       testCase.input,
       optimized,
-      testCase.requiredElements || []
+      testCase.requiredElements || [],
+      { strict: true }
     );
 
     if (intent.score < 1.0) {
@@ -63,6 +67,10 @@ export class OptimizationQualityEvaluator {
     const wordCountCompliance = evaluateWordCountCompliance(optimized);
     const technicalDensity = evaluateTechnicalDensity(optimized);
     const modelCompliance = evaluateModelCompliance(optimized, testCase.targetModel);
+    const lintResult = this.promptLint.evaluate(optimized, testCase.targetModel);
+    if (!lintResult.ok) {
+      failures.push(`Prompt lint failed: ${lintResult.errors.join(' | ')}`);
+    }
 
     // Forbidden patterns
     if (testCase.forbiddenPatterns && testCase.forbiddenPatterns.length) {

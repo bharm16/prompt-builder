@@ -16,6 +16,7 @@ const MODEL_ID_ALIASES = new Map<string, string>([
   ['wan-video/wan-2.5-i2v', 'wan-2.5'],
   ['wan-video/wan-2.5-i2v-fast', 'wan-2.5'],
   ['wan-2.5', 'wan-2.5'],
+  ['kling-2.1', 'kling-v2-1-master'],
   ['kling-26', 'kling-v2-1-master'],
   ['veo-4', 'google/veo-3'],
   ['veo-3', 'google/veo-3'],

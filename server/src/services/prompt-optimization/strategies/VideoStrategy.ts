@@ -16,8 +16,7 @@ import {
   type VideoPromptStructuredResponse,
 } from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
-import { renderAlternativeApproaches, renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
-import { buildStreamingPrompt } from './video/prompts/buildStreamingPrompt';
+import { renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
 import { normalizeSlots } from './video/slots/normalizeSlots';
 import { rerollSlots } from './video/slots/rerollSlots';
 
@@ -118,29 +117,9 @@ export class VideoStrategy implements OptimizationStrategy {
         ? brainstormContext.originalUserPrompt.trim()
         : null;
 
-    if (
-      onChunk &&
-      this.ai.stream &&
-      (this.ai.supportsStreaming?.('optimize_standard') ?? true)
-    ) {
-      const streamingPrompt = buildStreamingPrompt({
-        prompt,
-        shotPlan,
-        lockedSpans,
-        generationParams,
-        ...(originalUserPrompt ? { originalUserPrompt } : {}),
-      });
-
-      return await this.ai.stream('optimize_standard', {
-        systemPrompt: streamingPrompt.systemPrompt,
-        userMessage: streamingPrompt.userMessage,
-        maxTokens: config.maxTokens,
-        temperature: config.temperature,
-        timeout: config.timeout,
-        onChunk,
-        ...(signal ? { signal } : {}),
-      });
-    }
+    // Streaming is handled by optimizeFlow so streaming and non-streaming paths
+    // share one canonical output pipeline.
+    void onChunk;
 
     // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {
@@ -355,6 +334,7 @@ export class VideoStrategy implements OptimizationStrategy {
     onMetadata?: (metadata: Record<string, unknown>) => void,
     generationParams?: CapabilityValues | null
   ): string {
+    void parsed;
     const resolved = this.applyGenerationParams(parsed, generationParams);
     const slots = normalizeSlots(resolved);
     const promptParagraph = renderMainVideoPrompt(slots);
@@ -371,48 +351,7 @@ export class VideoStrategy implements OptimizationStrategy {
       });
     }
 
-    let output = promptParagraph;
-
-    // Add technical specs section with merged creative and output specs (aligned with research template)
-    if (resolved.technical_specs) {
-      output += '\n\n**TECHNICAL SPECS**';
-
-      // Output specs (generator-facing)
-      output += `\n- **Duration:** ${resolved.technical_specs.duration || '4-8s'}`;
-      output += `\n- **Aspect Ratio:** ${resolved.technical_specs.aspect_ratio || '16:9'}`;
-      if (resolved.technical_specs.resolution) {
-        output += `\n- **Resolution:** ${resolved.technical_specs.resolution}`;
-      }
-      output += `\n- **Frame Rate:** ${resolved.technical_specs.frame_rate || '24fps'}`;
-      output += `\n- **Audio:** ${resolved.technical_specs.audio || 'mute'}`;
-
-      // Creative specs (used in prompt generation)
-      if (resolved.technical_specs.camera) {
-        output += `\n- **Camera:** ${resolved.technical_specs.camera}`;
-      }
-      if (resolved.technical_specs.lighting) {
-        output += `\n- **Lighting:** ${resolved.technical_specs.lighting}`;
-      }
-      if (resolved.technical_specs.style) {
-        output += `\n- **Style:** ${resolved.technical_specs.style}`;
-      }
-    }
-
-    // Add variations section
-    const variations =
-      parsed.variations && Array.isArray(parsed.variations) && parsed.variations.length > 0
-        ? parsed.variations
-        : renderAlternativeApproaches(slots);
-
-    if (variations.length > 0) {
-      output += '\n\n**ALTERNATIVE APPROACHES**';
-      variations.forEach((variation, index) => {
-        const varNum = index + 1;
-        output += `\n- **Variation ${varNum} (${variation.label}):** ${variation.prompt}`;
-      });
-    }
-
-    return output;
+    return promptParagraph;
   }
 
   private applyGenerationParams(

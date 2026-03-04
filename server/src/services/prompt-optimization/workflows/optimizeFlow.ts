@@ -2,6 +2,23 @@ import OptimizationConfig from '@config/OptimizationConfig';
 import { throwIfAborted } from './abort';
 import type { OptimizeFlowArgs } from './types';
 
+const STREAM_CHUNK_SIZE = 56;
+
+function streamPromptChunks(prompt: string, onChunk: (delta: string) => void): void {
+  const normalized = prompt.trim();
+  if (!normalized) {
+    return;
+  }
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < words.length; i += STREAM_CHUNK_SIZE) {
+    const chunk = words.slice(i, i + STREAM_CHUNK_SIZE).join(' ');
+    if (chunk) {
+      onChunk(`${chunk}${i + STREAM_CHUNK_SIZE < words.length ? ' ' : ''}`);
+    }
+  }
+}
+
 export const runOptimizeFlow = async ({
   request,
   log,
@@ -14,6 +31,8 @@ export const runOptimizeFlow = async ({
   applyConstitutionalAI,
   logOptimizationMetrics,
   metricsService,
+  intentLock,
+  promptLint,
 }: OptimizeFlowArgs) => {
   const startTime = performance.now();
   const operation = 'optimize';
@@ -36,6 +55,12 @@ export const runOptimizeFlow = async ({
     targetModel,
   } = request;
   void _mode;
+
+  const originalUserPrompt =
+    typeof brainstormContext?.originalUserPrompt === 'string' &&
+    brainstormContext.originalUserPrompt.trim().length > 0
+      ? brainstormContext.originalUserPrompt.trim()
+      : prompt;
 
   const finalMode = 'video' as const;
 
@@ -72,6 +97,9 @@ export const runOptimizeFlow = async ({
       const cachedMetadata = await optimizationCache.getCachedMetadata(cacheKey);
       if (onMetadata && cachedMetadata) {
         onMetadata(cachedMetadata);
+      }
+      if (onChunk) {
+        streamPromptChunks(cached, onChunk);
       }
       log.debug('Returning cached optimization result', {
         operation,
@@ -113,6 +141,9 @@ export const runOptimizeFlow = async ({
         onMetadata(metadata);
       }
     };
+    if (targetModel) {
+      handleMetadata({ normalizedModelId: targetModel });
+    }
 
     if (useIterativeRefinement) {
       optimizedPrompt = await optimizeIteratively(
@@ -143,7 +174,6 @@ export const runOptimizeFlow = async ({
         shotPlan: interpretedShotPlan,
         lockedSpans,
         onMetadata: handleMetadata,
-        ...(onChunk ? { onChunk } : {}),
         ...(signal ? { signal } : {}),
       });
 
@@ -151,6 +181,25 @@ export const runOptimizeFlow = async ({
         optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, finalMode, signal);
       }
     }
+
+    const intentLockedGeneric = intentLock.enforceIntentLock({
+      originalPrompt: originalUserPrompt,
+      optimizedPrompt,
+      shotPlan: interpretedShotPlan,
+    });
+    optimizedPrompt = intentLockedGeneric.prompt;
+    handleMetadata({
+      intentLockPassed: intentLockedGeneric.passed,
+      intentLockRepaired: intentLockedGeneric.repaired,
+      requiredIntent: intentLockedGeneric.required,
+    });
+
+    const genericLint = promptLint.enforce({ prompt: optimizedPrompt, modelId: null });
+    optimizedPrompt = genericLint.prompt;
+    handleMetadata({
+      promptLint: genericLint.lint,
+      promptLintRepaired: genericLint.repaired,
+    });
 
     let qualityAssessmentResult = await qualityAssessment.assessQuality(optimizedPrompt, finalMode);
     const qualityThreshold = OptimizationConfig.quality.minAcceptableScore;
@@ -209,6 +258,32 @@ export const runOptimizeFlow = async ({
       if (compilation.metadata) {
         handleMetadata(compilation.metadata);
       }
+
+      const intentLockedCompiled = intentLock.enforceIntentLock({
+        originalPrompt: originalUserPrompt,
+        optimizedPrompt,
+        shotPlan: interpretedShotPlan,
+      });
+      optimizedPrompt = intentLockedCompiled.prompt;
+      handleMetadata({
+        intentLockPassed: intentLockedCompiled.passed,
+        intentLockRepaired: intentLockedCompiled.repaired,
+        requiredIntent: intentLockedCompiled.required,
+      });
+
+      const compiledLint = promptLint.enforce({
+        prompt: optimizedPrompt,
+        modelId: targetModel ?? null,
+      });
+      optimizedPrompt = compiledLint.prompt;
+      handleMetadata({
+        promptLint: compiledLint.lint,
+        promptLintRepaired: compiledLint.repaired,
+      });
+    }
+
+    if (onChunk) {
+      streamPromptChunks(optimizedPrompt, onChunk);
     }
 
     await optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);

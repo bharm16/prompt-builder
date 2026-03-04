@@ -50,6 +50,19 @@ export const createOptimizeHandler = (
 	    const normalizedTargetModel = normalizeTargetModel(targetModel);
 	    const normalizedContext = normalizeContext(context);
 	    const normalizedLockedSpans = normalizeLockedSpans(lockedSpans);
+      if (
+        typeof targetModel === 'string' &&
+        normalizedTargetModel &&
+        targetModel.trim().toLowerCase() !== normalizedTargetModel
+      ) {
+        logger.warn('Deprecated targetModel alias normalized', {
+          operation,
+          requestId,
+          userId,
+          requestedTargetModel: targetModel,
+          normalizedTargetModel,
+        });
+      }
 
 	    const { normalizedGenerationParams, error } = normalizeGenerationParams({
 	      generationParams,
@@ -80,7 +93,19 @@ export const createOptimizeHandler = (
 	      constraintMode,
 	    });
 
-	    try {
+    const requestAbortController = new AbortController();
+    const abortInFlight = (): void => {
+      if (!requestAbortController.signal.aborted) {
+        requestAbortController.abort();
+      }
+    };
+
+    req.once('aborted', abortInFlight);
+    req.once('close', abortInFlight);
+    res.once('close', abortInFlight);
+    res.once('finish', abortInFlight);
+
+    try {
 	      const optimizeRequest = {
 	        prompt,
 	        mode,
@@ -95,8 +120,19 @@ export const createOptimizeHandler = (
 	        ...(typeof sourcePrompt === 'string' && sourcePrompt.length > 0
 	          ? { sourcePrompt }
 	          : {}),
+          signal: requestAbortController.signal,
 	      };
 	      const result = await promptOptimizationService.optimize(optimizeRequest);
+
+      if (res.headersSent || res.writableEnded) {
+        logger.warn('Optimize request completed after response already closed; skipping payload write', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+        });
+        return;
+      }
 
       logger.info('Optimize request completed', {
         operation,
@@ -107,12 +143,21 @@ export const createOptimizeHandler = (
         outputLength: result.prompt?.length || 0,
       });
 
+      const responseMetadata = {
+        ...(result.metadata || {}),
+        ...(normalizedTargetModel ? { normalizedModelId: normalizedTargetModel } : {}),
+        intentLockPassed:
+          typeof result.metadata?.intentLockPassed === 'boolean'
+            ? result.metadata.intentLockPassed
+            : true,
+      };
+
       const responsePayload = {
         prompt: result.prompt,
         optimizedPrompt: result.prompt,
         inputMode: result.inputMode,
         ...(result.i2v ? { i2v: result.i2v } : {}),
-        ...(result.metadata ? { metadata: result.metadata } : {}),
+        metadata: responseMetadata,
       };
 
       return res.json({
@@ -121,6 +166,16 @@ export const createOptimizeHandler = (
         ...responsePayload,
       });
     } catch (error: unknown) {
+      if (res.headersSent || res.writableEnded) {
+        logger.warn('Optimize request failed after response already closed; suppressing rethrow', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+        });
+        return;
+      }
+
       const errorInstance = error instanceof Error ? error : new Error(String(error));
       logger.error('Optimize request failed', errorInstance, {
         operation,
@@ -129,6 +184,11 @@ export const createOptimizeHandler = (
         duration: Date.now() - startTime,
         promptLength: prompt?.length || 0,
       });
-      throw error;
+	      throw error;
+	    } finally {
+      req.removeListener('aborted', abortInFlight);
+      req.removeListener('close', abortInFlight);
+      res.removeListener('close', abortInFlight);
+      res.removeListener('finish', abortInFlight);
     }
   };

@@ -71,4 +71,24 @@ describe('CategoryAlignmentService', () => {
 
     expect(needsFallback).toBe(true);
   });
+
+  it('returns attribute-specific fallbacks for nested taxonomy categories', () => {
+    const { service } = createService();
+
+    const fallbacks = service.getCategoryFallbacks('cinematic', 'style.aesthetic');
+
+    expect(fallbacks.length).toBeGreaterThan(0);
+    expect(fallbacks.every((item) => item.category === 'style.aesthetic')).toBe(true);
+    expect(fallbacks.some((item) => /alternative option/i.test(item.text))).toBe(false);
+  });
+
+  it('falls back to parent-category defaults when attribute-specific fallbacks are unavailable', () => {
+    const { service } = createService();
+
+    const fallbacks = service.getCategoryFallbacks('35mm lens', 'camera.lens');
+
+    expect(fallbacks.length).toBeGreaterThan(0);
+    expect(fallbacks.every((item) => item.category === 'camera.lens')).toBe(true);
+    expect(fallbacks.some((item) => item.text.includes('50mm lens'))).toBe(true);
+  });
 });

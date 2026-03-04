@@ -8,6 +8,10 @@ const MODEL_ID_ALIASES: Record<string, string> = {
   veo: 'veo-4',
   wan: 'wan-2.2',
   'wan-2.5': 'wan-2.5',
+  'kling-2.1': 'kling-26',
+  'veo-3': 'veo-4',
+  'kling-26': 'kling-26',
+  'veo-4': 'veo-4',
   // Video-generation model keys/ids (used by /preview/video/generate)
   PRO: 'wan-2.2',
   DRAFT: 'wan-2.2',
@@ -19,7 +23,6 @@ const MODEL_ID_ALIASES: Record<string, string> = {
   'kling-v2-1-master': 'kling-26',
   'kwaivgi/kling-v2.1': 'kling-26',
   'google/veo-3': 'veo-4',
-  'veo-3': 'veo-4',
   'wan-video/wan-2.5-i2v': 'wan-2.5',
   'wan-video/wan-2.5-i2v-fast': 'wan-2.5',
 };

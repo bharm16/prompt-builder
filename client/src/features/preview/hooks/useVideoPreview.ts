@@ -31,39 +31,7 @@ const MAX_WAIT_MS = 6 * 60 * 1000;
 const COMPILE_TIMEOUT_MS = 4000;
 
 const stripVideoPreviewPrompt = (prompt: string): string => {
-  const trimmed = prompt.trim();
-  if (!trimmed) {
-    return trimmed;
-  }
-
-  const markers: RegExp[] = [
-    /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
-    /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
-    /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
-    /\r?\n\s*technical specs\s*[:\n]/i,
-    /\r?\n\s*alternative approaches\s*[:\n]/i,
-    /\r?\n\s*variation\s+\d+/i,
-  ];
-
-  let cutIndex = -1;
-  for (const marker of markers) {
-    const match = marker.exec(trimmed);
-    if (match && (cutIndex === -1 || match.index < cutIndex)) {
-      cutIndex = match.index;
-    }
-  }
-
-  let cleaned = (cutIndex >= 0 ? trimmed.slice(0, cutIndex) : trimmed).trim();
-  cleaned = cleaned
-    .replace(/^\s*\*\*\s*prompt\s*:\s*\*\*/i, '')
-    .replace(/^\s*prompt\s*:\s*/i, '')
-    .trim();
-
-  if (cleaned.length < 10) {
-    return trimmed;
-  }
-
-  return cleaned;
+  return prompt.trim();
 };
 
 /**

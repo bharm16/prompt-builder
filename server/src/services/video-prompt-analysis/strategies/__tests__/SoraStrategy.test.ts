@@ -105,102 +105,21 @@ describe('SoraStrategy', () => {
     });
   });
 
-  describe('augment - physics trigger injection for physics content', () => {
-    it('injects all three physics triggers when "bouncing" is present', () => {
-      const input = makeResult('A ball bouncing off a wall');
-      const result = strategy.augment(input);
+  describe('augment - natural prose cleanup', () => {
+    it('removes timestamped shot syntax', () => {
+      const result = strategy.augment(makeResult('Shot 1 (0-4s): a ball bounces. Shot 2 (4-8s): it lands.'));
       const prompt = result.prompt as string;
-
-      expect(prompt).toContain('Newtonian physics');
-      expect(prompt).toContain('momentum conservation');
-      expect(prompt).toContain('surface friction');
+      expect(prompt).not.toContain('Shot 1');
+      expect(prompt).not.toContain('(0-4s)');
     });
 
-    it('injects physics triggers when "falling" is present', () => {
-      const input = makeResult('A glass falling from the table');
-      const result = strategy.augment(input);
+    it('does not inject forced physics triggers', () => {
+      const result = strategy.augment(makeResult('A ball bouncing off a wall'));
       const prompt = result.prompt as string;
-
-      expect(prompt).toContain('Newtonian physics');
-    });
-
-    it('injects physics triggers when "crash" is present', () => {
-      const input = makeResult('Two cars crash into each other');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      expect(prompt).toContain('Newtonian physics');
-      expect(prompt).toContain('momentum conservation');
-    });
-
-    it('injects physics triggers when "rolling" is present', () => {
-      const input = makeResult('A marble rolling across the floor');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      expect(prompt).toContain('Newtonian physics');
-    });
-
-    it('injects physics triggers when "throwing" is present', () => {
-      const input = makeResult('A person throwing a ball');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      expect(prompt).toContain('Newtonian physics');
-    });
-  });
-
-  describe('augment - "realistic physics" fallback for non-physics content', () => {
-    it('injects "realistic physics" when no physics content detected', () => {
-      const input = makeResult('A sunset over calm waters');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      expect(prompt).toContain('realistic physics');
       expect(prompt).not.toContain('Newtonian physics');
       expect(prompt).not.toContain('momentum conservation');
-    });
-
-    it('injects "realistic physics" for purely descriptive prompts', () => {
-      const input = makeResult('A beautiful garden with flowers swaying');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      expect(prompt).toContain('realistic physics');
-    });
-  });
-
-  describe('augment - deduplication of existing triggers', () => {
-    it('does not duplicate "Newtonian physics" if already present', () => {
-      const input = makeResult('A ball falls with Newtonian physics and momentum conservation and surface friction');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      const newtonianCount = (prompt.match(/Newtonian physics/g) || []).length;
-      expect(newtonianCount).toBe(1);
-    });
-
-    it('does not duplicate "realistic physics" if already present', () => {
-      const input = makeResult('A calm scene with realistic physics');
-      const result = strategy.augment(input);
-      const prompt = result.prompt as string;
-
-      const count = (prompt.match(/realistic physics/g) || []).length;
-      expect(count).toBe(1);
-    });
-  });
-
-  describe('augment - response_format metadata', () => {
-    it('always includes response_format in triggersInjected', () => {
-      strategy.normalize('any prompt');
-      const result = strategy.augment(makeResult('any prompt'));
-      expect(result.metadata.triggersInjected).toContain('response_format: json_object');
-    });
-
-    it('includes response_format for physics prompts too', () => {
-      strategy.normalize('a ball bouncing');
-      const result = strategy.augment(makeResult('a ball bouncing'));
-      expect(result.metadata.triggersInjected).toContain('response_format: json_object');
+      expect(prompt).not.toContain('response_format: json_object');
+      expect(result.metadata.triggersInjected).toEqual([]);
     });
   });
 

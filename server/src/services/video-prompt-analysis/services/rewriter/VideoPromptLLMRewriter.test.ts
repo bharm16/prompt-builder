@@ -38,17 +38,15 @@ describe('VideoPromptLLMRewriter', () => {
     expect(result).toBe('Optimized prompt');
   });
 
-  it('routes structured strategy rewrites through gateway', async () => {
-    const mockJson = { mode: 'generate', subject: { description: 'test', action: 'test' } };
-    vi.mocked(mockGateway.rewriteStructured).mockResolvedValue(mockJson);
+  it('routes Veo rewrites through text gateway', async () => {
+    vi.mocked(mockGateway.rewriteText).mockResolvedValue('Cinematic veo prose output');
 
-    const result = await rewriter.rewrite(baseIr, 'veo-4');
+    const result = await rewriter.rewrite(baseIr, 'veo-3');
 
-    expect(mockGateway.rewriteStructured).toHaveBeenCalledWith(
-      expect.stringContaining('INSTRUCTIONS for Google Veo 4'),
-      expect.any(Object)
+    expect(mockGateway.rewriteText).toHaveBeenCalledWith(
+      expect.stringContaining('INSTRUCTIONS for Google Veo 3')
     );
-    expect(result).toEqual(mockJson);
+    expect(result).toEqual('Cinematic veo prose output');
   });
 
   it('throws when gateway dependency is unavailable', async () => {

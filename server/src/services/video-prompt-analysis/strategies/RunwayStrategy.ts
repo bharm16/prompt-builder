@@ -181,6 +181,8 @@ export class RunwayStrategy extends BaseStrategy {
       }
     }
 
+    // Note: f-stop/ISO stripping is handled universally by TechStripper (step 2.5 in BaseStrategy)
+
     // Clean up whitespace
     text = this.cleanWhitespace(text);
 
@@ -192,13 +194,35 @@ export class RunwayStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    const sourcePrompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const llmText = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const isLlmRewriteAvailable = llmText.trim().length > 0 && llmText.trim() !== ir.raw?.trim();
 
-    this.enrichCameraFromRaw(ir);
+    let prompt: string;
+    if (isLlmRewriteAvailable) {
+      prompt = this.cleanWhitespace(llmText);
+      changes.push('Used LLM rewrite as primary Runway output');
+    } else {
+      // Fallback: deterministic slot assembly when LLM rewrite is unavailable
+      const extractionSource = ir.raw || llmText;
+      const subject = ir.subjects[0]?.text?.trim() || '';
+      const action = this.extractActionPhrase(ir, extractionSource) || '';
+      const setting = ir.environment.setting?.trim() || '';
+      const lighting = ir.environment.lighting[0]?.trim() || '';
+      const move = ir.camera.movements[0]?.trim() || '';
 
-    let prompt = this.buildCsaePrompt(ir, sourcePrompt);
-    if (prompt !== sourcePrompt) {
-      changes.push('Reordered output to CSAE structure (camera → subject → action → environment)');
+      if (subject && action) {
+        const lead = move ? `${move}, ${subject} ${action}` : `${subject} ${action}`;
+        const place = setting ? ` in ${setting}` : '';
+        const light = lighting ? `. ${lighting}` : '';
+        prompt = `${lead}${place}${light}`.trim();
+        changes.push('Rendered deterministic Runway prose from IR (LLM fallback)');
+      } else {
+        this.enrichCameraFromRaw(ir);
+        prompt = this.buildCsaePrompt(ir, extractionSource);
+        if (prompt !== llmText) {
+          changes.push('Reordered output to CSAE structure (LLM fallback)');
+        }
+      }
     }
 
     // Handle visual reference descriptions from context (Runway-specific requirement)
@@ -223,23 +247,26 @@ export class RunwayStrategy extends BaseStrategy {
   ): AugmentResult {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
-    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    let prompt = this.cleanWhitespace(
+      typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt)
+    );
 
-    // Enforce required A2D stability constraints post-rewrite to guarantee invariants.
-    const mandatoryResult = this.enforceMandatoryConstraints(prompt, [...STABILITY_TRIGGERS]);
-    prompt = mandatoryResult.prompt;
-    changes.push(...mandatoryResult.changes);
-    triggersInjected.push(...mandatoryResult.injected);
+    // Enforce stability triggers as mandatory constraints
+    const stabilityResult = this.enforceMandatoryConstraints(prompt, [...STABILITY_TRIGGERS]);
+    prompt = stabilityResult.prompt;
+    changes.push(...stabilityResult.changes);
+    triggersInjected.push(...stabilityResult.injected);
 
-    // Inject context-aware cinematographic triggers when absent.
-    const suggestedTriggers = this.selectCinematographicTriggers(prompt);
-    for (const trigger of suggestedTriggers) {
-      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-        prompt = `${prompt}, ${trigger}`;
+    // Inject cinematographic triggers (up to 3) if no semantic overlap detected
+    const cinematicTriggers = this.selectCinematographicTriggers(prompt);
+    for (const trigger of cinematicTriggers) {
+      if (!this.hasConceptOverlap(prompt, trigger)) {
+        prompt = this.appendTrigger(prompt, trigger);
         triggersInjected.push(trigger);
         changes.push(`Injected cinematographic trigger: "${trigger}"`);
       }
     }
+
     prompt = this.cleanWhitespace(prompt);
 
     return {
@@ -386,12 +413,9 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   private extractActionPhrase(ir: VideoPromptIR, raw: string): string | null {
-    const irAction = ir.actions[0]?.trim();
-    if (irAction) {
-      return irAction;
-    }
-
+    const irAction = ir.actions[0]?.trim() || '';
     const actionTerms = [
+      irAction,
       'walking',
       'running',
       'jumping',
@@ -406,9 +430,39 @@ export class RunwayStrategy extends BaseStrategy {
       'flying',
       'swimming',
       'driving',
-    ];
+    ].filter((value): value is string => Boolean(value && value.trim().length > 0));
 
-    return this.findFirstMatchingTerm(raw, actionTerms);
+    const cleanedRaw = this.cleanWhitespace(raw);
+    const leadSentence = cleanedRaw.split(/[.!?]/)[0] ?? '';
+    const leadMatch = this.matchActionCandidate(leadSentence, actionTerms);
+    if (leadMatch) {
+      return leadMatch;
+    }
+
+    const fullMatch = this.matchActionCandidate(cleanedRaw, actionTerms);
+    if (fullMatch) {
+      return fullMatch;
+    }
+
+    return null;
+  }
+
+  private matchActionCandidate(text: string, candidates: string[]): string | null {
+    for (const term of candidates) {
+      const pattern = new RegExp(
+        `\\b${this.escapeRegex(term)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        'i'
+      );
+      const match = text.match(pattern);
+      if (!match?.[0]) {
+        continue;
+      }
+      const phrase = this.trimTrailingConnectors(match[0]);
+      if (phrase.length > 0) {
+        return phrase;
+      }
+    }
+    return null;
   }
 
   private extractEnvironmentPhrase(ir: VideoPromptIR, raw: string): string | null {
@@ -453,6 +507,37 @@ export class RunwayStrategy extends BaseStrategy {
     const index = text.toLowerCase().indexOf(value.toLowerCase());
     if (index === -1) return text;
     return `${text.slice(0, index)} ${text.slice(index + value.length)}`.replace(/\s+/g, ' ');
+  }
+
+  private trimTrailingConnectors(value: string): string {
+    const trailing = new Set([
+      'in',
+      'on',
+      'at',
+      'with',
+      'near',
+      'beside',
+      'past',
+      'through',
+      'across',
+      'to',
+      'from',
+      'into',
+      'onto',
+      'a',
+      'an',
+      'the',
+    ]);
+
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    while (words.length > 1) {
+      const last = words[words.length - 1]?.toLowerCase() ?? '';
+      if (!trailing.has(last)) {
+        break;
+      }
+      words.pop();
+    }
+    return words.join(' ');
   }
 
   /**

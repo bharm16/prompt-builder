@@ -100,6 +100,23 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
     ),
   },
   google: {
+    'veo-3': buildSchema(
+      'google',
+      'veo-3',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([4, 6, 8]),
+        resolution: resolutionField(['720p', '1080p', '4k']),
+        fps: fpsField([24]),
+        audio: audioField(true),
+        seed: seedField(),
+        image_input: imageInputField(true),
+        last_frame: lastFrameField(true),
+        reference_images: referenceImagesField(true),
+        extend_video: extendVideoField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
     'veo-4': buildSchema(
       'google',
       'veo-4',
@@ -119,6 +136,22 @@ export const MANUAL_CAPABILITIES_REGISTRY: Record<
     ),
   },
   kling: {
+    'kling-2.1': buildSchema(
+      'kling',
+      'kling-2.1',
+      {
+        aspect_ratio: aspectRatioField(),
+        duration_s: durationField([5, 10]),
+        resolution: resolutionField(['720p']),
+        fps: fpsField([24, 30]),
+        audio: audioField(true),
+        seed: seedField(),
+        image_input: imageInputField(true),
+        last_frame: lastFrameField(true),
+        character_reference: characterReferenceField(true),
+      },
+      { features: { text_to_video: true, image_to_video: true } }
+    ),
     'kling-26': buildSchema(
       'kling',
       'kling-26',

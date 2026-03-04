@@ -248,8 +248,8 @@ interface KlingScreenplayBlock {
  * KlingStrategy optimizes prompts for Kling AI 2.6's MDT architecture
  */
 export class KlingStrategy extends BaseStrategy {
-  readonly modelId = 'kling-26';
-  readonly modelName = 'Kling AI 2.6';
+  readonly modelId = 'kling-2.1';
+  readonly modelName = 'Kling 2.1';
 
   // Track entities across shots for MemFlow
   private entityRegistry: Map<string, string> = new Map();
@@ -389,12 +389,26 @@ export class KlingStrategy extends BaseStrategy {
   protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
     const sourcePrompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
-    const screenplay = this.parseScreenplay(sourcePrompt, context);
-    let prompt = this.formatScreenplay(screenplay);
-    if (!prompt || prompt.trim().length === 0) {
-      prompt = sourcePrompt;
-    } else if (prompt !== sourcePrompt) {
-      changes.push('Formatted output to Kling screenplay structure');
+    const ir = _ir;
+
+    const shouldUseScreenplayFormatting = /@Element\(|"[^"\n]{2,}"|“[^”\n]{2,}”|\b(?:sfx|ambience|audio|dialogue|music)\b/i.test(
+      sourcePrompt
+    );
+
+    let prompt: string;
+    if (shouldUseScreenplayFormatting) {
+      const screenplay = this.parseScreenplay(sourcePrompt, context);
+      prompt = this.formatScreenplay(screenplay);
+      if (!prompt || prompt.trim().length === 0) {
+        prompt = sourcePrompt;
+      } else if (prompt !== sourcePrompt) {
+        changes.push('Formatted output to Kling screenplay structure');
+      }
+    } else {
+      const compactSource = this.cleanWhitespace(sourcePrompt);
+      const words = compactSource.split(/\s+/).filter(Boolean);
+      prompt = words.length > 80 ? `${words.slice(0, 80).join(' ')}.` : compactSource;
+      changes.push('Kept concise source prose for Kling prompt fidelity');
     }
 
     // Add @Element references from context assets (Kling specific requirement)
@@ -423,11 +437,16 @@ export class KlingStrategy extends BaseStrategy {
     const triggersInjected: string[] = [];
     let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
-    // Enforce core Kling audio constraints post-rewrite for deterministic behavior.
-    const mandatoryResult = this.enforceMandatoryConstraints(prompt, [...AUDIO_TRIGGERS]);
-    prompt = mandatoryResult.prompt;
-    changes.push(...mandatoryResult.changes);
-    triggersInjected.push(...mandatoryResult.injected);
+    const requestsAudio = /\b(?:audio|dialogue|voice|speech|says|music|sfx|ambience)\b/i.test(prompt);
+    if (requestsAudio) {
+      const mandatoryAudioConstraints = AUDIO_TRIGGERS.filter((trigger) => trigger !== 'synced lips');
+      const mandatoryResult = this.enforceMandatoryConstraints(prompt, mandatoryAudioConstraints);
+      prompt = mandatoryResult.prompt;
+      changes.push(...mandatoryResult.changes);
+      triggersInjected.push(...mandatoryResult.injected);
+    } else {
+      prompt = this.cleanWhitespace(prompt);
+    }
 
     return {
       prompt,
@@ -782,4 +801,3 @@ export class KlingStrategy extends BaseStrategy {
     this.shotCounter = 0;
   }
 }
-

@@ -245,7 +245,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     '/api',
     apiAuthMiddleware,
     createRouteTimeout(30_000, {
-      shouldApply: (req) => !(req.path === '/preview' || req.path.startsWith('/preview/')),
+      shouldApply: (req) => {
+        const path = req.path;
+        const isPreviewRoute = path === '/preview' || path.startsWith('/preview/');
+        const isOptimizeRoute = path.startsWith('/optimize');
+        return !(isPreviewRoute || isOptimizeRoute);
+      },
     }),
     apiRoutes
   );

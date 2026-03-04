@@ -97,7 +97,7 @@ export class VideoPromptService {
         () => new LumaStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
       );
       this.strategyRegistry.register(
-        'kling-26',
+        'kling-2.1',
         () => new KlingStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
       );
       this.strategyRegistry.register(
@@ -105,7 +105,7 @@ export class VideoPromptService {
         () => new SoraStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
       );
       this.strategyRegistry.register(
-        'veo-4',
+        'veo-3',
         () => new VeoStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
       );
       this.strategyRegistry.register(

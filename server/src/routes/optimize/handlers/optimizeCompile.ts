@@ -3,6 +3,7 @@ import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
 import type { PromptOptimizationServiceContract } from '../types';
 import { compileSchema } from '@config/schemas/promptSchemas';
+import { normalizeTargetModel } from './requestNormalization';
 
 export const createOptimizeCompileHandler = (
   promptOptimizationService: PromptOptimizationServiceContract
@@ -33,22 +34,42 @@ export const createOptimizeCompileHandler = (
     }
 
     const { prompt, targetModel, context } = parsed.data;
+    const normalizedTargetModel = normalizeTargetModel(targetModel) ?? targetModel;
+    if (targetModel.trim().toLowerCase() !== normalizedTargetModel) {
+      logger.warn('Deprecated targetModel alias normalized', {
+        operation,
+        requestId,
+        userId,
+        requestedTargetModel: targetModel,
+        normalizedTargetModel,
+      });
+    }
 
     logger.info('Optimize-compile request received', {
       operation,
       requestId,
       userId,
       promptLength: prompt?.length || 0,
-      targetModel,
+      targetModel: normalizedTargetModel,
       hasContext: !!context,
     });
 
     try {
       const result = await promptOptimizationService.compilePrompt({
         prompt,
-        targetModel,
+        targetModel: normalizedTargetModel,
         context,
       });
+
+      if (res.headersSent || res.writableEnded) {
+        logger.warn('Optimize-compile completed after response already closed; skipping payload write', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+        });
+        return;
+      }
 
       logger.info('Optimize-compile request completed', {
         operation,
@@ -59,9 +80,18 @@ export const createOptimizeCompileHandler = (
         targetModel: result.targetModel,
       });
 
+      const responseMetadata = {
+        ...(result.metadata || {}),
+        normalizedModelId: result.targetModel,
+        intentLockPassed:
+          typeof result.metadata?.intentLockPassed === 'boolean'
+            ? result.metadata.intentLockPassed
+            : true,
+      };
+
       const responsePayload = {
         compiledPrompt: result.compiledPrompt,
-        ...(result.metadata ? { metadata: result.metadata } : {}),
+        metadata: responseMetadata,
         ...(result.targetModel ? { targetModel: result.targetModel } : {}),
       };
 
@@ -71,6 +101,16 @@ export const createOptimizeCompileHandler = (
         ...responsePayload,
       });
     } catch (error: unknown) {
+      if (res.headersSent || res.writableEnded) {
+        logger.warn('Optimize-compile failed after response already closed; suppressing rethrow', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+        });
+        return;
+      }
+
       const errorInstance = error instanceof Error ? error : new Error(String(error));
       logger.error('Optimize-compile request failed', errorInstance, {
         operation,
@@ -78,7 +118,7 @@ export const createOptimizeCompileHandler = (
         userId,
         duration: Date.now() - startTime,
         promptLength: prompt?.length || 0,
-        targetModel,
+        targetModel: normalizedTargetModel,
       });
       throw error;
     }

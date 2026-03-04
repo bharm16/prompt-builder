@@ -105,9 +105,17 @@ export class SuggestionProcessingService {
       alignmentResult.suggestions,
       sanitizationContext
     );
+    const minSuggestionTarget = params.isVideoPrompt ? 3 : 0;
+    const categorySeedResult = this._seedCategoryFallbacks({
+      suggestions: sanitizedSuggestions,
+      highlightedText: params.highlightedText,
+      highlightedCategory: params.highlightedCategory,
+      minSuggestionTarget,
+      sanitizationContext,
+    });
 
     const fallbackParams: FallbackRegenerationParams = {
-      sanitizedSuggestions,
+      sanitizedSuggestions: categorySeedResult.suggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
       ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
@@ -160,10 +168,9 @@ export class SuggestionProcessingService {
       sanitizationContext
     );
     let activeConstraints = fallbackResult.constraints;
-    let usedFallback = fallbackResult.usedFallback;
-    let fallbackSourceCount = fallbackResult.sourceCount;
+    let usedFallback = categorySeedResult.seededCount > 0 || fallbackResult.usedFallback;
+    let fallbackSourceCount = categorySeedResult.seededCount + fallbackResult.sourceCount;
 
-    const minSuggestionTarget = params.isVideoPrompt ? 3 : 0;
     if (minSuggestionTarget > 0 && suggestionsToUse.length < minSuggestionTarget) {
       let topUpAttempts = 0;
       let topUpConstraints = activeConstraints || params.videoConstraints || undefined;
@@ -465,6 +472,74 @@ export class SuggestionProcessingService {
     return alignmentResult;
   }
 
+  private _seedCategoryFallbacks({
+    suggestions,
+    highlightedText,
+    highlightedCategory,
+    minSuggestionTarget,
+    sanitizationContext,
+  }: {
+    suggestions: Suggestion[];
+    highlightedText: string;
+    highlightedCategory: string | null;
+    minSuggestionTarget: number;
+    sanitizationContext: ExtendedSanitizationContext;
+  }): { suggestions: Suggestion[]; seededCount: number } {
+    if (!highlightedCategory || minSuggestionTarget <= 0 || suggestions.length >= minSuggestionTarget) {
+      return { suggestions, seededCount: 0 };
+    }
+
+    if (typeof this.categoryAligner.getCategoryFallbacks !== 'function') {
+      return { suggestions, seededCount: 0 };
+    }
+
+    const categoryFallbacks = this.categoryAligner.getCategoryFallbacks(
+      highlightedText,
+      highlightedCategory
+    );
+
+    if (!Array.isArray(categoryFallbacks) || categoryFallbacks.length === 0) {
+      return { suggestions, seededCount: 0 };
+    }
+
+    const sanitizedFallbacks = this.validationService.sanitizeSuggestions(
+      categoryFallbacks,
+      sanitizationContext
+    );
+
+    if (sanitizedFallbacks.length === 0) {
+      return { suggestions, seededCount: 0 };
+    }
+
+    const mergedSuggestions = this._mergeAndResanitizeSuggestions(
+      suggestions,
+      sanitizedFallbacks,
+      sanitizationContext
+    );
+
+    const originalKeys = new Set(
+      suggestions.map((suggestion) => this._normalizeSuggestionText(suggestion.text))
+    );
+    const seededCount = mergedSuggestions.reduce((count, suggestion) => {
+      const key = this._normalizeSuggestionText(suggestion.text);
+      return originalKeys.has(key) ? count : count + 1;
+    }, 0);
+
+    if (seededCount > 0) {
+      logger.info('Seeded deterministic category fallbacks before regeneration', {
+        highlightedCategory,
+        seededCount,
+        originalCount: suggestions.length,
+        mergedCount: mergedSuggestions.length,
+      });
+    }
+
+    return {
+      suggestions: mergedSuggestions,
+      seededCount,
+    };
+  }
+
   private _buildSanitizationContext(
     params: SuggestionProcessingParams
   ): ExtendedSanitizationContext {
@@ -503,10 +578,7 @@ export class SuggestionProcessingService {
     const deduped: Suggestion[] = [];
 
     for (const suggestion of suggestions) {
-      const normalized = suggestion.text
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim();
+      const normalized = this._normalizeSuggestionText(suggestion.text);
       if (!normalized || seen.has(normalized)) {
         continue;
       }
@@ -515,5 +587,9 @@ export class SuggestionProcessingService {
     }
 
     return deduped;
+  }
+
+  private _normalizeSuggestionText(text: string): string {
+    return text.toLowerCase().replace(/\s+/g, ' ').trim();
   }
 }

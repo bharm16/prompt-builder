@@ -166,6 +166,7 @@ export class AIModelService {
       const durationMs = Date.now() - start;
       this._recordMetrics(operation, config.client, requestOptions.model, undefined, durationMs, false);
       const err = error as { message: string; statusCode?: number; isRetryable?: boolean };
+      const isClientAbort = this._isClientAbortError(error);
 
       // Some providers/models reject `logprobs`; retry once without it.
       const hasLogprobs = requestOptions.logprobs === true;
@@ -209,6 +210,14 @@ export class AIModelService {
         error: err.message,
         statusCode: err.statusCode,
       });
+
+      if (isClientAbort) {
+        logger.info('Primary AI request aborted by client; skipping fallback', {
+          operation,
+          client: config.client,
+        });
+        throw error;
+      }
 
       // Intelligent fallback
       const shouldFallback = plan.fallback &&
@@ -475,6 +484,30 @@ export class AIModelService {
       jsonMode,
       ...(responseFormat ? { responseFormat } : {}),
     });
+  }
+
+  private _isClientAbortError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const err = error as { name?: unknown; message?: unknown; cause?: unknown };
+    const name = typeof err.name === 'string' ? err.name : '';
+    const message = typeof err.message === 'string' ? err.message.toLowerCase() : '';
+
+    if (name === 'ClientAbortError') {
+      return true;
+    }
+
+    if (message.includes('aborted by client')) {
+      return true;
+    }
+
+    if (err.cause === error) {
+      return false;
+    }
+
+    return this._isClientAbortError(err.cause);
   }
 
   listOperations(): string[] {

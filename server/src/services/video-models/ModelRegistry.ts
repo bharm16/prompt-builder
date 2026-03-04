@@ -1,4 +1,8 @@
 import { VIDEO_MODELS } from '@config/modelConfig';
+import {
+  normalizePromptModelAlias,
+  resolveCanonicalPromptModelId,
+} from '@shared/videoModels';
 import type {
   KlingModelId,
   LumaModelId,
@@ -22,13 +26,16 @@ const GENERATION_MODEL_ALIASES: Record<string, VideoModelId> = {
   'sora-2-pro': 'sora-2-pro',
   // Kling
   'kling': 'kling-v2-1-master',
+  'kling-2.1': 'kling-v2-1-master',
   'kling-v2.1': 'kling-v2-1-master',
   'kling-26': 'kling-v2-1-master',
+  'kling-v2-1-master': 'kling-v2-1-master',
   'kwaivgi/kling-v2.1': 'kling-v2-1-master',
   // Veo
   'veo': 'google/veo-3',
   'google/veo-3': 'google/veo-3',
   'veo-3': 'google/veo-3',
+  'veo3': 'google/veo-3',
   'veo-3.1': 'google/veo-3',
   'veo-3.1-generate-preview': 'google/veo-3',
   'veo-4': 'google/veo-3',
@@ -44,48 +51,7 @@ const GENERATION_MODEL_ALIASES: Record<string, VideoModelId> = {
   'wan-video/wan-2.5-i2v': 'wan-video/wan-2.5-i2v',
   'wan-video/wan-2.5-i2v-fast': 'wan-video/wan-2.5-i2v-fast',
 };
-
-const PROMPT_MODEL_ALIASES: Record<string, string> = {
-  // Runway
-  'runway': 'runway-gen45',
-  'runway-gen45': 'runway-gen45',
-  // Luma
-  'luma': 'luma-ray3',
-  'luma-ray3': 'luma-ray3',
-  // Kling
-  'kling': 'kling-26',
-  'kling-26': 'kling-26',
-  'kling-v2-1-master': 'kling-26',
-  'kling-v2.1': 'kling-26',
-  'kwaivgi/kling-v2.1': 'kling-26',
-  // Sora
-  'sora': 'sora-2',
-  'sora-2': 'sora-2',
-  'sora-2-pro': 'sora-2',
-  // Veo
-  'veo': 'veo-4',
-  'veo3': 'veo-4',
-  'veo-3': 'veo-4',
-  'veo-3.0-generate-001': 'veo-4',
-  'veo-3.0-fast-generate-001': 'veo-4',
-  'veo-3.1': 'veo-4',
-  'veo-3.1-generate-preview': 'veo-4',
-  'google/veo-3': 'veo-4',
-  'veo-4': 'veo-4',
-  // Wan
-  'wan': 'wan-2.2',
-  'wan-2.2': 'wan-2.2',
-  'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
-  'wan-video/wan-2.2-i2v-fast': 'wan-2.2',
-  'wan-2.5': 'wan-2.2',
-  'wan-video/wan-2.5-i2v': 'wan-2.2',
-  'wan-video/wan-2.5-i2v-fast': 'wan-2.2',
-  // Subscription-friendly aliases
-  'pro': 'wan-2.2',
-  'draft': 'wan-2.2',
-};
-
-const normalizeAliasKey = (value: string): string => value.trim().toLowerCase();
+const normalizeAliasKey = normalizePromptModelAlias;
 
 export type ModelResolutionSource = 'default' | 'key' | 'alias' | 'id';
 
@@ -117,6 +83,14 @@ export function resolveGenerationModelSelection(
     };
   }
 
+  if (VIDEO_MODEL_IDS.has(normalized as VideoModelId)) {
+    return {
+      modelId: normalized as VideoModelId,
+      resolvedBy: 'id',
+      requested: String(model),
+    };
+  }
+
   if (typeof normalized === 'string') {
     const alias = GENERATION_MODEL_ALIASES[normalizeAliasKey(normalized)];
     if (alias) {
@@ -126,14 +100,6 @@ export function resolveGenerationModelSelection(
         requested: normalized,
       };
     }
-  }
-
-  if (VIDEO_MODEL_IDS.has(normalized as VideoModelId)) {
-    return {
-      modelId: normalized as VideoModelId,
-      resolvedBy: 'id',
-      requested: String(model),
-    };
   }
 
   log?.warn('Unknown video model requested; falling back to default', { model });
@@ -168,8 +134,7 @@ export function resolvePromptModelId(model?: string | null): string | null {
   if (!model || model.trim().length === 0) {
     return null;
   }
-  const normalized = normalizeAliasKey(model);
-  return PROMPT_MODEL_ALIASES[normalized] ?? model.trim();
+  return resolveCanonicalPromptModelId(model) ?? model.trim();
 }
 
 export function isOpenAISoraModelId(modelId: VideoModelId): modelId is SoraModelId {

@@ -19,17 +19,6 @@ import {
 import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
- * Technical triggers for Wan 2.x high-fidelity generation
- */
-const WAN_TRIGGERS = [
-  'ultra-high definition',
-  'masterpiece',
-  'cinematic motion',
-  'volumetric lighting',
-  '4k',
-] as const;
-
-/**
  * Default negative prompt to avoid common artifacts
  */
 const DEFAULT_NEGATIVE_PROMPT = 'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
@@ -98,20 +87,49 @@ export class WanStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
-    
-    // Fallback if LLM failed to produce string
-    if (typeof llmPrompt !== 'string') {
-        prompt = JSON.stringify(llmPrompt);
+    const llmText = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const isLlmRewriteAvailable = llmText.trim().length > 0 && llmText.trim() !== ir.raw?.trim();
+
+    let prompt: string;
+    if (isLlmRewriteAvailable) {
+      prompt = this.cleanWhitespace(llmText);
+      changes.push('Used LLM rewrite as primary Wan output');
+    } else {
+      // Fallback: deterministic slot assembly when LLM rewrite is unavailable
+      const extractionSource = ir.raw || llmText;
+      const subject = ir.subjects[0]?.text?.trim() || '';
+      const actionHint = ir.actions[0]?.trim() || '';
+      const action = this.extractActionPhrase(extractionSource, actionHint) || actionHint;
+      const setting = ir.environment.setting?.trim() || '';
+      const lighting = ir.environment.lighting[0]?.trim() || '';
+
+      if (subject && action) {
+        const parts = [`${subject} ${action}`];
+        if (setting) {
+          parts.push(`in ${setting}`);
+        }
+        if (lighting) {
+          parts.push(`lit by ${lighting}`);
+        }
+        prompt = parts.join(', ');
+        changes.push('Rendered concise Wan prompt from IR (LLM fallback)');
+      } else {
+        prompt = this.cleanWhitespace(extractionSource);
+      }
     }
-    
-    // Cleanup punctuation
+
     prompt = this.cleanWhitespace(prompt)
       .replace(/\.\./g, '.')
       .replace(/\s\./g, '.');
 
-    return { 
-      prompt: prompt, 
+    const words = prompt.split(/\s+/).filter(Boolean);
+    if (words.length > 60) {
+      prompt = `${words.slice(0, 60).join(' ')}.`;
+      changes.push('Trimmed prompt to Wan-friendly length (<=60 words)');
+    }
+
+    return {
+      prompt,
       changes,
       negativePrompt: DEFAULT_NEGATIVE_PROMPT
     };
@@ -128,9 +146,13 @@ export class WanStrategy extends BaseStrategy {
     const triggersInjected: string[] = [];
 
     let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-
-    // Clean up final prompt
     prompt = this.cleanWhitespace(prompt);
+
+    const words = prompt.split(/\s+/).filter(Boolean);
+    if (words.length > 60) {
+      prompt = `${words.slice(0, 60).join(' ')}.`;
+      changes.push('Trimmed augmented prompt to 60 words for Wan compatibility');
+    }
 
     return {
       prompt,
@@ -160,5 +182,55 @@ export class WanStrategy extends BaseStrategy {
       prompt_extend: true
     };
   }
-}
 
+  private extractActionPhrase(text: string, hint: string): string | null {
+    const cleaned = this.cleanWhitespace(text);
+    const candidates = [hint, 'driving', 'running', 'walking', 'jumping', 'dancing', 'sitting', 'standing']
+      .filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+    const leadSentence = cleaned.split(/[.!?]/)[0] ?? '';
+    const leadMatch = this.matchActionCandidate(leadSentence, candidates);
+    if (leadMatch) {
+      return leadMatch;
+    }
+
+    const fullMatch = this.matchActionCandidate(cleaned, candidates);
+    if (fullMatch) {
+      return fullMatch;
+    }
+
+    return null;
+  }
+
+  private matchActionCandidate(text: string, candidates: string[]): string | null {
+    for (const candidate of candidates) {
+      const pattern = new RegExp(
+        `\\b${this.escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        'i'
+      );
+      const match = text.match(pattern);
+      if (!match?.[0]) {
+        continue;
+      }
+
+      const phrase = this.trimTrailingConnectors(match[0]);
+      if (phrase.length > 0) {
+        return phrase;
+      }
+    }
+    return null;
+  }
+
+  private trimTrailingConnectors(value: string): string {
+    const trailing = new Set(['in', 'on', 'at', 'with', 'near', 'beside', 'past', 'through', 'across', 'to', 'from', 'into', 'onto', 'a', 'an', 'the']);
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    while (words.length > 1) {
+      const last = words[words.length - 1]?.toLowerCase() ?? '';
+      if (!trailing.has(last)) {
+        break;
+      }
+      words.pop();
+    }
+    return words.join(' ');
+  }
+}

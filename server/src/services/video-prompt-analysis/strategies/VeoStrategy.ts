@@ -121,6 +121,23 @@ const STYLE_PRESETS: Record<string, string> = {
 };
 
 /**
+ * Richer fallback phrases when a bare style keyword is detected.
+ * Used in the slot-assembly fallback path to avoid "Style reference: cinematic" with no further detail.
+ */
+const STYLE_FALLBACK_PHRASES: Record<string, string> = {
+  'cinematic': 'cinematic look, naturalistic lighting, shallow depth of field',
+  'documentary': 'documentary style, available light, handheld intimacy',
+  'commercial': 'commercial polish, clean composition, product-hero lighting',
+  'realistic': 'photorealistic rendering, natural color science',
+  'photorealistic': 'photorealistic rendering, natural color science, fine detail',
+  'noir': 'high-contrast noir, deep shadows, venetian-blind lighting',
+  'vintage': 'vintage film stock, muted warm tones, soft halation',
+  'retro': 'retro color grade, faded pastels, analog texture',
+  'anime': 'anime cel-shaded style, clean outlines, vivid flat color',
+  'surreal': 'surreal composition, dreamlike distortion, unexpected scale',
+};
+
+/**
  * Edit instruction patterns for Flow mode
  */
 const EDIT_PATTERNS = [
@@ -175,8 +192,8 @@ export interface VeoPromptSchema {
  * VeoStrategy optimizes prompts for Google Veo 4's Gemini-integrated generation
  */
 export class VeoStrategy extends BaseStrategy {
-  readonly modelId = 'veo-4';
-  readonly modelName = 'Google Veo 4';
+  readonly modelId = 'veo-3';
+  readonly modelName = 'Google Veo 3';
 
   // Session state for Flow editing mode
   private sessionState: Map<string, VeoPromptSchema> = new Map();
@@ -257,46 +274,39 @@ export class VeoStrategy extends BaseStrategy {
   protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
     const ir = _ir;
-    const context = _context;
+    const llmText = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    const isLlmRewriteAvailable = llmText.trim().length > 0 && llmText.trim() !== ir.raw?.trim();
 
-    // Flow edit mode should be deterministic and not depend on LLM shape.
-    const sourceText = ir.raw || (typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt));
-    const editInfo = this.detectEditMode(sourceText);
-    if (editInfo) {
-      changes.push('Detected edit instruction; generated Veo Flow edit schema');
-      return {
-        prompt: this.buildEditSchema(sourceText, editInfo, context) as unknown as Record<
-          string,
-          unknown
-        >,
-        changes,
-      };
+    if (isLlmRewriteAvailable) {
+      changes.push('Used LLM rewrite as primary Veo output');
+      return { prompt: this.cleanWhitespace(llmText), changes };
     }
 
-    // Try to preserve valid structured output from the LLM when available.
-    let parsedSchema: unknown;
-    if (typeof llmPrompt === 'object' && llmPrompt !== null) {
-      parsedSchema = llmPrompt;
-    } else {
-      try {
-        parsedSchema = JSON.parse(llmPrompt as string);
-      } catch {
-        parsedSchema = null;
-      }
-    }
+    // Fallback: deterministic slot assembly when LLM rewrite is unavailable
+    const sourceText = ir.raw || llmText;
+    const subject = this.extractPrimarySubject(ir, sourceText);
+    const action = this.extractActionPhrase(ir, sourceText) || 'moving naturally';
+    const shotType = ir.camera.shotType?.trim() || 'close-up shot';
+    const movement = ir.camera.movements[0]?.trim() || 'static';
+    const setting = ir.environment.setting?.trim() || this.extractSettingPhrase(sourceText);
+    const lighting = ir.environment.lighting[0]?.trim() || 'natural light';
+    const styleKey = this.detectStylePreset(sourceText) ?? 'cinematic';
+    const style = STYLE_FALLBACK_PHRASES[styleKey] ?? styleKey;
 
-    if (this.isValidSchema(parsedSchema)) {
-      return {
-        prompt: parsedSchema as unknown as Record<string, unknown>,
-        changes,
-      };
-    }
+    const movementSentence = movement.toLowerCase() === 'static'
+      ? 'Static camera.'
+      : `${movement} camera movement.`;
+    const locationClause = setting
+      ? (/^(?:in|at|on)\b/i.test(setting) ? setting : `in ${setting}`)
+      : null;
 
-    // Deterministic fallback from extracted IR ensures schema guarantees.
-    const generatedSchema = this.buildGenerateSchema(ir, context);
-    changes.push('Generated Veo schema deterministically from extracted IR');
+    const prompt = this.cleanWhitespace(
+      `${shotType} of ${subject} ${action}${locationClause ? ` ${locationClause}` : ''}. ${movementSentence} Lit by ${lighting}. Style reference: ${style}.`
+    );
+
+    changes.push('Rendered Veo cinematic prose output from structured IR (LLM fallback)');
     return {
-      prompt: generatedSchema as unknown as Record<string, unknown>,
+      prompt,
       changes,
     };
   }
@@ -311,65 +321,37 @@ export class VeoStrategy extends BaseStrategy {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
 
-    // Get the schema from the result
-    let schema: VeoPromptSchema;
-    if (typeof result.prompt === 'object') {
-      schema = result.prompt as unknown as VeoPromptSchema;
-    } else {
-      // If somehow we got a string, parse it
-      try {
-        schema = JSON.parse(result.prompt as string) as VeoPromptSchema;
-      } catch {
-        // Return as-is if we can't parse
-        return {
-          prompt: result.prompt,
-          changes: ['Could not augment non-JSON prompt'],
-          triggersInjected: [],
-        };
+    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+
+    // Only expand style when a keyword is genuinely detected in the prompt.
+    // Do NOT default to 'cinematic' — if the LLM chose a different aesthetic, respect it.
+    const detectedStyle = this.detectStylePreset(prompt);
+    if (detectedStyle) {
+      const stylePhrase = STYLE_FALLBACK_PHRASES[detectedStyle] ?? detectedStyle;
+      if (!prompt.toLowerCase().includes(stylePhrase.toLowerCase())) {
+        prompt = this.appendTrigger(prompt, stylePhrase);
+        triggersInjected.push(`style:${detectedStyle}`);
+        changes.push(`Expanded style vocabulary for "${detectedStyle}"`);
       }
     }
 
-    // Detect and inject style_preset if not already set
-    if (!schema.style_preset) {
-      // Check if we can infer from raw string again as fallback
-      const rawPrompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-      const detectedStyle = this.detectStylePreset(rawPrompt);
-      
-      if (detectedStyle) {
-         schema.style_preset = detectedStyle;
-         triggersInjected.push(`style_preset: ${detectedStyle}`);
-         changes.push(`Injected style_preset: "${detectedStyle}"`);
-      } else {
-        // Default to cinematic if no style detected
-        schema.style_preset = 'cinematic';
-        triggersInjected.push('style_preset: cinematic');
-        changes.push('Injected default style_preset: "cinematic"');
-      }
+    if (context?.apiParams?.brandColors) {
+      const colors = Array.isArray(context.apiParams.brandColors)
+        ? context.apiParams.brandColors.join(', ')
+        : String(context.apiParams.brandColors);
+      prompt = `${prompt} Brand palette accents: ${colors}.`;
+      changes.push('Injected brand color context');
     }
 
-    // Inject brand_context if provided in context
-    if (context?.apiParams?.brandColors || context?.apiParams?.styleGuide) {
-      const brandContext: { colors?: string[]; style_guide?: string } = {};
-      if (context.apiParams.brandColors) {
-        brandContext.colors = context.apiParams.brandColors as string[];
-      }
-      if (context.apiParams.styleGuide) {
-        brandContext.style_guide = context.apiParams.styleGuide as string;
-      }
-      schema.brand_context = brandContext;
-      triggersInjected.push('brand_context');
-      changes.push('Injected brand_context from API params');
+    if (context?.apiParams?.styleGuide) {
+      prompt = `${prompt} Art direction follows ${String(context.apiParams.styleGuide)}.`;
+      changes.push('Injected style guide context');
     }
 
-    // Store in session state for Flow editing
-    if (context?.apiParams?.sessionId) {
-      const sessionId = String(context.apiParams.sessionId);
-      this.sessionState.set(sessionId, schema);
-      changes.push('Stored schema in session state for Flow editing');
-    }
+    prompt = this.cleanWhitespace(prompt);
 
     return {
-      prompt: schema as unknown as Record<string, unknown>,
+      prompt,
       changes,
       triggersInjected,
     };
@@ -559,7 +541,10 @@ export class VeoStrategy extends BaseStrategy {
   private detectStylePreset(input: string): string | null {
     const lowerInput = input.toLowerCase();
     for (const [keyword, value] of Object.entries(STYLE_PRESETS)) {
-      if (lowerInput.includes(keyword)) {
+      // Use word boundary matching to prevent false positives from short keywords
+      // (e.g., 'ad' matching inside 'shadows')
+      const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      if (pattern.test(lowerInput)) {
         return value;
       }
     }
@@ -608,5 +593,135 @@ export class VeoStrategy extends BaseStrategy {
   public getSessionState(sessionId: string): VeoPromptSchema | undefined {
     return this.sessionState.get(sessionId);
   }
-}
 
+  private extractPrimarySubject(ir: VideoPromptIR, raw: string): string {
+    const irSubject = ir.subjects[0]?.text?.trim();
+    if (irSubject) {
+      const trimmed = this.trimSubjectAtVerb(irSubject);
+      if (trimmed.split(/\s+/).length <= 10) {
+        return trimmed;
+      }
+    }
+
+    const knownSubject = raw.match(
+      /\b(?:a|an|the)\s+(?:baby|child|boy|girl|man|woman|person|figure|character|dog|cat|robot)\b/i
+    );
+    if (knownSubject?.[0]) {
+      return knownSubject[0];
+    }
+
+    if (irSubject) {
+      return this.trimSubjectAtVerb(irSubject.split(/[.,]/)[0] ?? irSubject) || 'the subject';
+    }
+
+    return 'the subject';
+  }
+
+  private trimSubjectAtVerb(subject: string): string {
+    const tokens = subject
+      .trim()
+      .split(/\\s+/)
+      .filter(Boolean);
+    if (tokens.length === 0) {
+      return 'the subject';
+    }
+
+    const normalized = tokens.map((token) =>
+      token.toLowerCase().replace(/[^a-z0-9']/g, '')
+    );
+    const verbRoots = new Set(['drive', 'run', 'walk', 'jump', 'dance', 'sit', 'stand', 'talk', 'look', 'hold']);
+
+    for (let i = 0; i < normalized.length; i += 1) {
+      const token = normalized[i];
+      if (!token) {
+        continue;
+      }
+      const root = token.endsWith('ing') ? token.slice(0, -3) : token;
+      if (verbRoots.has(root)) {
+        if (i === 0) {
+          break;
+        }
+        return tokens.slice(0, i).join(' ');
+      }
+    }
+
+    return tokens.join(' ');
+  }
+
+  private extractActionPhrase(ir: VideoPromptIR, raw: string): string | null {
+    const hint = ir.actions[0]?.trim() || '';
+    const candidates = [hint, 'driving', 'running', 'walking', 'jumping', 'dancing', 'sitting', 'standing']
+      .filter((value): value is string => Boolean(value && value.trim().length > 0));
+    const cleanedRaw = this.cleanWhitespace(raw);
+
+    const leadSentence = cleanedRaw.split(/[.!?]/)[0] ?? '';
+    const leadMatch = this.matchActionCandidate(leadSentence, candidates);
+    if (leadMatch) {
+      return leadMatch;
+    }
+
+    const fullMatch = this.matchActionCandidate(cleanedRaw, candidates);
+    if (fullMatch) {
+      return fullMatch;
+    }
+
+    return hint || null;
+  }
+
+  private matchActionCandidate(text: string, candidates: string[]): string | null {
+    for (const candidate of candidates) {
+      const pattern = new RegExp(
+        `\\b${this.escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        'i'
+      );
+      const match = text.match(pattern);
+      if (!match?.[0]) {
+        continue;
+      }
+      const phrase = this.trimTrailingConnectors(match[0]);
+      if (phrase.length > 0) {
+        return phrase;
+      }
+    }
+    return null;
+  }
+
+  private extractSettingPhrase(raw: string): string | null {
+    const match = raw.match(/\b(?:in|at|on)\s+(?:a|an|the)\s+[^,.]{3,70}/i);
+    if (!match?.[0]) {
+      return null;
+    }
+    return this.trimTrailingConnectors(match[0]);
+  }
+
+  private trimTrailingConnectors(value: string): string {
+    const trailing = new Set([
+      'in',
+      'on',
+      'at',
+      'with',
+      'near',
+      'beside',
+      'past',
+      'through',
+      'across',
+      'to',
+      'from',
+      'into',
+      'onto',
+      'a',
+      'an',
+      'the',
+    ]);
+
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    while (words.length > 1) {
+      const last = words[words.length - 1]?.toLowerCase() ?? '';
+      if (!trailing.has(last)) {
+        break;
+      }
+      words.pop();
+    }
+    return words.join(' ');
+  }
+}

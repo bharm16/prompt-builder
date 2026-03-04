@@ -30,13 +30,13 @@ export const MODEL_CATALOG: CatalogEntry[] = [
     replicateId: 'wan-video/wan-2.5-i2v',
   },
   {
-    id: 'kling-26',
+    id: 'kling-2.1',
     provider: 'kling',
     source: 'manual',
   },
   { id: 'sora-2', provider: 'openai', source: 'openai' },
   { id: 'sora-2-pro', provider: 'openai', source: 'openai' },
-  { id: 'veo-4', provider: 'google', source: 'google' },
+  { id: 'veo-3', provider: 'google', source: 'google' },
   { id: 'luma-ray3', provider: 'luma', source: 'manual' },
   { id: 'runway-gen45', provider: 'runway', source: 'manual' },
 ];

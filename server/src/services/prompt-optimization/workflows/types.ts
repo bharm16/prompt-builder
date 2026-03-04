@@ -85,6 +85,30 @@ export type QualityGateMetricsLike = {
   recordOptimizationQualityGate(score: number, triggered: boolean): void;
 };
 
+export type IntentLockLike = {
+  enforceIntentLock(params: {
+    originalPrompt: string;
+    optimizedPrompt: string;
+    shotPlan: ShotPlan | null;
+  }): {
+    prompt: string;
+    passed: boolean;
+    repaired: boolean;
+    required: { subject: string | null; action: string | null };
+  };
+};
+
+export type PromptLintLike = {
+  enforce(params: {
+    prompt: string;
+    modelId?: string | null;
+  }): {
+    prompt: string;
+    lint: { ok: boolean; errors: string[]; warnings: string[]; wordCount: number };
+    repaired: boolean;
+  };
+};
+
 export interface OptimizeFlowArgs {
   request: OptimizationRequest;
   log: ILogger;
@@ -101,6 +125,8 @@ export interface OptimizeFlowArgs {
     mode: OptimizationMode
   ) => void;
   metricsService?: QualityGateMetricsLike | null;
+  intentLock: IntentLockLike;
+  promptLint: PromptLintLike;
 }
 
 export type DraftGenerationLike = {

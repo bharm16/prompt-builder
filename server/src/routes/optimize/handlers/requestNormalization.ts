@@ -1,5 +1,6 @@
 import type { PromptRequest } from '@config/schemas/promptSchemas';
 import type { InferredContext, LockedSpan } from '@services/prompt-optimization/types';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 
 const BACKGROUND_LEVELS: ReadonlySet<InferredContext['backgroundLevel']> = new Set([
   'beginner',
@@ -10,7 +11,10 @@ const BACKGROUND_LEVELS: ReadonlySet<InferredContext['backgroundLevel']> = new S
 export function normalizeTargetModel(targetModel: PromptRequest['targetModel']): string | undefined {
   if (typeof targetModel !== 'string') return undefined;
   const normalized = targetModel.trim();
-  return normalized.length > 0 ? normalized : undefined;
+  if (normalized.length === 0) {
+    return undefined;
+  }
+  return resolvePromptModelId(normalized) ?? normalized;
 }
 
 export function normalizeContext(context: PromptRequest['context']): InferredContext | null {

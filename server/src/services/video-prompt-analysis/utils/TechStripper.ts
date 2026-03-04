@@ -1,8 +1,9 @@
 /**
  * TechStripper Utility
  *
- * Removes placebo tokens that degrade model performance.
- * Model-aware: removes tokens for Runway/Luma, keeps for Kling/Veo.
+ * Removes tokens that degrade model performance in two tiers:
+ * 1. Universal: camera spec tokens (f-stop, ISO) stripped for ALL models
+ * 2. Model-aware: placebo quality tokens stripped for Runway/Luma, kept for Kling/Veo
  *
  * @module TechStripper
  */
@@ -24,6 +25,18 @@ const PLACEBO_TOKENS = [
   'masterpiece',
   'best quality',
 ] as const;
+
+/**
+ * Camera specification patterns universally ignored by ALL video generation models.
+ * No diffusion or transformer video model uses aperture, ISO, or sensor-size values.
+ * Each entry creates a fresh RegExp per call to avoid global-regex lastIndex issues.
+ */
+const CAMERA_SPEC_PATTERNS: readonly { label: string; source: string; flags: string }[] = [
+  // f-stop values: f/1.8, f/2.8, (f/1.8-f/2.8), f / 2.8
+  { label: 'f-stop', source: '\\(?\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?(?:\\s*[-\\u2013]\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?)?\\s*\\)?', flags: 'gi' },
+  // ISO values: ISO 800, ISO3200
+  { label: 'ISO', source: '\\bISO\\s*\\d+', flags: 'gi' },
+];
 
 /**
  * Models where placebo tokens should be REMOVED
@@ -57,43 +70,50 @@ export interface TechStripperResult {
 }
 
 /**
- * TechStripper removes placebo tokens that degrade model performance
+ * TechStripper removes tokens that degrade model performance
  *
- * Behavior is model-aware:
- * - Runway/Luma: Remove placebo tokens (they degrade A2D/diffusion quality)
- * - Kling/Veo/Sora: Keep placebo tokens (they may act as boosters)
+ * Two-tier stripping:
+ * - Universal: camera specs (f-stop, ISO) are always stripped — no video model uses them
+ * - Model-aware: placebo quality tokens (4k, masterpiece) stripped for Runway/Luma, kept for Kling/Veo
  */
 export class TechStripper {
   /**
-   * Process text to strip or preserve placebo tokens based on model
+   * Process text to strip technical and placebo tokens
    *
    * @param text - Input text to process
    * @param modelId - Target model identifier (e.g., "runway-gen45", "kling-26")
    * @returns Processed result with text and metadata
    */
   strip(text: string, modelId: string): TechStripperResult {
-    const shouldStrip = this.shouldStripTokens(modelId);
-
-    if (!shouldStrip) {
-      return {
-        text,
-        strippedTokens: [],
-        tokensWereStripped: false,
-      };
-    }
-
     const strippedTokens: string[] = [];
     let processedText = text;
 
-    for (const token of PLACEBO_TOKENS) {
-      // Create case-insensitive regex with word boundaries
-      const regex = new RegExp(`\\b${this.escapeRegex(token)}\\b`, 'gi');
-      const matches = processedText.match(regex);
-
-      if (matches) {
-        strippedTokens.push(...matches.map((m) => m.toLowerCase()));
-        processedText = processedText.replace(regex, '');
+    // Tier 1: Universal — strip camera specs (all video models ignore these)
+    for (const { label, source, flags } of CAMERA_SPEC_PATTERNS) {
+      const pattern = new RegExp(source, flags);
+      const before = processedText;
+      processedText = processedText.replace(pattern, '');
+      if (processedText !== before) {
+        strippedTokens.push(label);
       }
+    }
+
+    // Tier 2: Model-aware — strip placebo tokens for models that don't benefit
+    const shouldStrip = this.shouldStripTokens(modelId);
+    if (shouldStrip) {
+      for (const token of PLACEBO_TOKENS) {
+        const regex = new RegExp(`\\b${this.escapeRegex(token)}\\b`, 'gi');
+        const matches = processedText.match(regex);
+
+        if (matches) {
+          strippedTokens.push(...matches.map((m) => m.toLowerCase()));
+          processedText = processedText.replace(regex, '');
+        }
+      }
+    }
+
+    if (strippedTokens.length === 0) {
+      return { text, strippedTokens: [], tokensWereStripped: false };
     }
 
     // Clean up extra whitespace from removals
@@ -102,7 +122,7 @@ export class TechStripper {
     return {
       text: processedText,
       strippedTokens: [...new Set(strippedTokens)], // Deduplicate
-      tokensWereStripped: strippedTokens.length > 0,
+      tokensWereStripped: true,
     };
   }
 

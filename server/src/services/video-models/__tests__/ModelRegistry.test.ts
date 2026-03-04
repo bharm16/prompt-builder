@@ -82,8 +82,10 @@ describe('ModelRegistry', () => {
   });
 
   it('resolves prompt model aliases and passthrough values', () => {
-    expect(resolvePromptModelId('kling-v2-1-master')).toBe('kling-26');
-    expect(resolvePromptModelId('veo-3')).toBe('veo-4');
+    expect(resolvePromptModelId('kling-v2-1-master')).toBe('kling-2.1');
+    expect(resolvePromptModelId('kling-26')).toBe('kling-2.1');
+    expect(resolvePromptModelId('veo-4')).toBe('veo-3');
+    expect(resolvePromptModelId('veo-3')).toBe('veo-3');
     expect(resolvePromptModelId(' custom-model ')).toBe('custom-model');
     expect(resolvePromptModelId(undefined)).toBeNull();
     expect(resolvePromptModelId('')).toBeNull();

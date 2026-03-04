@@ -66,6 +66,9 @@ export const createSseChannel = (
       ? setInterval(() => {
           if (!internalAbortController.signal.aborted && !res.writableEnded && clientConnected) {
             try {
+              // Heartbeat bytes are real channel activity and should keep the
+              // idle watchdog from canceling long-running optimization work.
+              resetIdleTimer();
               res.write(': heartbeat\n\n');
             } catch {
               /* ignore write errors on dead connections */

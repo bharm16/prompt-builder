@@ -13,6 +13,7 @@ import type { FallbackRegenerationService } from '../FallbackRegenerationService
 
 function createService(options: {
   sanitizeImpl?: (suggestions: Suggestion[]) => Suggestion[];
+  categoryFallbacks?: Suggestion[];
   fallbackImpl?: (
     params: FallbackRegenerationParams
   ) => Promise<{
@@ -47,12 +48,13 @@ function createService(options: {
       fallbackApplied: false,
       context: {},
     })),
+    getCategoryFallbacks: vi.fn(() => options.categoryFallbacks || []),
   };
 
   const attemptFallbackRegeneration = vi.fn(
     options.fallbackImpl ||
-      (async () => ({
-        suggestions: [],
+      (async (params: FallbackRegenerationParams) => ({
+        suggestions: params.sanitizedSuggestions,
         usedFallback: false,
         sourceCount: 0,
       }))
@@ -143,6 +145,33 @@ describe('SuggestionProcessingService regression', () => {
     expect(suggestionTexts.some((text) => text.includes('leather journal'))).toBe(false);
     expect(suggestionTexts.some((text) => text.includes('steel wrench'))).toBe(false);
     expect(suggestionTexts.some((text) => text.includes('wooden cane'))).toBe(false);
+  });
+
+  it('seeds deterministic category fallbacks before regeneration when sanitization empties model output', async () => {
+    let sanitizeCallCount = 0;
+    const seededFallbacks: Suggestion[] = [
+      { text: 'shallow depth of field bokeh', category: 'camera.focus' },
+      { text: 'selective focus on foreground subject', category: 'camera.focus' },
+      { text: 'soft background defocus separation', category: 'camera.focus' },
+    ];
+
+    const { service, mocks } = createService({
+      categoryFallbacks: seededFallbacks,
+      sanitizeImpl: (suggestions) => {
+        sanitizeCallCount += 1;
+        return sanitizeCallCount === 1 ? [] : suggestions;
+      },
+    });
+
+    const result = await service.processSuggestions(buildProcessParams());
+
+    expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(1);
+    expect(mocks.attemptFallbackRegeneration.mock.calls[0]?.[0]?.sanitizedSuggestions).toHaveLength(3);
+    expect(result.usedFallback).toBe(true);
+    expect(result.fallbackSourceCount).toBe(3);
+    expect(result.suggestionsToUse.map((item) => item.text)).toEqual(
+      seededFallbacks.map((item) => item.text)
+    );
   });
 
   it('attempts fallback top-up when strict sanitization yields fewer than three suggestions', async () => {

@@ -56,15 +56,6 @@ const RESOLUTION_TERMS = [
 ] as const;
 
 /**
- * HDR pipeline triggers for Luma
- */
-const HDR_TRIGGERS = [
-  'High Dynamic Range',
-  '16-bit color',
-  'ACES colorspace',
-] as const;
-
-/**
  * Motion triggers based on content
  */
 const MOTION_TRIGGERS = {
@@ -249,9 +240,12 @@ export class LumaStrategy extends BaseStrategy {
    */
   protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
     const motionTrigger = this.selectMotionTrigger(ir.raw || '');
+    const suggested = ['high dynamic range lighting'];
+    if (motionTrigger) {
+      suggested.unshift(motionTrigger);
+    }
     return {
-      mandatory: [...HDR_TRIGGERS],
-      suggested: motionTrigger ? [motionTrigger] : [],
+      suggested,
       avoid: [...RESOLUTION_TERMS],
     };
   }
@@ -339,4 +333,3 @@ export class LumaStrategy extends BaseStrategy {
     return null;
   }
 }
-

@@ -461,6 +461,7 @@ export interface CategoryAligner {
     suggestions: Suggestion[],
     params: ValidationParams
   ): CategoryAlignmentResult;
+  getCategoryFallbacks?(highlightedText: string, category?: string): Suggestion[];
 }
 
 /**

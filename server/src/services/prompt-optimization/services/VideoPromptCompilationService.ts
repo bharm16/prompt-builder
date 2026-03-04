@@ -107,6 +107,7 @@ export class VideoPromptCompilationService {
 
       const metadata: Record<string, unknown> = {
         compiledFor: resolvedTargetModel,
+        normalizedModelId: resolvedTargetModel,
         compilationMeta: compilationResult.metadata,
         compilationQuality: {
           genericScore,
@@ -164,6 +165,7 @@ export class VideoPromptCompilationService {
       compiledPrompt,
       metadata: {
         compiledFor: resolvedTargetModel,
+        normalizedModelId: resolvedTargetModel,
         genericPrompt: prompt,
         compilationMeta: compilationResult.metadata,
       },

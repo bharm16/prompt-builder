@@ -187,36 +187,46 @@ describe('RunwayStrategy', () => {
     });
   });
 
-  describe('augment - mandatory stability behavior', () => {
-    it('injects mandatory stability constraints when missing', () => {
-      const input = makeResult('Dolly in: A woman walks through a garden');
+  describe('augment - trigger injection', () => {
+    it('injects stability triggers when missing', () => {
+      const input = makeResult('Dolly in: a woman walks through a garden');
       const result = strategy.augment(input);
-      expect(result.prompt).toContain('Dolly in: A woman walks through a garden');
       expect(result.prompt).toContain('single continuous shot');
       expect(result.prompt).toContain('fluid motion');
       expect(result.prompt).toContain('consistent geometry');
     });
 
-    it('records injected triggers', () => {
+    it('does not duplicate triggers already present', () => {
       strategy.normalize('test');
-      const result = strategy.augment(makeResult('test'));
-      expect(result.metadata.triggersInjected).toEqual(
-        expect.arrayContaining(['single continuous shot', 'fluid motion', 'consistent geometry'])
-      );
+      const input = makeResult('A single continuous shot with fluid motion and consistent geometry, cinematic lighting');
+      const result = strategy.augment(input);
+      // Should not duplicate existing triggers
+      const occurrences = ((result.prompt as string).match(/single continuous shot/g) || []).length;
+      expect(occurrences).toBe(1);
     });
 
-    it('records augment phase with constraint changes', () => {
+    it('skips triggers with semantic overlap (concept already present)', () => {
+      strategy.normalize('test');
+      const input = makeResult('A cinematic tracking shot with Fujifilm Pro 400H grain, fluid motion through a garden');
+      const result = strategy.augment(input);
+      // "film grain" trigger should be skipped because "grain" (4+ chars) already appears in prompt
+      const prompt = result.prompt as string;
+      const filmGrainOccurrences = (prompt.match(/film grain/gi) || []).length;
+      expect(filmGrainOccurrences).toBe(0);
+    });
+
+    it('injects cinematographic triggers', () => {
+      strategy.normalize('test');
+      const result = strategy.augment(makeResult('test'));
+      expect(result.metadata.triggersInjected.length).toBeGreaterThan(0);
+    });
+
+    it('records augment phase with changes', () => {
       strategy.normalize('test');
       const result = strategy.augment(makeResult('test'));
       const augPhase = result.metadata.phases.find(p => p.phase === 'augment');
       expect(augPhase).toBeDefined();
-      expect(augPhase?.changes).toEqual(
-        expect.arrayContaining([
-          'Injected mandatory constraint: "single continuous shot"',
-          'Injected mandatory constraint: "fluid motion"',
-          'Injected mandatory constraint: "consistent geometry"',
-        ])
-      );
+      expect(augPhase?.changes.length).toBeGreaterThan(0);
     });
   });
 

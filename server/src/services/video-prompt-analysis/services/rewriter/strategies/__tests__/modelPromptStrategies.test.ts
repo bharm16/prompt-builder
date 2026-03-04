@@ -53,8 +53,8 @@ describe('Model Prompt Strategies', () => {
       expect(defaultPromptStrategy.output.format).toBe('text');
     });
 
-    it('kling26PromptStrategy has modelId "kling-26" and text format', () => {
-      expect(kling26PromptStrategy.modelId).toBe('kling-26');
+    it('kling26PromptStrategy has modelId "kling-2.1" and text format', () => {
+      expect(kling26PromptStrategy.modelId).toBe('kling-2.1');
       expect(kling26PromptStrategy.output.format).toBe('text');
     });
 
@@ -78,35 +78,16 @@ describe('Model Prompt Strategies', () => {
       expect(wan22PromptStrategy.output.format).toBe('text');
     });
 
-    it('veo4PromptStrategy has modelId "veo-4" and structured format with schema', () => {
-      expect(veo4PromptStrategy.modelId).toBe('veo-4');
-      expect(veo4PromptStrategy.output.format).toBe('structured');
-      if (veo4PromptStrategy.output.format === 'structured') {
-        expect(veo4PromptStrategy.output.schema).toBeDefined();
-        expect(veo4PromptStrategy.output.schema.type).toBe('object');
-        const props = veo4PromptStrategy.output.schema.properties as Record<string, unknown>;
-        expect(props).toHaveProperty('mode');
-        expect(props).toHaveProperty('subject');
-        expect(props).toHaveProperty('camera');
-        expect(props).toHaveProperty('environment');
-      }
-    });
-
-    it('veo4 schema requires mode, subject, camera, environment', () => {
-      if (veo4PromptStrategy.output.format === 'structured') {
-        const required = veo4PromptStrategy.output.schema.required as string[];
-        expect(required).toContain('mode');
-        expect(required).toContain('subject');
-        expect(required).toContain('camera');
-        expect(required).toContain('environment');
-      }
+    it('veo4PromptStrategy has modelId "veo-3" and text format', () => {
+      expect(veo4PromptStrategy.modelId).toBe('veo-3');
+      expect(veo4PromptStrategy.output.format).toBe('text');
     });
   });
 
   describe('core behavior - model-specific instructions embedded', () => {
     it('kling26 prompt includes Kling-specific structure instructions', () => {
       const result = kling26PromptStrategy.buildPrompt(makeContext());
-      expect(result).toContain('Kling 2.6');
+      expect(result).toContain('Kling 2.1');
       expect(result).toContain('Subject');
       expect(result).toContain('Do NOT use screenplay format');
     });
@@ -129,10 +110,10 @@ describe('Model Prompt Strategies', () => {
       expect(result).toContain('World-building');
     });
 
-    it('veo4 prompt includes Veo JSON schema mapping instructions', () => {
+    it('veo4 prompt includes Veo cinematic prose instructions', () => {
       const result = veo4PromptStrategy.buildPrompt(makeContext());
-      expect(result).toContain('Veo 4');
-      expect(result).toContain('JSON schema');
+      expect(result).toContain('Veo 3');
+      expect(result).toContain('not JSON');
     });
 
     it('wan22 prompt includes Wan structure and English-only instruction', () => {

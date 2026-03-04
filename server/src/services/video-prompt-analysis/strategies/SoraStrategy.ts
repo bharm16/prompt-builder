@@ -30,90 +30,6 @@ import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './t
 const CAMEO_TOKEN_PATTERN = /@Cameo\(([^)]+)\)/g;
 
 /**
- * Physics-related terms for analysis
- */
-const PHYSICS_INTERACTION_TERMS = [
-  'fall',
-  'falls',
-  'falling',
-  'drop',
-  'drops',
-  'dropping',
-  'throw',
-  'throws',
-  'throwing',
-  'catch',
-  'catches',
-  'catching',
-  'bounce',
-  'bounces',
-  'bouncing',
-  'roll',
-  'rolls',
-  'rolling',
-  'slide',
-  'slides',
-  'sliding',
-  'collide',
-  'collides',
-  'collision',
-  'crash',
-  'crashes',
-  'crashing',
-  'hit',
-  'hits',
-  'hitting',
-  'push',
-  'pushes',
-  'pushing',
-  'pull',
-  'pulls',
-  'pulling',
-  'swing',
-  'swings',
-  'swinging',
-  'spin',
-  'spins',
-  'spinning',
-  'rotate',
-  'rotates',
-  'rotating',
-  'float',
-  'floats',
-  'floating',
-  'sink',
-  'sinks',
-  'sinking',
-  'splash',
-  'splashes',
-  'splashing',
-  'pour',
-  'pours',
-  'pouring',
-  'spill',
-  'spills',
-  'spilling',
-  'break',
-  'breaks',
-  'breaking',
-  'shatter',
-  'shatters',
-  'shattering',
-  'explode',
-  'explodes',
-  'explosion',
-  'jump',
-  'jumps',
-  'jumping',
-  'leap',
-  'leaps',
-  'leaping',
-  'land',
-  'lands',
-  'landing',
-] as const;
-
-/**
  * Temporal sequence indicators
  */
 const TEMPORAL_INDICATORS = [
@@ -135,15 +51,6 @@ const TEMPORAL_INDICATORS = [
   'preceding',
   'initially',
   'ultimately',
-] as const;
-
-/**
- * Physics triggers for Sora
- */
-const PHYSICS_TRIGGERS = [
-  'Newtonian physics',
-  'momentum conservation',
-  'surface friction',
 ] as const;
 
 /**
@@ -277,37 +184,36 @@ export class SoraStrategy extends BaseStrategy {
     const triggersInjected: string[] = [];
 
     let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    const before = prompt;
 
-    // Analyze if prompt has physics content
-    const hasPhysicsContent = PHYSICS_INTERACTION_TERMS.some(term => 
-      this.containsWord(prompt, term)
-    );
+    // Remove explicit timestamped shot syntax that tends to hurt Sora prompt fit.
+    prompt = prompt
+      .replace(/\bShot\s+\d+\s*\(\d+\s*-\s*\d+s\)\s*:\s*/gi, '')
+      .replace(/\s*→\s*\w+\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    // Inject physics triggers if physics content detected
-    if (hasPhysicsContent) {
-      for (const trigger of PHYSICS_TRIGGERS) {
-        if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-          prompt = `${prompt}, ${trigger}`;
-          triggersInjected.push(trigger);
-          changes.push(`Injected physics trigger: "${trigger}"`);
-        }
+    const words = prompt.split(/\s+/).filter(Boolean);
+    if (words.length > 120) {
+      const candidateText = words.slice(0, 120).join(' ');
+      const lastSentenceEnd = Math.max(
+        candidateText.lastIndexOf('.'),
+        candidateText.lastIndexOf('!'),
+        candidateText.lastIndexOf('?')
+      );
+      // Truncate at sentence boundary if it captures at least 50% of the text
+      if (lastSentenceEnd > candidateText.length * 0.5) {
+        prompt = candidateText.substring(0, lastSentenceEnd + 1);
+      } else {
+        prompt = `${candidateText}.`;
       }
-    } else {
-      // Even without explicit physics, add basic physics grounding
-      const basicTrigger = 'realistic physics';
-      if (!prompt.toLowerCase().includes(basicTrigger)) {
-        prompt = `${prompt}, ${basicTrigger}`;
-        triggersInjected.push(basicTrigger);
-        changes.push(`Injected basic physics trigger: "${basicTrigger}"`);
-      }
+      changes.push('Trimmed prompt to Sora-friendly length (<=120 words) at sentence boundary');
     }
 
-    // Add response_format metadata indicator
-    const responseFormatTrigger = 'response_format: json_object';
-    triggersInjected.push(responseFormatTrigger);
-    changes.push('Added response_format metadata for API compatibility');
+    if (prompt !== before) {
+      changes.push('Removed timestamped sequencing artifacts for natural prose output');
+    }
 
-    // Clean up final prompt
     prompt = this.cleanWhitespace(prompt);
 
     return {

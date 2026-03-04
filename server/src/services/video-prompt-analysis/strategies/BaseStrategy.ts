@@ -438,6 +438,31 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   /**
    * Ensure mandatory constraints appear in the prompt, appending only if missing.
    */
+  /**
+   * Check if a trigger phrase has semantic overlap with the prompt.
+   * Returns true if any significant word (4+ chars) from the trigger
+   * already appears in the prompt. Avoids redundant trigger injection
+   * when the LLM already expressed the same concept with different phrasing.
+   */
+  protected hasConceptOverlap(prompt: string, trigger: string): boolean {
+    const promptLower = prompt.toLowerCase();
+    const significantWords = trigger.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+    return significantWords.some(word => promptLower.includes(word));
+  }
+
+  /**
+   * Append a trigger or constraint phrase to a prompt, handling trailing punctuation.
+   * Strips trailing sentence-ending punctuation (. ! ?) before joining with a comma
+   * to avoid artifacts like "...text., trigger".
+   */
+  protected appendTrigger(prompt: string, trigger: string): string {
+    const trimmed = prompt.replace(/[.!?]+\s*$/, '').trim();
+    return `${trimmed}, ${trigger}`;
+  }
+
+  /**
+   * Ensure mandatory constraints appear in the prompt, appending only if missing.
+   */
   protected enforceMandatoryConstraints(
     prompt: string,
     constraints: string[]
@@ -452,7 +477,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
     for (const constraint of constraints) {
       if (!nextPrompt.toLowerCase().includes(constraint.toLowerCase())) {
-        nextPrompt = `${nextPrompt}, ${constraint}`;
+        nextPrompt = this.appendTrigger(nextPrompt, constraint);
         injected.push(constraint);
         changes.push(`Injected mandatory constraint: "${constraint}"`);
       }

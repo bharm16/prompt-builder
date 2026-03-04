@@ -378,6 +378,9 @@ async function main(): Promise<void> {
         const { compiledPrompt } = await promptOptimizationService.compilePrompt({
           prompt: autoOptimizedPrompt,
           targetModel: modelId,
+          context: {
+            originalPrompt: rawPrompt,
+          },
         });
         console.log(`[MODEL: ${modelId}]`);
         console.log(compiledPrompt);

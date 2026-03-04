@@ -6,13 +6,14 @@ export const wan22PromptStrategy: ModelPromptStrategy = {
   output: { format: 'text' },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Wan 2.2:
-1. Use the structure: Subject + Scene + Motion.
-2. Be clear and sufficiently detailed (the "Golden Rule" for Wan).
-3. Describe the subject's appearance and action precisely.
-4. Define the environment and background elements.
-5. Specify camera movement (e.g., "camera follows", "smooth pan") and lighting.
-6. Target high-definition quality naturally (e.g., "captured in high definition").
-7. Do NOT use bilingual output; use English only.
+1. Use the structure: Subject + Scene + Motion. Target 35-55 words (never exceed 55).
+2. Spend most of your word budget on VISIBLE DETAILS: materials, textures, colors, body positions, facial expressions, clothing, surface qualities.
+3. Describe the subject's appearance and action precisely — clothes, posture, gesture, expression.
+4. Include at least 2-3 specific environmental details (objects, surfaces, atmospheric conditions).
+5. Describe lighting naturally within the scene (e.g., "warm golden sunlight rakes across the pavement") rather than as a technical spec.
+6. MINIMIZE camera movement instructions — Wan 2.2 has limited camera control.
+7. Every word must describe something the camera can see. No abstract emotions or moods.
+8. Do NOT use bilingual output; use English only.
 
 Output ONLY the optimized prompt.`,
 };

@@ -1,5 +1,7 @@
 export const CAPABILITY_TO_CANONICAL_MODEL_ID: Record<string, string> = {
+  'kling-2.1': 'kling-v2-1-master',
   'kling-26': 'kling-v2-1-master',
+  'veo-3': 'google/veo-3',
   'veo-4': 'google/veo-3',
   'wan-2.2': 'wan-video/wan-2.2-t2v-fast',
   'wan-2.5': 'wan-video/wan-2.5-i2v',
@@ -19,7 +21,9 @@ const SUPPORTED_CANONICAL_MODEL_IDS = new Set<string>([
 ]);
 
 export const CANONICAL_TO_CAPABILITY_MODEL_ID: Record<string, string> = {
+  'kling-2.1': 'kling-26',
   'kling-v2-1-master': 'kling-26',
+  'veo-3': 'veo-4',
   'google/veo-3': 'veo-4',
   'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
   'wan-video/wan-2.5-i2v': 'wan-2.5',

@@ -11,12 +11,17 @@ export async function evaluateIntentPreservation(
   ai: AIModelService,
   input: string,
   optimized: string,
-  requiredElements: string[]
+  requiredElements: string[],
+  options: { strict?: boolean } = {}
 ): Promise<IntentPreservationResult> {
   const opt = normalizeText(optimized);
   const missing = (requiredElements || []).filter((el) => !opt.includes(normalizeText(el)));
   if (missing.length === 0) {
     return { score: 1.0, missing: [] };
+  }
+
+  if (options.strict === true) {
+    return { score: 0.0, missing };
   }
 
   try {

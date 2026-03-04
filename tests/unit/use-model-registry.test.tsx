@@ -58,13 +58,13 @@ describe('useModelRegistry', () => {
   it('falls back to registry models when availability is empty', async () => {
     const schema: CapabilitiesSchema = {
       provider: 'kling',
-      model: 'kling-26',
+      model: 'kling-2.1',
       version: '1',
       fields: {},
     };
 
     mockCapabilitiesApi.getRegistry.mockResolvedValue({
-      kling: { 'kling-26': schema },
+      kling: { 'kling-2.1': schema },
     });
 
     mockCapabilitiesApi.getVideoAvailability.mockResolvedValue({
@@ -78,8 +78,8 @@ describe('useModelRegistry', () => {
     });
 
     expect(result.current.models[0]).toEqual({
-      id: 'kling-26',
-      label: AI_MODEL_LABELS['kling-26'],
+      id: 'kling-2.1',
+      label: AI_MODEL_LABELS['kling-2.1'],
       provider: 'kling',
     });
   });

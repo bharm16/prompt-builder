@@ -127,9 +127,9 @@ describe('buildBaseHeader', () => {
     });
 
     it('produces distinct output for different model IDs', () => {
-      const r1 = buildBaseHeader(makeContext({ modelId: 'kling-26' }));
+      const r1 = buildBaseHeader(makeContext({ modelId: 'kling-2.1' }));
       const r2 = buildBaseHeader(makeContext({ modelId: 'luma-ray3' }));
-      expect(r1).toContain('kling-26');
+      expect(r1).toContain('kling-2.1');
       expect(r2).toContain('luma-ray3');
       expect(r1).not.toContain('luma-ray3');
     });

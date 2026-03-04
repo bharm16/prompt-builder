@@ -256,10 +256,21 @@ const POE_MODEL_IDS = [
   'wan-2.5',
 ] as const;
 
+const MODEL_LOOKUP_ALIASES: Record<string, string> = {
+  'kling-2.1': 'kling-26',
+  'veo-3': 'veo-4',
+  'kling-v2-1-master': 'kling-26',
+  'google/veo-3': 'veo-4',
+};
+
 /**
  * Service responsible for detecting target AI video model
  */
 export class ModelDetectionService {
+  private normalizeModelLookup(model: string): string {
+    return MODEL_LOOKUP_ALIASES[model] ?? model;
+  }
+
   /**
    * Detect which AI video model the prompt is targeting
    * 
@@ -357,22 +368,30 @@ export class ModelDetectionService {
    * Get model capabilities (strengths and weaknesses)
    */
   getModelCapabilities(model: string | null | undefined): ModelCapabilities | null {
-    if (!model || !(model in MODEL_STRENGTHS)) {
+    if (!model) {
+      return null;
+    }
+    const normalized = this.normalizeModelLookup(model);
+    if (!(normalized in MODEL_STRENGTHS)) {
       return null;
     }
 
-    return MODEL_STRENGTHS[model as ModelId];
+    return MODEL_STRENGTHS[normalized as ModelId];
   }
 
   /**
    * Get model optimal parameters
    */
   getModelOptimalParams(model: string | null | undefined): ModelOptimalParams | null {
-    if (!model || !(model in MODEL_OPTIMAL_PARAMS)) {
+    if (!model) {
+      return null;
+    }
+    const normalized = this.normalizeModelLookup(model);
+    if (!(normalized in MODEL_OPTIMAL_PARAMS)) {
       return null;
     }
 
-    return MODEL_OPTIMAL_PARAMS[model as ModelId];
+    return MODEL_OPTIMAL_PARAMS[normalized as ModelId];
   }
 
   /**
@@ -383,6 +402,7 @@ export class ModelDetectionService {
       return [];
     }
 
+    const normalizedModel = this.normalizeModelLookup(model);
     const capabilities = this.getModelCapabilities(model);
     if (!capabilities) {
       return [];
@@ -392,7 +412,7 @@ export class ModelDetectionService {
     const guidance: string[] = [];
 
     // Model-specific category guidance
-    if (model === 'sora') {
+    if (normalizedModel === 'sora') {
       if (normalizedCategory.includes('motion') || normalizedCategory.includes('action')) {
         guidance.push('Describe continuous, realistic motion with physical accuracy');
         guidance.push('Mention how objects interact with environment and physics');
@@ -404,7 +424,7 @@ export class ModelDetectionService {
       }
     }
 
-    if (model === 'veo3') {
+    if (normalizedModel === 'veo3' || normalizedModel === 'veo-4') {
       if (normalizedCategory.includes('lighting')) {
         guidance.push('Emphasize atmospheric and cinematic lighting quality');
         guidance.push('Specify light direction, quality, and mood impact');
@@ -416,7 +436,7 @@ export class ModelDetectionService {
       }
     }
 
-    if (model === 'runway') {
+    if (normalizedModel === 'runway') {
       if (normalizedCategory.includes('style')) {
         guidance.push('Embrace stylized, artistic approaches');
         guidance.push('Reference art styles, filters, or visual treatments');
@@ -424,7 +444,7 @@ export class ModelDetectionService {
       }
     }
 
-    if (model === 'kling') {
+    if (normalizedModel === 'kling' || normalizedModel === 'kling-26') {
       if (normalizedCategory.includes('subject') || normalizedCategory.includes('character')) {
         guidance.push('Focus on facial expressions and character emotion');
         guidance.push('Describe specific facial features and expressions');
@@ -432,7 +452,7 @@ export class ModelDetectionService {
       }
     }
 
-    if (model === 'luma') {
+    if (normalizedModel === 'luma') {
       if (normalizedCategory.includes('style') || normalizedCategory.includes('visual')) {
         guidance.push('Embrace surreal and abstract concepts');
         guidance.push('Use dreamlike, morphing, or fluid descriptions');

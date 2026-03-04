@@ -6,10 +6,9 @@ export const AI_MODEL_IDS = [
   'runway-gen45',
   'luma-ray3',
   'sora-2',
-  'veo-4',
-  'kling-26',
+  'veo-3',
+  'kling-2.1',
   'wan-2.2',
-  'wan-2.5',
 ] as const;
 
 export type AIModelId = typeof AI_MODEL_IDS[number];
@@ -18,30 +17,27 @@ export const AI_MODEL_URLS: Record<AIModelId, string> = {
   'runway-gen45': 'https://runwayml.com/',
   'luma-ray3': 'https://lumalabs.ai/',
   'sora-2': 'https://openai.com/sora',
-  'veo-4': 'https://deepmind.google/models/veo/',
-  'kling-26': 'https://kling.ai/',
+  'veo-3': 'https://deepmind.google/models/veo/',
+  'kling-2.1': 'https://kling.ai/',
   'wan-2.2': 'https://wanvideo.alibaba.com/',
-  'wan-2.5': 'https://wanvideo.alibaba.com/',
 } as const;
 
 export const AI_MODEL_LABELS: Record<AIModelId, string> = {
-  'runway-gen45': 'Runway',
-  'luma-ray3': 'Luma',
-  'sora-2': 'Sora',
-  'veo-4': 'Veo',
-  'kling-26': 'Kling',
+  'runway-gen45': 'Runway Gen-45',
+  'luma-ray3': 'Luma Ray 3',
+  'sora-2': 'Sora 2',
+  'veo-3': 'Veo 3',
+  'kling-2.1': 'Kling 2.1',
   'wan-2.2': 'Wan 2.2',
-  'wan-2.5': 'Wan 2.5',
 } as const;
 
 export const AI_MODEL_PROVIDERS: Record<AIModelId, string> = {
   'runway-gen45': 'runway',
   'luma-ray3': 'luma',
   'sora-2': 'openai',
-  'veo-4': 'google',
-  'kling-26': 'kling',
+  'veo-3': 'google',
+  'kling-2.1': 'kling',
   'wan-2.2': 'wan',
-  'wan-2.5': 'wan',
 } as const;
 
 export type ModelMeta = {
