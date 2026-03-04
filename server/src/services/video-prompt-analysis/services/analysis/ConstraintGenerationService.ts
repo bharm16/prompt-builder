@@ -114,6 +114,18 @@ export class ConstraintGenerationService {
                     categorySource.includes('aesthetic');
     const isAudio = categorySource.includes('audio') || categorySource.includes('score');
 
+    // Grammar-aware routing: action/movement → verb mode, short style → adjective mode
+    const isAction = categorySource.includes('action') ||
+                     categorySource.includes('movement') ||
+                     categorySource.includes('gesture');
+    if (isAction) {
+      return CONSTRAINT_MODES.verb(highlightWordCount, slotDescriptor);
+    }
+
+    if (highlightIsVeryShort && isStyle) {
+      return CONSTRAINT_MODES.adjective(highlightWordCount, slotDescriptor);
+    }
+
     // Apply category-based rules
     if (isSubject || highlightIsVeryShort) {
       return CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);

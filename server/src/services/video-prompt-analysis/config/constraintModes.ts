@@ -4,7 +4,7 @@
  */
 import type { ConstraintConfig } from '@services/video-prompt-analysis/types';
 
-type ConstraintMode = 'micro' | 'lighting' | 'camera' | 'location' | 'style' | 'phrase' | 'sentence';
+type ConstraintMode = 'micro' | 'lighting' | 'camera' | 'location' | 'style' | 'phrase' | 'sentence' | 'adjective' | 'verb';
 
 type ConstraintTemplate = Omit<ConstraintConfig, 'slotDescriptor'>;
 
@@ -152,6 +152,40 @@ export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> =
       'Keep it punchy—no compound sentences',
     ],
     extraRequirements: [],
+  }, slotDescriptor),
+
+  /**
+   * Adjective mode: 1-6 word adjective or participial phrase
+   */
+  adjective: (highlightWordCount, slotDescriptor) => createConstraint({
+    mode: 'adjective',
+    minWords: 1,
+    maxWords: Math.min(6, Math.max(3, highlightWordCount + 2)),
+    maxSentences: 1,
+    disallowTerminalPunctuation: true,
+    formRequirement: '1-6 word adjective or participial phrase',
+    focusGuidance: [
+      'Use descriptive modifiers that set visual tone',
+      'Avoid full clauses or noun phrases',
+    ],
+    extraRequirements: ['Output an adjective or participial phrase, not a noun phrase'],
+  }, slotDescriptor),
+
+  /**
+   * Verb mode: 1-8 word verb phrase describing a visible action
+   */
+  verb: (highlightWordCount, slotDescriptor) => createConstraint({
+    mode: 'verb',
+    minWords: 1,
+    maxWords: Math.min(8, Math.max(4, highlightWordCount + 2)),
+    maxSentences: 1,
+    disallowTerminalPunctuation: true,
+    formRequirement: '1-8 word verb phrase describing a visible action',
+    focusGuidance: [
+      'Use active, camera-visible verbs',
+      'Vary the physical staging, not just intensity',
+    ],
+    extraRequirements: ['Output a verb phrase, not a noun phrase'],
   }, slotDescriptor),
 };
 

@@ -515,6 +515,10 @@ export class CleanPromptBuilder {
       }
       if (videoConstraints.mode === 'micro') {
         parts.push('noun phrases only');
+      } else if (videoConstraints.mode === 'adjective') {
+        parts.push('adjective or participial phrases only');
+      } else if (videoConstraints.mode === 'verb') {
+        parts.push('verb phrases only');
       }
       constraintLine = parts.join(', ');
 
