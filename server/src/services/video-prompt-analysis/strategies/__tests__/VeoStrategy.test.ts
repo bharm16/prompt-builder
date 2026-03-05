@@ -56,7 +56,7 @@ describe('VeoStrategy', () => {
   beforeEach(() => {
     strategy = new VeoStrategy({
       analyzer: { analyze: vi.fn(async () => makeIr()) } as never,
-      llmRewriter: { rewrite: vi.fn(async () => 'llm rewritten text') } as never,
+      llmRewriter: { rewrite: vi.fn(async () => 'a cyclist riding with dynamic camera movement, lit by moody neon reflections') } as never,
     });
   });
 
