@@ -130,6 +130,8 @@ export class CategoryGuidanceService {
       guidance.push(...this._buildActionGuidance(existingElements, gaps, relationships));
     } else if (category === TAXONOMY.ENVIRONMENT.id || category.includes('location') || category.includes('environment')) {
       guidance.push(...this._buildLocationGuidance(existingElements, gaps, relationships));
+    } else if (category.includes('style') || category.includes('aesthetic')) {
+      guidance.push(...this._buildStyleGuidance(existingElements, gaps, relationships));
     } else if (category.includes('mood') || category.includes('atmosphere')) {
       guidance.push(...this._buildMoodGuidance(existingElements, gaps, relationships, editHistory));
     }
@@ -206,18 +208,36 @@ export class CategoryGuidanceService {
       opportunities: [],
     };
 
-    // Time of day affects lighting
+    // Time of day affects lighting — but when the highlighted span IS the timeOfDay,
+    // guide toward alternatives rather than reinforcing the existing time period
     if (category.includes('lighting') && existingElements.timeOfDay) {
       const time = existingElements.timeOfDay;
+      const isTimeOfDaySpan = category.includes('timeOfDay');
+
       if (time.includes('golden hour')) {
-        relationships.opportunities.push('Warm rim light to complement golden hour');
-        relationships.constraints.push('Avoid cool/blue tones that contradict warm golden light');
+        if (isTimeOfDaySpan) {
+          relationships.opportunities.push('Explore dramatically different times: blue hour, harsh noon, overcast, deep night');
+          relationships.constraints.push('Avoid variations of the same golden/warm period (sunset, dusk, late afternoon)');
+        } else {
+          relationships.opportunities.push('Warm rim light to complement golden hour');
+          relationships.constraints.push('Avoid cool/blue tones that contradict warm golden light');
+        }
       } else if (time.includes('night')) {
-        relationships.opportunities.push('Artificial light sources, practicals');
-        relationships.constraints.push('Low ambient light levels');
+        if (isTimeOfDaySpan) {
+          relationships.opportunities.push('Explore dramatically different times: golden hour, harsh noon, overcast morning, blue hour');
+          relationships.constraints.push('Avoid variations of the same dark period (midnight, late evening, twilight)');
+        } else {
+          relationships.opportunities.push('Artificial light sources, practicals');
+          relationships.constraints.push('Low ambient light levels');
+        }
       } else if (time.includes('overcast')) {
-        relationships.opportunities.push('Soft, diffused lighting naturally');
-        relationships.constraints.push('Low contrast, no hard shadows');
+        if (isTimeOfDaySpan) {
+          relationships.opportunities.push('Explore dramatically different times: golden hour, harsh noon, deep night, blue hour');
+          relationships.constraints.push('Avoid variations of the same diffused-light period (cloudy, grey sky, foggy)');
+        } else {
+          relationships.opportunities.push('Soft, diffused lighting naturally');
+          relationships.constraints.push('Low contrast, no hard shadows');
+        }
       }
     }
 
@@ -361,6 +381,7 @@ export class CategoryGuidanceService {
 
   /**
    * Build subject-specific guidance
+   * Pushes for ROLE-LEVEL diversity, not synonym swaps
    */
   private _buildSubjectGuidance(
     existing: ExistingElements,
@@ -373,6 +394,9 @@ export class CategoryGuidanceService {
       guidance.push(...relationships.opportunities);
     }
 
+    // Role-level diversity enforcement
+    guidance.push('ROLE-LEVEL DIVERSITY: suggest fundamentally DIFFERENT subjects that fill the same narrative role — different species, occupation, age group, or archetype. Never swap synonyms (child→kid→tot).');
+
     if (gaps.includes('appearance')) {
       guidance.push('Add PHYSICAL DETAILS: 2-3 specific characteristics (age, build, distinguishing features)');
     }
@@ -381,6 +405,33 @@ export class CategoryGuidanceService {
     }
     if (gaps.includes('details')) {
       guidance.push('Specify WARDROBE or KEY DETAILS that support the narrative');
+    }
+
+    return guidance;
+  }
+
+  /**
+   * Build style-specific guidance
+   * Prevents camera-movement bleed into style suggestions
+   */
+  private _buildStyleGuidance(
+    existing: ExistingElements,
+    gaps: string[],
+    relationships: CategoryRelationships
+  ): string[] {
+    const guidance: string[] = [];
+
+    if (relationships.opportunities.length > 0) {
+      guidance.push(...relationships.opportunities);
+    }
+
+    // Explicit boundary: style is visual treatment, NOT camera movement
+    guidance.push('STYLE means visual treatment and aesthetic look — film stock, color grade, genre tone, post-processing. NEVER suggest camera movements (dolly, pan, handheld, Steadicam, gimbal, tracking) — those belong to the camera category.');
+
+    if (existing.style) {
+      guidance.push(`Current style is "${existing.style}" — suggest contrasting aesthetics (different era, genre, or visual philosophy)`);
+    } else {
+      guidance.push('Suggest distinct visual AESTHETICS: film era, genre look, color philosophy, grain/texture');
     }
 
     return guidance;

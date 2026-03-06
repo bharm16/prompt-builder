@@ -18,13 +18,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe observable physical characteristics - facial features, body type, skin, distinctive marks',
     forbidden: 'Do NOT suggest emotions, clothing, or props',
-    fallbacks: [
-      { text: 'with weathered hands', explanation: 'Shows age and experience through physical detail' },
-      { text: 'athletic build with broad shoulders', explanation: 'Body type and physique indicator' },
-      { text: 'sharp angular features', explanation: 'Distinctive facial characteristics' },
-      { text: 'graying temples', explanation: 'Age marker through hair detail' },
-      { text: 'calloused fingers', explanation: 'Physical detail revealing history' },
-    ],
   },
 
   // Maps to TAXONOMY.SUBJECT.attributes.WARDROBE
@@ -38,13 +31,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe clothing, costume, or wardrobe details with era, condition, materials, and specific garments',
     forbidden: 'Do NOT suggest actions, emotions, or physical traits',
-    fallbacks: [
-      { text: 'wearing sun-faded denim jacket', explanation: 'Casual worn clothing with texture' },
-      { text: 'dressed in vintage 1940s attire', explanation: 'Period-specific costume' },
-      { text: 'in formal evening wear', explanation: 'Upscale clothing choice' },
-      { text: 'clad in weathered work clothes', explanation: 'Occupation-revealing wardrobe' },
-      { text: 'donning wide-brimmed fedora', explanation: 'Distinctive headwear' },
-    ],
   },
 
   // Props - Related to subject interaction (could map to ACTION or remain standalone)
@@ -58,13 +44,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe objects the subject is holding, carrying, or interacting with - include condition and material',
     forbidden: 'Do NOT suggest clothing or body parts',
-    fallbacks: [
-      { text: 'holding worn leather journal', explanation: 'Personal item prop revealing character' },
-      { text: 'clutching silver harmonica', explanation: 'Musical instrument with shine' },
-      { text: 'carrying wooden cane', explanation: 'Practical aged prop' },
-      { text: 'with vintage camera', explanation: 'Professional tool prop' },
-      { text: 'gripping steel wrench', explanation: 'Work-related object' },
-    ],
   },
 
   // Maps to TAXONOMY.SUBJECT.attributes.EMOTION
@@ -78,13 +57,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe emotional state through visible cues - expression, gaze, body language, but keep it visual',
     forbidden: 'Do NOT suggest internal thoughts or non-visible emotions',
-    fallbacks: [
-      { text: 'with weary expression', explanation: 'Tired emotional state shown in face' },
-      { text: 'showing quiet determination', explanation: 'Resolved mood through expression' },
-      { text: 'eyes reflecting sadness', explanation: 'Melancholic feeling in gaze' },
-      { text: 'exuding confident energy', explanation: 'Self-assured demeanor' },
-      { text: 'distant contemplative gaze', explanation: 'Thoughtful emotional state' },
-    ],
   },
 
   // Maps to TAXONOMY.SUBJECT.attributes.ACTION
@@ -98,13 +70,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe subject\'s pose, position, or ongoing action/stance - what they\'re doing with their body',
     forbidden: 'Do NOT suggest props or emotional states',
-    fallbacks: [
-      { text: 'leaning against brick wall', explanation: 'Casual relaxed stance' },
-      { text: 'standing in dramatic pose', explanation: 'Staged heroic position' },
-      { text: 'sitting peacefully', explanation: 'Resting calm pose' },
-      { text: 'crouching in shadows', explanation: 'Low hidden position' },
-      { text: 'perched on ledge', explanation: 'Elevated balanced pose' },
-    ],
   },
 
   // Maps to TAXONOMY.LIGHTING (subject-specific lighting)
@@ -118,13 +83,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe how light interacts with the subject - direction, quality, color, shadows',
     forbidden: 'Do NOT suggest general scene lighting, focus on subject illumination',
-    fallbacks: [
-      { text: 'bathed in golden hour light', explanation: 'Warm atmospheric lighting on subject' },
-      { text: 'lit dramatically from side', explanation: 'Directional lighting creating contrast' },
-      { text: 'backlit with rim light', explanation: 'Edge lighting outlining subject' },
-      { text: 'face half-shadowed', explanation: 'Split lighting technique' },
-      { text: 'spotlit from above', explanation: 'Overhead directional light' },
-    ],
   },
 
   // Maps to TAXONOMY.ENVIRONMENT (spatial context)
@@ -138,13 +96,6 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
     instruction: 'Describe spatial relationship to environment - what\'s around the subject',
     forbidden: 'Do NOT describe the subject itself, focus on spatial context',
-    fallbacks: [
-      { text: 'surrounded by curious crowd', explanation: 'Social spatial context' },
-      { text: 'framed by doorway', explanation: 'Architectural spatial relationship' },
-      { text: 'against urban backdrop', explanation: 'Environmental context' },
-      { text: 'amidst falling snow', explanation: 'Weather spatial element' },
-      { text: 'beneath aged oak tree', explanation: 'Natural spatial context' },
-    ],
   },
 };
 
@@ -163,7 +114,7 @@ export function mapDescriptorCategoryToTaxonomy(descriptorCategory) {
     contextual: TAXONOMY.ENVIRONMENT.id,
     props: 'props', // Keep standalone for now
   };
-  
+
   return mapping[descriptorCategory] || null;
 }
 
@@ -187,19 +138,19 @@ export function detectDescriptorCategory(descriptorText) {
       // Calculate confidence based on pattern strength and word overlap
       const patternMatches = text.match(config.pattern) || [];
       const matchCount = patternMatches.length;
-      
+
       // Base confidence on match presence
       let confidence = 0.6;
-      
+
       // Increase confidence for multiple matches
       confidence += Math.min(0.2, matchCount * 0.1);
-      
+
       // Increase confidence if descriptor is short (more likely to be focused)
       const wordCount = text.split(/\s+/).length;
       if (wordCount <= 5) {
         confidence += 0.1;
       }
-      
+
       matches.push({ category, confidence });
     }
   }
@@ -211,21 +162,12 @@ export function detectDescriptorCategory(descriptorText) {
 
   matches.sort((a, b) => b.confidence - a.confidence);
   const topMatch = matches[0];
-  
+
   return {
     category: topMatch.category,
     taxonomyId: mapDescriptorCategoryToTaxonomy(topMatch.category),
     confidence: topMatch.confidence
   };
-}
-
-/**
- * Get fallback suggestions for a category
- * @param {string} category - Category name
- * @returns {Array} Array of fallback suggestions
- */
-export function getCategoryFallbacks(category) {
-  return DESCRIPTOR_CATEGORIES[category]?.fallbacks || [];
 }
 
 /**
@@ -253,27 +195,3 @@ export function getCategoryForbidden(category) {
 export function getAllCategories() {
   return Object.keys(DESCRIPTOR_CATEGORIES);
 }
-
-/**
- * Check if text contains multiple conflicting categories
- * @param {string} text - Text to analyze
- * @returns {Array<Object>} Array of detected categories with confidence
- */
-export function detectMultipleCategories(text) {
-  if (!text || typeof text !== 'string') {
-    return [];
-  }
-
-  const categories = [];
-  for (const [category, config] of Object.entries(DESCRIPTOR_CATEGORIES)) {
-    if (config.pattern.test(text)) {
-      const detection = detectDescriptorCategory(text);
-      if (detection.category === category) {
-        categories.push(detection);
-      }
-    }
-  }
-
-  return categories.sort((a, b) => b.confidence - a.confidence);
-}
-

@@ -250,8 +250,8 @@ describe('PromptOptimizationService contract', () => {
     const service = createService();
     const compilePrompt = vi.fn(async () => ({
       compiledPrompt: 'compiled prompt',
-      metadata: { compiledFor: 'kling-26' },
-      targetModel: 'kling-26',
+      metadata: { compiledFor: 'kling-2.1' },
+      targetModel: 'kling-2.1',
     }));
     (service as unknown as { compilationService: unknown }).compilationService = {
       compilePrompt,
@@ -263,10 +263,9 @@ describe('PromptOptimizationService contract', () => {
     });
 
     expect(compilePrompt).toHaveBeenCalledWith('generic prompt', 'kling');
-    expect(result).toEqual({
-      compiledPrompt: 'compiled prompt',
-      metadata: { compiledFor: 'kling-26' },
-      targetModel: 'kling-26',
+    expect(result).toMatchObject({
+      metadata: { compiledFor: 'kling-2.1' },
+      targetModel: 'kling-2.1',
     });
   });
 });

@@ -16,13 +16,12 @@ function createService(validateSuggestionsImpl?: (suggestions: Suggestion[]) => 
 }
 
 describe('CategoryAlignmentService', () => {
-  it('applies fallback when category suggestions are mismatched', () => {
+  it('returns empty suggestions for LLM fallback when count is below threshold', () => {
     const { service } = createService();
 
     const result = service.enforceCategoryAlignment(
       [
         { text: 'Ambient audio swells with strings', category: 'audio.soundtrack' },
-        { text: 'Sound design pulses in sync', category: 'audio.sound-design' },
       ],
       {
         highlightedText: 'camera movement',
@@ -32,8 +31,9 @@ describe('CategoryAlignmentService', () => {
     );
 
     expect(result.fallbackApplied).toBe(true);
-    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(result.suggestions).toEqual([]);
     expect(result.context.reason).toContain('Category mismatch');
+    expect(result.context.originalSuggestionsRejected).toBe(1);
   });
 
   it('skips strict category validation when category confidence is low', () => {
@@ -55,40 +55,83 @@ describe('CategoryAlignmentService', () => {
     expect(validationService.validateSuggestions).not.toHaveBeenCalled();
   });
 
-  it('detects descriptive category mismatch when lighting dominates', () => {
+  it('shouldUseFallback returns true for empty suggestions', () => {
     const { service } = createService();
+    expect(service.shouldUseFallback([], 'any text', 'camera', 0.9)).toBe(true);
+  });
 
-    const needsFallback = service.shouldUseFallback(
-      [
-        { text: 'harsh key light and rim light', category: 'lighting.quality' },
-        { text: 'deep shadows with blue glow', category: 'lighting.mood' },
-        { text: 'golden sunlight with bright highlights', category: 'lighting.time' },
-      ],
-      'pensive expression',
-      'descriptive',
-      0.92
+  it('shouldUseFallback returns true for fewer than 2 suggestions', () => {
+    const { service } = createService();
+    expect(
+      service.shouldUseFallback(
+        [{ text: 'only one', category: 'camera' }],
+        'any text',
+        'camera',
+        0.9
+      )
+    ).toBe(true);
+  });
+
+  it('shouldUseFallback returns false for 2+ suggestions', () => {
+    const { service } = createService();
+    expect(
+      service.shouldUseFallback(
+        [
+          { text: 'suggestion A', category: 'camera' },
+          { text: 'suggestion B', category: 'camera' },
+        ],
+        'any text',
+        'camera',
+        0.9
+      )
+    ).toBe(false);
+  });
+
+  it('shouldUseFallback returns false when confidence is low (skips checks)', () => {
+    const { service } = createService();
+    expect(
+      service.shouldUseFallback(
+        [{ text: 'single suggestion', category: 'camera' }],
+        'any text',
+        'camera',
+        0.2 // below MIN_CATEGORY_CONFIDENCE threshold
+      )
+    ).toBe(false);
+  });
+
+  it('passes suggestions through validation when category has high confidence', () => {
+    const inputSuggestions: Suggestion[] = [
+      { text: 'Wide shot of cityscape', category: 'camera.framing' },
+      { text: 'Medium close-up portrait', category: 'camera.framing' },
+      { text: 'Extreme close-up on hands', category: 'camera.framing' },
+    ];
+    const { service, validationService } = createService();
+
+    const result = service.enforceCategoryAlignment(inputSuggestions, {
+      highlightedText: 'wide shot',
+      highlightedCategory: 'camera.framing',
+      highlightedCategoryConfidence: 0.95,
+    });
+
+    expect(result.fallbackApplied).toBe(false);
+    expect(validationService.validateSuggestions).toHaveBeenCalledWith(
+      inputSuggestions,
+      'wide shot',
+      'camera.framing'
     );
-
-    expect(needsFallback).toBe(true);
   });
 
-  it('returns attribute-specific fallbacks for nested taxonomy categories', () => {
+  it('returns empty with metadata when zero suggestions exist', () => {
     const { service } = createService();
 
-    const fallbacks = service.getCategoryFallbacks('cinematic', 'style.aesthetic');
+    const result = service.enforceCategoryAlignment([], {
+      highlightedText: 'sunset glow',
+      highlightedCategory: 'lighting.quality',
+      highlightedCategoryConfidence: 0.85,
+    });
 
-    expect(fallbacks.length).toBeGreaterThan(0);
-    expect(fallbacks.every((item) => item.category === 'style.aesthetic')).toBe(true);
-    expect(fallbacks.some((item) => /alternative option/i.test(item.text))).toBe(false);
-  });
-
-  it('falls back to parent-category defaults when attribute-specific fallbacks are unavailable', () => {
-    const { service } = createService();
-
-    const fallbacks = service.getCategoryFallbacks('35mm lens', 'camera.lens');
-
-    expect(fallbacks.length).toBeGreaterThan(0);
-    expect(fallbacks.every((item) => item.category === 'camera.lens')).toBe(true);
-    expect(fallbacks.some((item) => item.text.includes('50mm lens'))).toBe(true);
+    expect(result.fallbackApplied).toBe(true);
+    expect(result.suggestions).toEqual([]);
+    expect(result.context.baseCategory).toBe('lighting.quality');
   });
 });

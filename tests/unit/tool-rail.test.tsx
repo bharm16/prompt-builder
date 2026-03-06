@@ -127,7 +127,7 @@ describe('ToolRail', () => {
       expect(onPanelChange).toHaveBeenCalledWith('studio');
     });
 
-    it('shows sub badge when billing status is subscribed', () => {
+    it('shows plan tier when billing status is subscribed', () => {
       useBillingStatusMock.mockReturnValue({
         status: {
           isSubscribed: true,
@@ -150,10 +150,10 @@ describe('ToolRail', () => {
         onPanelChange: vi.fn(),
       });
 
-      expect(screen.getByText('cr · sub')).toBeInTheDocument();
+      expect(screen.getByText('Explorer')).toBeInTheDocument();
     });
 
-    it('shows one-time rail hint and persists dismissal by user id', () => {
+    it('shows free plan label when not subscribed', () => {
       renderToolRail({
         activePanel: 'studio',
         user: {
@@ -164,11 +164,7 @@ describe('ToolRail', () => {
         onPanelChange: vi.fn(),
       });
 
-      const hintButton = screen.getByRole('button', { name: 'Credits' });
-      fireEvent.click(hintButton);
-
-      expect(localStorage.getItem('credit-onboarding-dismissed:user-1')).toBe('1');
-      expect(screen.queryByRole('button', { name: 'Credits' })).toBeNull();
+      expect(screen.getByText('Free')).toBeInTheDocument();
     });
   });
 });

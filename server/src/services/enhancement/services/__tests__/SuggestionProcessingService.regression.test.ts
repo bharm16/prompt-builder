@@ -13,7 +13,6 @@ import type { FallbackRegenerationService } from '../FallbackRegenerationService
 
 function createService(options: {
   sanitizeImpl?: (suggestions: Suggestion[]) => Suggestion[];
-  categoryFallbacks?: Suggestion[];
   fallbackImpl?: (
     params: FallbackRegenerationParams
   ) => Promise<{
@@ -49,7 +48,6 @@ function createService(options: {
       fallbackApplied: false,
       context: {},
     })),
-    getCategoryFallbacks: vi.fn(() => options.categoryFallbacks || []),
   };
 
   const attemptFallbackRegeneration = vi.fn(
@@ -122,57 +120,32 @@ function buildProcessParams(
 }
 
 describe('SuggestionProcessingService regression', () => {
-  it('does not trigger descriptor fallback for short two-word descriptor fragments', () => {
-    const { service } = createService();
-
-    const result = service.applyDescriptorFallbacks([], "baby's face", 'A close-up of a baby in a car seat.');
-
-    expect(result.usedFallback).toBe(false);
-    expect(result.suggestions).toEqual([]);
-  });
-
-  it('filters adult-oriented descriptor fallbacks when child subjects are present', () => {
-    const { service } = createService();
-
-    const result = service.applyDescriptorFallbacks(
-      [],
-      'playfully gripping toy',
-      'A baby in a car seat playfully gripping toy keys while sunlight flickers through the window.'
-    );
-
-    const suggestionTexts = result.suggestions.map((item) => item.text.toLowerCase());
-
-    expect(result.usedFallback).toBe(true);
-    expect(suggestionTexts.some((text) => text.includes('leather journal'))).toBe(false);
-    expect(suggestionTexts.some((text) => text.includes('steel wrench'))).toBe(false);
-    expect(suggestionTexts.some((text) => text.includes('wooden cane'))).toBe(false);
-  });
-
-  it('seeds deterministic category fallbacks before regeneration when sanitization empties model output', async () => {
+  it('sends empty to FallbackRegenerationService when sanitization removes all model output', async () => {
     let sanitizeCallCount = 0;
-    const seededFallbacks: Suggestion[] = [
-      { text: 'shallow depth of field bokeh', category: 'camera.focus' },
-      { text: 'selective focus on foreground subject', category: 'camera.focus' },
-      { text: 'soft background defocus separation', category: 'camera.focus' },
-    ];
-
     const { service, mocks } = createService({
-      categoryFallbacks: seededFallbacks,
       sanitizeImpl: (suggestions) => {
         sanitizeCallCount += 1;
         return sanitizeCallCount === 1 ? [] : suggestions;
       },
+      fallbackImpl: async () => ({
+        suggestions: [
+          { text: 'shallow depth of field bokeh', category: 'camera.focus' },
+          { text: 'selective focus on foreground subject', category: 'camera.focus' },
+          { text: 'soft background defocus separation', category: 'camera.focus' },
+        ],
+        usedFallback: true,
+        sourceCount: 3,
+        constraints: { mode: 'micro' },
+      }),
     });
 
     const result = await service.processSuggestions(buildProcessParams());
 
+    // Verify empty suggestions go to LLM fallback (not static seeding)
     expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(1);
-    expect(mocks.attemptFallbackRegeneration.mock.calls[0]?.[0]?.sanitizedSuggestions).toHaveLength(3);
+    expect(mocks.attemptFallbackRegeneration.mock.calls[0]?.[0]?.sanitizedSuggestions).toHaveLength(0);
+    expect(result.suggestionsToUse.length).toBe(3);
     expect(result.usedFallback).toBe(true);
-    expect(result.fallbackSourceCount).toBe(3);
-    expect(result.suggestionsToUse.map((item) => item.text)).toEqual(
-      seededFallbacks.map((item) => item.text)
-    );
   });
 
   it('attempts fallback top-up when strict sanitization yields fewer than three suggestions', async () => {
@@ -209,7 +182,7 @@ describe('SuggestionProcessingService regression', () => {
     );
 
     expect(mocks.attemptFallbackRegeneration.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
+    expect(result.suggestionsToUse.map((item: Suggestion) => item.text)).toEqual([
       'wide-angle shallow background blur',
       'selective focus on baby face',
       'crisp foreground focus with soft bokeh',
@@ -246,7 +219,7 @@ describe('SuggestionProcessingService regression', () => {
     const result = await service.processSuggestions(buildProcessParams());
 
     expect(mocks.attemptFallbackRegeneration.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
+    expect(result.suggestionsToUse.map((item: Suggestion) => item.text)).toEqual([
       'shallow focus background blur',
     ]);
   });
@@ -254,7 +227,7 @@ describe('SuggestionProcessingService regression', () => {
   it('deduplicates and re-sanitizes merged fallback suggestions', async () => {
     const { service } = createService({
       sanitizeImpl: (suggestions) =>
-        suggestions.filter((item) => item.text !== 'reject me'),
+        suggestions.filter((item: Suggestion) => item.text !== 'reject me'),
       fallbackImpl: async (params) => {
         if (params.sanitizedSuggestions.length === 0) {
           return {
@@ -287,7 +260,7 @@ describe('SuggestionProcessingService regression', () => {
       })
     );
 
-    expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
+    expect(result.suggestionsToUse.map((item: Suggestion) => item.text)).toEqual([
       'wide-angle shallow background blur',
       'selective focus on baby face',
       'crisp foreground focus with soft bokeh',
@@ -344,10 +317,26 @@ describe('SuggestionProcessingService regression', () => {
     );
 
     expect(mocks.attemptFallbackRegeneration).toHaveBeenCalledTimes(3);
-    expect(result.suggestionsToUse.map((item) => item.text)).toEqual([
+    expect(result.suggestionsToUse.map((item: Suggestion) => item.text)).toEqual([
       'wide-angle shallow background blur',
       'crisp foreground focus with soft bokeh',
       'selective rack focus onto foreground subject',
     ]);
+  });
+
+  it('returns empty suggestionsToUse with no static strings when all AI paths fail', async () => {
+    const { service } = createService({
+      sanitizeImpl: () => [],
+      fallbackImpl: async () => ({
+        suggestions: [],
+        usedFallback: false,
+        sourceCount: 0,
+      }),
+    });
+
+    const result = await service.processSuggestions(buildProcessParams());
+
+    expect(result.suggestionsToUse).toEqual([]);
+    expect(result.usedFallback).toBe(false);
   });
 });

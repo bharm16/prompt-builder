@@ -96,4 +96,127 @@ describe('ConstraintGenerationService grammar-aware routing regression', () => {
       expect.arrayContaining([expect.stringContaining('adjective')])
     );
   });
+
+  // --- Short-span category routing regression (prevents highlightIsVeryShort catch-all) ---
+
+  it('routes short lighting.quality spans to adjective mode, not micro', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 1,
+      highlightedText: 'Warm',
+      highlightedCategory: 'lighting.quality',
+      highlightedCategoryConfidence: 0.8,
+    });
+
+    expect(result.mode).toBe('adjective');
+    expect(result.formRequirement).toContain('adjective');
+  });
+
+  it('routes short lighting.colorTemp spans to adjective mode', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 2,
+      highlightedText: 'golden hour',
+      highlightedCategory: 'lighting.colorTemp',
+      highlightedCategoryConfidence: 0.7,
+    });
+
+    expect(result.mode).toBe('adjective');
+  });
+
+  it('routes longer lighting spans to lighting mode', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 5,
+      highlightedText: 'warm golden hour side light',
+      highlightedCategory: 'lighting.source',
+      highlightedCategoryConfidence: 0.85,
+    });
+
+    expect(result.mode).toBe('lighting');
+  });
+
+  it('routes short camera.angle spans to camera mode, not micro', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 2,
+      highlightedText: 'low angle',
+      highlightedCategory: 'camera.angle',
+      highlightedCategoryConfidence: 0.9,
+    });
+
+    expect(result.mode).toBe('camera');
+    expect(result.maxWords).toBeLessThanOrEqual(12);
+  });
+
+  it('raises camera maxWords ceiling for short camera movement spans', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 3,
+      highlightedText: 'slowly zooming in',
+      highlightedCategory: 'camera.movement',
+      highlightedCategoryConfidence: 0.9,
+    });
+
+    expect(result.mode).toBe('camera');
+    expect(result.maxWords).toBeGreaterThanOrEqual(10);
+  });
+
+  // --- Adjective mode maxWords floor regression (prevents hard filter from rejecting AI output) ---
+
+  it('adjective mode gives maxWords >= 5 for 1-word spans', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 1,
+      highlightedText: 'Warm',
+      highlightedCategory: 'lighting.quality',
+      highlightedCategoryConfidence: 0.8,
+    });
+
+    expect(result.mode).toBe('adjective');
+    expect(result.maxWords).toBe(5);
+  });
+
+  it('adjective mode gives maxWords >= 5 for 2-word spans', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 2,
+      highlightedText: 'golden hour',
+      highlightedCategory: 'lighting.colorTemp',
+      highlightedCategoryConfidence: 0.7,
+    });
+
+    expect(result.mode).toBe('adjective');
+    expect(result.maxWords).toBe(5);
+  });
+
+  it('style adjective spans allow maxWords up to 8 for richer style phrasing', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 3,
+      highlightedText: 'vintage film grain',
+      highlightedCategory: 'style.aesthetic',
+      highlightedCategoryConfidence: 0.7,
+    });
+
+    expect(result.mode).toBe('adjective');
+    expect(result.maxWords).toBe(8);
+  });
+
+  it('overrides shot.type focus guidance to require different shot sizes', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 2,
+      highlightedText: 'medium close',
+      highlightedCategory: 'shot.type',
+      highlightedCategoryConfidence: 0.9,
+    });
+
+    const joinedFocus = (result.focusGuidance || []).join(' | ');
+    expect(result.mode).toBe('micro');
+    expect(joinedFocus).toContain('DIFFERENT shot size');
+    expect(joinedFocus).not.toContain('wardrobe');
+  });
+
+  it('routes unknown-category short spans to micro mode as fallback', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 1,
+      highlightedText: 'dashboard',
+      highlightedCategory: null,
+      highlightedCategoryConfidence: null,
+    });
+
+    expect(result.mode).toBe('micro');
+  });
 });

@@ -210,7 +210,10 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
     });
 
     it('injects film grain for cinematic prompts', async () => {
-      const cinematicTerms = ['cinematic', 'film', 'movie'];
+      // NOTE: 'film' is excluded because hasConceptOverlap correctly detects
+      // that "film" (>=4 chars) already exists in the prompt, preventing
+      // redundant "film grain" injection. This is desired behavior.
+      const cinematicTerms = ['cinematic', 'movie'];
 
       await fc.assert(
         fc.asyncProperty(

@@ -80,7 +80,7 @@ export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> =
   camera: (highlightWordCount, slotDescriptor) => createConstraint({
     mode: 'camera',
     minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
-    maxWords: Math.min(12, Math.max(9, highlightWordCount + 3)),
+    maxWords: Math.min(12, Math.max(10, highlightWordCount + 4)),
     maxSentences: 1,
     formRequirement: 'Single movement clause combining camera move, lens, and framing',
     focusGuidance: [
@@ -160,7 +160,7 @@ export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> =
   adjective: (highlightWordCount, slotDescriptor) => createConstraint({
     mode: 'adjective',
     minWords: 1,
-    maxWords: Math.min(6, Math.max(3, highlightWordCount + 2)),
+    maxWords: Math.min(6, Math.max(5, highlightWordCount + 2)),
     maxSentences: 1,
     disallowTerminalPunctuation: true,
     formRequirement: '1-6 word adjective or participial phrase',

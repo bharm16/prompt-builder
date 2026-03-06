@@ -40,6 +40,8 @@ import type {
  */
 export class CleanPromptBuilder {
   private readonly log = logger.child({ service: 'CleanPromptBuilder' });
+  private static readonly BODY_PART_TERMS =
+    /\b(hands?|fingers?|face|arms?|legs?|feet|foot|eyes?|hair|lips?|skin|cheeks?|brow|forehead|chin|palms?|knuckles?|nails?)\b/i;
 
   buildPrompt(params: PromptBuildParams = {}): string {
     return this._buildSpanPrompt({ ...params, mode: params?.isPlaceholder ? 'placeholder' : 'rewrite' });
@@ -272,6 +274,8 @@ export class CleanPromptBuilder {
       ctx.spanAnchors || ctx.nearbySpanHints
         ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
         : '';
+    const guidanceText = this._resolveGuidanceText(ctx);
+    const focusGuidanceText = this._resolveFocusGuidanceText(ctx);
     const outputLine = useWrapper
       ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]}`
       : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]`;
@@ -288,8 +292,8 @@ export class CleanPromptBuilder {
       '3. Each option should create a different visual effect',
       '4. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Vary angle, lens, movement, or lighting (not just synonyms).',
-      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
-      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      guidanceText ? `GUIDANCE: ${guidanceText}` : '',
+      focusGuidanceText ? `FOCUS: ${focusGuidanceText}` : '',
       spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
@@ -338,6 +342,8 @@ export class CleanPromptBuilder {
       ctx.spanAnchors || ctx.nearbySpanHints
         ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
         : '';
+    const guidanceText = this._resolveGuidanceText(ctx);
+    const focusGuidanceText = this._resolveFocusGuidanceText(ctx);
     const outputLine = useWrapper
       ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]}`
       : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`;
@@ -355,8 +361,8 @@ export class CleanPromptBuilder {
       '4. Think: what OTHER thing could fill this role?',
       '5. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Prefer role-level changes that alter the visual outcome, not minor adjective swaps.',
-      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
-      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      guidanceText ? `GUIDANCE: ${guidanceText}` : '',
+      focusGuidanceText ? `FOCUS: ${focusGuidanceText}` : '',
       spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
@@ -403,6 +409,8 @@ export class CleanPromptBuilder {
       ctx.spanAnchors || ctx.nearbySpanHints
         ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
         : '';
+    const guidanceText = this._resolveGuidanceText(ctx);
+    const focusGuidanceText = this._resolveFocusGuidanceText(ctx);
     const outputLine = useWrapper
       ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]}`
       : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]`;
@@ -420,8 +428,8 @@ export class CleanPromptBuilder {
       '4. Return ONLY the replacement phrase (2-50 words)',
       '5. Return ONLY the action verb/phrase. Do NOT repeat the object that follows the highlighted text in the surrounding context.',
       'DIVERSITY: Vary the physical behavior or staging, not just intensity.',
-      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
-      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      guidanceText ? `GUIDANCE: ${guidanceText}` : '',
+      focusGuidanceText ? `FOCUS: ${focusGuidanceText}` : '',
       spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
@@ -613,6 +621,57 @@ export class CleanPromptBuilder {
       return 'orthogonal';
     }
     return 'visual';
+  }
+
+  private _resolveGuidanceText(ctx: SharedPromptContext): string {
+    const category = (ctx.highlightedCategory || '').toLowerCase();
+    if (this._isShotTypeCategory(category)) {
+      return 'This describes shot framing. Suggest DIFFERENT shot sizes or framing alternatives (ECU, CU, MCU, MS, MWS, WS, EWS, OTS, bird\'s-eye, worm\'s-eye). Do NOT keep the same shot size and add modifiers.';
+    }
+
+    if (this._isBodyPartAppearanceCategory(category, ctx.highlightedText)) {
+      return 'This describes a body part. Suggest DIFFERENT body parts or fundamentally different physical states of the same body part that read clearly on camera.';
+    }
+
+    return ctx.guidance;
+  }
+
+  private _resolveFocusGuidanceText(ctx: SharedPromptContext): string {
+    const category = (ctx.highlightedCategory || '').toLowerCase();
+    const focusItems = (ctx.focusGuidance || '')
+      .split('|')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (this._isShotTypeCategory(category)) {
+      const filtered = focusItems.filter((item) => !/\b(wardrobe|era|material)\b/i.test(item));
+      return [
+        'Suggest a DIFFERENT shot size or framing, not the current shot type with added lens or movement details.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (this._isBodyPartAppearanceCategory(category, ctx.highlightedText)) {
+      const filtered = focusItems.filter(
+        (item) =>
+          !/ROLE-LEVEL DIVERSITY|different species|different occupation|archetype/i.test(item)
+      );
+      return [
+        'Suggest a DIFFERENT body part, a different physical condition, or a different object the subject could interact with.',
+        'Do NOT vary only adjectives (plump/soft/rounded are synonym swaps).',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    return ctx.focusGuidance || '';
+  }
+
+  private _isShotTypeCategory(category: string): boolean {
+    return category === 'shot.type' || category === 'shot.framing';
+  }
+
+  private _isBodyPartAppearanceCategory(category: string, highlightedText: string): boolean {
+    return category === 'subject.appearance' && CleanPromptBuilder.BODY_PART_TERMS.test(highlightedText);
   }
 
   private _trim(text: string, length: number, fromEnd = false): string {

@@ -41,8 +41,8 @@ describe('VideoPromptService orchestrator', () => {
 
     const result = await service.optimizeForModel('A model-specific prompt');
 
-    expect(getMock).toHaveBeenCalledWith('kling-26');
-    expect(result.metadata.modelId).toBe('kling-26');
+    expect(getMock).toHaveBeenCalledWith('kling-2.1');
+    expect(result.metadata.modelId).toBe('kling-2.1');
   });
 
   it('returns original prompt with detected model when no strategy exists', async () => {

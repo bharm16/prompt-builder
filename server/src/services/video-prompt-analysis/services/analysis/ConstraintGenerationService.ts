@@ -43,18 +43,16 @@ export class ConstraintGenerationService {
       : '';
     const categorySource = trustedCategory || (phraseRole || '').toLowerCase();
 
-    // Handle forced modes
-    if (forceMode) {
-      return this._getConstraintByMode(forceMode, highlightWordCountSafe, slotDescriptor);
-    }
+    const baseConstraints = forceMode
+      ? this._getConstraintByMode(forceMode, highlightWordCountSafe, slotDescriptor)
+      : this._autoSelectConstraint(
+          categorySource,
+          highlightWordCountSafe,
+          highlightIsSentence,
+          slotDescriptor
+        );
 
-    // Auto-detect appropriate constraint mode
-    return this._autoSelectConstraint(
-      categorySource,
-      highlightWordCountSafe,
-      highlightIsSentence,
-      slotDescriptor
-    );
+    return this._applyCategorySpecificOverrides(baseConstraints, trustedCategory, categorySource);
   }
 
   /**
@@ -115,8 +113,9 @@ export class ConstraintGenerationService {
     const isAudio = categorySource.includes('audio') || categorySource.includes('score');
 
     // Grammar-aware routing: action/movement → verb mode, short style → adjective mode
+    // Guard: "camera movement" / "camera.movement" is a camera concept, not an action
     const isAction = categorySource.includes('action') ||
-                     categorySource.includes('movement') ||
+                     (!isCamera && categorySource.includes('movement')) ||
                      categorySource.includes('gesture');
     if (isAction) {
       return CONSTRAINT_MODES.verb(highlightWordCount, slotDescriptor);
@@ -126,12 +125,17 @@ export class ConstraintGenerationService {
       return CONSTRAINT_MODES.adjective(highlightWordCount, slotDescriptor);
     }
 
-    // Apply category-based rules
-    if (isSubject || highlightIsVeryShort) {
+    // Apply category-based rules — subject always gets noun-phrase mode
+    if (isSubject) {
       return CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
     }
 
+    // Short lighting spans (1-3 words like "Warm", "golden hour") need adjective mode;
+    // the full lighting mode expects 6-14 word clauses
     if (isLighting) {
+      if (highlightIsVeryShort) {
+        return CONSTRAINT_MODES.adjective(highlightWordCount, slotDescriptor);
+      }
       return CONSTRAINT_MODES.lighting(highlightWordCount, slotDescriptor);
     }
 
@@ -151,11 +155,60 @@ export class ConstraintGenerationService {
       return CONSTRAINT_MODES.style(highlightWordCount, slotDescriptor);
     }
 
+    // Fallback: unknown-category short spans get noun-phrase mode
+    if (highlightIsVeryShort) {
+      return CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
+    }
+
     // Default rules based on length
     if (!highlightIsSentence && highlightWordCount <= CONSTRAINT_THRESHOLDS.PHRASE_MAX_WORDS) {
       return CONSTRAINT_MODES.phrase(highlightWordCount, slotDescriptor);
     }
 
     return CONSTRAINT_MODES.sentence(highlightWordCount, slotDescriptor);
+  }
+
+  private _applyCategorySpecificOverrides(
+    constraints: ConstraintConfig,
+    trustedCategory: string,
+    categorySource: string
+  ): ConstraintConfig {
+    let updatedConstraints = { ...constraints };
+
+    // Keep short style spans in adjective mode, but allow richer style phrases.
+    if (updatedConstraints.mode === 'adjective' && trustedCategory.startsWith('style.')) {
+      updatedConstraints = {
+        ...updatedConstraints,
+        maxWords: Math.max(updatedConstraints.maxWords, 8),
+        formRequirement: '1-8 word adjective or participial phrase',
+      };
+    }
+
+    // Shot type/framing needs explicit alternatives, not additive embellishments.
+    if (this._isShotTypeCategory(trustedCategory, categorySource)) {
+      updatedConstraints = {
+        ...updatedConstraints,
+        formRequirement:
+          'Shot-size or framing phrase that REPLACES the current shot type (not additive lens/movement details)',
+        focusGuidance: [
+          'Suggest a DIFFERENT shot size or framing (ECU, CU, MCU, MS, MWS, WS, EWS, OTS, bird\'s-eye, worm\'s-eye)',
+          'Do NOT keep the same shot type and add lens, focus, or camera movement modifiers',
+        ],
+        extraRequirements: [
+          'Change the shot size or framing itself',
+          'Do not produce additive "same shot + modifier" phrasing',
+        ],
+      };
+    }
+
+    return updatedConstraints;
+  }
+
+  private _isShotTypeCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      trustedCategory === 'shot.type' ||
+      trustedCategory === 'shot.framing' ||
+      categorySource.includes('shot type or framing')
+    );
   }
 }

@@ -32,7 +32,7 @@ describe('ToolSidebar simple components', () => {
       const button = screen.getByRole('button', { name: 'Sessions' });
       expect(button.getAttribute('aria-pressed')).toBeNull();
       const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
+      expect(icon.getAttribute('class')).toContain('h-5 w-5');
       expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
     });
 
@@ -71,8 +71,8 @@ describe('ToolSidebar simple components', () => {
       const button = screen.getByRole('button', { name: 'Create' });
       expect(button).toHaveAttribute('aria-pressed', 'false');
       const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
-      expect(button.getAttribute('class')).toContain('text-[#555B6E]');
+      expect(icon.getAttribute('class')).toContain('h-5 w-5');
+      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
     });
 
     it('shows the styles placeholder message', () => {
@@ -100,7 +100,7 @@ describe('ToolSidebar simple components', () => {
       const button = screen.getByRole('button', { name: 'Studio' });
       expect(button).toHaveAttribute('aria-pressed', 'true');
       const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
+      expect(icon.getAttribute('class')).toContain('h-5 w-5');
       expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
 
       button.click();

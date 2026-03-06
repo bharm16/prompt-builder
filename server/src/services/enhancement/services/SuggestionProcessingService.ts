@@ -6,15 +6,10 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import {
-  detectDescriptorCategory,
-  getCategoryFallbacks,
-} from '@services/video-concept/config/descriptorCategories';
 import type {
   Suggestion,
   GroupedSuggestions,
   EnhancementResult,
-  DescriptorFallbackResult,
   VideoConstraints,
   CategoryAlignmentResult,
   BrainstormContext,
@@ -111,16 +106,9 @@ export class SuggestionProcessingService {
       sanitizationContext
     );
     const minSuggestionTarget = params.isVideoPrompt ? 3 : 0;
-    const categorySeedResult = this._seedCategoryFallbacks({
-      suggestions: sanitizedSuggestions,
-      highlightedText: params.highlightedText,
-      highlightedCategory: params.highlightedCategory,
-      minSuggestionTarget,
-      sanitizationContext,
-    });
 
     const fallbackParams: FallbackRegenerationParams = {
-      sanitizedSuggestions: categorySeedResult.suggestions,
+      sanitizedSuggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
       ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
@@ -173,8 +161,8 @@ export class SuggestionProcessingService {
       sanitizationContext
     );
     let activeConstraints = fallbackResult.constraints;
-    let usedFallback = categorySeedResult.seededCount > 0 || fallbackResult.usedFallback;
-    let fallbackSourceCount = categorySeedResult.seededCount + fallbackResult.sourceCount;
+    let usedFallback = fallbackResult.usedFallback;
+    let fallbackSourceCount = fallbackResult.sourceCount;
 
     if (minSuggestionTarget > 0 && suggestionsToUse.length < minSuggestionTarget) {
       let topUpAttempts = 0;
@@ -219,22 +207,6 @@ export class SuggestionProcessingService {
       }
     }
 
-    if (suggestionsToUse.length === 0) {
-      const descriptorResult = this.applyDescriptorFallbacks(
-        suggestionsToUse,
-        params.highlightedText,
-        params.fullPrompt
-      );
-      suggestionsToUse = descriptorResult.suggestions;
-      if (descriptorResult.usedFallback) {
-        usedFallback = true;
-      }
-      suggestionsToUse = this.validationService.sanitizeSuggestions(
-        suggestionsToUse,
-        sanitizationContext
-      );
-    }
-
     logger.info('Processing suggestions for categorization', {
       isPlaceholder: params.isPlaceholder,
       hasCategoryField: suggestionsToUse[0]?.category !== undefined,
@@ -251,92 +223,6 @@ export class SuggestionProcessingService {
       usedFallback,
       fallbackSourceCount,
     };
-  }
-
-  /**
-   * Apply descriptor fallbacks if needed
-   */
-  applyDescriptorFallbacks(
-    suggestions: Suggestion[],
-    highlightedText: string,
-    fullPrompt: string
-  ): DescriptorFallbackResult {
-    if (suggestions.length > 0) {
-      return {
-        suggestions,
-        usedFallback: false,
-        isDescriptorPhrase: false,
-      };
-    }
-
-    const descriptorDetection = detectDescriptorCategory(highlightedText) as {
-      category: string | null;
-      taxonomyId?: string | null;
-      confidence: number;
-    };
-    const highlightedWordCount = highlightedText
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean).length;
-    const isDescriptorPhrase =
-      descriptorDetection.confidence >= 0.7 && highlightedWordCount >= 3;
-
-    logger.debug('Descriptor detection', {
-      isDescriptorPhrase,
-      category: descriptorDetection.category,
-      confidence: descriptorDetection.confidence,
-      highlightedWordCount,
-    });
-
-    if (!isDescriptorPhrase || !descriptorDetection.category) {
-      return {
-        suggestions: [],
-        usedFallback: false,
-        isDescriptorPhrase,
-      };
-    }
-
-    const baseDescriptorFallbacks = getCategoryFallbacks(descriptorDetection.category) as Suggestion[];
-    const childSceneDetected = this._isChildScene(fullPrompt);
-    const descriptorFallbacks = childSceneDetected
-      ? baseDescriptorFallbacks.filter(
-          (fallback) => !this._containsAdultOrIncompatibleTerms(fallback.text)
-        )
-      : baseDescriptorFallbacks;
-
-    if (descriptorFallbacks.length > 0) {
-      logger.info('Using descriptor category fallbacks', {
-        category: descriptorDetection.category,
-        count: descriptorFallbacks.length,
-        childSceneDetected,
-      });
-
-      return {
-        suggestions: descriptorFallbacks,
-        usedFallback: true,
-        isDescriptorPhrase,
-        descriptorCategory: descriptorDetection.category,
-      };
-    }
-
-    return {
-      suggestions: [],
-      usedFallback: false,
-      isDescriptorPhrase,
-    };
-  }
-
-  private _isChildScene(fullPrompt: string): boolean {
-    if (typeof fullPrompt !== 'string' || !fullPrompt.trim()) {
-      return false;
-    }
-    return /\b(baby|child|infant|toddler|newborn|kid)\b/i.test(fullPrompt);
-  }
-
-  private _containsAdultOrIncompatibleTerms(text: string): boolean {
-    return /\b(weathered|athletic build|steel wrench|leather journal|graying temples|calloused|broad shoulders|wooden cane|fedora)\b/i.test(
-      text
-    );
   }
 
   /**
@@ -475,74 +361,6 @@ export class SuggestionProcessingService {
     }
 
     return alignmentResult;
-  }
-
-  private _seedCategoryFallbacks({
-    suggestions,
-    highlightedText,
-    highlightedCategory,
-    minSuggestionTarget,
-    sanitizationContext,
-  }: {
-    suggestions: Suggestion[];
-    highlightedText: string;
-    highlightedCategory: string | null;
-    minSuggestionTarget: number;
-    sanitizationContext: ExtendedSanitizationContext;
-  }): { suggestions: Suggestion[]; seededCount: number } {
-    if (!highlightedCategory || minSuggestionTarget <= 0 || suggestions.length >= minSuggestionTarget) {
-      return { suggestions, seededCount: 0 };
-    }
-
-    if (typeof this.categoryAligner.getCategoryFallbacks !== 'function') {
-      return { suggestions, seededCount: 0 };
-    }
-
-    const categoryFallbacks = this.categoryAligner.getCategoryFallbacks(
-      highlightedText,
-      highlightedCategory
-    );
-
-    if (!Array.isArray(categoryFallbacks) || categoryFallbacks.length === 0) {
-      return { suggestions, seededCount: 0 };
-    }
-
-    const sanitizedFallbacks = this.validationService.sanitizeSuggestions(
-      categoryFallbacks,
-      sanitizationContext
-    );
-
-    if (sanitizedFallbacks.length === 0) {
-      return { suggestions, seededCount: 0 };
-    }
-
-    const mergedSuggestions = this._mergeAndResanitizeSuggestions(
-      suggestions,
-      sanitizedFallbacks,
-      sanitizationContext
-    );
-
-    const originalKeys = new Set(
-      suggestions.map((suggestion) => this._normalizeSuggestionText(suggestion.text))
-    );
-    const seededCount = mergedSuggestions.reduce((count, suggestion) => {
-      const key = this._normalizeSuggestionText(suggestion.text);
-      return originalKeys.has(key) ? count : count + 1;
-    }, 0);
-
-    if (seededCount > 0) {
-      logger.info('Seeded deterministic category fallbacks before regeneration', {
-        highlightedCategory,
-        seededCount,
-        originalCount: suggestions.length,
-        mergedCount: mergedSuggestions.length,
-      });
-    }
-
-    return {
-      suggestions: mergedSuggestions,
-      seededCount,
-    };
   }
 
   private _buildSanitizationContext(

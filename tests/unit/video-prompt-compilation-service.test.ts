@@ -74,9 +74,9 @@ describe('VideoPromptCompilationService', () => {
 
     expect(videoPromptService.optimizeForModel).toHaveBeenCalledWith(
       'generic optimized prompt',
-      'kling-26'
+      'kling-2.1'
     );
     expect(result.prompt).toBe('kling-compiled prompt');
-    expect(result.metadata?.compiledFor).toBe('kling-26');
+    expect(result.metadata?.compiledFor).toBe('kling-2.1');
   });
 });

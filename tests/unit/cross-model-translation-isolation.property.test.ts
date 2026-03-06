@@ -23,9 +23,9 @@ import type { PromptOptimizationResult } from '@services/video-prompt-analysis/s
 const EXPECTED_MODEL_IDS = [
   'runway-gen45',
   'luma-ray3',
-  'kling-26',
+  'kling-2.1',
   'sora-2',
-  'veo-4',
+  'veo-3',
   'wan-2.2',
 ] as const;
 type ExpectedModelId = typeof EXPECTED_MODEL_IDS[number];

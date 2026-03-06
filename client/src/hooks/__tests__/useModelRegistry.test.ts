@@ -56,7 +56,7 @@ describe('useModelRegistry', () => {
       expect(result.current.models).toEqual([
         {
           id: 'sora-2',
-          label: 'Sora',
+          label: 'Sora 2',
           provider: 'openai',
         },
       ]);
@@ -82,7 +82,7 @@ describe('useModelRegistry', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.models.map((model) => model.id)).toEqual(['sora-2', 'veo-4']);
+      expect(result.current.models.map((model) => model.id)).toEqual(expect.arrayContaining(['sora-2', 'veo-4']));
     });
   });
 

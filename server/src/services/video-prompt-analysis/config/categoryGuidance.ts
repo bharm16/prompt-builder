@@ -95,7 +95,7 @@ export const CATEGORY_GUIDANCE: Record<GuidanceCategory, string[]> = {
     'Genre aesthetic: film noir, neo-noir, western, sci-fi, documentary verité',
     'Cinematographer reference: Roger Deakins, Emmanuel Lubezki, Hoyte van Hoytema',
     'Post-processing: color grading approach, grain structure, sharpness',
-    'Movement style: handheld/Steadicam, locked-off tripod, gimbal smooth',
+    'Visual treatment: anamorphic lens flare, diffusion filter, in-camera prism effect, tilt-shift miniature',
   ],
 
   /**

@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
+import { validateAgainstVideoTemplate } from '../config/CategoryConstraints.js';
 import { getParentCategory } from '@shared/taxonomy';
 import { getAllExampleTexts } from '../config/EnhancementExamples';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
@@ -362,8 +362,6 @@ export class SuggestionValidationService {
       highlightLength: highlightedText.length,
     });
 
-    const subcategory = detectSubcategory(highlightedText, category);
-
     const validated = suggestions.filter(suggestion => {
       // Basic validation
       if (!suggestion.text || typeof suggestion.text !== 'string') return false;
@@ -375,8 +373,8 @@ export class SuggestionValidationService {
         }
       }
 
-      // Validate against video template requirements
-      return validateAgainstVideoTemplate(suggestion, category, subcategory);
+      // Validate against video template requirements using taxonomy ID directly
+      return validateAgainstVideoTemplate(suggestion, category);
     });
     
     this.log.info('Suggestions validated', {

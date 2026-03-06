@@ -31,6 +31,11 @@ const MAX_WAIT_MS = 6 * 60 * 1000;
 const COMPILE_TIMEOUT_MS = 4000;
 
 const stripVideoPreviewPrompt = (prompt: string): string => {
+  // Strip content after "**Technical specs**" section
+  const technicalSpecsIndex = prompt.indexOf('**Technical specs**');
+  if (technicalSpecsIndex !== -1) {
+    return prompt.substring(0, technicalSpecsIndex).trim();
+  }
   return prompt.trim();
 };
 

@@ -56,17 +56,6 @@ function createService(validationOverrides: Partial<ValidationService> = {}) {
 
 describe('enhancement refactor regressions', () => {
   describe('SuggestionProcessingService moved methods', () => {
-    it('applyDescriptorFallbacks passes through non-empty suggestions unchanged', () => {
-      const { service } = createService();
-      const suggestions: Suggestion[] = [{ text: 'keep me', category: 'style.aesthetic' }];
-
-      const result = service.applyDescriptorFallbacks(suggestions, 'ignored', 'ignored');
-
-      expect(result.suggestions).toEqual(suggestions);
-      expect(result.usedFallback).toBe(false);
-      expect(result.isDescriptorPhrase).toBe(false);
-    });
-
     it('groupSuggestions delegates to validation grouping for placeholder suggestions', () => {
       const grouped: GroupedSuggestions[] = [
         {

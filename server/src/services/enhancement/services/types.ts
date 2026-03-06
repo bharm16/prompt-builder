@@ -311,16 +311,6 @@ export interface DescriptorDetection {
 }
 
 /**
- * Descriptor fallback result
- */
-export interface DescriptorFallbackResult {
-  suggestions: Suggestion[];
-  usedFallback: boolean;
-  isDescriptorPhrase: boolean;
-  descriptorCategory?: string;
-}
-
-/**
  * Grouped suggestions by category
  */
 export interface GroupedSuggestions {
@@ -462,7 +452,6 @@ export interface CategoryAligner {
     suggestions: Suggestion[],
     params: ValidationParams
   ): CategoryAlignmentResult;
-  getCategoryFallbacks?(highlightedText: string, category?: string): Suggestion[];
 }
 
 /**
