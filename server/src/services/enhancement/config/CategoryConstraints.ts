@@ -121,6 +121,34 @@ interface Suggestion {
   [key: string]: unknown;
 }
 
+const CAMERA_ANGLE_PATTERN =
+  /\b(eye[-\s]?level|low[-\s]?angle|high[-\s]?angle|overhead|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt|profile|point[-\s]?of[-\s]?view|pov)\b/i;
+const CAMERA_MOVEMENT_PATTERN =
+  /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|push[-\s]?in|pull[-\s]?out|arc)\b/i;
+const CAMERA_FOCUS_PATTERN =
+  /\b(focus|depth of field|dof|bokeh|defocus|blur|shallow|rack focus|selective focus)\b/i;
+const CAMERA_LENS_PATTERN =
+  /\b(\d+mm|lens|prime|telephoto|wide[-\s]?angle|anamorphic|macro|aperture|f\/\d(?:\.\d+)?|iris)\b/i;
+const SHOT_PATTERN =
+  /\b(shot|close[-\s]?up|medium shot|wide shot|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|high[-\s]?angle|low[-\s]?angle|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt)\b/i;
+const LIGHTING_QUALITY_PATTERN =
+  /\b(light|lighting|shadow|glow|lumin(?:ous|ance)|radian(?:t|ce)|illuminat|warmth|brightness|dim(?:ness)?|diffus(?:e|ed|ion)|ambient|backlit|rim[-\s]?lit|high[-\s]?key|low[-\s]?key|sunlit|moonlit)\b/i;
+const LIGHTING_TIME_PATTERN =
+  /\b(dawn|sunrise|morning|midday|noon|afternoon|golden hour|sunset|dusk|twilight|blue hour|night|moonlit|daylight|daytime|evening)\b/i;
+const EXTERNAL_LOCATION_PATTERN =
+  /\b(park|street|forest|beach|shoreline|lake|meadow|city|cityscape|alley|playground|vineyard|field|trail|road|suburban|mountain|desert|plaza|garden|shore|coast|cliff|waterfront|courtyard|market)\b/i;
+const ENVIRONMENT_CONTEXT_PATTERN =
+  /\b(window|windshield|glass|dashboard|cabin|cockpit|seat|upholstery|interior|rearview|mirror|condensation|reflection|dust|raindrops|fogged|haze|air|smoke|shadow|sunbeam|glare|trim|console)\b/i;
+const STYLE_PATTERN =
+  /\b(style|aesthetic|look|tone|palette|grade|grading|grain|noir|retro|vintage|kodachrome|8mm|16mm|35mm|cinematic|painterly|watercolor|impressionist|sepia|chiaroscuro|hyperreal|surreal|cyberpunk|cartoon|animation|pastel|monochrome|technicolor|dream(?:like)?|nostalg(?:ia|ic)|realism)\b/i;
+const STYLE_FILM_PATTERN =
+  /\b(film|stock|super 8|8mm|16mm|35mm|kodak|fuji|agfa|ilford|tri-x|portra|ektachrome|velvia|digital)\b/i;
+const ACTION_PATTERN = /\b\w+(ing|s)\b/i;
+
+function normalizeCategory(category: string): string {
+  return category.toLowerCase().replace(/[_-]/g, '');
+}
+
 /**
  * Validate suggestion against video template requirements.
  * Uses the full taxonomy ID from span labeling as the single source of truth
@@ -130,11 +158,48 @@ export function validateAgainstVideoTemplate(
   suggestion: Suggestion,
   category: string
 ): boolean {
+  const normalizedCategory = normalizeCategory(category);
   if (category === TAXONOMY.TECHNICAL.attributes.FPS) {
     return /\d+fps|frame rate/i.test(suggestion.text);
   }
   if (category === TAXONOMY.TECHNICAL.attributes.ASPECT_RATIO) {
     return /\d+:\d+|aspect ratio/i.test(suggestion.text);
+  }
+  if (normalizedCategory === 'camera.angle') {
+    return CAMERA_ANGLE_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'camera.movement') {
+    return CAMERA_MOVEMENT_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'camera.focus') {
+    return CAMERA_FOCUS_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'camera.lens') {
+    return CAMERA_LENS_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'shot.type' || normalizedCategory === 'shot.framing') {
+    return SHOT_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'lighting.quality') {
+    return LIGHTING_QUALITY_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'lighting.timeofday') {
+    return LIGHTING_TIME_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'environment.location') {
+    return EXTERNAL_LOCATION_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'environment.context') {
+    return ENVIRONMENT_CONTEXT_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'style.aesthetic') {
+    return STYLE_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory === 'style.filmstock') {
+    return STYLE_FILM_PATTERN.test(suggestion.text);
+  }
+  if (normalizedCategory.startsWith('action.')) {
+    return ACTION_PATTERN.test(suggestion.text);
   }
   return true;
 }

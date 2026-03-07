@@ -624,9 +624,45 @@ export class CleanPromptBuilder {
   }
 
   private _resolveGuidanceText(ctx: SharedPromptContext): string {
-    const category = (ctx.highlightedCategory || '').toLowerCase();
+    const category = this._normalizeCategoryKey(ctx.highlightedCategory || '');
     if (this._isShotTypeCategory(category)) {
       return 'This describes shot framing. Suggest DIFFERENT shot sizes or framing alternatives (ECU, CU, MCU, MS, MWS, WS, EWS, OTS, bird\'s-eye, worm\'s-eye). Do NOT keep the same shot size and add modifiers.';
+    }
+
+    if (category === 'camera.angle') {
+      return 'This describes camera angle. Suggest alternative viewpoints only (eye-level, low-angle, high-angle, overhead, Dutch tilt). Do NOT add movement, lens, focus, or shot-size details.';
+    }
+
+    if (category === 'camera.movement') {
+      return 'This describes camera movement. Suggest a single camera move or support style only (dolly, pan, tilt, crane, handheld, static). Do NOT add lens, framing, or focus details.';
+    }
+
+    if (category === 'camera.focus') {
+      return 'This describes focus treatment. Suggest focus, blur, bokeh, or depth-of-field alternatives only. Do NOT add angle, movement, lens, or shot-size details.';
+    }
+
+    if (category === 'camera.lens') {
+      return 'This describes lens choice. Suggest focal length, lens family, or aperture alternatives only. Do NOT add movement, framing, focus pulls, or lighting details.';
+    }
+
+    if (category === 'lighting.quality') {
+      return 'This describes light quality. Suggest different qualities (soft, hard, diffused, low-key, hazy) without changing the light source, time of day, or camera setup.';
+    }
+
+    if (category === 'lighting.timeofday') {
+      return 'This describes time of day. Suggest a different time period or daylight condition only (dawn, noon, dusk, twilight, night). Do NOT describe light direction, flare, or camera effects.';
+    }
+
+    if (category === 'environment.location') {
+      return 'This describes the outside location. Suggest a different external setting with atmosphere or time-of-day detail. Do NOT replace it with an interior prop or surface.';
+    }
+
+    if (category === 'environment.context') {
+      return 'This describes in-scene environmental context. Suggest surfaces, atmosphere, or spatial context already in the scene. Do NOT swap to a new external location.';
+    }
+
+    if (category === 'style.aesthetic') {
+      return 'This describes visual treatment. Suggest different aesthetic looks, color grades, or post-processing styles only. Do NOT introduce camera movement, shot types, or lighting direction.';
     }
 
     if (this._isBodyPartAppearanceCategory(category, ctx.highlightedText)) {
@@ -637,7 +673,7 @@ export class CleanPromptBuilder {
   }
 
   private _resolveFocusGuidanceText(ctx: SharedPromptContext): string {
-    const category = (ctx.highlightedCategory || '').toLowerCase();
+    const category = this._normalizeCategoryKey(ctx.highlightedCategory || '');
     const focusItems = (ctx.focusGuidance || '')
       .split('|')
       .map((item) => item.trim())
@@ -647,6 +683,114 @@ export class CleanPromptBuilder {
       const filtered = focusItems.filter((item) => !/\b(wardrobe|era|material)\b/i.test(item));
       return [
         'Suggest a DIFFERENT shot size or framing, not the current shot type with added lens or movement details.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'camera.angle') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(lens|focal|mm|dolly|track|tracking|pan|tilt|crane|zoom|handheld|static|framing|shot|focus|bokeh|lighting)\b/i
+      );
+      return [
+        'Suggest only angle or viewpoint changes.',
+        'Do not include movement, lens, framing, focus, or lighting details.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'camera.movement') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(lens|focal|mm|framing|shot|focus|bokeh|depth of field|lighting)\b/i
+      );
+      return [
+        'Use a camera move or support-style phrase only.',
+        'Do not add lens, focus, or framing details.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'camera.focus') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(lens|focal|mm|dolly|track|tracking|pan|tilt|crane|zoom|handheld|static|framing|shot|lighting)\b/i
+      );
+      return [
+        'Keep the replacement focused on blur, bokeh, rack focus, or depth of field.',
+        'Do not introduce movement, lens choice, or shot-size changes.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'camera.lens') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(dolly|track|tracking|pan|tilt|crane|zoom|handheld|static|framing|shot|focus|bokeh|lighting)\b/i
+      );
+      return [
+        'Keep the replacement to focal length, lens family, or aperture language only.',
+        'Do not introduce movement, framing, or focus-pull instructions.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'lighting.quality') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(window|backlight|side[-\s]?light|rim light|key light|from the|left|right|lens|camera|shot|framing)\b/i
+      );
+      return [
+        'Focus on light softness, contrast, diffusion, or warmth.',
+        'Do not turn the slot into a source-direction clause.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'lighting.timeofday') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(window|backlight|side[-\s]?light|rim light|key light|from the|left|right|lens|camera|shot|framing|flare|halation)\b/i
+      );
+      return [
+        'Suggest only a different time period or daylight condition.',
+        'Do not turn the slot into a lighting-direction or post-processing phrase.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'environment.location') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(window|dashboard|glass|seat|interior|surface|camera|lens|shot)\b/i
+      );
+      return [
+        'Anchor the replacement in an external place with atmosphere.',
+        'Avoid interior objects or camera-language leakage.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'environment.context') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(forest|beach|street|park|city|meadow|shore|sunset|sunrise|golden hour|camera|lens|shot)\b/i
+      );
+      return [
+        'Keep the replacement inside the current scene as an object, surface, or atmospheric context beat.',
+        'Do not swap to a new destination or outside landscape.',
+        ...filtered,
+      ].join(' | ');
+    }
+
+    if (category === 'style.aesthetic') {
+      const filtered = this._filterFocusItems(
+        focusItems,
+        /\b(dolly|track|tracking|pan|tilt|crane|zoom|handheld|static|lens|mm|shot|framing|left|right|window|backlight|side[-\s]?light)\b/i
+      );
+      return [
+        'Keep the output scoped to visual treatment, color, medium, or post-processing.',
+        'Do not leak into camera setup or lighting direction.',
         ...filtered,
       ].join(' | ');
     }
@@ -667,11 +811,19 @@ export class CleanPromptBuilder {
   }
 
   private _isShotTypeCategory(category: string): boolean {
-    return category === 'shot.type' || category === 'shot.framing';
+    return this._normalizeCategoryKey(category) === 'shot.type' || this._normalizeCategoryKey(category) === 'shot.framing';
   }
 
   private _isBodyPartAppearanceCategory(category: string, highlightedText: string): boolean {
-    return category === 'subject.appearance' && CleanPromptBuilder.BODY_PART_TERMS.test(highlightedText);
+    return this._normalizeCategoryKey(category) === 'subject.appearance' && CleanPromptBuilder.BODY_PART_TERMS.test(highlightedText);
+  }
+
+  private _normalizeCategoryKey(category: string): string {
+    return category.toLowerCase().replace(/[_-]/g, '');
+  }
+
+  private _filterFocusItems(items: string[], pattern: RegExp): string[] {
+    return items.filter((item) => !pattern.test(item));
   }
 
   private _trim(text: string, length: number, fromEnd = false): string {

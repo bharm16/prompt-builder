@@ -225,4 +225,49 @@ describe('EnhancementService', () => {
       })
     );
   });
+
+  it('fails closed and regenerates when category-invalid suggestions are fully sanitized away', async () => {
+    const { service, validationService } = createService();
+
+    mockEnforceJSON
+      .mockResolvedValueOnce([
+        { text: 'amber backlight casting soft halos', category: 'lighting.timeOfDay' },
+        { text: 'warm backlight with flare', category: 'lighting.timeOfDay' },
+      ])
+      .mockResolvedValueOnce([
+        { text: 'misty blue hour', category: 'lighting.timeOfDay' },
+        { text: 'late afternoon haze', category: 'lighting.timeOfDay' },
+        { text: 'cool dusk glow', category: 'lighting.timeOfDay' },
+      ]);
+
+    validationService.sanitizeSuggestions = vi.fn(
+      (suggestions: Suggestion[] | string[], context: { highlightedCategory?: string | null }) => {
+        const items = suggestions as Suggestion[];
+        if (context.highlightedCategory === 'lighting.timeOfDay') {
+          return items.filter((item) => /\b(blue hour|afternoon|dusk)\b/i.test(item.text));
+        }
+        return items;
+      }
+    );
+
+    const result = await service.getEnhancementSuggestions({
+      highlightedText: 'golden hour sunlight',
+      contextBefore: 'Warm, ',
+      contextAfter: ' streams through the car windows.',
+      fullPrompt: 'Warm, golden hour sunlight streams through the car windows.',
+      originalUserPrompt: 'golden hour toddler in car',
+      highlightedCategory: 'lighting.timeOfDay',
+      highlightedCategoryConfidence: 0.95,
+      allLabeledSpans: [],
+      nearbySpans: [],
+      editHistory: [],
+    });
+
+    expect(mockEnforceJSON.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect((result.suggestions as Suggestion[]).map((item) => item.text)).toEqual([
+      'misty blue hour',
+      'late afternoon haze',
+      'cool dusk glow',
+    ]);
+  });
 });

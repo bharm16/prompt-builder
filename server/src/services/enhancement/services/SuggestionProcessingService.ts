@@ -66,6 +66,8 @@ type ExtendedSanitizationContext = Parameters<ValidationService['sanitizeSuggest
   nearbySpanHints?: string;
 };
 
+const DEPRIORITIZED_MARKER = '__deprioritized';
+
 /**
  * Service for processing enhancement suggestions
  */
@@ -105,10 +107,12 @@ export class SuggestionProcessingService {
       alignmentResult.suggestions,
       sanitizationContext
     );
+    const primarySanitizedSuggestions =
+      this._extractPrimarySuggestions(sanitizedSuggestions);
     const minSuggestionTarget = params.isVideoPrompt ? 3 : 0;
 
     const fallbackParams: FallbackRegenerationParams = {
-      sanitizedSuggestions,
+      sanitizedSuggestions: primarySanitizedSuggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
       ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
@@ -160,6 +164,7 @@ export class SuggestionProcessingService {
       fallbackResult.suggestions,
       sanitizationContext
     );
+    suggestionsToUse = this._extractPrimarySuggestions(suggestionsToUse);
     let activeConstraints = fallbackResult.constraints;
     let usedFallback = fallbackResult.usedFallback;
     let fallbackSourceCount = fallbackResult.sourceCount;
@@ -211,7 +216,7 @@ export class SuggestionProcessingService {
       isPlaceholder: params.isPlaceholder,
       hasCategoryField: suggestionsToUse[0]?.category !== undefined,
       totalSuggestions: suggestionsToUse.length,
-      sanitizedCount: sanitizedSuggestions.length,
+      sanitizedCount: primarySanitizedSuggestions.length,
       appliedConstraintMode: activeConstraints?.mode || null,
       usedFallback,
     });
@@ -393,7 +398,9 @@ export class SuggestionProcessingService {
   ): Suggestion[] {
     const merged = [...baseSuggestions, ...additionalSuggestions];
     const deduped = this._dedupeSuggestions(merged);
-    return this.validationService.sanitizeSuggestions(deduped, context);
+    return this._extractPrimarySuggestions(
+      this.validationService.sanitizeSuggestions(deduped, context)
+    );
   }
 
   private _dedupeSuggestions(suggestions: Suggestion[]): Suggestion[] {
@@ -414,5 +421,15 @@ export class SuggestionProcessingService {
 
   private _normalizeSuggestionText(text: string): string {
     return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  private _extractPrimarySuggestions(suggestions: Suggestion[]): Suggestion[] {
+    return suggestions
+      .filter((suggestion) => !suggestion[DEPRIORITIZED_MARKER])
+      .map((suggestion) => {
+        const cleanedSuggestion = { ...suggestion };
+        delete cleanedSuggestion[DEPRIORITIZED_MARKER];
+        return cleanedSuggestion;
+      });
   }
 }

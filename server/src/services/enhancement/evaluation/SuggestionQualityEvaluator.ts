@@ -9,21 +9,26 @@ export interface SuggestionTestCase {
   allowedCategories?: string[];
   forbiddenOutputs?: string[];
   expectedQualities?: Partial<Record<SuggestionQualityDimension, { min?: number; max?: number }>>;
+  contextBefore?: string;
+  contextAfter?: string;
+  spanAnchors?: string;
+  nearbySpanHints?: string;
+  lockedSpanCategories?: string[];
 }
 
 export type SuggestionQualityDimension =
-  | 'categoryCoherence'
+  | 'contextualFit'
+  | 'categoryAlignment'
   | 'diversity'
-  | 'nonRepetition'
-  | 'syntacticValidity'
-  | 'lengthAppropriateness';
+  | 'videoSpecificity'
+  | 'sceneCoherence';
 
 export interface SuggestionQualityScores {
-  categoryCoherence: number;
+  contextualFit: number;
+  categoryAlignment: number;
   diversity: number;
-  nonRepetition: number;
-  syntacticValidity: number;
-  lengthAppropriateness: number;
+  videoSpecificity: number;
+  sceneCoherence: number;
 }
 
 export interface SuggestionQualityResult {
@@ -56,109 +61,151 @@ function jaccardSimilarity(a: string, b: string): number {
   return union.size === 0 ? 0 : intersection.size / union.size;
 }
 
-function lengthAppropriatenessScore(original: string, suggestion: string): number {
-  const ratio = suggestion.length / Math.max(1, original.length);
-  if (ratio >= 0.5 && ratio <= 2.0) return 1.0;
-  if (ratio >= 0.3 && ratio <= 3.0) return 0.7;
-  return 0.3;
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function toFiveScale(score: number): number {
+  if (score >= 0.75) return 5;
+  if (score >= 0.6) return 4;
+  if (score >= 0.45) return 3;
+  if (score >= 0.25) return 2;
+  return 1;
 }
 
 export class SuggestionQualityEvaluator {
+  private readonly visibleConcreteTerms =
+    /\b(face|hands?|eyes?|skin|freckles|curls|cheeks?|hair|toddler|child|kid|wheel|window|dashboard|glass|trees?|park|street|forest|beach|shadow|glow|light|grain|bokeh|blur|close[-\s]?up|wide shot|low[-\s]?angle|high[-\s]?angle|overhead|viewpoint|perspective|dolly|pan|tilt|crane|lens|mm|film|filter|monochrome|watercolor|diffusion|fog|dust|smoke|reflection|sunset|sunrise|dawn|dusk|twilight|blue hour|afternoon|morning|night|rain|snow|leather|metal|wood|plastic)\b/i;
+  private readonly abstractTerms =
+    /\b(memory|recollection|sentimentality|mood|feeling|emotion|essence|spirit|timelessness|intimacy|wonder|beauty)\b/i;
+
   constructor(
     private readonly validationService: SuggestionValidationService,
     private readonly videoService: VideoPromptService
   ) {}
 
-  private inferParentCategory(suggestion: Suggestion): string | null {
-    if (suggestion.category && typeof suggestion.category === 'string') {
-      return suggestion.category.toLowerCase();
-    }
-    return null;
-  }
-
-  async evaluateCase(testCase: SuggestionTestCase, suggestions: Suggestion[]): Promise<SuggestionQualityResult> {
+  async evaluateCase(
+    testCase: SuggestionTestCase,
+    suggestions: Suggestion[]
+  ): Promise<SuggestionQualityResult> {
     const failures: string[] = [];
+    const validSuggestions = suggestions.filter((suggestion) => typeof suggestion?.text === 'string' && suggestion.text.trim());
+    const texts = validSuggestions.map((suggestion) => suggestion.text.trim());
 
-    const originalText = testCase.span.text;
-    const allowedParents = (testCase.allowedCategories && testCase.allowedCategories.length > 0
-      ? testCase.allowedCategories
-      : [testCase.span.category]
-    ).map((c) => c.toLowerCase());
+    const allowedCategories = (
+      testCase.allowedCategories && testCase.allowedCategories.length > 0
+        ? testCase.allowedCategories
+        : [testCase.span.category]
+    ).map((category) => category.toLowerCase());
 
-    const validSuggestions = suggestions.filter((s) => typeof s?.text === 'string' && s.text.trim());
-    const texts = validSuggestions.map((s) => s.text.trim());
-
-    // Category coherence
-    let coherentCount = 0;
-    for (let i = 0; i < validSuggestions.length; i++) {
-      const parent = this.inferParentCategory(validSuggestions[i]!);
-      if (parent && allowedParents.includes(parent)) coherentCount++;
-    }
-    const categoryCoherence = texts.length > 0 ? coherentCount / texts.length : 0;
-
-    // Diversity (1 - average pairwise similarity)
-    let diversity = 1;
-    if (texts.length >= 2) {
-      let totalSim = 0;
-      let pairs = 0;
-      for (let i = 0; i < texts.length; i++) {
-        for (let j = i + 1; j < texts.length; j++) {
-          totalSim += jaccardSimilarity(texts[i]!, texts[j]!);
-          pairs++;
-        }
-      }
-      const avgSim = pairs > 0 ? totalSim / pairs : 0;
-      diversity = 1 - avgSim;
-    }
-
-    // Non-repetition vs original
-    const nonRepetitionScores = texts.map((t) => 1 - jaccardSimilarity(originalText, t));
-    const nonRepetition =
-      nonRepetitionScores.length > 0
-        ? nonRepetitionScores.reduce((a, b) => a + b, 0) / nonRepetitionScores.length
-        : 0;
-
-    // Syntactic validity = survives sanitization
     const isVideoPrompt = this.videoService.isVideoPrompt(testCase.prompt);
-    const sanitized = this.validationService.sanitizeSuggestions(validSuggestions, {
-      highlightedText: originalText,
+    const sanitizationContext: Record<string, unknown> = {
+      highlightedText: testCase.span.text,
+      highlightedCategory: testCase.span.category,
       isPlaceholder: false,
       isVideoPrompt,
-    });
-    const syntacticValidity = texts.length > 0 ? sanitized.length / texts.length : 0;
+    };
+    if (testCase.contextBefore !== undefined) {
+      sanitizationContext.contextBefore = testCase.contextBefore;
+    }
+    if (testCase.contextAfter !== undefined) {
+      sanitizationContext.contextAfter = testCase.contextAfter;
+    }
+    if (testCase.spanAnchors !== undefined) {
+      sanitizationContext.spanAnchors = testCase.spanAnchors;
+    }
+    if (testCase.nearbySpanHints !== undefined) {
+      sanitizationContext.nearbySpanHints = testCase.nearbySpanHints;
+    }
+    if (testCase.lockedSpanCategories !== undefined) {
+      sanitizationContext.lockedSpanCategories = testCase.lockedSpanCategories;
+    }
 
-    // Length appropriateness
-    const lengthScores = texts.map((t) => lengthAppropriatenessScore(originalText, t));
-    const lengthAppropriateness =
-      lengthScores.length > 0 ? lengthScores.reduce((a, b) => a + b, 0) / lengthScores.length : 0;
+    const contextuallyValid = this.validationService.sanitizeSuggestions(
+      validSuggestions,
+      sanitizationContext as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1]
+    );
+    const coherentSuggestions = this.validationService.sanitizeSuggestions(validSuggestions, {
+      ...sanitizationContext,
+    } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1]);
+    const categoryValid = this.validationService.validateSuggestions(
+      validSuggestions,
+      testCase.span.text,
+      testCase.span.category
+    );
+    const categoryValidTextSet = new Set(categoryValid.map((suggestion) => normalizeText(suggestion.text)));
 
-    // Forbidden outputs
-    if (testCase.forbiddenOutputs && testCase.forbiddenOutputs.length) {
+    const contextualFit = toFiveScale(
+      texts.length > 0 ? contextuallyValid.length / texts.length : 0
+    );
+    const categoryAlignment = toFiveScale(
+      texts.length > 0
+        ? validSuggestions.filter((suggestion) => {
+            const normalizedCategory = String(suggestion.category || '').toLowerCase();
+            return (
+              allowedCategories.includes(normalizedCategory) &&
+              categoryValidTextSet.has(normalizeText(suggestion.text))
+            );
+          }).length / texts.length
+        : 0
+    );
+
+    let diversityRatio = 1;
+    if (texts.length >= 2) {
+      let totalSimilarity = 0;
+      let pairCount = 0;
+      for (let i = 0; i < texts.length; i += 1) {
+        for (let j = i + 1; j < texts.length; j += 1) {
+          totalSimilarity += jaccardSimilarity(texts[i]!, texts[j]!);
+          pairCount += 1;
+        }
+      }
+      diversityRatio = 1 - (pairCount > 0 ? totalSimilarity / pairCount : 0);
+    }
+
+    const diversity = toFiveScale(diversityRatio);
+    const videoSpecificity = toFiveScale(
+      average(
+        texts.map((text) => {
+          const hasConcreteCue = this.visibleConcreteTerms.test(text);
+          const hasAbstractCue = this.abstractTerms.test(text);
+          if (hasConcreteCue && !hasAbstractCue) return 1;
+          if (hasConcreteCue) return 0.7;
+          if (!hasAbstractCue) return 0.45;
+          return 0.2;
+        })
+      )
+    );
+    const sceneCoherence = toFiveScale(
+      texts.length > 0 ? coherentSuggestions.length / texts.length : 0
+    );
+
+    if (testCase.forbiddenOutputs && testCase.forbiddenOutputs.length > 0) {
       const forbidden = testCase.forbiddenOutputs.map(normalizeText);
-      texts.forEach((t) => {
-        if (forbidden.includes(normalizeText(t))) {
-          failures.push(`Forbidden output produced: "${t}"`);
+      texts.forEach((text) => {
+        if (forbidden.includes(normalizeText(text))) {
+          failures.push(`Forbidden output produced: "${text}"`);
         }
       });
     }
 
     const scores: SuggestionQualityScores = {
-      categoryCoherence,
+      contextualFit,
+      categoryAlignment,
       diversity,
-      nonRepetition,
-      syntacticValidity,
-      lengthAppropriateness,
+      videoSpecificity,
+      sceneCoherence,
     };
 
-    // Expected quality ranges (optional)
     if (testCase.expectedQualities) {
-      for (const [dim, range] of Object.entries(testCase.expectedQualities)) {
-        const value = scores[dim as SuggestionQualityDimension];
+      for (const [dimension, range] of Object.entries(testCase.expectedQualities)) {
+        const value = scores[dimension as SuggestionQualityDimension];
         if (range?.min !== undefined && value < range.min) {
-          failures.push(`${dim} (${value.toFixed(3)}) below min ${range.min}`);
+          failures.push(`${dimension} (${value.toFixed(1)}) below min ${range.min}`);
         }
         if (range?.max !== undefined && value > range.max) {
-          failures.push(`${dim} (${value.toFixed(3)}) above max ${range.max}`);
+          failures.push(`${dimension} (${value.toFixed(1)}) above max ${range.max}`);
         }
       }
     }
@@ -172,4 +219,3 @@ export class SuggestionQualityEvaluator {
     };
   }
 }
-

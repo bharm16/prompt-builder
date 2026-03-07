@@ -52,7 +52,13 @@ export class ConstraintGenerationService {
           slotDescriptor
         );
 
-    return this._applyCategorySpecificOverrides(baseConstraints, trustedCategory, categorySource);
+    return this._applyCategorySpecificOverrides(
+      baseConstraints,
+      trustedCategory,
+      categorySource,
+      highlightWordCountSafe,
+      slotDescriptor
+    );
   }
 
   /**
@@ -171,9 +177,122 @@ export class ConstraintGenerationService {
   private _applyCategorySpecificOverrides(
     constraints: ConstraintConfig,
     trustedCategory: string,
-    categorySource: string
+    categorySource: string,
+    highlightWordCount: number,
+    slotDescriptor: string
   ): ConstraintConfig {
     let updatedConstraints = { ...constraints };
+
+    if (this._isCameraAngleCategory(trustedCategory, categorySource)) {
+      const angleConstraints = CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...angleConstraints,
+        minWords: 1,
+        maxWords: Math.min(6, Math.max(3, highlightWordCount + 2)),
+        formRequirement: '1-6 word camera angle or viewpoint phrase only',
+        focusGuidance: [
+          'Suggest only camera angle or viewpoint changes (eye-level, low-angle, high-angle, overhead, Dutch tilt)',
+          'Do not add movement, lens, focus, or shot-size details',
+        ],
+        extraRequirements: [
+          'Output an angle/viewpoint phrase only',
+          'Do not mention focal length, camera movement, or lighting',
+        ],
+      };
+    }
+
+    if (this._isCameraMovementCategory(trustedCategory, categorySource)) {
+      const movementConstraints = CONSTRAINT_MODES.phrase(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...movementConstraints,
+        minWords: 1,
+        maxWords: Math.min(6, Math.max(4, highlightWordCount + 2)),
+        disallowTerminalPunctuation: true,
+        formRequirement: '1-6 word camera movement phrase only',
+        focusGuidance: [
+          'Suggest a single camera move or stabilization approach',
+          'Do not add lens, shot-size, focus, or lighting details',
+        ],
+        extraRequirements: [
+          'Reference camera movement or support style only',
+          'Do not mention focal length or framing',
+        ],
+      };
+    }
+
+    if (this._isCameraFocusCategory(trustedCategory, categorySource)) {
+      const focusConstraints = CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...focusConstraints,
+        minWords: 2,
+        maxWords: Math.min(8, Math.max(4, highlightWordCount + 2)),
+        formRequirement: '2-8 word focus or depth-of-field phrase only',
+        focusGuidance: [
+          'Describe focus plane, blur, bokeh, or depth-of-field treatment only',
+          'Do not add movement, angle, lens, or shot-size details',
+        ],
+        extraRequirements: [
+          'Keep it to focus, blur, bokeh, or depth-of-field language only',
+          'Do not mention camera movement or focal length',
+        ],
+      };
+    }
+
+    if (this._isCameraLensCategory(trustedCategory, categorySource)) {
+      const lensConstraints = CONSTRAINT_MODES.phrase(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...lensConstraints,
+        minWords: 1,
+        maxWords: Math.min(6, Math.max(3, highlightWordCount + 2)),
+        disallowTerminalPunctuation: true,
+        formRequirement: '1-6 word lens or aperture phrase only',
+        focusGuidance: [
+          'Suggest focal length, lens family, or aperture only',
+          'Do not add movement, framing, focus pulls, or lighting details',
+        ],
+        extraRequirements: [
+          'Keep the output to lens or aperture language only',
+          'Do not mention camera movement or shot size',
+        ],
+      };
+    }
+
+    if (this._isLightingQualityCategory(trustedCategory, categorySource)) {
+      const lightingQualityConstraints = CONSTRAINT_MODES.adjective(
+        highlightWordCount,
+        slotDescriptor
+      );
+      updatedConstraints = {
+        ...lightingQualityConstraints,
+        maxWords: Math.min(6, Math.max(5, highlightWordCount + 2)),
+        formRequirement: '1-6 word lighting-quality adjective or adverb phrase',
+        focusGuidance: [
+          'Describe light quality, contrast, warmth, or diffusion only',
+          'Do not introduce source direction, lens effects, or new scene content',
+        ],
+        extraRequirements: [
+          'Output a lighting-quality modifier or short phrase only',
+          'Do not mention light source direction or camera technique',
+        ],
+      };
+    }
+
+    if (this._isLightingTimeOfDayCategory(trustedCategory, categorySource)) {
+      const timeOfDayConstraints = CONSTRAINT_MODES.adjective(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...timeOfDayConstraints,
+        maxWords: Math.min(5, Math.max(4, highlightWordCount + 1)),
+        formRequirement: '1-5 word time-of-day or daylight phrase only',
+        focusGuidance: [
+          'Suggest a different time period or daylight condition only',
+          'Do not describe source direction, flare, lensing, or shadow behavior',
+        ],
+        extraRequirements: [
+          'Output a time-of-day or daylight phrase only',
+          'Do not mention windows, backlight, or left/right lighting',
+        ],
+      };
+    }
 
     // Keep short style spans in adjective mode, but allow richer style phrases.
     if (updatedConstraints.mode === 'adjective' && trustedCategory.startsWith('style.')) {
@@ -201,14 +320,135 @@ export class ConstraintGenerationService {
       };
     }
 
+    if (this._isEnvironmentLocationCategory(trustedCategory, categorySource)) {
+      const locationConstraints = CONSTRAINT_MODES.location(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...locationConstraints,
+        maxWords: Math.min(9, Math.max(6, highlightWordCount + 2)),
+        formRequirement: 'Concise external location beat with atmosphere or time-of-day',
+        focusGuidance: [
+          'Describe the place beyond the frame or outside the current subject focus',
+          'Keep it to location and atmosphere, not props or interior surfaces',
+        ],
+        extraRequirements: [
+          'Anchor the setting with environmental specifics',
+          'Avoid interior object details or camera instructions',
+        ],
+      };
+    }
+
+    if (this._isEnvironmentContextCategory(trustedCategory, categorySource)) {
+      const contextConstraints = CONSTRAINT_MODES.phrase(highlightWordCount, slotDescriptor);
+      updatedConstraints = {
+        ...contextConstraints,
+        minWords: 2,
+        maxWords: Math.min(8, Math.max(4, highlightWordCount + 2)),
+        disallowTerminalPunctuation: true,
+        formRequirement: '2-8 word in-scene environmental context phrase',
+        focusGuidance: [
+          'Stay with objects, surfaces, atmosphere, or spatial context already in the scene',
+          'Do not swap to a new external location or time-of-day',
+        ],
+        extraRequirements: [
+          'Reference in-scene context rather than a new destination',
+          'Do not introduce a new setting beyond the current scene',
+        ],
+      };
+    }
+
+    if (this._isStyleAestheticCategory(trustedCategory, categorySource)) {
+      updatedConstraints = {
+        ...updatedConstraints,
+        focusGuidance: [
+          'Describe visual treatment, film medium, color grade, or post-processing only',
+          'Do not add camera movement, shot size, or lighting direction',
+        ],
+        extraRequirements: [
+          ...new Set([
+            ...(updatedConstraints.extraRequirements || []),
+            'Keep the output scoped to visual treatment rather than staging or lighting direction',
+          ]),
+        ],
+      };
+    }
+
     return updatedConstraints;
   }
 
   private _isShotTypeCategory(trustedCategory: string, categorySource: string): boolean {
+    const normalizedCategory = this._normalizeCategoryKey(trustedCategory);
     return (
-      trustedCategory === 'shot.type' ||
-      trustedCategory === 'shot.framing' ||
+      normalizedCategory === 'shot.type' ||
+      normalizedCategory === 'shot.framing' ||
       categorySource.includes('shot type or framing')
     );
+  }
+
+  private _isCameraAngleCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'camera.angle' ||
+      categorySource.includes('camera angle')
+    );
+  }
+
+  private _isCameraMovementCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'camera.movement' ||
+      categorySource.includes('camera movement')
+    );
+  }
+
+  private _isCameraFocusCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'camera.focus' ||
+      categorySource.includes('depth of field')
+    );
+  }
+
+  private _isCameraLensCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'camera.lens' ||
+      categorySource.includes('lens')
+    );
+  }
+
+  private _isLightingQualityCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'lighting.quality' ||
+      categorySource.includes('lighting quality')
+    );
+  }
+
+  private _isLightingTimeOfDayCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'lighting.timeofday' ||
+      categorySource.includes('time of day') ||
+      categorySource.includes('daylight')
+    );
+  }
+
+  private _isEnvironmentLocationCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'environment.location' ||
+      categorySource.includes('environment location')
+    );
+  }
+
+  private _isEnvironmentContextCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'environment.context' ||
+      categorySource.includes('environment context')
+    );
+  }
+
+  private _isStyleAestheticCategory(trustedCategory: string, categorySource: string): boolean {
+    return (
+      this._normalizeCategoryKey(trustedCategory) === 'style.aesthetic' ||
+      categorySource.includes('style aesthetic')
+    );
+  }
+
+  private _normalizeCategoryKey(category: string): string {
+    return category.toLowerCase().replace(/[-_]/g, '');
   }
 }

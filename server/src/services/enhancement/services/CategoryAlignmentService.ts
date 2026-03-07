@@ -49,15 +49,23 @@ export class CategoryAlignmentService {
       category: highlightedCategory || null,
     });
 
-    // Check if we need fallbacks
-    const needsFallback = this.shouldUseFallback(
-      suggestions,
-      highlightedText,
-      highlightedCategory,
-      highlightedCategoryConfidence ?? null
-    );
+    if (confidenceIsLow) {
+      this.log.info('Skipping category validation due to low confidence', {
+        operation,
+        category: highlightedCategory || null,
+        confidence: highlightedCategoryConfidence,
+      });
+      return {
+        suggestions,
+        fallbackApplied: false,
+        context: {
+          ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
+          reason: 'Low category confidence',
+        },
+      };
+    }
 
-    if (needsFallback) {
+    if (!suggestions || suggestions.length === 0) {
       this.log.warn('Returning empty for LLM-based fallback regeneration', {
         operation,
         originalSuggestionCount: suggestions.length,
@@ -75,28 +83,31 @@ export class CategoryAlignmentService {
       };
     }
 
-    if (confidenceIsLow) {
-      this.log.info('Skipping category validation due to low confidence', {
-        operation,
-        category: highlightedCategory || null,
-        confidence: highlightedCategoryConfidence,
-      });
-      return {
-        suggestions,
-        fallbackApplied: false,
-        context: {
-          ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
-          reason: 'Low category confidence',
-        },
-      };
-    }
-
     // Validate and filter suggestions
     const validSuggestions = this.validationService.validateSuggestions(
       suggestions,
       highlightedText,
       highlightedCategory || ''
     );
+
+    if (validSuggestions.length < 2) {
+      this.log.warn('Returning empty for LLM-based fallback regeneration', {
+        operation,
+        originalSuggestionCount: suggestions.length,
+        validSuggestionCount: validSuggestions.length,
+        category: highlightedCategory || null,
+      });
+
+      return {
+        suggestions: [],
+        fallbackApplied: true,
+        context: {
+          ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
+          originalSuggestionsRejected: suggestions.length - validSuggestions.length,
+          reason: 'Category mismatch or low confidence',
+        },
+      };
+    }
 
     this.log.info('Category alignment completed', {
       operation,
@@ -128,8 +139,8 @@ export class CategoryAlignmentService {
    */
   shouldUseFallback(
     suggestions: Suggestion[],
-    _highlightedText: string,
-    _category?: string,
+    highlightedText: string,
+    category?: string,
     confidence?: number | null
   ): boolean {
     const operation = 'shouldUseFallback';
@@ -155,11 +166,21 @@ export class CategoryAlignmentService {
       return false;
     }
 
-    // Use fallback if fewer than 2 suggestions survived
-    if (suggestions.length < 2) {
+    if (!category) {
+      return suggestions.length < 2;
+    }
+
+    const validated = this.validationService.validateSuggestions(
+      suggestions,
+      highlightedText,
+      category
+    );
+
+    if (validated.length < 2) {
       this.log.debug('Fallback needed: insufficient suggestions', {
         operation,
         suggestionCount: suggestions.length,
+        validCount: validated.length,
       });
       return true;
     }

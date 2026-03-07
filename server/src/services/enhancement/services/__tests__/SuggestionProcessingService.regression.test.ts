@@ -120,6 +120,54 @@ function buildProcessParams(
 }
 
 describe('SuggestionProcessingService regression', () => {
+  it('drops deprioritized suggestions from final output and tops up with fallback', async () => {
+    const { service, mocks } = createService({
+      sanitizeImpl: (suggestions) =>
+        (suggestions as Suggestion[]).map((suggestion) =>
+          suggestion.text === 'wide-angle shallow background blur'
+            ? { ...suggestion, __deprioritized: true }
+            : suggestion
+        ),
+      fallbackImpl: async (params) => {
+        if (params.sanitizedSuggestions.length === 0) {
+          return {
+            suggestions: [
+              { text: 'tight rack focus on toddler eyes', category: 'camera.focus' },
+              { text: 'soft background falloff behind the wheel', category: 'camera.focus' },
+            ],
+            usedFallback: true,
+            sourceCount: 2,
+            constraints: { mode: 'phrase' },
+          };
+        }
+
+        return {
+          suggestions: params.sanitizedSuggestions,
+          usedFallback: false,
+          sourceCount: 0,
+          constraints: { mode: 'micro' },
+        };
+      },
+    });
+
+    const result = await service.processSuggestions(
+      buildProcessParams({
+        suggestions: [
+          { text: 'wide-angle shallow background blur', category: 'camera.focus' },
+          { text: 'selective focus on baby face', category: 'camera.focus' },
+        ],
+      })
+    );
+
+    expect(mocks.attemptFallbackRegeneration.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(result.suggestionsToUse.every((suggestion) => !suggestion.__deprioritized)).toBe(true);
+    expect(result.suggestionsToUse.map((item: Suggestion) => item.text)).toEqual([
+      'selective focus on baby face',
+      'tight rack focus on toddler eyes',
+      'soft background falloff behind the wheel',
+    ]);
+  });
+
   it('sends empty to FallbackRegenerationService when sanitization removes all model output', async () => {
     let sanitizeCallCount = 0;
     const { service, mocks } = createService({

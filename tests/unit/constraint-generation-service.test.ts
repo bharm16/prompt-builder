@@ -225,13 +225,13 @@ describe('ConstraintGenerationService', () => {
       expect(result.mode).toBe('micro');
     });
 
-    it('selects camera for camera category', () => {
+    it('selects movement phrase mode for camera movement category', () => {
       const service = createService();
       const result = service.getVideoReplacementConstraints({
         highlightedCategory: 'camera movement',
         highlightWordCount: 5,
       });
-      expect(result.mode).toBe('camera');
+      expect(result.mode).toBe('phrase');
     });
 
     it('selects camera for framing category', () => {

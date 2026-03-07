@@ -133,7 +133,7 @@ describe('ConstraintGenerationService grammar-aware routing regression', () => {
     expect(result.mode).toBe('lighting');
   });
 
-  it('routes short camera.angle spans to camera mode, not micro', () => {
+  it('routes short camera.angle spans to angle-only micro mode', () => {
     const result = service.getVideoReplacementConstraints({
       highlightWordCount: 2,
       highlightedText: 'low angle',
@@ -141,11 +141,11 @@ describe('ConstraintGenerationService grammar-aware routing regression', () => {
       highlightedCategoryConfidence: 0.9,
     });
 
-    expect(result.mode).toBe('camera');
-    expect(result.maxWords).toBeLessThanOrEqual(12);
+    expect(result.mode).toBe('micro');
+    expect(result.formRequirement).toContain('camera angle or viewpoint phrase only');
   });
 
-  it('raises camera maxWords ceiling for short camera movement spans', () => {
+  it('routes camera movement spans to movement-only phrase mode', () => {
     const result = service.getVideoReplacementConstraints({
       highlightWordCount: 3,
       highlightedText: 'slowly zooming in',
@@ -153,8 +153,32 @@ describe('ConstraintGenerationService grammar-aware routing regression', () => {
       highlightedCategoryConfidence: 0.9,
     });
 
-    expect(result.mode).toBe('camera');
-    expect(result.maxWords).toBeGreaterThanOrEqual(10);
+    expect(result.mode).toBe('phrase');
+    expect(result.formRequirement).toContain('camera movement phrase only');
+  });
+
+  it('routes lighting.timeOfDay spans to adjective mode with time-only constraints', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 3,
+      highlightedText: 'golden hour sunlight',
+      highlightedCategory: 'lighting.timeOfDay',
+      highlightedCategoryConfidence: 0.95,
+    });
+
+    expect(result.mode).toBe('adjective');
+    expect(result.formRequirement).toContain('time-of-day');
+  });
+
+  it('routes environment.context spans to in-scene phrase constraints', () => {
+    const result = service.getVideoReplacementConstraints({
+      highlightWordCount: 3,
+      highlightedText: "car's front window",
+      highlightedCategory: 'environment.context',
+      highlightedCategoryConfidence: 0.95,
+    });
+
+    expect(result.mode).toBe('phrase');
+    expect(result.formRequirement).toContain('in-scene environmental context');
   });
 
   // --- Adjective mode maxWords floor regression (prevents hard filter from rejecting AI output) ---
