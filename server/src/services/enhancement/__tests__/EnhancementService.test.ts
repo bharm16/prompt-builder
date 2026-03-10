@@ -59,12 +59,22 @@ function createService() {
 
   const validationService = {
     sanitizeSuggestions: vi.fn(
-      (suggestions: Suggestion[] | string[], context: { highlightedText?: string }) => {
+      (
+        suggestions: Suggestion[] | string[],
+        context: { highlightedText?: string; highlightedCategory?: string | null }
+      ) => {
         const seen = new Set<string>();
         const normalizedHighlight = (context.highlightedText || '').trim().toLowerCase();
+        const expectedCategory = context.highlightedCategory?.trim().toLowerCase();
 
         return (suggestions as Suggestion[])
           .filter((item) => item && typeof item.text === 'string')
+          .filter((item) => {
+            if (!expectedCategory || typeof item.category !== 'string') {
+              return true;
+            }
+            return item.category.trim().toLowerCase() === expectedCategory;
+          })
           .filter((item) => item.text.trim().toLowerCase() !== normalizedHighlight)
           .filter((item) => {
             const key = item.text.trim().toLowerCase();

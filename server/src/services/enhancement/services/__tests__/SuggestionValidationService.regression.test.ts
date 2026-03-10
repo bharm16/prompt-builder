@@ -548,4 +548,159 @@ describe('SuggestionValidationService regression', () => {
 
     expect(result.map((item) => item.text)).toEqual(['rain-streaked windshield glass']);
   });
+
+  it('rejects body-part drift for face-detail subject spans', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'bright eyes and flushed cheeks' },
+        { text: 'tiny feet swinging in the air' },
+        { text: 'tiny hands reaching for the window' },
+      ],
+      {
+        highlightedText: "toddler's tiny rosy-cheeked face",
+        highlightedCategory: 'subject.appearance',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        contextBefore: 'slowly zooming in on a ',
+        contextAfter: ' and plump hands gripping the wheel',
+      } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1] & {
+        contextBefore: string;
+        contextAfter: string;
+      }
+    );
+
+    expect(result.map((item) => item.text)).toEqual([
+      'bright eyes and flushed cheeks',
+    ]);
+  });
+
+  it('rejects hand-detail role drift to socks and toys', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'soft little hands with bitten nails' },
+        { text: 'tiny hands with mismatched socks' },
+        { text: 'small, chubby fingers playing with a toy' },
+      ],
+      {
+        highlightedText: 'plump hands',
+        highlightedCategory: 'subject.appearance',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        contextBefore: "a toddler's face and ",
+        contextAfter: ' gripping a dark grey steering wheel',
+      } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1] & {
+        contextBefore: string;
+        contextAfter: string;
+      }
+    );
+
+    expect(result.map((item) => item.text)).toEqual([
+      'soft little hands with bitten nails',
+    ]);
+  });
+
+  it('rejects object-overlap action suggestions and preserves verb-only hand interactions', () => {
+    const service = createService();
+
+    const analysis = service.analyzeSuggestions(
+      [
+        { text: 'turning the wheel slightly' },
+        { text: 'pressing gently' },
+        { text: 'leaning forward with excitement' },
+      ],
+      {
+        highlightedText: 'gripping',
+        highlightedCategory: 'action.movement',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        contextBefore: "a toddler's tiny rosy-cheeked face and plump hands ",
+        contextAfter: ' a dark grey steering wheel.',
+        spanAnchors: '- subject: "plump hands"\n- subject: "steering wheel"',
+      } as Parameters<SuggestionValidationService['analyzeSuggestions']>[1] & {
+        contextBefore: string;
+        contextAfter: string;
+        spanAnchors: string;
+      }
+    );
+
+    expect(analysis.primary.map((item) => item.text)).toEqual(['pressing gently']);
+    expect(analysis.rejected).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'turning the wheel slightly', reason: 'object_overlap' }),
+        expect.objectContaining({ text: 'leaning forward with excitement', reason: 'object_overlap' }),
+      ])
+    );
+  });
+
+  it('rejects noun-phrase replacements in adverb lighting slots', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'hazy amber glow' },
+        { text: 'softly' },
+      ],
+      {
+        highlightedText: 'intensely',
+        highlightedCategory: 'lighting.quality',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        contextBefore: 'Warm, golden hour sunlight streams ',
+        contextAfter: ' through the car windows.',
+      } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1] & {
+        contextBefore: string;
+        contextAfter: string;
+      }
+    );
+
+    expect(result.map((item) => item.text)).toEqual(['softly']);
+  });
+
+  it('keeps shadow-specific lighting replacements for shadow spans', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: 'soft amber diffusion' },
+        { text: 'soft dashboard shadows' },
+      ],
+      {
+        highlightedText: 'soft, elongated shadows',
+        highlightedCategory: 'lighting.quality',
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        contextBefore: 'and casting ',
+        contextAfter: ' across the dashboard.',
+      } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1] & {
+        contextBefore: string;
+        contextAfter: string;
+      }
+    );
+
+    expect(result.map((item) => item.text)).toEqual(['soft dashboard shadows']);
+  });
+
+  it('treats same-family nearby camera and shot locks as soft overlaps, not hard conflicts', () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [{ text: 'low-angle view' }],
+      {
+        highlightedText: 'eye level',
+        highlightedCategory: 'camera.angle',
+        lockedSpanCategories: ['shot.type'],
+        isVideoPrompt: true,
+        isPlaceholder: false,
+        nearbySpanHints: '- camera: "eye-level shot"\n- shot: "Medium close-up"',
+      } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1] & {
+        nearbySpanHints: string;
+      }
+    );
+
+    expect(result.map((item) => item.text)).toEqual(['low-angle view']);
+  });
 });

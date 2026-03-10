@@ -76,7 +76,7 @@ function toFiveScale(score: number): number {
 
 export class SuggestionQualityEvaluator {
   private readonly visibleConcreteTerms =
-    /\b(face|hands?|eyes?|skin|freckles|curls|cheeks?|hair|toddler|child|kid|wheel|window|dashboard|glass|trees?|park|street|forest|beach|shadow|glow|light|grain|bokeh|blur|close[-\s]?up|wide shot|low[-\s]?angle|high[-\s]?angle|overhead|viewpoint|perspective|dolly|pan|tilt|crane|lens|mm|film|filter|monochrome|watercolor|diffusion|fog|dust|smoke|reflection|sunset|sunrise|dawn|dusk|twilight|blue hour|afternoon|morning|night|rain|snow|leather|metal|wood|plastic)\b/i;
+    /\b(face|hands?|fingers?|palms?|eyes?|skin|freckles|curls|cheeks?|hair|toddler|child|kid|wheel|window|dashboard|glass|trees?|park|street|forest|beach|meadow|trail|lakeside|turnout|shadow|shadowed|glow|glowing|light|lit|sunlit|grain|bokeh|blur|close[-\s]?up|wide shot|low[-\s]?angle|high[-\s]?angle|overhead|viewpoint|perspective|dolly|pan|tilt|crane|lens|aperture|f-number|mm|film|filter|filtered|monochrome|watercolor|diffusion|diffused|fog|dust|smoke|reflection|sunset|sunrise|dawn|dusk|twilight|blue hour|afternoon|morning|night|rain|snow|leather|metal|wood|plastic|softly|gently|brightly|warmly|harshly|dimly)\b/i;
   private readonly abstractTerms =
     /\b(memory|recollection|sentimentality|mood|feeling|emotion|essence|spirit|timelessness|intimacy|wonder|beauty)\b/i;
 

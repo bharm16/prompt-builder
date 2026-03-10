@@ -11,6 +11,37 @@ type ExtendedSanitizationContext = SanitizationContext & {
   nearbySpanHints?: string;
 };
 
+type SlotGrammarProfile =
+  | 'adjective_modifier'
+  | 'adverb_modifier'
+  | 'noun_phrase_after_article'
+  | 'noun_phrase_before_object'
+  | 'verb_phrase_before_object'
+  | 'bare_technical_phrase';
+
+type SubjectAppearanceSubRole =
+  | 'face_detail'
+  | 'hand_detail'
+  | 'hair_detail'
+  | 'feet_detail'
+  | 'prop_detail'
+  | null;
+
+export type SuggestionRejectReason =
+  | 'length_only'
+  | 'slot_form'
+  | 'category_drift'
+  | 'body_part_drift'
+  | 'object_overlap'
+  | 'coherence_conflict'
+  | 'metaphor_or_abstract';
+
+interface SuggestionAnalysis {
+  primary: Suggestion[];
+  deprioritized: Suggestion[];
+  rejected: Array<{ text: string; reason: SuggestionRejectReason }>;
+}
+
 /**
  * SuggestionValidationService
  * 
@@ -54,7 +85,7 @@ export class SuggestionValidationService {
   private readonly styleStrongCueTerms =
     /\b(style|aesthetic|look|tone|palette|grade|grading|grain|noir|neo-noir|documentary|verit[eé]|retro|vintage|kodachrome|8mm|16mm|35mm|cinematic|painterly|watercolor|impressionist|oil|ink|sepia|chiaroscuro|hyperreal|surreal|cyberpunk|cartoon|animation|diorama|pastel|monochrome|technicolor|dream(?:like)?|fantasy|whimsy|wonder|nostalg(?:ia|ic)|realism)\b/i;
   private readonly lightingQualityCueTerms =
-    /\b(light|lighting|shadow|glow|lumin(?:ous|ance)|radian(?:t|ce)|illuminat|warmth|brightness|dim(?:ness)?|diffus(?:e|ed|ion)|ambient|backlit|rim[-\s]?lit|high[-\s]?key|low[-\s]?key|sunlit|moonlit|golden[-\s]?hour)\b/i;
+    /\b(light|lighting|shadow(?:s)?|glow(?:ing)?|lumin(?:ous|ance)|radian(?:t|ce)|illuminat|warmth|brightness|dim(?:ness)?|diffus(?:e|ed|ion)|ambient|backlit|rim[-\s]?lit|high[-\s]?key|low[-\s]?key|sunlit|moonlit|golden[-\s]?hour)\b/i;
   private readonly lightingDirectionTerms =
     /\b(left|right|front|rear|back|overhead|top[-\s]?lit|under[-\s]?lit|side[-\s]?lit|back[-\s]?lit|key|rim)\b/i;
   private readonly externalLocationTerms =
@@ -79,6 +110,27 @@ export class SuggestionValidationService {
     /\b(snow|snowfall|blizzard|hail|storm|thunder|rain|downpour|fog|mist|hurricane|tornado)\b/i;
   private readonly humanBodyActionTerms =
     /\b(clapping|grinning|smiling|waving|nodding|laughing|twisting body|look behind|reaching out|bouncing|tapping|tap(?:s|ping)?|reaching|reach(?:es|ing)?|wriggling|wriggle(?:s|ing)?|tiny fingers?|dashboard|steering wheel|hands?|arms?|feet)\b/i;
+  private readonly shadowCueTerms = /\bshadow(s|y)?\b/i;
+  private readonly styleNounCueTerms =
+    /\b(technicolor|film|look|palette|grading|grade|effect|overlay|vignette|finish|texture|wash|filter)\b/i;
+  private readonly faceCueTerms =
+    /\b(face|cheeks?|rosy-cheeked|eyes?|nose|lips?|mouth|brow|forehead|chin|jaw|expression)\b/i;
+  private readonly handCueTerms =
+    /\b(hands?|fingers?|palms?|knuckles?|nails?|fists?|thumb|thumbs)\b/i;
+  private readonly hairCueTerms = /\b(hair|curls?|braids?|locks?|fringe)\b/i;
+  private readonly feetCueTerms = /\b(feet|foot|toes?|ankles?|heels?|socks?|shoes?)\b/i;
+  private readonly propCueTerms =
+    /\b(steering wheel|wheel|dashboard|window|glass|mirror|seat|console|toy|ring|stroller)\b/i;
+  private readonly fullBodyActionTerms =
+    /\b(leaning|looking|gazing|smiling|grinning|laughing|bouncing|walking|running|kicking|jumping|reaching forward)\b/i;
+  private readonly handInteractionTerms =
+    /\b(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?)\b/i;
+  private readonly technicalVerbLeadTerms =
+    /\b(streams?|pours?|falls?|glows?|shines?|filters?|casts?|renders?)\s*$/i;
+  private readonly canonicalTimeTokens =
+    /\b(dawn|sunrise|morning|midday|noon|afternoon|golden hour|sunset|dusk|twilight|blue hour|night|daylight|daytime|evening)\b/i;
+  private readonly abstractVisualTerms =
+    /\b(hush|cascade|whisper|dream|memory|sentiment|essence|timeless|poetic|ethereal)\b/i;
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -101,7 +153,7 @@ export class SuggestionValidationService {
       });
       return [];
     }
-    
+
     this.log.debug('Sanitizing suggestions', {
       operation,
       inputCount: suggestions.length,
@@ -109,8 +161,33 @@ export class SuggestionValidationService {
       isPlaceholder: context.isPlaceholder,
     });
 
+    const analysis = this.analyzeSuggestions(suggestions, context);
+    const { primary, deprioritized, rejected } = analysis;
+
+    const duration = Math.round(performance.now() - startTime);
+
+    this.log.info('Suggestions sanitized', {
+      operation,
+      duration,
+      inputCount: suggestions.length,
+      primaryCount: primary.length,
+      deprioritizedCount: deprioritized.length,
+      filteredCount: rejected.length,
+    });
+
+    // Apply word count heuristics to primary suggestions only;
+    // deprioritized suggestions always sort to the end
+    const primaryRanked = this._applyPreferredWordCountHeuristics(primary, context);
+    return [...primaryRanked, ...deprioritized];
+  }
+
+  analyzeSuggestions(
+    suggestions: Suggestion[] | string[],
+    context: SanitizationContext
+  ): SuggestionAnalysis {
     const primary: Suggestion[] = [];
     const deprioritized: Suggestion[] = [];
+    const rejected: Array<{ text: string; reason: SuggestionRejectReason }> = [];
     const extendedContext = context as ExtendedSanitizationContext;
     const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
     const disallowedTemplatePatterns = [
@@ -152,146 +229,58 @@ export class SuggestionValidationService {
 
       let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
       text = text.replace(/\s+/g, ' ').trim();
-      const lowerText = text.toLowerCase();
+      let lowerText = text.toLowerCase();
 
       if (!text) {
         return;
       }
 
       if (normalizedHighlight && lowerText === normalizedHighlight) {
-        return; // identical to highlight, no improvement
+        rejected.push({ text, reason: 'slot_form' });
+        return;
       }
 
       if (this.exampleTexts.has(lowerText)) {
+        rejected.push({ text, reason: 'slot_form' });
         return;
       }
 
       if (/\r|\n/.test(text)) {
-        return; // multi-line response is not a drop-in replacement
-      }
-
-      if (disallowedTemplatePatterns.some((pattern) => pattern.test(text))) {
+        rejected.push({ text, reason: 'slot_form' });
         return;
       }
 
-      // Strip conversational prefixes instead of rejecting
+      if (disallowedTemplatePatterns.some((pattern) => pattern.test(text))) {
+        rejected.push({ text, reason: 'slot_form' });
+        return;
+      }
+
       const foundPrefix = disallowedPrefixes.find((prefix) => lowerText.startsWith(prefix));
       if (foundPrefix) {
         text = text.substring(foundPrefix.length).trim();
-        // Re-check validity after stripping
-        if (!text) return;
+        if (!text) {
+          rejected.push({ text: suggestionObj.text, reason: 'slot_form' });
+          return;
+        }
+        lowerText = text.toLowerCase();
       }
 
-      // Strip trailing object overlap for action spans
       text = this._stripContinuationOverlap(text, extendedContext);
+      if (!text) {
+        rejected.push({ text: suggestionObj.text, reason: 'object_overlap' });
+        return;
+      }
+      lowerText = text.toLowerCase();
 
       if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
-        return; // violates One Clip, One Action guidance
+        rejected.push({ text, reason: 'coherence_conflict' });
+        return;
       }
 
-      const wordCount = this.videoService.countWords(text);
-
-      if (context.isPlaceholder) {
-        const fallbackVideoConstraints =
-          context.isVideoPrompt && !context.videoConstraints
-            ? this._getVideoPlaceholderFallbackConstraints(context.highlightedText)
-            : undefined;
-        const constraints = {
-          minWords: 1,
-          maxWords: 4,
-          maxSentences: 1,
-          disallowTerminalPunctuation: true,
-          ...(fallbackVideoConstraints || {}),
-          ...(context.videoConstraints || {}),
-        };
-
-        const minWords = Number.isFinite(constraints.minWords)
-          ? constraints.minWords!
-          : 1;
-        const maxWords = Number.isFinite(constraints.maxWords)
-          ? constraints.maxWords!
-          : 4;
-        const maxSentences = Number.isFinite(constraints.maxSentences)
-          ? constraints.maxSentences!
-          : 1;
-
-        if (wordCount < minWords || wordCount > maxWords) {
-          return;
-        }
-
-        const sentenceCount = (text.match(/[.!?]/g) || []).length;
-        if (maxSentences > 0 && sentenceCount > maxSentences) {
-          return;
-        }
-
-        if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
-          return;
-        }
-
-        if (constraints.mode === 'micro') {
-          if (/[.!?]/.test(text)) {
-            return;
-          }
-
-          const commaCount = (text.match(/,/g) || []).length;
-          if (commaCount > 1 || /[:;]/.test(text)) {
-            return;
-          }
-
-          if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
-            return;
-          }
-        }
-      } else if (context.isVideoPrompt) {
-        const constraints = context.videoConstraints || {
-          minWords: 2,
-          maxWords: 50,
-          maxSentences: 1,
-        };
-
-        const minWords = Number.isFinite(constraints.minWords)
-          ? constraints.minWords!
-          : 2;
-        const maxWords = Number.isFinite(constraints.maxWords)
-          ? constraints.maxWords!
-          : 50;
-        const maxSentences = Number.isFinite(constraints.maxSentences)
-          ? constraints.maxSentences!
-          : 1;
-
-        if (wordCount < minWords || wordCount > maxWords) {
-          return;
-        }
-
-        const sentenceCount = (text.match(/[.!?]/g) || []).length;
-        if (maxSentences > 0 && sentenceCount > maxSentences) {
-          return;
-        }
-
-        if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
-          return;
-        }
-
-        if (constraints.mode === 'micro') {
-          if (/[.!?]/.test(text)) {
-            return;
-          }
-
-          // Allow single comma for camera specs like "50mm lens, shallow DOF"
-          // but still reject colons and semicolons
-          const commaCount = (text.match(/,/g) || []).length;
-          if (commaCount > 1 || /[:;]/.test(text)) {
-            return;
-          }
-
-          if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
-            return;
-          }
-        }
-
-        if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
-          return;
-        }
+      const lengthRejectReason = this._getLengthRejectReason(text, context);
+      if (lengthRejectReason) {
+        rejected.push({ text, reason: lengthRejectReason });
+        return;
       }
 
       if (context.lockedSpanCategories && context.lockedSpanCategories.length > 0) {
@@ -315,12 +304,14 @@ export class SuggestionValidationService {
         });
 
         if (hasConflict) {
+          rejected.push({ text, reason: 'coherence_conflict' });
           return;
         }
       }
 
-      const hardRejectReason = this._getHardRejectReason(text, extendedContext);
-      if (hardRejectReason) {
+      const rejectReason = this._getHardRejectReason(text, extendedContext);
+      if (rejectReason) {
+        rejected.push({ text, reason: rejectReason });
         return;
       }
 
@@ -340,21 +331,7 @@ export class SuggestionValidationService {
       );
     });
 
-    const duration = Math.round(performance.now() - startTime);
-
-    this.log.info('Suggestions sanitized', {
-      operation,
-      duration,
-      inputCount: suggestions.length,
-      primaryCount: primary.length,
-      deprioritizedCount: deprioritized.length,
-      filteredCount: suggestions.length - primary.length - deprioritized.length,
-    });
-
-    // Apply word count heuristics to primary suggestions only;
-    // deprioritized suggestions always sort to the end
-    const primaryRanked = this._applyPreferredWordCountHeuristics(primary, context);
-    return [...primaryRanked, ...deprioritized];
+    return { primary, deprioritized, rejected };
   }
 
   /**
@@ -508,21 +485,34 @@ export class SuggestionValidationService {
   private _getHardRejectReason(
     text: string,
     context: ExtendedSanitizationContext
-  ): string | null {
+  ): SuggestionRejectReason | null {
     if (this._violatesArticleAgreement(text, context)) {
-      return 'article-agreement';
+      return 'slot_form';
     }
 
-    if (this._failsSlotFitGuard(text, context)) {
-      return 'slot-fit';
+    const slotFitRejectReason = this._getSlotFitRejectReason(text, context);
+    if (slotFitRejectReason) {
+      return slotFitRejectReason;
+    }
+
+    if (this._hasBodyPartSubRoleDrift(text, context)) {
+      return 'body_part_drift';
+    }
+
+    if (this._hasObjectOverlap(text, context)) {
+      return 'object_overlap';
     }
 
     if (this._hasActorDrift(text, context)) {
-      return 'actor-drift';
+      return 'coherence_conflict';
     }
 
     if (this._hasSubjectClassDrift(text, context)) {
-      return 'subject-class-drift';
+      return 'category_drift';
+    }
+
+    if (this._isMetaphoricalOrAbstract(text, context)) {
+      return 'metaphor_or_abstract';
     }
 
     return null;
@@ -534,9 +524,348 @@ export class SuggestionValidationService {
     return false;
   }
 
-  private _failsSlotFitGuard(text: string, context: ExtendedSanitizationContext): boolean {
+  private _getLengthRejectReason(
+    text: string,
+    context: SanitizationContext
+  ): SuggestionRejectReason | null {
+    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    const adverbLightingSlot =
+      category === 'lighting.quality' &&
+      /ly$/i.test((context.highlightedText || '').trim().toLowerCase());
+    const lowerText = text.toLowerCase();
+    const wordCount = this.videoService.countWords(text);
+
+    if (context.isPlaceholder) {
+      const fallbackVideoConstraints =
+        context.isVideoPrompt && !context.videoConstraints
+          ? this._getVideoPlaceholderFallbackConstraints(context.highlightedText)
+          : undefined;
+      const constraints = {
+        minWords: 1,
+        maxWords: 4,
+        maxSentences: 1,
+        disallowTerminalPunctuation: true,
+        ...(fallbackVideoConstraints || {}),
+        ...(context.videoConstraints || {}),
+      };
+
+      const minWords = Number.isFinite(constraints.minWords) ? constraints.minWords! : 1;
+      const maxWords = Number.isFinite(constraints.maxWords) ? constraints.maxWords! : 4;
+      const maxSentences = Number.isFinite(constraints.maxSentences) ? constraints.maxSentences! : 1;
+
+      if (wordCount < minWords || wordCount > maxWords) {
+        return 'length_only';
+      }
+
+      const sentenceCount = (text.match(/[.!?]/g) || []).length;
+      if (maxSentences > 0 && sentenceCount > maxSentences) {
+        return 'length_only';
+      }
+
+      if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
+        return 'slot_form';
+      }
+
+      if (constraints.mode === 'micro') {
+        if (/[.!?]/.test(text)) {
+          return 'slot_form';
+        }
+
+        const commaCount = (text.match(/,/g) || []).length;
+        if (commaCount > 1 || /[:;]/.test(text)) {
+          return 'slot_form';
+        }
+
+        if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
+          return 'slot_form';
+        }
+      }
+
+      return null;
+    }
+
+    if (!context.isVideoPrompt) {
+      return null;
+    }
+
+    const constraints = context.videoConstraints || {
+      minWords: adverbLightingSlot ? 1 : 2,
+      maxWords: adverbLightingSlot ? 3 : 50,
+      maxSentences: 1,
+    };
+
+    const minWords = Number.isFinite(constraints.minWords) ? constraints.minWords! : 2;
+    const maxWords = Number.isFinite(constraints.maxWords) ? constraints.maxWords! : 50;
+    const maxSentences = Number.isFinite(constraints.maxSentences) ? constraints.maxSentences! : 1;
+
+    if (wordCount < minWords || wordCount > maxWords) {
+      return 'length_only';
+    }
+
+    const sentenceCount = (text.match(/[.!?]/g) || []).length;
+    if (maxSentences > 0 && sentenceCount > maxSentences) {
+      return 'length_only';
+    }
+
+    if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
+      return 'slot_form';
+    }
+
+    if (constraints.mode === 'micro') {
+      if (/[.!?]/.test(text)) {
+        return 'slot_form';
+      }
+
+      const commaCount = (text.match(/,/g) || []).length;
+      if (commaCount > 1 || /[:;]/.test(text)) {
+        return 'slot_form';
+      }
+
+      if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
+        return 'slot_form';
+      }
+    }
+
+    if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
+      return 'slot_form';
+    }
+
+    return null;
+  }
+
+  private _classifySlotGrammarProfile(context: ExtendedSanitizationContext): SlotGrammarProfile {
+    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    const before = (context.contextBefore || '').trimEnd().toLowerCase();
+    const after = (context.contextAfter || '').trimStart().toLowerCase();
+    const highlighted = (context.highlightedText || '').trim().toLowerCase();
+
+    if (/\b(a|an|the)\s*$/.test(before)) {
+      return 'noun_phrase_after_article';
+    }
+
+    if (category.startsWith('action')) {
+      return 'verb_phrase_before_object';
+    }
+
+    if (
+      highlighted.endsWith('ly') ||
+      (highlighted.split(/\s+/).filter(Boolean).length === 1 &&
+        this.technicalVerbLeadTerms.test(before) &&
+        /^(through|across|into|over|around|beneath|onto|inside|outside)\b/.test(after))
+    ) {
+      return 'adverb_modifier';
+    }
+
+    if (
+      category === 'lighting.quality' ||
+      /^[,.;:!?-]/.test(after) ||
+      (!before && !!after)
+    ) {
+      return 'adjective_modifier';
+    }
+
+    if (
+      (category.startsWith('subject.') || category === 'environment.context') &&
+      /^(gripping|holding|resting|visible|pressed|touching|framed|curled|wrapped)\b/.test(after)
+    ) {
+      return 'noun_phrase_before_object';
+    }
+
+    return 'bare_technical_phrase';
+  }
+
+  private _getGrammarProfileRejectReason(
+    text: string,
+    category: string,
+    slotProfile: SlotGrammarProfile
+  ): SuggestionRejectReason | null {
+    if (slotProfile === 'adverb_modifier') {
+      return this._looksLikeAdverb(text) ? null : 'slot_form';
+    }
+
+    if (slotProfile === 'adjective_modifier') {
+      if (!this._looksLikeAdjectiveLikePhrase(text, category)) {
+        return 'slot_form';
+      }
+      return null;
+    }
+
+    if (slotProfile === 'noun_phrase_after_article' || slotProfile === 'noun_phrase_before_object') {
+      return this._looksLikeNounPhrase(text) ? null : 'slot_form';
+    }
+
+    if (slotProfile === 'verb_phrase_before_object') {
+      return this._looksLikeVerbPhrase(text) ? null : 'slot_form';
+    }
+
+    return null;
+  }
+
+  private _looksLikeAdverb(text: string): boolean {
+    const normalized = text.toLowerCase().trim();
+    if (!normalized) return false;
+    if (normalized.split(/\s+/).length > 3) return false;
+    return /\bly\b/.test(normalized) || /^(soft|gentle|bright|warm|dim|faint|bare|even)\w*ly\b/.test(normalized);
+  }
+
+  private _looksLikeAdjectiveLikePhrase(text: string, category: string): boolean {
+    const normalized = text.toLowerCase().trim();
+    if (!normalized) return false;
+    if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
+    if (/\b(of|with|while|because|that)\b/.test(normalized)) return false;
+    if (category === 'style.aesthetic' && this.styleNounCueTerms.test(normalized)) {
+      return false;
+    }
+    if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
+    return true;
+  }
+
+  private _looksLikeNounPhrase(text: string): boolean {
+    const normalized = text.toLowerCase().trim();
+    if (!normalized) return false;
+    if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
+    if (/^(gripping|holding|resting|turning|leaning|looking|reaching|pressing|curling|squeezing)\b/.test(normalized)) {
+      return false;
+    }
+    return true;
+  }
+
+  private _looksLikeVerbPhrase(text: string): boolean {
+    const normalized = text.toLowerCase().trim();
+    if (!normalized) return false;
+    if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
+    return /^(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?|lean(?:ing)?|reach(?:ing)?|look(?:ing)?|gaze(?:ing)?|track(?:ing)?|tilt(?:ing)?|dolly|pan(?:ning)?|sway(?:ing)?|drift(?:ing)?|rustl(?:e|ing)|(?:branches?|trees?|leaves?|grass|waves?|water|clouds?)\s+\w+ing)\b/.test(
+      normalized
+    );
+  }
+
+  private _detectSubjectAppearanceSubRole(context: ExtendedSanitizationContext): SubjectAppearanceSubRole {
+    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    if (!category.startsWith('subject.')) {
+      return null;
+    }
+
+    const highlighted = (context.highlightedText || '').toLowerCase();
+    if (this.faceCueTerms.test(highlighted)) return 'face_detail';
+    if (this.handCueTerms.test(highlighted)) return 'hand_detail';
+    if (this.hairCueTerms.test(highlighted)) return 'hair_detail';
+    if (this.feetCueTerms.test(highlighted)) return 'feet_detail';
+    if (this.propCueTerms.test(highlighted)) return 'prop_detail';
+    return null;
+  }
+
+  private _hasBodyPartSubRoleDrift(text: string, context: ExtendedSanitizationContext): boolean {
+    const subRole = this._detectSubjectAppearanceSubRole(context);
+    if (!subRole) {
+      return false;
+    }
+
+    const lowerText = text.toLowerCase();
+    if (subRole === 'face_detail') {
+      return (
+        !this.faceCueTerms.test(lowerText) ||
+        this.handCueTerms.test(lowerText) ||
+        this.hairCueTerms.test(lowerText) ||
+        this.feetCueTerms.test(lowerText) ||
+        this.propCueTerms.test(lowerText) ||
+        /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(lowerText)
+      );
+    }
+
+    if (subRole === 'hand_detail') {
+      return (
+        !this.handCueTerms.test(lowerText) ||
+        this.faceCueTerms.test(lowerText) ||
+        this.hairCueTerms.test(lowerText) ||
+        this.feetCueTerms.test(lowerText) ||
+        /\b(sock|toy|stroller)\b/i.test(lowerText)
+      );
+    }
+
+    if (subRole === 'hair_detail') {
+      return !this.hairCueTerms.test(lowerText);
+    }
+
+    if (subRole === 'feet_detail') {
+      return !this.feetCueTerms.test(lowerText);
+    }
+
+    if (subRole === 'prop_detail') {
+      return !this.propCueTerms.test(lowerText) || this.faceCueTerms.test(lowerText) || this.handCueTerms.test(lowerText);
+    }
+
+    return false;
+  }
+
+  private _hasObjectOverlap(text: string, context: ExtendedSanitizationContext): boolean {
+    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    if (!category.startsWith('action')) {
+      return false;
+    }
+
+    const after = (context.contextAfter || '').toLowerCase();
+    const lowerText = text.toLowerCase();
+    const overlappingObjectTerms = ['steering wheel', 'wheel', 'dashboard', 'window', 'glass', 'door', 'toy'];
+
+    if (overlappingObjectTerms.some((term) => after.includes(term) && lowerText.includes(term))) {
+      return true;
+    }
+
+    const localContext = [
+      context.highlightedText || '',
+      context.contextBefore || '',
+      context.contextAfter || '',
+      context.spanAnchors || '',
+      context.nearbySpanHints || '',
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    const handBoundAction = this.handCueTerms.test(localContext) && overlappingObjectTerms.some((term) => localContext.includes(term));
+    if (!handBoundAction) {
+      return false;
+    }
+
+    if (this.fullBodyActionTerms.test(lowerText)) {
+      return true;
+    }
+
+    return !this.handInteractionTerms.test(lowerText);
+  }
+
+  private _isMetaphoricalOrAbstract(text: string, context: ExtendedSanitizationContext): boolean {
+    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    if (category === 'lighting.timeofday') {
+      return this.abstractVisualTerms.test(text.toLowerCase());
+    }
+    return false;
+  }
+
+  private _getSlotFitRejectReason(
+    text: string,
+    context: ExtendedSanitizationContext
+  ): SuggestionRejectReason | null {
     const category = this._normalizeCategoryKey(context.highlightedCategory || '');
     const lowerText = text.toLowerCase();
+    const slotProfile = this._classifySlotGrammarProfile(context);
+
+    const slotFormReject = this._getGrammarProfileRejectReason(text, category, slotProfile);
+    if (slotFormReject) {
+      return slotFormReject;
+    }
+
+    if (category === 'lighting.quality' && slotProfile === 'adverb_modifier') {
+      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+        return 'category_drift';
+      }
+      const looksLikeSourceClause =
+        this.lightSourceClauseTerms.test(text) &&
+        (this.videoService.countWords(text) >= 4 || this.lightingClauseVerbTerms.test(text));
+      if (looksLikeSourceClause) {
+        return 'slot_form';
+      }
+      return null;
+    }
 
     if (category === 'camera.angle') {
       if (
@@ -544,9 +873,9 @@ export class SuggestionValidationService {
         this.lensApertureTerms.test(text) ||
         this.cameraFocusTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
-      return !this.cameraAngleTerms.test(text);
+      return this.cameraAngleTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.movement') {
@@ -555,9 +884,9 @@ export class SuggestionValidationService {
         this.cameraFocusTerms.test(text) ||
         this.shotFramingTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
-      return !this.cameraMovementTerms.test(text);
+      return this.cameraMovementTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.focus') {
@@ -566,9 +895,9 @@ export class SuggestionValidationService {
         this.lensApertureTerms.test(text) ||
         this.shotFramingTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
-      return !this.cameraFocusTerms.test(text);
+      return this.cameraFocusTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.lens') {
@@ -577,18 +906,23 @@ export class SuggestionValidationService {
         this.cameraFocusTerms.test(text) ||
         this.shotFramingTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
-      return !this.lensApertureTerms.test(text);
+      return this.lensApertureTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'shot.type') {
       const hasShotFraming = this.shotFramingTerms.test(text);
       const hasMovementLanguage = this.cameraMovementTerms.test(text);
-      if (!hasShotFraming) {
-        return true;
+      if (/\b(of|featuring|showing|looking|emphasizing)\b/i.test(text)) {
+        return 'slot_form';
       }
-      return hasMovementLanguage || this.lensApertureTerms.test(text) || this.cameraFocusTerms.test(text);
+      if (!hasShotFraming) {
+        return 'category_drift';
+      }
+      return hasMovementLanguage || this.lensApertureTerms.test(text) || this.cameraFocusTerms.test(text)
+        ? 'category_drift'
+        : null;
     }
 
     const highlightedWordCount = this.videoService.countWords(context.highlightedText || '');
@@ -600,18 +934,21 @@ export class SuggestionValidationService {
         typeof context.contextAfter === 'string' &&
         context.contextAfter.trim().startsWith(','));
 
-    if (isAdjectiveLikeLightingSlot) {
+    if (isAdjectiveLikeLightingSlot && slotProfile !== 'adverb_modifier') {
       if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
       const looksLikeSourceClause =
         this.lightSourceClauseTerms.test(text) &&
         (suggestionWordCount >= 4 || this.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
-        return true;
+        return 'slot_form';
       }
       if (!this.lightingQualityCueTerms.test(text)) {
-        return true;
+        return 'category_drift';
+      }
+      if (this.shadowCueTerms.test(context.highlightedText || '') && !this.shadowCueTerms.test(text)) {
+        return 'coherence_conflict';
       }
     }
 
@@ -623,22 +960,28 @@ export class SuggestionValidationService {
         this.lightingClauseVerbTerms.test(text) ||
         this.lightingDirectionTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
-      return !this.timeOfDayTerms.test(text);
+      if (!this.timeOfDayTerms.test(text)) {
+        return 'category_drift';
+      }
+      if (!this.canonicalTimeTokens.test(lowerText) || this.abstractVisualTerms.test(lowerText)) {
+        return 'metaphor_or_abstract';
+      }
+      return null;
     }
 
     if (category === 'lighting.source') {
       if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
       if (!this.lightingQualityCueTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
       const hasSourceOrDirection =
         this.lightSourceClauseTerms.test(text) || this.lightingDirectionTerms.test(text);
       if (!hasSourceOrDirection) {
-        return true;
+        return 'category_drift';
       }
     }
 
@@ -649,25 +992,25 @@ export class SuggestionValidationService {
         this.lightSourceClauseTerms.test(text) ||
         this.lightingDirectionTerms.test(text)
       ) {
-        return true;
+        return 'category_drift';
       }
       if (!this.styleStrongCueTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
     }
 
     if (category === 'environment.location') {
       if (this.environmentContextTerms.test(text) || this.vehicleInteriorTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
-      return !this.externalLocationTerms.test(text);
+      return this.externalLocationTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'environment.context') {
       if (this.externalLocationTerms.test(text)) {
-        return true;
+        return 'category_drift';
       }
-      return !this.environmentContextTerms.test(text);
+      return this.environmentContextTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'environment.weather') {
@@ -676,11 +1019,11 @@ export class SuggestionValidationService {
         this.weatherGentleAirTerms.test(highlighted) &&
         this.weatherDisruptiveTerms.test(lowerText)
       ) {
-        return true;
+        return 'coherence_conflict';
       }
     }
 
-    return false;
+    return null;
   }
 
   private _hasActorDrift(text: string, context: ExtendedSanitizationContext): boolean {
