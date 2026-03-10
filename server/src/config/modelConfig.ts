@@ -26,6 +26,7 @@ interface ModelConfigEntry {
     model: string;
     timeout: number;
   };
+  strictClient?: boolean;
   responseFormat?: 'json_object';
   /** Enable seed-based reproducibility for this operation */
   useSeed?: boolean;
@@ -449,14 +450,13 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Structured IR extraction for video prompt analysis.
    */
   video_prompt_ir_extraction: {
-    client: process.env.VIDEO_PROMPT_IR_PROVIDER || 'gemini',
+    client: 'gemini',
     model: process.env.VIDEO_PROMPT_IR_MODEL || 'gemini-2.5-flash',
     temperature: 0.1,
     maxTokens: 4096,
     timeout: 30000,
     responseFormat: 'json_object',
-    fallbackTo: 'qwen',
-    fallbackConfig: QWEN_FALLBACK,
+    strictClient: true,
     useSeed: true,
     useDeveloperMessage: true,
   },
@@ -465,13 +465,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Prompt rewrite for model-specific video prompt optimization.
    */
   video_prompt_rewrite: {
-    client: process.env.VIDEO_PROMPT_REWRITE_PROVIDER || 'gemini',
+    client: 'gemini',
     model: process.env.VIDEO_PROMPT_REWRITE_MODEL || 'gemini-2.5-flash',
     temperature: 0.4,
     maxTokens: 8192,
     timeout: 45000,
-    fallbackTo: 'qwen',
-    fallbackConfig: QWEN_FALLBACK,
+    strictClient: true,
     useDeveloperMessage: true,
   },
 

@@ -33,7 +33,7 @@ The Prompt Optimization workflow transforms raw user input into production-ready
 - **Model-Specific Compilation**: Compiles prompts for Runway, Luma, Veo, etc.
 - **Chain-of-Thought Reasoning**: Video mode uses CoT for cinematographic analysis
 - **Shot Plan Interpretation**: Pre-interprets concepts into flexible shot plans
-- **Quality Scoring**: Calculates quality scores for optimization results
+- **Client Quality Score**: Calculates a heuristic quality score for optimization results
 - **Streaming Support**: Server-Sent Events (SSE) for real-time updates
 
 ### Optimization Modes
@@ -480,7 +480,6 @@ Client: Complete
 - `StrategyFactory.ts` - Strategy factory
 - `ContextInferenceService.ts` - Context inference
 - `ModeDetectionService.ts` - Mode detection
-- `QualityAssessmentService.ts` - Quality assessment
 - `ShotInterpreterService.ts` - Shot interpretation
 - `TemplateService.ts` - Template management
 
@@ -548,18 +547,16 @@ Client: Complete
 3. **Synthesizer**: Generates model-specific syntax
 4. **Validation**: Validates against model constraints
 
-### 4. Quality Scoring
+### 4. Client Quality Score
 
-**File:** `client/src/services/PromptOptimizationApi.ts`
+**File:** `client/src/services/prompt-optimization/qualityScore.ts`
 
 **Method:** `calculateQualityScore()`
 
 **Factors:**
-- Clarity
-- Specificity
-- Structure
-- Completeness
-- Actionability
+- Output is longer than the input
+- Output includes section headers
+- Output includes key prompt-building markers like `Goal`, `Return Format`, `Research`, `Context`, or `Learning`
 
 **Score Range:** 0-100
 
@@ -680,4 +677,3 @@ Client: Complete
 - [Architecture Guide](../architecture/README.md)
 - [Video CoT Developer Guide](../architecture/VIDEO_COT_DEVELOPER_GUIDE.md)
 - [API Documentation](../API.md)
-

@@ -1,4 +1,3 @@
-import OptimizationConfig from '@config/OptimizationConfig';
 import { throwIfAborted } from './abort';
 import type { OptimizeFlowArgs } from './types';
 
@@ -25,12 +24,9 @@ export const runOptimizeFlow = async ({
   optimizationCache,
   shotInterpreter,
   strategyFactory,
-  qualityAssessment,
   compilationService,
-  optimizeIteratively,
   applyConstitutionalAI,
   logOptimizationMetrics,
-  metricsService,
   intentLock,
   promptLint,
 }: OptimizeFlowArgs) => {
@@ -48,7 +44,6 @@ export const runOptimizeFlow = async ({
     shotPlan = null,
     shotPlanAttempted = false,
     useConstitutionalAI = false,
-    useIterativeRefinement = false,
     onMetadata,
     onChunk,
     signal,
@@ -74,7 +69,6 @@ export const runOptimizeFlow = async ({
     hasShotPlan: !!shotPlan,
     shotPlanAttempted,
     useConstitutionalAI,
-    useIterativeRefinement,
     skipCache,
     lockedSpanCount: lockedSpans.length,
   });
@@ -145,41 +139,26 @@ export const runOptimizeFlow = async ({
       handleMetadata({ normalizedModelId: targetModel });
     }
 
-    if (useIterativeRefinement) {
-      optimizedPrompt = await optimizeIteratively(
-        prompt,
-        finalMode,
-        context,
-        brainstormContext,
-        lockedSpans,
-        generationParams,
-        interpretedShotPlan,
-        useConstitutionalAI,
-        signal,
-        handleMetadata
-      );
-    } else {
-      const strategy = strategyFactory.getStrategy(finalMode);
+    const strategy = strategyFactory.getStrategy(finalMode);
 
-      const domainContent = strategy.generateDomainContent
-        ? await strategy.generateDomainContent(prompt, context || null, interpretedShotPlan)
-        : null;
+    const domainContent = strategy.generateDomainContent
+      ? await strategy.generateDomainContent(prompt, context || null, interpretedShotPlan)
+      : null;
 
-      optimizedPrompt = await strategy.optimize({
-        prompt,
-        context,
-        brainstormContext,
-        generationParams,
-        domainContent: domainContent as string | null,
-        shotPlan: interpretedShotPlan,
-        lockedSpans,
-        onMetadata: handleMetadata,
-        ...(signal ? { signal } : {}),
-      });
+    optimizedPrompt = await strategy.optimize({
+      prompt,
+      context,
+      brainstormContext,
+      generationParams,
+      domainContent: domainContent as string | null,
+      shotPlan: interpretedShotPlan,
+      lockedSpans,
+      onMetadata: handleMetadata,
+      ...(signal ? { signal } : {}),
+    });
 
-      if (useConstitutionalAI) {
-        optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, finalMode, signal);
-      }
+    if (useConstitutionalAI) {
+      optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, finalMode, signal);
     }
 
     const intentLockedGeneric = intentLock.enforceIntentLock({
@@ -201,48 +180,6 @@ export const runOptimizeFlow = async ({
       promptLintRepaired: genericLint.repaired,
     });
 
-    let qualityAssessmentResult = await qualityAssessment.assessQuality(optimizedPrompt, finalMode);
-    const qualityThreshold = OptimizationConfig.quality.minAcceptableScore;
-
-    handleMetadata({
-      qualityAssessment: qualityAssessmentResult,
-    });
-
-    const qualityGateTriggered = !useIterativeRefinement && qualityAssessmentResult.score < qualityThreshold;
-    metricsService?.recordOptimizationQualityGate(qualityAssessmentResult.score, qualityGateTriggered);
-
-    if (qualityGateTriggered) {
-      const initialScore = qualityAssessmentResult.score;
-      log.warn('Quality gate failed, attempting bounded refinement', {
-        operation,
-        score: initialScore,
-        threshold: qualityThreshold,
-      });
-
-      optimizedPrompt = await optimizeIteratively(
-        prompt,
-        finalMode,
-        context,
-        brainstormContext,
-        lockedSpans,
-        generationParams,
-        interpretedShotPlan,
-        useConstitutionalAI,
-        signal,
-        handleMetadata
-      );
-
-      qualityAssessmentResult = await qualityAssessment.assessQuality(optimizedPrompt, finalMode);
-      handleMetadata({
-        qualityAssessment: qualityAssessmentResult,
-        qualityGate: {
-          triggered: true,
-          initialScore,
-          finalScore: qualityAssessmentResult.score,
-        },
-      });
-    }
-
     handleMetadata({ genericPrompt: optimizedPrompt });
 
     if (finalMode === 'video' && compilationService) {
@@ -250,7 +187,6 @@ export const runOptimizeFlow = async ({
         operation,
         optimizedPrompt,
         mode: finalMode,
-        qualityAssessment: qualityAssessmentResult,
         ...(targetModel !== undefined ? { targetModel } : {}),
       });
 
@@ -296,7 +232,6 @@ export const runOptimizeFlow = async ({
       inputLength: prompt.length,
       outputLength: optimizedPrompt.length,
       useConstitutionalAI,
-      useIterativeRefinement,
     });
 
     return {

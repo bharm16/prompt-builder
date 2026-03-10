@@ -1,21 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VideoPromptCompilationService } from '@services/prompt-optimization/services/VideoPromptCompilationService';
-import type { QualityAssessment } from '@services/prompt-optimization/types';
 import type { VideoPromptService } from '@services/video-prompt-analysis/VideoPromptService';
-import type { QualityAssessmentService } from '@services/prompt-optimization/services/QualityAssessmentService';
-
-const buildQualityAssessment = (score: number): QualityAssessment => ({
-  score,
-  details: {
-    clarity: score,
-    specificity: score,
-    structure: score,
-    completeness: score,
-    actionability: score,
-  },
-  strengths: [],
-  weaknesses: [],
-});
 
 describe('VideoPromptCompilationService', () => {
   it('keeps generic output when no target model is provided', async () => {
@@ -23,20 +8,12 @@ describe('VideoPromptCompilationService', () => {
       optimizeForModel: vi.fn(),
       detectTargetModel: vi.fn(),
     } as unknown as VideoPromptService;
-    const qualityAssessmentService = {
-      assessQuality: vi.fn(),
-    } as unknown as QualityAssessmentService;
-
-    const service = new VideoPromptCompilationService(
-      videoPromptService,
-      qualityAssessmentService
-    );
+    const service = new VideoPromptCompilationService(videoPromptService);
 
     const result = await service.compileOptimizedPrompt({
       operation: 'optimize',
       optimizedPrompt: 'generic optimized prompt',
       mode: 'video',
-      qualityAssessment: buildQualityAssessment(82),
     });
 
     expect(result).toEqual({
@@ -55,21 +32,13 @@ describe('VideoPromptCompilationService', () => {
       }),
       detectTargetModel: vi.fn(),
     } as unknown as VideoPromptService;
-    const qualityAssessmentService = {
-      assessQuality: vi.fn().mockResolvedValue(buildQualityAssessment(95)),
-    } as unknown as QualityAssessmentService;
-
-    const service = new VideoPromptCompilationService(
-      videoPromptService,
-      qualityAssessmentService
-    );
+    const service = new VideoPromptCompilationService(videoPromptService);
 
     const result = await service.compileOptimizedPrompt({
       operation: 'optimize',
       optimizedPrompt: 'generic optimized prompt',
       targetModel: 'kling',
       mode: 'video',
-      qualityAssessment: buildQualityAssessment(82),
     });
 
     expect(videoPromptService.optimizeForModel).toHaveBeenCalledWith(
@@ -77,6 +46,33 @@ describe('VideoPromptCompilationService', () => {
       'kling-2.1'
     );
     expect(result.prompt).toBe('kling-compiled prompt');
-    expect(result.metadata?.compiledFor).toBe('kling-2.1');
+    expect(result.metadata).toMatchObject({
+      compiledFor: 'kling-2.1',
+      normalizedModelId: 'kling-2.1',
+      genericPrompt: 'generic optimized prompt',
+    });
+    expect(result.metadata).not.toHaveProperty('compilationQuality');
+    expect(result.metadata).not.toHaveProperty('compilationWarning');
+  });
+
+  it('keeps successful terse compilations instead of falling back to the generic prompt', async () => {
+    const videoPromptService = {
+      optimizeForModel: vi.fn().mockResolvedValue({
+        prompt: 'Tabby cat walks along a sandy beach at golden hour.',
+        metadata: { phases: [{ changes: ['trimmed for wan'] }] },
+      }),
+      detectTargetModel: vi.fn(),
+    } as unknown as VideoPromptService;
+    const service = new VideoPromptCompilationService(videoPromptService);
+
+    const result = await service.compileOptimizedPrompt({
+      operation: 'optimize',
+      optimizedPrompt: 'A much longer generic optimized prompt with many details and camera controls.',
+      targetModel: 'wan',
+      mode: 'video',
+    });
+
+    expect(result.prompt).toBe('Tabby cat walks along a sandy beach at golden hour.');
+    expect(result.metadata?.compiledFor).toBe('wan-2.2');
   });
 });

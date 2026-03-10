@@ -24,32 +24,14 @@ describe('runOptimizeFlow stream parity', () => {
         generateDomainContent: vi.fn(async () => null),
       })),
     },
-    qualityAssessment: {
-      assessQuality: vi.fn(async () => ({
-        score: 0.95,
-        details: {
-          clarity: 0.95,
-          specificity: 0.95,
-          structure: 0.95,
-          completeness: 0.95,
-          actionability: 0.95,
-        },
-        strengths: [],
-        weaknesses: [],
-      })),
-    },
     compilationService: {
       compileOptimizedPrompt: vi.fn(async () => ({
         prompt: 'final compiled prompt for target model',
         metadata: { normalizedModelId: 'veo-3' },
       })),
     },
-    optimizeIteratively: vi.fn(async () => 'iterative output'),
     applyConstitutionalAI: vi.fn(async (prompt: string) => prompt),
     logOptimizationMetrics: vi.fn(),
-    metricsService: {
-      recordOptimizationQualityGate: vi.fn(),
-    },
     intentLock: {
       enforceIntentLock: vi.fn(({ optimizedPrompt }) => ({
         prompt: optimizedPrompt,

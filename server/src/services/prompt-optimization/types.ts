@@ -21,22 +21,6 @@ export interface InferredContext {
   intendedUse: string;
 }
 
-/**
- * Quality assessment result
- */
-export interface QualityAssessment {
-  score: number;
-  details: {
-    clarity: number;
-    specificity: number;
-    structure: number;
-    completeness: number;
-    actionability: number;
-  };
-  strengths: string[];
-  weaknesses: string[];
-}
-
 export interface LockedSpan {
   id?: string;
   text: string;
@@ -85,7 +69,6 @@ export interface OptimizationRequest {
   shotPlanAttempted?: boolean;
   domainContent?: string | null;
   useConstitutionalAI?: boolean;
-  useIterativeRefinement?: boolean;
   onMetadata?: (metadata: Record<string, unknown>) => void;
   onChunk?: (delta: string) => void;
   signal?: AbortSignal;

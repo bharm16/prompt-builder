@@ -3,11 +3,9 @@ import type { CapabilityValues } from '@shared/capabilities';
 import type {
   AIService,
   InferredContext,
-  LockedSpan,
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
-  QualityAssessment,
   ShotPlan,
   TwoStageOptimizationRequest,
   TwoStageOptimizationResult,
@@ -48,42 +46,20 @@ export type StrategyFactoryLike = {
   getStrategy(mode: OptimizationMode): OptimizationStrategyLike;
 };
 
-export type QualityAssessmentLike = {
-  assessQuality(prompt: string, mode: OptimizationMode): Promise<QualityAssessment>;
-};
-
 export type CompilationServiceLike = {
   compileOptimizedPrompt(args: {
     operation: string;
     optimizedPrompt: string;
     mode: OptimizationMode;
-    qualityAssessment: QualityAssessment;
     targetModel?: string;
   }): Promise<{ prompt: string; metadata: MetadataMap | null }>;
 };
-
-export type IterativeRefinementLike = (
-  prompt: string,
-  mode: OptimizationMode,
-  context: InferredContext | null,
-  brainstormContext: Record<string, unknown> | null,
-  lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
-  generationParams: CapabilityValues | null,
-  shotPlan: ShotPlan | null,
-  useConstitutionalAI: boolean,
-  signal?: AbortSignal | undefined,
-  onMetadata?: ((metadata: MetadataMap) => void) | undefined
-) => Promise<string>;
 
 export type ConstitutionalReviewLike = (
   prompt: string,
   mode: OptimizationMode,
   signal?: AbortSignal | undefined
 ) => Promise<string>;
-
-export type QualityGateMetricsLike = {
-  recordOptimizationQualityGate(score: number, triggered: boolean): void;
-};
 
 export type IntentLockLike = {
   enforceIntentLock(params: {
@@ -115,16 +91,13 @@ export interface OptimizeFlowArgs {
   optimizationCache: OptimizationCacheLike;
   shotInterpreter: ShotInterpreterLike;
   strategyFactory: StrategyFactoryLike;
-  qualityAssessment: QualityAssessmentLike;
   compilationService: CompilationServiceLike | null;
-  optimizeIteratively: IterativeRefinementLike;
   applyConstitutionalAI: ConstitutionalReviewLike;
   logOptimizationMetrics: (
     originalPrompt: string,
     optimizedPrompt: string,
     mode: OptimizationMode
   ) => void;
-  metricsService?: QualityGateMetricsLike | null;
   intentLock: IntentLockLike;
   promptLint: PromptLintLike;
 }
@@ -176,23 +149,6 @@ export interface I2VFlowArgs {
   };
   imageObservation: ImageObservationLike;
   i2vStrategy: I2VStrategyLike;
-}
-
-export interface IterativeRefinementFlowArgs {
-  prompt: string;
-  mode: OptimizationMode;
-  context: InferredContext | null;
-  brainstormContext: Record<string, unknown> | null;
-  lockedSpans: LockedSpan[] | null;
-  generationParams: CapabilityValues | null;
-  shotPlan: ShotPlan | null;
-  useConstitutionalAI: boolean;
-  signal?: AbortSignal | undefined;
-  onMetadata?: ((metadata: MetadataMap) => void) | undefined;
-  log: ILogger;
-  strategyFactory: StrategyFactoryLike;
-  qualityAssessment: QualityAssessmentLike;
-  applyConstitutionalAI: ConstitutionalReviewLike;
 }
 
 export interface ConstitutionalReviewFlowArgs {

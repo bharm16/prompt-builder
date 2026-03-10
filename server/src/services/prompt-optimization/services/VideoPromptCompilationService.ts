@@ -1,9 +1,7 @@
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import OptimizationConfig from '@config/OptimizationConfig';
-import type { OptimizationMode, QualityAssessment } from '../types';
+import type { OptimizationMode } from '../types';
 import { VideoPromptService } from '../../video-prompt-analysis/VideoPromptService';
-import { QualityAssessmentService } from './QualityAssessmentService';
 import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 
 interface CompileOptimizedPromptParams {
@@ -11,17 +9,14 @@ interface CompileOptimizedPromptParams {
   optimizedPrompt: string;
   targetModel?: string;
   mode: OptimizationMode;
-  qualityAssessment: QualityAssessment;
 }
 
 export class VideoPromptCompilationService {
   private readonly videoPromptService: VideoPromptService;
-  private readonly qualityAssessment: QualityAssessmentService;
   private readonly log: ILogger;
 
-  constructor(videoPromptService: VideoPromptService, qualityAssessment: QualityAssessmentService) {
+  constructor(videoPromptService: VideoPromptService) {
     this.videoPromptService = videoPromptService;
-    this.qualityAssessment = qualityAssessment;
     this.log = logger.child({ service: 'VideoPromptCompilationService' });
   }
 
@@ -41,7 +36,6 @@ export class VideoPromptCompilationService {
     optimizedPrompt,
     targetModel,
     mode,
-    qualityAssessment,
   }: CompileOptimizedPromptParams): Promise<{ prompt: string; metadata: Record<string, unknown> | null }> {
     if (mode !== 'video') {
       return { prompt: optimizedPrompt, metadata: null };
@@ -83,43 +77,15 @@ export class VideoPromptCompilationService {
         changes: changeCount,
       });
 
-      const genericScore = qualityAssessment?.score ?? 0;
-      let compiledScore: number | null = null;
-      let keepCompiled = true;
-
-      if (!compiledIsStructured) {
-        const compiledAssessment = await this.qualityAssessment.assessQuality(compiledPrompt, mode);
-        compiledScore = compiledAssessment.score;
-        const dropThreshold = OptimizationConfig.iterativeRefinement.improvementThreshold;
-        const minScore = OptimizationConfig.quality.minAcceptableScore;
-
-        keepCompiled = compiledScore >= minScore && compiledScore + dropThreshold >= genericScore;
-
-        if (!keepCompiled) {
-          this.log.warn('Compiled prompt failed quality gate; returning generic prompt', {
-            operation,
-            targetModel: resolvedTargetModel,
-            genericScore,
-            compiledScore,
-          });
-        }
-      }
-
       const metadata: Record<string, unknown> = {
         compiledFor: resolvedTargetModel,
         normalizedModelId: resolvedTargetModel,
+        genericPrompt: optimizedPrompt,
         compilationMeta: compilationResult.metadata,
-        compilationQuality: {
-          genericScore,
-          compiledScore,
-          keptCompiled: keepCompiled,
-          structuredOutput: compiledIsStructured,
-        },
-        ...(keepCompiled ? {} : { compilationWarning: 'compiled_quality_drop' }),
       };
 
       return {
-        prompt: keepCompiled ? compiledPrompt : optimizedPrompt,
+        prompt: compiledPrompt,
         metadata,
       };
     } catch (error) {

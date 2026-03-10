@@ -77,7 +77,7 @@ Context-aware suggestion generation using multiple LLM providers with contrastiv
 
 ### 2.3 Two-Stage Optimization Pipeline
 **Technical Reality:**
-Fast draft generation (1-3 seconds) followed by quality refinement pass. Includes shot interpretation, quality assessment scoring, and optional Constitutional AI review.
+Fast draft generation (1-3 seconds) followed by a refinement pass. Includes shot interpretation, model-specific compilation, and optional Constitutional AI review.
 
 **Business Translation:**
 > "Get a working draft in seconds, then watch Vidra refine it to production quality in the background. You start iterating immediately while optimization continues."
@@ -164,7 +164,7 @@ Image observation service that analyzes starting frames and constrains suggestio
 - Training and adoption at scale
 
 **Vidra Value Proposition:**
-> "Vidra provides the control and quality assurance that enterprise video production demands. Constitutional AI review ensures content compliance, quality scoring guarantees output standards, and multi-model support prevents vendor lock-in. Our API-first architecture integrates with existing production pipelines."
+> "Vidra provides the control and quality assurance that enterprise video production demands. Constitutional AI review supports content compliance, and multi-model support prevents vendor lock-in. Our API-first architecture integrates with existing production pipelines."
 
 **ROI Metrics:**
 - Reduced compliance review cycles
@@ -203,7 +203,7 @@ Image observation service that analyzes starting frames and constrains suggestio
 | Objection | Response |
 |-----------|----------|
 | "We already have prompt templates" | "Templates are static. Vidra provides dynamic, context-aware suggestions that adapt to each unique prompt. Plus, our semantic analysis identifies gaps your templates might miss." |
-| "Our team has prompt engineering expertise" | "Great - Vidra accelerates experts with one-click enhancements and quality scoring. Your experts will move even faster while training up the rest of the team." |
+| "Our team has prompt engineering expertise" | "Great - Vidra accelerates experts with one-click enhancements and model-specific optimization. Your experts will move even faster while training up the rest of the team." |
 | "We use [Runway/Pika] which has its own interface" | "Vidra optimizes prompts before they reach any platform. Think of it as a prompt compiler - you write once and Vidra adapts for whichever platform you choose." |
 | "General prompt tools are cheaper" | "General tools don't understand video. They optimize for text generation, not visual storytelling. The time you save avoiding wrong outputs pays for Vidra in the first project." |
 | "We're waiting to see how AI video matures" | "The models will keep improving, but prompt engineering will remain critical. Investing in prompt mastery now means you're ready to leverage every model improvement instantly." |

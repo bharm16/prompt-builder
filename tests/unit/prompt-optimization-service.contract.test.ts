@@ -1,25 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import OptimizationConfig from '@config/OptimizationConfig';
 import { deriveLockMap } from '@services/prompt-optimization/types/i2v';
 import type {
   AIService,
   OptimizationMode,
-  QualityAssessment,
 } from '@services/prompt-optimization/types';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
-
-const quality = (score: number): QualityAssessment => ({
-  score,
-  details: {
-    clarity: score,
-    specificity: score,
-    structure: score,
-    completeness: score,
-    actionability: score,
-  },
-  strengths: [],
-  weaknesses: [],
-});
 
 const createService = (): PromptOptimizationService => {
   const aiService: AIService = {
@@ -112,54 +97,6 @@ describe('PromptOptimizationService contract', () => {
     expect(result.inputMode).toBe('i2v');
     expect(result.prompt).toBe('i2v optimized prompt');
     expect(result.i2v?.appliedMode).toBe('strict');
-  });
-
-  it('triggers quality-gate iterative refinement when initial score is below threshold', async () => {
-    const service = createService();
-
-    (service as unknown as { optimizationCache: unknown }).optimizationCache = {
-      buildCacheKey: vi.fn(() => 'quality-key'),
-      getCachedResult: vi.fn(async () => null),
-      getCachedMetadata: vi.fn(async () => null),
-      cacheResult: vi.fn(async () => {}),
-    };
-
-    (service as unknown as { shotInterpreter: unknown }).shotInterpreter = {
-      interpret: vi.fn(async () => null),
-    };
-
-    const strategyOptimize = vi
-      .fn()
-      .mockResolvedValueOnce('base candidate prompt')
-      .mockResolvedValue('iteratively refined prompt');
-
-    (service as unknown as { strategyFactory: unknown }).strategyFactory = {
-      getStrategy: vi.fn(() => ({
-        name: 'video',
-        optimize: strategyOptimize,
-      })),
-      getSupportedModes: vi.fn(() => ['video'] as OptimizationMode[]),
-    };
-
-    (service as unknown as { qualityAssessment: unknown }).qualityAssessment = {
-      assessQuality: vi
-        .fn()
-        .mockResolvedValueOnce(quality(OptimizationConfig.quality.minAcceptableScore - 0.1))
-        .mockResolvedValueOnce(quality(OptimizationConfig.quality.targetScore + 0.01))
-        .mockResolvedValue(quality(OptimizationConfig.quality.targetScore + 0.01)),
-    };
-
-    const result = await service.optimize({
-      prompt: 'seed prompt',
-      skipCache: true,
-    });
-
-    expect(result.prompt).toBe('iteratively refined prompt');
-    expect(result.metadata).toMatchObject({
-      qualityGate: {
-        triggered: true,
-      },
-    });
   });
 
   it('emits draft/refined callbacks during successful two-stage optimization', async () => {

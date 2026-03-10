@@ -125,21 +125,6 @@ describe('Optimize Routes (full-stack integration)', () => {
         }
 
         switch (operation) {
-          case 'optimize_quality_assessment':
-            return makeResponse(
-              JSON.stringify({
-                score: 0.95,
-                details: {
-                  clarity: 0.95,
-                  specificity: 0.95,
-                  structure: 0.95,
-                  completeness: 0.95,
-                  actionability: 0.95,
-                },
-                strengths: ['clear visual direction'],
-                weaknesses: [],
-              })
-            );
           case 'optimize_shot_interpreter':
             return makeResponse(
               JSON.stringify({

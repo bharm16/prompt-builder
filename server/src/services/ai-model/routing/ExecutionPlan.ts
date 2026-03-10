@@ -42,7 +42,7 @@ export class ExecutionPlanResolver {
     const baseConfig = this.getConfig(operation);
     const primaryAvailable = this.clientResolver.hasClient(baseConfig.client);
 
-    if (!primaryAvailable) {
+    if (!primaryAvailable && !baseConfig.strictClient) {
       const replacement = this.selectAvailableClient(baseConfig.fallbackTo, baseConfig.fallbackConfig);
       if (replacement) {
         const config: ModelConfigEntry = {
@@ -68,6 +68,13 @@ export class ExecutionPlanResolver {
       }
     }
 
+    if (!primaryAvailable && baseConfig.strictClient) {
+      logger.warn('Strict client unavailable; operation will not be remapped or auto-fallbacked', {
+        operation,
+        requiredClient: baseConfig.client,
+      });
+    }
+
     if (!primaryAvailable && !this.clientResolver.hasAnyClient()) {
       throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
     }
@@ -82,6 +89,10 @@ export class ExecutionPlanResolver {
     primaryClient: string,
     baseConfig: ModelConfigEntry
   ): { client: string; model: string; timeout: number } | null {
+    if (baseConfig.strictClient) {
+      return null;
+    }
+
     if (baseConfig.fallbackTo && baseConfig.fallbackTo !== primaryClient && this.clientResolver.hasClient(baseConfig.fallbackTo)) {
       return {
         client: baseConfig.fallbackTo,

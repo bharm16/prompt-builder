@@ -43,6 +43,7 @@ export interface ModelConfigEntry {
     model: string;
     timeout: number;
   };
+  strictClient?: boolean;
   responseFormat?: 'json_object';
   useSeed?: boolean;
   useDeveloperMessage?: boolean;
