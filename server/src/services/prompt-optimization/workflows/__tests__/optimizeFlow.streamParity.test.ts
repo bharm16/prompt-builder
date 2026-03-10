@@ -49,26 +49,6 @@ describe('runOptimizeFlow stream parity', () => {
     },
   };
 
-  it('streams chunks from the same final prompt returned by non-stream path', async () => {
-    vi.clearAllMocks();
-    const chunks: string[] = [];
-    const result = await runOptimizeFlow({
-      ...baseDeps,
-      request: {
-        prompt: 'baby driving a car',
-        mode: 'video',
-        targetModel: 'veo-3',
-        onChunk: (delta: string) => {
-          chunks.push(delta);
-        },
-      },
-    } as never);
-
-    const streamed = chunks.join('').trim();
-    expect(result.prompt).toBe('final compiled prompt for target model');
-    expect(streamed).toBe(result.prompt);
-  });
-
   it('uses originalUserPrompt from brainstorm context when enforcing intent lock', async () => {
     vi.clearAllMocks();
 

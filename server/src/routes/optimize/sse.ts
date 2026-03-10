@@ -8,9 +8,7 @@ interface SseChannel {
 }
 
 export interface SseChannelOptions {
-  /** Interval (ms) between heartbeat comments. 0 disables. Default: 15000. */
   heartbeatIntervalMs?: number;
-  /** Max idle time (ms) with no sendEvent call before aborting. 0 disables. Default: 20000. */
   idleTimeoutMs?: number;
 }
 
@@ -44,11 +42,12 @@ export const createSseChannel = (
   res.on('close', onClientDisconnect);
   req.on('aborted', onClientDisconnect);
 
-  // ── Idle timeout: aborts the stream if no sendEvent call within the window ──
   let idleTimer: NodeJS.Timeout | null = null;
 
   const resetIdleTimer = (): void => {
-    if (idleTimer) clearTimeout(idleTimer);
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
     if (idleTimeoutMs > 0) {
       idleTimer = setTimeout(() => {
         if (!internalAbortController.signal.aborted) {
@@ -60,18 +59,15 @@ export const createSseChannel = (
 
   resetIdleTimer();
 
-  // ── Heartbeat: prevents proxy/LB idle disconnects ──
   const heartbeatTimer =
     heartbeatIntervalMs > 0
       ? setInterval(() => {
           if (!internalAbortController.signal.aborted && !res.writableEnded && clientConnected) {
             try {
-              // Heartbeat bytes are real channel activity and should keep the
-              // idle watchdog from canceling long-running optimization work.
               resetIdleTimer();
               res.write(': heartbeat\n\n');
             } catch {
-              /* ignore write errors on dead connections */
+              // Ignore write errors on dead connections.
             }
           }
         }, heartbeatIntervalMs)
@@ -94,8 +90,12 @@ export const createSseChannel = (
   };
 
   const close = (): void => {
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    if (idleTimer) clearTimeout(idleTimer);
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+    }
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
     res.removeListener('close', onClientDisconnect);
     req.removeListener('aborted', onClientDisconnect);
     if (!res.writableEnded) {

@@ -187,7 +187,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         } : {
           healthy: true, // Not required, so consider it healthy
           enabled: false,
-          message: 'Groq API not configured (two-stage optimization disabled)',
+          message: 'Groq API not configured',
         },
         gemini: geminiStats ? {
           healthy: geminiStats.state === 'CLOSED',

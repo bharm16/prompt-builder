@@ -13,22 +13,9 @@ import type {
   SuggestionPayload,
 } from '@features/prompt-optimizer/types/domain/suggestions';
 
-import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
 import type { I2VContext } from '../types/i2v';
-
-export interface SpansData {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
-  meta: Record<string, unknown> | null;
-  source: string;
-  timestamp: number;
-}
 
 export interface HighlightSnapshot {
   spans: Array<{
@@ -180,11 +167,8 @@ export interface PromptCanvasProps {
   onRedo?: (() => void) | undefined;
   canUndo?: boolean | undefined;
   canRedo?: boolean | undefined;
-  isDraftReady?: boolean | undefined;
-  isRefining?: boolean | undefined;
   isProcessing?: boolean | undefined;
-  draftSpans?: SpansData | null | undefined;
-  refinedSpans?: SpansData | null | undefined;
+  optimizationResultVersion?: number | undefined;
   coherenceAffectedSpanIds?: Set<string> | undefined;
   coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
 

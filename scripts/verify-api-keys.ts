@@ -113,7 +113,7 @@ async function testGroqKey() {
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    log.warning('GROQ_API_KEY is not set in .env file (two-stage optimization disabled)');
+    log.warning('GROQ_API_KEY is not set in .env file (Groq-backed prompt optimization unavailable)');
     return false;
   }
 
@@ -280,10 +280,10 @@ ${colors.reset}`);
 
   if (openAIValid && groqValid) {
     log.success('All API keys are valid and working! ✨');
-    log.info('Two-stage optimization is enabled for fast draft generation.');
+    log.info('Prompt optimization can use both OpenAI and Groq-backed services.');
   } else if (openAIValid && !groqValid) {
     log.warning('OpenAI key is valid but Groq key is missing or invalid.');
-    log.info('The app will work but without fast two-stage optimization.');
+    log.info('The app will work, but Groq-backed prompt optimization features will be unavailable.');
   } else if (!openAIValid) {
     log.error('OpenAI API key is invalid - the application will not function!');
     log.info('Please update OPENAI_API_KEY in your .env file.');

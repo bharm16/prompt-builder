@@ -157,7 +157,6 @@ export const useGenerationControlsPanel = (
 ): UseGenerationControlsPanelResult => {
   const {
     isProcessing = false,
-    isRefining = false,
     assets = [],
     onImageUpload,
     onStartFrameUpload,
@@ -308,7 +307,7 @@ export const useGenerationControlsPanel = (
     promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
 
-  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isOptimizing = Boolean(isProcessing);
   const isGenerating = controls?.isGenerating ?? false;
   const isGenerationReady = Boolean(controls);
 

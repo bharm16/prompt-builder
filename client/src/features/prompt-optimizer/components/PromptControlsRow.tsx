@@ -40,9 +40,7 @@ export function PromptControlsRow({
   } = usePromptConfig();
   const { promptOptimizer } = usePromptServices();
   const showVideoPreview = selectedMode === 'video';
-  const isOptimizing = Boolean(
-    promptOptimizer.isProcessing || promptOptimizer.isRefining
-  );
+  const isOptimizing = Boolean(promptOptimizer.isProcessing);
   const { schema } = useCapabilities(selectedModel);
   const { models: registryModels } = useModelRegistry();
 

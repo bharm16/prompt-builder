@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePromptStatus } from '@features/prompt-optimizer/PromptCanvas/hooks/usePromptStatus';
 
@@ -13,15 +13,13 @@ describe('usePromptStatus', () => {
     vi.useRealTimers();
   });
 
-  it('marks generated when no displayed prompt', () => {
+  it('marks generated when no displayed prompt exists', () => {
     const setState = vi.fn();
 
     renderHook(() =>
       usePromptStatus({
         displayedPrompt: null,
         inputPrompt: 'input',
-        isDraftReady: false,
-        isRefining: false,
         isProcessing: false,
         generatedTimestamp: null,
         setState,
@@ -41,8 +39,6 @@ describe('usePromptStatus', () => {
       usePromptStatus({
         displayedPrompt: 'same',
         inputPrompt: 'same',
-        isDraftReady: false,
-        isRefining: false,
         isProcessing: false,
         generatedTimestamp: null,
         setState,
@@ -52,15 +48,13 @@ describe('usePromptStatus', () => {
     expect(setState).toHaveBeenCalledWith({ promptState: 'synced' });
   });
 
-  it('marks generated and sets timestamp when draft ready and idle', () => {
+  it('marks generated and sets a timestamp when a final optimized prompt is present', () => {
     const setState = vi.fn();
 
     renderHook(() =>
       usePromptStatus({
         displayedPrompt: 'output',
         inputPrompt: 'input',
-        isDraftReady: true,
-        isRefining: false,
         isProcessing: false,
         generatedTimestamp: null,
         setState,
@@ -73,34 +67,14 @@ describe('usePromptStatus', () => {
     });
   });
 
-  it('keeps existing generated timestamp when already set', () => {
+  it('marks edited while processing', () => {
     const setState = vi.fn();
 
     renderHook(() =>
       usePromptStatus({
         displayedPrompt: 'output',
         inputPrompt: 'input',
-        isDraftReady: true,
-        isRefining: false,
-        isProcessing: false,
-        generatedTimestamp: 123,
-        setState,
-      })
-    );
-
-    expect(setState).toHaveBeenCalledWith({ promptState: 'generated' });
-  });
-
-  it('marks edited when refining or processing', () => {
-    const setState = vi.fn();
-
-    renderHook(() =>
-      usePromptStatus({
-        displayedPrompt: 'output',
-        inputPrompt: 'input',
-        isDraftReady: true,
-        isRefining: true,
-        isProcessing: false,
+        isProcessing: true,
         generatedTimestamp: null,
         setState,
       })

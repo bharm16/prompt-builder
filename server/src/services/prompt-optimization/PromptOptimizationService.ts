@@ -6,7 +6,6 @@ import { ContextInferenceService } from './services/ContextInferenceService';
 import { ModeDetectionService } from './services/ModeDetectionService';
 import { StrategyFactory } from './services/StrategyFactory';
 import { ShotInterpreterService } from './services/ShotInterpreterService';
-import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
 import { TemplateService } from './services/TemplateService';
@@ -22,12 +21,9 @@ import type {
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
-  TwoStageOptimizationRequest,
-  TwoStageOptimizationResult,
 } from './types';
 import type { I2VConstraintMode } from './types/i2v';
 import { runI2vFlow } from './workflows/i2vFlow';
-import { runTwoStageFlow } from './workflows/twoStageFlow';
 import { runOptimizeFlow } from './workflows/optimizeFlow';
 import { runConstitutionalReviewFlow } from './workflows/constitutionalReview';
 
@@ -40,7 +36,6 @@ export class PromptOptimizationService {
   private readonly modeDetection: ModeDetectionService;
   private readonly strategyFactory: StrategyFactory;
   private readonly shotInterpreter: ShotInterpreterService;
-  private readonly draftService: DraftGenerationService;
   private readonly optimizationCache: OptimizationCacheService;
   private readonly compilationService: VideoPromptCompilationService | null;
   private readonly imageObservation: ImageObservationService;
@@ -67,7 +62,6 @@ export class PromptOptimizationService {
     this.modeDetection = new ModeDetectionService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, resolvedTemplateService);
     this.shotInterpreter = new ShotInterpreterService(aiService, shotPlanCacheConfig);
-    this.draftService = new DraftGenerationService(aiService);
     this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService
       ? new VideoPromptCompilationService(videoPromptService)
@@ -85,18 +79,6 @@ export class PromptOptimizationService {
       availableClients: this.ai.getAvailableClients?.(),
       strategies: this.strategyFactory.getSupportedModes(),
       pipelineV2Enabled: this.pipelineV2Enabled,
-    });
-  }
-
-  async optimizeTwoStage(
-    request: TwoStageOptimizationRequest
-  ): Promise<TwoStageOptimizationResult> {
-    return runTwoStageFlow({
-      request,
-      log: this.log,
-      shotInterpreter: this.shotInterpreter,
-      draftService: this.draftService,
-      optimize: (nextRequest) => this.optimize(nextRequest),
     });
   }
 

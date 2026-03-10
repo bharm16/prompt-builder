@@ -70,7 +70,6 @@ export interface OptimizationRequest {
   domainContent?: string | null;
   useConstitutionalAI?: boolean;
   onMetadata?: (metadata: Record<string, unknown>) => void;
-  onChunk?: (delta: string) => void;
   signal?: AbortSignal;
   // I2V-specific
   startImage?: string;
@@ -79,39 +78,11 @@ export interface OptimizationRequest {
   sourcePrompt?: string;
 }
 
-export interface TwoStageOptimizationRequest {
-  prompt: string;
-  mode?: OptimizationMode;
-  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
-  context?: InferredContext | null;
-  brainstormContext?: Record<string, unknown> | null;
-  generationParams?: CapabilityValues | null;
-  skipCache?: boolean;
-  lockedSpans?: LockedSpan[];
-  onDraft?: ((draft: string, spans: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
-  onDraftChunk?: ((delta: string) => void) | null;
-  onRefinedChunk?: ((delta: string) => void) | null;
-  signal?: AbortSignal;
-}
-
 export interface OptimizationResponse {
   prompt: string;
   inputMode: 't2v' | 'i2v';
   metadata?: Record<string, unknown>;
   i2v?: I2VOptimizationResult;
-}
-
-/**
- * Two-stage optimization result
- */
-export interface TwoStageOptimizationResult {
-  draft: string;
-  refined: string;
-  draftSpans?: { spans?: unknown[]; meta?: unknown } | null;
-  refinedSpans?: { spans?: unknown[]; meta?: unknown } | null;
-  metadata?: Record<string, unknown>;
-  usedFallback?: boolean;
-  error?: string;
 }
 
 /**

@@ -7,7 +7,6 @@
 export { PromptCanvas } from './PromptCanvas';
 export type {
   PromptCanvasProps,
-  SpansData,
   HighlightSnapshot,
   ParseResult,
   SuggestionPayload,

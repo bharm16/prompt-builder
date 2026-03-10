@@ -7,20 +7,13 @@
 
 import { useMemo } from 'react';
 import { useHighlightSourceSelection } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
-import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
-import type { SpansData, HighlightSnapshot } from '../types';
+import type { HighlightSnapshot } from '../types';
 import {
-  convertSpansDataToSpanData,
-  convertHighlightSnapshotToSpanData,
   convertHighlightSnapshotToSourceSelectionOptions,
 } from '../utils/spanDataConversion';
 
 export interface UseSpanDataConversionOptions {
-  draftSpans: SpansData | null;
-  refinedSpans: SpansData | null;
   initialHighlights: HighlightSnapshot | null;
-  isDraftReady: boolean;
-  isRefining: boolean;
   promptUuid: string | null;
   displayedPrompt: string | null;
   enableMLHighlighting: boolean;
@@ -28,8 +21,6 @@ export interface UseSpanDataConversionOptions {
 }
 
 export interface UseSpanDataConversionReturn {
-  convertedDraftSpans: SpanData | null;
-  convertedRefinedSpans: SpanData | null;
   convertedInitialHighlights: {
     spans: Array<{
       start: number;
@@ -45,36 +36,18 @@ export interface UseSpanDataConversionReturn {
 }
 
 export function useSpanDataConversion({
-  draftSpans,
-  refinedSpans,
   initialHighlights,
-  isDraftReady,
-  isRefining,
   promptUuid,
   displayedPrompt,
   enableMLHighlighting,
   initialHighlightsVersion,
 }: UseSpanDataConversionOptions): UseSpanDataConversionReturn {
-  const convertedDraftSpans = useMemo(
-    () => convertSpansDataToSpanData(draftSpans),
-    [draftSpans]
-  );
-
-  const convertedRefinedSpans = useMemo(
-    () => convertSpansDataToSpanData(refinedSpans),
-    [refinedSpans]
-  );
-
   const convertedInitialHighlights = useMemo(
     () => convertHighlightSnapshotToSourceSelectionOptions(initialHighlights),
     [initialHighlights]
   );
 
   const memoizedInitialHighlights = useHighlightSourceSelection({
-    draftSpans: convertedDraftSpans,
-    refinedSpans: convertedRefinedSpans,
-    isDraftReady,
-    isRefining,
     initialHighlights: convertedInitialHighlights,
     promptUuid,
     displayedPrompt,
@@ -83,10 +56,7 @@ export function useSpanDataConversion({
   });
 
   return {
-    convertedDraftSpans,
-    convertedRefinedSpans,
     convertedInitialHighlights,
     memoizedInitialHighlights,
   };
 }
-

@@ -7,8 +7,6 @@ import type {
   OptimizationRequest,
   OptimizationResponse,
   ShotPlan,
-  TwoStageOptimizationRequest,
-  TwoStageOptimizationResult,
 } from '../types';
 import type { I2VConstraintMode, I2VOptimizationResult } from '../types/i2v';
 
@@ -102,26 +100,6 @@ export interface OptimizeFlowArgs {
   promptLint: PromptLintLike;
 }
 
-export type DraftGenerationLike = {
-  supportsStreaming(): boolean;
-  generateDraft(
-    prompt: string,
-    mode: OptimizationMode,
-    shotPlan: ShotPlan | null,
-    generationParams: CapabilityValues | null,
-    signal?: AbortSignal,
-    onChunk?: (delta: string) => void
-  ): Promise<string>;
-};
-
-export interface TwoStageFlowArgs {
-  request: TwoStageOptimizationRequest;
-  log: ILogger;
-  shotInterpreter: ShotInterpreterLike;
-  draftService: DraftGenerationLike;
-  optimize: (request: OptimizationRequest) => Promise<OptimizationResponse>;
-}
-
 export type ImageObservationLike = {
   observe(params: {
     image: string;
@@ -158,5 +136,3 @@ export interface ConstitutionalReviewFlowArgs {
   log: ILogger;
   ai: AIService;
 }
-
-export type TwoStageResult = Promise<TwoStageOptimizationResult>;

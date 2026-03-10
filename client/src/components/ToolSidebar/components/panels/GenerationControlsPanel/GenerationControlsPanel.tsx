@@ -51,7 +51,6 @@ export function GenerationControlsPanel(
     onStoryboard: onStoryboardFromProps,
     onBack,
     isProcessing: isProcessingFromProps,
-    isRefining: isRefiningFromProps,
     assets: assetsFromProps,
     onImageUpload: onImageUploadFromProps,
     onStartFrameUpload: onStartFrameUploadFromProps,
@@ -61,7 +60,6 @@ export function GenerationControlsPanel(
   const onRender = onRenderFromProps ?? generationDomain?.onRender ?? noopRender;
   const onStoryboard = onStoryboardFromProps ?? generationDomain?.onStoryboard ?? noopStoryboard;
   const isProcessing = isProcessingFromProps ?? promptInteractionDomain?.isProcessing;
-  const isRefining = isRefiningFromProps ?? promptInteractionDomain?.isRefining;
   const assets = assetsFromProps ?? assetsDomain?.assets ?? [];
   const onImageUpload = onImageUploadFromProps ?? generationDomain?.onImageUpload;
   const onStartFrameUpload =
@@ -74,7 +72,6 @@ export function GenerationControlsPanel(
     onRender,
     onStoryboard,
     ...(typeof isProcessing === "boolean" ? { isProcessing } : {}),
-    ...(typeof isRefining === "boolean" ? { isRefining } : {}),
     assets,
     ...(onBack ? { onBack } : {}),
     ...(onImageUpload ? { onImageUpload } : {}),

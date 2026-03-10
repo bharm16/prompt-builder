@@ -7,12 +7,9 @@ const {
   useToast,
   usePromptOptimizerApi,
   usePromptOptimizerState,
-  runTwoStageOptimization,
-  runSingleStageOptimization,
+  runOptimization,
   markOptimizationStart,
   logDebug,
-  logInfo,
-  logWarn,
   logError,
   startTimer,
   endTimer,
@@ -20,12 +17,9 @@ const {
   useToast: vi.fn(),
   usePromptOptimizerApi: vi.fn(),
   usePromptOptimizerState: vi.fn(),
-  runTwoStageOptimization: vi.fn(),
-  runSingleStageOptimization: vi.fn(),
+  runOptimization: vi.fn(),
   markOptimizationStart: vi.fn(),
   logDebug: vi.fn(),
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
   logError: vi.fn(),
   startTimer: vi.fn(),
   endTimer: vi.fn(() => 12),
@@ -44,8 +38,7 @@ vi.mock('@hooks/usePromptOptimizerState', () => ({
 }));
 
 vi.mock('@hooks/utils/promptOptimizationFlow', () => ({
-  runTwoStageOptimization,
-  runSingleStageOptimization,
+  runOptimization,
 }));
 
 vi.mock('@hooks/utils/performanceMetrics', () => ({
@@ -56,8 +49,6 @@ vi.mock('@/services/LoggingService', () => ({
   logger: {
     child: vi.fn(() => ({
       debug: logDebug,
-      info: logInfo,
-      warn: logWarn,
       error: logError,
     })),
     startTimer,
@@ -77,17 +68,11 @@ function createStateHookResult() {
     qualityScore: null,
     skipAnimation: false,
     improvementContext: { stateContext: true },
-    draftPrompt: '',
-    isDraftReady: false,
-    isRefining: false,
-    draftSpans: null,
-    refinedSpans: null,
+    optimizationResultVersion: 0,
     lockedSpans: [
       {
         id: 'locked-1',
         text: 'subject',
-        start: 0,
-        end: 7,
         category: 'subject.identity',
       },
     ],
@@ -104,11 +89,7 @@ function createStateHookResult() {
     setPreviewAspectRatio: vi.fn(),
     setSkipAnimation: vi.fn(),
     setImprovementContext: vi.fn(),
-    setDraftPrompt: vi.fn(),
-    setIsDraftReady: vi.fn(),
-    setIsRefining: vi.fn(),
-    setDraftSpans: vi.fn(),
-    setRefinedSpans: vi.fn(),
+    bumpOptimizationResultVersion: vi.fn(),
     setLockedSpans: vi.fn(),
     addLockedSpan: vi.fn(),
     removeLockedSpan: vi.fn(),
@@ -117,7 +98,6 @@ function createStateHookResult() {
     rollback: vi.fn(),
     startOptimization: vi.fn(),
     resetPrompt: vi.fn(),
-    finishProcessing: vi.fn(),
     setIsProcessing: vi.fn(),
   };
 }
@@ -125,7 +105,6 @@ function createStateHookResult() {
 function createApiHookResult() {
   return {
     analyzeAndOptimize: vi.fn(),
-    optimizeWithFallback: vi.fn(),
     compilePrompt: vi.fn(),
     calculateQualityScore: vi.fn(() => 87),
   };
@@ -143,12 +122,11 @@ describe('usePromptOptimizer', () => {
     });
     usePromptOptimizerState.mockReturnValue(createStateHookResult());
     usePromptOptimizerApi.mockReturnValue(createApiHookResult());
-    runTwoStageOptimization.mockResolvedValue({ optimized: 'two-stage output', score: 91 });
-    runSingleStageOptimization.mockResolvedValue({ optimized: 'single-stage output', score: 79 });
+    runOptimization.mockResolvedValue({ optimized: 'json output', score: 91 });
   });
 
-  it('routes non-image requests to two-stage flow and forwards generation options', async () => {
-    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2', true));
+  it('routes optimization through the unified JSON flow', async () => {
+    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2'));
     const outcome = await act(async () =>
       result.current.optimize(
         'input prompt',
@@ -162,9 +140,8 @@ describe('usePromptOptimizer', () => {
       )
     );
 
-    expect(runTwoStageOptimization).toHaveBeenCalledTimes(1);
-    expect(runSingleStageOptimization).not.toHaveBeenCalled();
-    expect(runTwoStageOptimization).toHaveBeenCalledWith(
+    expect(runOptimization).toHaveBeenCalledTimes(1);
+    expect(runOptimization).toHaveBeenCalledWith(
       expect.objectContaining({
         promptToOptimize: 'input prompt',
         selectedMode: 'video',
@@ -176,47 +153,21 @@ describe('usePromptOptimizer', () => {
       })
     );
     expect(markOptimizationStart).toHaveBeenCalledTimes(1);
-    expect(outcome).toEqual({ optimized: 'two-stage output', score: 91 });
-  });
-
-  it('bypasses two-stage and uses single-stage flow when startImage is provided', async () => {
-    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2', true));
-
-    await act(async () => {
-      await result.current.optimize('input prompt', null, null, undefined, {
-        startImage: 'https://example.com/start.png',
-        sourcePrompt: 'source prompt',
-        constraintMode: 'transform',
-      });
-    });
-
-    expect(runTwoStageOptimization).not.toHaveBeenCalled();
-    expect(runSingleStageOptimization).toHaveBeenCalledTimes(1);
-    expect(runSingleStageOptimization).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptToOptimize: 'input prompt',
-        selectedMode: 'video',
-        selectedModel: 'sora-2',
-        startImage: 'https://example.com/start.png',
-        sourcePrompt: 'source prompt',
-        constraintMode: 'transform',
-      })
-    );
+    expect(outcome).toEqual({ optimized: 'json output', score: 91 });
   });
 
   it('uses targetModel override when provided', async () => {
-    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2', false));
+    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2'));
 
     await act(async () => {
       await result.current.optimize('input prompt', null, null, 'kling-26');
     });
 
-    expect(runSingleStageOptimization).toHaveBeenCalledWith(
+    expect(runOptimization).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedModel: 'kling-26',
       })
     );
-    expect(runTwoStageOptimization).not.toHaveBeenCalled();
   });
 
   it('returns null and warns when prompt is empty', async () => {
@@ -227,7 +178,7 @@ describe('usePromptOptimizer', () => {
       info: vi.fn(),
     };
     useToast.mockReturnValueOnce(toast);
-    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2', true));
+    const { result } = renderHook(() => usePromptOptimizer('video', 'sora-2'));
 
     let response = null;
     await act(async () => {
@@ -236,7 +187,6 @@ describe('usePromptOptimizer', () => {
 
     expect(response).toBeNull();
     expect(toast.warning).toHaveBeenCalledWith('Please enter a prompt');
-    expect(runTwoStageOptimization).not.toHaveBeenCalled();
-    expect(runSingleStageOptimization).not.toHaveBeenCalled();
+    expect(runOptimization).not.toHaveBeenCalled();
   });
 });

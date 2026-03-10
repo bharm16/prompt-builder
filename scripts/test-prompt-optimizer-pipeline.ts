@@ -272,26 +272,20 @@ function selectModels(requested: string[] | undefined, supported: string[]): str
   return selected;
 }
 
-async function runTwoStageOptimization(
+async function runOptimization(
   promptOptimizationService: PromptOptimizationService,
   prompt: string,
   timeoutMs: number,
   targetModel?: string
 ): Promise<string> {
   const signal = AbortSignal.timeout(timeoutMs);
-  const result = await promptOptimizationService.optimizeTwoStage({
+  const result = await promptOptimizationService.optimize({
     prompt,
     mode: 'video',
     ...(targetModel ? { targetModel } : {}),
     signal,
   });
-
-  const refined = result.refined.trim();
-  if (refined.length > 0) {
-    return refined;
-  }
-
-  return result.draft;
+  return result.prompt.trim();
 }
 
 async function main(): Promise<void> {
@@ -359,7 +353,7 @@ async function main(): Promise<void> {
 
     let autoOptimizedPrompt = '';
     try {
-      autoOptimizedPrompt = await runTwoStageOptimization(
+      autoOptimizedPrompt = await runOptimization(
         promptOptimizationService,
         rawPrompt,
         cli.timeoutMs

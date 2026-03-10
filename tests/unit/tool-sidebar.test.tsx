@@ -148,7 +148,6 @@ const createProps = (overrides: Partial<ToolSidebarProps> = {}): ToolSidebarProp
   },
   promptInteraction: {
     isProcessing: false,
-    isRefining: false,
     onInsertTrigger: vi.fn(),
   },
   generation: {

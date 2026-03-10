@@ -161,7 +161,6 @@ const COMPRESSION_CONFIG: compression.CompressionOptions = {
     const url = String(req.originalUrl ?? req.url ?? '');
     const isStreamingEndpoint =
       accept.includes('text/event-stream') ||
-      url.includes('/optimize-stream') ||
       url.includes('/label-spans/stream');
 
     if (isStreamingEndpoint) return false;
@@ -300,6 +299,21 @@ export function applyRateLimitingMiddleware(
     });
   };
 
+  const generalRateLimitHandler = (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+    options: { statusCode: number; message: string }
+  ): void => {
+    const requestPath = req.originalUrl || req.path;
+    if (requestPath.startsWith('/api/') || requestPath.startsWith('/llm/')) {
+      rateLimitJSONHandler(req, res, next, options);
+      return;
+    }
+
+    res.status(options.statusCode).send(options.message);
+  };
+
   // General limiter (all routes)
   const generalLimiter = rateLimit({
     windowMs: RATE_LIMIT_CONFIG.general.windowMs,
@@ -307,6 +321,7 @@ export function applyRateLimitingMiddleware(
     message: 'Too many requests from this IP',
     standardHeaders: true,
     legacyHeaders: false,
+    handler: generalRateLimitHandler,
     skip: (req: express.Request) => req.path === '/metrics' || req.path === '/api/role-classify',
     ...(storeFactory ? { store: storeFactory('general') } : {}),
   });

@@ -74,7 +74,6 @@ export const PromptTopBar = ({
     setInputPrompt,
     genericOptimizedPrompt,
     isProcessing,
-    isRefining,
     displayedPrompt,
     qualityScore,
   } = promptOptimizer;
@@ -104,12 +103,12 @@ export const PromptTopBar = ({
     [outputSaveState, timeLabel]
   );
 
-  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isOptimizing = Boolean(isProcessing);
   // Input is locked only when we have results AND we're not in edit mode
   // When there are no results yet, input should always be editable
   const isInputLocked = (showResults && !isEditing) || isOptimizing;
   const hasInputPrompt = Boolean(inputPrompt.trim());
-  const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
+  const isReoptimizeDisabled = !hasInputPrompt || isProcessing;
 
   const {
     isOpen: autocompleteOpen,
@@ -186,7 +185,7 @@ export const PromptTopBar = ({
   ]);
 
   const handleUpdate = useCallback((): void => {
-    if (isProcessing || isRefining) {
+    if (isProcessing) {
       return;
     }
     debug.logAction('reoptimize', { promptLength: inputPrompt.length });
@@ -222,7 +221,6 @@ export const PromptTopBar = ({
     genericOptimizedPrompt,
     inputPrompt,
     isProcessing,
-    isRefining,
     onOptimize,
     originalInputPrompt,
     originalSelectedModel,
@@ -230,19 +228,19 @@ export const PromptTopBar = ({
   ]);
 
   const handleReoptimize = useCallback((): void => {
-    if (isProcessing || isRefining) {
+    if (isProcessing) {
       return;
     }
     debug.logAction('reoptimize', { promptLength: inputPrompt.length });
     void onOptimize(inputPrompt);
-  }, [debug, inputPrompt, isProcessing, isRefining, onOptimize]);
+  }, [debug, inputPrompt, isProcessing, onOptimize]);
 
   const handleInputPromptKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
       if (handleAutocompleteKeyDown(event)) {
         return;
       }
-      if (isProcessing || isRefining) {
+      if (isProcessing) {
         return;
       }
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -266,7 +264,6 @@ export const PromptTopBar = ({
       inputPrompt,
       isEditing,
       isProcessing,
-      isRefining,
       onOptimize,
       showResults,
     ]

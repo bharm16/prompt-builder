@@ -6,24 +6,19 @@ test('workspace smoke: optimize, preview, and session persistence flow', async (
   let previewCalls = 0;
   let sessionMutationCalls = 0;
 
-  await page.route('**/api/optimize-stream', async (route) => {
+  await page.route('**/api/optimize', async (route) => {
     optimizeCalls += 1;
-    const sseBody = [
-      'event: draft',
-      'data: {"draft":"A cinematic runner in rain."}',
-      '',
-      'event: refined',
-      'data: {"refined":"A cinematic runner sprinting through neon rain.","metadata":{"previewPrompt":"A cinematic runner sprinting through neon rain."}}',
-      '',
-      'event: done',
-      'data: {"usedFallback":false}',
-      '',
-    ].join('\n');
-
     await route.fulfill({
       status: 200,
-      headers: { 'content-type': 'text/event-stream' },
-      body: sseBody,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        prompt: 'A cinematic runner sprinting through neon rain.',
+        optimizedPrompt: 'A cinematic runner sprinting through neon rain.',
+        metadata: {
+          previewPrompt: 'A cinematic runner sprinting through neon rain.',
+        },
+      }),
     });
   });
 

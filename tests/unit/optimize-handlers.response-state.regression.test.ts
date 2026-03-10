@@ -92,7 +92,6 @@ describe('optimize handlers response-state regression', () => {
           metadata: {},
         };
       }),
-      optimizeTwoStage: vi.fn(),
       compilePrompt: vi.fn(),
     };
 
@@ -124,7 +123,6 @@ describe('optimize handlers response-state regression', () => {
       optimize: vi.fn(async () => {
         throw new Error('upstream failed');
       }),
-      optimizeTwoStage: vi.fn(),
       compilePrompt: vi.fn(),
     };
 
@@ -156,7 +154,6 @@ describe('optimize handlers response-state regression', () => {
     const res = createMockResponse();
     const service = {
       optimize: vi.fn(),
-      optimizeTwoStage: vi.fn(),
       compilePrompt: vi.fn(async () => {
         throw new Error('compile failed');
       }),

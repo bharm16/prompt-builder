@@ -4,7 +4,6 @@
  */
 
 interface OptimizationTimeouts {
-  draft: number;
   contextInference: number;
   modeDetection: number;
   optimization: {
@@ -14,10 +13,6 @@ interface OptimizationTimeouts {
 }
 
 interface OptimizationTokens {
-  draft: {
-    default: number;
-    video: number;
-  };
   contextInference: number;
   modeDetection: number;
   optimization: {
@@ -28,7 +23,6 @@ interface OptimizationTokens {
 }
 
 interface OptimizationTemperatures {
-  draft: number;
   contextInference: number;
   modeDetection: number;
   optimization: {
@@ -71,7 +65,6 @@ interface CacheConfig {
 export const OptimizationConfig = {
   // API timeout settings (in milliseconds)
   timeouts: {
-    draft: 15000,          // ChatGPT draft generation (slower than Groq but still fast)
     contextInference: 15000, // Context inference from prompt
     modeDetection: 10000,   // Mode detection
     optimization: {
@@ -82,10 +75,6 @@ export const OptimizationConfig = {
 
   // Token limits for different operations
   tokens: {
-    draft: {
-      default: 200,
-      video: 300,           // Video drafts can be longer
-    },
     contextInference: 500,
     modeDetection: 300,
     optimization: {
@@ -97,7 +86,6 @@ export const OptimizationConfig = {
 
   // Temperature settings for different operations
   temperatures: {
-    draft: 0.7,             // More creative for drafts
     contextInference: 0.3,  // Low for consistent inference
     modeDetection: 0.2,     // Very low for consistent mode detection
     optimization: {

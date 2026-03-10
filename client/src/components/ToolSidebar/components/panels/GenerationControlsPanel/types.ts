@@ -7,7 +7,6 @@ export type {
 
 export interface GenerationControlsPanelProps {
   isProcessing?: boolean;
-  isRefining?: boolean;
   assets?: Asset[];
   onDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
   onRender: (model: string, overrides?: GenerationOverrides) => void;

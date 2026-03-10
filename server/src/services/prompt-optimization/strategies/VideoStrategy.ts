@@ -94,7 +94,6 @@ export class VideoStrategy implements OptimizationStrategy {
     brainstormContext = null,
     signal,
     onMetadata,
-    onChunk,
   }: OptimizationRequest): Promise<string> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
@@ -116,10 +115,6 @@ export class VideoStrategy implements OptimizationStrategy {
       typeof brainstormContext?.originalUserPrompt === 'string' && brainstormContext.originalUserPrompt.trim()
         ? brainstormContext.originalUserPrompt.trim()
         : null;
-
-    // Streaming is handled by optimizeFlow so streaming and non-streaming paths
-    // share one canonical output pipeline.
-    void onChunk;
 
     // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {

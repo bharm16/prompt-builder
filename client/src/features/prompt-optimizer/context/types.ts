@@ -13,7 +13,7 @@ import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/typ
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
-import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
+import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
 import type { VideoTier } from '@components/ToolSidebar/types';
 
@@ -40,11 +40,7 @@ export interface PromptOptimizer {
   setSkipAnimation: (skip: boolean) => void;
   improvementContext: unknown | null;
   setImprovementContext: (context: unknown | null) => void;
-  draftPrompt: string;
-  isDraftReady: boolean;
-  isRefining: boolean;
-  draftSpans: SpansData | null;
-  refinedSpans: SpansData | null;
+  optimizationResultVersion: number;
   lockedSpans: LockedSpan[];
   optimize: (
     prompt?: string,

@@ -37,37 +37,3 @@ export interface CompileResult {
   metadata?: Record<string, unknown>;
   targetModel?: string;
 }
-
-export interface OptimizeWithStreamingOptions extends OptimizeOptions {
-  onDraft?: ((draft: string) => void) | null;
-  onSpans?: ((spans: unknown[], source: string, meta?: unknown) => void) | null;
-  onRefined?: ((refined: string, metadata?: Record<string, unknown>) => void) | null;
-  onError?: ((error: Error) => void) | null;
-}
-
-export interface OptimizeWithStreamingResult {
-  draft: string;
-  refined: string;
-  spans: unknown[];
-  metadata: Record<string, unknown> | null;
-  usedFallback: boolean;
-}
-
-export interface StreamWithFetchOptions {
-  url: string;
-  method: string;
-  body: Record<string, unknown>;
-  onMessage: (event: string, data: Record<string, unknown>) => void;
-  onError: (error: Error) => void;
-  onComplete?: () => void;
-  signal?: AbortSignal;
-  maxStreamDurationMs?: number;
-}
-
-export interface OfflineResult {
-  draft: string;
-  refined: string;
-  spans: unknown[];
-  metadata: Record<string, unknown>;
-  usedFallback: boolean;
-}

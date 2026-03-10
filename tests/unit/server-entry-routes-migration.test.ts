@@ -64,7 +64,6 @@ const createApiServices = (
 ): Parameters<typeof createAPIRoutes>[0] => ({
   promptOptimizationService: {
     optimize,
-    optimizeTwoStage: vi.fn(async () => ({ optimizedPrompt: 'optimized prompt' })),
     compilePrompt: vi.fn(async () => ({ compiledPrompt: 'compiled prompt' })),
   } as never,
   storageService: {

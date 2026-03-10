@@ -253,51 +253,6 @@ function buildPaths(): Record<string, unknown> {
       },
     },
 
-    // ── Prompt Optimization ──────────────────────────────────────────────
-    '/api/optimize-stream': {
-      post: {
-        tags: ['Prompt Optimization'],
-        summary: 'Optimize a prompt (streaming SSE)',
-        description:
-          'Two-stage prompt optimization pipeline. Returns Server-Sent Events: ' +
-          '`draft` (fast Groq response), `spans` (semantic labeling), ' +
-          '`refined` (OpenAI refinement), `done`.',
-        operationId: 'optimizePromptStream',
-        security: [{ ApiKeyAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': { schema: { $ref: '#/components/schemas/PromptOptimizeRequest' } },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'SSE stream of optimization events.',
-            headers: RATE_LIMIT_HEADERS,
-            content: { 'text/event-stream': { schema: { type: 'string' } } },
-          },
-          '400': {
-            description: 'Invalid request body.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ApiErrorResponse' } },
-            },
-          },
-          '401': {
-            description: 'Missing or invalid API key.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ApiErrorResponse' } },
-            },
-          },
-          '429': {
-            description: 'Rate limit exceeded.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/RateLimitResponse' } },
-            },
-          },
-        },
-      },
-    },
-
     '/api/optimize-compile': {
       post: {
         tags: ['Prompt Optimization'],

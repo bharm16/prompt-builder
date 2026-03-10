@@ -1,5 +1,5 @@
 import type React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { PromptControlsRow } from '@features/prompt-optimizer/components/PromptControlsRow';
@@ -70,47 +70,42 @@ describe('PromptControlsRow', () => {
       target: { provider: 'generic', model: 'auto', label: 'Auto' },
     });
     mockUsePromptServices.mockReturnValue({
-      promptOptimizer: { isProcessing: false, isRefining: false },
-    } as ReturnType<typeof usePromptServices>);
+      promptOptimizer: { isProcessing: false },
+      promptHistory: {} as never,
+    } as never);
   });
 
-  describe('error handling', () => {
-    it('returns null when not in video mode', () => {
-      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
-        selectedMode: 'image',
-      }));
+  it('returns null when not in video mode', () => {
+    mockUsePromptConfig.mockReturnValue(createPromptConfigState({
+      selectedMode: 'image',
+    }));
 
-      const { container } = render(<PromptControlsRow />);
-
-      expect(container.firstChild).toBeNull();
-    });
+    const { container } = render(<PromptControlsRow />);
+    expect(container.firstChild).toBeNull();
   });
 
-  describe('edge cases', () => {
-    it('disables the model selector when optimizing', () => {
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: { isProcessing: true, isRefining: false },
-      } as ReturnType<typeof usePromptServices>);
-      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
-        selectedMode: 'video',
-      }));
+  it('disables the model selector while optimizing', () => {
+    mockUsePromptServices.mockReturnValue({
+      promptOptimizer: { isProcessing: true },
+      promptHistory: {} as never,
+    } as never);
+    mockUsePromptConfig.mockReturnValue(createPromptConfigState({
+      selectedMode: 'video',
+    }));
 
-      render(<PromptControlsRow />);
+    render(<PromptControlsRow />);
 
-      const select = screen.getByTestId('select');
-      expect(select).toHaveAttribute('data-disabled', 'true');
-    });
+    const select = screen.getByTestId('select');
+    expect(select).toHaveAttribute('data-disabled', 'true');
   });
 
-  describe('core behavior', () => {
-    it('labels the model selector with Auto when no model is selected', () => {
-      mockUsePromptConfig.mockReturnValue(createPromptConfigState({
-        selectedMode: 'video',
-      }));
+  it('labels the model selector with Auto when no model is selected', () => {
+    mockUsePromptConfig.mockReturnValue(createPromptConfigState({
+      selectedMode: 'video',
+    }));
 
-      render(<PromptControlsRow />);
+    render(<PromptControlsRow />);
 
-      expect(screen.getByRole('button', { name: 'Model: Auto' })).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: 'Model: Auto' })).toBeInTheDocument();
   });
 });

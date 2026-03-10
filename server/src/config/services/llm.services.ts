@@ -84,7 +84,7 @@ export function registerLLMServices(container: DIContainer): void {
     'groqClient',
     (config: ServiceConfig, groqLimiter: ConcurrencyLimiter, metricsService: MetricsService) => {
       if (!config.groq.apiKey) {
-        logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
+        logger.warn('GROQ_API_KEY not provided, Groq adapter disabled');
         return null;
       }
       return new LLMClient({

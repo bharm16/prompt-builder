@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { PromptResultsSection } from '@features/prompt-optimizer/components/PromptResultsSection';
 import {
   usePromptActions,
   usePromptConfig,
   usePromptHighlights,
-  usePromptUIStateContext,
   usePromptServices,
   usePromptSession,
+  usePromptUIStateContext,
 } from '@features/prompt-optimizer/context/PromptStateContext';
 import { usePromptResultsActionsContext } from '@features/prompt-optimizer/context/PromptResultsActionsContext';
 
@@ -42,124 +42,66 @@ const mockUsePromptSession = vi.mocked(usePromptSession);
 const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
 const mockUsePromptResultsActionsContext = vi.mocked(usePromptResultsActionsContext);
 
-const buildPromptOptimizer = (overrides: Partial<ReturnType<typeof usePromptServices>['promptOptimizer']> = {}) => ({
-  inputPrompt: 'input',
-  displayedPrompt: 'output',
-  optimizedPrompt: 'opt',
+const buildPromptOptimizer = () => ({
+  inputPrompt: 'input prompt',
+  displayedPrompt: 'displayed prompt',
+  optimizedPrompt: 'displayed prompt',
   previewPrompt: null,
   previewAspectRatio: null,
   qualityScore: null,
-  isDraftReady: true,
-  isRefining: false,
   isProcessing: false,
-  draftSpans: null,
-  refinedSpans: null,
+  optimizationResultVersion: 1,
   setInputPrompt: vi.fn(),
-  ...overrides,
 });
 
 describe('PromptResultsSection', () => {
-  describe('error handling', () => {
-    it('shows the refining banner when refining is true', () => {
-      mockUsePromptUIStateContext.mockReturnValue({
-        showResults: true,
-      } as ReturnType<typeof usePromptUIStateContext>);
+  it('passes prompt data into PromptCanvas', () => {
+    mockUsePromptUIStateContext.mockReturnValue({
+      showResults: true,
+      setShowResults: vi.fn(),
+    } as never);
 
-      mockUsePromptSession.mockReturnValue({
-        currentPromptUuid: 'uuid-1',
-        suggestionsData: null,
-      } as ReturnType<typeof usePromptSession>);
+    mockUsePromptSession.mockReturnValue({
+      currentPromptUuid: 'uuid-1',
+      suggestionsData: null,
+    } as never);
 
-      mockUsePromptConfig.mockReturnValue({
-        currentMode: { id: 'video' },
-      } as ReturnType<typeof usePromptConfig>);
+    mockUsePromptConfig.mockReturnValue({
+      currentMode: { id: 'video' },
+    } as never);
 
-      mockUsePromptHighlights.mockReturnValue({
-        initialHighlights: null,
-        initialHighlightsVersion: 0,
-        canUndo: false,
-        canRedo: false,
-      } as ReturnType<typeof usePromptHighlights>);
+    mockUsePromptHighlights.mockReturnValue({
+      initialHighlights: null,
+      initialHighlightsVersion: 0,
+      canUndo: false,
+      canRedo: false,
+    } as never);
 
-      mockUsePromptActions.mockReturnValue({
-        handleCreateNew: vi.fn(),
-      } as unknown as ReturnType<typeof usePromptActions>);
+    mockUsePromptActions.mockReturnValue({
+      handleCreateNew: vi.fn(),
+      setDisplayedPromptSilently: vi.fn(),
+    } as never);
 
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: buildPromptOptimizer({
-          isRefining: true,
-          isDraftReady: true,
-        }),
-      } as ReturnType<typeof usePromptServices>);
-      mockUsePromptResultsActionsContext.mockReturnValue({
-        user: null,
-        onDisplayedPromptChange: vi.fn(),
-        onReoptimize: vi.fn(async () => undefined),
-        onFetchSuggestions: vi.fn(),
-        onSuggestionClick: vi.fn(),
-        onHighlightsPersist: vi.fn(),
-        onUndo: vi.fn(),
-        onRedo: vi.fn(),
-        stablePromptContext: null,
-        suggestionsData: null,
-      } as any);
+    mockUsePromptServices.mockReturnValue({
+      promptOptimizer: buildPromptOptimizer(),
+      promptHistory: {} as never,
+    } as never);
+    mockUsePromptResultsActionsContext.mockReturnValue({
+      user: null,
+      onDisplayedPromptChange: vi.fn(),
+      onReoptimize: vi.fn(async () => undefined),
+      onFetchSuggestions: vi.fn(),
+      onSuggestionClick: vi.fn(),
+      onHighlightsPersist: vi.fn(),
+      onUndo: vi.fn(),
+      onRedo: vi.fn(),
+      stablePromptContext: null,
+    } as never);
 
-      render(<PromptResultsSection />);
+    render(<PromptResultsSection />);
 
-      expect(screen.getByText('Optimizing prompt...')).toBeInTheDocument();
-    });
-  });
-
-  describe('core behavior', () => {
-    it('passes prompt data into PromptCanvas', () => {
-      mockUsePromptUIStateContext.mockReturnValue({
-        showResults: true,
-      } as ReturnType<typeof usePromptUIStateContext>);
-
-      mockUsePromptSession.mockReturnValue({
-        currentPromptUuid: 'uuid-1',
-        suggestionsData: null,
-      } as ReturnType<typeof usePromptSession>);
-
-      mockUsePromptConfig.mockReturnValue({
-        currentMode: { id: 'video' },
-      } as ReturnType<typeof usePromptConfig>);
-
-      mockUsePromptHighlights.mockReturnValue({
-        initialHighlights: null,
-        initialHighlightsVersion: 0,
-        canUndo: false,
-        canRedo: false,
-      } as ReturnType<typeof usePromptHighlights>);
-
-      mockUsePromptActions.mockReturnValue({
-        handleCreateNew: vi.fn(),
-      } as unknown as ReturnType<typeof usePromptActions>);
-
-      mockUsePromptServices.mockReturnValue({
-        promptOptimizer: buildPromptOptimizer({
-          inputPrompt: 'input prompt',
-          displayedPrompt: 'displayed prompt',
-          isDraftReady: false,
-        }),
-      } as ReturnType<typeof usePromptServices>);
-      mockUsePromptResultsActionsContext.mockReturnValue({
-        user: null,
-        onDisplayedPromptChange: vi.fn(),
-        onReoptimize: vi.fn(async () => undefined),
-        onFetchSuggestions: vi.fn(),
-        onSuggestionClick: vi.fn(),
-        onHighlightsPersist: vi.fn(),
-        onUndo: vi.fn(),
-        onRedo: vi.fn(),
-        stablePromptContext: null,
-        suggestionsData: null,
-      } as any);
-
-      render(<PromptResultsSection />);
-
-      expect(screen.getByText('Input: input prompt')).toBeInTheDocument();
-      expect(screen.getByText('Output: displayed prompt')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Input: input prompt')).toBeInTheDocument();
+    expect(screen.getByText('Output: displayed prompt')).toBeInTheDocument();
+    expect(screen.queryByText('Optimizing prompt...')).not.toBeInTheDocument();
   });
 });

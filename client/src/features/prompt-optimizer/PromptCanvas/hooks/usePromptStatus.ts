@@ -5,8 +5,6 @@ import type { PromptCanvasState } from '../types';
 export interface UsePromptStatusOptions {
   displayedPrompt: string | null;
   inputPrompt: string;
-  isDraftReady: boolean;
-  isRefining: boolean;
   isProcessing: boolean;
   generatedTimestamp: number | null;
   setState: (payload: Partial<PromptCanvasState>) => void;
@@ -15,8 +13,6 @@ export interface UsePromptStatusOptions {
 export function usePromptStatus({
   displayedPrompt,
   inputPrompt,
-  isDraftReady,
-  isRefining,
   isProcessing,
   generatedTimestamp,
   setState,
@@ -41,7 +37,7 @@ export function usePromptStatus({
       return;
     }
 
-    if (isDraftReady && !isRefining && !isProcessing) {
+    if (displayedPrompt !== inputPrompt && !isProcessing) {
       // Only set timestamp once per draft to prevent loops
       if (!generatedTimestampRef.current && !hasSetTimestampRef.current) {
         hasSetTimestampRef.current = true;
@@ -60,8 +56,6 @@ export function usePromptStatus({
   }, [
     displayedPrompt,
     inputPrompt,
-    isDraftReady,
-    isRefining,
     isProcessing,
     setState,
   ]);

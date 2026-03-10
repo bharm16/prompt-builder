@@ -4,12 +4,7 @@ import { promptOptimizationApiV2 } from '../services';
 import { logger } from '../services/LoggingService';
 
 export type AnalyzeAndOptimizeOptions = Omit<
-  Parameters<typeof promptOptimizationApiV2.optimizeLegacy>[0],
-  'mode'
->;
-
-export type OptimizeWithFallbackOptions = Omit<
-  Parameters<typeof promptOptimizationApiV2.optimizeWithFallback>[0],
+  Parameters<typeof promptOptimizationApiV2.optimize>[0],
   'mode'
 >;
 
@@ -46,7 +41,7 @@ export function usePromptOptimizerApi(
       logger.startTimer('analyzeAndOptimize');
 
       try {
-        const data = await promptOptimizationApiV2.optimizeLegacy({
+        const data = await promptOptimizationApiV2.optimize({
           prompt,
           mode: selectedMode,
           ...(targetModel ? { targetModel } : {}),
@@ -77,15 +72,6 @@ export function usePromptOptimizerApi(
     [selectedMode, log]
   );
 
-  const optimizeWithFallback = useCallback(
-    (options: OptimizeWithFallbackOptions) =>
-      promptOptimizationApiV2.optimizeWithFallback({
-        ...options,
-        mode: selectedMode,
-      }),
-    [selectedMode]
-  );
-
   const calculateQualityScore = useCallback(
     (inputPrompt: string, outputPrompt: string) =>
       promptOptimizationApiV2.calculateQualityScore(inputPrompt, outputPrompt),
@@ -94,7 +80,6 @@ export function usePromptOptimizerApi(
 
   return {
     analyzeAndOptimize,
-    optimizeWithFallback,
     compilePrompt: promptOptimizationApiV2.compilePrompt.bind(promptOptimizationApiV2),
     calculateQualityScore,
   };

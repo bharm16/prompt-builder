@@ -227,14 +227,10 @@ export interface HighlightSourceResult {
   meta: Record<string, unknown> | null;
   signature: string;
   cacheId: string | null;
-  source: 'draft' | 'refined' | 'persisted';
+  source: 'persisted';
 }
 
 export interface UseHighlightSourceSelectionOptions {
-  draftSpans?: SpanData | null;
-  refinedSpans?: SpanData | null;
-  isDraftReady?: boolean;
-  isRefining?: boolean;
   initialHighlights?: {
     spans: Array<{
       start: number;

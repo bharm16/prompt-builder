@@ -18,7 +18,7 @@ export class ApiResponseHandler {
     }
 
     if (!response.ok) {
-      const errorPayload = await this.safeParseJson(response, { allowEmpty: true });
+      const errorPayload = await this.safeParseErrorPayload(response);
       const message =
         (errorPayload && typeof errorPayload === 'object' && 'error' in errorPayload && typeof errorPayload.error === 'string'
           ? errorPayload.error
@@ -26,12 +26,13 @@ export class ApiResponseHandler {
         (errorPayload && typeof errorPayload === 'object' && 'message' in errorPayload && typeof errorPayload.message === 'string'
           ? errorPayload.message
           : null) ||
+        response.statusText ||
         `HTTP ${response.status}`;
 
       const code =
         errorPayload && typeof errorPayload === 'object' && 'code' in errorPayload && typeof errorPayload.code === 'string'
           ? errorPayload.code
-          : undefined;
+          : (response.status === 429 ? 'RATE_LIMITED' : undefined);
 
       throw this.errorFactory.create({
         message,
@@ -64,10 +65,9 @@ export class ApiResponseHandler {
   }
 
   async safeParseJson(response: Response, { allowEmpty = false }: SafeParseOptions = {}): Promise<unknown> {
-    try {
-      return await response.json();
-    } catch (error) {
-      if (allowEmpty && this.isEmptyBody(response)) {
+    const bodyText = await this.readBodyText(response);
+    if (bodyText === null) {
+      if (allowEmpty) {
         return null;
       }
 
@@ -76,11 +76,36 @@ export class ApiResponseHandler {
         status: response.status,
       });
     }
+
+    try {
+      return JSON.parse(bodyText) as unknown;
+    } catch {
+      throw this.errorFactory.create({
+        message: 'Failed to parse JSON response',
+        status: response.status,
+      });
+    }
   }
 
-  private isEmptyBody(response: Response): boolean {
-    const contentLength = response.headers.get('content-length');
-    return response.status === 204 || contentLength === '0' || contentLength === null;
+  private async safeParseErrorPayload(response: Response): Promise<unknown> {
+    const bodyText = await this.readBodyText(response);
+    if (bodyText === null) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(bodyText) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  private async readBodyText(response: Response): Promise<string | null> {
+    try {
+      const bodyText = await response.text();
+      return bodyText.trim().length > 0 ? bodyText : null;
+    } catch {
+      return null;
+    }
   }
 }
-

@@ -2,7 +2,7 @@ import type { PromptOptimizationService } from '@services/prompt-optimization/Pr
 
 export type PromptOptimizationServiceContract = Pick<
   PromptOptimizationService,
-  'optimize' | 'optimizeTwoStage' | 'compilePrompt'
+  'optimize' | 'compilePrompt'
 >;
 
 export interface OptimizeServices {

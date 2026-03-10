@@ -3,14 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePromptOptimizerApi } from '@hooks/usePromptOptimizerApi';
 
-const {
-  optimizeLegacy,
-  optimizeWithFallback,
-  compilePrompt,
-  calculateQualityScore,
-} = vi.hoisted(() => ({
-  optimizeLegacy: vi.fn(),
-  optimizeWithFallback: vi.fn(),
+const { optimize, compilePrompt, calculateQualityScore } = vi.hoisted(() => ({
+  optimize: vi.fn(),
   compilePrompt: vi.fn(),
   calculateQualityScore: vi.fn(),
 }));
@@ -22,8 +16,7 @@ const { startTimer, endTimer } = vi.hoisted(() => ({
 
 vi.mock('@/services', () => ({
   promptOptimizationApiV2: {
-    optimizeLegacy,
-    optimizeWithFallback,
+    optimize,
     compilePrompt,
     calculateQualityScore,
   },
@@ -52,19 +45,12 @@ function createLog() {
 describe('usePromptOptimizerApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    optimizeLegacy.mockResolvedValue({ prompt: 'optimized' });
-    optimizeWithFallback.mockResolvedValue({
-      draft: 'draft',
-      refined: 'refined',
-      spans: [],
-      metadata: null,
-      usedFallback: false,
-    });
+    optimize.mockResolvedValue({ prompt: 'optimized' });
     compilePrompt.mockResolvedValue({ compiledPrompt: 'compiled' });
     calculateQualityScore.mockReturnValue(86);
   });
 
-  it('forwards selected mode and optional params to optimizeLegacy', async () => {
+  it('forwards selected mode and params to optimize', async () => {
     const log = createLog();
     const { result } = renderHook(() => usePromptOptimizerApi('video', log as never));
     const signal = new AbortController().signal;
@@ -83,7 +69,7 @@ describe('usePromptOptimizerApi', () => {
       signal,
     });
 
-    expect(optimizeLegacy).toHaveBeenCalledWith({
+    expect(optimize).toHaveBeenCalledWith({
       prompt: 'source prompt',
       mode: 'video',
       targetModel: 'sora-2',
@@ -101,38 +87,20 @@ describe('usePromptOptimizerApi', () => {
     expect(endTimer).toHaveBeenCalledWith('analyzeAndOptimize');
   });
 
-  it('rethrows optimizeLegacy failures after ending timers', async () => {
+  it('rethrows optimize failures after ending timers', async () => {
     const log = createLog();
-    const failure = new Error('legacy failed');
-    optimizeLegacy.mockRejectedValueOnce(failure);
+    const failure = new Error('optimize failed');
+    optimize.mockRejectedValueOnce(failure);
     const { result } = renderHook(() => usePromptOptimizerApi('video', log as never));
 
     await expect(
       result.current.analyzeAndOptimize({
         prompt: 'source prompt',
       })
-    ).rejects.toThrow('legacy failed');
+    ).rejects.toThrow('optimize failed');
 
     expect(endTimer).toHaveBeenCalledWith('analyzeAndOptimize');
     expect(log.error).toHaveBeenCalledWith('analyzeAndOptimize failed', failure);
-  });
-
-  it('forwards selected mode through optimizeWithFallback wrapper', async () => {
-    const { result } = renderHook(() =>
-      usePromptOptimizerApi('brainstorm', createLog() as never)
-    );
-    const onRefined = vi.fn();
-
-    await result.current.optimizeWithFallback({
-      prompt: 'source prompt',
-      onRefined,
-    });
-
-    expect(optimizeWithFallback).toHaveBeenCalledWith({
-      prompt: 'source prompt',
-      mode: 'brainstorm',
-      onRefined,
-    });
   });
 
   it('delegates compilePrompt and calculateQualityScore', async () => {

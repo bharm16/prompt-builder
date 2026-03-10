@@ -207,7 +207,7 @@ async function optimizePrompt(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     
-    const result = await optimizer.optimizeTwoStage({
+    const result = await optimizer.optimize({
       prompt: input,
       mode: 'video',
       signal: controller.signal,
@@ -215,8 +215,7 @@ async function optimizePrompt(
     
     clearTimeout(timeout);
     
-    // Use refined output, fall back to draft
-    const output = result.refined || result.draft || '';
+    const output = result.prompt || result.optimizedPrompt || '';
     
     return {
       output,
@@ -317,7 +316,7 @@ async function main(): Promise<void> {
       input,
       output: result.output,
       generatedAt: getLocalTimestamp(),
-      optimizerVersion: 'v2-two-stage',
+      optimizerVersion: 'v3-run-optimize-flow',
       latencyMs: result.latencyMs,
       error: result.error
     });
@@ -341,7 +340,7 @@ async function main(): Promise<void> {
       promptCount: results.length,
       successCount: successResults.length,
       errorCount: results.length - successResults.length,
-      optimizerVersion: 'v2-two-stage',
+      optimizerVersion: 'v3-run-optimize-flow',
       avgLatencyMs: Math.round(avgLatency)
     },
     prompts: results

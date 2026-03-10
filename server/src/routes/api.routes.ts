@@ -4,7 +4,7 @@
  * Mounts domain-specific route modules under /api
  * 
  * Route structure:
- * - /api/optimize, /api/optimize-stream → optimize.routes.ts
+ * - /api/optimize → optimize.routes.ts
  * - /api/video/* → video.routes.ts
  * - /api/get-enhancement-suggestions, /api/get-custom-suggestions, 
  *   /api/detect-scene-change, /api/test-nlp → enhancement.routes.ts

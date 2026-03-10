@@ -74,7 +74,6 @@ export interface ToolSidebarPromptInteractionDomain {
   onInsertTrigger: (trigger: string) => void;
   onCreateFromTrigger?: (trigger: string) => void;
   isProcessing?: boolean;
-  isRefining?: boolean;
 }
 
 export interface ToolSidebarGenerationDomain {

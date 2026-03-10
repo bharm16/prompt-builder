@@ -84,7 +84,6 @@ export function SidebarDataProvider({
     inputPrompt: promptOptimizer.inputPrompt,
     displayedPrompt: promptOptimizer.displayedPrompt,
     isProcessing: promptOptimizer.isProcessing,
-    isRefining: promptOptimizer.isRefining,
     hasHighlights: Boolean(initialHighlights),
   });
   const activeModelLabel = resolveActiveModelLabel(selectedModel);
@@ -161,7 +160,6 @@ export function SidebarDataProvider({
   const promptInteraction = useMemo(
     () => ({
       isProcessing: promptOptimizer.isProcessing,
-      isRefining: promptOptimizer.isRefining,
       ...(onCreateFromTrigger ? { onCreateFromTrigger } : {}),
       onInsertTrigger: insertAtCaret,
     }),
@@ -169,7 +167,6 @@ export function SidebarDataProvider({
       insertAtCaret,
       onCreateFromTrigger,
       promptOptimizer.isProcessing,
-      promptOptimizer.isRefining,
     ]
   );
 

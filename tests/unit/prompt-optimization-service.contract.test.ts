@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deriveLockMap } from '@services/prompt-optimization/types/i2v';
 import type {
   AIService,
-  OptimizationMode,
 } from '@services/prompt-optimization/types';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
 
@@ -97,78 +96,6 @@ describe('PromptOptimizationService contract', () => {
     expect(result.inputMode).toBe('i2v');
     expect(result.prompt).toBe('i2v optimized prompt');
     expect(result.i2v?.appliedMode).toBe('strict');
-  });
-
-  it('emits draft/refined callbacks during successful two-stage optimization', async () => {
-    const service = createService();
-    const onDraft = vi.fn();
-    const onDraftChunk = vi.fn();
-    const onRefinedChunk = vi.fn();
-
-    (service as unknown as { shotInterpreter: unknown }).shotInterpreter = {
-      interpret: vi.fn(async () => null),
-    };
-
-    (service as unknown as { draftService: unknown }).draftService = {
-      supportsStreaming: vi.fn(() => true),
-      generateDraft: vi.fn(
-        async (
-          _prompt: string,
-          _mode: OptimizationMode,
-          _shotPlan: unknown,
-          _generationParams: unknown,
-          _signal: AbortSignal | undefined,
-          onChunk?: (delta: string) => void
-        ) => {
-          onChunk?.('draft-delta');
-          return 'draft prompt';
-        }
-      ),
-    };
-
-    vi.spyOn(service, 'optimize').mockImplementation(async (request) => {
-      request.onChunk?.('refined-delta');
-      return {
-        prompt: 'refined prompt',
-        inputMode: 't2v',
-        metadata: { source: 'refinement' },
-      };
-    });
-
-    const result = await service.optimizeTwoStage({
-      prompt: 'user prompt',
-      onDraft,
-      onDraftChunk,
-      onRefinedChunk,
-      skipCache: true,
-    });
-
-    expect(result.draft).toBe('draft prompt');
-    expect(result.refined).toBe('refined prompt');
-    expect(result.metadata).toMatchObject({ usedTwoStage: true });
-    expect(onDraft).toHaveBeenCalledWith('draft prompt', null);
-    expect(onDraftChunk).toHaveBeenCalledWith('draft-delta');
-    expect(onRefinedChunk).toHaveBeenCalledWith('refined-delta');
-  });
-
-  it('throws when draft streaming is unavailable instead of falling back to single-stage', async () => {
-    const service = createService();
-
-    (service as unknown as { draftService: unknown }).draftService = {
-      supportsStreaming: vi.fn(() => false),
-      generateDraft: vi.fn(),
-    };
-
-    vi.spyOn(service, 'optimize');
-
-    await expect(
-      service.optimizeTwoStage({
-        prompt: 'fallback please',
-        skipCache: true,
-      })
-    ).rejects.toThrow('Two-stage optimization unavailable: draft streaming not supported');
-
-    expect(service.optimize).not.toHaveBeenCalled();
   });
 
   it('throws when compilePrompt is called without a compilation service', async () => {

@@ -5,8 +5,7 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
-import type { SpansData, HighlightSnapshot, ValidSpan } from '../types';
+import type { HighlightSnapshot, ValidSpan } from '../types';
 
 /**
  * Type guard to check if an unknown value is a valid span
@@ -20,40 +19,6 @@ export function isValidSpan(span: unknown): span is ValidSpan {
     typeof (span as { category?: unknown }).category === 'string' &&
     typeof (span as { confidence?: unknown }).confidence === 'number'
   );
-}
-
-/**
- * Converts SpansData format to SpanData format
- */
-export function convertSpansDataToSpanData(spans: SpansData | null): SpanData | null {
-  if (!spans) {
-    return null;
-  }
-
-  return {
-    spans: Array.isArray(spans.spans)
-      ? spans.spans.filter(isValidSpan)
-      : [],
-    meta: spans.meta,
-  };
-}
-
-/**
- * Converts HighlightSnapshot format to SpanData format
- */
-export function convertHighlightSnapshotToSpanData(
-  highlights: HighlightSnapshot | null
-): SpanData | null {
-  if (!highlights) {
-    return null;
-  }
-
-  return {
-    spans: Array.isArray(highlights.spans)
-      ? highlights.spans.filter(isValidSpan)
-      : [],
-    meta: highlights.meta ?? null,
-  };
 }
 
 /**
@@ -94,4 +59,3 @@ export function convertHighlightSnapshotToSourceSelectionOptions(
 
   return result;
 }
-

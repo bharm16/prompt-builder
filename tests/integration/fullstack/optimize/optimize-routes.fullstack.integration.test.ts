@@ -19,46 +19,6 @@ interface MockAIService {
   getAvailableClients: ReturnType<typeof vi.fn>;
 }
 
-function parseSseEvents(ssePayload: string): Array<{ event: string; data: unknown }> {
-  const chunks = ssePayload
-    .split('\n\n')
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 0);
-
-  const events: Array<{ event: string; data: unknown }> = [];
-
-  for (const chunk of chunks) {
-    const lines = chunk.split('\n').map((line) => line.trim());
-    let eventType = 'message';
-    const dataLines: string[] = [];
-
-    for (const line of lines) {
-      if (line.startsWith(':')) continue;
-      if (line.startsWith('event:')) {
-        eventType = line.slice('event:'.length).trim();
-        continue;
-      }
-      if (line.startsWith('data:')) {
-        dataLines.push(line.slice('data:'.length).trim());
-      }
-    }
-
-    if (dataLines.length === 0) continue;
-
-    const rawData = dataLines.join('\n');
-    let parsed: unknown = rawData;
-    try {
-      parsed = JSON.parse(rawData) as unknown;
-    } catch {
-      // Keep raw text for non-JSON payloads.
-    }
-
-    events.push({ event: eventType, data: parsed });
-  }
-
-  return events;
-}
-
 describe('Optimize Routes (full-stack integration)', () => {
   let app: Application;
   let aiServiceMock: MockAIService;
@@ -154,10 +114,6 @@ describe('Optimize Routes (full-stack integration)', () => {
                 intendedUse: 'video generation',
               })
             );
-          case 'optimize_draft':
-            return makeResponse(
-              'A cinematic runner moves through a sunlit city street with strong motion cues.'
-            );
           case 'optimize_standard':
             return makeResponse(validVideoOptimizationJson);
           case 'optimize_intent_check':
@@ -181,11 +137,6 @@ describe('Optimize Routes (full-stack integration)', () => {
         ): Promise<string> => {
           if (failOperation && (failOperation === operation || failOperation === '*')) {
             throw new Error(`Synthetic ${operation} stream failure`);
-          }
-
-          if (operation === 'optimize_draft') {
-            params.onChunk('A cinematic runner');
-            return 'A cinematic runner moves through a sunlit city street.';
           }
 
           if (operation === 'optimize_standard') {
@@ -276,58 +227,13 @@ describe('Optimize Routes (full-stack integration)', () => {
     expect(response.status).toBe(500);
   });
 
-  it('POST /api/optimize-stream rejects unauthenticated requests', async () => {
+  it('POST /api/optimize-stream is no longer registered', async () => {
     const response = await request(app)
       .post('/api/optimize-stream')
+      .set('x-api-key', TEST_API_KEY)
       .send({ prompt: 'runner in city', mode: 'video' });
 
-    expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Authentication required');
-  });
-
-  it('POST /api/optimize-stream validates request payloads', async () => {
-    const response = await request(app)
-      .post('/api/optimize-stream')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ prompt: '', mode: 'video' });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Validation failed');
-  });
-
-  it('POST /api/optimize-stream rejects image-to-video requests on streaming endpoint', async () => {
-    const response = await request(app)
-      .post('/api/optimize-stream')
-      .set('x-api-key', TEST_API_KEY)
-      .send({
-        prompt: 'runner in city',
-        mode: 'video',
-        startImage: 'https://images.example.com/start.jpg',
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe(
-      'Streaming optimization does not support image-to-video. Use /api/optimize.'
-    );
-  });
-
-  it('POST /api/optimize-stream emits draft, refined, and done events for valid requests', async () => {
-    const response = await request(app)
-      .post('/api/optimize-stream')
-      .set('x-api-key', TEST_API_KEY)
-      .set('Accept', 'text/event-stream')
-      .send({ prompt: 'runner in city', mode: 'video', skipCache: true });
-
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toContain('text/event-stream');
-
-    const events = parseSseEvents(response.text);
-    const names = events.map((event) => event.event);
-
-    expect(names).toContain('draft');
-    expect(names).toContain('refined');
-    expect(names).toContain('done');
-    expect(names.at(-1)).toBe('done');
+    expect(response.status).toBe(404);
   });
 
   it('POST /api/optimize-compile rejects unauthenticated requests', async () => {

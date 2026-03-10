@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { jsonResponse, sseBody } from './helpers/responses';
+import { jsonResponse } from './helpers/responses';
 import { injectAuthUser } from './helpers/auth';
 import { mockSessionRoutes } from './helpers/mockRoutes';
 
@@ -13,24 +13,18 @@ test.describe('video generation (authenticated)', () => {
     let imagePreviewCalled = false;
     let videoGenerateCalled = false;
 
-    await page.route('**/api/optimize-stream', async (route) => {
+    await page.route('**/api/optimize', async (route) => {
       optimizeCalled = true;
-      const body = sseBody([
-        { event: 'draft', data: { draft: 'A cinematic runner in rain.' } },
-        {
-          event: 'refined',
-          data: {
-            refined: 'A cinematic runner sprinting through neon rain.',
-            metadata: { previewPrompt: 'A cinematic runner sprinting through neon rain.' },
+      await route.fulfill(
+        jsonResponse({
+          success: true,
+          prompt: 'A cinematic runner sprinting through neon rain.',
+          optimizedPrompt: 'A cinematic runner sprinting through neon rain.',
+          metadata: {
+            previewPrompt: 'A cinematic runner sprinting through neon rain.',
           },
-        },
-        { event: 'done', data: { usedFallback: false } },
-      ]);
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'text/event-stream' },
-        body,
-      });
+        })
+      );
     });
 
     await page.route('**/llm/label-spans**', async (route) => {

@@ -76,22 +76,6 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
-   * Fast draft generation (speed-focused)
-   * Uses OpenAI GPT-4o-mini for fast response times
-   */
-  optimize_draft: {
-    client: process.env.DRAFT_PROVIDER || 'openai',
-    model: process.env.DRAFT_MODEL || 'gpt-4o-mini-2024-07-18',
-    temperature: 0.7,
-    maxTokens: 500,
-    timeout: 15000,
-    fallbackTo: 'qwen',
-    fallbackConfig: QWEN_FALLBACK,
-    useSeed: true, // Same concept should draft similarly
-    useDeveloperMessage: true,
-  },
-
-  /**
    * Context inference for reasoning mode
    */
   optimize_context_inference: {

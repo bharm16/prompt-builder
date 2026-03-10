@@ -14,7 +14,6 @@ const promptOptimizerState = vi.hoisted(() => ({
   optimizedPrompt: 'optimized output',
   genericOptimizedPrompt: null,
   isProcessing: false,
-  isRefining: false,
   setInputPrompt: vi.fn(),
 }));
 

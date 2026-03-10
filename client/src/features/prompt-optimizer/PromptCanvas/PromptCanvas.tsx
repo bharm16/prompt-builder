@@ -91,11 +91,8 @@ export function PromptCanvas({
   onRedo = () => { },
   canUndo = false,
   canRedo = false,
-  isDraftReady = false,
-  isRefining = false,
   isProcessing = false,
-  draftSpans = null,
-  refinedSpans = null,
+  optimizationResultVersion = 0,
   coherenceAffectedSpanIds,
   coherenceSpanIssueMap,
   coherenceIssues,
@@ -212,7 +209,7 @@ export function PromptCanvas({
   const editorDisplayText = showResults
     ? normalizedDisplayedPrompt ?? ''
     : normalizedInputPrompt;
-  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isOptimizing = Boolean(isProcessing);
 
   const {
     editorRef,
@@ -373,11 +370,7 @@ export function PromptCanvas({
 
   // Span data conversion hook
   const { memoizedInitialHighlights } = useSpanDataConversion({
-    draftSpans,
-    refinedSpans,
     initialHighlights,
-    isDraftReady,
-    isRefining,
     promptUuid,
     displayedPrompt: normalizedDisplayedPrompt,
     enableMLHighlighting,
@@ -420,8 +413,14 @@ export function PromptCanvas({
     ]
   );
 
-  // Track if this is the first time seeing this text (skip debounce for initial optimization)
-  const isInitialOptimization = isDraftReady;
+  const previousOptimizationResultVersionRef = useRef(optimizationResultVersion);
+  const shouldLabelImmediately =
+    optimizationResultVersion > 0 &&
+    optimizationResultVersion !== previousOptimizationResultVersionRef.current;
+
+  useEffect(() => {
+    previousOptimizationResultVersionRef.current = optimizationResultVersion;
+  }, [optimizationResultVersion]);
 
   const {
     spans: labeledSpans,
@@ -435,7 +434,7 @@ export function PromptCanvas({
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(normalizedDisplayedPrompt?.trim()),
-    immediate: isInitialOptimization,
+    immediate: shouldLabelImmediately,
     maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
     minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
     policy: labelingPolicy,
@@ -520,7 +519,9 @@ export function PromptCanvas({
     }
   }, [normalizedDisplayedPrompt, enableMLHighlighting, debug]);
 
-  const isOutputLoading = Boolean(isProcessing || isRefining);
+  const hasVisibleOutput =
+    typeof normalizedDisplayedPrompt === 'string' && normalizedDisplayedPrompt.length > 0;
+  const isOutputLoading = Boolean(isProcessing && !hasVisibleOutput);
 
 
 
@@ -584,8 +585,6 @@ export function PromptCanvas({
   usePromptStatus({
     displayedPrompt: normalizedDisplayedPrompt,
     inputPrompt,
-    isDraftReady,
-    isRefining,
     isProcessing,
     generatedTimestamp,
     setState,

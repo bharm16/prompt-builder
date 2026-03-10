@@ -254,7 +254,6 @@ describe('GenerationControlsPanel credit gating', () => {
               onRender={onRender}
               onStoryboard={onStoryboard}
               isProcessing={false}
-              isRefining={false}
               assets={[]}
               onBack={() => undefined}
             />

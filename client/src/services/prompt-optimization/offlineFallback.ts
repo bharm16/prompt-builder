@@ -1,31 +1,5 @@
 import { ApiError } from '../ApiClient';
-import type {
-  OptimizeOptions,
-  OptimizeWithStreamingOptions,
-  OptimizeWithStreamingResult,
-  OfflineResult,
-} from './types';
-
-export function emitOfflineCallbacks(
-  result: OfflineResult,
-  {
-    onDraft,
-    onSpans,
-    onRefined,
-  }: Pick<OptimizeWithStreamingOptions, 'onDraft' | 'onSpans' | 'onRefined'>
-): void {
-  if (typeof onDraft === 'function') {
-    onDraft(result.draft);
-  }
-
-  if (typeof onSpans === 'function') {
-    onSpans([], 'offline-fallback', result.metadata);
-  }
-
-  if (typeof onRefined === 'function') {
-    onRefined(result.refined, result.metadata);
-  }
-}
+import type { OptimizeOptions, OptimizeResult } from './types';
 
 export function shouldUseOfflineFallback(error: unknown): boolean {
   if (!error) {
@@ -64,7 +38,7 @@ export function isAbortError(error: unknown): boolean {
 export function buildOfflineResult(
   { prompt, mode }: OptimizeOptions,
   error: unknown
-): OfflineResult {
+): OptimizeResult {
   const trimmedPrompt = (prompt || '').trim();
   const normalizedMode = mode ? mode.replace(/-/g, ' ') : 'optimize';
 
@@ -76,7 +50,7 @@ export function buildOfflineResult(
 
   const suggestionList = baselineSuggestions.map((tip) => `- ${tip}`).join('\n');
 
-  const draft = [
+  const optimizedPrompt = [
     `✨ Offline Prompt Assistant (${normalizedMode})`,
     '',
     trimmedPrompt
@@ -87,8 +61,8 @@ export function buildOfflineResult(
     suggestionList,
   ].join('\n');
 
-  const refined = [
-    draft,
+  const promptResult = [
+    optimizedPrompt,
     '',
     'This locally generated guidance is shown because the live optimization API could not be reached (401 Unauthorized).',
     'Update your API credentials or start the backend service to restore real-time optimizations.',
@@ -103,19 +77,8 @@ export function buildOfflineResult(
   };
 
   return {
-    draft,
-    refined,
-    spans: [],
+    prompt: promptResult,
+    optimizedPrompt,
     metadata,
-    usedFallback: true,
   };
-}
-
-export function handleOfflineFallback(
-  options: OptimizeWithStreamingOptions,
-  error: unknown
-): OptimizeWithStreamingResult {
-  const offlineResult = buildOfflineResult(options, error);
-  emitOfflineCallbacks(offlineResult, options);
-  return offlineResult;
 }

@@ -161,14 +161,14 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   // Resolve and validate Groq client (OPTIONAL)
   const groqClient = container.resolve<LLMClient | null>('groqClient');
   if (groqClient) {
-    logger.info('Groq client initialized for two-stage optimization');
+    logger.info('Groq client initialized for adapter-based routing');
 
     await validateLLMClient(container, {
       client: groqClient,
       serviceName: 'groqClient',
       successMessage: '✅ Groq API key validated successfully',
-      unhealthyMessage: '⚠️  Groq API key validation failed - two-stage optimization disabled',
-      failureMessage: '⚠️  Failed to validate Groq API key - two-stage optimization disabled',
+      unhealthyMessage: '⚠️  Groq API key validation failed - Groq adapter disabled',
+      failureMessage: '⚠️  Failed to validate Groq API key - Groq adapter disabled',
     });
   }
 

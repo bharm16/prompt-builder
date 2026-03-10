@@ -1,23 +1,6 @@
 import { throwIfAborted } from './abort';
 import type { OptimizeFlowArgs } from './types';
 
-const STREAM_CHUNK_SIZE = 56;
-
-function streamPromptChunks(prompt: string, onChunk: (delta: string) => void): void {
-  const normalized = prompt.trim();
-  if (!normalized) {
-    return;
-  }
-
-  const words = normalized.split(/\s+/).filter(Boolean);
-  for (let i = 0; i < words.length; i += STREAM_CHUNK_SIZE) {
-    const chunk = words.slice(i, i + STREAM_CHUNK_SIZE).join(' ');
-    if (chunk) {
-      onChunk(`${chunk}${i + STREAM_CHUNK_SIZE < words.length ? ' ' : ''}`);
-    }
-  }
-}
-
 export const runOptimizeFlow = async ({
   request,
   log,
@@ -45,7 +28,6 @@ export const runOptimizeFlow = async ({
     shotPlanAttempted = false,
     useConstitutionalAI = false,
     onMetadata,
-    onChunk,
     signal,
     targetModel,
   } = request;
@@ -91,9 +73,6 @@ export const runOptimizeFlow = async ({
       const cachedMetadata = await optimizationCache.getCachedMetadata(cacheKey);
       if (onMetadata && cachedMetadata) {
         onMetadata(cachedMetadata);
-      }
-      if (onChunk) {
-        streamPromptChunks(cached, onChunk);
       }
       log.debug('Returning cached optimization result', {
         operation,
@@ -216,10 +195,6 @@ export const runOptimizeFlow = async ({
         promptLint: compiledLint.lint,
         promptLintRepaired: compiledLint.repaired,
       });
-    }
-
-    if (onChunk) {
-      streamPromptChunks(optimizedPrompt, onChunk);
     }
 
     await optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);
