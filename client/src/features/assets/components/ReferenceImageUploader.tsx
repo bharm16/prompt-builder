@@ -38,7 +38,7 @@ export function ReferenceImageUploader({
   const isAtLimit = currentCount >= maxImages;
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
+    <div className="motion-presence-panel space-y-3 rounded-lg border border-border bg-surface-2 p-3" data-motion-state="entered">
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-sm font-semibold text-foreground">Reference images</h4>

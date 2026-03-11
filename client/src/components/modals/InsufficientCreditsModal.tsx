@@ -70,9 +70,10 @@ export function InsufficientCreditsModal({
     >
       <DialogContent
         className={cn(
-          'w-full max-w-md border border-[#1A1C22] bg-[#111318] p-0 text-white',
+          'motion-presence-panel w-full max-w-md border border-[#1A1C22] bg-[#111318] p-0 text-white',
           '[&>button]:hidden'
         )}
+        data-motion-state="entered"
       >
         <div className="flex items-center justify-between border-b border-[#1A1C22] px-5 py-4">
           <DialogTitle className="text-[15px] font-semibold text-white">Insufficient Credits</DialogTitle>
@@ -110,7 +111,7 @@ export function InsufficientCreditsModal({
                 type="button"
                 onClick={() => void handleCheckout()}
                 disabled={isLoading}
-                className="h-10 w-full rounded-[10px] bg-[linear-gradient(135deg,#6C5CE7_0%,#8B5CF6_100%)] text-[13px] font-semibold text-white hover:opacity-90"
+                className="motion-pulse-once h-10 w-full rounded-[10px] bg-[linear-gradient(135deg,#6C5CE7_0%,#8B5CF6_100%)] text-[13px] font-semibold text-white hover:opacity-90"
               >
                 {isLoading
                   ? 'Starting checkout...'
@@ -126,7 +127,7 @@ export function InsufficientCreditsModal({
             </Link>
           </p>
 
-          {error ? <p className="text-[12px] text-amber-400">{error}</p> : null}
+          {error ? <p className="motion-shake-x text-[12px] text-amber-400">{error}</p> : null}
         </div>
 
         <div className="border-t border-[#1A1C22] px-5 py-3">

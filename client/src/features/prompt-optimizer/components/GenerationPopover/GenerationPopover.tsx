@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { FullscreenDialog } from '@/components/ui/FullscreenDialog';
 import { PopoverDetail } from './PopoverDetail';
 import { PopoverPreview } from './PopoverPreview';
 import type { GenerationPopoverProps } from './types';
@@ -22,17 +23,18 @@ export function GenerationPopover({
   if (!activeGeneration) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] bg-[rgba(2,2,4,0.92)]"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      data-testid="generation-popover"
+    <FullscreenDialog
+      open
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+      title="Generation detail viewer"
+      description="Preview a generated result, switch versions, and reuse the active prompt and settings."
+      contentClassName="z-[1000] bg-[rgba(2,2,4,0.92)] p-0"
     >
-      <div
-        className="flex h-full w-full"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="flex h-full w-full" data-testid="generation-popover">
         <PopoverPreview
           generation={activeGeneration}
           onBack={onClose}
@@ -51,7 +53,6 @@ export function GenerationPopover({
           }}
         />
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }
-

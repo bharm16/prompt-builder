@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { User, Palette, MapPin, Box, Loader2 } from '@promptstudio/system/components/ui';
 import { getAssetTypeConfig } from '../config/assetConfig';
 import type { AssetSuggestion } from '../hooks/useTriggerAutocomplete';
+import type { AnimatedPresencePhase } from '@/hooks/useAnimatedPresence';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   character: User,
@@ -19,6 +20,7 @@ interface TriggerAutocompleteProps {
   onSelect: (asset: AssetSuggestion) => void;
   onClose: () => void;
   setSelectedIndex: (index: number) => void;
+  motionPhase?: AnimatedPresencePhase;
 }
 
 export function TriggerAutocomplete({
@@ -30,6 +32,7 @@ export function TriggerAutocomplete({
   onSelect,
   onClose,
   setSelectedIndex,
+  motionPhase = 'entered',
 }: TriggerAutocompleteProps): React.ReactElement | null {
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -62,7 +65,8 @@ export function TriggerAutocomplete({
   return (
     <div
       ref={containerRef}
-      className="fixed z-50 overflow-hidden rounded-lg border border-border bg-surface-1 shadow-lg"
+      className="motion-presence-panel fixed z-50 overflow-hidden rounded-lg border border-border bg-surface-1 shadow-lg"
+      data-motion-state={motionPhase}
       style={{
         top: position.top,
         left: position.left,

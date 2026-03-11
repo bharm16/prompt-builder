@@ -64,6 +64,7 @@ export class PromptOptimizationApi {
 
   async compilePrompt({
     prompt,
+    artifactKey,
     targetModel,
     context = null,
     signal,
@@ -72,7 +73,8 @@ export class PromptOptimizationApi {
     return (await this.client.post(
       '/optimize-compile',
       {
-        prompt,
+        ...(prompt ? { prompt } : {}),
+        ...(artifactKey ? { artifactKey } : {}),
         targetModel,
         ...(context ? { context } : {}),
       },

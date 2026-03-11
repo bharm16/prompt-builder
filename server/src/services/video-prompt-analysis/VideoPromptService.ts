@@ -9,16 +9,7 @@ import { SectionDetectionService } from './services/detection/SectionDetectionSe
 import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
 import { countWords } from './utils/textHelpers';
 import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
-import { StrategyRegistry } from './strategies';
-import { RunwayStrategy } from './strategies/RunwayStrategy';
-import { LumaStrategy } from './strategies/LumaStrategy';
-import { KlingStrategy } from './strategies/KlingStrategy';
-import { SoraStrategy } from './strategies/SoraStrategy';
-import { VeoStrategy } from './strategies/VeoStrategy';
-import { WanStrategy } from './strategies/WanStrategy';
-import { LlmIrExtractor } from './services/analysis/LlmIrExtractor';
-import { VideoPromptAnalyzer } from './services/analysis/VideoPromptAnalyzer';
-import { VideoPromptLLMRewriter } from './services/rewriter/VideoPromptLLMRewriter';
+import { createDefaultStrategyRegistry, StrategyRegistry } from './strategies';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
 import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
 import type { ModelCapabilities } from './services/detection/ModelDetectionService';
@@ -74,45 +65,12 @@ export class VideoPromptService {
     this.sectionDetector = deps.sectionDetector ?? new SectionDetectionService();
     this.taxonomyValidator = deps.taxonomyValidator ?? new TaxonomyValidationService();
 
-    if (deps.strategyRegistry) {
-      this.strategyRegistry = deps.strategyRegistry;
-    } else {
-      const createAnalyzer = (): VideoPromptAnalyzer =>
-        new VideoPromptAnalyzer({
-          llmExtractor: new LlmIrExtractor(deps.videoPromptLlmGateway ?? null),
-          ...(deps.promptOutputOnly != null ? { promptOutputOnly: deps.promptOutputOnly } : {}),
-        });
-      const createRewriter = (): VideoPromptLLMRewriter =>
-        new VideoPromptLLMRewriter(deps.videoPromptLlmGateway ?? null);
-
-      // Register strategy factories — each get() call creates a fresh instance
-      // to prevent shared mutable state across concurrent requests
-      this.strategyRegistry = new StrategyRegistry();
-      this.strategyRegistry.register(
-        'runway-gen45',
-        () => new RunwayStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-      this.strategyRegistry.register(
-        'luma-ray3',
-        () => new LumaStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-      this.strategyRegistry.register(
-        'kling-2.1',
-        () => new KlingStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-      this.strategyRegistry.register(
-        'sora-2',
-        () => new SoraStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-      this.strategyRegistry.register(
-        'veo-3',
-        () => new VeoStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-      this.strategyRegistry.register(
-        'wan-2.2',
-        () => new WanStrategy({ analyzer: createAnalyzer(), llmRewriter: createRewriter() })
-      );
-    }
+    this.strategyRegistry =
+      deps.strategyRegistry ??
+      createDefaultStrategyRegistry({
+        videoPromptLlmGateway: deps.videoPromptLlmGateway ?? null,
+        ...(deps.promptOutputOnly != null ? { promptOutputOnly: deps.promptOutputOnly } : {}),
+      });
   }
 
   /**
@@ -617,6 +575,10 @@ export class VideoPromptService {
    */
   getSupportedModelIds(): string[] {
     return this.strategyRegistry.getModelIds();
+  }
+
+  getModelConstraints(modelId: string) {
+    return this.strategyRegistry.getModelConstraints(modelId);
   }
 
   /**

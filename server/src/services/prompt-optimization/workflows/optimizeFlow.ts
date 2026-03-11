@@ -1,4 +1,7 @@
 import { throwIfAborted } from './abort';
+import { applyIntentLockPolicy } from '../services/intentLockPolicy';
+import type { CompilationState } from '../types';
+import type { OptimizationResponse } from '../types';
 import type { OptimizeFlowArgs } from './types';
 
 export const runOptimizeFlow = async ({
@@ -12,7 +15,7 @@ export const runOptimizeFlow = async ({
   logOptimizationMetrics,
   intentLock,
   promptLint,
-}: OptimizeFlowArgs) => {
+}: OptimizeFlowArgs): Promise<OptimizationResponse> => {
   const startTime = performance.now();
   const operation = 'optimize';
 
@@ -82,6 +85,12 @@ export const runOptimizeFlow = async ({
       return {
         prompt: cached,
         inputMode: 't2v' as const,
+        ...(typeof cachedMetadata?.artifactKey === 'string'
+          ? { artifactKey: cachedMetadata.artifactKey }
+          : {}),
+        ...(cachedMetadata?.compilation && typeof cachedMetadata.compilation === 'object'
+          ? { compilation: cachedMetadata.compilation as CompilationState }
+          : {}),
         ...(cachedMetadata ? { metadata: cachedMetadata } : {}),
       };
     }
@@ -108,6 +117,18 @@ export const runOptimizeFlow = async ({
   try {
     let optimizedPrompt: string;
     let optimizationMetadata: Record<string, unknown> | null = null;
+    let structuredArtifact = null;
+    let artifactKey: string | null = null;
+    let compilationState: CompilationState | null = targetModel
+      ? null
+      : {
+          status: 'compile-skipped',
+          usedFallback: false,
+          sourceKind: structuredArtifact ? 'artifact' : 'prompt',
+          structuredArtifactReused: false,
+          analyzerBypassed: false,
+          compiledFor: null,
+        };
     const handleMetadata = (metadata: Record<string, unknown>): void => {
       optimizationMetadata = { ...(optimizationMetadata || {}), ...metadata };
       if (onMetadata) {
@@ -123,8 +144,7 @@ export const runOptimizeFlow = async ({
     const domainContent = strategy.generateDomainContent
       ? await strategy.generateDomainContent(prompt, context || null, interpretedShotPlan)
       : null;
-
-    optimizedPrompt = await strategy.optimize({
+    const strategyRequest = {
       prompt,
       context,
       brainstormContext,
@@ -132,69 +152,99 @@ export const runOptimizeFlow = async ({
       domainContent: domainContent as string | null,
       shotPlan: interpretedShotPlan,
       lockedSpans,
-      onMetadata: handleMetadata,
       ...(signal ? { signal } : {}),
-    });
+    };
+
+    if (finalMode === 'video' && strategy.optimizeStructured && strategy.renderStructuredPrompt) {
+      structuredArtifact = await strategy.optimizeStructured(strategyRequest);
+      artifactKey = optimizationCache.buildStructuredArtifactKeyFromInputs({
+        prompt,
+        sourcePrompt: structuredArtifact.sourcePrompt,
+        shotPlan: interpretedShotPlan,
+        generationParams,
+        lockedSpans,
+      });
+      await optimizationCache.cacheStructuredArtifact(artifactKey, structuredArtifact);
+      handleMetadata({
+        previewPrompt: structuredArtifact.previewPrompt,
+        ...(structuredArtifact.aspectRatio ? { aspectRatio: structuredArtifact.aspectRatio } : {}),
+        artifactKey,
+      });
+      if (!targetModel) {
+        compilationState = {
+          status: 'compile-skipped',
+          usedFallback: false,
+          sourceKind: 'artifact',
+          structuredArtifactReused: false,
+          analyzerBypassed: false,
+          compiledFor: null,
+        };
+      }
+    }
+
+    if (targetModel && finalMode === 'video' && compilationService) {
+      const compilation = await compilationService.compile({
+        operation,
+        mode: finalMode,
+        ...(targetModel !== undefined ? { targetModel } : {}),
+        source: structuredArtifact
+          ? { kind: 'artifact', artifact: structuredArtifact }
+          : { kind: 'prompt', prompt },
+        fallbackPrompt: prompt,
+        ...(artifactKey ? { artifactKey } : {}),
+      });
+
+      optimizedPrompt = compilation.prompt;
+      compilationState = compilation.compilation;
+      if (compilation.metadata) {
+        handleMetadata(compilation.metadata);
+      }
+    } else if (structuredArtifact && strategy.renderStructuredPrompt) {
+      optimizedPrompt = strategy.renderStructuredPrompt(structuredArtifact.structuredPrompt);
+    } else {
+      optimizedPrompt = await strategy.optimize({
+        ...strategyRequest,
+        onMetadata: handleMetadata,
+      });
+    }
 
     if (useConstitutionalAI) {
       optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, finalMode, signal);
     }
 
-    const intentLockedGeneric = intentLock.enforceIntentLock({
+    const intentLocked = applyIntentLockPolicy({
+      intentLock,
       originalPrompt: originalUserPrompt,
       optimizedPrompt,
       shotPlan: interpretedShotPlan,
+      compilation: compilationState,
     });
-    optimizedPrompt = intentLockedGeneric.prompt;
+    optimizedPrompt = intentLocked.prompt;
+    if (compilationState) {
+      compilationState = {
+        ...compilationState,
+        ...(intentLocked.compilationIntentLock
+          ? { intentLock: intentLocked.compilationIntentLock }
+          : {}),
+      };
+    }
     handleMetadata({
-      intentLockPassed: intentLockedGeneric.passed,
-      intentLockRepaired: intentLockedGeneric.repaired,
-      requiredIntent: intentLockedGeneric.required,
+      ...intentLocked.legacyMetadata,
+      ...(compilationState ? { compilation: compilationState } : {}),
     });
 
-    const genericLint = promptLint.enforce({ prompt: optimizedPrompt, modelId: null });
-    optimizedPrompt = genericLint.prompt;
+    const lintResult = promptLint.enforce({
+      prompt: optimizedPrompt,
+      modelId: targetModel ?? null,
+    });
+    optimizedPrompt = lintResult.prompt;
     handleMetadata({
-      promptLint: genericLint.lint,
-      promptLintRepaired: genericLint.repaired,
+      promptLint: lintResult.lint,
+      promptLintRepaired: lintResult.repaired,
     });
 
-    handleMetadata({ genericPrompt: optimizedPrompt });
-
-    if (finalMode === 'video' && compilationService) {
-      const compilation = await compilationService.compileOptimizedPrompt({
-        operation,
-        optimizedPrompt,
-        mode: finalMode,
-        ...(targetModel !== undefined ? { targetModel } : {}),
-      });
-
-      optimizedPrompt = compilation.prompt;
-      if (compilation.metadata) {
-        handleMetadata(compilation.metadata);
-      }
-
-      const intentLockedCompiled = intentLock.enforceIntentLock({
-        originalPrompt: originalUserPrompt,
-        optimizedPrompt,
-        shotPlan: interpretedShotPlan,
-      });
-      optimizedPrompt = intentLockedCompiled.prompt;
-      handleMetadata({
-        intentLockPassed: intentLockedCompiled.passed,
-        intentLockRepaired: intentLockedCompiled.repaired,
-        requiredIntent: intentLockedCompiled.required,
-      });
-
-      const compiledLint = promptLint.enforce({
-        prompt: optimizedPrompt,
-        modelId: targetModel ?? null,
-      });
-      optimizedPrompt = compiledLint.prompt;
-      handleMetadata({
-        promptLint: compiledLint.lint,
-        promptLintRepaired: compiledLint.repaired,
-      });
+    if (!targetModel) {
+      handleMetadata({ genericPrompt: optimizedPrompt });
     }
 
     await optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);
@@ -212,6 +262,8 @@ export const runOptimizeFlow = async ({
     return {
       prompt: optimizedPrompt,
       inputMode: 't2v' as const,
+      ...(artifactKey ? { artifactKey } : {}),
+      ...(compilationState ? { compilation: compilationState } : {}),
       ...(optimizationMetadata ? { metadata: optimizationMetadata } : {}),
     };
   } catch (error) {

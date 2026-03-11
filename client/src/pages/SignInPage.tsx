@@ -166,7 +166,7 @@ export function SignInPage(): React.ReactElement {
         {error ? (
           <div
             role="alert"
-            className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100"
+            className="motion-shake-x rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100"
           >
             {error}
           </div>
@@ -230,7 +230,9 @@ export function SignInPage(): React.ReactElement {
                 disabled={isBusy}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                <span key={showPassword ? 'hide' : 'show'} className="ps-animate-fade-in">
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                </span>
               </Button>
             </div>
           </div>

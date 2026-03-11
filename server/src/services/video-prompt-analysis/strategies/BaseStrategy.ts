@@ -12,7 +12,9 @@ import { TechStripper, techStripper } from '../utils/TechStripper';
 import { SafetySanitizer, safetySanitizer } from '../utils/SafetySanitizer';
 import { VideoPromptAnalyzer } from '../services/analysis/VideoPromptAnalyzer';
 import { VideoPromptLLMRewriter } from '../services/rewriter/VideoPromptLLMRewriter';
+import { countWords } from '../utils/textHelpers';
 import type {
+  ModelConstraints,
   PromptOptimizationStrategy,
   PromptOptimizationResult,
   PromptContext,
@@ -46,6 +48,7 @@ export interface BaseStrategyDeps {
 export abstract class BaseStrategy implements PromptOptimizationStrategy {
   abstract readonly modelId: string;
   abstract readonly modelName: string;
+  abstract getModelConstraints(): ModelConstraints;
 
   protected readonly techStripper: TechStripper;
   protected readonly safetySanitizer: SafetySanitizer;
@@ -229,7 +232,13 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     const startTime = performance.now();
 
     // 1. IR Analysis (Now the primary driver for LLM rewrite)
-    const ir = await this.analyzer.analyze(input);
+    const ir =
+      context?.precomputedStructuredPrompt
+        ? this.analyzer.fromStructuredPrompt(
+            context.precomputedStructuredPrompt,
+            context.sourcePrompt ?? input
+          )
+        : await this.analyzer.analyze(input);
 
     // 2. LLM-powered rewrite (Consumes structured IR)
     const rewriteConstraints = this.getRewriteConstraints(ir, context);
@@ -298,6 +307,16 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
     // Perform model-specific augmentation
     const augmentResult = this.doAugment(result, context);
+    const budgetResult = this.enforcePromptBudget(
+      typeof augmentResult.prompt === 'string'
+        ? augmentResult.prompt
+        : JSON.stringify(augmentResult.prompt),
+      augmentResult.triggersInjected
+    );
+    const changes = [...augmentResult.changes];
+    if (budgetResult.changed) {
+      changes.push(budgetResult.changeDescription);
+    }
 
     // Record injected triggers
     this.recordInjectedTriggers(augmentResult.triggersInjected);
@@ -307,12 +326,12 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     this.recordPhaseResult({
       phase: 'augment',
       durationMs,
-      changes: augmentResult.changes,
+      changes,
     });
 
     // Return final result with complete metadata
     const finalResult: PromptOptimizationResult = {
-      prompt: augmentResult.prompt,
+      prompt: budgetResult.prompt,
       metadata: this.getMetadata(),
     };
 
@@ -488,6 +507,77 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
       injected,
       changes,
     };
+  }
+
+  protected truncateBodyPreservingTriggers(
+    prompt: string,
+    triggers: string[],
+    maxWords: number
+  ): string {
+    if (triggers.length === 0) {
+      return this.trimToWords(prompt, maxWords);
+    }
+
+    const cleanedPrompt = this.cleanWhitespace(prompt);
+    const trimmedTriggers = triggers.map((trigger) => trigger.trim()).filter(Boolean);
+    const triggerWords = trimmedTriggers.reduce((sum, trigger) => sum + countWords(trigger), 0);
+    const bodyBudget = maxWords - triggerWords;
+
+    if (bodyBudget <= 0) {
+      return trimmedTriggers.join(', ');
+    }
+
+    const suffixPattern = new RegExp(
+      `(?:,\\s*)?${trimmedTriggers.map((trigger) => this.escapeRegex(trigger)).join('\\s*,\\s*')}(?:[.!?]+)?\\s*$`,
+      'i'
+    );
+    const body = cleanedPrompt.replace(suffixPattern, '').replace(/[,\s]+$/g, '').trim();
+    const trimmedBody = this.trimToWords(body, bodyBudget);
+
+    if (!trimmedBody) {
+      return trimmedTriggers.join(', ');
+    }
+
+    return this.cleanWhitespace(`${trimmedBody}, ${trimmedTriggers.join(', ')}`);
+  }
+
+  private enforcePromptBudget(
+    prompt: string,
+    triggersInjected: string[]
+  ): { prompt: string; changed: boolean; changeDescription: string } {
+    const limits = this.getModelConstraints().wordLimits;
+    const triggerBudgetWords = this.getModelConstraints().triggerBudgetWords;
+    const currentWordCount = countWords(prompt);
+
+    if (currentWordCount <= limits.max) {
+      return {
+        prompt: this.cleanWhitespace(prompt),
+        changed: false,
+        changeDescription: '',
+      };
+    }
+
+    const actualTriggerWords = triggersInjected.reduce((sum, trigger) => sum + countWords(trigger), 0);
+    if (actualTriggerWords > triggerBudgetWords) {
+      this.addWarning(
+        `Injected triggers exceeded reserved budget (${actualTriggerWords} > ${triggerBudgetWords} words)`
+      );
+    }
+
+    const trimmedPrompt = this.truncateBodyPreservingTriggers(prompt, triggersInjected, limits.max);
+    return {
+      prompt: this.cleanWhitespace(trimmedPrompt),
+      changed: trimmedPrompt.trim() !== prompt.trim(),
+      changeDescription: `Trimmed prompt body to stay within ${this.modelName} word budget (${limits.max} words) while preserving mandatory triggers`,
+    };
+  }
+
+  private trimToWords(text: string, maxWords: number): string {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= maxWords) {
+      return text.trim();
+    }
+    return words.slice(0, Math.max(0, maxWords)).join(' ').trim();
   }
 }
 

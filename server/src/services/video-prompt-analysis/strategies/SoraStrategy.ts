@@ -22,7 +22,8 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import { getPromptModelConstraints } from '@shared/videoModels';
+import type { PromptOptimizationResult, PromptContext, RewriteConstraints, VideoPromptIR } from './types';
 
 /**
  * Pattern to match @Cameo tokens that should be preserved
@@ -108,12 +109,18 @@ interface SoraSequence {
   physics: PhysicsConstraints;
 }
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints('sora-2')!;
+
 /**
  * SoraStrategy optimizes prompts for OpenAI Sora 2's physics-grounded generation
  */
 export class SoraStrategy extends BaseStrategy {
   readonly modelId = 'sora-2';
   readonly modelName = 'OpenAI Sora 2';
+
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
 
   /**
    * Validate input against Sora-specific constraints
@@ -137,8 +144,10 @@ export class SoraStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 500) {
-      this.addWarning('Prompt exceeds 500 words; Sora may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Sora may truncate or ignore excess content`
+      );
     }
 
     // Check for potential physics violations
@@ -193,23 +202,6 @@ export class SoraStrategy extends BaseStrategy {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const words = prompt.split(/\s+/).filter(Boolean);
-    if (words.length > 120) {
-      const candidateText = words.slice(0, 120).join(' ');
-      const lastSentenceEnd = Math.max(
-        candidateText.lastIndexOf('.'),
-        candidateText.lastIndexOf('!'),
-        candidateText.lastIndexOf('?')
-      );
-      // Truncate at sentence boundary if it captures at least 50% of the text
-      if (lastSentenceEnd > candidateText.length * 0.5) {
-        prompt = candidateText.substring(0, lastSentenceEnd + 1);
-      } else {
-        prompt = `${candidateText}.`;
-      }
-      changes.push('Trimmed prompt to Sora-friendly length (<=120 words) at sentence boundary');
-    }
-
     if (prompt !== before) {
       changes.push('Removed timestamped sequencing artifacts for natural prose output');
     }
@@ -220,6 +212,30 @@ export class SoraStrategy extends BaseStrategy {
       prompt,
       changes,
       triggersInjected,
+    };
+  }
+
+  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+    const physics = this.analyzePhysics(ir.raw);
+    const mandatory: string[] = [];
+
+    if (physics.gravity) {
+      mandatory.push('gravity-driven motion');
+    }
+    if (physics.momentum) {
+      mandatory.push('momentum conservation');
+    }
+    if (physics.collisions) {
+      mandatory.push('physical collision response');
+    }
+    if (physics.friction) {
+      mandatory.push('surface friction');
+    }
+
+    return {
+      ...(mandatory.length > 0 ? { mandatory } : {}),
+      suggested: ['natural motion physics', 'narrative context', 'continuous movement'],
+      avoid: ['Shot 1 (0-4s)', 'timestamped shot syntax', '00:00', '0-4s'],
     };
   }
 

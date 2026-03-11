@@ -25,9 +25,17 @@ describe('runOptimizeFlow stream parity', () => {
       })),
     },
     compilationService: {
-      compileOptimizedPrompt: vi.fn(async () => ({
+      compile: vi.fn(async () => ({
         prompt: 'final compiled prompt for target model',
         metadata: { normalizedModelId: 'veo-3' },
+        compilation: {
+          status: 'compiled',
+          usedFallback: false,
+          sourceKind: 'prompt',
+          structuredArtifactReused: false,
+          analyzerBypassed: false,
+          compiledFor: 'veo-3',
+        },
       })),
     },
     applyConstitutionalAI: vi.fn(async (prompt: string) => prompt),

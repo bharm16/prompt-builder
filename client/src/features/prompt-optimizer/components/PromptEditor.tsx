@@ -8,6 +8,7 @@ import { cn } from '@/utils/cn';
  */
 export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
   className,
+  placeholder,
   onTextSelection,
   onHighlightClick,
   onHighlightMouseDown,
@@ -42,6 +43,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       contentEditable
       suppressContentEditableWarning
       className={cn('min-h-px w-full break-words', className)}
+      data-placeholder={placeholder}
       role="textbox"
       aria-label="Optimized prompt"
     />

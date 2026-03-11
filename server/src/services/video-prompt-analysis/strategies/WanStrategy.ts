@@ -16,7 +16,13 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import { getPromptModelConstraints } from '@shared/videoModels';
+import type {
+  PromptOptimizationResult,
+  PromptContext,
+  RewriteConstraints,
+  VideoPromptIR,
+} from './types';
 
 /**
  * Default negative prompt to avoid common artifacts
@@ -34,6 +40,34 @@ const ASPECT_RATIO_MAP: Record<string, string> = {
   '3:4': '768*1024',
 };
 
+const CAMERA_MOVEMENT_TOKENS = [
+  'dolly',
+  'tracking shot',
+  'crane shot',
+  'orbit',
+  'handheld',
+  'steadycam',
+  'whip pan',
+  'tilt',
+  'pan',
+  'zoom',
+] as const;
+
+const TECHNICAL_SPEC_TOKENS = [
+  '24fps',
+  '30fps',
+  '60fps',
+  '4k',
+  '8k',
+  'uhd',
+  'resolution',
+  'aspect ratio',
+  'frame rate',
+  'depth of field',
+] as const;
+
+const MODEL_CONSTRAINTS = getPromptModelConstraints('wan-2.2')!;
+
 interface WanApiPayload {
   prompt: string;
   negative_prompt: string;
@@ -50,6 +84,10 @@ export class WanStrategy extends BaseStrategy {
   readonly modelId = 'wan-2.2';
   readonly modelName = 'Wan 2.2';
 
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
+
   /**
    * Validate input against Wan-specific constraints
    */
@@ -64,8 +102,10 @@ export class WanStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 300) {
-      this.addWarning('Prompt exceeds 300 words; Wan performs best with 80-120 words');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Wan performs best with concise single-action prompts`
+      );
     }
   }
 
@@ -122,12 +162,6 @@ export class WanStrategy extends BaseStrategy {
       .replace(/\.\./g, '.')
       .replace(/\s\./g, '.');
 
-    const words = prompt.split(/\s+/).filter(Boolean);
-    if (words.length > 60) {
-      prompt = `${words.slice(0, 60).join(' ')}.`;
-      changes.push('Trimmed prompt to Wan-friendly length (<=60 words)');
-    }
-
     return {
       prompt,
       changes,
@@ -148,17 +182,21 @@ export class WanStrategy extends BaseStrategy {
     let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
     prompt = this.cleanWhitespace(prompt);
 
-    const words = prompt.split(/\s+/).filter(Boolean);
-    if (words.length > 60) {
-      prompt = `${words.slice(0, 60).join(' ')}.`;
-      changes.push('Trimmed augmented prompt to 60 words for Wan compatibility');
-    }
-
     return {
       prompt,
       changes,
       triggersInjected,
       negativePrompt: result.negativePrompt || DEFAULT_NEGATIVE_PROMPT
+    };
+  }
+
+  protected override getRewriteConstraints(
+    _ir: VideoPromptIR,
+    _context?: PromptContext
+  ): RewriteConstraints {
+    return {
+      suggested: ['single subject', 'one continuous action'],
+      avoid: [...CAMERA_MOVEMENT_TOKENS, ...TECHNICAL_SPEC_TOKENS],
     };
   }
 

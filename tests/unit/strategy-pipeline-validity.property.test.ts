@@ -13,6 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
 
 import {
   StrategyRegistry,
@@ -65,6 +66,13 @@ class MockStrategy implements PromptOptimizationStrategy {
   constructor(modelId: string, modelName: string) {
     this.modelId = modelId;
     this.modelName = modelName;
+  }
+
+  getModelConstraints() {
+    return {
+      wordLimits: { min: 1, max: 500 },
+      triggerBudgetWords: 10,
+    };
   }
 
   async validate(_input: string, _context?: PromptContext): Promise<void> {
@@ -132,6 +140,15 @@ async function executePipeline(
 
   return augmented;
 }
+
+const registryModelIdArb = fc
+  .string({ minLength: 1, maxLength: 30 })
+  .filter(
+    (value) =>
+      /^[a-z0-9-]+$/i.test(value) &&
+      resolvePromptModelId(value) === value &&
+      !['constructor', 'prototype', '__proto__'].includes(value.toLowerCase())
+  );
 
 describe('Strategy Pipeline Validity Property Tests', () => {
   /**
@@ -277,13 +294,11 @@ describe('StrategyRegistry Integration', () => {
     it('registered strategies can be retrieved and executed', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
+          registryModelIdArb,
           fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
           fc.string({ minLength: 1, maxLength: 200 }),
           async (modelId, modelName, input) => {
             const registry = new StrategyRegistry();
-            const strategy = new MockStrategy(modelId, modelName);
-
             registry.register(modelId, () => new MockStrategy(modelId, modelName));
 
             // Strategy should be retrievable (fresh instance each call)
@@ -306,11 +321,8 @@ describe('StrategyRegistry Integration', () => {
     it('registry correctly reports has() for registered strategies', () => {
       fc.assert(
         fc.property(
-          fc.uniqueArray(
-            fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
-            { minLength: 1, maxLength: 10 }
-          ),
-          fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
+          fc.uniqueArray(registryModelIdArb, { minLength: 1, maxLength: 10 }),
+          registryModelIdArb,
           (modelIds, unregisteredId) => {
             // Ensure unregisteredId is not in modelIds
             fc.pre(!modelIds.includes(unregisteredId));
@@ -338,10 +350,7 @@ describe('StrategyRegistry Integration', () => {
     it('registry getAll() returns all registered strategies', () => {
       fc.assert(
         fc.property(
-          fc.uniqueArray(
-            fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
-            { minLength: 1, maxLength: 10 }
-          ),
+          fc.uniqueArray(registryModelIdArb, { minLength: 1, maxLength: 10 }),
           (modelIds) => {
             const registry = new StrategyRegistry();
 
@@ -368,7 +377,7 @@ describe('StrategyRegistry Integration', () => {
     it('registry throws on duplicate registration', () => {
       fc.assert(
         fc.property(
-          fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
+          registryModelIdArb,
           (modelId) => {
             const registry = new StrategyRegistry();
             const strategy1 = new MockStrategy(modelId, 'Model 1');
@@ -395,6 +404,13 @@ describe('StrategyRegistry Integration', () => {
 class TestBaseStrategy extends BaseStrategy {
   readonly modelId = 'runway-gen45'; // Use runway to test tech stripping
   readonly modelName = 'Test Runway Strategy';
+
+  getModelConstraints() {
+    return {
+      wordLimits: { min: 1, max: 150 },
+      triggerBudgetWords: 10,
+    };
+  }
 
   protected async doValidate(_input: string, _context?: PromptContext): Promise<void> {
     // No additional validation for test
@@ -455,6 +471,13 @@ class TestBaseStrategy extends BaseStrategy {
 class TestKlingStrategy extends BaseStrategy {
   readonly modelId = 'kling-26';
   readonly modelName = 'Test Kling Strategy';
+
+  getModelConstraints() {
+    return {
+      wordLimits: { min: 1, max: 120 },
+      triggerBudgetWords: 10,
+    };
+  }
 
   protected async doValidate(_input: string, _context?: PromptContext): Promise<void> {
     // No additional validation

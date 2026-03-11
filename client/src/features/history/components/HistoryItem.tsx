@@ -122,144 +122,159 @@ export const HistoryItem = memo<HistoryItemProps>(({
     setShowDeleteConfirm(true);
   };
 
-  if (showDeleteConfirm) {
-    return (
-      <li data-history-index={dataIndex}>
-        <div className="rounded-lg border border-error/40 bg-error/10 p-ps-4">
-          <p className="mb-ps-3 text-body text-foreground">Delete this session?</p>
-          <div className="flex gap-ps-3">
-            <Button
-              onClick={handleDelete}
-              size="sm"
-              variant="destructive"
-              className="flex-1"
-            >
-              Delete
-            </Button>
-            <Button
-              onClick={handleCancel}
-              size="sm"
-              variant="secondary"
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </li>
-    );
-  }
-
   const isHovering = isExternallyHovered;
 
   return (
     <DropdownMenu open={contextOpen} onOpenChange={handleMenuOpenChange}>
       <li data-history-index={dataIndex}>
         <div
-          className={cn(
-            // 48px row height, subtle hover/selected states (Runway/Midjourney-ish).
-            'group relative flex h-12 items-center rounded-lg transition-colors',
-            isSelected
-              ? [
-                  'bg-[rgb(44,48,55)]',
-                  // Centered 24px accent bar (not a full-height ring).
-                  "before:content-[''] before:absolute before:left-0 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 before:bg-[rgb(59,130,246)] before:rounded-r-[2px]",
-                ].join(' ')
-              : isHovering
-                ? 'bg-[rgb(39,42,55)]'
-                : 'bg-transparent'
-          )}
-          data-stage={stage}
+          className="grid gap-2 transition-[grid-template-rows] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)]"
+          style={{ gridTemplateRows: showDeleteConfirm ? '0fr 1fr' : '1fr 0fr' }}
         >
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              onClick={handleLoad}
-              onContextMenu={handleContextMenu}
-              variant="ghost"
+          <div className="overflow-hidden">
+            <div
               className={cn(
-                'flex h-12 w-full min-w-0 items-center text-left',
-                'gap-[10px] px-2 py-[6px] pr-12',
-                // Ensure selected doesn't look like "focus ring"
-                'ring-0 focus-visible:ring-0 focus:ring-0'
+                'transition-[opacity,transform] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)]',
+                showDeleteConfirm
+                  ? 'pointer-events-none -translate-y-1 opacity-0'
+                  : 'translate-y-0 opacity-100'
               )}
-              aria-label={`Load prompt: ${title}`}
-              title={title}
             >
-              <div>
-                <HistoryThumbnail
-                  src={thumbnailUrl}
-                  storagePath={thumbnailStoragePath}
-                  assetId={thumbnailAssetId}
-                  label={title}
-                  size="md"
-                  variant="muted"
-                  isActive={false}
-                  className="h-9 w-9 rounded-[6px] border border-[rgb(44,48,55)] bg-[rgb(44,48,55)]"
-                />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                {versionLabel ? (
-                  <span className="text-label-10 font-semibold uppercase tracking-widest text-faint">
-                    {versionLabel}
-                  </span>
-                ) : null}
-                <div className="flex items-start justify-between gap-ps-3">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-                    {title}
-                  </span>
-                  {statusLabel && statusTone ? (
-                    <span
-                      className={cn(
-                        'rounded-full border px-ps-2 py-0.5 text-label-sm',
-                        statusTone === 'warning' && 'border-warning/40 bg-warning/10 text-warning',
-                        statusTone === 'error' && 'border-error/40 bg-error/10 text-error',
-                        statusTone === 'muted' && 'border-border bg-surface-2 text-muted'
-                      )}
-                    >
-                      {statusLabel}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="truncate text-[11px] text-[rgb(107,114,128)]">
-                  {meta}
-                </div>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-
-          <div
-            className={cn(
-              'absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2',
-              'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
-              'pointer-events-none group-hover:pointer-events-auto'
-            )}
-          >
-            {stage === 'error' && (
-              <Button
-                type="button"
-                onClick={handleRetry}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:bg-[rgba(255,255,255,0.06)]"
-                aria-label="Retry"
-                title="Retry"
+              <div
+                className={cn(
+                  'group relative flex h-12 items-center rounded-lg transition-colors',
+                  isSelected
+                    ? [
+                        'bg-[rgb(44,48,55)]',
+                        "before:content-[''] before:absolute before:left-0 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 before:bg-[rgb(59,130,246)] before:rounded-r-[2px]",
+                      ].join(' ')
+                    : isHovering
+                      ? 'bg-[rgb(39,42,55)]'
+                      : 'bg-transparent'
+                )}
+                data-stage={stage}
               >
-                <RotateCcw className="h-3.5 w-3.5 text-warning" />
-              </Button>
-            )}
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    onClick={handleLoad}
+                    onContextMenu={handleContextMenu}
+                    variant="ghost"
+                    className={cn(
+                      'flex h-12 w-full min-w-0 items-center text-left',
+                      'gap-[10px] px-2 py-[6px] pr-12',
+                      'ring-0 focus-visible:ring-0 focus:ring-0'
+                    )}
+                    aria-label={`Load prompt: ${title}`}
+                    title={title}
+                  >
+                    <div>
+                      <HistoryThumbnail
+                        src={thumbnailUrl}
+                        storagePath={thumbnailStoragePath}
+                        assetId={thumbnailAssetId}
+                        label={title}
+                        size="md"
+                        variant="muted"
+                        isActive={false}
+                        className="h-9 w-9 rounded-[6px] border border-[rgb(44,48,55)] bg-[rgb(44,48,55)]"
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      {versionLabel ? (
+                        <span className="text-label-10 font-semibold uppercase tracking-widest text-faint">
+                          {versionLabel}
+                        </span>
+                      ) : null}
+                      <div className="flex items-start justify-between gap-ps-3">
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+                          {title}
+                        </span>
+                        {statusLabel && statusTone ? (
+                          <span
+                            className={cn(
+                              'rounded-full border px-ps-2 py-0.5 text-label-sm',
+                              statusTone === 'warning' && 'border-warning/40 bg-warning/10 text-warning',
+                              statusTone === 'error' && 'border-error/40 bg-error/10 text-error',
+                              statusTone === 'muted' && 'border-border bg-surface-2 text-muted'
+                            )}
+                          >
+                            {statusLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="truncate text-[11px] text-[rgb(107,114,128)]">
+                        {meta}
+                      </div>
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
 
-            <Button
-              type="button"
-              onClick={handleDelete}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:border-error/60 hover:bg-[rgba(255,255,255,0.06)] hover:text-error"
-              aria-label="Delete prompt"
-              title="Delete prompt"
+                <div
+                  className={cn(
+                    'absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2',
+                    'transition-[opacity,transform] duration-150 group-hover:opacity-100',
+                    'pointer-events-none opacity-0 group-hover:pointer-events-auto'
+                  )}
+                >
+                  {stage === 'error' && (
+                    <Button
+                      type="button"
+                      onClick={handleRetry}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:bg-[rgba(255,255,255,0.06)]"
+                      aria-label="Retry"
+                      title="Retry"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-warning" />
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    onClick={handleDelete}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-md border border-border bg-transparent text-faint hover:border-error/60 hover:bg-[rgba(255,255,255,0.06)] hover:text-error"
+                    aria-label="Delete prompt"
+                    title="Delete prompt"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                'motion-presence-panel rounded-lg border border-error/40 bg-error/10 p-ps-4',
+                showDeleteConfirm ? 'opacity-100' : 'pointer-events-none opacity-0'
+              )}
+              data-motion-state={showDeleteConfirm ? 'entered' : 'exit'}
             >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+              <p className="mb-ps-3 text-body text-foreground">Delete this session?</p>
+              <div className="flex gap-ps-3">
+                <Button
+                  onClick={handleDelete}
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  Delete
+                </Button>
+                <Button
+                  onClick={handleCancel}
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </li>

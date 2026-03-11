@@ -22,5 +22,7 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
   'veo-4': 'veo-3',
 };
 
+export const REGISTERED_MODEL_PROMPT_STRATEGY_IDS = STRATEGIES.map((strategy) => strategy.modelId);
+
 export const resolveModelPromptStrategy = (modelId: string): ModelPromptStrategy =>
   STRATEGY_MAP.get(LEGACY_MODEL_ALIASES[modelId] ?? modelId) ?? defaultPromptStrategy;

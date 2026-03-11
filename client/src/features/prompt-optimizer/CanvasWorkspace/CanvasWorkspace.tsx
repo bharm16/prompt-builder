@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 import type { AssetSuggestion } from '@/features/assets/hooks/useTriggerAutocomplete';
+import type { CameraPath } from '@/features/convergence/types';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
@@ -25,6 +26,8 @@ import {
 } from '@/components/ToolSidebar/context';
 import { GalleryPanel } from '@/features/prompt-optimizer/components/GalleryPanel';
 import { GenerationPopover } from '@/features/prompt-optimizer/components/GenerationPopover';
+import { useAnimatedPresence } from '@/hooks/useAnimatedPresence';
+import { cn } from '@/utils/cn';
 import { buildGalleryGenerationEntries } from './utils/galleryGeneration';
 import { CanvasTopBar } from './components/CanvasTopBar';
 import { CanvasPromptBar } from './components/CanvasPromptBar';
@@ -294,6 +297,18 @@ export function CanvasWorkspace({
   ]);
 
   const galleryOpen = true;
+  const {
+    shouldRender: shouldRenderEmptyChrome,
+    phase: emptyChromePhase,
+  } = useAnimatedPresence(isEmptySession, { exitMs: 220 });
+  const {
+    shouldRender: shouldRenderGallery,
+    phase: galleryPhase,
+  } = useAnimatedPresence(!isEmptySession && galleryOpen, { exitMs: 220 });
+  const {
+    shouldRender: shouldRenderHero,
+    phase: heroPhase,
+  } = useAnimatedPresence(!isEmptySession && Boolean(heroGeneration), { exitMs: 240 });
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
@@ -312,60 +327,82 @@ export function CanvasWorkspace({
     },
     [generationLookup, onReuseGeneration]
   );
-
-  if (isEmptySession) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
-        <CanvasTopBar />
-
-        <NewSessionView
-          editorRef={editorRef}
-          onTextSelection={onTextSelection}
-          onHighlightClick={onHighlightClick}
-          onHighlightMouseDown={onHighlightMouseDown}
-          onHighlightMouseEnter={onHighlightMouseEnter}
-          onHighlightMouseLeave={onHighlightMouseLeave}
-          onCopyEvent={onCopyEvent}
-          onInput={onInput}
-          onEditorKeyDown={onEditorKeyDown}
-          onEditorBlur={onEditorBlur}
-          prompt={prompt}
-          renderModelId={renderModelId}
-          renderModelOptions={renderModelOptions}
-          modelRecommendation={modelRecommendation}
-          recommendedModelId={recommendedModelId}
-          efficientModelId={efficientModelId}
-          onModelChange={handleModelChange}
-          onOpenMotion={() => {
-            if (!domain.startFrame) return;
-            setShowCameraMotionModal(true);
-          }}
-          {...(generationDomain?.onStartFrameUpload
-            ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
-            : {})}
-          {...(generationDomain?.onUploadSidebarImage
-            ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
-            : {})}
-          {...(onEnhance ? { onEnhance } : {})}
-        />
-
-        {domain.startFrame ? (
-          <CameraMotionModal
-            isOpen={showCameraMotionModal}
-            onClose={() => setShowCameraMotionModal(false)}
-            imageUrl={domain.startFrame.url}
-            imageStoragePath={domain.startFrame.storagePath ?? null}
-            imageAssetId={domain.startFrame.assetId ?? null}
-            initialSelection={domain.cameraMotion}
-            onSelect={(cameraPath) => {
-              storeActions.setCameraMotion(cameraPath);
-              setShowCameraMotionModal(false);
-            }}
-          />
-        ) : null}
-      </div>
-    );
-  }
+  const handleOpenMotion = useCallback((): void => {
+    if (!domain.startFrame) return;
+    setShowCameraMotionModal(true);
+  }, [domain.startFrame]);
+  const handleCameraMotionSelect = useCallback(
+    (cameraPath: CameraPath): void => {
+      storeActions.setCameraMotion(cameraPath);
+      setShowCameraMotionModal(false);
+    },
+    [storeActions]
+  );
+  const promptBarProps = {
+    editorRef,
+    prompt,
+    onTextSelection,
+    onHighlightClick,
+    onHighlightMouseDown,
+    onHighlightMouseEnter,
+    onHighlightMouseLeave,
+    onCopyEvent,
+    onInput,
+    onEditorKeyDown,
+    onEditorBlur,
+    autocompleteOpen,
+    autocompleteSuggestions,
+    autocompleteSelectedIndex,
+    autocompletePosition,
+    autocompleteLoading,
+    onAutocompleteSelect,
+    onAutocompleteClose,
+    onAutocompleteIndexChange,
+    selectedSpanId,
+    suggestionCount,
+    suggestionsListRef,
+    inlineSuggestions,
+    activeSuggestionIndex,
+    onActiveSuggestionChange,
+    interactionSourceRef,
+    onSuggestionClick,
+    onCloseInlinePopover,
+    selectionLabel,
+    onApplyActiveSuggestion,
+    isInlineLoading,
+    isInlineError,
+    inlineErrorMessage,
+    isInlineEmpty,
+    customRequest,
+    onCustomRequestChange,
+    customRequestError,
+    onCustomRequestErrorChange,
+    onCustomRequestSubmit,
+    isCustomRequestDisabled,
+    isCustomLoading,
+    responseMetadata: responseMetadata ?? null,
+    ...(onCopyAllDebug ? { onCopyAllDebug } : {}),
+    ...(isBulkCopyLoading ? { isBulkCopyLoading } : {}),
+    showI2VLockIndicator,
+    resolvedI2VReason,
+    i2vMotionAlternatives,
+    onLockedAlternativeClick,
+    renderModelId,
+    ...(recommendedModelId ? { recommendedModelId } : {}),
+    ...(modelRecommendation?.promptId
+      ? { recommendationPromptId: modelRecommendation.promptId }
+      : {}),
+    ...(recommendationMode ? { recommendationMode } : {}),
+    ...(typeof recommendationAgeMs === 'number' ? { recommendationAgeMs } : {}),
+    onOpenMotion: handleOpenMotion,
+    ...(generationDomain?.onStartFrameUpload
+      ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+      : {}),
+    ...(generationDomain?.onUploadSidebarImage
+      ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
+      : {}),
+    ...(onEnhance ? { onEnhance } : {}),
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
@@ -373,6 +410,15 @@ export function CanvasWorkspace({
 
       <div className="flex min-h-0 flex-1 overflow-hidden px-3">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-0">
+          {shouldRenderEmptyChrome ? (
+            <div
+              className="motion-presence-panel absolute inset-0"
+              data-motion-state={emptyChromePhase}
+            >
+              <NewSessionView />
+            </div>
+          ) : null}
+
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}
             renderModelId={renderModelId}
@@ -380,92 +426,43 @@ export function CanvasWorkspace({
             recommendedModelId={recommendedModelId}
             efficientModelId={efficientModelId}
             onModelChange={handleModelChange}
-            className="bottom-0 left-5"
+            className={cn(
+              'left-5 transition-[bottom,transform] duration-[220ms] [transition-timing-function:var(--motion-ease-emphasized)]',
+              isEmptySession ? 'bottom-4' : 'bottom-0'
+            )}
           />
 
-          <div className={`relative flex min-h-0 flex-1 flex-col overflow-hidden pt-8 ${heroGeneration ? '' : 'justify-center'}`}>
-            <CanvasHeroViewer generation={heroGeneration} />
+          <div
+            className={cn(
+              'relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]',
+              isEmptySession ? 'justify-center' : 'pt-8',
+              !isEmptySession && !heroGeneration ? 'justify-center' : ''
+            )}
+          >
+            {shouldRenderHero ? (
+              <div className="motion-presence-panel mb-5" data-motion-state={heroPhase}>
+                <CanvasHeroViewer generation={heroGeneration} />
+              </div>
+            ) : null}
 
-            <CanvasPromptBar
-              editorRef={editorRef}
-              prompt={prompt}
-              onTextSelection={onTextSelection}
-              onHighlightClick={onHighlightClick}
-              onHighlightMouseDown={onHighlightMouseDown}
-              onHighlightMouseEnter={onHighlightMouseEnter}
-              onHighlightMouseLeave={onHighlightMouseLeave}
-              onCopyEvent={onCopyEvent}
-              onInput={onInput}
-              onEditorKeyDown={onEditorKeyDown}
-              onEditorBlur={onEditorBlur}
-              autocompleteOpen={autocompleteOpen}
-              autocompleteSuggestions={autocompleteSuggestions}
-              autocompleteSelectedIndex={autocompleteSelectedIndex}
-              autocompletePosition={autocompletePosition}
-              autocompleteLoading={autocompleteLoading}
-              onAutocompleteSelect={onAutocompleteSelect}
-              onAutocompleteClose={onAutocompleteClose}
-              onAutocompleteIndexChange={onAutocompleteIndexChange}
-              selectedSpanId={selectedSpanId}
-              suggestionCount={suggestionCount}
-              suggestionsListRef={suggestionsListRef}
-              inlineSuggestions={inlineSuggestions}
-              activeSuggestionIndex={activeSuggestionIndex}
-              onActiveSuggestionChange={onActiveSuggestionChange}
-              interactionSourceRef={interactionSourceRef}
-              onSuggestionClick={onSuggestionClick}
-              onCloseInlinePopover={onCloseInlinePopover}
-              selectionLabel={selectionLabel}
-              onApplyActiveSuggestion={onApplyActiveSuggestion}
-              isInlineLoading={isInlineLoading}
-              isInlineError={isInlineError}
-              inlineErrorMessage={inlineErrorMessage}
-              isInlineEmpty={isInlineEmpty}
-              customRequest={customRequest}
-              onCustomRequestChange={onCustomRequestChange}
-              customRequestError={customRequestError}
-              onCustomRequestErrorChange={onCustomRequestErrorChange}
-              onCustomRequestSubmit={onCustomRequestSubmit}
-              isCustomRequestDisabled={isCustomRequestDisabled}
-              isCustomLoading={isCustomLoading}
-              responseMetadata={responseMetadata ?? null}
-              {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
-              {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
-              showI2VLockIndicator={showI2VLockIndicator}
-              resolvedI2VReason={resolvedI2VReason}
-              i2vMotionAlternatives={i2vMotionAlternatives}
-              onLockedAlternativeClick={onLockedAlternativeClick}
-              renderModelId={renderModelId}
-              {...(recommendedModelId ? { recommendedModelId } : {})}
-              {...(modelRecommendation?.promptId
-                ? { recommendationPromptId: modelRecommendation.promptId }
-                : {})}
-              {...(recommendationMode ? { recommendationMode } : {})}
-              {...(typeof recommendationAgeMs === 'number'
-                ? { recommendationAgeMs }
-                : {})}
-              onOpenMotion={() => {
-                if (!domain.startFrame) return;
-                setShowCameraMotionModal(true);
-              }}
-              {...(generationDomain?.onStartFrameUpload
-                ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
-                : {})}
-              {...(generationDomain?.onUploadSidebarImage
-                ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
-                : {})}
-              {...(onEnhance ? { onEnhance } : {})}
-            />
+            <div className="relative z-10 flex w-full justify-center">
+              <CanvasPromptBar
+                {...promptBarProps}
+                layoutMode={isEmptySession ? 'empty' : 'active'}
+              />
+            </div>
           </div>
         </div>
 
-        {galleryOpen ? (
-          <GalleryPanel
-            generations={galleryGenerations}
-            activeGenerationId={viewingId}
-            onSelectGeneration={handleSelectGeneration}
-            onClose={handleCloseGallery}
-          />
+        {shouldRenderGallery ? (
+          <div className="motion-presence-panel" data-motion-state={galleryPhase}>
+            <GalleryPanel
+              generations={galleryGenerations}
+              activeGenerationId={viewingId}
+              onSelectGeneration={handleSelectGeneration}
+              onClose={handleCloseGallery}
+            />
+          </div>
         ) : null}
       </div>
 
@@ -488,10 +485,7 @@ export function CanvasWorkspace({
           imageStoragePath={domain.startFrame.storagePath ?? null}
           imageAssetId={domain.startFrame.assetId ?? null}
           initialSelection={domain.cameraMotion}
-          onSelect={(cameraPath) => {
-            storeActions.setCameraMotion(cameraPath);
-            setShowCameraMotionModal(false);
-          }}
+          onSelect={handleCameraMotionSelect}
         />
       ) : null}
     </div>

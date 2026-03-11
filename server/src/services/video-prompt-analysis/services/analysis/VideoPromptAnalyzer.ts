@@ -1,5 +1,6 @@
 import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
 import SpanLabelingConfig from '../../../../llm/span-labeling/config/SpanLabelingConfig';
+import type { VideoPromptStructuredResponse } from '@services/prompt-optimization/strategies/videoPromptTypes';
 import type { VideoPromptIR } from '../../types';
 import { createEmptyIR } from './IrFactory';
 import { LlmIrExtractor } from './LlmIrExtractor';
@@ -85,6 +86,81 @@ export class VideoPromptAnalyzer {
     }
 
     // 4. Basic Inference Enrichment
+    enrichIR(ir);
+
+    return ir;
+  }
+
+  fromStructuredPrompt(
+    structuredPrompt: VideoPromptStructuredResponse,
+    sourcePrompt: string
+  ): VideoPromptIR {
+    const ir = createEmptyIR(sourcePrompt);
+    const normalizedSource = this.cleanText(sourcePrompt);
+
+    if (structuredPrompt.subject) {
+      ir.subjects.push({
+        text: structuredPrompt.subject.trim(),
+        attributes: (structuredPrompt.subject_details ?? []).map((detail) => detail.trim()).filter(Boolean),
+      });
+    }
+
+    if (structuredPrompt.action) {
+      ir.actions.push(structuredPrompt.action.trim());
+    }
+
+    if (structuredPrompt.camera_move) {
+      ir.camera.movements.push(structuredPrompt.camera_move.trim());
+    }
+
+    if (structuredPrompt.camera_angle) {
+      ir.camera.angle = structuredPrompt.camera_angle.trim();
+    }
+
+    if (structuredPrompt.shot_framing) {
+      ir.camera.shotType = structuredPrompt.shot_framing.trim();
+    }
+
+    if (structuredPrompt.setting) {
+      ir.environment.setting = structuredPrompt.setting.trim();
+    }
+
+    if (structuredPrompt.lighting) {
+      ir.environment.lighting.push(structuredPrompt.lighting.trim());
+    }
+
+    if (structuredPrompt.style) {
+      ir.meta.style.push(structuredPrompt.style.trim());
+    }
+
+    if (structuredPrompt.time) {
+      ir.meta.temporal = [structuredPrompt.time.trim()];
+    }
+
+    if (structuredPrompt.technical_specs) {
+      for (const [key, value] of Object.entries(structuredPrompt.technical_specs)) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          ir.technical[key] = value.trim();
+        }
+      }
+    }
+
+    const dialogueMatch = normalizedSource.match(/["']([^"']+)["']/);
+    if (dialogueMatch?.[1]) {
+      ir.audio.dialogue = dialogueMatch[1].trim();
+    }
+
+    const musicMatch = normalizedSource.match(/\b(?:music|score|soundtrack|melody)\b[^.!?]*/i);
+    if (musicMatch?.[0]) {
+      ir.audio.music = musicMatch[0].trim();
+    }
+
+    const sfxMatch = normalizedSource.match(/\b(?:sfx|sound effect|thunder|rain|footsteps|explosion|voiceover)\b[^.!?]*/i);
+    if (sfxMatch?.[0]) {
+      ir.audio.sfx = sfxMatch[0].trim();
+    }
+
+    extractBasicHeuristics(normalizedSource, ir);
     enrichIR(ir);
 
     return ir;

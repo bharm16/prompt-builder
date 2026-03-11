@@ -69,8 +69,8 @@ export function AssetCard({
   return (
     <div
       onClick={() => onSelect(asset)}
-      className={`group relative overflow-hidden rounded-xl border transition-all ${
-        isSelected ? 'border-border-strong shadow-sm' : 'border-border hover:shadow-sm'
+      className={`group relative overflow-hidden rounded-xl border transition-[transform,border-color,box-shadow] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] ${
+        isSelected ? 'border-border-strong shadow-sm scale-[1.01]' : 'border-border hover:-translate-y-0.5 hover:shadow-sm'
       }`}
     >
       <div className="aspect-square bg-surface-2">
@@ -78,7 +78,7 @@ export function AssetCard({
           <img
             src={imageUrl}
             alt={asset.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] group-hover:scale-[1.03]"
             onError={handleImageError}
           />
         ) : (
@@ -94,7 +94,7 @@ export function AssetCard({
         {config.label}
       </div>
 
-      <div className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute inset-0 opacity-0 transition-opacity duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] group-hover:opacity-100">
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent px-3 pb-3 pt-6">
           <div className="flex gap-1">
             {asset.type === 'character' && onUseInGeneration && (

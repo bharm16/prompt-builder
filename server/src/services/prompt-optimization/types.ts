@@ -2,6 +2,7 @@
  * Types for prompt optimization services
  * Shared type definitions used across prompt optimization modules
  */
+import type { VideoPromptStructuredResponse } from './strategies/videoPromptTypes';
 import type { ExecuteParams } from '@services/ai-model/AIModelService';
 import type { AIResponse } from '@interfaces/IAIClient';
 import type { CapabilityValues } from '@shared/capabilities';
@@ -78,11 +79,67 @@ export interface OptimizationRequest {
   sourcePrompt?: string;
 }
 
+export interface StructuredOptimizationArtifact {
+  sourcePrompt: string;
+  structuredPrompt: VideoPromptStructuredResponse;
+  previewPrompt: string;
+  aspectRatio?: string;
+  fallbackUsed: boolean;
+  lintPassed: boolean;
+}
+
+export type CompileSource =
+  | { kind: 'artifact'; artifact: StructuredOptimizationArtifact }
+  | { kind: 'artifactKey'; artifactKey: string }
+  | { kind: 'prompt'; prompt: string };
+
+export type CompilationStatus = 'compiled' | 'generic-fallback' | 'compile-skipped';
+
+export interface CompilationIntentLockState {
+  passed: boolean;
+  repaired: boolean;
+  skippedRepair: boolean;
+  warning?: string;
+  required: { subject: string | null; action: string | null };
+}
+
+export interface CompilationState {
+  status: CompilationStatus;
+  usedFallback: boolean;
+  reason?: string;
+  sourceKind: CompileSource['kind'];
+  structuredArtifactReused: boolean;
+  analyzerBypassed: boolean;
+  compiledFor: string | null;
+  intentLock?: CompilationIntentLockState;
+}
+
+export interface CompileContext {
+  originalPrompt?: string;
+  originalUserPrompt?: string;
+  specificAspects?: string;
+  backgroundLevel?: string;
+  intendedUse?: string;
+  constraints?: Record<string, unknown>;
+  apiParams?: Record<string, unknown>;
+  assets?: Array<Record<string, unknown>>;
+}
+
+export interface CompilePromptResponse {
+  compiledPrompt: string;
+  metadata: Record<string, unknown> | null;
+  targetModel: string;
+  artifactKey?: string;
+  compilation: CompilationState;
+}
+
 export interface OptimizationResponse {
   prompt: string;
   inputMode: 't2v' | 'i2v';
   metadata?: Record<string, unknown>;
   i2v?: I2VOptimizationResult;
+  artifactKey?: string;
+  compilation?: CompilationState;
 }
 
 /**
@@ -90,6 +147,8 @@ export interface OptimizationResponse {
  */
 export interface OptimizationStrategy {
   optimize(request: OptimizationRequest): Promise<string>;
+  optimizeStructured?(request: OptimizationRequest): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(structuredPrompt: VideoPromptStructuredResponse): string;
   generateDomainContent?(prompt: string, context?: InferredContext | null, shotPlan?: ShotPlan | null): Promise<unknown>;
   name: string;
 }

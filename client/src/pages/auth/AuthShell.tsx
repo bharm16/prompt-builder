@@ -132,10 +132,10 @@ export function AuthShell({
 
           <main className="mt-12 grid flex-1 grid-cols-1 gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <section className="min-w-0">
-              <p className="text-[11px] font-semibold tracking-[0.24em] text-white/55">
+              <p className="ps-animate-fade-in text-[11px] font-semibold tracking-[0.24em] text-white/55">
                 {eyebrow}
               </p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+              <h1 className="ps-animate-slide-up mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
                 {title}
               </h1>
               <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/70">

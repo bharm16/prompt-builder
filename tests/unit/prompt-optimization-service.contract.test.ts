@@ -112,13 +112,30 @@ describe('PromptOptimizationService contract', () => {
 
   it('delegates compilePrompt when compilation service is available', async () => {
     const service = createService();
-    const compilePrompt = vi.fn(async () => ({
-      compiledPrompt: 'compiled prompt',
-      metadata: { compiledFor: 'kling-2.1' },
-      targetModel: 'kling-2.1',
+    const compile = vi.fn(async () => ({
+      prompt: 'compiled prompt',
+      metadata: {
+        compiledFor: 'kling-2.1',
+        compilation: {
+          status: 'compiled',
+          usedFallback: false,
+          sourceKind: 'prompt',
+          structuredArtifactReused: false,
+          analyzerBypassed: false,
+          compiledFor: 'kling-2.1',
+        },
+      },
+      compilation: {
+        status: 'compiled',
+        usedFallback: false,
+        sourceKind: 'prompt',
+        structuredArtifactReused: false,
+        analyzerBypassed: false,
+        compiledFor: 'kling-2.1',
+      },
     }));
     (service as unknown as { compilationService: unknown }).compilationService = {
-      compilePrompt,
+      compile,
     };
 
     const result = await service.compilePrompt({
@@ -126,7 +143,13 @@ describe('PromptOptimizationService contract', () => {
       targetModel: 'kling',
     });
 
-    expect(compilePrompt).toHaveBeenCalledWith('generic prompt', 'kling');
+    expect(compile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'compilePrompt',
+        targetModel: 'kling',
+        source: { kind: 'prompt', prompt: 'generic prompt' },
+      })
+    );
     expect(result).toMatchObject({
       metadata: { compiledFor: 'kling-2.1' },
       targetModel: 'kling-2.1',

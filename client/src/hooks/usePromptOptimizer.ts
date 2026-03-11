@@ -49,6 +49,7 @@ interface UsePromptOptimizerResult {
   setDisplayedPrompt: (prompt: string) => void;
   genericOptimizedPrompt: string | null;
   setGenericOptimizedPrompt: (prompt: string | null) => void;
+  artifactKey?: string | null;
   previewPrompt: string | null;
   setPreviewPrompt: (prompt: string | null) => void;
   previewAspectRatio: string | null;
@@ -92,6 +93,7 @@ export const usePromptOptimizer = (
     setOptimizedPrompt,
     setDisplayedPrompt,
     setGenericOptimizedPrompt,
+    setArtifactKey,
     setQualityScore,
     setPreviewPrompt,
     setPreviewAspectRatio,
@@ -162,6 +164,7 @@ export const usePromptOptimizer = (
           setOptimizedPrompt,
           setDisplayedPrompt,
           setGenericOptimizedPrompt,
+          setArtifactKey,
           setQualityScore,
           setPreviewPrompt,
           setPreviewAspectRatio,
@@ -241,6 +244,7 @@ export const usePromptOptimizer = (
       setOptimizedPrompt,
       setDisplayedPrompt,
       setGenericOptimizedPrompt,
+      setArtifactKey,
       setQualityScore,
       setPreviewPrompt,
       setPreviewAspectRatio,
@@ -280,8 +284,17 @@ export const usePromptOptimizer = (
       setIsProcessing(true);
 
       try {
+        const trimmedPromptToCompile = promptToCompile.trim();
+        const shouldUseArtifactKey =
+          typeof state.artifactKey === 'string' &&
+          state.artifactKey.trim().length > 0 &&
+          (
+            trimmedPromptToCompile === state.optimizedPrompt.trim() ||
+            trimmedPromptToCompile === (state.genericOptimizedPrompt?.trim() ?? '')
+          );
         const result = await compilePrompt({
           prompt: promptToCompile,
+          ...(shouldUseArtifactKey ? { artifactKey: state.artifactKey! } : {}),
           targetModel: resolvedModel,
           context,
           signal: abortController.signal,
@@ -295,6 +308,9 @@ export const usePromptOptimizer = (
         setOptimizedPrompt(compiled);
         setDisplayedPrompt(compiled);
         setGenericOptimizedPrompt(promptToCompile);
+        if (typeof result.artifactKey === 'string') {
+          setArtifactKey(result.artifactKey);
+        }
         bumpOptimizationResultVersion();
 
         if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
@@ -327,6 +343,9 @@ export const usePromptOptimizer = (
     },
     [
       state.improvementContext,
+      state.artifactKey,
+      state.optimizedPrompt,
+      state.genericOptimizedPrompt,
       state.qualityScore,
       compilePrompt,
       selectedMode,
@@ -335,6 +354,7 @@ export const usePromptOptimizer = (
       setOptimizedPrompt,
       setDisplayedPrompt,
       setGenericOptimizedPrompt,
+      setArtifactKey,
       bumpOptimizationResultVersion,
       setPreviewPrompt,
       setPreviewAspectRatio,
@@ -353,6 +373,7 @@ export const usePromptOptimizer = (
       setDisplayedPrompt,
       genericOptimizedPrompt: state.genericOptimizedPrompt,
       setGenericOptimizedPrompt,
+      artifactKey: state.artifactKey,
       previewPrompt: state.previewPrompt,
       setPreviewPrompt,
       previewAspectRatio: state.previewAspectRatio,

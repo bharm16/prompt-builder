@@ -12,10 +12,12 @@ import type {
   SuggestionItem,
 } from '@/features/prompt-optimizer/PromptCanvas/types';
 import { addPromptFocusIntentListener } from '@/features/prompt-optimizer/CanvasWorkspace/events';
+import { useAnimatedPresence } from '@/hooks/useAnimatedPresence';
 import { cn } from '@/utils/cn';
 import { CanvasSettingsRow } from './CanvasSettingsRow';
 
 interface CanvasPromptBarProps {
+  layoutMode?: 'empty' | 'active';
   editorRef: React.RefObject<HTMLDivElement>;
   prompt: string;
   onTextSelection: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -77,6 +79,7 @@ interface CanvasPromptBarProps {
 }
 
 export function CanvasPromptBar({
+  layoutMode = 'active',
   editorRef,
   prompt,
   onTextSelection,
@@ -135,10 +138,19 @@ export function CanvasPromptBar({
   onUploadSidebarImage,
   onEnhance,
 }: CanvasPromptBarProps): React.ReactElement {
+  const isEmptyLayout = layoutMode === 'empty';
   const [isFocused, setIsFocused] = useState(false);
   const [isSuggestionTrayCollapsed, setIsSuggestionTrayCollapsed] = useState(false);
   const [isDebugCopied, setIsDebugCopied] = useState(false);
   const previousSelectedSpanIdRef = useRef<string | null>(null);
+  const {
+    shouldRender: shouldRenderAutocomplete,
+    phase: autocompletePhase,
+  } = useAnimatedPresence(autocompleteOpen, { exitMs: 140 });
+  const {
+    shouldRender: shouldRenderSuggestionTray,
+    phase: suggestionTrayPhase,
+  } = useAnimatedPresence(Boolean(selectedSpanId), { exitMs: 180 });
   const debugPayload = useMemo(() => {
     if (!import.meta.env.DEV) {
       return null;
@@ -177,14 +189,25 @@ export function CanvasPromptBar({
     previousSelectedSpanIdRef.current = selectedSpanId;
   }, [selectedSpanId]);
 
-  const shouldRenderSuggestionTray = Boolean(selectedSpanId);
-
   return (
-    <div className="mx-auto w-[68%] flex-shrink-0 pb-4 pt-5">
+    <div
+      className={cn(
+        'relative transition-[width,max-width,padding,transform] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]',
+        isEmptyLayout
+          ? 'w-full max-w-[640px]'
+          : 'mx-auto w-[68%] flex-shrink-0 pb-4 pt-5'
+      )}
+    >
       <div
-        className={`rounded-[24px] border bg-[#141519] px-4 py-3 transition-colors ${
-          isFocused ? 'border-[#6C5CE744]' : 'border-[#22252C]'
-        }`}
+        className={cn(
+          'motion-safe-transition rounded-[24px] border transition-[border-color,background-color,box-shadow,transform]',
+          isEmptyLayout ? 'bg-[#15161B] px-5 pb-3 pt-5' : 'bg-[#141519] px-4 py-3',
+          isFocused
+            ? 'border-[#6C5CE744] shadow-[0_0_0_1px_rgba(108,92,231,0.12),0_16px_48px_rgba(0,0,0,0.34)] -translate-y-px'
+            : isEmptyLayout
+              ? 'border-[#22252C] shadow-[0_4px_24px_rgba(0,0,0,0.25)]'
+              : 'border-[#22252C] shadow-none'
+        )}
         onClick={() => {
           editorRef.current?.focus();
           setIsFocused(true);
@@ -193,7 +216,13 @@ export function CanvasPromptBar({
         <div className="relative">
           <PromptEditor
             ref={editorRef}
-            className="ps-scrollbar-hide min-h-[56px] max-h-[180px] overflow-y-auto text-sm leading-[1.75] text-[#8B92A5] outline-none"
+            className={cn(
+              'ps-scrollbar-hide max-h-[180px] overflow-y-auto outline-none [&:empty]:min-h-[56px]',
+              isEmptyLayout
+                ? 'min-h-[56px] text-[15px] leading-[1.7] text-[#E2E6EF] caret-[#6C5CE7]'
+                : 'min-h-[56px] text-sm leading-[1.75] text-[#8B92A5]'
+            )}
+            placeholder="Describe a video and click generate..."
             onTextSelection={onTextSelection}
             onHighlightClick={onHighlightClick}
             onHighlightMouseDown={onHighlightMouseDown}
@@ -208,7 +237,7 @@ export function CanvasPromptBar({
             }}
             onFocus={() => setIsFocused(true)}
           />
-          {autocompleteOpen ? (
+          {shouldRenderAutocomplete ? (
             <TriggerAutocomplete
               isOpen={autocompleteOpen}
               suggestions={autocompleteSuggestions}
@@ -218,18 +247,26 @@ export function CanvasPromptBar({
               onSelect={onAutocompleteSelect}
               onClose={onAutocompleteClose}
               setSelectedIndex={onAutocompleteIndexChange}
+              motionPhase={autocompletePhase}
             />
           ) : null}
         </div>
 
         {shouldRenderSuggestionTray ? (
-          <div className="mt-2.5 border-t border-[#22252C] pt-2.5" data-testid="canvas-suggestion-tray">
+          <div
+            className="motion-presence-panel mt-2.5 border-t border-[#22252C] pt-2.5"
+            data-motion-state={suggestionTrayPhase}
+            data-testid="canvas-suggestion-tray"
+          >
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-[10px] font-semibold tracking-[0.05em] text-[#8B92A5]">
                   {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                 </span>
-                <span className="rounded-full bg-[#1A1C22] px-2 py-0.5 text-[9px] font-semibold text-[#555B6E]">
+                <span
+                  key={suggestionCount}
+                  className="motion-count-bump rounded-full bg-[#1A1C22] px-2 py-0.5 text-[9px] font-semibold text-[#555B6E]"
+                >
                   {suggestionCount}
                 </span>
                 {debugPayload ? (
@@ -316,17 +353,17 @@ export function CanvasPromptBar({
                   </form>
                   {customRequestError ? (
                     <div
-                      className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
-                      role="alert"
-                    >
-                      {customRequestError}
+                    className="motion-shake-x mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+                    role="alert"
+                  >
+                    {customRequestError}
                     </div>
                   ) : null}
                 </div>
 
                 {isInlineError ? (
                   <div
-                    className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+                    className="motion-shake-x mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
                     role="alert"
                   >
                     {inlineErrorMessage}
@@ -361,10 +398,10 @@ export function CanvasPromptBar({
                         type="button"
                         data-index={index}
                         className={cn(
-                          'flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-colors',
+                          'flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-[transform,border-color,color,background-color] duration-[160ms] [transition-timing-function:var(--motion-ease-standard)]',
                           activeSuggestionIndex === index
-                            ? 'border-[#6C5CE7]/50 bg-[#6C5CE7]/10 text-[#E2E6EF]'
-                            : 'border-[#22252C] bg-[#141519] text-[#8B92A5] hover:border-[#3A3E4C] hover:text-[#E2E6EF]'
+                            ? 'border-[#6C5CE7]/50 bg-[#6C5CE7]/10 text-[#E2E6EF] -translate-y-px'
+                            : 'border-[#22252C] bg-[#141519] text-[#8B92A5] hover:-translate-y-px hover:border-[#3A3E4C] hover:text-[#E2E6EF]'
                         )}
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => {

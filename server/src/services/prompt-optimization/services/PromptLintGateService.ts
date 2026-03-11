@@ -1,3 +1,8 @@
+import { logger } from '@infrastructure/Logger';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
+import type { ModelConstraints } from '@services/video-prompt-analysis/strategies';
+import { getPromptModelConstraints } from '@shared/videoModels';
+
 const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /\*\*TECHNICAL SPECS\*\*/i, message: 'Contains technical specs markdown section.' },
   { pattern: /\*\*ALTERNATIVE APPROACHES\*\*/i, message: 'Contains alternative approaches markdown section.' },
@@ -5,23 +10,8 @@ const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /\bVariation\s+\d+\b/i, message: 'Contains template variation artifact.' },
 ];
 
-const MODEL_WORD_LIMITS: Record<string, { min: number; max: number }> = {
-  'sora-2': { min: 60, max: 120 },
-  'kling-2.1': { min: 40, max: 80 },
-  'kling-26': { min: 40, max: 80 },
-  'wan-2.2': { min: 30, max: 60 },
-};
-
 function countWords(value: string): number {
   return value.trim().split(/\s+/).filter(Boolean).length;
-}
-
-function clampToWords(value: string, maxWords: number): string {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) {
-    return value.trim();
-  }
-  return `${words.slice(0, maxWords).join(' ')}.`.trim();
 }
 
 function sanitizeMarkdownArtifacts(prompt: string): string {
@@ -65,7 +55,29 @@ export interface PromptLintEnforcementResult {
   repaired: boolean;
 }
 
+interface PromptLintGateServiceOptions {
+  getModelConstraints?: (modelId: string) => ModelConstraints | undefined;
+}
+
 export class PromptLintGateService {
+  private readonly getModelConstraints: (modelId: string) => ModelConstraints | undefined;
+  private readonly log = logger.child({ service: 'PromptLintGateService' });
+
+  constructor(options: PromptLintGateServiceOptions = {}) {
+    this.getModelConstraints =
+      options.getModelConstraints ??
+      ((modelId: string) => getPromptModelConstraints(modelId));
+  }
+
+  private resolveLimits(modelId?: string | null): ModelConstraints['wordLimits'] | undefined {
+    if (!modelId) {
+      return undefined;
+    }
+
+    const normalizedModelId = resolvePromptModelId(modelId) ?? modelId;
+    return this.getModelConstraints(normalizedModelId)?.wordLimits;
+  }
+
   evaluate(prompt: string, modelId?: string | null): PromptLintResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -77,7 +89,7 @@ export class PromptLintGateService {
       }
     }
 
-    const limits = modelId ? MODEL_WORD_LIMITS[modelId] : undefined;
+    const limits = this.resolveLimits(modelId);
     if (limits) {
       if (wordCount > limits.max) {
         errors.push(`Prompt too long for ${modelId} (${wordCount} words > ${limits.max}).`);
@@ -97,13 +109,24 @@ export class PromptLintGateService {
   enforce(params: { prompt: string; modelId?: string | null }): PromptLintEnforcementResult {
     const originalPrompt = params.prompt.trim();
     let candidate = sanitizeMarkdownArtifacts(originalPrompt);
-    const limits = params.modelId ? MODEL_WORD_LIMITS[params.modelId] : undefined;
-
-    if (limits) {
-      candidate = clampToWords(candidate, limits.max);
-    }
 
     const lint = this.evaluate(candidate, params.modelId);
+    const hasNonLengthErrors = lint.errors.some((error) => !error.startsWith('Prompt too long for '));
+    const hasOnlyLengthError = lint.errors.length > 0 && !hasNonLengthErrors;
+
+    if (params.modelId && hasOnlyLengthError) {
+      this.log.error('Model-specific prompt exceeded word budget; returning unchanged prompt', undefined, {
+        modelId: resolvePromptModelId(params.modelId) ?? params.modelId,
+        wordCount: lint.wordCount,
+        errors: lint.errors,
+      });
+      return {
+        prompt: candidate,
+        lint,
+        repaired: candidate !== originalPrompt,
+      };
+    }
+
     if (!lint.ok) {
       throw new Error(`Prompt lint gate failed: ${lint.errors.join(' ')}`);
     }

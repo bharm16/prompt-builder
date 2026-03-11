@@ -168,8 +168,8 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
     });
   });
 
-  describe('Cinematographic Trigger Selection', () => {
-    it('injects shallow depth of field for prompts with people', async () => {
+  describe('Suggested Cinematography Is Not Forced', () => {
+    it('does not force shallow depth of field for prompts with people', async () => {
       const peopleTerms = ['person', 'man', 'woman', 'character'];
 
       await fc.assert(
@@ -181,15 +181,15 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain shallow depth of field for subject focus
-            expect(result.prompt.toLowerCase()).toContain('shallow depth of field');
+            // Suggested cinematography should remain optional; augment only enforces stability triggers.
+            expect(result.prompt.toLowerCase()).not.toContain('shallow depth of field');
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('injects lens flare for outdoor/bright scenes', async () => {
+    it('does not force lens flare for outdoor or bright scenes', async () => {
       const outdoorTerms = ['sun', 'outdoor', 'bright', 'daylight'];
 
       await fc.assert(
@@ -201,18 +201,14 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain anamorphic lens flare
-            expect(result.prompt.toLowerCase()).toContain('anamorphic lens flare');
+            expect(result.prompt.toLowerCase()).not.toContain('anamorphic lens flare');
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('injects film grain for cinematic prompts', async () => {
-      // NOTE: 'film' is excluded because hasConceptOverlap correctly detects
-      // that "film" (>=4 chars) already exists in the prompt, preventing
-      // redundant "film grain" injection. This is desired behavior.
+    it('does not force film grain for cinematic prompts', async () => {
       const cinematicTerms = ['cinematic', 'movie'];
 
       await fc.assert(
@@ -224,15 +220,14 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain film grain
-            expect(result.prompt.toLowerCase()).toContain('film grain');
+            expect(result.prompt.toLowerCase()).not.toContain('film grain');
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('injects volumetric lighting for atmospheric scenes', async () => {
+    it('does not force volumetric lighting for atmospheric scenes', async () => {
       const atmosphericTerms = ['fog', 'mist', 'smoke', 'dust'];
 
       await fc.assert(
@@ -244,42 +239,29 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain volumetric lighting
-            expect(result.prompt.toLowerCase()).toContain('volumetric lighting');
+            expect(result.prompt.toLowerCase()).not.toContain('volumetric lighting');
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('injects default cinematic lighting when no specific triggers apply', async () => {
+    it('does not append suggested cinematographic triggers when none are already present', async () => {
       await fc.assert(
         fc.asyncProperty(
-          // Generate strings that don't contain trigger keywords
+          // Generate strings that don't contain known cinematographic trigger phrases.
           fc.string({ minLength: 5, maxLength: 100 }).filter(s => {
             const lower = s.toLowerCase();
             return s.trim().length > 0 &&
-                   !lower.includes('person') &&
-                   !lower.includes('man') &&
-                   !lower.includes('woman') &&
-                   !lower.includes('character') &&
-                   !lower.includes('sun') &&
-                   !lower.includes('outdoor') &&
-                   !lower.includes('bright') &&
-                   !lower.includes('day') &&
-                   !lower.includes('cinematic') &&
-                   !lower.includes('film') &&
-                   !lower.includes('movie') &&
-                   !lower.includes('fog') &&
-                   !lower.includes('mist') &&
-                   !lower.includes('smoke') &&
-                   !lower.includes('dust');
+                   !CINEMATOGRAPHIC_TRIGGERS.some((trigger) => lower.includes(trigger.toLowerCase()));
           }),
           async (input) => {
             const result = await executePipeline(strategy, input);
+            const lowerPrompt = result.prompt.toLowerCase();
 
-            // Should contain at least cinematic lighting as default
-            expect(result.prompt.toLowerCase()).toContain('cinematic lighting');
+            for (const trigger of CINEMATOGRAPHIC_TRIGGERS) {
+              expect(lowerPrompt).not.toContain(trigger.toLowerCase());
+            }
           }
         ),
         { numRuns: 100 }

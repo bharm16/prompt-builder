@@ -9,7 +9,14 @@ import { getVideoTemplateBuilder } from './video-templates/index';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
 import { detectProvider } from '@utils/provider/ProviderDetector';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
+import type {
+  AIService,
+  TemplateService,
+  OptimizationRequest,
+  ShotPlan,
+  OptimizationStrategy,
+  StructuredOptimizationArtifact,
+} from '../types';
 import {
   parseVideoPromptStructuredResponse,
   type VideoPromptSlots,
@@ -87,14 +94,28 @@ export class VideoStrategy implements OptimizationStrategy {
    * Uses Few-Shot Prompting to prevent structural arrows in output
    */
   async optimize({
+    onMetadata,
+    ...request
+  }: OptimizationRequest): Promise<string> {
+    const artifact = await this.optimizeStructured(request);
+    if (onMetadata) {
+      onMetadata({
+        previewPrompt: artifact.previewPrompt,
+        ...(artifact.aspectRatio ? { aspectRatio: artifact.aspectRatio } : {}),
+      });
+    }
+
+    return this.renderStructuredPrompt(artifact.structuredPrompt);
+  }
+
+  async optimizeStructured({
     prompt,
     shotPlan = null,
     generationParams = null,
     lockedSpans = [],
     brainstormContext = null,
     signal,
-    onMetadata,
-  }: OptimizationRequest): Promise<string> {
+  }: OptimizationRequest): Promise<StructuredOptimizationArtifact> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
     const optimizeConfig = ModelConfig.optimize_standard;
@@ -115,6 +136,7 @@ export class VideoStrategy implements OptimizationStrategy {
       typeof brainstormContext?.originalUserPrompt === 'string' && brainstormContext.originalUserPrompt.trim()
         ? brainstormContext.originalUserPrompt.trim()
         : null;
+    const sourcePrompt = originalUserPrompt ?? prompt;
 
     // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {
@@ -148,22 +170,19 @@ export class VideoStrategy implements OptimizationStrategy {
         systemPromptLength: template.systemPrompt.length,
       });
 
-      // Build the Message Chain (The Structured Way)
-      // We explicitly teach the model: Rules -> Example Input -> Example Output -> Real Input
       const messages = [
         { role: 'system', content: template.systemPrompt },
-        ...VIDEO_FEW_SHOT_EXAMPLES, // <--- Inject the "training" examples
+        ...VIDEO_FEW_SHOT_EXAMPLES,
         { role: 'user', content: template.userMessage }
-      ];
+      ] as Array<{ role: string; content: string }>;
 
       logger.debug('Attempting Native Strict Schema generation with Few-Shot examples');
 
-      // Call AI with provider-specific optimizations
       const response = await this.ai.execute('optimize_standard', {
-        systemPrompt: template.systemPrompt, // Required by API
-        messages: messages, // <--- Pass the full chain here
-        schema: schema,
-        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}), // OpenAI only
+        systemPrompt: template.systemPrompt,
+        messages,
+        schema,
+        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
@@ -171,81 +190,38 @@ export class VideoStrategy implements OptimizationStrategy {
       });
 
       const parsedResponse = parseVideoPromptStructuredResponse(response.text);
-      const normalizedSlots = normalizeSlots(parsedResponse);
-
-      const lint = mergeLintResults(
-        lintVideoPromptSlots(parsedResponse),
-        lintVideoPromptSlots(normalizedSlots)
-      );
-      if (!lint.ok) {
-        const criticalErrors = lint.errors.filter(isCriticalVideoPromptLintError);
-        const qualityErrors = lint.errors.filter(isQualityVideoPromptLintError);
-        const minorErrors = lint.errors.filter(
-          (error) => !isCriticalVideoPromptLintError(error) && !isQualityVideoPromptLintError(error)
-        );
-        const completenessScore = slotCompletenessScore(normalizedSlots);
-        const shouldEscalateMinor =
-          minorErrors.length >= 2 || completenessScore < OptimizationConfig.quality.minAcceptableScore;
-        const shouldAttemptRepair = criticalErrors.length > 0 || qualityErrors.length > 0 || shouldEscalateMinor;
-
-        if (!shouldAttemptRepair) {
-          logger.warn('Video prompt slot lint has non-critical issues (skipping repair)', {
-            errors: lint.errors,
-            provider,
-            completenessScore,
-          });
-          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
-        }
-
-        logger.warn('Video prompt slot lint failed (repairing critical issues)', {
-          errors: lint.errors,
-          criticalErrors,
-          provider,
-        });
-
-        const rerollAttempts = criticalErrors.length > 0 || qualityErrors.length > 0 ? 3 : 1;
-        const rerolled = await rerollSlots({
-          ai: this.ai,
-          templateSystemPrompt: template.systemPrompt,
-          schema,
-          messages,
-          config,
-          baseSeed: hashString(prompt),
-          attempts: rerollAttempts,
-          ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
-          ...(signal ? { signal } : {}),
-        });
-        if (rerolled) {
-          logger.info('Video prompt lint fixed via reroll', { provider });
-          return this._reassembleOutput(rerolled, onMetadata, generationParams);
-        }
-
-        const repaired = await this._repairSlots({
-          templateSystemPrompt: template.systemPrompt,
-          schema,
-          userMessage: template.userMessage,
-          originalJson: parsedResponse,
-          lintErrors: lint.errors,
-          config,
-          ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
-          ...(signal ? { signal } : {}),
-        });
-
-        return this._reassembleOutput(repaired, onMetadata, generationParams);
-      }
+      const resolvedStructuredPrompt = await this.resolveStructuredPrompt({
+        prompt,
+        parsedResponse,
+        schema,
+        templateSystemPrompt: template.systemPrompt,
+        userMessage: template.userMessage,
+        provider,
+        messages,
+        config,
+        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
+        ...(signal ? { signal } : {}),
+      });
+      const normalizedSlots = normalizeSlots(resolvedStructuredPrompt);
 
       logger.info('Video optimization complete with native structured outputs', {
         originalLength: prompt.length,
         shotFraming: normalizedSlots.shot_framing,
-        strategy: parsedResponse._creative_strategy,
+        strategy: resolvedStructuredPrompt._creative_strategy,
         provider,
         usedDeveloperMessage: !!template.developerMessage,
       });
 
-      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
-
+      return this.buildStructuredArtifact(
+        resolvedStructuredPrompt,
+        generationParams,
+        sourcePrompt,
+        {
+          fallbackUsed: false,
+          lintPassed: this.isStructuredPromptLintClean(resolvedStructuredPrompt),
+        }
+      );
     } catch (error) {
-      // Strategy 2: Fallback to StructuredOutputEnforcer (Robustness)
       logger.warn('Native Strict Mode failed, falling back to Enforcer', {
         error: (error as Error).message
       });
@@ -256,11 +232,14 @@ export class VideoStrategy implements OptimizationStrategy {
         lockedSpans,
         config,
         generationParams,
-        originalUserPrompt,
-        signal,
-        onMetadata
+        sourcePrompt,
+        signal
       );
     }
+  }
+
+  renderStructuredPrompt(structuredPrompt: VideoPromptStructuredResponse): string {
+    return renderMainVideoPrompt(normalizeSlots(structuredPrompt));
   }
 
   /**
@@ -272,16 +251,15 @@ export class VideoStrategy implements OptimizationStrategy {
     lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>,
     config: { maxTokens: number; temperature: number; timeout: number },
     generationParams?: CapabilityValues | null,
-    originalUserPrompt?: string | null,
-    signal?: AbortSignal,
-    onMetadata?: (metadata: Record<string, unknown>) => void
-  ): Promise<string> {
+    sourcePrompt?: string | null,
+    signal?: AbortSignal
+  ): Promise<StructuredOptimizationArtifact> {
     // Generate full system prompt (legacy format)
     const normalizedShotPlan = shotPlan ? (shotPlan as unknown as Record<string, unknown>) : null;
     const systemPrompt =
       lockedSpans && lockedSpans.length > 0
-        ? generateUniversalVideoPromptWithLockedSpans(prompt, normalizedShotPlan, lockedSpans, false, originalUserPrompt ?? null)
-        : generateUniversalVideoPrompt(prompt, normalizedShotPlan, false, originalUserPrompt ?? null);
+        ? generateUniversalVideoPromptWithLockedSpans(prompt, normalizedShotPlan, lockedSpans, false, sourcePrompt ?? null)
+        : generateUniversalVideoPrompt(prompt, normalizedShotPlan, false, sourcePrompt ?? null);
 
     // Simpler schema for non-strict fallback
     const looseSchema = {
@@ -317,8 +295,15 @@ export class VideoStrategy implements OptimizationStrategy {
       lintOk: lint.ok,
     });
 
-    // Fallback path: if lint fails, proceed with best-effort normalized slots (avoid a second model call here)
-    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
+    return this.buildStructuredArtifact(
+      { ...parsedResponse, ...normalizedSlots },
+      generationParams,
+      sourcePrompt ?? prompt,
+      {
+        fallbackUsed: true,
+        lintPassed: false,
+      }
+    );
   }
 
   /**
@@ -329,24 +314,20 @@ export class VideoStrategy implements OptimizationStrategy {
     onMetadata?: (metadata: Record<string, unknown>) => void,
     generationParams?: CapabilityValues | null
   ): string {
-    void parsed;
-    const resolved = this.applyGenerationParams(parsed, generationParams);
-    const slots = normalizeSlots(resolved);
-    const promptParagraph = renderMainVideoPrompt(slots);
-    const previewPrompt = renderPreviewPrompt(slots);
-    const aspectRatio =
-      typeof resolved.technical_specs?.aspect_ratio === 'string'
-        ? resolved.technical_specs.aspect_ratio.trim()
-        : '';
+    const artifact = this.buildStructuredArtifact(
+      parsed,
+      generationParams,
+      parsed.subject?.trim() || parsed.action?.trim() || ''
+    );
 
     if (onMetadata) {
       onMetadata({
-        previewPrompt,
-        ...(aspectRatio ? { aspectRatio } : {}),
+        previewPrompt: artifact.previewPrompt,
+        ...(artifact.aspectRatio ? { aspectRatio: artifact.aspectRatio } : {}),
       });
     }
 
-    return promptParagraph;
+    return this.renderStructuredPrompt(artifact.structuredPrompt);
   }
 
   private applyGenerationParams(
@@ -427,6 +408,116 @@ ${JSON.stringify(options.originalJson, null, 2)}
     const repaired = parseVideoPromptStructuredResponse(response.text);
     const normalizedSlots = normalizeSlots(repaired);
     return { ...repaired, ...normalizedSlots };
+  }
+
+  private async resolveStructuredPrompt(options: {
+    prompt: string;
+    parsedResponse: VideoPromptStructuredResponse;
+    schema: Record<string, unknown>;
+    templateSystemPrompt: string;
+    userMessage: string;
+    provider: string;
+    messages: Array<{ role: string; content: string }>;
+    config: { maxTokens: number; temperature: number; timeout: number };
+    developerMessage?: string;
+    signal?: AbortSignal;
+  }): Promise<VideoPromptStructuredResponse> {
+    const normalizedSlots = normalizeSlots(options.parsedResponse);
+    const lint = mergeLintResults(
+      lintVideoPromptSlots(options.parsedResponse),
+      lintVideoPromptSlots(normalizedSlots)
+    );
+
+    if (lint.ok) {
+      return { ...options.parsedResponse, ...normalizedSlots };
+    }
+
+    const criticalErrors = lint.errors.filter(isCriticalVideoPromptLintError);
+    const qualityErrors = lint.errors.filter(isQualityVideoPromptLintError);
+    const minorErrors = lint.errors.filter(
+      (error) => !isCriticalVideoPromptLintError(error) && !isQualityVideoPromptLintError(error)
+    );
+    const completenessScore = slotCompletenessScore(normalizedSlots);
+    const shouldEscalateMinor =
+      minorErrors.length >= 2 || completenessScore < OptimizationConfig.quality.minAcceptableScore;
+    const shouldAttemptRepair =
+      criticalErrors.length > 0 || qualityErrors.length > 0 || shouldEscalateMinor;
+
+    if (!shouldAttemptRepair) {
+      logger.warn('Video prompt slot lint has non-critical issues (skipping repair)', {
+        errors: lint.errors,
+        provider: options.provider,
+        completenessScore,
+      });
+      return { ...options.parsedResponse, ...normalizedSlots };
+    }
+
+    logger.warn('Video prompt slot lint failed (repairing critical issues)', {
+      errors: lint.errors,
+      criticalErrors,
+      provider: options.provider,
+    });
+
+    const rerollAttempts = criticalErrors.length > 0 || qualityErrors.length > 0 ? 3 : 1;
+    const rerolled = await rerollSlots({
+      ai: this.ai,
+      templateSystemPrompt: options.templateSystemPrompt,
+      schema: options.schema,
+      messages: options.messages,
+      config: options.config,
+      baseSeed: hashString(options.prompt),
+      attempts: rerollAttempts,
+      ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+
+    if (rerolled) {
+      logger.info('Video prompt lint fixed via reroll', { provider: options.provider });
+      return rerolled;
+    }
+
+    return this._repairSlots({
+      templateSystemPrompt: options.templateSystemPrompt,
+      schema: options.schema,
+      userMessage: options.userMessage,
+      originalJson: options.parsedResponse,
+      lintErrors: lint.errors,
+      config: options.config,
+      ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+  }
+
+  private buildStructuredArtifact(
+    parsed: VideoPromptStructuredResponse,
+    generationParams: CapabilityValues | null | undefined,
+    sourcePrompt: string,
+    flags: { fallbackUsed?: boolean; lintPassed?: boolean } = {}
+  ): StructuredOptimizationArtifact {
+    const resolved = this.applyGenerationParams(parsed, generationParams);
+    const normalizedSlots = normalizeSlots(resolved);
+    const structuredPrompt = { ...resolved, ...normalizedSlots };
+    const aspectRatio =
+      typeof structuredPrompt.technical_specs?.aspect_ratio === 'string'
+        ? structuredPrompt.technical_specs.aspect_ratio.trim()
+        : '';
+
+    return {
+      sourcePrompt,
+      structuredPrompt,
+      previewPrompt: renderPreviewPrompt(normalizedSlots),
+      ...(aspectRatio ? { aspectRatio } : {}),
+      fallbackUsed: flags.fallbackUsed ?? false,
+      lintPassed: flags.lintPassed ?? this.isStructuredPromptLintClean(structuredPrompt),
+    };
+  }
+
+  private isStructuredPromptLintClean(parsed: VideoPromptStructuredResponse): boolean {
+    const normalizedSlots = normalizeSlots(parsed);
+    return mergeLintResults(
+      lintVideoPromptSlots(parsed),
+      lintVideoPromptSlots(normalizedSlots)
+    ).ok;
   }
 
   /**

@@ -23,6 +23,7 @@ function createMockActions(): PromptOptimizerActions {
     setOptimizedPrompt: vi.fn(),
     setDisplayedPrompt: vi.fn(),
     setGenericOptimizedPrompt: vi.fn(),
+    setArtifactKey: vi.fn(),
     setQualityScore: vi.fn(),
     setPreviewPrompt: vi.fn(),
     setPreviewAspectRatio: vi.fn(),
@@ -67,6 +68,7 @@ describe('runOptimization', () => {
     const actions = createMockActions();
     const analyzeAndOptimize = vi.fn().mockResolvedValue({
       prompt: 'optimized prompt',
+      artifactKey: 'artifact-123',
       metadata: {
         genericPrompt: 'generic prompt',
         previewPrompt: 'preview prompt',
@@ -99,6 +101,7 @@ describe('runOptimization', () => {
     expect(actions.setOptimizedPrompt).toHaveBeenCalledWith('optimized prompt');
     expect(actions.setDisplayedPrompt).toHaveBeenCalledWith('optimized prompt');
     expect(actions.setGenericOptimizedPrompt).toHaveBeenCalledWith('generic prompt');
+    expect(actions.setArtifactKey).toHaveBeenCalledWith('artifact-123');
     expect(actions.setPreviewPrompt).toHaveBeenCalledWith('preview prompt');
     expect(actions.setPreviewAspectRatio).toHaveBeenCalledWith('16:9');
     expect(actions.setQualityScore).toHaveBeenCalledWith(88);

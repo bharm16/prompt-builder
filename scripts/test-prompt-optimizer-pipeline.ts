@@ -33,8 +33,8 @@ Usage:
 Options:
   --prompt <text>       Add a prompt (repeatable)
   --file <path>         Read prompts from file (JSON or newline-delimited text)
-  --models <csv>        Restrict compilation to model IDs/aliases (e.g. "runway,luma,veo")
-  --timeout-ms <ms>     Two-stage optimization timeout per prompt (default: ${DEFAULT_TIMEOUT_MS})
+  --models <csv>        Restrict model-specific optimization runs to these IDs/aliases
+  --timeout-ms <ms>     Optimization timeout per pipeline run (default: ${DEFAULT_TIMEOUT_MS})
   --skip-initialize     Skip initializeServices() startup checks
   --verbose             Keep server logger output enabled
   --help                Show this help\n`);
@@ -337,8 +337,8 @@ async function main(): Promise<void> {
   console.log('Prompt Optimizer Pipeline Test');
   console.log('='.repeat(90));
   console.log(`Prompts: ${allPrompts.length}`);
-  console.log(`Models: ${selectedModels.join(', ')}`);
-  console.log(`Two-stage timeout per prompt: ${cli.timeoutMs}ms`);
+  console.log(`Model-specific runs: ${selectedModels.join(', ')}`);
+  console.log(`Timeout per pipeline run: ${cli.timeoutMs}ms`);
   console.log('');
 
   for (let index = 0; index < allPrompts.length; index += 1) {
@@ -351,36 +351,35 @@ async function main(): Promise<void> {
     console.log(rawPrompt);
     console.log('');
 
-    let autoOptimizedPrompt = '';
+    let genericOptimizedPrompt = '';
     try {
-      autoOptimizedPrompt = await runOptimization(
+      genericOptimizedPrompt = await runOptimization(
         promptOptimizationService,
         rawPrompt,
         cli.timeoutMs
       );
-      console.log('[AUTO OPTIMIZED PROMPT]');
-      console.log(autoOptimizedPrompt);
+      console.log('[GENERIC PIPELINE RESULT]');
+      console.log(genericOptimizedPrompt);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[AUTO OPTIMIZED PROMPT] ERROR: ${message}`);
+      console.error(`[GENERIC PIPELINE RESULT] ERROR: ${message}`);
       continue;
     }
 
     for (const modelId of selectedModels) {
       console.log('');
       try {
-        const { compiledPrompt } = await promptOptimizationService.compilePrompt({
-          prompt: autoOptimizedPrompt,
-          targetModel: modelId,
-          context: {
-            originalPrompt: rawPrompt,
-          },
-        });
-        console.log(`[MODEL: ${modelId}]`);
-        console.log(compiledPrompt);
+        const modelOptimizedPrompt = await runOptimization(
+          promptOptimizationService,
+          rawPrompt,
+          cli.timeoutMs,
+          modelId
+        );
+        console.log(`[MODEL PIPELINE: ${modelId}]`);
+        console.log(modelOptimizedPrompt);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error(`[MODEL: ${modelId}] ERROR: ${message}`);
+        console.error(`[MODEL PIPELINE: ${modelId}] ERROR: ${message}`);
       }
     }
 

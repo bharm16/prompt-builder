@@ -22,7 +22,8 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import { getPromptModelConstraints } from '@shared/videoModels';
+import type { PromptOptimizationResult, PromptContext, RewriteConstraints, VideoPromptIR } from './types';
 
 /**
  * Generic sound/noise terms to strip (prevent white noise generation)
@@ -193,6 +194,8 @@ const MUSIC_INDICATORS = [
   'drums',
 ] as const;
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints('kling-2.1')!;
+
 
 /**
  * Dialogue pattern for extraction
@@ -255,6 +258,10 @@ export class KlingStrategy extends BaseStrategy {
   private entityRegistry: Map<string, string> = new Map();
   private shotCounter = 0;
 
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
+
   /**
    * Validate input against Kling-specific constraints
    */
@@ -270,8 +277,10 @@ export class KlingStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 300) {
-      this.addWarning('Prompt exceeds 300 words; Kling may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Kling may truncate or ignore excess content`
+      );
     }
 
     // Check for dialogue without clear character attribution
@@ -452,6 +461,20 @@ export class KlingStrategy extends BaseStrategy {
       prompt,
       changes,
       triggersInjected,
+    };
+  }
+
+  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+    const hasAudioIntent =
+      Boolean(ir.audio.dialogue || ir.audio.music || ir.audio.sfx) ||
+      /\b(?:dialogue|voice|speech|says|music|sfx|ambience)\b/i.test(ir.raw);
+
+    return {
+      ...(hasAudioIntent
+        ? { mandatory: ['natural speech', 'high fidelity audio'] }
+        : {}),
+      suggested: ['expressive facial gestures', 'detailed micro-movements'],
+      avoid: [...VISUAL_QUALITY_TOKENS],
     };
   }
 

@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Loader2, X } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
+import { FullscreenDialog } from '@/components/ui/FullscreenDialog';
 import type { CameraPath } from '@/features/convergence/types';
 import { CameraMotionPickerWithErrorBoundary } from '@/features/convergence/components/CameraMotionPicker';
 import { useCameraMotion } from '@/hooks/useCameraMotion';
@@ -189,26 +190,18 @@ export function CameraMotionModal({
     [state.cameraPaths, state.fallbackMode, onClose, onSelect]
   );
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={() => {
-          log.info('Camera motion modal closed via backdrop click', {
-            operation: OPERATION,
-          });
+    <FullscreenDialog
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
           onClose();
-        }}
-      />
-
+        }
+      }}
+      title="Choose Camera Motion"
+      description="Analyze the start frame depth map and choose a camera move."
+      contentClassName="flex items-center justify-center p-4"
+    >
       <div
         className={cn(
           'relative z-10 w-full max-w-5xl max-h-[90vh] overflow-auto',
@@ -259,6 +252,6 @@ export function CameraMotionModal({
           )}
         </div>
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }

@@ -2,11 +2,15 @@ import type { ILogger } from '@interfaces/ILogger';
 import type { CapabilityValues } from '@shared/capabilities';
 import type {
   AIService,
+  CompilationState,
+  CompileContext,
+  CompileSource,
   InferredContext,
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
   ShotPlan,
+  StructuredOptimizationArtifact,
 } from '../types';
 import type { I2VConstraintMode, I2VOptimizationResult } from '../types/i2v';
 
@@ -22,9 +26,21 @@ export type OptimizationCacheLike = {
     generationParams?: Record<string, unknown> | null,
     lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
   ): string;
+  buildStructuredArtifactKeyFromInputs(params: {
+    prompt: string;
+    sourcePrompt?: string | null;
+    shotPlan?: ShotPlan | null;
+    generationParams?: Record<string, unknown> | null;
+    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>;
+  }): string;
   getCachedResult(key: string): Promise<string | null>;
   getCachedMetadata(key: string): Promise<MetadataMap | null>;
+  getStructuredArtifact(key: string): Promise<StructuredOptimizationArtifact | null>;
   cacheResult(key: string, result: string, metadata?: MetadataMap | null): Promise<void>;
+  cacheStructuredArtifact(
+    key: string,
+    artifact: StructuredOptimizationArtifact
+  ): Promise<void>;
 };
 
 export type ShotInterpreterLike = {
@@ -33,6 +49,8 @@ export type ShotInterpreterLike = {
 
 export type OptimizationStrategyLike = {
   optimize(request: OptimizationRequest): Promise<string>;
+  optimizeStructured?(request: OptimizationRequest): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(structuredPrompt: StructuredOptimizationArtifact['structuredPrompt']): string;
   generateDomainContent?(
     prompt: string,
     context?: InferredContext | null,
@@ -45,12 +63,20 @@ export type StrategyFactoryLike = {
 };
 
 export type CompilationServiceLike = {
-  compileOptimizedPrompt(args: {
+  compile(args: {
     operation: string;
-    optimizedPrompt: string;
     mode: OptimizationMode;
     targetModel?: string;
-  }): Promise<{ prompt: string; metadata: MetadataMap | null }>;
+    source: CompileSource;
+    context?: CompileContext | null;
+    fallbackPrompt?: string;
+    artifactKey?: string;
+  }): Promise<{
+    prompt: string;
+    metadata: MetadataMap | null;
+    compilation: CompilationState;
+    artifactKey?: string;
+  }>;
 };
 
 export type ConstitutionalReviewLike = (

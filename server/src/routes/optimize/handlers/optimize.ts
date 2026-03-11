@@ -156,6 +156,8 @@ export const createOptimizeHandler = (
         prompt: result.prompt,
         optimizedPrompt: result.prompt,
         inputMode: result.inputMode,
+        ...(result.artifactKey ? { artifactKey: result.artifactKey } : {}),
+        ...(result.compilation ? { compilation: result.compilation } : {}),
         ...(result.i2v ? { i2v: result.i2v } : {}),
         metadata: responseMetadata,
       };

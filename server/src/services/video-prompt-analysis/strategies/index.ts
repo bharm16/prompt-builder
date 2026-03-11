@@ -6,6 +6,7 @@
 export * from './types';
 export { StrategyRegistry } from './StrategyRegistry';
 export type { StrategyFactory } from './StrategyRegistry';
+export { createDefaultStrategyRegistry } from './createDefaultStrategyRegistry';
 export { BaseStrategy } from './BaseStrategy';
 export type { NormalizeResult, TransformResult, AugmentResult } from './BaseStrategy';
 export { RunwayStrategy } from './RunwayStrategy';

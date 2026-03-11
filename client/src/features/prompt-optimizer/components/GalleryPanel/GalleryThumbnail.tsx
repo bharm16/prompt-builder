@@ -77,9 +77,9 @@ export function GalleryThumbnail({
     <button
       type="button"
       onClick={onClick}
-      className={`group pointer-events-auto relative aspect-square h-[100px] w-[100px] flex-shrink-0 snap-start overflow-visible rounded-md bg-[#525252] transition-[transform,box-shadow,opacity] duration-200 ease-out ${
+      className={`group pointer-events-auto relative aspect-square h-[100px] w-[100px] flex-shrink-0 snap-start overflow-visible rounded-md bg-[#525252] transition-[transform,box-shadow,opacity] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] ${
         isActive
-          ? 'opacity-100 shadow-[inset_0_0_0_2px_rgb(0,0,0),0_0_0_2px_rgb(255,255,255)]'
+          ? 'scale-[1.03] opacity-100 shadow-[inset_0_0_0_2px_rgb(0,0,0),0_0_0_2px_rgb(255,255,255)]'
           : 'opacity-85 shadow-none hover:scale-[1.02] hover:opacity-100'
       }`}
       aria-label="Open generation details"
@@ -90,13 +90,13 @@ export function GalleryThumbnail({
           <img
             src={resolvedThumbnailUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : showVideoFallback ? (
           <video
             src={resolvedVideoUrl ?? undefined}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] group-hover:scale-[1.03]"
             muted
             playsInline
             loop

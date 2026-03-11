@@ -182,7 +182,7 @@ export function AssetEditor({
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="motion-shake-x text-sm text-red-600">{error}</p>}
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
@@ -194,7 +194,7 @@ export function AssetEditor({
           </div>
 
           {showReferenceImages && asset && (
-            <div className="space-y-4">
+            <div className="motion-presence-panel space-y-4" data-motion-state="entered">
               {asset.type === 'character' && (
                 <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
                   Character consistency comes from strong reference photos. Add a few clear face shots below.
@@ -215,7 +215,7 @@ export function AssetEditor({
           )}
 
           {!showReferenceImages && (
-            <p className="text-xs text-muted">
+            <p className="motion-presence-panel text-xs text-muted" data-motion-state="entered">
               You can add reference images after saving this asset.
             </p>
           )}

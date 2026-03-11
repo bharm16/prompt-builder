@@ -3,6 +3,7 @@
  * Defines interfaces for the 3-phase optimization pipeline (Normalize → Transform → Augment)
  */
 
+import type { VideoPromptStructuredResponse } from '@services/prompt-optimization/strategies/videoPromptTypes';
 import type { ConstraintConfig, EditHistoryEntry, VideoPromptIR } from '../types';
 
 export type { VideoPromptIR };
@@ -40,6 +41,11 @@ export interface PromptOptimizationResult {
   metadata: OptimizationMetadata;
 }
 
+export interface ModelConstraints {
+  wordLimits: { min: number; max: number };
+  triggerBudgetWords: number;
+}
+
 /**
  * Reference to an asset (image, video, or cameo identity)
  */
@@ -61,6 +67,8 @@ export interface PromptContext {
   history?: EditHistoryEntry[];
   apiParams?: Record<string, unknown>;
   assets?: AssetReference[];
+  precomputedStructuredPrompt?: VideoPromptStructuredResponse;
+  sourcePrompt?: string;
 }
 
 /**
@@ -70,6 +78,7 @@ export interface PromptContext {
 export interface PromptOptimizationStrategy {
   readonly modelId: string;
   readonly modelName: string;
+  getModelConstraints(): ModelConstraints;
 
   /**
    * Phase 0: Validate input against model constraints (Aspect ratios, duration, physics)

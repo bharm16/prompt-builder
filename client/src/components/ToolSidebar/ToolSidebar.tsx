@@ -199,14 +199,26 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
                 Tool sidebar panel content.
               </SheetDescription>
               <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
-                {renderPanelContent(activePanel)}
+                <div
+                  key={activePanel}
+                  className="motion-presence-panel h-full ps-animate-fade-in"
+                  data-motion-state="entered"
+                >
+                  {renderPanelContent(activePanel)}
+                </div>
               </div>
             </SheetContent>
           </Sheet>
         ) : null
       ) : (
         <ToolPanel activePanel={activePanel}>
-          {renderPanelContent(activePanel)}
+          <div
+            key={activePanel}
+            className="motion-presence-panel h-full ps-animate-fade-in"
+            data-motion-state="entered"
+          >
+            {renderPanelContent(activePanel)}
+          </div>
         </ToolPanel>
       )}
     </div>

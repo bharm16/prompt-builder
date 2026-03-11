@@ -152,7 +152,7 @@ export function AssetLibrary({
         <button
           type="button"
           onClick={() => actions.openEditor('create')}
-          className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+          className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition-[background-color,transform,box-shadow] duration-[140ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:bg-violet-500 hover:shadow-[0_12px_30px_rgba(124,58,237,0.25)]"
         >
           <Plus className="h-4 w-4" />
           New Asset
@@ -165,7 +165,7 @@ export function AssetLibrary({
           onClick={() => actions.setFilter(null)}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
             filterType === null
-              ? 'bg-surface-2 text-foreground'
+              ? 'motion-pulse-once bg-surface-2 text-foreground'
               : 'text-muted hover:text-foreground'
           }`}
         >
@@ -186,7 +186,7 @@ export function AssetLibrary({
               onClick={() => actions.setFilter(typeConfig.id as AssetType)}
               className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
                 filterType === typeConfig.id
-                  ? `${typeConfig.bgClass} ${typeConfig.colorClass}`
+                  ? `motion-pulse-once ${typeConfig.bgClass} ${typeConfig.colorClass}`
                   : 'text-muted hover:text-foreground'
               }`}
             >
@@ -201,7 +201,7 @@ export function AssetLibrary({
       </div>
 
       {error && (
-        <div className="border-b border-border bg-red-50 px-4 py-2">
+        <div className="motion-shake-x border-b border-border bg-red-50 px-4 py-2">
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
@@ -213,7 +213,7 @@ export function AssetLibrary({
       )}
 
       {!isLoading && assets.length === 0 && (
-        <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+        <div className="motion-presence-panel flex flex-1 flex-col items-center justify-center px-4 text-center" data-motion-state="entered">
           <Layers className="mb-3 h-12 w-12 text-muted" />
           <h3 className="text-lg font-semibold text-foreground">No assets yet</h3>
           <p className="mt-2 max-w-md text-sm text-muted">

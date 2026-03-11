@@ -34,7 +34,8 @@ export function ToolNavButton({
       <button
         type="button"
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left transition-colors',
+          'relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]',
+          'duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px',
           isActive
             ? 'bg-[#22252C] text-[#E2E6EF]'
             : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
@@ -42,6 +43,13 @@ export function ToolNavButton({
         onClick={onClick}
         aria-label={label}
       >
+        <span
+          className={cn(
+            'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#3B82F6]',
+            isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
+          )}
+          aria-hidden="true"
+        />
         <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
         <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
       </button>
@@ -52,7 +60,8 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        'flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left transition-colors',
+        'relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]',
+        'duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px',
         isActive
           ? 'bg-[#22252C] text-[#E2E6EF]'
           : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
@@ -61,6 +70,13 @@ export function ToolNavButton({
       aria-label={label}
       aria-pressed={isActive}
     >
+      <span
+        className={cn(
+          'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#3B82F6]',
+          isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
+        )}
+        aria-hidden="true"
+      />
       <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
       <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
     </button>

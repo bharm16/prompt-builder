@@ -9,6 +9,11 @@ export const CANONICAL_PROMPT_MODEL_IDS = [
 
 export type CanonicalPromptModelId = (typeof CANONICAL_PROMPT_MODEL_IDS)[number];
 
+export interface PromptModelConstraints {
+  wordLimits: { min: number; max: number };
+  triggerBudgetWords: number;
+}
+
 const CANONICAL_PROMPT_MODEL_ID_SET = new Set<string>(CANONICAL_PROMPT_MODEL_IDS);
 
 export const PROMPT_MODEL_ALIASES: Record<string, CanonicalPromptModelId> = {
@@ -49,6 +54,33 @@ export const PROMPT_MODEL_ALIASES: Record<string, CanonicalPromptModelId> = {
   draft: 'wan-2.2',
 };
 
+export const PROMPT_MODEL_CONSTRAINTS: Record<CanonicalPromptModelId, PromptModelConstraints> = {
+  'runway-gen45': {
+    wordLimits: { min: 50, max: 150 },
+    triggerBudgetWords: 25,
+  },
+  'luma-ray3': {
+    wordLimits: { min: 40, max: 120 },
+    triggerBudgetWords: 20,
+  },
+  'kling-2.1': {
+    wordLimits: { min: 40, max: 80 },
+    triggerBudgetWords: 15,
+  },
+  'sora-2': {
+    wordLimits: { min: 60, max: 120 },
+    triggerBudgetWords: 15,
+  },
+  'veo-3': {
+    wordLimits: { min: 50, max: 200 },
+    triggerBudgetWords: 25,
+  },
+  'wan-2.2': {
+    wordLimits: { min: 30, max: 60 },
+    triggerBudgetWords: 10,
+  },
+};
+
 export function normalizePromptModelAlias(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -64,4 +96,11 @@ export function resolveCanonicalPromptModelId(value?: string | null): CanonicalP
 
   const normalized = normalizePromptModelAlias(value);
   return PROMPT_MODEL_ALIASES[normalized] ?? null;
+}
+
+export function getPromptModelConstraints(
+  value?: string | null
+): PromptModelConstraints | undefined {
+  const canonicalModelId = resolveCanonicalPromptModelId(value);
+  return canonicalModelId ? PROMPT_MODEL_CONSTRAINTS[canonicalModelId] : undefined;
 }

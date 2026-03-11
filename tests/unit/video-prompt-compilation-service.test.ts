@@ -16,9 +16,16 @@ describe('VideoPromptCompilationService', () => {
       mode: 'video',
     });
 
-    expect(result).toEqual({
-      prompt: 'generic optimized prompt',
-      metadata: null,
+    expect(result.prompt).toBe('generic optimized prompt');
+    expect(result.compilation).toMatchObject({
+      status: 'compile-skipped',
+      compiledFor: null,
+      sourceKind: 'prompt',
+    });
+    expect(result.metadata).toMatchObject({
+      compilation: expect.objectContaining({
+        status: 'compile-skipped',
+      }),
     });
     expect(videoPromptService.optimizeForModel).not.toHaveBeenCalled();
     expect(videoPromptService.detectTargetModel).not.toHaveBeenCalled();
@@ -28,7 +35,12 @@ describe('VideoPromptCompilationService', () => {
     const videoPromptService = {
       optimizeForModel: vi.fn().mockResolvedValue({
         prompt: 'kling-compiled prompt',
-        metadata: { phases: [] },
+        metadata: {
+          phases: [{ phase: 'transform', durationMs: 2, changes: ['rewritten'] }],
+          warnings: [],
+          tokensStripped: [],
+          triggersInjected: [],
+        },
       }),
       detectTargetModel: vi.fn(),
     } as unknown as VideoPromptService;
@@ -43,13 +55,21 @@ describe('VideoPromptCompilationService', () => {
 
     expect(videoPromptService.optimizeForModel).toHaveBeenCalledWith(
       'generic optimized prompt',
-      'kling-2.1'
+      'kling-2.1',
+      {
+        userIntent: 'generic optimized prompt',
+        sourcePrompt: 'generic optimized prompt',
+      }
     );
     expect(result.prompt).toBe('kling-compiled prompt');
     expect(result.metadata).toMatchObject({
       compiledFor: 'kling-2.1',
       normalizedModelId: 'kling-2.1',
       genericPrompt: 'generic optimized prompt',
+      compilation: expect.objectContaining({
+        status: 'compiled',
+        sourceKind: 'prompt',
+      }),
     });
     expect(result.metadata).not.toHaveProperty('compilationQuality');
     expect(result.metadata).not.toHaveProperty('compilationWarning');
@@ -74,5 +94,6 @@ describe('VideoPromptCompilationService', () => {
 
     expect(result.prompt).toBe('Tabby cat walks along a sandy beach at golden hour.');
     expect(result.metadata?.compiledFor).toBe('wan-2.2');
+    expect(result.compilation.status).toBe('compiled');
   });
 });

@@ -20,6 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
+import { getPromptModelConstraints } from '@shared/videoModels';
 import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 import type { RewriteConstraints } from './types';
 
@@ -132,12 +133,18 @@ const STABILITY_TRIGGERS = [
   'consistent geometry',
 ] as const;
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints('runway-gen45')!;
+
 /**
  * RunwayStrategy optimizes prompts for Runway Gen-4.5's A2D architecture
  */
 export class RunwayStrategy extends BaseStrategy {
   readonly modelId = 'runway-gen45';
   readonly modelName = 'Runway Gen-4.5';
+
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
 
   /**
    * Validate input against Runway-specific constraints
@@ -154,8 +161,10 @@ export class RunwayStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 200) {
-      this.addWarning('Prompt exceeds 200 words; Runway may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Runway may truncate or ignore excess content`
+      );
     }
   }
 
@@ -256,16 +265,6 @@ export class RunwayStrategy extends BaseStrategy {
     prompt = stabilityResult.prompt;
     changes.push(...stabilityResult.changes);
     triggersInjected.push(...stabilityResult.injected);
-
-    // Inject cinematographic triggers (up to 3) if no semantic overlap detected
-    const cinematicTriggers = this.selectCinematographicTriggers(prompt);
-    for (const trigger of cinematicTriggers) {
-      if (!this.hasConceptOverlap(prompt, trigger)) {
-        prompt = this.appendTrigger(prompt, trigger);
-        triggersInjected.push(trigger);
-        changes.push(`Injected cinematographic trigger: "${trigger}"`);
-      }
-    }
 
     prompt = this.cleanWhitespace(prompt);
 

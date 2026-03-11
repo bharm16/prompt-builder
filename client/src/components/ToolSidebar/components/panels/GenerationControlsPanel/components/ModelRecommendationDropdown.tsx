@@ -514,8 +514,8 @@ export function ModelRecommendationDropdown({
           onMouseEnter={onEnterTrigger}
           onMouseLeave={onLeaveTrigger}
           className={cn(
-            "flex h-9 items-center gap-1.5 rounded-lg border border-[#22252C] bg-[#16181E] px-3 text-xs font-semibold text-[#E2E6EF] transition-colors",
-            "hover:border-[#3A3D46]",
+            "flex h-9 items-center gap-1.5 rounded-lg border border-[#22252C] bg-[#16181E] px-3 text-xs font-semibold text-[#E2E6EF] transition-[border-color,transform,background-color]",
+            "duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:border-[#3A3D46]",
             mode !== "closed" && "border-[#6C5CE7]",
             triggerClassName,
           )}
@@ -548,7 +548,8 @@ export function ModelRecommendationDropdown({
             role="listbox"
             aria-label="Model selection"
             style={listStyle}
-            className="z-[9999] overflow-y-auto overflow-x-hidden rounded-xl border border-[#1E2030] bg-[#13151C] py-1 shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+            className="motion-presence-panel z-[9999] overflow-y-auto overflow-x-hidden rounded-xl border border-[#1E2030] bg-[#13151C] py-1 shadow-[0_16px_48px_rgba(0,0,0,0.6)] ps-animate-scale-in"
+            data-motion-state="entered"
             onMouseEnter={onEnterList}
             onMouseLeave={onLeaveList}
           >
@@ -604,14 +605,15 @@ export function ModelRecommendationDropdown({
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
+              className="motion-presence-overlay fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm ps-animate-fade-in"
+              data-motion-state="entered"
               onClick={() => setMode("closed")}
             />
 
             {/* Scrollable card panel */}
             <div className="fixed inset-0 z-[9999] overflow-y-auto">
               <div className="flex min-h-full items-start justify-center px-6 py-16">
-                <div className="relative w-full max-w-[900px] rounded-2xl border border-[#1E2030] bg-[#13151C] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)]">
+                <div className="motion-presence-panel relative w-full max-w-[900px] rounded-2xl border border-[#1E2030] bg-[#13151C] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)] ps-animate-scale-in" data-motion-state="entered">
                   {/* Close */}
                   <button
                     type="button"

@@ -20,6 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
+import { getPromptModelConstraints } from '@shared/videoModels';
 import type { PromptOptimizationResult, PromptContext, VideoPromptIR, RewriteConstraints } from './types';
 
 /**
@@ -126,12 +127,18 @@ const FAST_MOTION_INDICATORS = [
   'explosive',
 ] as const;
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints('luma-ray3')!;
+
 /**
  * LumaStrategy optimizes prompts for Luma Ray-3's diffusion architecture
  */
 export class LumaStrategy extends BaseStrategy {
   readonly modelId = 'luma-ray3';
   readonly modelName = 'Luma Ray-3';
+
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
 
   /**
    * Validate input against Luma-specific constraints
@@ -156,8 +163,10 @@ export class LumaStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 150) {
-      this.addWarning('Prompt exceeds 150 words; Luma may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Luma may truncate or ignore excess content`
+      );
     }
   }
 

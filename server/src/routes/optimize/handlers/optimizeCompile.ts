@@ -33,7 +33,7 @@ export const createOptimizeCompileHandler = (
       });
     }
 
-    const { prompt, targetModel, context } = parsed.data;
+    const { prompt, artifactKey, targetModel, context } = parsed.data;
     const normalizedTargetModel = normalizeTargetModel(targetModel) ?? targetModel;
     if (targetModel.trim().toLowerCase() !== normalizedTargetModel) {
       logger.warn('Deprecated targetModel alias normalized', {
@@ -45,20 +45,37 @@ export const createOptimizeCompileHandler = (
       });
     }
 
+    const compileContext = context
+      ? {
+          ...(typeof context.originalPrompt === 'string' ? { originalPrompt: context.originalPrompt } : {}),
+          ...(typeof context.originalUserPrompt === 'string'
+            ? { originalUserPrompt: context.originalUserPrompt }
+            : {}),
+          ...(typeof context.specificAspects === 'string' ? { specificAspects: context.specificAspects } : {}),
+          ...(typeof context.backgroundLevel === 'string' ? { backgroundLevel: context.backgroundLevel } : {}),
+          ...(typeof context.intendedUse === 'string' ? { intendedUse: context.intendedUse } : {}),
+          ...(context.constraints ? { constraints: context.constraints } : {}),
+          ...(context.apiParams ? { apiParams: context.apiParams } : {}),
+          ...(context.assets ? { assets: context.assets } : {}),
+        }
+      : null;
+
     logger.info('Optimize-compile request received', {
       operation,
       requestId,
       userId,
       promptLength: prompt?.length || 0,
+      hasArtifactKey: typeof artifactKey === 'string' && artifactKey.length > 0,
       targetModel: normalizedTargetModel,
-      hasContext: !!context,
+      hasContext: !!compileContext,
     });
 
     try {
       const result = await promptOptimizationService.compilePrompt({
-        prompt,
+        ...(prompt ? { prompt } : {}),
+        ...(artifactKey ? { artifactKey } : {}),
         targetModel: normalizedTargetModel,
-        context,
+        context: compileContext,
       });
 
       if (res.headersSent || res.writableEnded) {
@@ -91,6 +108,8 @@ export const createOptimizeCompileHandler = (
 
       const responsePayload = {
         compiledPrompt: result.compiledPrompt,
+        ...(result.artifactKey ? { artifactKey: result.artifactKey } : {}),
+        ...(result.compilation ? { compilation: result.compilation } : {}),
         metadata: responseMetadata,
         ...(result.targetModel ? { targetModel: result.targetModel } : {}),
       };

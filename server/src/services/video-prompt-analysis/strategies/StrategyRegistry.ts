@@ -11,7 +11,9 @@
  * leak entity IDs across users, and accumulate unbounded session state.
  */
 
-import type { PromptOptimizationStrategy } from './types';
+import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
+import { getPromptModelConstraints } from '@shared/videoModels';
+import type { ModelConstraints, PromptOptimizationStrategy } from './types';
 
 export type StrategyFactory = () => PromptOptimizationStrategy;
 
@@ -43,8 +45,13 @@ export class StrategyRegistry {
    * @returns A new strategy instance if factory exists, undefined otherwise
    */
   get(modelId: string): PromptOptimizationStrategy | undefined {
-    const factory = this.factories.get(modelId);
+    const normalizedModelId = resolvePromptModelId(modelId) ?? modelId;
+    const factory = this.factories.get(normalizedModelId);
     return factory ? factory() : undefined;
+  }
+
+  getModelConstraints(modelId: string): ModelConstraints | undefined {
+    return getPromptModelConstraints(resolvePromptModelId(modelId) ?? modelId);
   }
 
   /**
@@ -61,7 +68,8 @@ export class StrategyRegistry {
    * @returns true if a factory exists for the model
    */
   has(modelId: string): boolean {
-    return this.factories.has(modelId);
+    const normalizedModelId = resolvePromptModelId(modelId) ?? modelId;
+    return this.factories.has(normalizedModelId);
   }
 
   /**

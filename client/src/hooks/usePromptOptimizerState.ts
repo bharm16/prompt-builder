@@ -14,6 +14,7 @@ interface RollbackSnapshot {
   optimizedPrompt: string;
   displayedPrompt: string;
   genericOptimizedPrompt: string | null;
+  artifactKey: string | null;
   previewPrompt: string | null;
   previewAspectRatio: string | null;
   qualityScore: number | null;
@@ -25,6 +26,7 @@ export interface PromptOptimizerState {
   optimizedPrompt: string;
   displayedPrompt: string;
   genericOptimizedPrompt: string | null;
+  artifactKey: string | null;
   previewPrompt: string | null;
   previewAspectRatio: string | null;
   qualityScore: number | null;
@@ -40,6 +42,7 @@ export type PromptOptimizerAction =
   | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
   | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
   | { type: 'SET_GENERIC_OPTIMIZED_PROMPT'; payload: string | null }
+  | { type: 'SET_ARTIFACT_KEY'; payload: string | null }
   | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
   | { type: 'SET_PREVIEW_ASPECT_RATIO'; payload: string | null }
   | { type: 'SET_QUALITY_SCORE'; payload: number | null }
@@ -62,6 +65,7 @@ const initialState: PromptOptimizerState = {
   optimizedPrompt: '',
   displayedPrompt: '',
   genericOptimizedPrompt: null,
+  artifactKey: null,
   previewPrompt: null,
   previewAspectRatio: null,
   qualityScore: null,
@@ -94,6 +98,8 @@ function reducer(
       return { ...state, displayedPrompt: action.payload };
     case 'SET_GENERIC_OPTIMIZED_PROMPT':
       return { ...state, genericOptimizedPrompt: action.payload };
+    case 'SET_ARTIFACT_KEY':
+      return { ...state, artifactKey: action.payload };
     case 'SET_PREVIEW_PROMPT':
       return { ...state, previewPrompt: action.payload };
     case 'SET_PREVIEW_ASPECT_RATIO':
@@ -134,6 +140,7 @@ function reducer(
           optimizedPrompt: state.optimizedPrompt,
           displayedPrompt: state.displayedPrompt,
           genericOptimizedPrompt: state.genericOptimizedPrompt,
+          artifactKey: state.artifactKey,
           previewPrompt: state.previewPrompt,
           previewAspectRatio: state.previewAspectRatio,
           qualityScore: state.qualityScore,
@@ -163,6 +170,7 @@ function reducer(
         optimizedPrompt: '',
         displayedPrompt: '',
         genericOptimizedPrompt: null,
+        artifactKey: null,
         previewPrompt: null,
         previewAspectRatio: null,
         qualityScore: null,
@@ -196,6 +204,10 @@ export function usePromptOptimizerState() {
 
   const setGenericOptimizedPrompt = useCallback((prompt: string | null) => {
     dispatch({ type: 'SET_GENERIC_OPTIMIZED_PROMPT', payload: prompt });
+  }, []);
+
+  const setArtifactKey = useCallback((artifactKey: string | null) => {
+    dispatch({ type: 'SET_ARTIFACT_KEY', payload: artifactKey });
   }, []);
 
   const setQualityScore = useCallback((score: number | null) => {
@@ -264,6 +276,7 @@ export function usePromptOptimizerState() {
     setOptimizedPrompt,
     setDisplayedPrompt,
     setGenericOptimizedPrompt,
+    setArtifactKey,
     setPreviewPrompt,
     setPreviewAspectRatio,
     setQualityScore,

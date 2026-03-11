@@ -8,6 +8,7 @@ export interface PromptOptimizerActions {
   setOptimizedPrompt: (prompt: string) => void;
   setDisplayedPrompt: (prompt: string) => void;
   setGenericOptimizedPrompt: (prompt: string | null) => void;
+  setArtifactKey: (artifactKey: string | null) => void;
   setQualityScore: (score: number | null) => void;
   setPreviewPrompt: (prompt: string | null) => void;
   setPreviewAspectRatio: (ratio: string | null) => void;
@@ -35,6 +36,7 @@ type AnalyzeAndOptimize = (options: {
   prompt: string;
   optimizedPrompt?: string;
   inputMode?: 't2v' | 'i2v';
+  artifactKey?: string;
   metadata?: Record<string, unknown>;
   i2v?: I2VOptimizationResult;
 }>;
@@ -107,6 +109,13 @@ export async function runOptimization({
   if (response.metadata?.genericPrompt && typeof response.metadata.genericPrompt === 'string') {
     actions.setGenericOptimizedPrompt(response.metadata.genericPrompt);
   }
+  actions.setArtifactKey(
+    typeof response.artifactKey === 'string'
+      ? response.artifactKey
+      : typeof response.metadata?.artifactKey === 'string'
+        ? response.metadata.artifactKey
+        : null
+  );
   if (response.metadata?.previewPrompt && typeof response.metadata.previewPrompt === 'string') {
     actions.setPreviewPrompt(response.metadata.previewPrompt);
   }

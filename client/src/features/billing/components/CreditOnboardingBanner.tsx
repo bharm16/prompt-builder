@@ -48,8 +48,9 @@ export function CreditOnboardingBanner({
 
   return (
     <section
-      className="mx-3 mt-3 rounded-lg border border-[#1A1C22] bg-[#111318] px-3 py-2"
+      className="motion-presence-panel mx-3 mt-3 rounded-lg border border-[#1A1C22] bg-[#111318] px-3 py-2"
       data-testid="credit-onboarding-banner"
+      data-motion-state="entered"
       aria-live="polite"
     >
       <div className="flex items-start gap-3">
@@ -67,7 +68,7 @@ export function CreditOnboardingBanner({
         <button
           type="button"
           onClick={handleDismiss}
-          className="rounded-md p-1 text-[#8B92A5] transition-colors hover:bg-[#1A1C22] hover:text-white"
+          className="rounded-md p-1 text-[#8B92A5] transition-[color,background-color,transform] duration-[140ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:bg-[#1A1C22] hover:text-white"
           aria-label="Dismiss credit onboarding"
         >
           <X className="h-3.5 w-3.5" />

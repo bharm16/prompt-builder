@@ -65,19 +65,28 @@ vi.mock('../components/CanvasTopBar', () => ({
 }));
 
 vi.mock('../components/NewSessionView', () => ({
-  NewSessionView: ({ onEnhance }: { onEnhance?: () => void }) => (
-    <button type="button" data-testid="new-session-enhance" onClick={() => onEnhance?.()}>
-      Enhance
-    </button>
-  ),
+  NewSessionView: () => <div data-testid="new-session-view" />,
 }));
 
 vi.mock('../components/CanvasPromptBar', () => ({
-  CanvasPromptBar: () => <div data-testid="canvas-prompt-bar" />,
+  CanvasPromptBar: ({
+    onEnhance,
+    layoutMode,
+  }: {
+    onEnhance?: () => void;
+    layoutMode?: 'empty' | 'active';
+  }) => (
+    <div data-testid="canvas-prompt-bar" data-layout-mode={layoutMode}>
+      <button type="button" data-testid="canvas-prompt-bar-enhance" onClick={() => onEnhance?.()}>
+        Enhance
+      </button>
+      <div role="textbox" aria-label="Optimized prompt" />
+    </div>
+  ),
 }));
 
 vi.mock('../components/ModelCornerSelector', () => ({
-  ModelCornerSelector: () => null,
+  ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
 vi.mock('../components/CanvasHeroViewer', () => ({
@@ -164,9 +173,18 @@ describe('regression: canvas enhance callback wiring', () => {
     const user = userEvent.setup();
     render(<CanvasWorkspace {...buildProps()} onEnhance={onEnhance} />);
 
-    await user.click(screen.getByTestId('new-session-enhance'));
+    await user.click(screen.getByTestId('canvas-prompt-bar-enhance'));
 
     expect(onEnhance).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a single prompt textbox and model selector in the empty-session shell', () => {
+    render(<CanvasWorkspace {...buildProps()} />);
+
+    expect(screen.getByTestId('new-session-view')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox', { name: 'Optimized prompt' })).toHaveLength(1);
+    expect(screen.getAllByTestId('model-corner-selector')).toHaveLength(1);
+    expect(screen.getByTestId('canvas-prompt-bar')).toHaveAttribute('data-layout-mode', 'empty');
   });
 
   it('renders interactive canvas when hydrated output is present even without prompt version id', () => {

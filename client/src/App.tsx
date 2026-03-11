@@ -39,9 +39,17 @@ function RouteFallback(): React.ReactElement {
 }
 
 function MarketingShell(): React.ReactElement {
+  const location = useLocation();
+
   return (
     <AppShell>
-      <Outlet />
+      <div
+        key={location.pathname}
+        className="motion-presence-panel ps-animate-fade-in"
+        data-motion-state="entered"
+      >
+        <Outlet />
+      </div>
     </AppShell>
   );
 }
@@ -163,9 +171,11 @@ function AppRoutes(): React.ReactElement {
       <Route
         path="/assets"
         element={
-          <FeatureErrorBoundary featureName="Asset Library">
-            <AssetsPage />
-          </FeatureErrorBoundary>
+          <div className="motion-presence-panel ps-animate-fade-in" data-motion-state="entered">
+            <FeatureErrorBoundary featureName="Asset Library">
+              <AssetsPage />
+            </FeatureErrorBoundary>
+          </div>
         }
       />
       <Route

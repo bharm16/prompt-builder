@@ -1,8 +1,19 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { GalleryGeneration } from '@features/prompt-optimizer/components/GalleryPanel';
 import { GenerationPopover } from '../GenerationPopover';
+
+vi.mock('@/hooks/useResolvedMediaUrl', () => ({
+  useResolvedMediaUrl: ({
+    url,
+  }: {
+    url?: string | null;
+  }): { url: string | null } => ({
+    url: typeof url === 'string' && url.trim().length > 0 ? url : null,
+  }),
+}));
 
 const makeGeneration = (
   id: string,
@@ -24,7 +35,7 @@ const makeGeneration = (
 });
 
 describe('GenerationPopover', () => {
-  it('closes on backdrop click', () => {
+  it('renders as an accessible dialog and closes on backdrop click', () => {
     const onClose = vi.fn();
     render(
       <GenerationPopover
@@ -37,7 +48,31 @@ describe('GenerationPopover', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('generation-popover'));
+    expect(
+      screen.getByRole('dialog', { name: 'Generation detail viewer' })
+    ).toBeInTheDocument();
+
+    const dialogContent = document.querySelector('[data-fullscreen-dialog-content="true"]');
+    expect(dialogContent).not.toBeNull();
+    fireEvent.click(dialogContent!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on Escape', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <GenerationPopover
+        generations={[makeGeneration('g-1')]}
+        activeId="g-1"
+        onChange={vi.fn()}
+        onClose={onClose}
+        onReuse={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />
+    );
+
+    await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

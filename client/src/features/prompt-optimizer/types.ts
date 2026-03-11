@@ -85,6 +85,7 @@ export interface FloatingToolbarProps {
  */
 export interface PromptEditorProps {
   className?: string;
+  placeholder?: string;
   onTextSelection: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;

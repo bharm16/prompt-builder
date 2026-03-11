@@ -21,7 +21,8 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import { getPromptModelConstraints } from '@shared/videoModels';
+import type { PromptOptimizationResult, PromptContext, RewriteConstraints, VideoPromptIR } from './types';
 
 /**
  * Markdown patterns to strip
@@ -188,6 +189,8 @@ export interface VeoPromptSchema {
   };
 }
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints('veo-3')!;
+
 /**
  * VeoStrategy optimizes prompts for Google Veo 4's Gemini-integrated generation
  */
@@ -197,6 +200,10 @@ export class VeoStrategy extends BaseStrategy {
 
   // Session state for Flow editing mode
   private sessionState: Map<string, VeoPromptSchema> = new Map();
+
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
 
   /**
    * Validate input against Veo-specific constraints
@@ -213,8 +220,10 @@ export class VeoStrategy extends BaseStrategy {
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 400) {
-      this.addWarning('Prompt exceeds 400 words; Veo may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Veo may truncate or ignore excess content`
+      );
     }
 
     // Check for potential JSON in input (might be malformed)
@@ -354,6 +363,20 @@ export class VeoStrategy extends BaseStrategy {
       prompt,
       changes,
       triggersInjected,
+    };
+  }
+
+  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+    const detectedStyle = this.detectStylePreset(ir.raw);
+    const suggested = ['atmospheric lighting', 'camera movement', 'visual hierarchy'];
+    if (detectedStyle) {
+      const stylePhrase = STYLE_FALLBACK_PHRASES[detectedStyle] ?? detectedStyle;
+      suggested.push(stylePhrase);
+    }
+
+    return {
+      suggested,
+      avoid: [...CONVERSATIONAL_FILLERS],
     };
   }
 

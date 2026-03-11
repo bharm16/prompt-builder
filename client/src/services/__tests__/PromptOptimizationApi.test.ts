@@ -86,4 +86,24 @@ describe('PromptOptimizationApi', () => {
     );
     expect(result.compiledPrompt).toBe('compiled output');
   });
+
+  it('includes artifactKey when compiling from a cached artifact', async () => {
+    const client = createClient();
+    client.post.mockResolvedValue({ compiledPrompt: 'compiled output', artifactKey: 'artifact-123' });
+    const api = new PromptOptimizationApi(client as never);
+
+    await api.compilePrompt({
+      artifactKey: 'artifact-123',
+      targetModel: 'wan-2.2',
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/optimize-compile',
+      {
+        artifactKey: 'artifact-123',
+        targetModel: 'wan-2.2',
+      },
+      {}
+    );
+  });
 });

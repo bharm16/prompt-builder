@@ -104,7 +104,7 @@ export function HistoryPage(): React.ReactElement {
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 text-sm text-muted">
-                  <span className="tabular-nums">
+                  <span key={filteredOutputs.length} className="motion-count-bump tabular-nums">
                     {filteredOutputs.length}
                     {promptHistory.searchQuery ? ' results' : ' prompts'}
                   </span>
@@ -137,12 +137,12 @@ export function HistoryPage(): React.ReactElement {
 
       <Container size="lg">
         {promptHistory.isLoadingHistory ? (
-          <div className="py-12 text-center">
+          <div className="motion-presence-panel py-12 text-center" data-motion-state="entered">
             <div className="ps-spinner-sm mx-auto mb-3" />
             <p className="text-sm text-muted">Loading history…</p>
           </div>
         ) : filteredOutputs.length === 0 ? (
-          <div className="py-16 text-center">
+          <div className="motion-presence-panel py-16 text-center" data-motion-state="entered">
             <p className="text-sm text-muted">
               {promptHistory.searchQuery
                 ? `No results for “${promptHistory.searchQuery}”.`
@@ -165,7 +165,8 @@ export function HistoryPage(): React.ReactElement {
               return (
                 <article
                   key={entry.id ?? entry.uuid ?? `${entry.timestamp ?? 'no-ts'}-${index}`}
-                  className="ps-border-gradient rounded-lg"
+                  className="motion-presence-panel ps-border-gradient rounded-lg"
+                  data-motion-state="entered"
                 >
                   <Card className="p-5">
                     <div className="flex items-start justify-between gap-4">

@@ -51,7 +51,14 @@ describe('prompt schemas contract', () => {
 
     expect(
       compileSchema.safeParse({
-        prompt: 'A cinematic scene',
+        artifactKey: 'prompt-opt-v5::structured-artifact::abc123',
+        targetModel: 'sora-2',
+      }).success
+    ).toBe(true);
+
+    expect(
+      compileSchema.safeParse({
+        targetModel: 'sora-2',
       }).success
     ).toBe(false);
   });
