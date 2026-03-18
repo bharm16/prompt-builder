@@ -153,7 +153,7 @@ function ShotVisualCard({
         'relative h-[52px] w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
         isActive && 'border-accent',
         !isActive && !isGenerating && 'border-border hover:border-border-strong',
-        isGenerating && 'animate-pulse border-[#FBBF24]'
+        isGenerating && 'animate-pulse border-amber-400'
       )}
       style={isActive ? { boxShadow: '0 0 12px rgba(108, 92, 231, 0.2)' } : undefined}
       aria-label={shotLabel}
@@ -234,7 +234,7 @@ export function ShotVisualStrip({
                   className={cn(
                     'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
                     shot.continuityMode === 'frame-bridge'
-                      ? 'border-[#22D3EE66] bg-[#22D3EE1A] text-[#22D3EE]'
+                      ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-400'
                       : 'border-accent/40 bg-accent/10 text-accent'
                   )}
                   data-testid={`shot-connector-${shot.id}`}

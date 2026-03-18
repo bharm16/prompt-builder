@@ -72,7 +72,7 @@ function PopoverRailThumbnail({
       onClick={onClick}
       className={`relative h-[70px] w-full flex-shrink-0 overflow-hidden rounded-[14px] border-[2.5px] transition-opacity ${
         isSelected
-          ? 'border-[#6C5CE7] opacity-100'
+          ? 'border-tool-accent-selection opacity-100'
           : 'border-transparent opacity-50 hover:opacity-80'
       }`}
       aria-label="Change active generation"
@@ -97,7 +97,7 @@ function PopoverRailThumbnail({
           onError={() => setVideoLoadFailed(true)}
         />
       ) : (
-        <div className="h-full w-full bg-gradient-to-br from-[#1A1C22] to-[#0D0E12]" />
+        <div className="h-full w-full bg-gradient-to-br from-tool-rail-border to-tool-surface-deep" />
       )}
     </button>
   );

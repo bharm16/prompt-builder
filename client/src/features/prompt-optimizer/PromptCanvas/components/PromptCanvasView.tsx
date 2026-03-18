@@ -235,7 +235,7 @@ export function PromptCanvasView({
 
       <div
         className={cn(
-          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-[#111318]',
+          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-tool-panel-inner',
           outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
@@ -386,7 +386,7 @@ export function PromptCanvasView({
           </div>
         )}
 
-        <div className="hidden w-px self-stretch bg-[#1A1C22] lg:block" aria-hidden="true" />
+        <div className="hidden w-px self-stretch bg-tool-rail-border lg:block" aria-hidden="true" />
 
         <div className="lg:min-w-88 hidden min-h-0 flex-1 flex-col lg:flex lg:flex-[11]">
           <GenerationsPanel {...generationsPanelProps} />

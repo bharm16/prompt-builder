@@ -130,11 +130,11 @@ export function KontextFrameStrip({
             key={`frame-${index}-${frame ?? 'empty'}`}
             type="button"
             className={cn(
-              'group overflow-hidden rounded-md border bg-[#16181E] text-left',
+              'group overflow-hidden rounded-md border bg-tool-surface-card text-left',
               isSelected
-                ? 'border-[#6C5CE7] ring-2 ring-[#6C5CE7]'
-                : 'border-[#22252C] transition hover:border-[#3A3D46]',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6C5CE7]/50'
+                ? 'border-tool-accent-selection ring-2 ring-tool-accent-selection'
+                : 'border-tool-nav-active transition hover:border-tool-text-disabled',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-tool-accent-selection/50'
             )}
             onClick={() => {
               if (!frame || hasFailed) return;
@@ -145,14 +145,14 @@ export function KontextFrameStrip({
           >
             <div
               className={cn(
-                'relative aspect-[4/3] overflow-hidden bg-[#0D0E12]',
+                'relative aspect-[4/3] overflow-hidden bg-tool-surface-deep',
                 isGenerating &&
                   !frame &&
-                  'bg-gradient-to-r from-[#0D0E12] via-[#16181E] to-[#0D0E12] bg-[length:200%_100%] animate-shimmer'
+                  'bg-gradient-to-r from-tool-surface-deep via-tool-surface-card to-tool-surface-deep bg-[length:200%_100%] animate-shimmer'
               )}
             >
               {isGenerating && index === 0 && (
-                <div className="absolute top-2 left-2 z-10 rounded-md bg-black/40 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-[#FBBF24]">
+                <div className="absolute top-2 left-2 z-10 rounded-md bg-black/40 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-amber-400">
                   {typeof progressPercent === 'number'
                     ? `${progressPercent}% Complete`
                     : 'Generating'}
@@ -166,12 +166,12 @@ export function KontextFrameStrip({
                   onError={() => handleImageError(index)}
                 />
               ) : hasFailed ? (
-                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#3A3E4C]">
-                    <WarningCircle size={20} className="text-[#EF4444]/40" aria-hidden="true" />
+                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-tool-text-label">
+                    <WarningCircle size={20} className="text-red-500/40" aria-hidden="true" />
                     <span className="text-[10px] font-medium">Failed</span>
                  </div>
               ) : (
-                <div className="h-full w-full bg-[#0D0E12]" />
+                <div className="h-full w-full bg-tool-surface-deep" />
               )}
               {canSelect && !isSelected && !hasFailed && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -179,7 +179,7 @@ export function KontextFrameStrip({
                 </div>
               )}
               {isSelected && (
-                <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#6C5CE7] text-white">
+                <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-tool-accent-selection text-white">
                   <Check size={12} weight="bold" aria-hidden="true" />
                 </div>
               )}

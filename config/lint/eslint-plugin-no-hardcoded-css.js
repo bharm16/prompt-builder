@@ -13,6 +13,65 @@
 
 export default {
   rules: {
+    /**
+     * no-arbitrary-color: Flags Tailwind arbitrary color values like bg-[#hex],
+     * text-[#hex], border-[#hex] in className strings. These should use design
+     * tokens from the Tailwind config instead.
+     *
+     * Allows: bg-[linear-gradient(...)], bg-[length:...], bg-[url(...)],
+     * and non-color arbitrary values like w-[200px], h-[30px], text-[13px].
+     */
+    'no-arbitrary-color': {
+      meta: {
+        type: 'suggestion',
+        docs: {
+          description: 'Disallow arbitrary hex colors in Tailwind className strings',
+          category: 'Best Practices',
+          recommended: true,
+        },
+        messages: {
+          noArbitraryColor:
+            'Arbitrary color "{{value}}" found. Use a design token class instead. See docs/DESIGN_TOKENS.md for the mapping.',
+        },
+        schema: [],
+      },
+      create(context) {
+        // Matches Tailwind color utility patterns with [#hex]
+        // e.g. bg-[#22252C], text-[#E2E6EF], border-[#1A1C22]/50
+        const HEX_PATTERN = /(?:bg|text|border|ring|divide|decoration|from|to|via|caret|shadow|placeholder|outline|fill|stroke|accent)-\[#[0-9a-fA-F]{3,8}\]/g;
+
+        function checkString(node, value) {
+          if (typeof value !== 'string') return;
+          // Allow linear-gradient which legitimately uses hex
+          if (value.includes('linear-gradient')) return;
+
+          let match;
+          HEX_PATTERN.lastIndex = 0;
+          while ((match = HEX_PATTERN.exec(value)) !== null) {
+            context.report({
+              node,
+              messageId: 'noArbitraryColor',
+              data: { value: match[0] },
+            });
+          }
+        }
+
+        return {
+          Literal(node) {
+            if (typeof node.value === 'string') {
+              checkString(node, node.value);
+            }
+          },
+          TemplateLiteral(node) {
+            node.quasis.forEach((quasi) => {
+              if (quasi.value?.raw) {
+                checkString(quasi, quasi.value.raw);
+              }
+            });
+          },
+        };
+      },
+    },
     'no-hardcoded-css': {
       meta: {
         type: 'problem',

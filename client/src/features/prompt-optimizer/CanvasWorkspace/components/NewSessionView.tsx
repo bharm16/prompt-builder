@@ -33,11 +33,11 @@ export function NewSessionView({
             />
             <path d="M10 9.5L15.5 12.5L10 15.5V9.5Z" fill="#555B6E" />
           </svg>
-          <span className="text-xl font-semibold tracking-[-0.02em] text-[#555B6E]">
+          <span className="text-xl font-semibold tracking-[-0.02em] text-tool-text-subdued">
             Video
           </span>
         </div>
-        <p className="max-w-[420px] text-center text-sm leading-relaxed text-[#4B5063]">
+        <p className="max-w-[420px] text-center text-sm leading-relaxed text-tool-text-dim">
           Start with a scene, subject, or motion cue. The editor stays live while the workspace
           grows around it.
         </p>
@@ -45,8 +45,8 @@ export function NewSessionView({
 
       <div className="flex flex-shrink-0 items-center justify-end px-5 pb-4">
         <div className="flex items-center gap-1.5">
-          <span className="h-[6px] w-[6px] rounded-full bg-[#34D399]" />
-          <span className="text-[11px] font-medium text-[#555B6E]">
+          <span className="h-[6px] w-[6px] rounded-full bg-emerald-400" />
+          <span className="text-[11px] font-medium text-tool-text-subdued">
             {typeof balance === 'number' ? `${balance} cr` : '— cr'}
           </span>
         </div>

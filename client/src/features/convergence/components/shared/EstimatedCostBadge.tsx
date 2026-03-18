@@ -49,21 +49,21 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
         className={cn(
           'inline-flex items-center',
           SIZE_CLASSES[size],
-          'text-[#3f3f46]',
+          'text-zinc-700',
           className
         )}
         role="status"
         aria-label={`Estimated cost: approximately ${estimatedCost} credits`}
       >
-        <Coins className={cn(ICON_SIZES[size], 'text-[#3f3f46]')} aria-hidden="true" />
-        <span className="text-[#52525b]">~{estimatedCost}</span>
-        <span className="text-[#3f3f46]">credits</span>
+        <Coins className={cn(ICON_SIZES[size], 'text-zinc-700')} aria-hidden="true" />
+        <span className="text-zinc-600">~{estimatedCost}</span>
+        <span className="text-zinc-700">credits</span>
         {showTooltip && (
           <div className="group relative ml-0.5">
             <Info
               className={cn(
                 ICON_SIZES[size],
-                'cursor-help text-[#3f3f46] hover:text-[#52525b] transition-colors'
+                'cursor-help text-zinc-700 hover:text-zinc-600 transition-colors'
               )}
               aria-hidden="true"
             />
@@ -73,17 +73,17 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
                 'invisible group-hover:visible opacity-0 group-hover:opacity-100',
                 'transition-all duration-200',
                 'w-48 p-2.5 rounded-lg',
-                'bg-[#18181b] border border-white/[0.06] text-[12px]',
+                'bg-zinc-900 border border-white/[0.06] text-[12px]',
                 'z-50'
               )}
               role="tooltip"
             >
-              <p className="font-medium text-[#a1a1aa] mb-1">Estimated Total Cost</p>
-              <p className="text-[#71717a] leading-relaxed">
+              <p className="font-medium text-zinc-400 mb-1">Estimated Total Cost</p>
+              <p className="text-zinc-500 leading-relaxed">
                 Includes direction, mood, framing, lighting, final frame, camera motion, and subject motion preview.
               </p>
               <div
-                className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-[#18181b]"
+                className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-zinc-900"
                 aria-hidden="true"
               />
             </div>
@@ -100,8 +100,8 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
         'inline-flex items-center rounded-full font-medium',
         SIZE_CLASSES[size],
         variant === 'default' 
-          ? 'px-3 py-1 bg-white/[0.03] text-[#a1a1aa] border border-white/[0.06]'
-          : 'px-3 py-1 bg-[#7c3aed]/10 text-[#a78bfa] border border-[#7c3aed]/20',
+          ? 'px-3 py-1 bg-white/[0.03] text-zinc-400 border border-white/[0.06]'
+          : 'px-3 py-1 bg-violet-600/10 text-violet-400 border border-violet-600/20',
         className
       )}
       role="status"
@@ -110,7 +110,7 @@ export const EstimatedCostBadge: React.FC<EstimatedCostBadgeProps> = ({
       <Coins
         className={cn(
           ICON_SIZES[size],
-          variant === 'prominent' ? 'text-[#a78bfa]' : 'text-[#71717a]'
+          variant === 'prominent' ? 'text-violet-400' : 'text-zinc-500'
         )}
         aria-hidden="true"
       />

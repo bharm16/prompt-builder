@@ -189,7 +189,7 @@ export function PromptCanvasEditorSection({
 }: PromptCanvasEditorSectionProps): React.ReactElement {
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col transition-opacity', isOutputLoading && 'opacity-80')}>
-      <div className="flex h-11 items-center border-b border-[#1A1C22] px-3">
+      <div className="flex h-11 items-center border-b border-tool-rail-border px-3">
         <Select
           value={modelFormatValue}
           onValueChange={onModelFormatChange}
@@ -238,7 +238,7 @@ export function PromptCanvasEditorSection({
           </CanvasButton>
         )}
 
-        <div className="mx-1 h-3.5 w-px bg-[#22252C]" aria-hidden="true" />
+        <div className="mx-1 h-3.5 w-px bg-tool-nav-active" aria-hidden="true" />
 
         <CanvasButton
           type="button"
@@ -291,7 +291,7 @@ export function PromptCanvasEditorSection({
 
           {showExportMenu && (
             <div
-              className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border border-[#22252C] bg-[#16181E] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+              className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border border-tool-nav-active bg-tool-surface-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
               role="menu"
             >
               {i2vContext?.isI2VMode && (
@@ -321,7 +321,7 @@ export function PromptCanvasEditorSection({
                       )}
                     </CanvasButton>
                   ))}
-                  <div className="my-1 h-px bg-[#22252C]" aria-hidden="true" />
+                  <div className="my-1 h-px bg-tool-nav-active" aria-hidden="true" />
                 </>
               )}
 
@@ -336,7 +336,7 @@ export function PromptCanvasEditorSection({
               >
                 Compare versions
               </CanvasButton>
-              <div className="my-1 h-px bg-[#22252C]" aria-hidden="true" />
+              <div className="my-1 h-px bg-tool-nav-active" aria-hidden="true" />
               <CanvasButton
                 type="button"
                 onClick={() => {
@@ -370,7 +370,7 @@ export function PromptCanvasEditorSection({
               >
                 Export .json
               </CanvasButton>
-              <div className="my-1 h-px bg-[#22252C]" aria-hidden="true" />
+              <div className="my-1 h-px bg-tool-nav-active" aria-hidden="true" />
               <CanvasButton
                 type="button"
                 onClick={() => {

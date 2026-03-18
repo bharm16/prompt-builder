@@ -28,14 +28,14 @@ export function ModelComparison({
   const rightLabel = getModelLabel(right.modelId);
 
   return (
-    <div className={cn('rounded-lg border border-[#2A2B31] bg-[#17191E] p-3', className)}>
+    <div className={cn('rounded-lg border border-surface-2 bg-tool-surface-card p-3', className)}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#A1AFC5]">Compare Models</span>
+        <span className="text-xs font-semibold text-ghost">Compare Models</span>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="text-[11px] text-[#7F8CA3] hover:text-white"
+            className="text-[11px] text-tool-text-dim hover:text-white"
           >
             Close
           </button>

@@ -1,3 +1,6 @@
+// This file intentionally stays as .js — worker_threads Workers are spawned via
+// a file path string and bypass the tsx/TypeScript loader pipeline. Converting
+// to .ts would require a separate compilation step or a custom worker loader.
 import { parentPort, workerData } from 'worker_threads';
 import { existsSync } from 'fs';
 import { performance } from 'perf_hooks';

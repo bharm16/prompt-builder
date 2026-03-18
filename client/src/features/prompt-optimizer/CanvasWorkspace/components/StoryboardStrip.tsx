@@ -84,11 +84,11 @@ export function StoryboardStrip({
 
   return (
     <div
-      className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#22252C] bg-[#16181E]/85 px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl animate-fade-in"
+      className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-tool-nav-active bg-tool-surface-card/85 px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl animate-fade-in"
       data-testid="storyboard-strip"
     >
       {/* Label */}
-      <span className="flex-shrink-0 text-[10px] font-semibold tracking-[0.05em] text-[#3A3E4C]">
+      <span className="flex-shrink-0 text-[10px] font-semibold tracking-[0.05em] text-tool-text-label">
         PREVIEW
       </span>
 
@@ -102,7 +102,7 @@ export function StoryboardStrip({
             className={cn(
               'h-11 w-[72px] flex-shrink-0 overflow-hidden rounded-lg border-2 outline-none transition-all',
               selectedIndex === index
-                ? 'border-[#6C5CE7] opacity-100 shadow-[0_0_12px_#6C5CE744]'
+                ? 'border-tool-accent-selection opacity-100 shadow-[0_0_12px_#6C5CE744]'
                 : 'border-transparent opacity-70 hover:opacity-100'
             )}
             data-testid={`storyboard-frame-${index}`}
@@ -120,7 +120,7 @@ export function StoryboardStrip({
       {/* Use as start frame */}
       <button
         type="button"
-        className="h-[26px] flex-shrink-0 rounded-md border border-[#6C5CE744] bg-[#6C5CE711] px-2.5 text-[11px] font-semibold text-[#6C5CE7] transition-colors hover:bg-[#6C5CE71A] disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-[26px] flex-shrink-0 rounded-md border border-tool-accent-selection/25 bg-tool-accent-selection/5 px-2.5 text-[11px] font-semibold text-tool-accent-selection transition-colors hover:bg-tool-accent-selection/10 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={!selectedFrame}
         data-testid="storyboard-use-start-frame"
         onClick={() => {
@@ -147,7 +147,7 @@ export function StoryboardStrip({
       {/* Dismiss */}
       <button
         type="button"
-        className="flex h-6 w-6 items-center justify-center rounded-md text-[#3A3E4C] transition-colors hover:text-[#555B6E]"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-tool-text-label transition-colors hover:text-tool-text-subdued"
         onClick={onDismiss}
         data-testid="storyboard-dismiss"
         aria-label="Dismiss storyboard"

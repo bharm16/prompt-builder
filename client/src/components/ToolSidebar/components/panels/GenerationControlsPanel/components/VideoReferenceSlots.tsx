@@ -73,11 +73,11 @@ export function VideoReferenceSlots({
             <button
               type="button"
               className={cn(
-                'relative h-[62px] w-[62px] rounded-md border bg-[#1B1E23] overflow-hidden transition-colors',
-                reference ? 'border-[#2C3037]' : 'border-dashed border-[#2C3037]',
-                canUpload && 'cursor-pointer hover:border-[#3A3D46]',
+                'relative h-[62px] w-[62px] rounded-md border bg-surface-1 overflow-hidden transition-colors',
+                reference ? 'border-tool-border-primary' : 'border-dashed border-tool-border-primary',
+                canUpload && 'cursor-pointer hover:border-tool-text-disabled',
                 !canUpload && isEmpty && 'opacity-60 cursor-not-allowed',
-                draggingSlot === index && canUpload && 'border-[#6C5CE7]'
+                draggingSlot === index && canUpload && 'border-tool-accent-selection'
               )}
               onClick={() => {
                 if (!canUpload) return;
@@ -115,7 +115,7 @@ export function VideoReferenceSlots({
                   <div className="absolute inset-0 rounded-md bg-black/10 pointer-events-none" />
                 </>
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-[#8B92A5]">
+                <div className="h-full w-full flex items-center justify-center text-tool-text-dim">
                   <Plus className="w-4 h-4" />
                 </div>
               )}
@@ -128,7 +128,7 @@ export function VideoReferenceSlots({
                   onChange={(event) =>
                     onUpdateType(reference.id, event.target.value as 'asset' | 'style')
                   }
-                  className="h-5 rounded border border-[#2C3037] bg-[#0D0E12] px-1 text-[10px] text-[#A1AFC5]"
+                  className="h-5 rounded border border-tool-border-primary bg-tool-surface-deep px-1 text-[10px] text-ghost"
                   aria-label={`Reference type ${index + 1}`}
                 >
                   <option value="asset">Asset</option>
@@ -136,7 +136,7 @@ export function VideoReferenceSlots({
                 </select>
                 <button
                   type="button"
-                  className="h-5 rounded border border-[#2C3037] bg-transparent text-[10px] text-[#8B92A5] hover:text-white"
+                  className="h-5 rounded border border-tool-border-primary bg-transparent text-[10px] text-tool-text-dim hover:text-white"
                   onClick={() => onRemove(reference.id)}
                 >
                   Clear

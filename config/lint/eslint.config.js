@@ -120,6 +120,8 @@ export default [
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
       'security/detect-unsafe-regex': 'off',
+      // Hardcoded hex colors in Tailwind className strings
+      'no-hardcoded-css/no-arbitrary-color': 'error',
       // Hardcoded spacing/formatting values detection in inline styles
       'no-hardcoded-css/no-hardcoded-css': ['warn', {
         allowPixelValues: false,

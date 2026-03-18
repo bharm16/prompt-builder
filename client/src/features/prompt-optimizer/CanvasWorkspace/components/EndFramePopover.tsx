@@ -93,8 +93,8 @@ export function EndFramePopover({
         type="button"
         data-testid="end-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
-          'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]',
+          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
+          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
           disabled && 'cursor-not-allowed opacity-60'
         )}
         onClick={() => {
@@ -108,10 +108,10 @@ export function EndFramePopover({
         {previewUrl ? (
           <>
             <div
-              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-[#22252C] bg-cover bg-center"
+              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-tool-nav-active bg-cover bg-center"
               style={{ backgroundImage: `url(${previewUrl})` }}
             />
-            <span className="text-xs text-[#E2E6EF]">End frame</span>
+            <span className="text-xs text-foreground">End frame</span>
           </>
         ) : (
           <>
@@ -139,12 +139,12 @@ export function EndFramePopover({
         <div
           role="dialog"
           data-testid="end-frame-popover"
-          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[220px] overflow-hidden rounded-xl border border-[#22252C] bg-[#16181E] shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[220px] overflow-hidden rounded-xl border border-tool-nav-active bg-tool-surface-card shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
           onClick={(event) => event.stopPropagation()}
         >
           {previewUrl ? (
             <>
-              <div className="relative aspect-video bg-[#0D0E12]">
+              <div className="relative aspect-video bg-tool-surface-deep">
                 <img src={previewUrl} alt="End frame" className="h-full w-full object-cover" />
                 <button
                   type="button"
@@ -155,7 +155,7 @@ export function EndFramePopover({
                   <X size={10} />
                 </button>
               </div>
-              <div className="px-2.5 py-2 text-[10px] text-[#555B6E]">
+              <div className="px-2.5 py-2 text-[10px] text-tool-text-subdued">
                 Used as interpolation end frame.
               </div>
             </>
@@ -163,14 +163,14 @@ export function EndFramePopover({
             <div className="p-4 text-center">
               <button
                 type="button"
-                className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-[#22252C] py-5 transition-colors hover:border-[#3A3D46]"
+                className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-tool-nav-active py-5 transition-colors hover:border-tool-text-disabled"
                 onClick={() => inputRef.current?.click()}
                 disabled={isUploading || disabled}
               >
-                <span className="flex text-[#3A3E4C]">
+                <span className="flex text-tool-text-label">
                   <Image size={13} />
                 </span>
-                <span className="text-[11px] text-[#555B6E]">
+                <span className="text-[11px] text-tool-text-subdued">
                   {isUploading ? 'Uploading…' : 'Drop image or click to upload'}
                 </span>
               </button>

@@ -272,7 +272,7 @@ export function PopoverPreview({
               />
             )
           ) : (
-            <div className="h-full w-full rounded-lg bg-gradient-to-br from-[#1A1C22] to-[#0D0E12]" />
+            <div className="h-full w-full rounded-lg bg-gradient-to-br from-tool-rail-border to-tool-surface-deep" />
           )}
         </div>
       </div>

@@ -49,6 +49,22 @@
     --tool-surface-inset: #0F1118;
     /* Deepest background for modal/card insets */
     --tool-surface-deep: #0D0E12;
+
+    /* ── Phase-0 additions (exact-match tokens for high-frequency hex values) ── */
+    /* Dim text — between ghost (#A1AFC5) and faint (#aaaebb) */
+    --tool-text-dim: #8B92A5;
+    /* Very faint label text (PREVIEW, GENERATING, etc.) */
+    --tool-text-label: #3A3E4C;
+    /* Disabled / inactive text */
+    --tool-text-disabled: #3A3D46;
+    /* Card / container background (lighter variant) */
+    --tool-surface-card: #16181E;
+    /* Prompt bar bg (empty layout) */
+    --tool-surface-prompt: #15161B;
+    /* Prompt bar bg (compact layout) */
+    --tool-surface-prompt-compact: #141519;
+    /* Selection accent purple (storyboard frames, badges) */
+    --tool-accent-selection: #6C5CE7;
   }
 
   html, body, #root {

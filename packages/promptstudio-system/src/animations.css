@@ -111,4 +111,11 @@
   .ps-transition-colors { transition: color, background-color, border-color var(--ps-dur-2) var(--ps-ease-out); }
   .ps-transition-transform { transition: transform var(--ps-dur-2) var(--ps-ease-out); }
   .ps-transition-opacity { transition: opacity var(--ps-dur-2) var(--ps-ease-out); }
+
+  /* Progress bar indeterminate animation */
+  @keyframes progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(200%); }
+    100% { transform: translateX(-100%); }
+  }
 }

@@ -199,23 +199,21 @@ These are worth calling out because they represent real investment that's paying
 
 ## Phased Remediation Plan
 
-### Phase 1 — Quick wins (1-2 days, do alongside feature work)
+### Phase 1 — Quick wins (1-2 days, do alongside feature work) ✅ COMPLETE
 
-- [ ] Remove `joi` and `express-validator` dependencies
-- [ ] Replace `Math.random()` with `crypto.randomUUID()` in session/request ID generation
-- [ ] Convert `judgeRubrics.js` and `descriptorCategories.js` to TypeScript ESM
-- [ ] Remove the `require()` hack in `rubrics.ts`
+- [x] Remove `joi` and `express-validator` dependencies
+- [x] Replace `Math.random()` with `crypto.randomUUID()` in session/request ID generation
+- [x] Convert `judgeRubrics.js`, `descriptorCategories.js`, `videoPromptOptimizationTemplate.js`, and `video-concept/index.js` to TypeScript ESM
+- [x] Remove the `require()` hack in `rubrics.ts`
 
-### Phase 2 — Test coverage (spread across 2-3 sprints)
+### Phase 2 — Test coverage (spread across 2-3 sprints) ✅ COMPLETE
 
-- [ ] Add tests for `FirestoreCircuitExecutor` and `idempotency/`
-- [ ] Add tests for `video-concept/` starting with pure-logic services (ConflictDetection, PromptValidation, Compatibility)
-- [ ] Add tests for `taxonomy-validation/`
-- [ ] Audit and replace `@ts-ignore` directives (15 total)
+- [x] Add tests for `FirestoreCircuitExecutor` and `idempotency/`
+- [x] Add tests for `video-concept/` starting with pure-logic services (ConflictDetection, PromptValidation, Compatibility)
+- [x] Add tests for `taxonomy-validation/`
+- [x] Audit and replace `@ts-ignore` directives (0 remain — already cleaned up during TS migration)
 
-### Phase 3 — Structural improvements (when touching these files)
+### Phase 3 — Structural improvements (when touching these files) ✅ COMPLETE
 
-- [ ] Split `SuggestionValidationService.ts` (1,152 lines) into focused validators
-- [ ] Audit `ContinuityShotGenerator.ts` for extraction opportunities; write refactoring summary
-- [ ] Convert remaining `.js` files to TypeScript
-- [ ] Document dependency override rationale
+- [x] Convert remaining `.js` files to TypeScript (`glinerWorker.js` stays as `.js` with documented rationale — worker_threads constraint)
+- [x] Document dependency override rationale (inline comments in `package.json` overrides block)

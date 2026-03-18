@@ -21,17 +21,17 @@ export function PanelHeader({
   onSelectTab,
 }: PanelHeaderProps): React.ReactElement {
   return (
-    <header className="h-12 px-3.5 border-b border-[#1A1C22] flex items-center gap-3">
+    <header className="h-12 px-3.5 border-b border-tool-rail-border flex items-center gap-3">
       {/* Tab switcher container */}
-      <div className="flex items-center gap-0.5 bg-[#0D0E12] rounded-2xl p-0.5">
+      <div className="flex items-center gap-0.5 bg-tool-surface-deep rounded-2xl p-0.5">
         <button
           type="button"
           onClick={() => onSelectTab('video')}
           className={cn(
             'h-[30px] px-3.5 rounded-[15px] text-xs font-semibold flex items-center gap-1.5 transition-colors',
             activeTab === 'video'
-              ? 'bg-[#E2E6EF] text-[#0D0E12] shadow-[0_1px_0_rgba(255,255,255,0.15)]'
-              : 'text-[#555B6E] hover:text-[#8B92A5]'
+              ? 'bg-foreground text-tool-surface-deep shadow-[0_1px_0_rgba(255,255,255,0.15)]'
+              : 'text-tool-text-subdued hover:text-tool-text-dim'
           )}
         >
           <Video className={cn('w-3.5 h-3.5', activeTab !== 'video' && 'opacity-60')} />
@@ -43,8 +43,8 @@ export function PanelHeader({
           className={cn(
             'h-[30px] px-3.5 rounded-[15px] text-xs font-semibold flex items-center gap-1.5 transition-colors',
             activeTab === 'image'
-              ? 'bg-[#E2E6EF] text-[#0D0E12] shadow-[0_1px_0_rgba(255,255,255,0.15)]'
-              : 'text-[#555B6E] hover:text-[#8B92A5]'
+              ? 'bg-foreground text-tool-surface-deep shadow-[0_1px_0_rgba(255,255,255,0.15)]'
+              : 'text-tool-text-subdued hover:text-tool-text-dim'
           )}
         >
           <Image className={cn('w-3.5 h-3.5', activeTab !== 'image' && 'opacity-60')} />
@@ -57,7 +57,7 @@ export function PanelHeader({
       {/* Session selector */}
       <button
         type="button"
-        className="text-[11px] font-medium text-[#555B6E] hover:text-[#8B92A5] transition-colors inline-flex items-center gap-1"
+        className="text-[11px] font-medium text-tool-text-subdued hover:text-tool-text-dim transition-colors inline-flex items-center gap-1"
         aria-label={onBack ? 'Open sessions' : 'Session selector'}
         onClick={onBack}
       >

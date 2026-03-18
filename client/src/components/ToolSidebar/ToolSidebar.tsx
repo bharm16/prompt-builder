@@ -149,8 +149,8 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     if (panel === 'apps') {
       return (
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-          <div className="text-sm font-semibold text-[#8B92A5]">Apps</div>
-          <div className="mt-2 text-xs text-[#555B6E]">
+          <div className="text-sm font-semibold text-tool-text-dim">Apps</div>
+          <div className="mt-2 text-xs text-tool-text-subdued">
             Third-party integrations coming soon.
           </div>
         </div>
@@ -192,7 +192,7 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
           >
             <SheetContent
               side="left"
-              className="w-[400px] border-l border-r border-[#1A1C22] bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
+              className="w-[400px] border-l border-r border-tool-rail-border bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
             >
               <SheetTitle className="sr-only">{sheetTitle} panel</SheetTitle>
               <SheetDescription className="sr-only">

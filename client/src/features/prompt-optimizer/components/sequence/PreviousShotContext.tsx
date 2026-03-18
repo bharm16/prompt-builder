@@ -72,7 +72,7 @@ const resolveBadge = (mode: SessionContinuityMode): { label: string; className: 
   if (mode === 'frame-bridge') {
     return {
       label: 'Last frame ->',
-      className: 'border-[#22D3EE66] bg-[#22D3EE1A] text-[#22D3EE]',
+      className: 'border-cyan-400/40 bg-cyan-400/10 text-cyan-400',
       icon: <BridgeIcon className="h-3 w-3" />,
     };
   }

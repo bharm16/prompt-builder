@@ -29,7 +29,7 @@ export function ImageTabContent({
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden px-4 pt-3">
       <div className="flex flex-col overflow-hidden">
-        <div className="flex flex-col flex-1 min-h-0 relative border border-[#29292D] rounded-lg overflow-auto">
+        <div className="flex flex-col flex-1 min-h-0 relative border border-tool-border-dark rounded-lg overflow-auto">
           <ImageReferenceSlotsRow
             keyframes={keyframes}
             isUploadDisabled={isUploadDisabled}

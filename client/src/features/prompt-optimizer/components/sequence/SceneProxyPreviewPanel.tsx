@@ -50,7 +50,7 @@ export function SceneProxyPreviewPanel({
             onError={onPreviewImageError}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[#161A21]">
+          <div className="flex h-full w-full items-center justify-center bg-tool-surface-card">
             <span className="text-xs text-muted">No proxy preview yet</span>
           </div>
         )}

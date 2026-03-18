@@ -33,7 +33,7 @@ export function ModelCornerSelector({
         efficientModelId={efficientModelId}
         triggerPrefixLabel="Model"
         triggerAriaLabel="Video model"
-        triggerClassName="inline-flex h-9 items-center gap-[7px] rounded-[10px] border border-[#22252C] bg-[#16181E]/[0.93] px-3.5 text-xs font-semibold text-[#E2E6EF] backdrop-blur-xl"
+        triggerClassName="inline-flex h-9 items-center gap-[7px] rounded-[10px] border border-tool-nav-active bg-tool-surface-card/[0.93] px-3.5 text-xs font-semibold text-foreground backdrop-blur-xl"
       />
     </div>
   );

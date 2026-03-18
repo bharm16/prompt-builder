@@ -18,8 +18,8 @@ export function ImageSubTabSelector({ activeTab, onSelect }: ImageSubTabSelector
           'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
           'text-sm font-semibold leading-5 cursor-pointer',
           activeTab === 'references'
-            ? 'bg-[#2C3037] border border-[#2C3037] text-white'
-            : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+            ? 'bg-surface-2 border border-tool-border-primary text-white'
+            : 'bg-transparent border border-tool-border-primary text-ghost'
         )}
         role="tab"
         aria-selected={activeTab === 'references'}
@@ -35,8 +35,8 @@ export function ImageSubTabSelector({ activeTab, onSelect }: ImageSubTabSelector
           'flex items-center justify-center gap-1.5 h-8 px-2 rounded-md',
           'text-sm font-semibold leading-5 cursor-pointer',
           activeTab === 'styles'
-            ? 'bg-[#2C3037] border border-[#2C3037] text-white'
-            : 'bg-transparent border border-[#2C3037] text-[#A1AFC5]'
+            ? 'bg-surface-2 border border-tool-border-primary text-white'
+            : 'bg-transparent border border-tool-border-primary text-ghost'
         )}
         role="tab"
         aria-selected={activeTab === 'styles'}

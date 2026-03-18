@@ -115,12 +115,12 @@ export function PopoverDetail({
   );
 
   return (
-    <aside className="flex h-full w-[320px] flex-shrink-0 flex-col overflow-hidden border-l border-[#1A1C22] bg-[#111318]">
+    <aside className="flex h-full w-[320px] flex-shrink-0 flex-col overflow-hidden border-l border-tool-rail-border bg-tool-panel-inner">
       <div className="px-5 pb-0 pt-6">
-        <h2 className="line-clamp-3 text-[15px] font-semibold leading-[1.5] text-[#E2E6EF]">
+        <h2 className="line-clamp-3 text-[15px] font-semibold leading-[1.5] text-foreground">
           {generation.prompt}
         </h2>
-        <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[12px] text-[#555B6E]">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[12px] text-tool-text-subdued">
           <span>{generation.model}</span>
           <span>·</span>
           <span style={{ color: resolveTierColor(generation) }}>
@@ -137,11 +137,11 @@ export function PopoverDetail({
         </div>
       </div>
 
-      <div className="mx-5 mt-[18px] h-px bg-[#1A1C22]" />
+      <div className="mx-5 mt-[18px] h-px bg-tool-rail-border" />
 
       <div className="px-5 pb-0 pt-[14px]">
         <div className="flex items-center">
-          <span className="text-[12px] font-semibold text-[#8B92A5]">Prompt</span>
+          <span className="text-[12px] font-semibold text-tool-text-dim">Prompt</span>
           <div className="flex-1" />
           <button
             type="button"
@@ -149,14 +149,14 @@ export function PopoverDetail({
               void copyText(generation.prompt);
               onCopyPrompt();
             }}
-            className="inline-flex h-5 w-5 items-center justify-center text-[#555B6E] transition-colors hover:text-[#8B92A5]"
+            className="inline-flex h-5 w-5 items-center justify-center text-tool-text-subdued transition-colors hover:text-tool-text-dim"
             aria-label="Copy prompt text"
           >
             <CopyIcon />
           </button>
         </div>
 
-        <div className="mt-2 max-h-[100px] overflow-auto text-[13px] leading-[1.65] text-[#8B92A5]">
+        <div className="mt-2 max-h-[100px] overflow-auto text-[13px] leading-[1.65] text-tool-text-dim">
           {promptSegments.map((segment, index) => (
             <span
               key={`${generation.id}-segment-${index}`}
@@ -168,19 +168,19 @@ export function PopoverDetail({
         </div>
       </div>
 
-      <div className="mx-5 mt-4 h-px bg-[#1A1C22]" />
+      <div className="mx-5 mt-4 h-px bg-tool-rail-border" />
 
       <div className="px-5 py-4">
         <button
           type="button"
           onClick={onReuse}
-          className="inline-flex h-[42px] w-full items-center justify-center rounded-[10px] bg-[#E2E6EF] text-[13px] font-bold text-[#0D0E12] transition-opacity hover:opacity-90"
+          className="inline-flex h-[42px] w-full items-center justify-center rounded-[10px] bg-foreground text-[13px] font-bold text-tool-surface-deep transition-opacity hover:opacity-90"
         >
           Reuse prompt and settings
         </button>
       </div>
 
-      <div className="mx-5 h-px bg-[#1A1C22]" />
+      <div className="mx-5 h-px bg-tool-rail-border" />
 
       <PopoverThumbnailRail
         generations={generations}

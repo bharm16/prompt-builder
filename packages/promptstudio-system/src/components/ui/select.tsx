@@ -38,6 +38,8 @@ const selectTriggerVariants = cva(
         pill: 'border-border bg-surface-2 rounded-full hover:border-border-strong hover:bg-surface-3',
         accent:
           'border-accent bg-accent text-app font-semibold ps-glow-accent data-[placeholder]:text-app/90 hover:opacity-90 focus-visible:border-accent',
+        error:
+          'border-danger hover:border-danger focus-visible:border-danger focus-visible:ring-2 focus-visible:ring-danger/30',
       },
     },
     defaultVariants: {

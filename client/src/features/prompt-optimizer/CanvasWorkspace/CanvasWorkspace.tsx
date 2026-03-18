@@ -405,7 +405,7 @@ export function CanvasWorkspace({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0D0E12]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-tool-surface-deep">
       <CanvasTopBar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden px-3">

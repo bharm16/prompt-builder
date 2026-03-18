@@ -18,12 +18,12 @@ export function VersionDivider({
       role="separator"
       aria-label={`Version ${versionLabel}${promptChanged ? ', prompt edited' : ''}`}
     >
-      <span className="text-[10px] font-medium text-[#3A3E4C]">
+      <span className="text-[10px] font-medium text-tool-text-label">
         {versionLabel}
       </span>
       {promptChanged && (
         <span
-          className="h-[3px] w-[3px] rounded-sm bg-[#FBBF24]/40"
+          className="h-[3px] w-[3px] rounded-sm bg-amber-400/40"
           aria-label="Prompt edited"
         />
       )}

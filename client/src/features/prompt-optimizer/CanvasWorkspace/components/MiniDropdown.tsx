@@ -54,10 +54,10 @@ export function MiniDropdown<T extends string | number>({
         type="button"
         onClick={handleToggle}
         className={cn(
-          'inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
+          'inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
           open
-            ? 'bg-[#22252C] text-[#E2E6EF]'
-            : 'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]'
+            ? 'bg-tool-nav-active text-foreground'
+            : 'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground'
         )}
       >
         {icon}
@@ -78,7 +78,7 @@ export function MiniDropdown<T extends string | number>({
       </button>
 
       {open ? (
-        <div className="absolute bottom-full left-0 z-50 mb-1.5 min-w-[80px] overflow-hidden rounded-[10px] bg-[#1A1C22] shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
+        <div className="absolute bottom-full left-0 z-50 mb-1.5 min-w-[80px] overflow-hidden rounded-[10px] bg-tool-rail-border shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
           {options.map((opt) => {
             const optLabel = formatLabel ? formatLabel(opt) : String(opt);
             const isActive = opt === value;
@@ -90,8 +90,8 @@ export function MiniDropdown<T extends string | number>({
                 className={cn(
                   'flex w-full items-center px-3 py-[7px] text-[11px] transition-colors',
                   isActive
-                    ? 'bg-[rgba(255,255,255,0.06)] font-semibold text-[#E2E6EF]'
-                    : 'bg-transparent font-normal text-[#8B92A5] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#E2E6EF]'
+                    ? 'bg-[rgba(255,255,255,0.06)] font-semibold text-foreground'
+                    : 'bg-transparent font-normal text-tool-text-dim hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground'
                 )}
               >
                 {optLabel}

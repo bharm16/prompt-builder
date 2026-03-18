@@ -18,7 +18,7 @@ export function GalleryPanel({
         <div className="mb-3 h-[100px] w-[100px]" aria-hidden="true" />
 
         <div className="flex h-5 w-full items-center justify-center pr-2">
-          <hr className="h-[3px] w-5 rounded-full border-0 bg-[#262626]" />
+          <hr className="h-[3px] w-5 rounded-full border-0 bg-neutral-800" />
         </div>
 
         <div className="scrollbar-hide pointer-events-none relative -left-1.5 -top-1.5 mb-[-4px] w-[500px] flex-1 snap-y overflow-y-auto pb-1 pl-1.5 pr-0">

@@ -44,7 +44,7 @@ export function CanvasVersionStrip({
       {/* New version button */}
       <button
         type="button"
-        className="flex h-[57px] w-[57px] items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#22252C] bg-[#141519]/50 text-[#3A3E4C] backdrop-blur-xl transition-colors hover:border-[#3A3E4C] hover:text-[#555B6E]"
+        className="flex h-[57px] w-[57px] items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-tool-nav-active bg-tool-surface-prompt-compact/50 text-tool-text-label backdrop-blur-xl transition-colors hover:border-tool-text-label hover:text-tool-text-subdued"
         aria-label="New version"
       >
         <Plus size={14} />
@@ -65,7 +65,7 @@ export function CanvasVersionStrip({
             className={cn(
               'relative h-[57px] w-[57px] overflow-hidden rounded-[10px] border-2 outline-none transition-all',
               isActive
-                ? 'border-[#E2E6EF] opacity-100'
+                ? 'border-foreground opacity-100'
                 : 'border-transparent opacity-60 hover:opacity-[0.85]'
             )}
             onClick={() => {
@@ -81,7 +81,7 @@ export function CanvasVersionStrip({
                 loading="lazy"
               />
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[#1a2a1a] to-[#0a1a0a]" />
+              <div className="h-full w-full bg-gradient-to-br from-emerald-950 to-emerald-950" />
             )}
             <span className="absolute bottom-[3px] right-1 text-[8px] font-bold text-white/60">
               {label}

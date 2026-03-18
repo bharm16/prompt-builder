@@ -107,7 +107,7 @@ export function CanvasHeroViewer({
   if (!generation) return null;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#0D0E12]">
+    <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
       <div
         key={generation.id}
         className="relative mx-auto w-full max-w-[780px]"
@@ -131,10 +131,10 @@ export function CanvasHeroViewer({
             />
           )
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-[#1A1C22] to-[#0D0E12] ps-animate-fade-in" />
+          <div className="h-full w-full bg-gradient-to-br from-tool-rail-border to-tool-surface-deep ps-animate-fade-in" />
         )}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
-          <p className="text-[12px] text-[#8B92A5]">{metadata}</p>
+          <p className="text-[12px] text-tool-text-dim">{metadata}</p>
         </div>
       </div>
     </div>

@@ -27,7 +27,7 @@ function GenerationsPanelView({
 
   if (presentation === 'hero') {
     return (
-      <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
+      <div className={cn('flex h-full flex-col overflow-hidden bg-tool-panel-inner', className)}>
         {runtime.keyframeStep.isActive && runtime.keyframeStep.character ? (
           <KeyframeStep
             prompt={prompt}
@@ -38,7 +38,7 @@ function GenerationsPanelView({
           />
         ) : null}
 
-        <div className="flex flex-1 flex-col overflow-y-auto bg-[#0D0E12] p-3">
+        <div className="flex flex-1 flex-col overflow-y-auto bg-tool-surface-deep p-3">
           {runtime.heroGeneration ? (
             <GenerationCard
               generation={runtime.heroGeneration}
@@ -64,10 +64,10 @@ function GenerationsPanelView({
   }
 
   return (
-    <div className={cn('flex h-full flex-col overflow-hidden bg-[#111318]', className)}>
-      <div className="flex items-center justify-between border-b border-[#1A1C22] px-4 py-3.5">
-        <span className="text-[13px] font-semibold text-[#E2E6EF]">Generations</span>
-        <span className="text-[10px] text-[#3A3E4C]">
+    <div className={cn('flex h-full flex-col overflow-hidden bg-tool-panel-inner', className)}>
+      <div className="flex items-center justify-between border-b border-tool-rail-border px-4 py-3.5">
+        <span className="text-[13px] font-semibold text-foreground">Generations</span>
+        <span className="text-[10px] text-tool-text-label">
           {runtime.totalVisibleGenerations > 0
             ? `${runtime.totalVisibleGenerations} output${runtime.totalVisibleGenerations !== 1 ? 's' : ''}`
             : ''}

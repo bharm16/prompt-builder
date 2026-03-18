@@ -57,7 +57,7 @@ export function GenerationFooter({
   const disabledForCredits = !hasSufficientCredits;
 
   return (
-    <footer className="flex h-16 items-center gap-2.5 border-t border-[#1A1C22] bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
+    <footer className="flex h-16 items-center gap-2.5 border-t border-tool-rail-border bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
       {/* ── Model selector (recommendation-aware dropdown) ── */}
       <ModelRecommendationDropdown
         renderModelOptions={renderModelOptions}
@@ -70,13 +70,13 @@ export function GenerationFooter({
       />
 
       {/* ── Credit cost ── */}
-      <span className="whitespace-nowrap text-[11px] tabular-nums text-[#555B6E]">
+      <span className="whitespace-nowrap text-[11px] tabular-nums text-tool-text-subdued">
         {creditCost !== null ? `· ${creditCost} cr` : ''}
         {creditBalance !== null && creditBalance !== undefined ? (
           <span
             className={cn(
               'ml-1',
-              creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-[#555B6E]'
+              creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-tool-text-subdued'
             )}
           >
             · {creditBalance} bal

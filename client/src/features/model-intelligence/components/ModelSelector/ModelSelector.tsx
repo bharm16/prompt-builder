@@ -52,7 +52,7 @@ export function ModelSelector({
   return (
     <div className={cn('space-y-1', className)}>
       {showLabel && (
-        <label className={cn('text-xs text-[#A1AFC5]', labelClassName)}>
+        <label className={cn('text-xs text-ghost', labelClassName)}>
           {label || 'Model'}
         </label>
       )}
@@ -62,7 +62,7 @@ export function ModelSelector({
         disabled={disabled}
         aria-label={ariaLabel ?? (showLabel ? undefined : 'Model')}
         className={cn(
-          'w-full rounded-md border border-[#2A2B31] bg-[#1E1F25] px-2 py-1.5 text-sm text-white',
+          'w-full rounded-md border border-surface-2 bg-tool-nav-active px-2 py-1.5 text-sm text-white',
           selectClassName
         )}
       >

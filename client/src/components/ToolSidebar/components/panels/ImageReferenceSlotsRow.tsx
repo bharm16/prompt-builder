@@ -65,7 +65,7 @@ export function ImageReferenceSlotsRow({
               type="button"
               className={cn(
                 'w-full h-full flex items-center justify-center',
-                'bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
+                'bg-surface-1 rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
                 'overflow-hidden',
                 isEmpty && 'cursor-pointer',
                 isEmpty && !canUpload && 'opacity-60 cursor-not-allowed'
@@ -91,15 +91,15 @@ export function ImageReferenceSlotsRow({
                   event.stopPropagation();
                   onRemoveKeyframe(tile.id);
                 }}
-                className="absolute right-1 top-1 rounded-md bg-[#1B1E23] px-2 py-1 text-[11px] text-[#A1AFC5] shadow-[inset_0_0_0_1px_#2C3037]"
+                className="absolute right-1 top-1 rounded-md bg-surface-1 px-2 py-1 text-[11px] text-ghost shadow-[inset_0_0_0_1px_#2C3037]"
               >
                 Clear
               </button>
             ) : (
-              <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-[#1B1E23] rounded-lg shadow-[inset_0_0_0_1px_#2C3037] group-hover:flex">
+              <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-surface-1 rounded-lg shadow-[inset_0_0_0_1px_#2C3037] group-hover:flex">
                 <button
                   type="button"
-                  className="w-6 h-6 flex items-center justify-center bg-transparent border border-[#2C3037] rounded text-[#A1AFC5] cursor-pointer hover:bg-[#12131A]"
+                  className="w-6 h-6 flex items-center justify-center bg-transparent border border-tool-border-primary rounded text-ghost cursor-pointer hover:bg-tool-panel-inner"
                   aria-label="Sketch your scene"
                   onClick={() => {
                     // placeholder for future sketch flow

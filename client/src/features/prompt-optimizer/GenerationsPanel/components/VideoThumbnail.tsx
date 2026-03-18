@@ -138,8 +138,8 @@ export function VideoThumbnail({
 
   if (isGenerating) {
     return (
-      <div className="group/video relative aspect-video w-full overflow-hidden rounded-[10px] border border-[#4ADE80]/20 bg-[#0D0E12]">
-        <div className="h-full w-full animate-shimmer bg-gradient-to-r from-[#0D0E12] via-[#22252C] to-[#0D0E12] bg-[length:200%_100%]" />
+      <div className="group/video relative aspect-video w-full overflow-hidden rounded-[10px] border border-success-400/20 bg-tool-surface-deep">
+        <div className="h-full w-full animate-shimmer bg-gradient-to-r from-tool-surface-deep via-tool-nav-active to-tool-surface-deep bg-[length:200%_100%]" />
 
         {modelLabel && (
           <div className="absolute left-2 top-2 rounded bg-black/30 px-1.5 py-0.5 text-[10px] font-semibold text-white/40 backdrop-blur-md">
@@ -168,7 +168,7 @@ export function VideoThumbnail({
 
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/[0.06]">
           <div
-            className="h-full bg-[#4ADE80] transition-[width] duration-300 ease-out"
+            className="h-full bg-success-400 transition-[width] duration-300 ease-out"
             style={{ width: `${typeof progressPercent === 'number' ? progressPercent : 0}%` }}
           />
         </div>
@@ -178,17 +178,17 @@ export function VideoThumbnail({
 
   if (isFailed) {
     return (
-      <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-[#22252C] bg-[#0D0E12]">
+      <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-tool-nav-active bg-tool-surface-deep">
         <div className="flex h-full w-full flex-col items-center justify-center gap-1.5">
-          <WarningCircle size={14} className="text-[#EF4444]/40" aria-hidden="true" />
-          <span className="text-[11px] text-[#EF4444]/40">Failed</span>
+          <WarningCircle size={14} className="text-red-500/40" aria-hidden="true" />
+          <span className="text-[11px] text-red-500/40">Failed</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="group/video relative aspect-video w-full overflow-hidden rounded-[10px] border border-[#22252C] bg-[#0D0E12] transition-[border-color] duration-200 hover:border-[#3A3D46]">
+    <div className="group/video relative aspect-video w-full overflow-hidden rounded-[10px] border border-tool-nav-active bg-tool-surface-deep transition-[border-color] duration-200 hover:border-tool-text-disabled">
       {resolvedVideoUrl ? (
         <video
           ref={videoRef}
@@ -249,7 +249,7 @@ export function VideoThumbnail({
           }}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-[11px] text-[#3A3E4C]">
+        <div className="flex h-full w-full items-center justify-center text-[11px] text-tool-text-label">
           No preview
         </div>
       )}
@@ -280,7 +280,7 @@ export function VideoThumbnail({
           <span
             className={cn(
               'rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-md',
-              tier === 'draft' ? 'text-[#4ADE80]/80' : 'text-[#6C5CE7]/80'
+              tier === 'draft' ? 'text-success-400/80' : 'text-tool-accent-selection/80'
             )}
           >
             {tier === 'draft' ? 'Draft' : 'Render'}

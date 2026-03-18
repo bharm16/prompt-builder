@@ -48,7 +48,7 @@ export function CreditOnboardingBanner({
 
   return (
     <section
-      className="motion-presence-panel mx-3 mt-3 rounded-lg border border-[#1A1C22] bg-[#111318] px-3 py-2"
+      className="motion-presence-panel mx-3 mt-3 rounded-lg border border-tool-rail-border bg-tool-panel-inner px-3 py-2"
       data-testid="credit-onboarding-banner"
       data-motion-state="entered"
       aria-live="polite"
@@ -56,7 +56,7 @@ export function CreditOnboardingBanner({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-white">Credits power generation</p>
-          <p className="mt-0.5 text-[11px] text-[#8B92A5]">
+          <p className="mt-0.5 text-[11px] text-tool-text-dim">
             {starterText} You can top up anytime in{' '}
             <Link to="/billing" className="text-white underline underline-offset-2">
               billing
@@ -68,7 +68,7 @@ export function CreditOnboardingBanner({
         <button
           type="button"
           onClick={handleDismiss}
-          className="rounded-md p-1 text-[#8B92A5] transition-[color,background-color,transform] duration-[140ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:bg-[#1A1C22] hover:text-white"
+          className="rounded-md p-1 text-tool-text-dim transition-[color,background-color,transform] duration-[140ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:bg-tool-rail-border hover:text-white"
           aria-label="Dismiss credit onboarding"
         >
           <X className="h-3.5 w-3.5" />

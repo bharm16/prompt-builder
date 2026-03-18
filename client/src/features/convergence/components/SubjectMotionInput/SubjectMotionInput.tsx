@@ -250,8 +250,8 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
           className={cn(
             'relative rounded-lg border transition-all duration-200',
             isFocused
-              ? 'border-[#A1AFC5] ring-2 ring-[#A1AFC5]/20'
-              : 'border-[#29292D] hover:border-[#A1AFC5]/40',
+              ? 'border-ghost ring-2 ring-ghost/20'
+              : 'border-tool-border-dark hover:border-ghost/40',
             isDisabled && 'opacity-50 cursor-not-allowed'
           )}
         >

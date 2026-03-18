@@ -72,8 +72,8 @@ export function ContinuityIntentPicker({
         id: 'frame-bridge' as const,
         label: 'Continue scene',
         description: 'Next shot starts where this one ended',
-        baseClass: 'text-[#22D3EE]',
-        activeClass: 'border-[#22D3EE66] bg-[#22D3EE12] text-[#22D3EE]',
+        baseClass: 'text-cyan-400',
+        activeClass: 'border-cyan-400/40 bg-cyan-400/7 text-cyan-400',
         icon: <BridgeIcon className="h-3 w-3" />,
       },
       {

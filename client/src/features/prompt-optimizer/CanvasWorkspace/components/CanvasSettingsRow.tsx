@@ -64,12 +64,12 @@ function BarBtn({
       type="button"
       onClick={onClick}
       {...buttonProps}
-      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-[#2A2D35] px-2.5 text-xs transition-colors ${
+      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors ${
         accent
-          ? 'bg-[#1C1E26] font-semibold text-[#E2E6EF] hover:bg-[#22252C]'
+          ? 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active'
           : active
-            ? 'bg-[#1C1E26] font-semibold text-[#E2E6EF]'
-            : 'bg-[#1C1E26] font-semibold text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]'
+            ? 'bg-tool-nav-hover font-semibold text-foreground'
+            : 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground'
       } ${className ?? ''}`}
     >
       {children}
@@ -178,7 +178,7 @@ export function CanvasSettingsRow({
 
   return (
     <div
-      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-[#181A20] pt-2.5"
+      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-tool-rail-border pt-2.5"
       data-testid="canvas-settings-row"
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
@@ -216,7 +216,7 @@ export function CanvasSettingsRow({
         ) : null}
 
         {domain.extendVideo ? (
-          <div className="inline-flex h-[30px] items-center gap-1 rounded-full border border-[#2A2D35] bg-[#1C1E26] pl-2.5 pr-1 text-xs font-semibold text-[#E2E6EF]">
+          <div className="inline-flex h-[30px] items-center gap-1 rounded-full border border-surface-2 bg-tool-nav-hover pl-2.5 pr-1 text-xs font-semibold text-foreground">
             <svg
               width="11"
               height="11"
@@ -233,7 +233,7 @@ export function CanvasSettingsRow({
             Extending
             <button
               type="button"
-              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded text-[#8B92A5] transition-colors hover:bg-[#22252C] hover:text-[#E2E6EF]"
+              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded text-tool-text-dim transition-colors hover:bg-tool-nav-active hover:text-foreground"
               onClick={() => storeActions.clearExtendVideo()}
               aria-label="Clear extend mode"
             >
@@ -289,7 +289,7 @@ export function CanvasSettingsRow({
         <button
           type="button"
           data-testid="canvas-preview-button"
-          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-[#2A2D35] bg-[#1C1E26] text-[#E2E6EF] transition-colors hover:bg-[#22252C] hover:text-[#E2E6EF] disabled:cursor-not-allowed disabled:text-[#3A3E4C]"
+          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-surface-2 bg-tool-nav-hover text-foreground transition-colors hover:bg-tool-nav-active hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
           onClick={() => controls?.onStoryboard?.()}
           disabled={previewDisabled}
           aria-label={`Preview storyboard ${STORYBOARD_COST} credits`}
@@ -302,7 +302,7 @@ export function CanvasSettingsRow({
         <button
           type="button"
           data-testid="canvas-generate-button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-[#C3C7D0] text-[#0D0E12] transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
           aria-label={`${isWan ? 'Draft' : 'Generate'} ${creditCost} credits`}

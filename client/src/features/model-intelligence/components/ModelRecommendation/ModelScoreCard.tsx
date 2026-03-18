@@ -14,8 +14,8 @@ interface ModelScoreCardProps {
 }
 
 const variantStyles: Record<string, string> = {
-  primary: 'border-[#3A3A40] bg-[#23242A]',
-  secondary: 'border-[#29292D] bg-[#1E1F25]',
+  primary: 'border-tool-text-disabled bg-tool-nav-active',
+  secondary: 'border-tool-border-dark bg-tool-nav-active',
 };
 
 export function ModelScoreCard({
@@ -31,7 +31,7 @@ export function ModelScoreCard({
       <div className="flex items-center justify-between gap-2">
         <div>
           <div className="text-sm text-white">{label}</div>
-          <div className="text-[11px] text-[#A1AFC5]">{score.overallScore}% match</div>
+          <div className="text-[11px] text-ghost">{score.overallScore}% match</div>
         </div>
         {onSelect && (
           <button
@@ -40,8 +40,8 @@ export function ModelScoreCard({
             className={cn(
               'h-7 px-2 rounded-md text-xs font-semibold',
               variant === 'primary'
-                ? 'bg-white text-[#1A1A1A] hover:opacity-90'
-                : 'border border-[#29292D] text-[#A1AFC5] hover:bg-[#1B1E23]'
+                ? 'bg-white text-tool-surface-deep hover:opacity-90'
+                : 'border border-tool-border-dark text-ghost hover:bg-surface-1'
             )}
           >
             {actionLabel}

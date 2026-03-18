@@ -375,7 +375,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="w-7 h-7 -ml-1 rounded-md flex items-center justify-center text-[#A1AFC5] hover:bg-[#1B1E23]"
+              className="w-7 h-7 -ml-1 rounded-md flex items-center justify-center text-ghost hover:bg-surface-1"
               onClick={onBack}
               aria-label="Back"
             >
@@ -388,7 +388,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
               <TooltipTrigger asChild>
                 <Button
                   onClick={onCreateNew}
-                  className="h-7 px-2.5 bg-[#2C3037] rounded-md text-xs font-medium text-[#A1AFC5]"
+                  className="h-7 px-2.5 bg-surface-2 rounded-md text-xs font-medium text-ghost"
                   variant="ghost"
                   size="sm"
                 >
@@ -410,7 +410,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
 
         <div className="px-4 py-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C839C]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tool-text-placeholder" />
             <Input
               ref={searchInputRef}
               type="text"
@@ -420,9 +420,9 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
               aria-label="Search sessions"
               className={cn(
                 'w-full h-9 pl-9 pr-3 rounded-lg',
-                'bg-[#1E1F25] border border-[#29292D]',
-                'text-sm text-white placeholder:text-[#7C839C]',
-                'focus-visible:border-[#3B82F6] focus-visible:ring-0'
+                'bg-tool-nav-active border border-tool-border-dark',
+                'text-sm text-white placeholder:text-tool-text-placeholder',
+                'focus-visible:border-blue-500 focus-visible:ring-0'
               )}
             />
           </div>
@@ -432,9 +432,9 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 rounded-md border border-[#2C3037] bg-[#1E1F25] text-xs font-medium text-[#A1AFC5]',
-              'transition-colors hover:bg-[#2C3037] hover:text-white',
-              filterState.videosOnly && 'bg-[#2C3037] text-white'
+              'h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost',
+              'transition-colors hover:bg-surface-2 hover:text-white',
+              filterState.videosOnly && 'bg-surface-2 text-white'
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -448,9 +448,9 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 rounded-md border border-[#2C3037] bg-[#1E1F25] text-xs font-medium text-[#A1AFC5]',
-              'transition-colors hover:bg-[#2C3037] hover:text-white',
-              filterState.recentOnly && 'bg-[#2C3037] text-white'
+              'h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost',
+              'transition-colors hover:bg-surface-2 hover:text-white',
+              filterState.recentOnly && 'bg-surface-2 text-white'
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -465,17 +465,17 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {isLoading ? (
-            <div className="text-label-sm text-[#7C839C] flex flex-col items-center gap-2 py-6 text-center">
+            <div className="text-label-sm text-tool-text-placeholder flex flex-col items-center gap-2 py-6 text-center">
               <div className="ps-spinner-sm" />
               <p>Loading...</p>
             </div>
           ) : filteredByChips.length === 0 ? (
             searchQuery ? (
-              <div className="text-label-sm text-[#7C839C] py-6 text-center">
+              <div className="text-label-sm text-tool-text-placeholder py-6 text-center">
                 <p>No results for &quot;{searchQuery}&quot;.</p>
               </div>
             ) : hasActiveFilters ? (
-              <div className="text-label-sm text-[#7C839C] py-6 text-center">
+              <div className="text-label-sm text-tool-text-placeholder py-6 text-center">
                 <p>No prompts match these filters.</p>
               </div>
             ) : (
@@ -540,7 +540,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
                   onClick={() => setShowAllHistory(!showAllHistory)}
                   variant="ghost"
                   size="sm"
-                  className="text-label-sm text-[#7C839C] w-full justify-start"
+                  className="text-label-sm text-tool-text-placeholder w-full justify-start"
                 >
                   {showAllHistory ? 'See less' : 'See more...'}
                 </Button>

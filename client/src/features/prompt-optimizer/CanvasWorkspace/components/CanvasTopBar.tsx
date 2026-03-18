@@ -17,17 +17,17 @@ export function CanvasTopBar({
 
       <button
         type="button"
-        className="inline-flex items-center gap-1 text-[11px] text-[#8B92A5] transition-colors hover:text-[#C0C5D4]"
+        className="inline-flex items-center gap-1 text-[11px] text-tool-text-dim transition-colors hover:text-muted"
       >
         {sessionName}
         <ChevronDown size={10} />
       </button>
 
-      <div className="mx-1 h-4 w-px bg-[#1A1C22]" />
+      <div className="mx-1 h-4 w-px bg-tool-rail-border" />
 
       {typeof credits === 'number' ? (
-        <span className="inline-flex items-center gap-1.5 text-xs text-[#8B92A5]">
-          <span className="h-[5px] w-[5px] rounded-full bg-[#4ADE80]" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-tool-text-dim">
+          <span className="h-[5px] w-[5px] rounded-full bg-success-400" />
           {credits} credits
         </span>
       ) : null}

@@ -202,9 +202,9 @@ export function ModelRecommendation({
 
   if (isLoading) {
     return (
-      <div className={cn('rounded-lg border border-[#29292D] bg-[#1E1F25] p-3', className)}>
-        <div className="h-3 w-32 rounded bg-[#2A2B31] animate-pulse" />
-        <div className="mt-2 h-6 w-full rounded bg-[#2A2B31] animate-pulse" />
+      <div className={cn('rounded-lg border border-tool-border-dark bg-tool-nav-active p-3', className)}>
+        <div className="h-3 w-32 rounded bg-surface-2 animate-pulse" />
+        <div className="mt-2 h-6 w-full rounded bg-surface-2 animate-pulse" />
       </div>
     );
   }
@@ -217,19 +217,19 @@ export function ModelRecommendation({
   const confidenceClass = confidenceStyles[confidenceKey] ?? confidenceStyles.low;
 
   return (
-    <div className={cn('rounded-lg border border-[#29292D] bg-[#1E1F25] p-3', className)}>
+    <div className={cn('rounded-lg border border-tool-border-dark bg-tool-nav-active p-3', className)}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#A1AFC5]">Model Recommendation</span>
+        <span className="text-xs font-semibold text-ghost">Model Recommendation</span>
         <span className={cn('text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide', confidenceClass)}>
           {confidenceKey} confidence
         </span>
       </div>
 
       {requirementSummary && (
-        <div className="mt-1 text-[11px] text-[#7F8CA3]">Prompt requires: {requirementSummary}</div>
+        <div className="mt-1 text-[11px] text-tool-text-dim">Prompt requires: {requirementSummary}</div>
       )}
       {summary.reasoning && (
-        <div className="mt-1 text-[11px] text-[#A1AFC5]">{summary.reasoning}</div>
+        <div className="mt-1 text-[11px] text-ghost">{summary.reasoning}</div>
       )}
 
       {recommendedScore && (
@@ -246,7 +246,7 @@ export function ModelRecommendation({
       {efficientScore && efficient && efficient.modelId !== summary.modelId && (
         <div className="mt-2">
           {efficient.reasoning && (
-            <div className="mb-1 text-[11px] text-[#7F8CA3]">{efficient.reasoning}</div>
+            <div className="mb-1 text-[11px] text-tool-text-dim">{efficient.reasoning}</div>
           )}
           <ModelScoreCard
             score={efficientScore}
@@ -259,7 +259,7 @@ export function ModelRecommendation({
 
       {comparisonModels && canCompare && (
         <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="text-[11px] text-[#7F8CA3]">
+          <div className="text-[11px] text-tool-text-dim">
             Compare {getModelLabel(comparisonModels[0])} vs {getModelLabel(comparisonModels[1])}
           </div>
           <button
@@ -279,7 +279,7 @@ export function ModelRecommendation({
               onCompareModels?.(comparisonModels);
               openComparison(comparisonModels);
             }}
-            className="h-7 px-2 rounded-md border border-[#29292D] text-[#A1AFC5] text-xs font-semibold hover:bg-[#1B1E23]"
+            className="h-7 px-2 rounded-md border border-tool-border-dark text-ghost text-xs font-semibold hover:bg-surface-1"
           >
             {isOpen ? 'Hide' : 'Compare Both'}
           </button>
@@ -298,7 +298,7 @@ export function ModelRecommendation({
       )}
 
       {filteredSummary && (
-        <div className="mt-2 text-[11px] text-[#7F8CA3]">{filteredSummary}</div>
+        <div className="mt-2 text-[11px] text-tool-text-dim">{filteredSummary}</div>
       )}
     </div>
   );

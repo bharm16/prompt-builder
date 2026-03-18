@@ -77,7 +77,7 @@ export function GalleryThumbnail({
     <button
       type="button"
       onClick={onClick}
-      className={`group pointer-events-auto relative aspect-square h-[100px] w-[100px] flex-shrink-0 snap-start overflow-visible rounded-md bg-[#525252] transition-[transform,box-shadow,opacity] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] ${
+      className={`group pointer-events-auto relative aspect-square h-[100px] w-[100px] flex-shrink-0 snap-start overflow-visible rounded-md bg-neutral-600 transition-[transform,box-shadow,opacity] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] ${
         isActive
           ? 'scale-[1.03] opacity-100 shadow-[inset_0_0_0_2px_rgb(0,0,0),0_0_0_2px_rgb(255,255,255)]'
           : 'opacity-85 shadow-none hover:scale-[1.02] hover:opacity-100'
@@ -105,13 +105,13 @@ export function GalleryThumbnail({
             onError={() => setVideoLoadFailed(true)}
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-[#262626] to-[#171717]" />
+          <div className="h-full w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
         )}
       </div>
 
-      <div className="pointer-events-none absolute right-[calc(100%+10px)] top-1/2 z-20 w-[220px] -translate-y-1/2 translate-x-1 rounded-[10px] border border-[#2A2A2A] bg-[#0F0F10]/95 px-3 py-2 opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100">
-        <p className="truncate text-[11px] font-medium text-[#F5F5F5]">{flyoutTitle}</p>
-        <p className="mt-0.5 text-[10px] text-[#9CA3AF]">{flyoutMeta}</p>
+      <div className="pointer-events-none absolute right-[calc(100%+10px)] top-1/2 z-20 w-[220px] -translate-y-1/2 translate-x-1 rounded-[10px] border border-surface-2 bg-tool-surface-deep/95 px-3 py-2 opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100">
+        <p className="truncate text-[11px] font-medium text-foreground">{flyoutTitle}</p>
+        <p className="mt-0.5 text-[10px] text-tool-text-dim">{flyoutMeta}</p>
       </div>
     </button>
   );

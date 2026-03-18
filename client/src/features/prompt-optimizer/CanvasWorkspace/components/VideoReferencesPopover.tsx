@@ -42,8 +42,8 @@ function VideoReferenceRow({
   });
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#0D0E12] px-2 py-1.5">
-      <div className="h-7 w-7 overflow-hidden rounded border border-[#22252C] bg-[#16181E]">
+    <div className="flex items-center gap-2 rounded-lg border border-tool-nav-active bg-tool-surface-deep px-2 py-1.5">
+      <div className="h-7 w-7 overflow-hidden rounded border border-tool-nav-active bg-tool-surface-card">
         <img
           src={resolvedUrl || reference.url}
           alt={`Reference ${index + 1}`}
@@ -55,7 +55,7 @@ function VideoReferenceRow({
         onChange={(event) =>
           onUpdateType(reference.id, event.target.value as 'asset' | 'style')
         }
-        className="h-6 rounded border border-[#2C3037] bg-[#16181E] px-1.5 text-[10px] text-[#A1AFC5]"
+        className="h-6 rounded border border-tool-border-primary bg-tool-surface-card px-1.5 text-[10px] text-ghost"
         aria-label={`Reference type ${index + 1}`}
       >
         <option value="asset">Asset</option>
@@ -63,7 +63,7 @@ function VideoReferenceRow({
       </select>
       <button
         type="button"
-        className="ml-auto flex h-5 w-5 items-center justify-center rounded text-[#555B6E] hover:bg-[#1C1E26] hover:text-[#E2E6EF]"
+        className="ml-auto flex h-5 w-5 items-center justify-center rounded text-tool-text-subdued hover:bg-tool-nav-hover hover:text-foreground"
         onClick={() => onRemove(reference.id)}
         aria-label={`Remove reference ${index + 1}`}
       >
@@ -116,8 +116,8 @@ export function VideoReferencesPopover({
         type="button"
         data-testid="video-references-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
-          'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]',
+          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
+          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
           disabled && 'cursor-not-allowed opacity-60'
         )}
         onClick={() => {
@@ -132,7 +132,7 @@ export function VideoReferencesPopover({
           <Image size={13} />
         </span>
         References
-        <span className="rounded bg-[#1A1C22] px-1.5 py-px text-[10px] text-[#8B92A5]">
+        <span className="rounded bg-tool-rail-border px-1.5 py-px text-[10px] text-tool-text-dim">
           {references.length}/{maxSlots}
         </span>
       </button>
@@ -153,12 +153,12 @@ export function VideoReferencesPopover({
         <div
           role="dialog"
           data-testid="video-references-popover"
-          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[260px] rounded-xl border border-[#22252C] bg-[#16181E] p-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[260px] rounded-xl border border-tool-nav-active bg-tool-surface-card p-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mb-1.5 flex items-center justify-between px-1">
-            <span className="text-[10px] font-semibold tracking-[0.05em] text-[#8B92A5]">REFERENCES</span>
-            <span className="text-[10px] text-[#555B6E]">
+            <span className="text-[10px] font-semibold tracking-[0.05em] text-tool-text-dim">REFERENCES</span>
+            <span className="text-[10px] text-tool-text-subdued">
               {references.length}/{maxSlots}
             </span>
           </div>
@@ -176,7 +176,7 @@ export function VideoReferencesPopover({
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-[#22252C] px-2.5 py-4 text-center text-[11px] text-[#555B6E]">
+            <div className="rounded-lg border border-dashed border-tool-nav-active px-2.5 py-4 text-center text-[11px] text-tool-text-subdued">
               Add reference images for style or character consistency.
             </div>
           )}
@@ -186,8 +186,8 @@ export function VideoReferencesPopover({
             className={cn(
               'mt-2 h-8 w-full rounded-lg border px-2 text-xs font-medium transition-colors',
               canUpload
-                ? 'border-[#2C3037] text-[#8B92A5] hover:border-[#3A3D46] hover:text-[#E2E6EF]'
-                : 'border-[#22252C] text-[#3A3E4C]'
+                ? 'border-tool-border-primary text-tool-text-dim hover:border-tool-text-disabled hover:text-foreground'
+                : 'border-tool-nav-active text-tool-text-label'
             )}
             onClick={() => {
               if (!canUpload) return;

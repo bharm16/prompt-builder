@@ -176,15 +176,15 @@ export const GenerationCard = memo(function GenerationCard({
       )}
 
       {hasSelectedFrame && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#16181E] px-3 py-2">
-          <Check size={14} weight="bold" className="text-[#6C5CE7]" aria-hidden="true" />
-          <span className="flex-1 text-xs font-medium text-[#8B92A5]">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 py-2">
+          <Check size={14} weight="bold" className="text-tool-accent-selection" aria-hidden="true" />
+          <span className="flex-1 text-xs font-medium text-tool-text-dim">
             Frame selected as start frame
           </span>
           {onClearSelectedFrame && (
             <button
               type="button"
-              className="text-[#555B6E] transition-colors hover:text-[#8B92A5]"
+              className="text-tool-text-subdued transition-colors hover:text-tool-text-dim"
               onClick={(event) => {
                 event.stopPropagation();
                 onClearSelectedFrame();
@@ -198,17 +198,17 @@ export const GenerationCard = memo(function GenerationCard({
       )}
 
       {generation.faceSwapUrl && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#22252C] bg-[#16181E] px-3 py-2">
-          <div className="h-10 w-10 overflow-hidden rounded-md border border-[#22252C]">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 py-2">
+          <div className="h-10 w-10 overflow-hidden rounded-md border border-tool-nav-active">
             <ImagePreview src={generation.faceSwapUrl} alt="Face swap preview" />
           </div>
-          <span className="flex-1 text-xs font-medium text-[#8B92A5]">Face swap applied</span>
+          <span className="flex-1 text-xs font-medium text-tool-text-dim">Face swap applied</span>
         </div>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-1.5">
         {generation.status === 'failed' && (
-          <span className="mr-auto inline-flex items-center gap-1 text-label-sm font-medium text-[#EF4444]/40">
+          <span className="mr-auto inline-flex items-center gap-1 text-label-sm font-medium text-red-500/40">
             <WarningCircle size={14} aria-hidden="true" />
             {generation.error ?? 'Generation failed'}
           </span>
@@ -218,7 +218,7 @@ export const GenerationCard = memo(function GenerationCard({
           <Button
             type="button"
             variant="ghost"
-            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            className="h-6 gap-1 rounded-[5px] border border-tool-nav-active bg-transparent px-2 text-[11px] font-medium text-tool-text-subdued transition-colors hover:border-tool-text-disabled hover:text-tool-text-dim"
             onClick={(event) => {
               event.stopPropagation();
               onRetry(generation);
@@ -232,7 +232,7 @@ export const GenerationCard = memo(function GenerationCard({
           <Button
             type="button"
             variant="ghost"
-            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            className="h-6 gap-1 rounded-[5px] border border-tool-nav-active bg-transparent px-2 text-[11px] font-medium text-tool-text-subdued transition-colors hover:border-tool-text-disabled hover:text-tool-text-dim"
             onClick={(event) => {
               event.stopPropagation();
               onDownload(generation);
@@ -246,7 +246,7 @@ export const GenerationCard = memo(function GenerationCard({
           <Button
             type="button"
             variant="ghost"
-            className="h-6 gap-1 rounded-[5px] border border-[#22252C] bg-transparent px-2 text-[11px] font-medium text-[#555B6E] transition-colors hover:border-[#3A3D46] hover:text-[#8B92A5]"
+            className="h-6 gap-1 rounded-[5px] border border-tool-nav-active bg-transparent px-2 text-[11px] font-medium text-tool-text-subdued transition-colors hover:border-tool-text-disabled hover:text-tool-text-dim"
             onClick={(event) => {
               event.stopPropagation();
               onExtend(generation);
@@ -263,7 +263,7 @@ export const GenerationCard = memo(function GenerationCard({
             label="Continue as Sequence"
             className={cn(
               showRetry || showDownload ? '' : 'ml-auto',
-              '[&>button]:h-6 [&>button]:rounded-[5px] [&>button]:border [&>button]:border-[#22252C] [&>button]:bg-transparent [&>button]:px-2 [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-[#555B6E] [&>button]:transition-colors [&>button]:hover:border-[#3A3D46] [&>button]:hover:text-[#8B92A5] [&>button]:disabled:border-[#22252C] [&>button]:disabled:text-[#3A3E4C]'
+              '[&>button]:h-6 [&>button]:rounded-[5px] [&>button]:border [&>button]:border-tool-nav-active [&>button]:bg-transparent [&>button]:px-2 [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-tool-text-subdued [&>button]:transition-colors [&>button]:hover:border-tool-text-disabled [&>button]:hover:text-tool-text-dim [&>button]:disabled:border-tool-nav-active [&>button]:disabled:text-tool-text-label'
             )}
           />
         )}

@@ -182,10 +182,10 @@ function Radio({ on }: { on: boolean }) {
       className={cn(
         "h-[18px] w-[18px] flex-none rounded-full border-2 transition-colors",
         "flex items-center justify-center",
-        on ? "border-white bg-white" : "border-[#3A3D46] bg-transparent",
+        on ? "border-white bg-white" : "border-tool-text-disabled bg-transparent",
       )}
     >
-      {on && <div className="h-[7px] w-[7px] rounded-full bg-[#13151C]" />}
+      {on && <div className="h-[7px] w-[7px] rounded-full bg-tool-surface-card" />}
     </div>
   );
 }
@@ -224,7 +224,7 @@ function ListRow({
       role="option"
       aria-selected={selected}
       onClick={() => onSelect(model.id)}
-      className="flex w-full gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#ffffff06]"
+      className="flex w-full gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
     >
       <div className="pt-[3px]">
         <Radio on={selected} />
@@ -234,23 +234,23 @@ function ListRow({
           <span
             className={cn(
               "text-[14px] leading-tight",
-              selected ? "font-bold text-white" : "font-medium text-[#CDD1DC]",
+              selected ? "font-bold text-white" : "font-medium text-muted",
             )}
           >
             {model.label}
           </span>
           {recInfo?.isTop && (
-            <Star className="h-3 w-3 text-[#FBBF24]" weight="fill" />
+            <Star className="h-3 w-3 text-amber-400" weight="fill" />
           )}
         </div>
-        <span className="text-[12px] leading-relaxed text-[#4A5068]">
+        <span className="text-[12px] leading-relaxed text-tool-text-dim">
           {meta.strength}
         </span>
         <div className="flex items-center gap-3 pt-1">
           <Pips filled={r.quality} color="#CDD1DC" />
           <Pips filled={r.speed} color="#FBBF24" />
           <div className="flex-1" />
-          <span className="tabular-nums text-[12px] text-[#4A5068]">
+          <span className="tabular-nums text-[12px] text-tool-text-dim">
             ~{model.cost}{" "}
             <span className="text-[10px] opacity-60">cr</span>
           </span>
@@ -288,40 +288,40 @@ function ModelCard({
       className={cn(
         "flex flex-col overflow-hidden rounded-xl text-left transition-shadow",
         selected
-          ? "ring-2 ring-[#6C5CE7] ring-offset-2 ring-offset-[#13151C]"
-          : "ring-1 ring-[#1E2030] hover:ring-[#3A3D46]",
+          ? "ring-2 ring-tool-accent-selection ring-offset-2 ring-offset-tool-surface-card"
+          : "ring-1 ring-tool-nav-active hover:ring-tool-text-disabled",
       )}
     >
       {/* Gradient header (thumbnail placeholder) */}
       <div className="relative h-36 w-full" style={{ background: gradient }}>
         {recInfo?.isTop && (
           <div className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black/40">
-            <Star className="h-3.5 w-3.5 text-[#FBBF24]" weight="fill" />
+            <Star className="h-3.5 w-3.5 text-amber-400" weight="fill" />
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="flex flex-col gap-2 bg-[#16181F] px-4 pb-4 pt-3.5">
+      <div className="flex flex-col gap-2 bg-tool-surface-card px-4 pb-4 pt-3.5">
         <div className="flex items-center gap-2">
           <Radio on={selected} />
           <span
             className={cn(
               "text-[15px] leading-tight",
-              selected ? "font-bold text-white" : "font-semibold text-[#CDD1DC]",
+              selected ? "font-bold text-white" : "font-semibold text-muted",
             )}
           >
             {model.label}
           </span>
         </div>
-        <span className="text-[12.5px] leading-relaxed text-[#4A5068]">
+        <span className="text-[12.5px] leading-relaxed text-tool-text-dim">
           {meta.strength}
         </span>
         <div className="flex items-center gap-3 pt-0.5">
           <Pips filled={r.quality} color="#CDD1DC" />
           <Pips filled={r.speed} color="#FBBF24" />
           <div className="flex-1" />
-          <span className="tabular-nums text-[13px] text-[#4A5068]">
+          <span className="tabular-nums text-[13px] text-tool-text-dim">
             ~{model.cost}{" "}
             <span className="text-[11px] opacity-60">cr</span>
           </span>
@@ -514,9 +514,9 @@ export function ModelRecommendationDropdown({
           onMouseEnter={onEnterTrigger}
           onMouseLeave={onLeaveTrigger}
           className={cn(
-            "flex h-9 items-center gap-1.5 rounded-lg border border-[#22252C] bg-[#16181E] px-3 text-xs font-semibold text-[#E2E6EF] transition-[border-color,transform,background-color]",
-            "duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:border-[#3A3D46]",
-            mode !== "closed" && "border-[#6C5CE7]",
+            "flex h-9 items-center gap-1.5 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 text-xs font-semibold text-foreground transition-[border-color,transform,background-color]",
+            "duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:border-tool-text-disabled",
+            mode !== "closed" && "border-tool-accent-selection",
             triggerClassName,
           )}
           aria-haspopup="listbox"
@@ -524,14 +524,14 @@ export function ModelRecommendationDropdown({
           aria-label={triggerAriaLabel ?? "Video model"}
         >
           {triggerPrefixLabel && (
-            <span className="text-[11px] font-medium text-[#555B6E]">
+            <span className="text-[11px] font-medium text-tool-text-subdued">
               {triggerPrefixLabel}
             </span>
           )}
           {current?.label ?? "Model"}
           <CaretDown
             className={cn(
-              "h-2.5 w-2.5 text-[#8B92A5] transition-transform",
+              "h-2.5 w-2.5 text-tool-text-dim transition-transform",
               mode !== "closed" && "rotate-180",
             )}
           />
@@ -548,7 +548,7 @@ export function ModelRecommendationDropdown({
             role="listbox"
             aria-label="Model selection"
             style={listStyle}
-            className="motion-presence-panel z-[9999] overflow-y-auto overflow-x-hidden rounded-xl border border-[#1E2030] bg-[#13151C] py-1 shadow-[0_16px_48px_rgba(0,0,0,0.6)] ps-animate-scale-in"
+            className="motion-presence-panel z-[9999] overflow-y-auto overflow-x-hidden rounded-xl border border-tool-nav-active bg-tool-surface-card py-1 shadow-[0_16px_48px_rgba(0,0,0,0.6)] ps-animate-scale-in"
             data-motion-state="entered"
             onMouseEnter={onEnterList}
             onMouseLeave={onLeaveList}
@@ -557,13 +557,13 @@ export function ModelRecommendationDropdown({
             <button
               type="button"
               onClick={() => setMode("cards")}
-              className="flex w-full items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium text-[#8B92A5] transition-colors hover:text-white"
+              className="flex w-full items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium text-tool-text-dim transition-colors hover:text-white"
             >
               Click to view all models
               <CaretDown className="h-3 w-3" />
             </button>
 
-            <div className="mx-3.5 h-px bg-[#1E2030]" />
+            <div className="mx-3.5 h-px bg-tool-nav-active" />
 
             {sorted.map((m) => (
               <ListRow
@@ -577,16 +577,16 @@ export function ModelRecommendationDropdown({
 
             {unavail.length > 0 && (
               <>
-                <div className="mx-3.5 h-px bg-[#1E2030]" />
+                <div className="mx-3.5 h-px bg-tool-nav-active" />
                 {unavail.map((e) => (
                   <div
                     key={e.id}
                     className="flex items-center gap-2 px-4 py-2 opacity-40"
                   >
-                    <WarningCircle className="h-4 w-4 flex-none text-[#FBBF24]" />
-                    <span className="text-[13px] text-[#4A5068]">{e.label}</span>
+                    <WarningCircle className="h-4 w-4 flex-none text-amber-400" />
+                    <span className="text-[13px] text-tool-text-dim">{e.label}</span>
                     <div className="flex-1" />
-                    <span className="text-[10px] italic text-[#3A3E4C]">
+                    <span className="text-[10px] italic text-tool-text-label">
                       {e.reason}
                     </span>
                   </div>
@@ -613,12 +613,12 @@ export function ModelRecommendationDropdown({
             {/* Scrollable card panel */}
             <div className="fixed inset-0 z-[9999] overflow-y-auto">
               <div className="flex min-h-full items-start justify-center px-6 py-16">
-                <div className="motion-presence-panel relative w-full max-w-[900px] rounded-2xl border border-[#1E2030] bg-[#13151C] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)] ps-animate-scale-in" data-motion-state="entered">
+                <div className="motion-presence-panel relative w-full max-w-[900px] rounded-2xl border border-tool-nav-active bg-tool-surface-card p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)] ps-animate-scale-in" data-motion-state="entered">
                   {/* Close */}
                   <button
                     type="button"
                     onClick={() => setMode("closed")}
-                    className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full text-[#4A5068] transition-colors hover:bg-[#1E2030] hover:text-white"
+                    className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full text-tool-text-dim transition-colors hover:bg-tool-nav-active hover:text-white"
                   >
                     <X className="h-5 w-5" weight="bold" />
                   </button>
@@ -629,7 +629,7 @@ export function ModelRecommendationDropdown({
                       <h3 className="text-[18px] font-bold text-white">
                         Render Models
                       </h3>
-                      <p className="mb-5 mt-1 text-[13px] text-[#4A5068]">
+                      <p className="mb-5 mt-1 text-[13px] text-tool-text-dim">
                         High-quality models for final production output.
                       </p>
                       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -652,7 +652,7 @@ export function ModelRecommendationDropdown({
                       <h3 className="text-[18px] font-bold text-white">
                         Draft Models
                       </h3>
-                      <p className="mb-5 mt-1 text-[13px] text-[#4A5068]">
+                      <p className="mb-5 mt-1 text-[13px] text-tool-text-dim">
                         Fast, affordable models for previewing and iterating.
                       </p>
                       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -671,22 +671,22 @@ export function ModelRecommendationDropdown({
 
                   {/* Unavailable */}
                   {unavail.length > 0 && (
-                    <section className="mt-10 border-t border-[#1E2030] pt-6">
-                      <h3 className="mb-4 text-[14px] font-semibold text-[#4A5068]">
+                    <section className="mt-10 border-t border-tool-nav-active pt-6">
+                      <h3 className="mb-4 text-[14px] font-semibold text-tool-text-dim">
                         Unavailable
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
                         {unavail.map((e) => (
                           <div
                             key={e.id}
-                            className="flex items-center gap-3 rounded-xl bg-[#16181F] px-4 py-3 opacity-50"
+                            className="flex items-center gap-3 rounded-xl bg-tool-surface-card px-4 py-3 opacity-50"
                           >
-                            <WarningCircle className="h-5 w-5 flex-none text-[#FBBF24]" />
+                            <WarningCircle className="h-5 w-5 flex-none text-amber-400" />
                             <div>
-                              <div className="text-[14px] font-medium text-[#6B7186]">
+                              <div className="text-[14px] font-medium text-tool-text-dim">
                                 {e.label}
                               </div>
-                              <div className="text-[11px] italic text-[#3A3E4C]">
+                              <div className="text-[11px] italic text-tool-text-label">
                                 {e.reason}
                               </div>
                             </div>

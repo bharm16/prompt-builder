@@ -87,8 +87,8 @@ export function StartFramePopover({
         type="button"
         data-testid="start-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-[#2A2D35] px-2.5 text-xs font-semibold transition-colors',
-          'bg-[#1C1E26] text-[#E2E6EF] hover:bg-[#22252C] hover:text-[#E2E6EF]',
+          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
+          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
           disabled && 'cursor-not-allowed opacity-60'
         )}
         onClick={() => {
@@ -102,12 +102,12 @@ export function StartFramePopover({
         {previewUrl ? (
           <>
             <div
-              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-[#22252C] bg-cover bg-center"
+              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-tool-nav-active bg-cover bg-center"
               style={{ backgroundImage: `url(${previewUrl})` }}
             />
-            <span className="text-xs text-[#E2E6EF]">Start frame</span>
+            <span className="text-xs text-foreground">Start frame</span>
             {cameraMotion?.label ? (
-              <span className="rounded bg-[#6C5CE711] px-[5px] py-px text-[10px] font-semibold text-[#6C5CE7]">
+              <span className="rounded bg-tool-accent-selection/5 px-[5px] py-px text-[10px] font-semibold text-tool-accent-selection">
                 {cameraMotion.label}
               </span>
             ) : null}
@@ -116,7 +116,7 @@ export function StartFramePopover({
           <>
             <span className="relative flex h-[13px] w-[13px]">
               <Image size={13} />
-              <Plus size={8} className="absolute -bottom-1 -right-1 rounded-full bg-[#141519] p-[1px]" />
+              <Plus size={8} className="absolute -bottom-1 -right-1 rounded-full bg-tool-surface-prompt-compact p-[1px]" />
             </span>
             Start frame
           </>
@@ -140,13 +140,13 @@ export function StartFramePopover({
         <div
           role="dialog"
           data-testid="start-frame-popover"
-          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[220px] overflow-hidden rounded-xl border border-[#22252C] bg-[#16181E] shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-[calc(100%+8px)] left-0 z-[100] w-[220px] overflow-hidden rounded-xl border border-tool-nav-active bg-tool-surface-card shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-bottom-2"
           onClick={(e) => e.stopPropagation()}
         >
           {previewUrl ? (
             <>
               {/* Thumbnail with close button */}
-              <div className="relative aspect-video bg-[#0D0E12]">
+              <div className="relative aspect-video bg-tool-surface-deep">
                 <img
                   src={previewUrl}
                   alt="Start frame"
@@ -164,7 +164,7 @@ export function StartFramePopover({
 
               {/* Camera motion pills */}
               <div className="px-2.5 py-2">
-                <div className="mb-1.5 text-[10px] font-semibold tracking-[0.06em] text-[#3A3E4C]">
+                <div className="mb-1.5 text-[10px] font-semibold tracking-[0.06em] text-tool-text-label">
                   CAMERA MOTION
                 </div>
                 <button
@@ -173,8 +173,8 @@ export function StartFramePopover({
                   className={cn(
                     'h-[26px] rounded-md border px-2 text-[11px] transition-colors',
                     cameraMotion
-                      ? 'border-[#6C5CE766] bg-[#6C5CE715] text-[#6C5CE7]'
-                      : 'border-[#22252C] text-[#8B92A5] hover:border-[#3A3D46]'
+                      ? 'border-tool-accent-selection/40 bg-tool-accent-selection/8 text-tool-accent-selection'
+                      : 'border-tool-nav-active text-tool-text-dim hover:border-tool-text-disabled'
                   )}
                   onClick={onOpenMotion}
                 >
@@ -187,18 +187,18 @@ export function StartFramePopover({
             <div className="p-4 text-center">
               <button
                 type="button"
-                className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-[#22252C] py-5 transition-colors hover:border-[#3A3D46]"
+                className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-tool-nav-active py-5 transition-colors hover:border-tool-text-disabled"
                 onClick={() => inputRef.current?.click()}
                 disabled={isUploading}
               >
-                <span className="flex text-[#3A3E4C]">
+                <span className="flex text-tool-text-label">
                   <Image size={13} />
                 </span>
-                <span className="text-[11px] text-[#555B6E]">
+                <span className="text-[11px] text-tool-text-subdued">
                   {isUploading ? 'Uploading…' : 'Drop image or click to upload'}
                 </span>
               </button>
-              <span className="mt-2 block text-[10px] text-[#3A3E4C]">
+              <span className="mt-2 block text-[10px] text-tool-text-label">
                 Or select from storyboard previews
               </span>
             </div>

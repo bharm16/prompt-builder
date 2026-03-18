@@ -472,7 +472,7 @@ export function SequenceWorkspace({
     (domain.cameraMotion ? cameraPathToShotCamera(domain.cameraMotion) : null);
 
   return (
-    <main id="main-content" className="flex h-full min-h-0 flex-col bg-[#111318]">
+    <main id="main-content" className="flex h-full min-h-0 flex-col bg-tool-panel-inner">
       <header className="flex h-12 items-center border-b border-border px-3">
         <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
           Sequence
@@ -551,7 +551,7 @@ export function SequenceWorkspace({
                     onError={handlePreviewImageError}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[#161A21]">
+                  <div className="flex h-full w-full items-center justify-center bg-tool-surface-card">
                     <span className="text-xs text-muted">No proxy preview yet</span>
                   </div>
                 )}

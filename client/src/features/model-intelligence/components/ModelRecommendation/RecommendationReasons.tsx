@@ -32,19 +32,19 @@ export function RecommendationReasons({
   }
 
   return (
-    <div className="mt-2 space-y-1 text-[11px] text-[#7F8CA3]">
+    <div className="mt-2 space-y-1 text-[11px] text-tool-text-dim">
       {reasons.map((reason) => (
         <div key={reason}>• {reason}</div>
       ))}
       {showWeaknesses &&
         score.weaknesses.slice(0, 1).map((weakness) => (
-          <div key={weakness} className="text-[#C08F4A]">
+          <div key={weakness} className="text-amber-600">
             • {weakness}
           </div>
         ))}
       {showWarnings &&
         score.warnings.slice(0, 1).map((warning) => (
-          <div key={warning} className="text-[#C06A6A]">
+          <div key={warning} className="text-red-400">
             • {warning}
           </div>
         ))}

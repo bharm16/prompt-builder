@@ -201,12 +201,12 @@ export function CanvasPromptBar({
       <div
         className={cn(
           'motion-safe-transition rounded-[24px] border transition-[border-color,background-color,box-shadow,transform]',
-          isEmptyLayout ? 'bg-[#15161B] px-5 pb-3 pt-5' : 'bg-[#141519] px-4 py-3',
+          isEmptyLayout ? 'bg-tool-surface-prompt px-5 pb-3 pt-5' : 'bg-tool-surface-prompt-compact px-4 py-3',
           isFocused
-            ? 'border-[#6C5CE744] shadow-[0_0_0_1px_rgba(108,92,231,0.12),0_16px_48px_rgba(0,0,0,0.34)] -translate-y-px'
+            ? 'border-tool-accent-selection/25 shadow-[0_0_0_1px_rgba(108,92,231,0.12),0_16px_48px_rgba(0,0,0,0.34)] -translate-y-px'
             : isEmptyLayout
-              ? 'border-[#22252C] shadow-[0_4px_24px_rgba(0,0,0,0.25)]'
-              : 'border-[#22252C] shadow-none'
+              ? 'border-tool-nav-active shadow-[0_4px_24px_rgba(0,0,0,0.25)]'
+              : 'border-tool-nav-active shadow-none'
         )}
         onClick={() => {
           editorRef.current?.focus();
@@ -219,8 +219,8 @@ export function CanvasPromptBar({
             className={cn(
               'ps-scrollbar-hide max-h-[180px] overflow-y-auto outline-none [&:empty]:min-h-[56px]',
               isEmptyLayout
-                ? 'min-h-[56px] text-[15px] leading-[1.7] text-[#E2E6EF] caret-[#6C5CE7]'
-                : 'min-h-[56px] text-sm leading-[1.75] text-[#8B92A5]'
+                ? 'min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-tool-accent-selection'
+                : 'min-h-[56px] text-sm leading-[1.75] text-tool-text-dim'
             )}
             placeholder="Describe a video and click generate..."
             onTextSelection={onTextSelection}
@@ -254,25 +254,25 @@ export function CanvasPromptBar({
 
         {shouldRenderSuggestionTray ? (
           <div
-            className="motion-presence-panel mt-2.5 border-t border-[#22252C] pt-2.5"
+            className="motion-presence-panel mt-2.5 border-t border-tool-nav-active pt-2.5"
             data-motion-state={suggestionTrayPhase}
             data-testid="canvas-suggestion-tray"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[10px] font-semibold tracking-[0.05em] text-[#8B92A5]">
+                <span className="truncate text-[10px] font-semibold tracking-[0.05em] text-tool-text-dim">
                   {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                 </span>
                 <span
                   key={suggestionCount}
-                  className="motion-count-bump rounded-full bg-[#1A1C22] px-2 py-0.5 text-[9px] font-semibold text-[#555B6E]"
+                  className="motion-count-bump rounded-full bg-tool-rail-border px-2 py-0.5 text-[9px] font-semibold text-tool-text-subdued"
                 >
                   {suggestionCount}
                 </span>
                 {debugPayload ? (
                   <button
                     type="button"
-                    className="rounded-md px-2 py-1 text-[10px] font-medium text-[#555B6E] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleCopyDebug();
@@ -284,7 +284,7 @@ export function CanvasPromptBar({
                 {import.meta.env.DEV && onCopyAllDebug ? (
                   <button
                     type="button"
-                    className="rounded-md px-2 py-1 text-[10px] font-medium text-[#555B6E] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                    className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
                     onClick={(event) => {
                       event.stopPropagation();
                       onCopyAllDebug();
@@ -298,7 +298,7 @@ export function CanvasPromptBar({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-[10px] font-medium text-[#555B6E] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                  className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
                   onClick={(event) => {
                     event.stopPropagation();
                     setIsSuggestionTrayCollapsed((prev) => !prev);
@@ -308,7 +308,7 @@ export function CanvasPromptBar({
                 </button>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-[#3A3E4C] transition-colors hover:bg-[#1A1C22] hover:text-[#8B92A5]"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-tool-text-label transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCloseInlinePopover();
@@ -322,7 +322,7 @@ export function CanvasPromptBar({
 
             {!isSuggestionTrayCollapsed ? (
               <>
-                <div className="border-b border-[#1A1C22] pb-2" data-suggest-custom>
+                <div className="border-b border-tool-rail-border pb-2" data-suggest-custom>
                   <form className="flex items-center gap-2" onSubmit={onCustomRequestSubmit}>
                     <Textarea
                       id="inline-custom-request"
@@ -334,7 +334,7 @@ export function CanvasPromptBar({
                         }
                       }}
                       placeholder="Add a specific change (e.g. football field)"
-                      className="min-h-9 flex-1 resize-none rounded-lg border border-[#22252C] bg-[#141519] px-3 py-2 text-xs text-[#E2E6EF] placeholder:text-[#555B6E] focus-visible:ring-2 focus-visible:ring-[#6C5CE744] focus-visible:ring-offset-0"
+                      className="min-h-9 flex-1 resize-none rounded-lg border border-tool-nav-active bg-tool-surface-prompt-compact px-3 py-2 text-xs text-foreground placeholder:text-tool-text-subdued focus-visible:ring-2 focus-visible:ring-tool-accent-selection/25 focus-visible:ring-offset-0"
                       maxLength={MAX_REQUEST_LENGTH}
                       rows={1}
                       aria-label="Custom suggestion request"
@@ -342,7 +342,7 @@ export function CanvasPromptBar({
                     <button
                       type="submit"
                       className={cn(
-                        'h-9 rounded-lg border border-[#6C5CE744] bg-[#6C5CE7] px-3 text-xs font-semibold text-[#0D0E12] transition-opacity hover:opacity-90',
+                        'h-9 rounded-lg border border-tool-accent-selection/25 bg-tool-accent-selection px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90',
                         isCustomRequestDisabled && 'opacity-50'
                       )}
                       disabled={isCustomRequestDisabled}
@@ -375,15 +375,15 @@ export function CanvasPromptBar({
                     reason={resolvedI2VReason}
                     motionAlternatives={i2vMotionAlternatives}
                     onSelectAlternative={onLockedAlternativeClick}
-                    className="mt-2 border-[#22252C] bg-[#16181E]"
+                    className="mt-2 border-tool-nav-active bg-tool-surface-card"
                   />
                 ) : null}
 
                 {isInlineLoading ? (
                   <div className="mt-2 flex gap-2">
-                    <div className="h-8 w-24 animate-pulse rounded-lg bg-[#1A1C22]" />
-                    <div className="h-8 w-32 animate-pulse rounded-lg bg-[#1A1C22]" />
-                    <div className="h-8 w-20 animate-pulse rounded-lg bg-[#1A1C22]" />
+                    <div className="h-8 w-24 animate-pulse rounded-lg bg-tool-rail-border" />
+                    <div className="h-8 w-32 animate-pulse rounded-lg bg-tool-rail-border" />
+                    <div className="h-8 w-20 animate-pulse rounded-lg bg-tool-rail-border" />
                   </div>
                 ) : null}
 
@@ -400,8 +400,8 @@ export function CanvasPromptBar({
                         className={cn(
                           'flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-[transform,border-color,color,background-color] duration-[160ms] [transition-timing-function:var(--motion-ease-standard)]',
                           activeSuggestionIndex === index
-                            ? 'border-[#6C5CE7]/50 bg-[#6C5CE7]/10 text-[#E2E6EF] -translate-y-px'
-                            : 'border-[#22252C] bg-[#141519] text-[#8B92A5] hover:-translate-y-px hover:border-[#3A3E4C] hover:text-[#E2E6EF]'
+                            ? 'border-tool-accent-selection/50 bg-tool-accent-selection/10 text-foreground -translate-y-px'
+                            : 'border-tool-nav-active bg-tool-surface-prompt-compact text-tool-text-dim hover:-translate-y-px hover:border-tool-text-label hover:text-foreground'
                         )}
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => {
@@ -415,11 +415,11 @@ export function CanvasPromptBar({
                       >
                         {suggestion.text}
                         {index === 0 ? (
-                          <span className="ml-1.5 text-[9px] font-semibold text-[#6C5CE7]">
+                          <span className="ml-1.5 text-[9px] font-semibold text-tool-accent-selection">
                             Best
                           </span>
                         ) : suggestion.meta ? (
-                          <span className="ml-1.5 text-[9px] text-[#555B6E]">
+                          <span className="ml-1.5 text-[9px] text-tool-text-subdued">
                             {suggestion.meta}
                           </span>
                         ) : null}
@@ -429,13 +429,13 @@ export function CanvasPromptBar({
                 ) : null}
 
                 {isInlineEmpty ? (
-                  <div className="mt-2 text-xs text-[#555B6E]">No suggestions yet.</div>
+                  <div className="mt-2 text-xs text-tool-text-subdued">No suggestions yet.</div>
                 ) : null}
 
-                <div className="mt-2 flex items-center gap-2 border-t border-[#1A1C22] pt-2">
+                <div className="mt-2 flex items-center gap-2 border-t border-tool-rail-border pt-2">
                   <button
                     type="button"
-                    className="h-8 rounded-lg border border-[#22252C] bg-transparent px-3 text-xs font-semibold text-[#8B92A5] transition-colors hover:border-[#3A3E4C] hover:text-[#E2E6EF]"
+                    className="h-8 rounded-lg border border-tool-nav-active bg-transparent px-3 text-xs font-semibold text-tool-text-dim transition-colors hover:border-tool-text-label hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onCloseInlinePopover();
@@ -446,7 +446,7 @@ export function CanvasPromptBar({
                   <button
                     type="button"
                     className={cn(
-                      'h-8 rounded-lg border border-[#6C5CE744] bg-[#6C5CE7] px-3 text-xs font-semibold text-[#0D0E12] transition-opacity hover:opacity-90',
+                      'h-8 rounded-lg border border-tool-accent-selection/25 bg-tool-accent-selection px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90',
                       suggestionCount === 0 && 'opacity-50'
                     )}
                     onClick={(event) => {

@@ -26,7 +26,7 @@ export function ImageSubTabToolbar({
       {showCloseButton && (
         <button
           type="button"
-          className="flex items-center justify-center w-7 h-7 bg-transparent border border-[#2C3037] rounded-md text-[#A1AFC5] cursor-pointer overflow-hidden hover:bg-[#1B1E23]"
+          className="flex items-center justify-center w-7 h-7 bg-transparent border border-tool-border-primary rounded-md text-ghost cursor-pointer overflow-hidden hover:bg-surface-1"
           aria-label="Close Panel"
           onClick={onClose}
         >
