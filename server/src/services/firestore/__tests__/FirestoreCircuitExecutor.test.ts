@@ -157,7 +157,6 @@ describe('FirestoreCircuitExecutor', () => {
         kind: 'write',
         attempt: 1,
         maxAttempts: 3,
-        delayMs: 120,
       })
     );
   });

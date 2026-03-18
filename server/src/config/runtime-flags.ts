@@ -20,7 +20,9 @@ function resolveProcessRole(env: NodeJS.ProcessEnv): 'api' | 'worker' {
     return configured;
   }
 
-  return env.NODE_ENV === 'production' ? 'api' : 'worker';
+  // Default to 'api' in all environments.
+  // Workers must be explicitly started with PROCESS_ROLE=worker.
+  return 'api';
 }
 
 function resolvePositiveInt(value: string | undefined, fallback: number): number {

@@ -1,5 +1,7 @@
 import CircuitBreaker from 'opossum';
 import { logger } from '@infrastructure/Logger';
+import { RetryPolicy } from '@utils/RetryPolicy';
+import { isTransientFirestoreError } from '@utils/transientErrors';
 import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
 
 const DEFAULT_TIMEOUT_MS = 3_000;
@@ -11,30 +13,6 @@ const DEFAULT_RETRY_BASE_DELAY_MS = 120;
 const DEFAULT_RETRY_JITTER_MS = 80;
 const DEFAULT_READINESS_MAX_FAILURE_RATE = 0.5;
 const DEFAULT_READINESS_MAX_LATENCY_MS = 1_500;
-
-const TRANSIENT_FIRESTORE_CODES = new Set([
-  'aborted',
-  'cancelled',
-  'deadline-exceeded',
-  'internal',
-  'resource-exhausted',
-  'unavailable',
-  'unknown',
-]);
-
-const TRANSIENT_MESSAGE_HINTS = [
-  'timed out',
-  'timeout',
-  'etimedout',
-  'econnreset',
-  'service unavailable',
-  'temporarily unavailable',
-  'resource exhausted',
-  'rate limit',
-  '429',
-  'deadline exceeded',
-  'connection reset',
-];
 
 type FirestoreOperation = () => Promise<unknown>;
 type FirestoreCircuitState = 'open' | 'half-open' | 'closed';
@@ -92,40 +70,6 @@ function toError(error: unknown): Error {
   }
 
   return new Error(String(error));
-}
-
-function extractErrorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object') {
-    return null;
-  }
-
-  if (!('code' in error)) {
-    return null;
-  }
-
-  const candidate = (error as { code?: unknown }).code;
-  if (typeof candidate !== 'string') {
-    return null;
-  }
-
-  const trimmed = candidate.trim().toLowerCase();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function isTransientFirestoreError(error: unknown): boolean {
-  const code = extractErrorCode(error);
-  if (code && TRANSIENT_FIRESTORE_CODES.has(code)) {
-    return true;
-  }
-
-  const message = toError(error).message.toLowerCase();
-  return TRANSIENT_MESSAGE_HINTS.some((hint) => message.includes(hint));
-}
-
-function sleep(delayMs: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delayMs);
-  });
 }
 
 function computeFailureRate(stats: CircuitStats): number {
@@ -221,7 +165,24 @@ export class FirestoreCircuitExecutor {
 
     try {
       const result = await this.breaker.fire(async () => {
-        return await this.runWithRetry(operationName, operation, operationKind, retries);
+        return await RetryPolicy.execute(operation, {
+          maxRetries: retries,
+          shouldRetry: (error) => isTransientFirestoreError(error),
+          getDelayMs: RetryPolicy.exponentialBackoff({
+            baseDelayMs: this.retryBaseDelayMs,
+            jitterMs: this.retryJitterMs,
+          }),
+          onRetry: (error, attempt) => {
+            this.log.warn('Retrying Firestore operation after transient failure', {
+              operation: operationName,
+              kind: operationKind,
+              attempt,
+              maxAttempts: retries + 1,
+              error: error.message,
+            });
+          },
+          logRetries: false, // We handle logging in onRetry above
+        });
       });
       return result as T;
     } catch (error) {
@@ -287,45 +248,6 @@ export class FirestoreCircuitExecutor {
       },
     };
   }
-
-  private async runWithRetry<T>(
-    operationName: string,
-    operation: () => Promise<T>,
-    operationKind: FirestoreOperationKind,
-    retries: number
-  ): Promise<T> {
-    const maxAttempts = retries + 1;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await operation();
-      } catch (error) {
-        const err = toError(error);
-        const canRetry = attempt < maxAttempts && isTransientFirestoreError(err);
-
-        if (!canRetry) {
-          throw err;
-        }
-
-        const exponentialDelay = this.retryBaseDelayMs * 2 ** (attempt - 1);
-        const jitter = Math.round(Math.random() * this.retryJitterMs);
-        const delayMs = exponentialDelay + jitter;
-
-        this.log.warn('Retrying Firestore operation after transient failure', {
-          operation: operationName,
-          kind: operationKind,
-          attempt,
-          maxAttempts,
-          delayMs,
-          error: err.message,
-        });
-
-        await sleep(delayMs);
-      }
-    }
-
-    throw new Error('Unreachable retry state');
-  }
 }
 
 let firestoreCircuitExecutorSingleton: FirestoreCircuitExecutor | null = null;
@@ -341,4 +263,3 @@ export function getFirestoreCircuitExecutor(): FirestoreCircuitExecutor {
 export function setFirestoreCircuitExecutor(executor: FirestoreCircuitExecutor): void {
   firestoreCircuitExecutorSingleton = executor;
 }
-

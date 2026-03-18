@@ -3,21 +3,13 @@ import { logger } from '@infrastructure/Logger';
 import { getAuth, getFirestore } from '@infrastructure/firebaseAdmin';
 import type { Bucket } from '@google-cloud/storage';
 import type { LLMClient } from '@clients/LLMClient';
-import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
-import { warmupDepthEstimationOnStartup, setDepthEstimationModuleConfig } from '@services/convergence/depth';
 import type { ServiceConfig } from './services/service-config.types.ts';
-import type { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
-import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
-import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import type { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
-import type { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
-import type { CreditReconciliationWorker } from '@services/credits/CreditReconciliationWorker';
-import type { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
-import type { VideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
-import type { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
-import type { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
-import type { BillingProfileRepairWorker } from '@services/payment/BillingProfileRepairWorker';
 import { getRuntimeFlags } from './runtime-flags';
+
+// ────────────────────────────────────────────────────────────────
+// Shared helpers
+// ────────────────────────────────────────────────────────────────
 
 interface HealthCheckResult {
   healthy: boolean;
@@ -95,40 +87,35 @@ function withTimeout<T>(label: string, fn: () => Promise<T>): Promise<T> {
   ]);
 }
 
-async function runInfrastructureStartupChecks(container: DIContainer): Promise<void> {
-  await withTimeout('firebase-auth', async () => {
-    const auth = getAuth();
-    await auth.listUsers(1);
-  });
+// ────────────────────────────────────────────────────────────────
+// Phase 1: Common initialization (both roles)
+// ────────────────────────────────────────────────────────────────
 
-  await withTimeout('firestore', async () => {
-    const firestore = getFirestore();
-    await firestore.listCollections();
-  });
-
-  await withTimeout('gcs-bucket', async () => {
-    const bucket = container.resolve<Bucket>('gcsBucket');
-    const [exists] = await bucket.exists();
-    if (!exists) {
-      throw new Error(`Configured GCS bucket does not exist: ${bucket.name}`);
-    }
-  });
-}
-
-/**
- * Initialize and validate all services
- * Performs health checks on critical services
- *
- * @throws {Error} If critical services fail health checks
- */
-export async function initializeServices(container: DIContainer): Promise<DIContainer> {
-  logger.info('Initializing services...');
-  const runtimeFlags = getRuntimeFlags();
+async function initializeCommon(container: DIContainer): Promise<void> {
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+  const runtimeFlags = getRuntimeFlags();
 
+  // Infrastructure startup checks (skip in test)
   if (!isTestEnv) {
     try {
-      await runInfrastructureStartupChecks(container);
+      await withTimeout('firebase-auth', async () => {
+        const auth = getAuth();
+        await auth.listUsers(1);
+      });
+
+      await withTimeout('firestore', async () => {
+        const firestore = getFirestore();
+        await firestore.listCollections();
+      });
+
+      await withTimeout('gcs-bucket', async () => {
+        const bucket = container.resolve<Bucket>('gcsBucket');
+        const [exists] = await bucket.exists();
+        if (!exists) {
+          throw new Error(`Configured GCS bucket does not exist: ${bucket.name}`);
+        }
+      });
+
       logger.info('✅ Infrastructure startup checks passed', {
         checks: ['firebase-auth', 'firestore', 'gcs-bucket'],
       });
@@ -141,12 +128,10 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     }
   }
 
-  // Resolve OpenAI client and validate (optional)
+  // Validate LLM clients
   const claudeClient = container.resolve<LLMClient | null>('claudeClient');
-
   if (claudeClient) {
     logger.info('Validating OpenAI API key...');
-
     await validateLLMClient(container, {
       client: claudeClient,
       serviceName: 'claudeClient',
@@ -158,11 +143,9 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     logger.warn('OpenAI client not configured; relying on other providers');
   }
 
-  // Resolve and validate Groq client (OPTIONAL)
   const groqClient = container.resolve<LLMClient | null>('groqClient');
   if (groqClient) {
     logger.info('Groq client initialized for adapter-based routing');
-
     await validateLLMClient(container, {
       client: groqClient,
       serviceName: 'groqClient',
@@ -172,11 +155,9 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     });
   }
 
-  // Resolve and validate Qwen client (OPTIONAL)
   const qwenClient = container.resolve<LLMClient | null>('qwenClient');
   if (qwenClient) {
     logger.info('Qwen client initialized for adapter-based routing');
-
     await validateLLMClient(container, {
       client: qwenClient,
       serviceName: 'qwenClient',
@@ -186,12 +167,10 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     });
   }
 
-  // Resolve and validate Gemini client (OPTIONAL)
   const geminiClient = container.resolve<LLMClient | null>('geminiClient');
   if (geminiClient) {
     logger.info('Gemini client initialized for adapter-based routing');
     const allowUnhealthyGemini = runtimeFlags.allowUnhealthyGemini;
-
     await validateLLMClient(container, {
       client: geminiClient,
       serviceName: 'geminiClient',
@@ -204,8 +183,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     });
   }
 
-  // Pre-resolve all services to ensure they can be instantiated
-  // This catches configuration errors early
+  // Pre-resolve critical services to catch configuration errors early
   const serviceNames = [
     'promptOptimizationService',
     'enhancementService',
@@ -230,10 +208,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     }
   }
 
-  // Pre-warm LLM provider connections in the background (non-blocking).
-  // Health checks above validate credentials sequentially; this parallel pass
-  // ensures TCP+TLS sessions are established for all surviving clients so the
-  // first user request doesn't pay the cold-connection penalty (~100-300ms).
+  // Pre-warm LLM provider connections in the background (non-blocking)
   const llmClientsToWarm = [claudeClient, groqClient, qwenClient, geminiClient]
     .filter((c): c is LLMClient => c !== null);
   if (llmClientsToWarm.length > 0 && !isTestEnv) {
@@ -262,15 +237,25 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   }
 
   logger.info('All services initialized and validated successfully');
+}
+
+// ────────────────────────────────────────────────────────────────
+// Phase 2a: API-role initialization
+// ────────────────────────────────────────────────────────────────
+
+async function initializeApiServices(container: DIContainer): Promise<void> {
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+  const runtimeFlags = getRuntimeFlags();
   const { promptOutputOnly } = runtimeFlags;
 
-  // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
+  // GLiNER warmup (API role only)
+  const { warmupGliner } = await import('@llm/span-labeling/nlp/NlpSpanService');
   const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');
   const shouldWarmGliner = !promptOutputOnly &&
-    runtimeFlags.processRole === 'api' &&
     NEURO_SYMBOLIC.ENABLED &&
     NEURO_SYMBOLIC.GLINER?.ENABLED &&
     NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP;
+
   if (shouldWarmGliner) {
     try {
       const glinerResult = await warmupGliner();
@@ -286,15 +271,12 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
     }
   } else {
-    const reason = promptOutputOnly
-      ? 'PROMPT_OUTPUT_ONLY'
-      : runtimeFlags.processRole !== 'api'
-        ? `PROCESS_ROLE=${runtimeFlags.processRole}`
-        : 'prewarm disabled or GLiNER disabled';
+    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'prewarm disabled or GLiNER disabled';
     logger.info('ℹ️ GLiNER warmup skipped', { reason });
   }
 
-  // Configure depth estimation module before warmup
+  // Depth estimation warmup (API role only, non-blocking)
+  const { warmupDepthEstimationOnStartup, setDepthEstimationModuleConfig } = await import('@services/convergence/depth');
   const config = container.resolve<ServiceConfig>('config');
   const depthConfig = config.convergence.depth;
   setDepthEstimationModuleConfig({
@@ -307,123 +289,167 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     promptOutputOnly: config.features.promptOutputOnly,
   });
 
-  const logDepthWarmupResult = (
-    depthWarmup: Awaited<ReturnType<typeof warmupDepthEstimationOnStartup>>
-  ) => {
-    if (depthWarmup.success) {
-      logger.info('✅ Depth estimation warmed up', {
-        provider: depthWarmup.provider,
-        durationMs: depthWarmup.durationMs,
-      });
-    } else if (depthWarmup.skipped) {
-      logger.info('ℹ️ Depth warmup skipped', {
-        reason: depthWarmup.message || 'Unknown reason',
-      });
-    } else {
-      logger.warn('⚠️ Depth warmup failed', {
-        provider: depthWarmup.provider,
-        reason: depthWarmup.message || 'Unknown reason',
-      });
-    }
-  };
-
-  if (!isTestEnv && !promptOutputOnly && runtimeFlags.processRole === 'api') {
-    // Start depth warmup in background - do not await
-    // This allows server to become healthy/ready while fal.ai spins up
+  if (!isTestEnv && !promptOutputOnly) {
     warmupDepthEstimationOnStartup()
       .then(depthWarmup => {
-        logDepthWarmupResult(depthWarmup);
+        if (depthWarmup.success) {
+          logger.info('✅ Depth estimation warmed up', {
+            provider: depthWarmup.provider,
+            durationMs: depthWarmup.durationMs,
+          });
+        } else if (depthWarmup.skipped) {
+          logger.info('ℹ️ Depth warmup skipped', {
+            reason: depthWarmup.message || 'Unknown reason',
+          });
+        } else {
+          logger.warn('⚠️ Depth warmup failed', {
+            provider: depthWarmup.provider,
+            reason: depthWarmup.message || 'Unknown reason',
+          });
+        }
       })
       .catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('⚠️ Depth warmup failed', { error: errorMessage });
       });
   } else {
-    const reason = promptOutputOnly
-      ? 'PROMPT_OUTPUT_ONLY'
-      : runtimeFlags.processRole !== 'api'
-        ? `PROCESS_ROLE=${runtimeFlags.processRole}`
-        : 'test environment';
+    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'test environment';
     logger.info('ℹ️ Depth warmup skipped', { reason });
   }
+}
 
-  const isWorkerRole = runtimeFlags.processRole === 'worker';
+// ────────────────────────────────────────────────────────────────
+// Phase 2b: Worker-role initialization
+// ────────────────────────────────────────────────────────────────
 
-  if (!isTestEnv && !promptOutputOnly && isWorkerRole) {
-    const creditRefundSweeper = container.resolve<CreditRefundSweeper | null>('creditRefundSweeper');
-    if (creditRefundSweeper) {
-      creditRefundSweeper.start();
-      logger.info('✅ Credit refund sweeper started');
-    }
+async function initializeWorkerServices(container: DIContainer): Promise<void> {
+  const runtimeFlags = getRuntimeFlags();
+  const { promptOutputOnly } = runtimeFlags;
 
-    const creditReconciliationWorker =
-      container.resolve<CreditReconciliationWorker | null>('creditReconciliationWorker');
-    if (creditReconciliationWorker) {
-      creditReconciliationWorker.start();
-      logger.info('✅ Credit reconciliation worker started');
-    }
+  // Depth estimation module config is needed by worker role too
+  const { setDepthEstimationModuleConfig } = await import('@services/convergence/depth');
+  const config = container.resolve<ServiceConfig>('config');
+  const depthConfig = config.convergence.depth;
+  setDepthEstimationModuleConfig({
+    warmupRetryTimeoutMs: depthConfig.warmupRetryTimeoutMs,
+    falWarmupEnabled: depthConfig.falWarmupEnabled,
+    falWarmupIntervalMs: depthConfig.falWarmupIntervalMs,
+    falWarmupImageUrl: depthConfig.falWarmupImageUrl || 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+    warmupOnStartup: depthConfig.warmupOnStartup,
+    warmupTimeoutMs: depthConfig.warmupTimeoutMs,
+    promptOutputOnly: config.features.promptOutputOnly,
+  });
 
-    const videoAssetRetentionService =
-      container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
-    if (videoAssetRetentionService) {
-      videoAssetRetentionService.start();
-      logger.info('✅ Video asset retention service started');
-    }
-
-    const videoJobSweeper = container.resolve<VideoJobSweeper | null>('videoJobSweeper');
-    if (videoJobSweeper) {
-      videoJobSweeper.start();
-      logger.info('✅ Video job sweeper started');
-    }
-
-    const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
-    const workerDisabled = runtimeFlags.videoWorkerDisabled;
-    if (videoJobWorker && !workerDisabled) {
-      videoJobWorker.start();
-      logger.info('✅ Video job worker started');
-    } else if (videoJobWorker && workerDisabled) {
-      logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
-    }
-
-    const dlqReprocessorWorker = container.resolve<DlqReprocessorWorker | null>('dlqReprocessorWorker');
-    if (dlqReprocessorWorker) {
-      dlqReprocessorWorker.start();
-      logger.info('✅ DLQ reprocessor worker started');
-    }
-
-    const videoJobReconciler = container.resolve<VideoJobReconciler | null>('videoJobReconciler');
-    if (videoJobReconciler) {
-      videoJobReconciler.start();
-      logger.info('✅ Video job reconciler started');
-    }
-
-    const webhookReconciliationWorker =
-      container.resolve<WebhookReconciliationWorker | null>('webhookReconciliationWorker');
-    if (webhookReconciliationWorker) {
-      webhookReconciliationWorker.start();
-      logger.info('✅ Webhook reconciliation worker started');
-    }
-
-    const billingProfileRepairWorker =
-      container.resolve<BillingProfileRepairWorker | null>('billingProfileRepairWorker');
-    if (billingProfileRepairWorker) {
-      billingProfileRepairWorker.start();
-      logger.info('✅ Billing profile repair worker started');
-    }
-
-    // Wire circuit breaker recovery to reset worker poll intervals for fast recovery
-    const providerCircuitManager = container.resolve<ProviderCircuitManager | null>('providerCircuitManager');
-    if (providerCircuitManager && (videoJobWorker || dlqReprocessorWorker)) {
-      providerCircuitManager.onRecovery((provider) => {
-        logger.info('Provider circuit recovery detected, resetting worker poll intervals', { provider });
-        videoJobWorker?.resetPollInterval();
-        dlqReprocessorWorker?.resetPollInterval();
-      });
-    }
-  } else if (!isTestEnv && !promptOutputOnly && !isWorkerRole) {
-    logger.info('ℹ️ Video background services skipped (PROCESS_ROLE=api)');
-  } else if (promptOutputOnly) {
+  if (promptOutputOnly) {
     logger.info('ℹ️ Video background services skipped (PROMPT_OUTPUT_ONLY)');
+    return;
+  }
+
+  // Dynamic imports to keep worker-specific types lazy
+  const { CreditRefundSweeper } = await import('@services/credits/CreditRefundSweeper');
+  const { CreditReconciliationWorker } = await import('@services/credits/CreditReconciliationWorker');
+  const { VideoAssetRetentionService } = await import('@services/video-generation/storage/VideoAssetRetentionService');
+  const { VideoJobSweeper } = await import('@services/video-generation/jobs/VideoJobSweeper');
+  const { VideoJobWorker } = await import('@services/video-generation/jobs/VideoJobWorker');
+  const { DlqReprocessorWorker } = await import('@services/video-generation/jobs/DlqReprocessorWorker');
+  const { VideoJobReconciler } = await import('@services/video-generation/jobs/VideoJobReconciler');
+  const { ProviderCircuitManager } = await import('@services/video-generation/jobs/ProviderCircuitManager');
+  const { WebhookReconciliationWorker } = await import('@services/payment/WebhookReconciliationWorker');
+  const { BillingProfileRepairWorker } = await import('@services/payment/BillingProfileRepairWorker');
+
+  // Suppress unused-variable lint — these imports are used for instanceof below
+  void CreditRefundSweeper;
+  void CreditReconciliationWorker;
+  void VideoAssetRetentionService;
+  void VideoJobSweeper;
+  void VideoJobWorker;
+  void DlqReprocessorWorker;
+  void VideoJobReconciler;
+  void ProviderCircuitManager;
+  void WebhookReconciliationWorker;
+  void BillingProfileRepairWorker;
+
+  type Startable = { start(): void };
+
+  const startIfResolved = (serviceName: string, label: string): Startable | null => {
+    const service = container.resolve<Startable | null>(serviceName);
+    if (service) {
+      service.start();
+      logger.info(`✅ ${label} started`);
+    }
+    return service;
+  };
+
+  startIfResolved('creditRefundSweeper', 'Credit refund sweeper');
+  startIfResolved('creditReconciliationWorker', 'Credit reconciliation worker');
+  startIfResolved('videoAssetRetentionService', 'Video asset retention service');
+  startIfResolved('videoJobSweeper', 'Video job sweeper');
+
+  const videoJobWorker = container.resolve<Startable | null>('videoJobWorker');
+  const workerDisabled = runtimeFlags.videoWorkerDisabled;
+  if (videoJobWorker && !workerDisabled) {
+    videoJobWorker.start();
+    logger.info('✅ Video job worker started');
+  } else if (videoJobWorker && workerDisabled) {
+    logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
+  }
+
+  const dlqReprocessorWorker = startIfResolved('dlqReprocessorWorker', 'DLQ reprocessor worker') as
+    (Startable & { resetPollInterval(): void }) | null;
+  startIfResolved('videoJobReconciler', 'Video job reconciler');
+  startIfResolved('webhookReconciliationWorker', 'Webhook reconciliation worker');
+  startIfResolved('billingProfileRepairWorker', 'Billing profile repair worker');
+
+  // Wire circuit breaker recovery to reset worker poll intervals
+  const providerCircuitManager = container.resolve<{ onRecovery(cb: (provider: string) => void): void } | null>('providerCircuitManager');
+  if (providerCircuitManager && (videoJobWorker || dlqReprocessorWorker)) {
+    providerCircuitManager.onRecovery((provider) => {
+      logger.info('Provider circuit recovery detected, resetting worker poll intervals', { provider });
+      (videoJobWorker as Startable & { resetPollInterval?(): void })?.resetPollInterval?.();
+      dlqReprocessorWorker?.resetPollInterval();
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Public API
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Initialize and validate all services.
+ *
+ * Runs common initialization first, then role-specific setup
+ * based on the PROCESS_ROLE environment variable.
+ */
+export async function initializeServices(container: DIContainer): Promise<DIContainer> {
+  logger.info('Initializing services...');
+  const runtimeFlags = getRuntimeFlags();
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+
+  // Phase 1: common initialization (both roles)
+  await initializeCommon(container);
+
+  // Phase 2: role-specific initialization
+  if (!isTestEnv) {
+    if (runtimeFlags.processRole === 'api') {
+      await initializeApiServices(container);
+    } else if (runtimeFlags.processRole === 'worker') {
+      await initializeWorkerServices(container);
+    }
+  } else {
+    // In test, configure depth module but skip warmups and workers
+    const { setDepthEstimationModuleConfig } = await import('@services/convergence/depth');
+    const config = container.resolve<ServiceConfig>('config');
+    const depthConfig = config.convergence.depth;
+    setDepthEstimationModuleConfig({
+      warmupRetryTimeoutMs: depthConfig.warmupRetryTimeoutMs,
+      falWarmupEnabled: depthConfig.falWarmupEnabled,
+      falWarmupIntervalMs: depthConfig.falWarmupIntervalMs,
+      falWarmupImageUrl: depthConfig.falWarmupImageUrl || 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+      warmupOnStartup: depthConfig.warmupOnStartup,
+      warmupTimeoutMs: depthConfig.warmupTimeoutMs,
+      promptOutputOnly: config.features.promptOutputOnly,
+    });
   }
 
   return container;

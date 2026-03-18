@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { getRuntimeFlags } from '../runtime-flags';
 
 describe('getRuntimeFlags', () => {
-  it('defaults to worker role outside production', () => {
+  it('defaults to api role when PROCESS_ROLE is not set', () => {
     const flags = getRuntimeFlags({} as NodeJS.ProcessEnv);
-    expect(flags.processRole).toBe('worker');
-    expect(flags.videoWorkerDisabled).toBe(false);
+    expect(flags.processRole).toBe('api');
+    // Workers are disabled when running as api role
+    expect(flags.videoWorkerDisabled).toBe(true);
     expect(flags.videoJobInlineEnabled).toBe(false);
     expect(flags.videoWorkerShutdownDrainSeconds).toBe(45);
   });

@@ -18,6 +18,13 @@ export interface RetryOptions {
   getDelayMs?: (attempt: number) => number;
 }
 
+export interface ExponentialBackoffOptions {
+  /** Base delay in milliseconds (default: 120) */
+  baseDelayMs?: number;
+  /** Maximum random jitter in milliseconds (default: 80) */
+  jitterMs?: number;
+}
+
 /**
  * Generic Retry Policy
  *
@@ -121,14 +128,25 @@ export class RetryPolicy {
       return true;
     };
   }
+
+  /**
+   * Create a getDelayMs function with exponential backoff and jitter.
+   *
+   * This is the canonical backoff strategy for the codebase.
+   * Delay = baseDelayMs * 2^(attempt-1) + random(0..jitterMs)
+   *
+   * @example
+   * RetryPolicy.execute(fn, {
+   *   maxRetries: 3,
+   *   getDelayMs: RetryPolicy.exponentialBackoff({ baseDelayMs: 120, jitterMs: 80 }),
+   * });
+   */
+  static exponentialBackoff(options: ExponentialBackoffOptions = {}): (attempt: number) => number {
+    const { baseDelayMs = 120, jitterMs = 80 } = options;
+    return (attempt: number): number => {
+      const exponentialDelay = baseDelayMs * 2 ** (attempt - 1);
+      const jitter = Math.round(Math.random() * jitterMs);
+      return exponentialDelay + jitter;
+    };
+  }
 }
-
-
-
-
-
-
-
-
-
-

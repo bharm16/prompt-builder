@@ -234,3 +234,38 @@ describe('RetryPolicy.createApiErrorFilter', () => {
     });
   });
 });
+
+describe('RetryPolicy.exponentialBackoff', () => {
+  it('returns a function', () => {
+    const backoff = RetryPolicy.exponentialBackoff();
+    expect(typeof backoff).toBe('function');
+  });
+
+  it('produces increasing delays for successive attempts', () => {
+    // Use jitterMs=0 for deterministic testing
+    const backoff = RetryPolicy.exponentialBackoff({ baseDelayMs: 100, jitterMs: 0 });
+
+    expect(backoff(1)).toBe(100);  // 100 * 2^0
+    expect(backoff(2)).toBe(200);  // 100 * 2^1
+    expect(backoff(3)).toBe(400);  // 100 * 2^2
+  });
+
+  it('uses default values when none provided', () => {
+    const backoff = RetryPolicy.exponentialBackoff({ jitterMs: 0 });
+
+    // Default baseDelayMs is 120
+    expect(backoff(1)).toBe(120);
+    expect(backoff(2)).toBe(240);
+  });
+
+  it('adds jitter within bounds', () => {
+    const backoff = RetryPolicy.exponentialBackoff({ baseDelayMs: 100, jitterMs: 50 });
+
+    // Run several times to check bounds
+    for (let i = 0; i < 20; i++) {
+      const delay = backoff(1);
+      expect(delay).toBeGreaterThanOrEqual(100);
+      expect(delay).toBeLessThanOrEqual(150);
+    }
+  });
+});
