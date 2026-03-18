@@ -17,7 +17,7 @@ export function GenerationBadge({
       className={cn(
         'rounded px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-md',
         'bg-black/40',
-        isDraft ? 'text-[#4ADE80]/80' : 'text-[#6C5CE7]/80',
+        isDraft ? 'text-success-400/80' : 'text-accent-2/80',
         className
       )}
     >

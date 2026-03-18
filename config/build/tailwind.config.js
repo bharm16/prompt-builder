@@ -20,6 +20,35 @@ export default {
   theme: {
     extend: {
       // ============================================
+      // TOOL SIDEBAR COLORS
+      // Maps CSS variables from client/src/index.css
+      // ============================================
+      colors: {
+        tool: {
+          'rail-bg': 'var(--tool-rail-bg)',
+          'panel-bg': 'var(--tool-panel-bg)',
+          'panel-inner': 'var(--tool-panel-inner-bg)',
+          'rail-border': 'var(--tool-rail-border)',
+          'nav-active': 'var(--tool-nav-active-bg)',
+          'tab-active': 'var(--tool-tab-active-bg)',
+          'border-primary': 'var(--tool-border-primary)',
+          'border-dark': 'var(--tool-border-dark)',
+          'border-dashed': 'var(--tool-border-dashed)',
+          'text-primary': 'var(--tool-text-primary)',
+          'text-secondary': 'var(--tool-text-secondary)',
+          'text-muted': 'var(--tool-text-muted)',
+          'text-placeholder': 'var(--tool-text-placeholder)',
+          'accent-purple': 'var(--tool-accent-purple)',
+          'nav-indicator': 'var(--tool-nav-indicator)',
+          'nav-hover': 'var(--tool-nav-hover-bg)',
+          'text-subdued': 'var(--tool-text-subdued)',
+          'surface-inset': 'var(--tool-surface-inset)',
+          'surface-deep': 'var(--tool-surface-deep)',
+        },
+        'accent-runway': 'var(--ps-accent-runway)',
+      },
+
+      // ============================================
       // ANIMATION & TRANSITIONS
       // Consistent timing and easing
       // ============================================

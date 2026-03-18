@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { sendApiError } from '@middleware/apiErrorResponse';
@@ -196,7 +197,7 @@ export async function reserveShotGenerationCredits(
       shotId,
       session.userId,
       Date.now(),
-      Math.random(),
+      randomUUID().slice(0, 8),
     ]);
   const unusedRetriesRefundKey = buildRefundKey([
     'continuity-shot',

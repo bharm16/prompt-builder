@@ -44,14 +44,14 @@ export function ToolRail({
 
   return (
     <aside
-      className="flex h-full w-60 flex-none flex-col items-stretch border-r border-[#1A1C22] bg-black px-2.5 py-2.5"
+      className="flex h-full w-60 flex-none flex-col items-stretch border-r border-tool-rail-border bg-black px-2.5 py-2.5"
       aria-label="Tool navigation"
     >
       <div className="px-3.5 py-3">
-        <span className="text-[19px] font-bold tracking-tight text-[#E2E6EF]">Vidra</span>
+        <span className="text-[19px] font-bold tracking-tight text-foreground">Vidra</span>
       </div>
 
-      <div className="mx-1 my-1.5 h-px bg-[#1A1C22]" aria-hidden="true" />
+      <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
 
       {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
       <nav className="flex flex-col items-stretch gap-0.5" aria-label="Tool panels">
@@ -72,7 +72,7 @@ export function ToolRail({
             onClick={workspace.toggleGallery}
           />
         ) : null}
-        <div className="mx-1 my-1.5 h-px bg-[#1A1C22]" aria-hidden="true" />
+        <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
         {sessionsItem ? (
           <ToolNavButton
             icon={sessionsItem.icon}
@@ -90,19 +90,19 @@ export function ToolRail({
       <div className="flex w-full flex-col items-stretch gap-0.5 pb-2.5">
         <Link
           to="/home"
-          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-[#E2E6EF] transition-colors hover:bg-[#1C1E26] hover:text-[#E2E6EF]"
+          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-foreground transition-colors hover:bg-tool-nav-hover hover:text-foreground"
           aria-label="Home"
         >
           <Home className="h-5 w-5 shrink-0" weight="bold" />
-          <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">Home</span>
+          <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">Home</span>
         </Link>
 
-        <div className="mx-1 my-1 h-px bg-[#1A1C22]" aria-hidden="true" />
+        <div className="mx-1 my-1 h-px bg-tool-rail-border" aria-hidden="true" />
 
         {/* ── Profile row ── */}
         <Link
           to={userActionLink}
-          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-[#1C1E26]"
+          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-tool-nav-hover"
           aria-label={userActionLabel}
         >
           {photoURL ? (
@@ -113,15 +113,15 @@ export function ToolRail({
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-[#2A2D35]">
-              <span className="text-[13px] font-bold text-white">{initial}</span>
+            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-surface-2">
+              <span className="text-body-sm font-bold text-white">{initial}</span>
             </div>
           )}
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-[13px] font-medium leading-none text-[#E2E6EF]">
+            <span className="truncate text-body-sm font-medium leading-none text-foreground">
               {displayName || email || 'Account'}
             </span>
-            <span className="text-[11px] leading-none text-[#555B6E]">
+            <span className="text-[11px] leading-none text-tool-text-subdued">
               {planLabel}
             </span>
           </div>

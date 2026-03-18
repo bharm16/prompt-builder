@@ -1,5 +1,6 @@
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
 import { assertUrlSafe } from '@server/shared/urlValidation';
@@ -152,6 +153,6 @@ export class StyleReferenceService {
   }
 
   private generateId(): string {
-    return `styleref_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('styleref');
   }
 }

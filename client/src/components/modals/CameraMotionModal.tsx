@@ -205,15 +205,15 @@ export function CameraMotionModal({
       <div
         className={cn(
           'relative z-10 w-full max-w-5xl max-h-[90vh] overflow-auto',
-          'bg-[#12131A] rounded-xl border border-[#29292D] shadow-2xl mx-4'
+          'bg-tool-panel-inner rounded-xl border border-tool-border-dark shadow-2xl mx-4'
         )}
       >
-        <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-[#12131A] border-b border-[#29292D]">
+        <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-tool-panel-inner border-b border-tool-border-dark">
           <h2 className="text-lg font-semibold text-white">Choose Camera Motion</h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-[#A1AFC5] hover:text-white hover:bg-[#1B1E23]"
+            className="p-2 rounded-lg text-ghost hover:text-white hover:bg-surface-1"
             aria-label="Close camera motion modal"
           >
             <X className="w-5 h-5" />
@@ -223,8 +223,8 @@ export function CameraMotionModal({
         <div className="p-6">
           {state.isEstimatingDepth ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-[#2C22FA] mb-4" />
-              <p className="text-[#A1AFC5]">Analyzing image depth...</p>
+              <Loader2 className="w-8 h-8 animate-spin text-accent-runway mb-4" />
+              <p className="text-ghost">Analyzing image depth...</p>
             </div>
           ) : (
             <CameraMotionPickerWithErrorBoundary

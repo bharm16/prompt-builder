@@ -37,4 +37,4 @@ export { PreferenceRepository } from './repositories/PreferenceRepository.ts';
 export { VideoTemplateRepository } from './repositories/VideoTemplateRepository.ts';
 
 // Config
-export * from './config/descriptorCategories.js';
+export * from './config/descriptorCategories.ts';

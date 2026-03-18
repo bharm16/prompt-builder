@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import type {
   SessionDto,
   SessionContinuity,
@@ -210,7 +211,7 @@ export class SessionService {
           ? prompt.output
           : prompt.input) || '';
       const nextEntry: SessionPromptVersionEntry = {
-        versionId: `highlight_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        versionId: generateId('highlight'),
         signature: 'highlight-update',
         prompt: basePromptText,
         timestamp,
@@ -404,7 +405,7 @@ export class SessionService {
   }
 
   private generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('session');
   }
 }
 

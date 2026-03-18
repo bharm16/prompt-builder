@@ -33,7 +33,7 @@ describe('ToolSidebar simple components', () => {
       expect(button.getAttribute('aria-pressed')).toBeNull();
       const icon = within(button).getByTestId('dummy-icon');
       expect(icon.getAttribute('class')).toContain('h-5 w-5');
-      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
+      expect(button.getAttribute('class')).toContain('text-foreground');
     });
 
     it('keeps data-panel attribute when children are null', () => {
@@ -72,7 +72,7 @@ describe('ToolSidebar simple components', () => {
       expect(button).toHaveAttribute('aria-pressed', 'false');
       const icon = within(button).getByTestId('dummy-icon');
       expect(icon.getAttribute('class')).toContain('h-5 w-5');
-      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
+      expect(button.getAttribute('class')).toContain('text-foreground');
     });
 
     it('shows the styles placeholder message', () => {
@@ -101,7 +101,7 @@ describe('ToolSidebar simple components', () => {
       expect(button).toHaveAttribute('aria-pressed', 'true');
       const icon = within(button).getByTestId('dummy-icon');
       expect(icon.getAttribute('class')).toContain('h-5 w-5');
-      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
+      expect(button.getAttribute('class')).toContain('text-foreground');
 
       button.click();
       expect(onClick).toHaveBeenCalledTimes(1);

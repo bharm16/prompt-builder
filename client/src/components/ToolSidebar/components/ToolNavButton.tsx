@@ -19,8 +19,8 @@ interface ToolNavButtonProps {
  *
  * - Header variant: full-width row button
  * - Default variant: full-width row button, icon + label
- * - Active: brighter bg (#22252C)
- * - Inactive: base bg (#1C1E26)
+ * - Active: brighter bg (tool-nav-active)
+ * - Inactive: base bg (tool-nav-hover on hover)
  */
 export function ToolNavButton({
   icon: IconComponent,
@@ -37,21 +37,21 @@ export function ToolNavButton({
           'relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]',
           'duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px',
           isActive
-            ? 'bg-[#22252C] text-[#E2E6EF]'
-            : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
+            ? 'bg-tool-nav-active text-foreground'
+            : 'bg-transparent text-foreground hover:bg-tool-nav-hover hover:text-foreground'
         )}
         onClick={onClick}
         aria-label={label}
       >
         <span
           className={cn(
-            'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#3B82F6]',
+            'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-tool-nav-indicator',
             isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
           )}
           aria-hidden="true"
         />
         <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
-        <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
+        <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">{label}</span>
       </button>
     );
   }
@@ -63,8 +63,8 @@ export function ToolNavButton({
         'relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]',
         'duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px',
         isActive
-          ? 'bg-[#22252C] text-[#E2E6EF]'
-          : 'bg-transparent text-[#E2E6EF] hover:bg-[#1C1E26] hover:text-[#E2E6EF]'
+          ? 'bg-tool-nav-active text-foreground'
+          : 'bg-transparent text-foreground hover:bg-tool-nav-hover hover:text-foreground'
       )}
       onClick={onClick}
       aria-label={label}
@@ -72,13 +72,13 @@ export function ToolNavButton({
     >
       <span
         className={cn(
-          'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#3B82F6]',
+          'motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-tool-nav-indicator',
           isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
         )}
         aria-hidden="true"
       />
       <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
-      <span className="text-[13px] font-semibold leading-none tracking-[0.02em]">{label}</span>
+      <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">{label}</span>
     </button>
   );
 }

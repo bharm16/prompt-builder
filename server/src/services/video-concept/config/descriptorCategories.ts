@@ -1,12 +1,25 @@
 import { TAXONOMY } from '#shared/taxonomy.ts';
 
+interface DescriptorCategory {
+  pattern: RegExp;
+  examples: string[];
+  instruction: string;
+  forbidden: string;
+}
+
+interface DetectionResult {
+  category: string | null;
+  taxonomyId: string | null;
+  confidence: number;
+}
+
 /**
  * Semantic categories for subject descriptors in Video Concept Builder
  * Provides intelligent categorization without restricting user input
  * Now mapped to TAXONOMY.SUBJECT.attributes for consistency
  */
 
-export const DESCRIPTOR_CATEGORIES = {
+export const DESCRIPTOR_CATEGORIES: Record<string, DescriptorCategory> = {
   // Maps to TAXONOMY.SUBJECT.attributes.APPEARANCE
   physical: {
     pattern: /\b(face|eyes|hands|body|hair|build|skin|features|complexion|stature|physique|jaw|cheekbones|wrinkles|scars|marks|beard|mustache|eyebrows|nose|lips|ears|fingers|arms|legs|shoulders|neck|posture)\b/i,
@@ -104,8 +117,8 @@ export const DESCRIPTOR_CATEGORIES = {
  * @param {string} descriptorCategory - Local descriptor category name
  * @returns {string|null} Corresponding TAXONOMY ID
  */
-export function mapDescriptorCategoryToTaxonomy(descriptorCategory) {
-  const mapping = {
+export function mapDescriptorCategoryToTaxonomy(descriptorCategory: string): string | null {
+  const mapping: Record<string, string> = {
     physical: TAXONOMY.SUBJECT.attributes.APPEARANCE,
     wardrobe: TAXONOMY.SUBJECT.attributes.WARDROBE,
     emotional: TAXONOMY.SUBJECT.attributes.EMOTION,
@@ -124,7 +137,7 @@ export function mapDescriptorCategoryToTaxonomy(descriptorCategory) {
  * @param {string} descriptorText - The descriptor text to analyze
  * @returns {Object} { category: string|null, taxonomyId: string|null, confidence: number }
  */
-export function detectDescriptorCategory(descriptorText) {
+export function detectDescriptorCategory(descriptorText: string): DetectionResult {
   if (!descriptorText || typeof descriptorText !== 'string') {
     return { category: null, taxonomyId: null, confidence: 0 };
   }
@@ -161,7 +174,7 @@ export function detectDescriptorCategory(descriptorText) {
   }
 
   matches.sort((a, b) => b.confidence - a.confidence);
-  const topMatch = matches[0];
+  const topMatch = matches[0]!;
 
   return {
     category: topMatch.category,
@@ -175,7 +188,7 @@ export function detectDescriptorCategory(descriptorText) {
  * @param {string} category - Category name
  * @returns {string|null} Instruction text or null
  */
-export function getCategoryInstruction(category) {
+export function getCategoryInstruction(category: string): string | null {
   return DESCRIPTOR_CATEGORIES[category]?.instruction || null;
 }
 
@@ -184,7 +197,7 @@ export function getCategoryInstruction(category) {
  * @param {string} category - Category name
  * @returns {string|null} Forbidden text or null
  */
-export function getCategoryForbidden(category) {
+export function getCategoryForbidden(category: string): string | null {
   return DESCRIPTOR_CATEGORIES[category]?.forbidden || null;
 }
 
@@ -192,6 +205,6 @@ export function getCategoryForbidden(category) {
  * Get all available category names
  * @returns {Array<string>} Array of category names
  */
-export function getAllCategories() {
+export function getAllCategories(): string[] {
   return Object.keys(DESCRIPTOR_CATEGORIES);
 }

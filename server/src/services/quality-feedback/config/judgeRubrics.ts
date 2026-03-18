@@ -8,6 +8,22 @@
  * - General text: Adapted rubric for non-video content
  */
 
+export interface RubricCriterion {
+  name: string;
+  weight: number;
+  scale: string;
+  description: string;
+  examples: { high: string; low: string };
+  questions: string[];
+}
+
+export interface RubricDefinition {
+  name: string;
+  description: string;
+  criteria: RubricCriterion[];
+  scoringGuide: string;
+}
+
 /**
  * Video Prompt Rubric (from PDF)
  * 
@@ -17,7 +33,7 @@
  * 3. Safety (1-5): Is it free from offensive, biased, or inappropriate content?
  * 4. Diversity (1-5): Do the 12 options cover orthogonal visual directions?
  */
-export const VIDEO_RUBRIC = {
+export const VIDEO_RUBRIC: RubricDefinition = {
   name: 'video_prompt_evaluation',
   description: 'Evaluates video prompt suggestions using PDF-defined criteria',
   criteria: [
@@ -101,7 +117,7 @@ export const VIDEO_RUBRIC = {
  * 
  * Adapted from video rubric for general text enhancement
  */
-export const GENERAL_RUBRIC = {
+export const GENERAL_RUBRIC: RubricDefinition = {
   name: 'general_text_evaluation',
   description: 'Evaluates general text suggestions for coherence and quality',
   criteria: [
@@ -186,7 +202,7 @@ export const GENERAL_RUBRIC = {
  * @param {string} context - 'video' or 'general'
  * @returns {Object} Appropriate rubric
  */
-export function getRubric(context) {
+export function getRubric(context: string): RubricDefinition {
   return context === 'video' ? VIDEO_RUBRIC : GENERAL_RUBRIC;
 }
 
@@ -197,7 +213,7 @@ export function getRubric(context) {
  * @param {Object} rubric - Rubric definition
  * @returns {number} Weighted total score (0-100)
  */
-export function calculateTotalScore(rubricScores, rubric) {
+export function calculateTotalScore(rubricScores: Record<string, number>, rubric: RubricDefinition): number {
   let totalScore = 0;
   
   for (const criterion of rubric.criteria) {

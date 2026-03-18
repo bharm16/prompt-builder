@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
 import { createDepthEstimationServiceForUser } from '@services/convergence/depth';
@@ -322,6 +323,6 @@ export class SceneProxyService {
   }
 
   private generateId(prefix: string): string {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId(prefix);
   }
 }

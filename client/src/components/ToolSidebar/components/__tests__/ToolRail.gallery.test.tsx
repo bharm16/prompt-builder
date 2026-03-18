@@ -68,7 +68,7 @@ describe('ToolRail gallery toggle', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Gallery' }).className).toContain(
-      'bg-[#22252C]'
+      'bg-tool-nav-active'
     );
   });
 });

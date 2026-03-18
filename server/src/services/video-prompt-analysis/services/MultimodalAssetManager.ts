@@ -10,6 +10,7 @@
 
 import * as crypto from 'crypto';
 import { sleep } from '@utils/sleep';
+import { generateId } from '@utils/uid';
 
 /**
  * Supported asset types
@@ -448,7 +449,7 @@ export class MultimodalAssetManager {
    * Generate a unique asset ID
    */
   private generateAssetId(): string {
-    return `asset_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    return generateId('asset');
   }
 
   /**

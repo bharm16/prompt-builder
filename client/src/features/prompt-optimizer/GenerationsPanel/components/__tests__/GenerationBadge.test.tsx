@@ -20,14 +20,14 @@ describe('GenerationBadge', () => {
       const { container } = render(<GenerationBadge tier="draft" />);
 
       const badge = container.querySelector('span');
-      expect(badge).toHaveClass('bg-black/40', 'text-[#4ADE80]/80');
+      expect(badge).toHaveClass('bg-black/40', 'text-success-400/80');
     });
 
     it('uses render styling for render tier', () => {
       const { container } = render(<GenerationBadge tier="render" />);
 
       const badge = container.querySelector('span');
-      expect(badge).toHaveClass('bg-black/40', 'text-[#6C5CE7]/80');
+      expect(badge).toHaveClass('bg-black/40', 'text-accent-2/80');
     });
 
     it('applies custom className to badge', () => {

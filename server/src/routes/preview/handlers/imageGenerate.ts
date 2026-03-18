@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { sendApiError } from '@middleware/apiErrorResponse';
@@ -282,7 +283,7 @@ export const createImageGenerateHandler = ({
 
     const previewCost = IMAGE_PREVIEW_CREDIT_COST;
     const refundOperationToken =
-      requestId ?? buildRefundKey(['preview-image', userId, resolvedPrompt, Date.now(), Math.random()]);
+      requestId ?? buildRefundKey(['preview-image', userId, resolvedPrompt, Date.now(), randomUUID().slice(0, 8)]);
     const previewRefundKey = buildRefundKey([
       'preview-image',
       refundOperationToken,

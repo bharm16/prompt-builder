@@ -1,4 +1,5 @@
 import type { AssetService } from '@services/asset/AssetService';
+import { generateId } from '@utils/uid';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 import type { StorageService } from '@services/storage/StorageService';
@@ -128,7 +129,7 @@ export class ContinuityMediaService {
       }
 
       const fallbackFrame: Parameters<StyleReferenceService['createFromVideo']>[1] = {
-        id: `frame_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        id: generateId('frame'),
         sourceVideoId: videoId,
         sourceShotId: shotId,
         frameUrl: videoUrl,

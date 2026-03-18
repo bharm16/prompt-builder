@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import { VIDEO_MODELS } from '@config/modelConfig';
 import { STYLE_STRENGTH_PRESETS } from './StyleReferenceService';
 import type {
@@ -423,10 +424,10 @@ export class ContinuitySessionService {
   }
 
   private generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('session');
   }
 
   private generateShotId(): string {
-    return `shot_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('shot');
   }
 }

@@ -35,10 +35,10 @@ describe('StoryboardHeroView', () => {
 
     const frame0 = screen.getByTestId('storyboard-hero-frame-0');
     const frame1 = screen.getByTestId('storyboard-hero-frame-1');
-    expect(frame0.className).toContain('border-[#6C5CE7]');
+    expect(frame0.className).toContain('border-accent-2');
 
     fireEvent.click(frame1);
-    expect(frame1.className).toContain('border-[#6C5CE7]');
+    expect(frame1.className).toContain('border-accent-2');
   });
 
   it('sends selected frame payload when using as start frame', () => {

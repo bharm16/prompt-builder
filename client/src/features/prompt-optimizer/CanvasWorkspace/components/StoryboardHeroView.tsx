@@ -51,20 +51,20 @@ export function StoryboardHeroView({
 
   if (generation.status === 'pending' || generation.status === 'generating') {
     return (
-      <div className="flex h-full min-h-[280px] flex-col gap-3 rounded-2xl bg-[#0D0E12] p-3">
+      <div className="flex h-full min-h-[280px] flex-col gap-3 rounded-2xl bg-tool-surface-deep p-3">
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 4 }, (_, index) => (
             <div
               key={`storyboard-loading-${index}`}
-              className="aspect-video animate-pulse rounded-lg border border-[#22252C] bg-[#1A1C22]"
+              className="aspect-video animate-pulse rounded-lg border border-tool-nav-active bg-tool-rail-border"
             />
           ))}
         </div>
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-semibold tracking-[0.05em] text-[#3A3E4C]">
+          <span className="text-[10px] font-semibold tracking-[0.05em] text-faint/40">
             PREVIEW · GENERATING
           </span>
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#3A3E4C] border-t-[#E2E6EF]" />
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-faint/40 border-t-foreground" />
         </div>
       </div>
     );
@@ -72,10 +72,10 @@ export function StoryboardHeroView({
 
   if (generation.status === 'failed') {
     return (
-      <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 rounded-2xl border border-[#22252C] bg-[#0D0E12] p-6">
-        <WarningCircle size={24} className="text-[#EF4444]/80" aria-hidden="true" />
-        <span className="text-xs font-semibold text-[#E2E6EF]">Storyboard failed</span>
-        <span className="text-center text-xs text-[#555B6E]">
+      <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 rounded-2xl border border-tool-nav-active bg-tool-surface-deep p-6">
+        <WarningCircle size={24} className="text-danger/80" aria-hidden="true" />
+        <span className="text-xs font-semibold text-foreground">Storyboard failed</span>
+        <span className="text-center text-xs text-tool-text-subdued">
           {generation.error ?? 'Unable to load storyboard preview.'}
         </span>
       </div>
@@ -84,14 +84,14 @@ export function StoryboardHeroView({
 
   if (frames.length === 0) {
     return (
-      <div className="flex h-full min-h-[280px] items-center justify-center rounded-2xl border border-[#22252C] bg-[#0D0E12]">
-        <span className="text-xs text-[#555B6E]">No storyboard frames available.</span>
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-2xl border border-tool-nav-active bg-tool-surface-deep">
+        <span className="text-xs text-tool-text-subdued">No storyboard frames available.</span>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl bg-[#0D0E12] p-3">
+    <div className="flex h-full flex-col gap-3 rounded-2xl bg-tool-surface-deep p-3">
       <div className={cn('grid gap-2', resolveGridColumnsClass(frames.length))}>
         {frames.map((url, index) => (
           <button
@@ -101,8 +101,8 @@ export function StoryboardHeroView({
             className={cn(
               'aspect-video overflow-hidden rounded-lg border-2 transition-all',
               safeSelectedIndex === index
-                ? 'border-[#6C5CE7] shadow-[0_0_16px_#6C5CE744]'
-                : 'border-transparent hover:border-[#22252C]'
+                ? 'border-accent-2 shadow-[0_0_16px_var(--ps-accent-2,#b3affd)44]'
+                : 'border-transparent hover:border-tool-nav-active'
             )}
             data-testid={`storyboard-hero-frame-${index}`}
           >
@@ -117,12 +117,12 @@ export function StoryboardHeroView({
       </div>
 
       <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] font-semibold tracking-[0.05em] text-[#3A3E4C]">
+        <span className="text-[10px] font-semibold tracking-[0.05em] text-faint/40">
           PREVIEW · {frames.length} FRAMES
         </span>
         <button
           type="button"
-          className="rounded-md border border-[#6C5CE744] bg-[#6C5CE711] px-3 py-1.5 text-[11px] font-semibold text-[#6C5CE7] transition-colors hover:bg-[#6C5CE71A]"
+          className="rounded-md border border-accent-2/25 bg-accent-2/5 px-3 py-1.5 text-[11px] font-semibold text-accent-2 transition-colors hover:bg-accent-2/10"
           onClick={() => {
             if (!selectedFrameUrl) return;
             onUseAsStartFrame({

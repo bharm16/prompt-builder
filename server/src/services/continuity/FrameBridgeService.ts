@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
 import type { FrameBridge } from './types';
@@ -218,7 +219,7 @@ export class FrameBridgeService {
   }
 
   private generateId(prefix: string): string {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId(prefix);
   }
 
   private async exec(command: string, args: string[]): Promise<string> {

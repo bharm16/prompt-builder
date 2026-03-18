@@ -2,6 +2,29 @@
 import vocab from '../../../llm/span-labeling/nlp/vocab.json' with { type: "json" };
 import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
 
+interface ShotPlan {
+  shot_type?: string;
+  core_intent?: string;
+  subject?: string;
+  action?: string;
+  visual_focus?: string;
+  setting?: string;
+  time?: string;
+  camera_move?: string;
+  camera_angle?: string;
+  lighting?: string;
+  style?: string;
+  mood?: string;
+  [key: string]: unknown;
+}
+
+interface LockedSpan {
+  text: string;
+  leftCtx?: string | null;
+  rightCtx?: string | null;
+  category?: string | null;
+}
+
 /**
  * Examples to "teach" the model the correct format via the API
  * These few-shot examples demonstrate strict JSON output without structural arrows
@@ -143,8 +166,8 @@ export const VIDEO_FEW_SHOT_EXAMPLES = [
  * @param {string|null} originalUserPrompt - Optional original user prompt for draft refinement.
  * @returns {string} A formatted system prompt that requests structured JSON output.
  */
-export function generateUniversalVideoPrompt(userConcept, shotPlan = null, instructionsOnly = false, originalUserPrompt = null) {
-  const escapeXml = (value) =>
+export function generateUniversalVideoPrompt(userConcept: string, shotPlan: ShotPlan | null = null, instructionsOnly = false, originalUserPrompt: string | null = null): string {
+  const escapeXml = (value: unknown): string =>
     String(value || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -303,13 +326,13 @@ Return ONLY JSON (no markdown, no prose):
  * @returns {string}
  */
 export function generateUniversalVideoPromptWithLockedSpans(
-  userConcept,
-  shotPlan = null,
-  lockedSpans = [],
+  userConcept: string,
+  shotPlan: ShotPlan | null = null,
+  lockedSpans: LockedSpan[] = [],
   instructionsOnly = false,
-  originalUserPrompt = null
-) {
-  const escapeXml = (value) =>
+  originalUserPrompt: string | null = null
+): string {
+  const escapeXml = (value: unknown): string =>
     String(value || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')

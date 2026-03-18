@@ -8,6 +8,7 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { z } from 'zod';
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { CAMERA_PATHS } from '@services/convergence/constants';
 import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
@@ -109,7 +110,7 @@ export function createMotionRoutes(services: MotionRouteServices = defaultServic
     '/depth',
     asyncHandler(async (req: RequestWithUser, res: Response) => {
       const requestId = req.id ?? null;
-      const depthRequestId = `depth-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const depthRequestId = generateId('depth');
       const startedAt = Date.now();
 
       const parsed = DepthEstimationRequestSchema.safeParse(req.body);

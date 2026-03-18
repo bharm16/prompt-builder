@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import { generateId } from '@utils/uid';
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface ModelIntelligenceMetrics {
   recordModelRecommendationRequest(mode: string, availabilityState: string): void;
@@ -275,6 +276,6 @@ export class ModelIntelligenceService {
   }
 
   private generatePromptId(): string {
-    return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('prompt');
   }
 }

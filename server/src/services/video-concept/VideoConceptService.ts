@@ -14,7 +14,7 @@ import {
   PromptValidationService,
   ConflictDetectionService,
   VideoTemplateRepository,
-} from '@services/video-concept/index.js';
+} from '@services/video-concept/index.ts';
 import type { AIService } from '@services/prompt-optimization/types';
 import type { VideoTemplate, StorageAdapter, TemplateStorageAdapter } from '@services/video-concept/types';
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import express, { type Request, type Response, type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { sendApiError } from '@middleware/apiErrorResponse';
@@ -81,7 +82,7 @@ export function createConsistentGenerationRoutes(
       const requestId = (req as Request & { id?: string }).id;
       const operationToken =
         requestId ??
-        buildRefundKey(['consistent-keyframe', userId, characterId, prompt, Date.now(), Math.random()]);
+        buildRefundKey(['consistent-keyframe', userId, characterId, prompt, Date.now(), randomUUID().slice(0, 8)]);
       const refundKey = buildRefundKey(['consistent-generation', operationToken, 'keyframe']);
 
       try {
@@ -160,7 +161,7 @@ export function createConsistentGenerationRoutes(
       const requestId = (req as Request & { id?: string }).id;
       const operationToken =
         requestId ??
-        buildRefundKey(['consistent-video', userId, prompt, Date.now(), Math.random()]);
+        buildRefundKey(['consistent-video', userId, prompt, Date.now(), randomUUID().slice(0, 8)]);
       const refundKey = buildRefundKey(['consistent-generation', operationToken, 'video']);
 
       try {
@@ -240,7 +241,7 @@ export function createConsistentGenerationRoutes(
           keyframeUrl,
           prompt,
           Date.now(),
-          Math.random(),
+          randomUUID().slice(0, 8),
         ]);
       const refundKey = buildRefundKey(['consistent-generation', operationToken, 'from-keyframe']);
 
