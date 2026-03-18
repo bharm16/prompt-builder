@@ -76,8 +76,7 @@ const DEFAULT_CONFIG: RequestManagerConfig = {
 export class SuggestionRequestManager {
   private state: RequestState;
   private config: RequestManagerConfig;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
 
   constructor(config?: Partial<RequestManagerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };

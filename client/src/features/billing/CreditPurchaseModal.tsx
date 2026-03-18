@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createCheckoutSession } from '@/api/billingApi';
+import { createCheckoutSession } from '@/features/billing/api/billingApi';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { logger } from '../../services/LoggingService';
 import { sanitizeError } from '../../utils/logging';

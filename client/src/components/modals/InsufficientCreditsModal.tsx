@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@promptstudio/system/components/ui/dialog';
-import { createCheckoutSession } from '@/api/billingApi';
+import { createCheckoutSession } from '@/features/billing/api/billingApi';
 import { CREDIT_PACKS } from '@/features/billing/creditPacks';
 import { cn } from '@/utils/cn';
 

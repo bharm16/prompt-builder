@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchBillingStatus, type BillingStatus } from '@/api/billingApi';
+import { fetchBillingStatus, type BillingStatus } from '@/features/billing/api/billingApi';
 import { useAuthUser } from '@/hooks/useAuthUser';
 
 interface UseBillingStatusResult {

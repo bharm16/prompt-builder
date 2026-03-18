@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Check, CreditCard, FileText } from '@promptstudio/system/components/ui';
-import { createBillingPortalSession, createCheckoutSession } from '@/api/billingApi';
+import { createBillingPortalSession, createCheckoutSession } from '@/features/billing/api/billingApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';

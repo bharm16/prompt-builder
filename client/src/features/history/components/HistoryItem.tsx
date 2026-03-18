@@ -248,33 +248,32 @@ export const HistoryItem = memo<HistoryItemProps>(({
           </div>
 
           <div className="overflow-hidden">
-            <div
-              className={cn(
-                'motion-presence-panel rounded-lg border border-error/40 bg-error/10 p-ps-4',
-                showDeleteConfirm ? 'opacity-100' : 'pointer-events-none opacity-0'
-              )}
-              data-motion-state={showDeleteConfirm ? 'entered' : 'exit'}
-            >
-              <p className="mb-ps-3 text-body text-foreground">Delete this session?</p>
-              <div className="flex gap-ps-3">
-                <Button
-                  onClick={handleDelete}
-                  size="sm"
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  Delete
-                </Button>
-                <Button
-                  onClick={handleCancel}
-                  size="sm"
-                  variant="secondary"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
+            {showDeleteConfirm ? (
+              <div
+                className="motion-presence-panel rounded-lg border border-error/40 bg-error/10 p-ps-4 opacity-100"
+                data-motion-state="entered"
+              >
+                <p className="mb-ps-3 text-body text-foreground">Delete this session?</p>
+                <div className="flex gap-ps-3">
+                  <Button
+                    onClick={handleDelete}
+                    size="sm"
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    onClick={handleCancel}
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </li>

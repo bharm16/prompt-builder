@@ -83,6 +83,24 @@ export const MediaViewUrlResponseSchema = z
   })
   .passthrough();
 
+export const MediaViewUrlBatchItemSchema = z.object({
+  assetId: z.string(),
+  viewUrl: z.string().nullable(),
+  error: z.string().optional(),
+});
+
+export const MediaViewUrlBatchResponseSchema = z
+  .object({
+    success: z.boolean(),
+    data: z
+      .object({
+        results: z.array(MediaViewUrlBatchItemSchema),
+      })
+      .optional(),
+    error: z.string().optional(),
+  })
+  .passthrough();
+
 export const FaceSwapPreviewResponseSchema = z
   .object({
     success: z.boolean(),

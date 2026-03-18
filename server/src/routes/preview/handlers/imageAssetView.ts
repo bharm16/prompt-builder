@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import type { PreviewRoutesServices } from '@routes/types';
+import { logger } from '@infrastructure/Logger';
 
 type ImageAssetViewServices = Pick<PreviewRoutesServices, 'imageGenerationService'>;
+const log = logger.child({ handler: 'imageAssetView' });
 
 export const createImageAssetViewHandler = ({
   imageGenerationService,
@@ -41,6 +43,7 @@ export const createImageAssetViewHandler = ({
 
     const viewUrl = await imageGenerationService.getImageUrl(assetId, userId);
     if (!viewUrl) {
+      log.warn('Image asset not found in GCS', { assetId, userId });
       return res.status(404).json({
         success: false,
         error: 'Image asset not found',

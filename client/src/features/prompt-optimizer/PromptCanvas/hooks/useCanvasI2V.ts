@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
+import type { PromptCanvasProps, SuggestionItem } from '../types';
 
-interface CanvasI2VParams {
-  i2vContext?: any;
+interface CanvasI2VParams extends Pick<PromptCanvasProps, 'i2vContext'> {
   showI2VLockIndicator: boolean;
   resolvedI2VReason: string | null;
-  i2vMotionAlternatives: any[];
-  handleLockedAlternativeClick: (value: any) => void;
+  i2vMotionAlternatives: SuggestionItem[];
+  handleLockedAlternativeClick: (value: SuggestionItem) => void;
 }
 
 export function useCanvasI2V({

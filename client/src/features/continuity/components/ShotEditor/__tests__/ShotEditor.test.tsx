@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { ShotEditor } from '../ShotEditor';
 import type { ContinuitySession } from '../../../types';
 
@@ -68,5 +68,55 @@ describe('ShotEditor', () => {
     });
     expect(screen.getAllByText('Continuity mode').length).toBeGreaterThan(0);
     expect(screen.getByText('Style source')).toBeInTheDocument();
+  });
+
+  it('resets editor state when a different session is loaded', async () => {
+    const firstSession = buildSession();
+    const firstShot = {
+      id: 'shot-1',
+      sessionId: 'session-1',
+      sequenceIndex: 0,
+      userPrompt: 'First session shot',
+      continuityMode: 'style-match' as const,
+      styleStrength: 0.5,
+      styleReferenceId: null,
+      modelId: 'model-1',
+      status: 'draft' as const,
+      createdAt: new Date().toISOString(),
+    };
+    const secondSession: ContinuitySession = {
+      ...buildSession(),
+      id: 'session-2',
+      shots: [
+        {
+          ...firstShot,
+          id: 'shot-2',
+          sessionId: 'session-2',
+        },
+      ],
+      defaultSettings: {
+        ...firstSession.defaultSettings,
+        useCharacterConsistency: true,
+      },
+    };
+
+    const { rerender } = render(
+      <ShotEditor session={firstSession} generationMode="continuity" onAddShot={vi.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText('Describe the next shot'), {
+        target: { value: 'Temporary shot prompt' },
+      });
+    });
+
+    await act(async () => {
+      rerender(
+        <ShotEditor session={secondSession} generationMode="continuity" onAddShot={vi.fn()} />
+      );
+    });
+
+    expect(screen.getByPlaceholderText('Describe the next shot')).toHaveValue('');
+    expect(screen.getByLabelText('Use character reference')).toBeChecked();
   });
 });

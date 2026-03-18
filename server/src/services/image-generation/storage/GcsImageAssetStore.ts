@@ -103,14 +103,26 @@ export class GcsImageAssetStore implements ImageAssetStore {
   }
 
   async getPublicUrl(assetId: string, userId: string): Promise<string | null> {
-    const file = this.bucket.file(this.objectPath(userId, assetId));
+    // Try the current path convention: {basePath}/{userId}/{assetId}
+    const primaryFile = this.bucket.file(this.objectPath(userId, assetId));
     try {
-      const [exists] = await file.exists();
-      if (!exists) {
-        return null;
+      const [exists] = await primaryFile.exists();
+      if (exists) {
+        const { url } = await this.getSignedUrl(primaryFile);
+        return url;
       }
-      const { url } = await this.getSignedUrl(file);
-      return url;
+
+      // Fallback: legacy path convention without userId prefix: {basePath}/{assetId}
+      // Assets created before the userId-scoped path change live here.
+      const legacyFile = this.bucket.file(this.legacyObjectPath(assetId));
+      const [legacyExists] = await legacyFile.exists();
+      if (legacyExists) {
+        this.log.info('Resolved image from legacy path (no userId prefix)', { assetId, userId });
+        const { url } = await this.getSignedUrl(legacyFile);
+        return url;
+      }
+
+      return null;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.warn('Failed to generate image signed URL', {
@@ -125,7 +137,12 @@ export class GcsImageAssetStore implements ImageAssetStore {
   async exists(assetId: string, userId: string): Promise<boolean> {
     const file = this.bucket.file(this.objectPath(userId, assetId));
     const [exists] = await file.exists();
-    return exists;
+    if (exists) return true;
+
+    // Fallback: check legacy path without userId prefix
+    const legacyFile = this.bucket.file(this.legacyObjectPath(assetId));
+    const [legacyExists] = await legacyFile.exists();
+    return legacyExists;
   }
 
   async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
@@ -165,6 +182,11 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
   private objectPath(userId: string, assetId: string): string {
     return `${this.basePath}/${this.sanitizeUserId(userId)}/${assetId}`;
+  }
+
+  /** Legacy path convention used before userId-scoped storage was introduced. */
+  private legacyObjectPath(assetId: string): string {
+    return `${this.basePath}/${assetId}`;
   }
 
   private sanitizeUserId(userId: string): string {

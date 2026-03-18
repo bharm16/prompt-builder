@@ -30,6 +30,7 @@ const StyleReferenceSchema = z
         confidence: z.number(),
       })
       .optional(),
+    extractedAt: z.string().optional(),
   })
   .passthrough();
 
@@ -166,6 +167,7 @@ export {
   ContinuitySessionSettingsSchema,
   ContinuityShotSchema,
   FrameBridgeSchema,
+  SceneProxySchema,
   SeedInfoSchema,
   StyleReferenceSchema,
 };

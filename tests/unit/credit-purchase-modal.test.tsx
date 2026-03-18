@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   createCheckoutSession: vi.fn(),
 }));
 
-vi.mock('@/api/billingApi', () => ({
+vi.mock('@/features/billing/api/billingApi', () => ({
   createCheckoutSession: mocks.createCheckoutSession,
 }));
 

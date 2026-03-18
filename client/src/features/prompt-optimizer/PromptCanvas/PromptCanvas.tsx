@@ -313,7 +313,6 @@ export function PromptCanvas({
     effectiveAspectRatio,
     showResults,
     normalizedInputPrompt,
-    promptVersionId: activeVersionId,
     durationSeconds,
     fpsNumber,
     onInputPromptChange,

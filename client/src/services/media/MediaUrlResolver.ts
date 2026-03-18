@@ -34,6 +34,8 @@ const inflight = new Map<string, Promise<MediaUrlResult>>();
 const cache = new Map<string, { result: MediaUrlResult; expiresAtMs: number | null; cachedAt: number }>();
 
 const CACHE_TTL_MS = 30_000;
+/** Negative results (null URL / not-found) are cached longer to prevent retry storms. */
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
 const EXPIRY_SAFETY_WINDOW_MS = 2 * 60 * 1000;
 const PREVIEW_ROUTE_PREFIX = '/api/preview/';
 const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
@@ -93,7 +95,11 @@ const toExpiresAtMs = (value?: string | number | null): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const isFreshCache = (entry: { expiresAtMs: number | null; cachedAt: number }): boolean => {
+const isFreshCache = (entry: { result: MediaUrlResult; expiresAtMs: number | null; cachedAt: number }): boolean => {
+  // Negative results (asset not found) use a longer TTL to prevent retry storms
+  if (!entry.result.url) {
+    return Date.now() < entry.cachedAt + NEGATIVE_CACHE_TTL_MS;
+  }
   if (entry.expiresAtMs) {
     return Date.now() < entry.expiresAtMs - EXPIRY_SAFETY_WINDOW_MS;
   }
@@ -286,4 +292,120 @@ export function invalidateMediaUrlCache(key: string): void {
 
 export function buildMediaCacheKey(req: MediaUrlRequest): string {
   return buildCacheKey(req);
+}
+
+// ---------------------------------------------------------------------------
+// Batch resolution for image assets (reduces N API calls to 1)
+// ---------------------------------------------------------------------------
+
+import { getImageAssetViewUrlBatch } from '@/features/preview/api/previewApi';
+
+/** Maximum consecutive not-found results before the circuit opens. */
+const CIRCUIT_BREAKER_THRESHOLD = 10;
+/** How long the circuit stays open (ms). */
+const CIRCUIT_BREAKER_RESET_MS = 2 * 60 * 1000;
+
+let circuitNotFoundCount = 0;
+let circuitOpenUntil = 0;
+
+/** Returns true when too many consecutive 404s have been observed. */
+export function isMediaCircuitOpen(): boolean {
+  if (circuitOpenUntil > 0 && Date.now() < circuitOpenUntil) {
+    return true;
+  }
+  if (circuitOpenUntil > 0 && Date.now() >= circuitOpenUntil) {
+    // Half-open: reset and allow traffic
+    circuitNotFoundCount = 0;
+    circuitOpenUntil = 0;
+  }
+  return false;
+}
+
+/** Record a not-found result; opens circuit after threshold. */
+function recordNotFound(): void {
+  circuitNotFoundCount += 1;
+  if (circuitNotFoundCount >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_RESET_MS;
+    log.warn('Media circuit breaker opened', {
+      threshold: CIRCUIT_BREAKER_THRESHOLD,
+      resetMs: CIRCUIT_BREAKER_RESET_MS,
+    });
+  }
+}
+
+/** Record a successful resolution; resets the circuit counter. */
+function recordSuccess(): void {
+  circuitNotFoundCount = 0;
+}
+
+/**
+ * Resolve multiple image asset IDs in a single batch request.
+ * Results are cached in the shared MediaUrlResolver cache.
+ *
+ * Returns a Map from assetId to resolved URL (or null if not found).
+ */
+export async function resolveImageAssetBatch(
+  assetIds: string[]
+): Promise<Map<string, string | null>> {
+  const resultMap = new Map<string, string | null>();
+  if (assetIds.length === 0) return resultMap;
+
+  // Check cache first, collect uncached IDs
+  const uncached: string[] = [];
+  for (const id of assetIds) {
+    const cacheKey = `image|asset|${id}`;
+    const entry = cache.get(cacheKey);
+    if (entry && isFreshCache(entry)) {
+      resultMap.set(id, entry.result.url);
+    } else {
+      uncached.push(id);
+    }
+  }
+
+  if (uncached.length === 0) return resultMap;
+
+  // Circuit breaker check
+  if (isMediaCircuitOpen()) {
+    for (const id of uncached) {
+      resultMap.set(id, null);
+    }
+    return resultMap;
+  }
+
+  try {
+    const response = await getImageAssetViewUrlBatch(uncached);
+    if (response.success && response.data?.results) {
+      let notFoundInBatch = 0;
+      for (const item of response.data.results) {
+        const cacheKey = `image|asset|${item.assetId}`;
+        const result: MediaUrlResult = {
+          url: item.viewUrl,
+          assetId: item.assetId,
+          source: 'preview',
+        };
+        cache.set(cacheKey, { result, expiresAtMs: null, cachedAt: Date.now() });
+        resultMap.set(item.assetId, item.viewUrl);
+        if (!item.viewUrl) {
+          notFoundInBatch += 1;
+        }
+      }
+      if (notFoundInBatch > 0 && notFoundInBatch === response.data.results.length) {
+        // All items in batch were not found — increment circuit breaker
+        for (let i = 0; i < notFoundInBatch; i++) {
+          recordNotFound();
+        }
+      } else if (notFoundInBatch < response.data.results.length) {
+        // At least some succeeded — reset circuit
+        recordSuccess();
+      }
+    }
+  } catch (error) {
+    // Batch endpoint failed — don't cache, let individual resolution handle it
+    log.warn('Batch resolution failed, individual resolution will be used as fallback', {
+      count: uncached.length,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return resultMap;
 }

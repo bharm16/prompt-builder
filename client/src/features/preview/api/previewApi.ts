@@ -16,6 +16,7 @@ import {
   GenerateStoryboardPreviewResponseSchema,
   GenerateVideoResponseSchema,
   MediaViewUrlResponseSchema,
+  MediaViewUrlBatchResponseSchema,
   UploadPreviewImageResponseSchema,
   VideoJobStatusResponseSchema,
 } from './schemas';
@@ -290,6 +291,35 @@ export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUr
   const encoded = encodeURIComponent(assetId.trim());
   const payload = (await apiClient.get(`/preview/video/view?assetId=${encoded}`)) as unknown;
   return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
+}
+
+export interface BatchViewUrlItem {
+  assetId: string;
+  viewUrl: string | null;
+  error?: string;
+}
+
+export interface BatchViewUrlResponse {
+  success: boolean;
+  data?: { results: BatchViewUrlItem[] };
+  error?: string;
+}
+
+/**
+ * Resolve multiple image asset IDs to signed view URLs in a single request.
+ * Falls back to individual requests if the batch endpoint fails.
+ */
+export async function getImageAssetViewUrlBatch(
+  assetIds: string[]
+): Promise<BatchViewUrlResponse> {
+  if (assetIds.length === 0) {
+    return { success: true, data: { results: [] } };
+  }
+
+  const payload = (await apiClient.post('/preview/image/view-batch', {
+    assetIds,
+  })) as unknown;
+  return MediaViewUrlBatchResponseSchema.parse(payload) as BatchViewUrlResponse;
 }
 
 export async function uploadPreviewImage(

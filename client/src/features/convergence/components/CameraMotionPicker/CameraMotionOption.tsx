@@ -16,7 +16,7 @@
  * @requirement 12.5-12.6 - Keyboard navigation with visible focus indicators
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useReducer, useCallback, useRef, useEffect } from 'react';
 import { Check, Loader2 } from '@promptstudio/system/components/ui';
 import { logger } from '@/services/LoggingService';
 import { cn } from '@/utils/cn';
@@ -84,6 +84,74 @@ export interface CameraMotionOptionProps {
   optionId?: string;
 }
 
+type RenderStatus = 'idle' | 'rendering' | 'ready' | 'error';
+type PreviewInteraction = 'idle' | 'hovering' | 'press-previewing';
+
+interface CameraMotionOptionState {
+  frames: string[];
+  renderStatus: RenderStatus;
+  interaction: PreviewInteraction;
+  prefersReducedMotion: boolean;
+  isTouchDevice: boolean;
+}
+
+type CameraMotionOptionAction =
+  | { type: 'SET_PREFERS_REDUCED_MOTION'; prefersReducedMotion: boolean }
+  | { type: 'SET_TOUCH_DEVICE'; isTouchDevice: boolean }
+  | { type: 'SET_INTERACTION'; interaction: PreviewInteraction }
+  | { type: 'RENDER_START' }
+  | { type: 'RENDER_SUCCESS'; frames: string[] }
+  | { type: 'RENDER_ERROR' };
+
+const createInitialState = (): CameraMotionOptionState => ({
+  frames: [],
+  renderStatus: 'idle',
+  interaction: 'idle',
+  prefersReducedMotion: false,
+  isTouchDevice: false,
+});
+
+function cameraMotionOptionReducer(
+  state: CameraMotionOptionState,
+  action: CameraMotionOptionAction
+): CameraMotionOptionState {
+  switch (action.type) {
+    case 'SET_PREFERS_REDUCED_MOTION':
+      return {
+        ...state,
+        prefersReducedMotion: action.prefersReducedMotion,
+      };
+    case 'SET_TOUCH_DEVICE':
+      return {
+        ...state,
+        isTouchDevice: action.isTouchDevice,
+      };
+    case 'SET_INTERACTION':
+      return {
+        ...state,
+        interaction: action.interaction,
+      };
+    case 'RENDER_START':
+      return {
+        ...state,
+        renderStatus: 'rendering',
+      };
+    case 'RENDER_SUCCESS':
+      return {
+        ...state,
+        frames: action.frames,
+        renderStatus: 'ready',
+      };
+    case 'RENDER_ERROR':
+      return {
+        ...state,
+        renderStatus: 'error',
+      };
+    default:
+      return state;
+  }
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -110,15 +178,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   tabIndex = 0,
   optionId,
 }) => {
-  // State for lazy rendering
-  const [frames, setFrames] = useState<string[]>([]);
-  const [isRendering, setIsRendering] = useState(false);
-  const [hasRendered, setHasRendered] = useState(false);
-  const [renderError, setRenderError] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isPressPreviewing, setIsPressPreviewing] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [state, dispatch] = useReducer(cameraMotionOptionReducer, undefined, createInitialState);
 
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
@@ -128,6 +188,12 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   const suppressClickRef = useRef(false);
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
+  const { frames, renderStatus, interaction, prefersReducedMotion, isTouchDevice } = state;
+  const isRendering = renderStatus === 'rendering';
+  const hasRendered = renderStatus === 'ready';
+  const renderError = renderStatus === 'error';
+  const isHovering = interaction === 'hovering';
+  const isPressPreviewing = interaction === 'press-previewing';
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -142,7 +208,11 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     }
 
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    const updateMotionPreference = () =>
+      dispatch({
+        type: 'SET_PREFERS_REDUCED_MOTION',
+        prefersReducedMotion: mediaQuery.matches,
+      });
     updateMotionPreference();
 
     mediaQuery.addEventListener('change', updateMotionPreference);
@@ -163,7 +233,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       const canHover = hoverQuery.matches;
       const coarsePointer = coarseQuery.matches;
       const hasTouchPoints = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
-      setIsTouchDevice(!canHover && (coarsePointer || hasTouchPoints));
+      dispatch({
+        type: 'SET_TOUCH_DEVICE',
+        isTouchDevice: !canHover && (coarsePointer || hasTouchPoints),
+      });
     };
     updateTouchCapability();
 
@@ -239,8 +312,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       durationSec: cameraPath.duration,
     });
 
-    setIsRendering(true);
-    setRenderError(false);
+    dispatch({ type: 'RENDER_START' });
 
     try {
       const renderedFrames = await renderCameraMotionFrames(
@@ -255,8 +327,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       );
 
       if (isMountedRef.current) {
-        setFrames(renderedFrames);
-        setHasRendered(true);
+        dispatch({ type: 'RENDER_SUCCESS', frames: renderedFrames });
       }
       log.info('Camera motion preview frames rendered', {
         operation: OPERATION,
@@ -283,12 +354,10 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         errorName: info.name,
       });
       if (isMountedRef.current) {
-        setRenderError(true);
+        dispatch({ type: 'RENDER_ERROR' });
       }
     } finally {
-      if (isMountedRef.current) {
-        setIsRendering(false);
-      }
+      // render status is already finalized by success or error reducers
     }
   }, [
     cameraPath,
@@ -308,7 +377,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     if (prefersReducedMotion || isTouchDevice) {
       return;
     }
-    setIsHovering(true);
+    dispatch({ type: 'SET_INTERACTION', interaction: 'hovering' });
     if (!fallbackMode && !hasRendered && !isRendering) {
       log.debug('Triggering camera motion preview render on hover', {
         cameraMotionId: cameraPath.id,
@@ -324,7 +393,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
    * Handle mouse leave
    */
   const handleMouseLeave = useCallback(() => {
-    setIsHovering(false);
+    dispatch({ type: 'SET_INTERACTION', interaction: 'idle' });
   }, []);
 
   /**
@@ -361,7 +430,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
 
       longPressTimerRef.current = window.setTimeout(() => {
         suppressClickRef.current = true;
-        setIsPressPreviewing(true);
+        dispatch({ type: 'SET_INTERACTION', interaction: 'press-previewing' });
         if (!hasRendered && !isRendering) {
           renderFrames();
         }
@@ -376,7 +445,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       longPressTimerRef.current = null;
     }
     if (isPressPreviewing) {
-      setIsPressPreviewing(false);
+      dispatch({ type: 'SET_INTERACTION', interaction: 'idle' });
     }
   }, [isPressPreviewing]);
 

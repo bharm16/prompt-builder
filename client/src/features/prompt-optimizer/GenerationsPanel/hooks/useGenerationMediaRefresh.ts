@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { resolveMediaUrl, type MediaUrlRequest } from '@/services/media/MediaUrlResolver';
+import {
+  resolveMediaUrl,
+  resolveImageAssetBatch,
+  isMediaCircuitOpen,
+  type MediaUrlRequest,
+} from '@/services/media/MediaUrlResolver';
 import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { logger } from '@/services/LoggingService';
 import type { Generation } from '../types';
@@ -152,19 +157,58 @@ export function useGenerationMediaRefresh(
     }
 
     const runRefresh = async (): Promise<void> => {
+      // Skip entirely if the circuit breaker is open (too many 404s)
+      if (isMediaCircuitOpen()) {
+        log.debug('Skipping media refresh — circuit breaker open');
+        return;
+      }
+
+      // Phase 1: Collect all image asset IDs that need resolution and batch-resolve them
+      const pendingGenerations: Generation[] = [];
+      const allImageAssetIds: string[] = [];
+
       for (const generation of generations) {
-        if (!isActive) return;
         if (generation.status !== 'completed') continue;
         if (!generation.mediaUrls.length && !generation.thumbnailUrl) continue;
 
         const signature = buildSignature(generation);
-        const alreadyProcessed = processedRef.current.get(generation.id) === signature;
-        if (alreadyProcessed) continue;
+        if (processedRef.current.get(generation.id) === signature) continue;
         if (inFlightRef.current.has(generation.id)) continue;
 
         const retryAfter = retryAfterRef.current.get(generation.id);
         if (typeof retryAfter === 'number' && Date.now() < retryAfter) continue;
 
+        pendingGenerations.push(generation);
+
+        // Collect asset IDs for batch pre-resolution
+        if (generation.mediaType !== 'video') {
+          const refs = generation.mediaAssetIds ?? [];
+          for (let i = 0; i < generation.mediaUrls.length; i++) {
+            const ref = refs[i];
+            if (typeof ref === 'string' && ref.trim() && !ref.startsWith('users/')) {
+              allImageAssetIds.push(ref.trim());
+            }
+          }
+        }
+      }
+
+      if (pendingGenerations.length === 0) return;
+
+      // Batch pre-resolve image asset IDs (populates the cache for individual resolution)
+      if (allImageAssetIds.length > 0) {
+        try {
+          await resolveImageAssetBatch([...new Set(allImageAssetIds)]);
+        } catch {
+          // Batch failed — individual resolution will handle each one
+        }
+      }
+
+      // Phase 2: Process each generation individually (cache is now warm from batch)
+      for (const generation of pendingGenerations) {
+        if (!isActive) return;
+        if (isMediaCircuitOpen()) return;
+
+        const signature = buildSignature(generation);
         inFlightRef.current.add(generation.id);
 
         try {

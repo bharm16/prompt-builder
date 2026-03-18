@@ -44,7 +44,11 @@ describe('checkPromptCoherence', () => {
       mockBuildFirebaseAuthHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
       const fetchImpl = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ issues: [] }),
+        json: () =>
+          Promise.resolve({
+            conflicts: [],
+            harmonizations: [],
+          }),
       });
 
       const result = await checkPromptCoherence({ beforePrompt: 'test', afterPrompt: 'test' }, { fetchImpl });
@@ -59,7 +63,23 @@ describe('checkPromptCoherence', () => {
           }),
         })
       );
-      expect(result).toEqual({ issues: [] });
+      expect(result).toEqual({ conflicts: [], harmonizations: [] });
+    });
+
+    it('rejects malformed coherence payloads at the boundary', async () => {
+      mockBuildFirebaseAuthHeaders.mockResolvedValue({ Authorization: 'Bearer token' });
+      const fetchImpl = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            conflicts: [{ message: 'Missing recommendations', reasoning: 'bad payload' }],
+            harmonizations: [],
+          }),
+      });
+
+      await expect(
+        checkPromptCoherence({ beforePrompt: 'test', afterPrompt: 'test' }, { fetchImpl })
+      ).rejects.toThrow();
     });
   });
 });

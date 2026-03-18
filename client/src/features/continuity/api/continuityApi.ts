@@ -4,7 +4,10 @@ import type { ContinuitySession, CreateSessionInput, CreateShotInput, UpdateShot
 import { z } from 'zod';
 import {
   ContinuityApiResponseSchema,
+  ContinuitySessionSettingsSchema,
   ContinuityShotSchema,
+  SceneProxySchema,
+  StyleReferenceSchema,
 } from './schemas';
 
 interface CreateSceneProxyInput {
@@ -34,9 +37,9 @@ const SessionDtoSchema = z.object({
   continuity: z
     .object({
       shots: z.array(ContinuityShotSchema).default([]),
-      primaryStyleReference: z.any().optional().nullable(),
-      sceneProxy: z.any().optional().nullable(),
-      settings: z.record(z.string(), z.unknown()),
+      primaryStyleReference: StyleReferenceSchema.nullable().optional(),
+      sceneProxy: SceneProxySchema.nullable().optional(),
+      settings: ContinuitySessionSettingsSchema,
     })
     .optional(),
 }).passthrough();
@@ -81,11 +84,10 @@ function sessionToContinuity(session: SessionDtoPayload): ContinuitySession {
     userId: session.userId,
     name: session.name || 'Continuity Session',
     ...(session.description ? { description: session.description } : {}),
-    primaryStyleReference:
-      (session.continuity.primaryStyleReference ?? null) as ContinuitySession['primaryStyleReference'],
+    primaryStyleReference: session.continuity.primaryStyleReference ?? null,
     sceneProxy: session.continuity.sceneProxy ?? null,
     shots: session.continuity.shots,
-    defaultSettings: session.continuity.settings as unknown as ContinuitySession['defaultSettings'],
+    defaultSettings: session.continuity.settings,
     status: session.status,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,

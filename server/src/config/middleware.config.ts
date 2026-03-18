@@ -328,6 +328,18 @@ export function applyRateLimitingMiddleware(
   app.use(generalLimiter);
 
   // API-specific limiter
+  // Asset view endpoints are read-only signed-URL generators that get hammered
+  // on pages with many generations. They have their own dedicated limiter below.
+  const isAssetViewRoute = (req: express.Request): boolean => {
+    const p = req.path;
+    return (
+      p === '/preview/image/view' ||
+      p === '/preview/image/view-batch' ||
+      p === '/preview/video/view' ||
+      p === '/storage/view-url'
+    );
+  };
+
   app.use(
     '/api/',
     rateLimit({
@@ -337,7 +349,25 @@ export function applyRateLimitingMiddleware(
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
+      skip: isAssetViewRoute,
       ...(storeFactory ? { store: storeFactory('api') } : {}),
+    })
+  );
+
+  // Dedicated limiter for asset view endpoints (read-only, idempotent).
+  // Much higher limit since pages with many generations fire dozens of these.
+  const assetViewMax = applyFallback(isDevEnv ? 1000 : 300);
+  app.use(
+    '/api/',
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: assetViewMax,
+      message: 'Asset view rate limit exceeded',
+      standardHeaders: true,
+      legacyHeaders: false,
+      handler: rateLimitJSONHandler,
+      skip: (req: express.Request) => !isAssetViewRoute(req),
+      ...(storeFactory ? { store: storeFactory('asset-view') } : {}),
     })
   );
 

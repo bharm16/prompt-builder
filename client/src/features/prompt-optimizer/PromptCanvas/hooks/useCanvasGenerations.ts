@@ -5,9 +5,51 @@ import { usePromptCanvasPanelProps } from '@features/prompt-optimizer/PromptCanv
 import { useShotGenerations } from '@features/prompt-optimizer/PromptCanvas/hooks/useShotGenerations';
 import { useVersionManagement } from '@features/prompt-optimizer/PromptCanvas/hooks/useVersionManagement';
 
-interface CanvasGenerationsParams {
-  [key: string]: any;
-}
+type ShotGenerationsOptions = Parameters<typeof useShotGenerations>[0];
+type VersionManagementOptions = Parameters<typeof useVersionManagement>[0];
+type PromptCanvasPanelPropsOptions = Parameters<typeof usePromptCanvasPanelProps>[0];
+type GenerationReuseOptions = Parameters<typeof applyGenerationReuse>[1];
+
+interface CanvasGenerationsParams
+  extends Pick<ShotGenerationsOptions, 'currentShot' | 'updateShot'>,
+    Pick<
+      VersionManagementOptions,
+      | 'hasShotContext'
+      | 'promptHistory'
+      | 'currentPromptUuid'
+      | 'currentPromptDocId'
+      | 'setCurrentPromptUuid'
+      | 'setCurrentPromptDocId'
+      | 'activeVersionId'
+      | 'setActiveVersionId'
+      | 'inputPrompt'
+      | 'normalizedDisplayedPrompt'
+      | 'selectedMode'
+      | 'selectedModel'
+      | 'generationParams'
+      | 'serializedKeyframes'
+      | 'promptOptimizer'
+      | 'applyInitialHighlightSnapshot'
+      | 'resetEditStacks'
+      | 'setDisplayedPromptSilently'
+      | 'latestHighlightRef'
+      | 'versionEditCountRef'
+      | 'versionEditsRef'
+      | 'resetVersionEdits'
+      | 'effectiveAspectRatio'
+    >,
+    Pick<
+      PromptCanvasPanelPropsOptions,
+      'showResults' | 'normalizedInputPrompt' | 'durationSeconds' | 'fpsNumber'
+    >,
+    Pick<
+      GenerationReuseOptions,
+      | 'onInputPromptChange'
+      | 'onResetResultsForEditing'
+      | 'setSelectedModel'
+      | 'setVideoTier'
+      | 'setGenerationParams'
+    > {}
 
 export function useCanvasGenerations(params: CanvasGenerationsParams) {
   const {

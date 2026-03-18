@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchCreditHistory, type CreditTransaction } from '@/api/billingApi';
+import { fetchCreditHistory, type CreditTransaction } from '@/features/billing/api/billingApi';
 import { useAuthUser } from '@/hooks/useAuthUser';
 
 interface UseCreditHistoryOptions {

@@ -1,7 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CreditCard, ExternalLink, FileText, RefreshCw, ShieldAlert } from '@promptstudio/system/components/ui';
-import { createBillingPortalSession, fetchInvoices, type InvoiceSummary } from '@/api/billingApi';
+import {
+  createBillingPortalSession,
+  fetchInvoices,
+  type InvoiceSummary,
+} from '@/features/billing/api/billingApi';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';

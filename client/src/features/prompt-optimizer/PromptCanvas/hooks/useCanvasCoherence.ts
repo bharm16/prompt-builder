@@ -1,15 +1,17 @@
 import { useCallback } from 'react';
+import type { PromptCanvasProps } from '../types';
 
-interface CanvasCoherenceParams {
-  coherenceIssues: any;
-  isCoherenceChecking: any;
-  isCoherencePanelExpanded: any;
-  onToggleCoherencePanelExpanded: any;
-  onDismissCoherenceIssue: any;
-  onDismissAllCoherenceIssues: any;
-  onApplyCoherenceFix: any;
-  onScrollToCoherenceSpan: any;
-}
+type CanvasCoherenceParams = Pick<
+  PromptCanvasProps,
+  | 'coherenceIssues'
+  | 'isCoherenceChecking'
+  | 'isCoherencePanelExpanded'
+  | 'onToggleCoherencePanelExpanded'
+  | 'onDismissCoherenceIssue'
+  | 'onDismissAllCoherenceIssues'
+  | 'onApplyCoherenceFix'
+  | 'onScrollToCoherenceSpan'
+>;
 
 export function useCanvasCoherence({
   coherenceIssues,

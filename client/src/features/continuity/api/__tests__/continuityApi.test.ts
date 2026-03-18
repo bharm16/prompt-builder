@@ -166,6 +166,35 @@ describe('continuityApi', () => {
     await expect(continuityApi.getSession('session-1')).rejects.toThrow('Invalid continuity API response');
   });
 
+  it('rejects malformed nested continuity data instead of passing it through', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              ...baseSessionDto,
+              continuity: {
+                ...baseSessionDto.continuity,
+                sceneProxy: {
+                  id: 'proxy-1',
+                  status: 'ready',
+                },
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
+      )
+    );
+
+    await expect(continuityApi.getSession('session-1')).rejects.toThrow('Invalid continuity API response');
+  });
+
   it('throws when session payload omits continuity object', async () => {
     vi.stubGlobal(
       'fetch',

@@ -6,6 +6,8 @@ import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 
 vi.mock('@/services/media/MediaUrlResolver', () => ({
   resolveMediaUrl: vi.fn(),
+  resolveImageAssetBatch: vi.fn().mockResolvedValue(new Map()),
+  isMediaCircuitOpen: vi.fn().mockReturnValue(false),
 }));
 
 const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);

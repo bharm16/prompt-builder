@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ContinuitySession, CreateShotInput, ContinuityMode, GenerationMode } from '../../types';
 import { IDENTITY_KEYFRAME_CREDIT_COST, STYLE_KEYFRAME_CREDIT_COST } from '../../constants';
 import { StrengthSlider } from '../StyleReferencePanel/StrengthSlider';
@@ -13,6 +13,43 @@ interface ShotEditorProps {
   generationMode: GenerationMode;
   onAddShot: (input: CreateShotInput) => Promise<void> | void;
 }
+
+interface CameraHintsState {
+  yaw: string;
+  pitch: string;
+  roll: string;
+  dolly: string;
+}
+
+interface ShotEditorState {
+  prompt: string;
+  continuityMode: ContinuityMode;
+  styleStrength: number;
+  styleReferenceId: string | null;
+  modelId: string;
+  useCharacter: boolean;
+  characterAssetId: string;
+  useCameraHints: boolean;
+  cameraHints: CameraHintsState;
+  usePreviousReference: boolean;
+  isSubmitting: boolean;
+}
+
+type ShotEditorAction =
+  | { type: 'RESET_FOR_SESSION'; session: ContinuitySession }
+  | { type: 'SYNC_STYLE_REFERENCE'; styleReferenceId: string | null }
+  | { type: 'SET_PROMPT'; prompt: string }
+  | { type: 'SET_CONTINUITY_MODE'; continuityMode: ContinuityMode }
+  | { type: 'SET_STYLE_STRENGTH'; styleStrength: number }
+  | { type: 'SET_STYLE_REFERENCE_ID'; styleReferenceId: string | null }
+  | { type: 'SET_MODEL_ID'; modelId: string }
+  | { type: 'SET_USE_CHARACTER'; useCharacter: boolean }
+  | { type: 'SET_CHARACTER_ASSET_ID'; characterAssetId: string }
+  | { type: 'TOGGLE_CAMERA_HINTS' }
+  | { type: 'SET_CAMERA_HINT'; field: keyof CameraHintsState; value: string }
+  | { type: 'SET_USE_PREVIOUS_REFERENCE'; usePreviousReference: boolean }
+  | { type: 'SET_SUBMITTING'; isSubmitting: boolean }
+  | { type: 'RESET_AFTER_SUBMIT' };
 
 const parseNumber = (value: string): number | undefined => {
   if (!value.trim()) return undefined;
@@ -29,33 +66,111 @@ const getCapabilityDefault = (
   return field?.default === true;
 };
 
+const createInitialState = (session: ContinuitySession): ShotEditorState => {
+  const lastShot = session.shots[session.shots.length - 1];
+  return {
+    prompt: '',
+    continuityMode: session.defaultSettings.defaultContinuityMode,
+    styleStrength: session.defaultSettings.defaultStyleStrength,
+    styleReferenceId: lastShot?.id ?? null,
+    modelId: toCapabilityModelId(session.defaultSettings.defaultModel) || '',
+    useCharacter: Boolean(session.defaultSettings.useCharacterConsistency),
+    characterAssetId: '',
+    useCameraHints: false,
+    cameraHints: {
+      yaw: '',
+      pitch: '',
+      roll: '',
+      dolly: '',
+    },
+    usePreviousReference: false,
+    isSubmitting: false,
+  };
+};
+
+function shotEditorReducer(state: ShotEditorState, action: ShotEditorAction): ShotEditorState {
+  switch (action.type) {
+    case 'RESET_FOR_SESSION':
+      return createInitialState(action.session);
+    case 'SYNC_STYLE_REFERENCE':
+      return {
+        ...state,
+        styleReferenceId: action.styleReferenceId,
+      };
+    case 'SET_PROMPT':
+      return {
+        ...state,
+        prompt: action.prompt,
+      };
+    case 'SET_CONTINUITY_MODE':
+      return {
+        ...state,
+        continuityMode: action.continuityMode,
+      };
+    case 'SET_STYLE_STRENGTH':
+      return {
+        ...state,
+        styleStrength: action.styleStrength,
+      };
+    case 'SET_STYLE_REFERENCE_ID':
+      return {
+        ...state,
+        styleReferenceId: action.styleReferenceId,
+      };
+    case 'SET_MODEL_ID':
+      return {
+        ...state,
+        modelId: action.modelId,
+      };
+    case 'SET_USE_CHARACTER':
+      return {
+        ...state,
+        useCharacter: action.useCharacter,
+      };
+    case 'SET_CHARACTER_ASSET_ID':
+      return {
+        ...state,
+        characterAssetId: action.characterAssetId,
+      };
+    case 'TOGGLE_CAMERA_HINTS':
+      return {
+        ...state,
+        useCameraHints: !state.useCameraHints,
+      };
+    case 'SET_CAMERA_HINT':
+      return {
+        ...state,
+        cameraHints: {
+          ...state.cameraHints,
+          [action.field]: action.value,
+        },
+      };
+    case 'SET_USE_PREVIOUS_REFERENCE':
+      return {
+        ...state,
+        usePreviousReference: action.usePreviousReference,
+      };
+    case 'SET_SUBMITTING':
+      return {
+        ...state,
+        isSubmitting: action.isSubmitting,
+      };
+    case 'RESET_AFTER_SUBMIT':
+      return {
+        ...state,
+        prompt: '',
+      };
+    default:
+      return state;
+  }
+}
+
 export function ShotEditor({
   session,
   generationMode,
   onAddShot,
 }: ShotEditorProps): React.ReactElement {
-  const [prompt, setPrompt] = useState('');
-  const [continuityMode, setContinuityMode] = useState<ContinuityMode>(
-    session.defaultSettings.defaultContinuityMode
-  );
-  const [styleStrength, setStyleStrength] = useState(
-    session.defaultSettings.defaultStyleStrength
-  );
-  const [styleReferenceId, setStyleReferenceId] = useState<string | null>(null);
-  const [modelId, setModelId] = useState(
-    toCapabilityModelId(session.defaultSettings.defaultModel) || ''
-  );
-  const [useCharacter, setUseCharacter] = useState(
-    Boolean(session.defaultSettings.useCharacterConsistency)
-  );
-  const [characterAssetId, setCharacterAssetId] = useState('');
-  const [useCameraHints, setUseCameraHints] = useState(false);
-  const [cameraYaw, setCameraYaw] = useState('');
-  const [cameraPitch, setCameraPitch] = useState('');
-  const [cameraRoll, setCameraRoll] = useState('');
-  const [cameraDolly, setCameraDolly] = useState('');
-  const [usePreviousReference, setUsePreviousReference] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [state, dispatch] = useReducer(shotEditorReducer, session, createInitialState);
   const { models: registryModels, isLoading: modelsLoading } = useModelRegistry();
   const [capabilityRegistry, setCapabilityRegistry] = useState<
     Record<string, Record<string, CapabilitiesSchema>> | null
@@ -63,21 +178,31 @@ export function ShotEditor({
   const [registryError, setRegistryError] = useState<string | null>(null);
   const lastSessionIdRef = useRef(session.id);
 
+  const {
+    prompt,
+    continuityMode,
+    styleStrength,
+    styleReferenceId,
+    modelId,
+    useCharacter,
+    characterAssetId,
+    useCameraHints,
+    cameraHints,
+    usePreviousReference,
+    isSubmitting,
+  } = state;
+
   // Reset all editor settings when a different session is loaded
   useEffect(() => {
     if (lastSessionIdRef.current === session.id) return;
     lastSessionIdRef.current = session.id;
-    setContinuityMode(session.defaultSettings.defaultContinuityMode);
-    setStyleStrength(session.defaultSettings.defaultStyleStrength);
-    setModelId(toCapabilityModelId(session.defaultSettings.defaultModel) || '');
-    setUseCharacter(Boolean(session.defaultSettings.useCharacterConsistency));
-    setUsePreviousReference(false);
-  }, [session.id, session.defaultSettings]);
+    dispatch({ type: 'RESET_FOR_SESSION', session });
+  }, [session]);
 
   // Auto-select the latest shot as style reference when shots change
   useEffect(() => {
     const lastShot = session.shots[session.shots.length - 1];
-    setStyleReferenceId(lastShot?.id ?? null);
+    dispatch({ type: 'SYNC_STYLE_REFERENCE', styleReferenceId: lastShot?.id ?? null });
   }, [session.id, session.shots, session.shots.length]);
 
   useEffect(() => {
@@ -161,7 +286,7 @@ export function ShotEditor({
     if (modelId && selectedContinuityEligible) return;
     const fallback = continuityEligibleModels[0];
     if (fallback) {
-      setModelId(fallback.id);
+      dispatch({ type: 'SET_MODEL_ID', modelId: fallback.id });
     }
   }, [showContinuityControls, continuityEligibleModels, modelId, selectedContinuityEligible]);
 
@@ -187,12 +312,12 @@ export function ShotEditor({
 
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
-    setIsSubmitting(true);
+    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
     try {
-      const yaw = parseNumber(cameraYaw);
-      const pitch = parseNumber(cameraPitch);
-      const roll = parseNumber(cameraRoll);
-      const dolly = parseNumber(cameraDolly);
+      const yaw = parseNumber(cameraHints.yaw);
+      const pitch = parseNumber(cameraHints.pitch);
+      const roll = parseNumber(cameraHints.roll);
+      const dolly = parseNumber(cameraHints.dolly);
       const camera = useCameraHints
         ? {
             ...(yaw !== undefined ? { yaw } : {}),
@@ -221,9 +346,9 @@ export function ShotEditor({
       };
 
       await onAddShot(input);
-      setPrompt('');
+      dispatch({ type: 'RESET_AFTER_SUBMIT' });
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
     }
   };
 
@@ -240,7 +365,7 @@ export function ShotEditor({
 
       <textarea
         value={prompt}
-        onChange={(event) => setPrompt(event.target.value)}
+        onChange={(event) => dispatch({ type: 'SET_PROMPT', prompt: event.target.value })}
         className="w-full min-h-[96px] rounded-lg border border-border bg-surface-1 p-3 text-sm"
         placeholder="Describe the next shot"
       />
@@ -250,7 +375,7 @@ export function ShotEditor({
           <label className="text-xs font-medium text-muted">Model</label>
           <select
             value={modelId || ''}
-            onChange={(event) => setModelId(event.target.value)}
+            onChange={(event) => dispatch({ type: 'SET_MODEL_ID', modelId: event.target.value })}
             className="mt-1 w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm"
             disabled={modelsLoading || availableModels.length === 0}
           >
@@ -292,7 +417,8 @@ export function ShotEditor({
             id="use-character"
             type="checkbox"
             checked={useCharacter}
-            onChange={(event) => setUseCharacter(event.target.checked)}
+            onChange={(event) =>
+              dispatch({ type: 'SET_USE_CHARACTER', useCharacter: event.target.checked })}
           />
           <label htmlFor="use-character" className="text-sm text-muted">
             Use character reference
@@ -310,7 +436,8 @@ export function ShotEditor({
         <input
           type="text"
           value={characterAssetId}
-          onChange={(event) => setCharacterAssetId(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'SET_CHARACTER_ASSET_ID', characterAssetId: event.target.value })}
           placeholder="Character asset ID"
           className="w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm"
         />
@@ -320,7 +447,10 @@ export function ShotEditor({
         <div className="space-y-3">
           <div>
             <div className="text-xs font-medium text-muted mb-2">Continuity mode</div>
-            <ContinuityModeToggle value={continuityMode} onChange={setContinuityMode} />
+            <ContinuityModeToggle
+              value={continuityMode}
+              onChange={(value) => dispatch({ type: 'SET_CONTINUITY_MODE', continuityMode: value })}
+            />
             {!hasPreviousShot && continuityMode === 'frame-bridge' && (
               <div className="mt-2 text-xs text-warning">
                 Frame bridge requires a previous generated shot.
@@ -335,7 +465,10 @@ export function ShotEditor({
               value={styleReferenceId ?? 'primary'}
               onChange={(event) => {
                 const value = event.target.value || 'primary';
-                setStyleReferenceId(value === 'primary' ? null : value);
+                dispatch({
+                  type: 'SET_STYLE_REFERENCE_ID',
+                  styleReferenceId: value === 'primary' ? null : value,
+                });
               }}
             >
               {styleReferenceOptions.map((option) => (
@@ -347,7 +480,10 @@ export function ShotEditor({
           </div>
 
           {continuityMode === 'style-match' && (
-            <StrengthSlider value={styleStrength} onChange={setStyleStrength} />
+            <StrengthSlider
+              value={styleStrength}
+              onChange={(value) => dispatch({ type: 'SET_STYLE_STRENGTH', styleStrength: value })}
+            />
           )}
 
           <div className="space-y-2">
@@ -356,7 +492,7 @@ export function ShotEditor({
               <button
                 type="button"
                 className="text-xs text-muted hover:text-foreground"
-                onClick={() => setUseCameraHints((prev) => !prev)}
+                onClick={() => dispatch({ type: 'TOGGLE_CAMERA_HINTS' })}
               >
                 {useCameraHints ? 'Hide' : 'Add'}
               </button>
@@ -365,29 +501,41 @@ export function ShotEditor({
               <div className="grid gap-2 sm:grid-cols-4">
                 <input
                   type="number"
-                  value={cameraYaw}
-                  onChange={(event) => setCameraYaw(event.target.value)}
+                  value={cameraHints.yaw}
+                  onChange={(event) =>
+                    dispatch({ type: 'SET_CAMERA_HINT', field: 'yaw', value: event.target.value })}
                   placeholder="Yaw"
                   className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm"
                 />
                 <input
                   type="number"
-                  value={cameraPitch}
-                  onChange={(event) => setCameraPitch(event.target.value)}
+                  value={cameraHints.pitch}
+                  onChange={(event) =>
+                    dispatch({
+                      type: 'SET_CAMERA_HINT',
+                      field: 'pitch',
+                      value: event.target.value,
+                    })}
                   placeholder="Pitch"
                   className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm"
                 />
                 <input
                   type="number"
-                  value={cameraRoll}
-                  onChange={(event) => setCameraRoll(event.target.value)}
+                  value={cameraHints.roll}
+                  onChange={(event) =>
+                    dispatch({ type: 'SET_CAMERA_HINT', field: 'roll', value: event.target.value })}
                   placeholder="Roll"
                   className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm"
                 />
                 <input
                   type="number"
-                  value={cameraDolly}
-                  onChange={(event) => setCameraDolly(event.target.value)}
+                  value={cameraHints.dolly}
+                  onChange={(event) =>
+                    dispatch({
+                      type: 'SET_CAMERA_HINT',
+                      field: 'dolly',
+                      value: event.target.value,
+                    })}
                   placeholder="Dolly"
                   className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm"
                 />
@@ -405,7 +553,11 @@ export function ShotEditor({
             <input
               type="checkbox"
               checked={usePreviousReference}
-              onChange={(event) => setUsePreviousReference(event.target.checked)}
+              onChange={(event) =>
+                dispatch({
+                  type: 'SET_USE_PREVIOUS_REFERENCE',
+                  usePreviousReference: event.target.checked,
+                })}
             />
             Use previous shot as reference (best effort)
           </label>
