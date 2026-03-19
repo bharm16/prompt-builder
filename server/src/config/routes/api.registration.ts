@@ -19,7 +19,7 @@ import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJud
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
 import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
 import type { VideoConceptServiceContract } from '@routes/video/types';
-import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import { resolveOptionalService } from './resolve-utils.ts';
 import type { RuntimeFlags } from '../runtime-flags';

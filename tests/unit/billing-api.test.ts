@@ -18,7 +18,7 @@ import {
   fetchBillingStatus,
   fetchCreditHistory,
   fetchInvoices,
-} from '@/api/billingApi';
+} from '@/features/billing/api/billingApi';
 
 describe('billingApi', () => {
   beforeEach(() => {

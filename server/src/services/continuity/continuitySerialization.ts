@@ -47,9 +47,8 @@ export const deserializeContinuitySession = (
   stored: StoredContinuitySession
 ): ContinuitySession => {
   const sceneProxy = stored.sceneProxy ? deserializeSceneProxy(stored.sceneProxy) : undefined;
-  const storedRecord = stored as unknown as Record<string, unknown>;
-  const version = typeof storedRecord.version === 'number'
-    ? storedRecord.version
+  const version = typeof stored.version === 'number'
+    ? stored.version
     : undefined;
   return {
     id: sessionId,
@@ -121,28 +120,28 @@ export const deserializeShot = (raw: Record<string, unknown>): ContinuityShot =>
 
   const styleReferenceRaw = raw.styleReference as Record<string, unknown> | undefined;
 
-  const shot = raw as unknown as ContinuityShot;
-  shot.createdAt = createdAt;
-  if (generatedAt) {
-    shot.generatedAt = generatedAt;
-  }
-  if (seedInfo) {
-    shot.seedInfo = seedInfo;
-  }
-  if (frameBridgeRaw) {
-    shot.frameBridge = {
-      ...(frameBridgeRaw as Record<string, unknown>),
-      extractedAt:
-        typeof frameBridgeRaw.extractedAt === 'number'
-          ? new Date(frameBridgeRaw.extractedAt)
-          : new Date(),
-    } as NonNullable<ContinuityShot['frameBridge']>;
-  }
-  if (styleReferenceRaw) {
-    shot.styleReference = deserializeStyleReference(styleReferenceRaw);
-  }
+  const frameBridge = frameBridgeRaw
+    ? {
+        ...frameBridgeRaw,
+        extractedAt:
+          typeof frameBridgeRaw.extractedAt === 'number'
+            ? new Date(frameBridgeRaw.extractedAt)
+            : new Date(),
+      } as NonNullable<ContinuityShot['frameBridge']>
+    : undefined;
 
-  return shot;
+  const styleReference = styleReferenceRaw
+    ? deserializeStyleReference(styleReferenceRaw)
+    : undefined;
+
+  return {
+    ...data,
+    createdAt,
+    ...(generatedAt !== undefined ? { generatedAt } : {}),
+    ...(seedInfo !== undefined ? { seedInfo } : {}),
+    ...(frameBridge !== undefined ? { frameBridge } : {}),
+    ...(styleReference !== undefined ? { styleReference } : {}),
+  } as ContinuityShot;
 };
 
 export const serializeStyleReference = (ref: ContinuitySession['primaryStyleReference']): Record<string, unknown> => ({
@@ -154,9 +153,7 @@ export const deserializeStyleReference = (
   raw: Record<string, unknown>
 ): ContinuitySession['primaryStyleReference'] => {
   const extractedAt = typeof raw.extractedAt === 'number' ? new Date(raw.extractedAt) : new Date();
-  const ref = raw as unknown as ContinuitySession['primaryStyleReference'];
-  ref.extractedAt = extractedAt;
-  return ref;
+  return { ...raw, extractedAt } as ContinuitySession['primaryStyleReference'];
 };
 
 export const serializeSceneProxy = (
@@ -170,9 +167,5 @@ export const deserializeSceneProxy = (
   raw: Record<string, unknown>
 ): ContinuitySession['sceneProxy'] => {
   const createdAt = typeof raw.createdAt === 'number' ? new Date(raw.createdAt) : new Date();
-  const proxy = raw as unknown as ContinuitySession['sceneProxy'];
-  if (!proxy) {
-    return proxy;
-  }
-  return { ...proxy, createdAt };
+  return { ...raw, createdAt } as ContinuitySession['sceneProxy'];
 };

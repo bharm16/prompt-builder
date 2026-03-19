@@ -5,6 +5,7 @@ describe('CacheKeyFactory', () => {
   const mockGenerateKey = vi.fn((namespace: string, data: Record<string, unknown>) => `${namespace}:${JSON.stringify(data)}`);
   const mockCacheService = { generateKey: mockGenerateKey };
   const createBaseParams = (): EnhancementCacheParams => ({
+    engineVersion: 'v1',
     highlightedText: 'test highlight',
     contextBefore: 'before context',
     contextAfter: 'after context',
@@ -19,6 +20,7 @@ describe('CacheKeyFactory', () => {
     editHistory: [],
     modelTarget: 'runway-gen3',
     promptSection: 'main',
+    policyVersion: null,
     spanFingerprint: null,
   });
 
@@ -211,6 +213,19 @@ describe('CacheKeyFactory', () => {
       const result = CacheKeyFactory.generateKey('enhancement', params, mockCacheService as never);
 
       expect(result).toContain('enhancement:');
+    });
+
+    it('separates cache keys by engine version', () => {
+      const v1Params = createBaseParams();
+      const v2Params = { ...createBaseParams(), engineVersion: 'v2' as const, policyVersion: '2026-03-v2a' };
+
+      const key1 = CacheKeyFactory.generateKey('enhancement:v1', v1Params, mockCacheService as never);
+      const key2 = CacheKeyFactory.generateKey('enhancement:v2', v2Params, mockCacheService as never);
+
+      expect(key1).not.toEqual(key2);
+      expect(key1).toContain('"engineVersion":"v1"');
+      expect(key2).toContain('"engineVersion":"v2"');
+      expect(key2).toContain('"policyVersion":"2026-03-v2a"');
     });
 
     it('includes highlightedText in key', () => {

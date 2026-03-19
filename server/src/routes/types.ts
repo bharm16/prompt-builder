@@ -10,8 +10,8 @@ import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
-import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
-import type { FaceSwapService } from '@services/generation/FaceSwapService';
+import type KeyframeGenerationService from '@services/video-generation/KeyframeGenerationService';
+import type { FaceSwapService } from '@services/video-generation/FaceSwapService';
 import type { AssetService } from '@services/asset/AssetService';
 import type { RequestIdempotencyService } from '@services/idempotency/RequestIdempotencyService';
 

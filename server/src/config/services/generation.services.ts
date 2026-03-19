@@ -7,10 +7,10 @@ import { AIModelService } from '@services/ai-model/index';
 import AssetService from '@services/asset/AssetService';
 import { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
-import ConsistentVideoService from '@services/generation/ConsistentVideoService';
-import FaceSwapService from '@services/generation/FaceSwapService';
-import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
-import { FalFaceSwapProvider } from '@services/generation/providers/FalFaceSwapProvider';
+import ConsistentVideoService from '@services/video-generation/ConsistentVideoService';
+import FaceSwapService from '@services/video-generation/FaceSwapService';
+import KeyframeGenerationService from '@services/video-generation/KeyframeGenerationService';
+import { FalFaceSwapProvider } from '@services/video-generation/providers/FalFaceSwapProvider';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import { ReplicateFluxKontextFastProvider } from '@services/image-generation/providers/ReplicateFluxKontextFastProvider';
 import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
@@ -246,12 +246,6 @@ export function registerGenerationServices(container: DIContainer): void {
     },
     ['config'],
     { singleton: true }
-  );
-
-  container.register(
-    'keyframeService',
-    (keyframeGenerationService: KeyframeGenerationService | null) => keyframeGenerationService,
-    ['keyframeGenerationService']
   );
 
   container.register(

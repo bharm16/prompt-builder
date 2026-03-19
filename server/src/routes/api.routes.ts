@@ -27,7 +27,7 @@ import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
 import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
 import type { AssetService } from '@services/asset/AssetService';
-import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 import type { ImageObservationService } from '@services/image-observation';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';

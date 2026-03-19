@@ -21,7 +21,13 @@ vi.mock('@utils/StructuredOutputEnforcer', () => ({
   },
 }));
 
-function createService() {
+function createService(options?: {
+  enhancementConfig?: {
+    defaultEngine: 'v1' | 'v2';
+    legacyV1Enabled: boolean;
+    policyVersion: string;
+  };
+}) {
   const aiService = {
     getOperationConfig: vi.fn(() => ({
       temperature: 0.6,
@@ -127,6 +133,11 @@ function createService() {
     categoryAligner,
     metricsService: null,
     cacheService,
+    enhancementConfig: options?.enhancementConfig ?? {
+      defaultEngine: 'v1',
+      legacyV1Enabled: true,
+      policyVersion: '2026-03-v2a',
+    },
   });
 
   return {
@@ -279,5 +290,98 @@ describe('EnhancementService', () => {
       'late afternoon haze',
       'cool dusk glow',
     ]);
+  });
+
+  it('applies i2v pre-blocking before running the V2 engine', async () => {
+    const { service } = createService({
+      enhancementConfig: { defaultEngine: 'v2', legacyV1Enabled: false, policyVersion: '2026-03-v2a' },
+    });
+
+    const result = await service.getEnhancementSuggestions({
+      highlightedText: 'tracking',
+      contextBefore: 'A runner moves through smoke, ',
+      contextAfter: ', under neon lights.',
+      fullPrompt: 'A runner moves through smoke, tracking, under neon lights.',
+      originalUserPrompt: 'runner through smoke',
+      highlightedCategory: 'camera.movement',
+      highlightedCategoryConfidence: 0.95,
+      requestedEngineVersion: 'v2',
+      i2vContext: {
+        lockMap: {
+          'camera.movement': 'hard',
+        } as never,
+        observation: {
+          subject: { description: 'runner' },
+          framing: { shotType: 'medium shot', angle: 'eye-level' },
+          lighting: { quality: 'soft', timeOfDay: 'dusk' },
+          motion: { recommended: ['pan-left'], risky: [] },
+        } as never,
+      },
+      allLabeledSpans: [],
+      nearbySpans: [],
+      editHistory: [],
+    });
+
+    expect(result.suggestions).toEqual([]);
+    expect(result.metadata?.i2v).toBeDefined();
+  });
+
+  it('applies the shared i2v post-filter after V2 generation', async () => {
+    const { service } = createService({
+      enhancementConfig: { defaultEngine: 'v2', legacyV1Enabled: false, policyVersion: '2026-03-v2a' },
+    });
+
+    const result = await service.getEnhancementSuggestions({
+      highlightedText: 'tracking',
+      contextBefore: 'A runner moves through smoke, ',
+      contextAfter: ', under neon lights.',
+      fullPrompt: 'A runner moves through smoke, tracking, under neon lights.',
+      originalUserPrompt: 'runner through smoke',
+      highlightedCategory: 'camera.movement',
+      highlightedCategoryConfidence: 0.95,
+      requestedEngineVersion: 'v2',
+      debug: true,
+      i2vContext: {
+        lockMap: {} as never,
+        observation: {
+          subject: { description: 'runner' },
+          framing: { shotType: 'medium shot', angle: 'eye-level' },
+          lighting: { quality: 'soft', timeOfDay: 'dusk' },
+          motion: { recommended: ['pan-left'], risky: ['pan'] },
+        } as never,
+      },
+      allLabeledSpans: [],
+      nearbySpans: [],
+      editHistory: [],
+    });
+
+    const flatSuggestions = result.suggestions as Suggestion[];
+    expect(flatSuggestions.length).toBeGreaterThan(0);
+    expect(flatSuggestions.some((item) => /\bpan\b/i.test(item.text))).toBe(false);
+    expect(result._debug?.engineVersion).toBe('v2');
+  });
+
+  it('defaults to V2 and ignores requested V1 when legacy mode is disabled', async () => {
+    const { service, promptBuilder } = createService({
+      enhancementConfig: { defaultEngine: 'v2', legacyV1Enabled: false, policyVersion: '2026-03-v2a' },
+    });
+
+    const result = await service.getEnhancementSuggestions({
+      highlightedText: 'tracking',
+      contextBefore: 'A runner moves through smoke, ',
+      contextAfter: ', under neon lights.',
+      fullPrompt: 'A runner moves through smoke, tracking, under neon lights.',
+      originalUserPrompt: 'runner through smoke',
+      highlightedCategory: 'camera.movement',
+      highlightedCategoryConfidence: 0.95,
+      requestedEngineVersion: 'v1',
+      debug: true,
+      allLabeledSpans: [],
+      nearbySpans: [],
+      editHistory: [],
+    });
+
+    expect(promptBuilder.buildRewritePrompt).not.toHaveBeenCalled();
+    expect(result._debug?.engineVersion).toBe('v2');
   });
 });

@@ -3,7 +3,7 @@ import { DIContainer } from '@infrastructure/DIContainer';
 import { registerGenerationServices } from '@config/services/generation.services';
 import type { ServiceConfig } from '@config/services/service-config.types';
 
-describe('keyframe service alias regression', () => {
+describe('keyframeGenerationService singleton regression', () => {
   const originalFalKey = process.env.FAL_KEY;
 
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe('keyframe service alias regression', () => {
     process.env.FAL_KEY = originalFalKey;
   });
 
-  it('resolves keyframeService and keyframeGenerationService to the same singleton instance', () => {
+  it('resolves keyframeGenerationService to the same singleton instance on repeated calls', () => {
     const container = new DIContainer();
     // Only the fields accessed by generation services are needed for this test.
     const config = {
@@ -41,11 +41,10 @@ describe('keyframe service alias regression', () => {
     container.registerValue('config', config);
     registerGenerationServices(container);
 
-    const generationService = container.resolve('keyframeGenerationService');
-    const keyframeService = container.resolve('keyframeService');
-    const keyframeServiceAgain = container.resolve('keyframeService');
+    const first = container.resolve('keyframeGenerationService');
+    const second = container.resolve('keyframeGenerationService');
 
-    expect(keyframeService).toBe(generationService);
-    expect(keyframeServiceAgain).toBe(generationService);
+    expect(first).toBe(second);
+    expect(first).not.toBeNull();
   });
 });

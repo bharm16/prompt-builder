@@ -3,6 +3,7 @@ import type { VideoConstraints, BrainstormSignature, EditHistoryEntry } from '..
 import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
 
 export interface EnhancementCacheParams {
+  engineVersion: 'v1' | 'v2';
   highlightedText: string;
   contextBefore: string;
   contextAfter: string;
@@ -17,6 +18,7 @@ export interface EnhancementCacheParams {
   editHistory: EditHistoryEntry[];
   modelTarget: string | null;
   promptSection: string | null;
+  policyVersion?: string | null;
   spanFingerprint?: string | null;
 }
 
@@ -50,6 +52,7 @@ export class CacheKeyFactory {
     }
 
     return cacheService.generateKey(namespace, {
+      engineVersion: params.engineVersion,
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
@@ -64,11 +67,11 @@ export class CacheKeyFactory {
       editFingerprint: editFingerprint || null,
       modelTarget: params.modelTarget || null,
       promptSection: params.promptSection || null,
+      policyVersion: params.policyVersion || null,
       spanFingerprint: params.spanFingerprint || null,
     });
   }
 }
-
 
 
 

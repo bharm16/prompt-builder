@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import type { AssetService } from '@services/asset/AssetService';
-import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import type KeyframeGenerationService from '@services/video-generation/KeyframeGenerationService';
 import { StorageService } from '@services/storage/StorageService';
 import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
 import type { CharacterKeyframeOptions } from './types';

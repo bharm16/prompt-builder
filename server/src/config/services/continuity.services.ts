@@ -3,7 +3,7 @@ import { logger } from '@infrastructure/Logger';
 import { AIModelService } from '@services/ai-model/index';
 import AssetService from '@services/asset/AssetService';
 import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
-import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import KeyframeGenerationService from '@services/video-generation/KeyframeGenerationService';
 import type { StorageService as AppStorageService } from '@services/storage/StorageService';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { VideoAssetStore } from '@services/video-generation/storage';

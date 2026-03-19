@@ -168,6 +168,11 @@ export interface ServiceConfig {
     shotPlanCacheTtlMs: number;
     shotPlanCacheMax: number;
   };
+  enhancement: {
+    defaultEngine: 'v1' | 'v2';
+    legacyV1Enabled: boolean;
+    policyVersion: string;
+  };
   features: {
     faceEmbedding: boolean;
     promptOutputOnly: boolean;

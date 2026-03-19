@@ -3,6 +3,7 @@ import { validateAgainstVideoTemplate } from '../config/CategoryConstraints.js';
 import { getParentCategory } from '@shared/taxonomy';
 import { getAllExampleTexts } from '../config/EnhancementExamples';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
+import * as patterns from './ValidationPatterns.js';
 
 type ExtendedSanitizationContext = SanitizationContext & {
   contextBefore?: string;
@@ -58,79 +59,7 @@ export class SuggestionValidationService {
     shot: new Set(['camera']),
   };
   private readonly deprioritizedMarker = '__deprioritized';
-  private readonly lockedCategoryPatterns: Record<string, RegExp> = {
-    camera: /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing)\b/i,
-    shot: /\b(wide shot|medium shot|close[-\s]?up|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|shot|angle)\b/i,
-    lighting: /\b(lighting|shadow|glow|illuminat|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
-    technical: /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
-  };
-  private readonly cameraMovementTerms =
-    /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|push[-\s]?in|pull[-\s]?out|arc)\b/i;
-  private readonly cameraAngleTerms =
-    /\b(eye[-\s]?level|low[-\s]?angle|high[-\s]?angle|overhead|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt|profile|point[-\s]?of[-\s]?view|pov)\b/i;
-  private readonly shotFramingTerms =
-    /\b(shot|close[-\s]?up|medium shot|wide shot|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|high[-\s]?angle|low[-\s]?angle|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt)\b/i;
-  private readonly cameraFocusTerms =
-    /\b(focus|depth of field|dof|bokeh|defocus|blur|shallow|rack focus|selective focus)\b/i;
-  private readonly lensApertureTerms =
-    /\b(\d+mm|lens|prime|telephoto|wide[-\s]?angle|anamorphic|macro|aperture|f\/\d(?:\.\d+)?|iris)\b/i;
-  private readonly cameraTechniqueTerms =
-    /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|steadicam|shot|close[-\s]?up|wide[-\s]?angle|high[-\s]?angle|low[-\s]?angle|bird'?s[-\s]?eye|lens|mm|framing)\b/i;
-  private readonly lightSourceClauseTerms =
-    /\b(from|through|window|rear window|windshield|backseat|overhead|side[-\s]?light(?:ing)?|back[-\s]?light(?:ing)?|front[-\s]?light(?:ing)?|key light|rim light|sunlight|neon|candlelight)\b/i;
-  private readonly lightingClauseVerbTerms =
-    /\b(create|creating|casting|streams?|streaming|pouring|bouncing|to create)\b/i;
-  private readonly timeOfDayTerms =
-    /\b(dawn|sunrise|morning|midday|noon|afternoon|golden hour|sunset|dusk|twilight|blue hour|night|moonlit|daylight|daytime|evening)\b/i;
-  private readonly styleStrongCueTerms =
-    /\b(style|aesthetic|look|tone|palette|grade|grading|grain|noir|neo-noir|documentary|verit[eé]|retro|vintage|kodachrome|8mm|16mm|35mm|cinematic|painterly|watercolor|impressionist|oil|ink|sepia|chiaroscuro|hyperreal|surreal|cyberpunk|cartoon|animation|diorama|pastel|monochrome|technicolor|dream(?:like)?|fantasy|whimsy|wonder|nostalg(?:ia|ic)|realism)\b/i;
-  private readonly lightingQualityCueTerms =
-    /\b(light|lighting|shadow(?:s)?|glow(?:ing)?|lumin(?:ous|ance)|radian(?:t|ce)|illuminat|warmth|brightness|dim(?:ness)?|diffus(?:e|ed|ion)|ambient|backlit|rim[-\s]?lit|high[-\s]?key|low[-\s]?key|sunlit|moonlit|golden[-\s]?hour)\b/i;
-  private readonly lightingDirectionTerms =
-    /\b(left|right|front|rear|back|overhead|top[-\s]?lit|under[-\s]?lit|side[-\s]?lit|back[-\s]?lit|key|rim)\b/i;
-  private readonly externalLocationTerms =
-    /\b(park|street|forest|beach|shoreline|lake|lakeside|dock|meadow|grove|city|cityscape|alley|playground|vineyard|field|trail|road|suburban|mountain|desert|plaza|garden|shore|coast|cliff|waterfront|courtyard|market|boardwalk|turnout|boulevard)\b/i;
-  private readonly environmentContextTerms =
-    /\b(window|windshield|glass|dashboard|cabin|cockpit|seat|upholstery|interior|rearview|mirror|condensation|reflection|dust|raindrops|fogged|haze|air|smoke|shadow|sunbeam|glare|trim|console)\b/i;
-  private readonly vehicleInteriorTerms =
-    /\b(car|vehicle|driver|seat|steering|wheel|window|windows|dashboard|cockpit|cabin|front seat|backseat|passenger seat|truck|van|bus|kart|go-kart|convertible|tractor|train|boat|airplane|stroller|tricycle)\b/i;
-  private readonly vehicleInteriorAnchorTerms =
-    /\b(driver'?s seat|passenger seat|front seat|backseat|dashboard|steering wheel|cockpit|cabin|car interior|inside the car|inside the vehicle)\b/i;
-  private readonly environmentMotionSubjectTerms =
-    /\b(tree|trees|leaf|leaves|branch|branches|grass|waves?|water|wind|breeze|clouds?|rain|snow|mist|fog)\b/i;
-  private readonly humanSubjectTerms =
-    /\b(baby|infant|toddler|child|kid|boy|girl|person|man|woman|human)\b/i;
-  private readonly nonHumanIdentityTerms =
-    /\b(puppy|dog|kitten|cat|bunny|rabbit|duckling|duck|bird|animal|creature|elephant|horse|bear|wolf|fox|lion|tiger|deer)\b/i;
-  private readonly fantasyOrRoleShiftTerms =
-    /\b(cartoon|anime|mascot|puppet|doll|clown|robot|android|alien|monster)\b/i;
-  private readonly weatherGentleAirTerms =
-    /\b(breeze|wind|air current|draft|gust|zephyr)\b/i;
-  private readonly weatherDisruptiveTerms =
-    /\b(snow|snowfall|blizzard|hail|storm|thunder|rain|downpour|fog|mist|hurricane|tornado)\b/i;
-  private readonly humanBodyActionTerms =
-    /\b(clapping|grinning|smiling|waving|nodding|laughing|twisting body|look behind|reaching out|bouncing|tapping|tap(?:s|ping)?|reaching|reach(?:es|ing)?|wriggling|wriggle(?:s|ing)?|tiny fingers?|dashboard|steering wheel|hands?|arms?|feet)\b/i;
-  private readonly shadowCueTerms = /\bshadow(s|y)?\b/i;
-  private readonly styleNounCueTerms =
-    /\b(technicolor|film|look|palette|grading|grade|effect|overlay|vignette|finish|texture|wash|filter)\b/i;
-  private readonly faceCueTerms =
-    /\b(face|cheeks?|rosy-cheeked|eyes?|nose|lips?|mouth|brow|forehead|chin|jaw|expression)\b/i;
-  private readonly handCueTerms =
-    /\b(hands?|fingers?|palms?|knuckles?|nails?|fists?|thumb|thumbs)\b/i;
-  private readonly hairCueTerms = /\b(hair|curls?|braids?|locks?|fringe)\b/i;
-  private readonly feetCueTerms = /\b(feet|foot|toes?|ankles?|heels?|socks?|shoes?)\b/i;
-  private readonly propCueTerms =
-    /\b(steering wheel|wheel|dashboard|window|glass|mirror|seat|console|toy|ring|stroller)\b/i;
-  private readonly fullBodyActionTerms =
-    /\b(leaning|looking|gazing|smiling|grinning|laughing|bouncing|walking|running|kicking|jumping|reaching forward)\b/i;
-  private readonly handInteractionTerms =
-    /\b(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?)\b/i;
-  private readonly technicalVerbLeadTerms =
-    /\b(streams?|pours?|falls?|glows?|shines?|filters?|casts?|renders?)\s*$/i;
-  private readonly canonicalTimeTokens =
-    /\b(dawn|sunrise|morning|midday|noon|afternoon|golden hour|sunset|dusk|twilight|blue hour|night|daylight|daytime|evening)\b/i;
-  private readonly abstractVisualTerms =
-    /\b(hush|cascade|whisper|dream|memory|sentiment|essence|timeless|poetic|ethereal)\b/i;
+  private readonly lockedCategoryPatterns = patterns.lockedCategoryPatterns;
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -650,7 +579,7 @@ export class SuggestionValidationService {
     if (
       highlighted.endsWith('ly') ||
       (highlighted.split(/\s+/).filter(Boolean).length === 1 &&
-        this.technicalVerbLeadTerms.test(before) &&
+        patterns.technicalVerbLeadTerms.test(before) &&
         /^(through|across|into|over|around|beneath|onto|inside|outside)\b/.test(after))
     ) {
       return 'adverb_modifier';
@@ -713,7 +642,7 @@ export class SuggestionValidationService {
     if (!normalized) return false;
     if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
     if (/\b(of|with|while|because|that)\b/.test(normalized)) return false;
-    if (category === 'style.aesthetic' && this.styleNounCueTerms.test(normalized)) {
+    if (category === 'style.aesthetic' && patterns.styleNounCueTerms.test(normalized)) {
       return false;
     }
     if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
@@ -746,11 +675,11 @@ export class SuggestionValidationService {
     }
 
     const highlighted = (context.highlightedText || '').toLowerCase();
-    if (this.faceCueTerms.test(highlighted)) return 'face_detail';
-    if (this.handCueTerms.test(highlighted)) return 'hand_detail';
-    if (this.hairCueTerms.test(highlighted)) return 'hair_detail';
-    if (this.feetCueTerms.test(highlighted)) return 'feet_detail';
-    if (this.propCueTerms.test(highlighted)) return 'prop_detail';
+    if (patterns.faceCueTerms.test(highlighted)) return 'face_detail';
+    if (patterns.handCueTerms.test(highlighted)) return 'hand_detail';
+    if (patterns.hairCueTerms.test(highlighted)) return 'hair_detail';
+    if (patterns.feetCueTerms.test(highlighted)) return 'feet_detail';
+    if (patterns.propCueTerms.test(highlighted)) return 'prop_detail';
     return null;
   }
 
@@ -763,35 +692,35 @@ export class SuggestionValidationService {
     const lowerText = text.toLowerCase();
     if (subRole === 'face_detail') {
       return (
-        !this.faceCueTerms.test(lowerText) ||
-        this.handCueTerms.test(lowerText) ||
-        this.hairCueTerms.test(lowerText) ||
-        this.feetCueTerms.test(lowerText) ||
-        this.propCueTerms.test(lowerText) ||
+        !patterns.faceCueTerms.test(lowerText) ||
+        patterns.handCueTerms.test(lowerText) ||
+        patterns.hairCueTerms.test(lowerText) ||
+        patterns.feetCueTerms.test(lowerText) ||
+        patterns.propCueTerms.test(lowerText) ||
         /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(lowerText)
       );
     }
 
     if (subRole === 'hand_detail') {
       return (
-        !this.handCueTerms.test(lowerText) ||
-        this.faceCueTerms.test(lowerText) ||
-        this.hairCueTerms.test(lowerText) ||
-        this.feetCueTerms.test(lowerText) ||
+        !patterns.handCueTerms.test(lowerText) ||
+        patterns.faceCueTerms.test(lowerText) ||
+        patterns.hairCueTerms.test(lowerText) ||
+        patterns.feetCueTerms.test(lowerText) ||
         /\b(sock|toy|stroller)\b/i.test(lowerText)
       );
     }
 
     if (subRole === 'hair_detail') {
-      return !this.hairCueTerms.test(lowerText);
+      return !patterns.hairCueTerms.test(lowerText);
     }
 
     if (subRole === 'feet_detail') {
-      return !this.feetCueTerms.test(lowerText);
+      return !patterns.feetCueTerms.test(lowerText);
     }
 
     if (subRole === 'prop_detail') {
-      return !this.propCueTerms.test(lowerText) || this.faceCueTerms.test(lowerText) || this.handCueTerms.test(lowerText);
+      return !patterns.propCueTerms.test(lowerText) || patterns.faceCueTerms.test(lowerText) || patterns.handCueTerms.test(lowerText);
     }
 
     return false;
@@ -821,22 +750,22 @@ export class SuggestionValidationService {
       .join(' ')
       .toLowerCase();
 
-    const handBoundAction = this.handCueTerms.test(localContext) && overlappingObjectTerms.some((term) => localContext.includes(term));
+    const handBoundAction = patterns.handCueTerms.test(localContext) && overlappingObjectTerms.some((term) => localContext.includes(term));
     if (!handBoundAction) {
       return false;
     }
 
-    if (this.fullBodyActionTerms.test(lowerText)) {
+    if (patterns.fullBodyActionTerms.test(lowerText)) {
       return true;
     }
 
-    return !this.handInteractionTerms.test(lowerText);
+    return !patterns.handInteractionTerms.test(lowerText);
   }
 
   private _isMetaphoricalOrAbstract(text: string, context: ExtendedSanitizationContext): boolean {
     const category = this._normalizeCategoryKey(context.highlightedCategory || '');
     if (category === 'lighting.timeofday') {
-      return this.abstractVisualTerms.test(text.toLowerCase());
+      return patterns.abstractVisualTerms.test(text.toLowerCase());
     }
     return false;
   }
@@ -855,12 +784,12 @@ export class SuggestionValidationService {
     }
 
     if (category === 'lighting.quality' && slotProfile === 'adverb_modifier') {
-      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
         return 'category_drift';
       }
       const looksLikeSourceClause =
-        this.lightSourceClauseTerms.test(text) &&
-        (this.videoService.countWords(text) >= 4 || this.lightingClauseVerbTerms.test(text));
+        patterns.lightSourceClauseTerms.test(text) &&
+        (this.videoService.countWords(text) >= 4 || patterns.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
         return 'slot_form';
       }
@@ -869,58 +798,58 @@ export class SuggestionValidationService {
 
     if (category === 'camera.angle') {
       if (
-        this.cameraMovementTerms.test(text) ||
-        this.lensApertureTerms.test(text) ||
-        this.cameraFocusTerms.test(text)
+        patterns.cameraMovementTerms.test(text) ||
+        patterns.lensApertureTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text)
       ) {
         return 'category_drift';
       }
-      return this.cameraAngleTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraAngleTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.movement') {
       if (
-        this.lensApertureTerms.test(text) ||
-        this.cameraFocusTerms.test(text) ||
-        this.shotFramingTerms.test(text)
+        patterns.lensApertureTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text) ||
+        patterns.shotFramingTerms.test(text)
       ) {
         return 'category_drift';
       }
-      return this.cameraMovementTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraMovementTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.focus') {
       if (
-        this.cameraMovementTerms.test(text) ||
-        this.lensApertureTerms.test(text) ||
-        this.shotFramingTerms.test(text)
+        patterns.cameraMovementTerms.test(text) ||
+        patterns.lensApertureTerms.test(text) ||
+        patterns.shotFramingTerms.test(text)
       ) {
         return 'category_drift';
       }
-      return this.cameraFocusTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraFocusTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'camera.lens') {
       if (
-        this.cameraMovementTerms.test(text) ||
-        this.cameraFocusTerms.test(text) ||
-        this.shotFramingTerms.test(text)
+        patterns.cameraMovementTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text) ||
+        patterns.shotFramingTerms.test(text)
       ) {
         return 'category_drift';
       }
-      return this.lensApertureTerms.test(text) ? null : 'category_drift';
+      return patterns.lensApertureTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'shot.type') {
-      const hasShotFraming = this.shotFramingTerms.test(text);
-      const hasMovementLanguage = this.cameraMovementTerms.test(text);
+      const hasShotFraming = patterns.shotFramingTerms.test(text);
+      const hasMovementLanguage = patterns.cameraMovementTerms.test(text);
       if (/\b(of|featuring|showing|looking|emphasizing)\b/i.test(text)) {
         return 'slot_form';
       }
       if (!hasShotFraming) {
         return 'category_drift';
       }
-      return hasMovementLanguage || this.lensApertureTerms.test(text) || this.cameraFocusTerms.test(text)
+      return hasMovementLanguage || patterns.lensApertureTerms.test(text) || patterns.cameraFocusTerms.test(text)
         ? 'category_drift'
         : null;
     }
@@ -935,51 +864,51 @@ export class SuggestionValidationService {
         context.contextAfter.trim().startsWith(','));
 
     if (isAdjectiveLikeLightingSlot && slotProfile !== 'adverb_modifier') {
-      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
         return 'category_drift';
       }
       const looksLikeSourceClause =
-        this.lightSourceClauseTerms.test(text) &&
-        (suggestionWordCount >= 4 || this.lightingClauseVerbTerms.test(text));
+        patterns.lightSourceClauseTerms.test(text) &&
+        (suggestionWordCount >= 4 || patterns.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
         return 'slot_form';
       }
-      if (!this.lightingQualityCueTerms.test(text)) {
+      if (!patterns.lightingQualityCueTerms.test(text)) {
         return 'category_drift';
       }
-      if (this.shadowCueTerms.test(context.highlightedText || '') && !this.shadowCueTerms.test(text)) {
+      if (patterns.shadowCueTerms.test(context.highlightedText || '') && !patterns.shadowCueTerms.test(text)) {
         return 'coherence_conflict';
       }
     }
 
     if (category === 'lighting.timeofday') {
       if (
-        this.cameraTechniqueTerms.test(text) ||
-        this.cameraFocusTerms.test(text) ||
-        this.lightSourceClauseTerms.test(text) ||
-        this.lightingClauseVerbTerms.test(text) ||
-        this.lightingDirectionTerms.test(text)
+        patterns.cameraTechniqueTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text) ||
+        patterns.lightSourceClauseTerms.test(text) ||
+        patterns.lightingClauseVerbTerms.test(text) ||
+        patterns.lightingDirectionTerms.test(text)
       ) {
         return 'category_drift';
       }
-      if (!this.timeOfDayTerms.test(text)) {
+      if (!patterns.timeOfDayTerms.test(text)) {
         return 'category_drift';
       }
-      if (!this.canonicalTimeTokens.test(lowerText) || this.abstractVisualTerms.test(lowerText)) {
+      if (!patterns.canonicalTimeTokens.test(lowerText) || patterns.abstractVisualTerms.test(lowerText)) {
         return 'metaphor_or_abstract';
       }
       return null;
     }
 
     if (category === 'lighting.source') {
-      if (this.cameraTechniqueTerms.test(text) || this.cameraFocusTerms.test(text)) {
+      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
         return 'category_drift';
       }
-      if (!this.lightingQualityCueTerms.test(text)) {
+      if (!patterns.lightingQualityCueTerms.test(text)) {
         return 'category_drift';
       }
       const hasSourceOrDirection =
-        this.lightSourceClauseTerms.test(text) || this.lightingDirectionTerms.test(text);
+        patterns.lightSourceClauseTerms.test(text) || patterns.lightingDirectionTerms.test(text);
       if (!hasSourceOrDirection) {
         return 'category_drift';
       }
@@ -987,37 +916,37 @@ export class SuggestionValidationService {
 
     if (category === 'style.aesthetic') {
       if (
-        this.cameraTechniqueTerms.test(text) ||
-        this.cameraMovementTerms.test(text) ||
-        this.lightSourceClauseTerms.test(text) ||
-        this.lightingDirectionTerms.test(text)
+        patterns.cameraTechniqueTerms.test(text) ||
+        patterns.cameraMovementTerms.test(text) ||
+        patterns.lightSourceClauseTerms.test(text) ||
+        patterns.lightingDirectionTerms.test(text)
       ) {
         return 'category_drift';
       }
-      if (!this.styleStrongCueTerms.test(text)) {
+      if (!patterns.styleStrongCueTerms.test(text)) {
         return 'category_drift';
       }
     }
 
     if (category === 'environment.location') {
-      if (this.environmentContextTerms.test(text) || this.vehicleInteriorTerms.test(text)) {
+      if (patterns.environmentContextTerms.test(text) || patterns.vehicleInteriorTerms.test(text)) {
         return 'category_drift';
       }
-      return this.externalLocationTerms.test(text) ? null : 'category_drift';
+      return patterns.externalLocationTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'environment.context') {
-      if (this.externalLocationTerms.test(text)) {
+      if (patterns.externalLocationTerms.test(text)) {
         return 'category_drift';
       }
-      return this.environmentContextTerms.test(text) ? null : 'category_drift';
+      return patterns.environmentContextTerms.test(text) ? null : 'category_drift';
     }
 
     if (category === 'environment.weather') {
       const highlighted = (context.highlightedText || '').toLowerCase();
       if (
-        this.weatherGentleAirTerms.test(highlighted) &&
-        this.weatherDisruptiveTerms.test(lowerText)
+        patterns.weatherGentleAirTerms.test(highlighted) &&
+        patterns.weatherDisruptiveTerms.test(lowerText)
       ) {
         return 'coherence_conflict';
       }
@@ -1041,13 +970,13 @@ export class SuggestionValidationService {
       .join(' ')
       .toLowerCase();
 
-    if (!this.environmentMotionSubjectTerms.test(localContext)) {
+    if (!patterns.environmentMotionSubjectTerms.test(localContext)) {
       return false;
     }
 
     return (
-      this.humanBodyActionTerms.test(text.toLowerCase()) ||
-      this.humanSubjectTerms.test(text.toLowerCase())
+      patterns.humanBodyActionTerms.test(text.toLowerCase()) ||
+      patterns.humanSubjectTerms.test(text.toLowerCase())
     );
   }
 
@@ -1100,15 +1029,15 @@ export class SuggestionValidationService {
       .join(' ')
       .toLowerCase();
 
-    const hasHumanIdentityContext = this.humanSubjectTerms.test(localContext);
+    const hasHumanIdentityContext = patterns.humanSubjectTerms.test(localContext);
     if (!hasHumanIdentityContext) {
       return false;
     }
 
     const lowerText = text.toLowerCase();
     return (
-      this.nonHumanIdentityTerms.test(lowerText) ||
-      this.fantasyOrRoleShiftTerms.test(lowerText)
+      patterns.nonHumanIdentityTerms.test(lowerText) ||
+      patterns.fantasyOrRoleShiftTerms.test(lowerText)
     );
   }
 

@@ -36,7 +36,7 @@ export function registerPreviewRoutes(
     videoContentAccessService: container.resolve('videoContentAccessService'),
     userCreditService,
     storageService: container.resolve('storageService'),
-    keyframeService: container.resolve('keyframeService'),
+    keyframeService: container.resolve('keyframeGenerationService'),
     faceSwapService: container.resolve('faceSwapService'),
     assetService: container.resolve('assetService'),
     requestIdempotencyService: container.resolve('requestIdempotencyService'),

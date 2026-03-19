@@ -2,7 +2,6 @@ import { useMemo, type ReactElement } from 'react';
 import { GridFour, Home } from '@promptstudio/system/components/ui';
 import { Link, useLocation } from 'react-router-dom';
 import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
-import { useSidebarWorkspaceDomain } from '../context';
 import { ToolNavButton } from './ToolNavButton';
 import { toolNavItems } from '../config/toolNavConfig';
 import type { ToolRailProps } from '../types';
@@ -14,7 +13,6 @@ export function ToolRail({
 }: ToolRailProps): ReactElement {
   const location = useLocation();
   const { status, isLoading: isLoadingStatus } = useBillingStatus();
-  const workspace = useSidebarWorkspaceDomain();
   const sessionsItem = toolNavItems.find((item) => item.variant === 'header');
   const navItems = toolNavItems.filter((item) => item.variant === 'default');
   const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
@@ -60,24 +58,22 @@ export function ToolRail({
             key={item.id}
             icon={item.icon}
             label={item.label}
-            isActive={activePanel === item.id}
+            isActive={false}
             onClick={() => handlePanelChange(item.id)}
           />
         ))}
-        {workspace ? (
-          <ToolNavButton
-            icon={GridFour}
-            label="Gallery"
-            isActive={workspace.galleryOpen}
-            onClick={workspace.toggleGallery}
-          />
-        ) : null}
+        <ToolNavButton
+          icon={GridFour}
+          label="Gallery"
+          isActive={false}
+          onClick={() => {}}
+        />
         <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
         {sessionsItem ? (
           <ToolNavButton
             icon={sessionsItem.icon}
             label={sessionsItem.label}
-            isActive={activePanel === 'sessions'}
+            isActive={false}
             onClick={() => handlePanelChange('sessions')}
             variant="header"
           />

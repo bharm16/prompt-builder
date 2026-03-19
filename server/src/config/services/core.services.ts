@@ -9,6 +9,8 @@ import { resolveBoolFlag, resolvePositiveNumber, resolveSignedUrlTtlMs } from '.
 import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerCoreServices(container: DIContainer): void {
+  const enhancementLegacyV1Enabled = process.env.ENHANCEMENT_ENABLE_V1 === 'true';
+
   container.registerValue('logger', logger);
   container.register('metricsService', () => new MetricsService(), [], { singleton: true });
 
@@ -261,6 +263,14 @@ export function registerCoreServices(container: DIContainer): void {
     promptOptimization: {
       shotPlanCacheTtlMs: resolvePositiveNumber(process.env.SHOT_PLAN_CACHE_TTL_MS, 300_000, 1),
       shotPlanCacheMax: resolvePositiveNumber(process.env.SHOT_PLAN_CACHE_MAX, 200, 1),
+    },
+    enhancement: {
+      defaultEngine:
+        enhancementLegacyV1Enabled && process.env.ENHANCEMENT_ENGINE_DEFAULT === 'v1'
+          ? 'v1'
+          : 'v2',
+      legacyV1Enabled: enhancementLegacyV1Enabled,
+      policyVersion: process.env.ENHANCEMENT_POLICY_VERSION || '2026-03-v2a',
     },
     features: {
       faceEmbedding: process.env.ENABLE_FACE_EMBEDDING === 'true',

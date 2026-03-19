@@ -4,7 +4,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { sendApiError } from '@middleware/apiErrorResponse';
 import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import type { ConsistentVideoService } from '@services/generation/ConsistentVideoService';
+import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
 
 const KEYFRAME_COST = 2;

@@ -9,6 +9,8 @@ import type { PromptMode } from '../constants.js';
 import type { ImageObservation } from '@services/image-observation/types';
 import type { I2VConstraintMode, LockMap } from '@services/prompt-optimization/types/i2v';
 
+export type EnhancementEngineVersion = 'v1' | 'v2';
+
 /**
  * Suggestion object structure
  */
@@ -319,6 +321,8 @@ export interface GroupedSuggestions {
 }
 
 export interface EnhancementDebugContext {
+  engineVersion?: EnhancementEngineVersion;
+  policyVersion?: string | null;
   fullPrompt: string;
   selectedSpan: string;
   category: string | null;
@@ -347,6 +351,9 @@ export interface EnhancementDebugContext {
   videoConstraints: VideoConstraints | null;
   temperature: number;
   metrics: EnhancementMetrics;
+  stageCounts?: Record<string, number>;
+  rejectionSummary?: Record<string, number>;
+  modelCallCount?: number;
 }
 
 /**
@@ -486,6 +493,7 @@ export interface EnhancementRequestParams {
     lockMap: LockMap;
     constraintMode?: I2VConstraintMode;
   } | null;
+  requestedEngineVersion?: EnhancementEngineVersion | null;
   debug?: boolean;
 }
 

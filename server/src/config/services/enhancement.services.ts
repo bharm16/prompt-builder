@@ -102,7 +102,8 @@ export function registerEnhancementServices(container: DIContainer): void {
       diversityEnforcer: SuggestionDiversityEnforcer,
       categoryAligner: CategoryAlignmentService,
       metrics: EnhancementMetricsService,
-      cacheService: CacheService
+      cacheService: CacheService,
+      config: ServiceConfig
     ) =>
       new EnhancementService({
         aiService,
@@ -114,6 +115,7 @@ export function registerEnhancementServices(container: DIContainer): void {
         categoryAligner,
         metricsService: metrics,
         cacheService,
+        enhancementConfig: config.enhancement,
       }),
     [
       'aiService',
@@ -125,6 +127,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       'categoryAligner',
       'metricsService',
       'cacheService',
+      'config',
     ]
   );
 
