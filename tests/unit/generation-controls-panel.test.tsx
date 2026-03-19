@@ -8,8 +8,8 @@ import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 import {
   GenerationControlsStoreProvider,
-} from '@features/prompt-optimizer/context/GenerationControlsStore';
-import type { GenerationControlsState } from '@features/prompt-optimizer/context/generationControlsStoreTypes';
+} from '@features/generation-controls/context/GenerationControlsStore';
+import type { GenerationControlsState } from '@features/generation-controls/context/generationControlsStoreTypes';
 
 vi.mock(
   '@utils/cn',

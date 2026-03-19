@@ -20,12 +20,12 @@ import type { ModelRecommendation } from "@/features/model-intelligence/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from "@/features/prompt-optimizer/context/generationControlsStoreTypes";
+} from "@features/generation-controls/context/generationControlsStoreTypes";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@/features/prompt-optimizer/context/GenerationControlsStore";
+} from "@features/generation-controls/context/GenerationControlsStore";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import {
   useOptionalPromptHighlights,

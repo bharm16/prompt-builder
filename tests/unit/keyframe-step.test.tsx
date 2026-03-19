@@ -3,14 +3,14 @@ import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import userEvent from '@testing-library/user-event';
 
-import { KeyframeStep } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/KeyframeStep';
+import { KeyframeStep } from '@features/generations/components/KeyframeStep/KeyframeStep';
 import type { Asset } from '@shared/types/asset';
-import type { KeyframeOption } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/hooks/useKeyframeGeneration';
+import type { KeyframeOption } from '@features/generations/components/KeyframeStep/hooks/useKeyframeGeneration';
 
 const mockUseKeyframeGeneration = vi.fn();
 
 vi.mock(
-  '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/hooks/useKeyframeGeneration',
+  '@features/generations/components/KeyframeStep/hooks/useKeyframeGeneration',
   () => ({
     useKeyframeGeneration: (args: unknown) => mockUseKeyframeGeneration(args),
   })

@@ -1,7 +1,7 @@
 import type { CapabilityValues } from '@shared/capabilities';
 import type { VideoTier } from '@components/ToolSidebar/types';
 import { sanitizeText } from '@/features/span-highlighting';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 
 interface ApplyGenerationReuseOptions {
   onInputPromptChange: (text: string) => void;

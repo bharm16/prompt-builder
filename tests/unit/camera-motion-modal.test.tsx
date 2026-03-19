@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { CameraMotionModal } from '@components/modals/CameraMotionModal';
 import type { CameraPath } from '@/features/convergence/types';
-import { useCameraMotion } from '@/hooks/useCameraMotion';
+import { useCameraMotion } from '@features/convergence/hooks/useCameraMotion';
 import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 
 const mockPickerRender = vi.fn();
@@ -14,7 +14,7 @@ vi.mock('@/features/convergence/components/CameraMotionPicker', () => ({
   },
 }));
 
-vi.mock('@/hooks/useCameraMotion', () => ({
+vi.mock('@features/convergence/hooks/useCameraMotion', () => ({
   useCameraMotion: vi.fn(),
 }));
 

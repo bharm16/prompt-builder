@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 
-import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel/GenerationsPanel';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { GenerationsPanel } from '@features/generations/GenerationsPanel';
+import type { Generation } from '@features/generations/types';
 import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
 
 const mockUseGenerationsState = vi.fn();
@@ -21,28 +21,28 @@ const generationCardSpy = vi.fn();
 const versionDividerSpy = vi.fn();
 const keyframeStepSpy = vi.fn();
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsState', () => ({
+vi.mock('@features/generations/hooks/useGenerationsState', () => ({
   useGenerationsState: (args: unknown) => mockUseGenerationsState(args),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions', () => ({
+vi.mock('@features/generations/hooks/useGenerationActions', () => ({
   useGenerationActions: (dispatch: unknown, options: unknown) =>
     mockUseGenerationActions(dispatch, options),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsTimeline', () => ({
+vi.mock('@features/generations/hooks/useGenerationsTimeline', () => ({
   useGenerationsTimeline: (args: unknown) => mockUseGenerationsTimeline(args),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useAssetReferenceImages', () => ({
+vi.mock('@features/generations/hooks/useAssetReferenceImages', () => ({
   useAssetReferenceImages: (prompt: string) => mockUseAssetReferenceImages(prompt),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationMediaRefresh', () => ({
+vi.mock('@features/generations/hooks/useGenerationMediaRefresh', () => ({
   useGenerationMediaRefresh: vi.fn(),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow', () => ({
+vi.mock('@features/generations/hooks/useKeyframeWorkflow', () => ({
   useKeyframeWorkflow: (args: unknown) => mockUseKeyframeWorkflow(args),
 }));
 
@@ -59,12 +59,12 @@ vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptSession: () => mockUsePromptSession(),
 }));
 
-vi.mock('@features/prompt-optimizer/context/GenerationControlsStore', () => ({
+vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
   useGenerationControlsStoreState: () => mockUseGenerationControlsStoreState(),
   useGenerationControlsStoreActions: () => mockUseGenerationControlsStoreActions(),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/components/GenerationCard', () => ({
+vi.mock('@features/generations/components/GenerationCard', () => ({
   GenerationCard: (props: {
     generation: Generation;
     onContinueSequence?: ((generation: Generation) => void) | undefined;
@@ -74,14 +74,14 @@ vi.mock('@features/prompt-optimizer/GenerationsPanel/components/GenerationCard',
   },
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/components/VersionDivider', () => ({
+vi.mock('@features/generations/components/VersionDivider', () => ({
   VersionDivider: (props: { versionLabel: string }) => {
     versionDividerSpy(props);
     return <div data-testid="version-divider">{props.versionLabel}</div>;
   },
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep', () => ({
+vi.mock('@features/generations/components/KeyframeStep', () => ({
   KeyframeStep: (props: { character: { trigger: string } }) => {
     keyframeStepSpy(props);
     return <div data-testid="keyframe-step">{props.character.trigger}</div>;

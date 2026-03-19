@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-import { useGenerationsState } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsState';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { useGenerationsState } from '@features/generations/hooks/useGenerationsState';
+import type { Generation } from '@features/generations/types';
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-1',

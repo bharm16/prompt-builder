@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-import { useKeyframeWorkflow } from '@features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow';
+import { useKeyframeWorkflow } from '@features/generations/hooks/useKeyframeWorkflow';
 import type { Asset } from '@shared/types/asset';
 import type { KeyframeTile } from '@components/ToolSidebar/types';
 

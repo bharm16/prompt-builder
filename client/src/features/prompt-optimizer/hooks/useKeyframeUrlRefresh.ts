@@ -10,7 +10,7 @@ import {
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
+} from '@features/generation-controls/context/GenerationControlsStore';
 
 const log = logger.child('useKeyframeUrlRefresh');
 const KEYFRAME_REFRESH_INTERVAL_MS = 60 * 1000;

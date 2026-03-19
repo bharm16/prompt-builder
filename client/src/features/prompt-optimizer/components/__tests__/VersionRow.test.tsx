@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 import { VersionRow, type VersionEntry } from '../VersionRow';
 
 const buildGeneration = (overrides: Partial<Generation> = {}): Generation => ({

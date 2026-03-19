@@ -25,7 +25,7 @@ import { createSessionRoutes } from './sessions.routes';
 import { createModelIntelligenceRoutes, type ModelIntelligenceRouteMetrics } from './model-intelligence.routes';
 import type { OptimizeServices } from './optimize/types';
 import type { VideoServices } from './video/types';
-import type { ReferenceImageService } from '@services/reference-images/ReferenceImageService';
+import type { ReferenceImageRepository } from '@services/asset/reference-images/ReferenceImageRepository';
 import type { AssetService } from '@services/asset/AssetService';
 import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
@@ -40,7 +40,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
-  referenceImageService?: ReferenceImageService | null;
+  referenceImageService?: ReferenceImageRepository | null;
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;

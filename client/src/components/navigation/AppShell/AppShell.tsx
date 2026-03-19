@@ -18,7 +18,7 @@ import { useNavigationConfig } from './hooks/useNavigationConfig';
 import { TopNavbar } from './variants/TopNavbar';
 
 export const AppShell = memo(function AppShell(props: AppShellProps): ReactElement {
-  const { children, toolSidebarProps } = props;
+  const { children } = props;
   const { variant, navItems } = useNavigationConfig();
   const user = useAuthUser();
 
@@ -38,7 +38,7 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
       <CreditBalanceProvider userId={user?.uid ?? null}>
-        <ToolSidebar {...(toolSidebarProps ?? {})} user={user} />
+        <ToolSidebar user={user} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
           {children}
         </div>

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { compileWanPrompt } from '@features/prompt-optimizer/GenerationsPanel/api/compilePrompt';
-import { waitForVideoJob } from '@features/prompt-optimizer/GenerationsPanel/api/videoJobs';
+import { compileWanPrompt } from '@features/generations/api/compilePrompt';
+import { waitForVideoJob } from '@features/generations/api/videoJobs';
 import { promptOptimizationApiV2 } from '@/services';
 import { getVideoPreviewStatus } from '@features/preview/api/previewApi';
 

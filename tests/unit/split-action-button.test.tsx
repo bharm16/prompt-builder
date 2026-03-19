@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type React from 'react';
 
-import { SplitActionButton } from '@features/prompt-optimizer/GenerationsPanel/components/SplitActionButton';
+import { SplitActionButton } from '@features/generations/components/SplitActionButton';
 
 vi.mock('@promptstudio/system/components/ui/select', () => ({
   Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

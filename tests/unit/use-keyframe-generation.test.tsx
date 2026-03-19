@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
-import { useKeyframeGeneration } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/hooks/useKeyframeGeneration';
+import { useKeyframeGeneration } from '@features/generations/components/KeyframeStep/hooks/useKeyframeGeneration';
 import type { Asset } from '@shared/types/asset';
 
 const createDeferred = <T,>() => {

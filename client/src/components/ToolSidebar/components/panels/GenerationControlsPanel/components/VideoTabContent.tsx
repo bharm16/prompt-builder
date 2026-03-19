@@ -4,13 +4,13 @@ import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
+} from '@features/generation-controls/context/generationControlsStoreTypes';
 import { StartFrameControl } from '@components/ToolSidebar/components/panels/StartFrameControl';
 import { EndFrameControl } from '@components/ToolSidebar/components/panels/EndFrameControl';
 import { VideoPromptToolbar } from './VideoPromptToolbar';
 import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
 import { VideoReferenceSlots } from './VideoReferenceSlots';
-import { formatCredits } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { formatCredits } from '@features/generations/config/generationConfig';
 
 interface VideoTabContentProps {
   startFrame: KeyframeTile | null;

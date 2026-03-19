@@ -4,7 +4,7 @@ import type { Bucket } from '@google-cloud/storage';
 import AssetService from '@services/asset/AssetService';
 import AssetRepository from '@services/asset/AssetRepository';
 import AssetResolverService from '@services/asset/AssetResolverService';
-import AssetReferenceImageService from '@services/asset/ReferenceImageService';
+import { ReferenceImageProcessingService } from '@services/asset/ReferenceImageProcessingService';
 import type { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import { BillingProfileStore } from '@services/payment/BillingProfileStore';
@@ -13,7 +13,7 @@ import { PaymentConsistencyStore } from '@services/payment/PaymentConsistencySto
 import { PaymentService } from '@services/payment/PaymentService';
 import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
 import { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
-import ReferenceImageService from '@services/reference-images/ReferenceImageService';
+import { ReferenceImageRepository } from '@services/asset/reference-images/ReferenceImageRepository';
 import { SessionService } from '@services/sessions/SessionService';
 import { SessionStore } from '@services/sessions/SessionStore';
 import type { UserCreditService } from '@services/credits/UserCreditService';
@@ -121,7 +121,7 @@ export function registerSessionServices(container: DIContainer): void {
       try {
         const repository = new AssetRepository({ bucket: gcsBucket, bucketName: gcsBucketName });
         const resolver = new AssetResolverService(repository);
-        const referenceImages = new AssetReferenceImageService();
+        const referenceImages = new ReferenceImageProcessingService();
         const embeddingService = config.features.faceEmbedding ? faceEmbeddingService : null;
         return new AssetService(repository, referenceImages, resolver, undefined, embeddingService);
       } catch (error) {
@@ -138,7 +138,7 @@ export function registerSessionServices(container: DIContainer): void {
     'referenceImageService',
     (gcsBucket: Bucket, gcsBucketName: string) => {
       try {
-        return new ReferenceImageService({ bucket: gcsBucket, bucketName: gcsBucketName });
+        return new ReferenceImageRepository({ bucket: gcsBucket, bucketName: gcsBucketName });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('Reference image service disabled', { error: errorMessage });

@@ -5,7 +5,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@promptstudio/system/components/ui/sheet';
-import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel';
+import { GenerationsPanel } from '@features/generations';
 import type { PromptCanvasViewProps } from './PromptCanvasView.types';
 import { CanvasButton } from './PromptCanvasView.shared';
 

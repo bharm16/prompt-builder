@@ -1,10 +1,5 @@
 export {
   SidebarDataContextProvider,
-  SidebarSessionsContextProvider,
-  SidebarPromptInteractionContextProvider,
-  SidebarGenerationContextProvider,
-  SidebarAssetsContextProvider,
-  SidebarWorkspaceContextProvider,
   useSidebarData,
   useSidebarSessionsDomain,
   useSidebarPromptInteractionDomain,

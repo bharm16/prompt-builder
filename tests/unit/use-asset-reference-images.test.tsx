@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-import { useAssetReferenceImages } from '@features/prompt-optimizer/GenerationsPanel/hooks/useAssetReferenceImages';
+import { useAssetReferenceImages } from '@features/generations/hooks/useAssetReferenceImages';
 import { assetApi } from '@features/assets/api/assetApi';
 
 vi.mock('@features/assets/api/assetApi', () => ({

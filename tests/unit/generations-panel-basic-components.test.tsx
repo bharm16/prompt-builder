@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type React from 'react';
 
-import { GenerationBadge } from '@features/prompt-optimizer/GenerationsPanel/components/GenerationBadge';
-import { VersionDivider } from '@features/prompt-optimizer/GenerationsPanel/components/VersionDivider';
-import { FaceMatchIndicator } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/FaceMatchIndicator';
-import { VideoThumbnail } from '@features/prompt-optimizer/GenerationsPanel/components/VideoThumbnail';
-import { KeyframeOptionCard } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/KeyframeOptionCard';
-import type { KeyframeOption } from '@features/prompt-optimizer/GenerationsPanel/components/KeyframeStep/hooks/useKeyframeGeneration';
+import { GenerationBadge } from '@features/generations/components/GenerationBadge';
+import { VersionDivider } from '@features/generations/components/VersionDivider';
+import { FaceMatchIndicator } from '@features/generations/components/KeyframeStep/FaceMatchIndicator';
+import { VideoThumbnail } from '@features/generations/components/VideoThumbnail';
+import { KeyframeOptionCard } from '@features/generations/components/KeyframeStep/KeyframeOptionCard';
+import type { KeyframeOption } from '@features/generations/components/KeyframeStep/hooks/useKeyframeGeneration';
 
 vi.mock('@promptstudio/system/components/ui/badge', () => ({
   Badge: ({ className, children }: { className?: string; children: React.ReactNode }) => (

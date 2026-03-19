@@ -1,5 +1,5 @@
 import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '../types';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 
 export type ImmutableMediaWarning = {
   scope: 'version' | 'generation' | 'keyframe';

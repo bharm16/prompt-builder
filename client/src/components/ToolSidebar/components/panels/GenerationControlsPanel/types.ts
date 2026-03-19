@@ -3,7 +3,7 @@ import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/ty
 export type {
   GenerationControlsTab,
   ImageSubTab,
-} from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
+} from '@features/generation-controls/context/generationControlsStoreTypes';
 
 export interface GenerationControlsPanelProps {
   isProcessing?: boolean;

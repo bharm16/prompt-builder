@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 import {
   areGenerationsEqual,
   serializeGeneration,
-} from '@features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
-import { getGenerationProgressPercent } from '@features/prompt-optimizer/GenerationsPanel/utils/generationProgress';
+} from '@features/generations/utils/generationComparison';
+import { getGenerationProgressPercent } from '@features/generations/utils/generationProgress';
 import {
   buildGeneration,
   createGenerationId,
   resolveGenerationOptions,
-} from '@features/prompt-optimizer/GenerationsPanel/utils/generationUtils';
+} from '@features/generations/utils/generationUtils';
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
   id: 'gen-1',

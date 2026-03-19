@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 import { applyGenerationReuse } from '@features/prompt-optimizer/PromptCanvas/utils/reuseGeneration';
 import { usePromptCanvasPanelProps } from '@features/prompt-optimizer/PromptCanvas/hooks/usePromptCanvasPanelProps';
 import { useShotGenerations } from '@features/prompt-optimizer/PromptCanvas/hooks/useShotGenerations';

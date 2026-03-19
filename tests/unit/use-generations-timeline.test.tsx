@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-import { useGenerationsTimeline } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsTimeline';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { useGenerationsTimeline } from '@features/generations/hooks/useGenerationsTimeline';
+import type { Generation } from '@features/generations/types';
 import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({

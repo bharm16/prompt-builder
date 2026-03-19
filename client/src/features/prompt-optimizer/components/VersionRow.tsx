@@ -4,7 +4,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
 import { cn } from '@/utils/cn';
 import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 
 type VersionPreview = {
   generatedAt?: string;

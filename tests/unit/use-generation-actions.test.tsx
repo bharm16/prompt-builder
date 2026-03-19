@@ -1,28 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-import { useGenerationActions } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { useGenerationActions } from '@features/generations/hooks/useGenerationActions';
+import type { Generation } from '@features/generations/types';
 import {
   compileWanPrompt,
   generateStoryboardPreview,
   generateVideoPreview,
   waitForVideoJob,
-} from '@features/prompt-optimizer/GenerationsPanel/api';
+} from '@features/generations/api';
 import { assetApi } from '@features/assets/api/assetApi';
 import {
   buildGeneration,
   resolveGenerationOptions,
-} from '@features/prompt-optimizer/GenerationsPanel/utils/generationUtils';
+} from '@features/generations/utils/generationUtils';
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/api', () => ({
+vi.mock('@features/generations/api', () => ({
   compileWanPrompt: vi.fn(),
   generateStoryboardPreview: vi.fn(),
   generateVideoPreview: vi.fn(),
   waitForVideoJob: vi.fn(),
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/utils/generationUtils', () => ({
+vi.mock('@features/generations/utils/generationUtils', () => ({
   buildGeneration: vi.fn(),
   resolveGenerationOptions: vi.fn(),
 }));

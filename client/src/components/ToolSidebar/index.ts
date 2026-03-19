@@ -1,10 +1,6 @@
 export { ToolSidebar } from './ToolSidebar';
 export {
   SidebarDataContextProvider,
-  SidebarSessionsContextProvider,
-  SidebarPromptInteractionContextProvider,
-  SidebarGenerationContextProvider,
-  SidebarAssetsContextProvider,
   useSidebarData,
   useSidebarSessionsDomain,
   useSidebarPromptInteractionDomain,

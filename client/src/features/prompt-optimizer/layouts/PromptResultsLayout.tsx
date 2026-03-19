@@ -12,7 +12,7 @@ import {
   PreviousShotContext,
   SceneProxyPreviewPanel,
   ShotVisualStrip,
-} from '../components/sequence';
+} from '@features/sequence-editor/components';
 
 /**
  * PromptResultsLayout - Results/Canvas View Layout

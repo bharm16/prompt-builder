@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState, type ReactNode } from
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { DraftModel, GenerationOverrides } from '@/components/ToolSidebar/types';
 import { SidebarDataContextProvider } from '@/components/ToolSidebar/context';
-import { useGenerationControlsStoreActions } from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import { useGenerationControlsStoreActions } from '@features/generation-controls/context/GenerationControlsStore';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import { usePromptInsertionBus } from '@/features/prompt-optimizer/context/PromptInsertionBusContext';
 import {

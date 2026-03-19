@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-import { KontextFrameStrip } from '@features/prompt-optimizer/GenerationsPanel/components/KontextFrameStrip';
+import { KontextFrameStrip } from '@features/generations/components/KontextFrameStrip';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 
 vi.mock('@/services/media/MediaUrlResolver', () => ({

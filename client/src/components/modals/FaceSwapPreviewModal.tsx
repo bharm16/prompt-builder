@@ -6,7 +6,7 @@ import React, { useEffect } from 'react';
 import { Loader2, X } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
 import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
-import { formatCredits } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { formatCredits } from '@features/generations/config/generationConfig';
 
 interface FaceSwapPreviewModalProps {
   isOpen: boolean;

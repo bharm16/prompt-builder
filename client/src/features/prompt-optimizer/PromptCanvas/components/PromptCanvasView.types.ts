@@ -4,7 +4,7 @@ import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { InlineSuggestion, SuggestionItem } from '../types';
 import type { ExportFormat } from '@features/prompt-optimizer/types';
-import type { Generation, GenerationsPanelProps } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation, GenerationsPanelProps } from '@features/generations/types';
 import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
 import type { CoherenceIssue } from '@features/prompt-optimizer/components/coherence/useCoherenceAnnotations';
 import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';

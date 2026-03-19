@@ -6,7 +6,6 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { ToolSidebarProps } from '@components/ToolSidebar/types';
 
 // -----------------------------------------------------------------------------
 // Navigation Item Types
@@ -61,7 +60,6 @@ export interface AppShellProps {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
-  readonly toolSidebarProps?: Omit<ToolSidebarProps, 'user'> | undefined;
 }
 
 // -----------------------------------------------------------------------------

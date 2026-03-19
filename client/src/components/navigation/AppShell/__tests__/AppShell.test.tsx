@@ -88,7 +88,7 @@ describe('AppShell', () => {
       expect(screen.queryByTestId('tool-sidebar')).toBeNull();
     });
 
-    it('forwards grouped toolSidebarProps when provided', () => {
+    it('renders ToolSidebar in sidebar variant', () => {
       useNavigationConfigMock.mockReturnValue({
         variant: 'sidebar',
         navItems,
@@ -96,39 +96,13 @@ describe('AppShell', () => {
       });
 
       render(
-        <AppShell
-          toolSidebarProps={{
-            assets: {
-              assets: [],
-              assetsByType: {
-                character: [],
-                style: [],
-                location: [],
-                object: [],
-              },
-              isLoadingAssets: false,
-              onEditAsset: vi.fn(),
-              onCreateAsset: vi.fn(),
-            },
-          }}
-        >
+        <AppShell>
           Content
         </AppShell>
       );
 
       expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
-      expect(lastToolSidebarProps.assets).toEqual({
-        assets: [],
-        assetsByType: {
-          character: [],
-          style: [],
-          location: [],
-          object: [],
-        },
-        isLoadingAssets: false,
-        onEditAsset: expect.any(Function),
-        onCreateAsset: expect.any(Function),
-      });
+      expect(lastToolSidebarProps.user).toBeNull();
     });
   });
 

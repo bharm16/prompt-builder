@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 
-import { useGenerationMediaRefresh } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationMediaRefresh';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { useGenerationMediaRefresh } from '@features/generations/hooks/useGenerationMediaRefresh';
+import type { Generation } from '@features/generations/types';
 import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
 import { extractStorageObjectPath } from '@/utils/storageUrl';
 

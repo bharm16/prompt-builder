@@ -46,54 +46,10 @@ describe('ToolSidebar context fallback', () => {
     sidebarState.setActivePanel.mockClear();
   });
 
-  it('renders degraded sessions state without providers', () => {
+  it('renders degraded sessions state without SidebarDataContext provider', () => {
     render(<ToolSidebar user={null} />);
 
     expect(screen.getByTestId('tool-rail')).toBeInTheDocument();
     expect(screen.getByTestId('sessions-query')).toHaveTextContent('none');
-  });
-
-  it('renders hydrated sessions state from grouped sidebar props', () => {
-    render(
-      <ToolSidebar
-        user={null}
-        sessions={{
-          history: [],
-          filteredHistory: [],
-          isLoadingHistory: false,
-          searchQuery: 'hydrate-me',
-          onSearchChange: vi.fn(),
-          onLoadFromHistory: vi.fn(),
-          onCreateNew: vi.fn(),
-          onDelete: vi.fn(),
-        }}
-      />
-    );
-
-    expect(screen.getByTestId('sessions-query')).toHaveTextContent('hydrate-me');
-  });
-
-  it('transitions from fallback to hydrated sessions context without crash', () => {
-    const { rerender } = render(<ToolSidebar user={null} />);
-
-    expect(screen.getByTestId('sessions-query')).toHaveTextContent('none');
-
-    rerender(
-      <ToolSidebar
-        user={null}
-        sessions={{
-          history: [],
-          filteredHistory: [],
-          isLoadingHistory: false,
-          searchQuery: 'after-rerender',
-          onSearchChange: vi.fn(),
-          onLoadFromHistory: vi.fn(),
-          onCreateNew: vi.fn(),
-          onDelete: vi.fn(),
-        }}
-      />
-    );
-
-    expect(screen.getByTestId('sessions-query')).toHaveTextContent('after-rerender');
   });
 });

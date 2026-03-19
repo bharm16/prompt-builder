@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@promptstudio/system/components/ui/sheet';
 import { FEATURES } from '@/config/features.config';
-import { dispatchPromptFocusIntent } from '@/features/prompt-optimizer/CanvasWorkspace/events';
+import { dispatchPromptFocusIntent } from '@features/workspace-shell/events';
 import type { PromptHistoryEntry } from '@/features/prompt-optimizer/types/domain/prompt-session';
 import { ToolRail } from './components/ToolRail';
 import { ToolPanel } from './components/ToolPanel';
@@ -11,67 +11,23 @@ import { CharactersPanel } from './components/panels/CharactersPanel';
 import { StylesPanel } from './components/panels/StylesPanel';
 import { useToolSidebarState } from './hooks/useToolSidebarState';
 import type { ToolPanelType, ToolSidebarProps } from './types';
-import {
-  SidebarDataContextProvider,
-  useSidebarData,
-  useSidebarAssetsDomain,
-  useSidebarGenerationDomain,
-  useSidebarPromptInteractionDomain,
-  useSidebarSessionsDomain,
-  useSidebarWorkspaceDomain,
-} from './context';
+import { useSidebarSessionsDomain } from './context';
 
 /**
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
  *
  * Layout: 60px rail + 400px panel (always visible side-by-side)
- * 
+ *
+ * Data flows through SidebarDataContext, set by SidebarDataProvider
+ * in the prompt-optimizer workspace tree.
+ *
  * Requirement 16.1-16.4: Tool panel integration with Create and Studio tools
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const { user } = props;
-  const hasDomainOverrides =
-    props.sessions !== undefined ||
-    props.promptInteraction !== undefined ||
-    props.generation !== undefined ||
-    props.assets !== undefined ||
-    props.workspace !== undefined;
-  const sidebarDataFromContext = useSidebarData();
-  const sessionsFromContext = useSidebarSessionsDomain();
-  const promptInteractionFromContext = useSidebarPromptInteractionDomain();
-  const generationFromContext = useSidebarGenerationDomain();
-  const assetsFromContext = useSidebarAssetsDomain();
-  const workspaceFromContext = useSidebarWorkspaceDomain();
-
-  const resolvedSessions = props.sessions ?? sessionsFromContext ?? sidebarDataFromContext?.sessions ?? null;
-  const resolvedPromptInteraction =
-    props.promptInteraction ??
-    promptInteractionFromContext ??
-    sidebarDataFromContext?.promptInteraction ??
-    null;
-  const resolvedGeneration =
-    props.generation ?? generationFromContext ?? sidebarDataFromContext?.generation ?? null;
-  const resolvedAssets = props.assets ?? assetsFromContext ?? sidebarDataFromContext?.assets ?? null;
-  const resolvedWorkspace =
-    props.workspace ?? workspaceFromContext ?? sidebarDataFromContext?.workspace ?? null;
-  const onSessionCreateNew = resolvedSessions?.onCreateNew;
-  const onSessionLoadFromHistory = resolvedSessions?.onLoadFromHistory;
-  const sidebarContextValue = useMemo(
-    () => ({
-      sessions: resolvedSessions,
-      promptInteraction: resolvedPromptInteraction,
-      generation: resolvedGeneration,
-      assets: resolvedAssets,
-      workspace: resolvedWorkspace,
-    }),
-    [
-      resolvedAssets,
-      resolvedGeneration,
-      resolvedPromptInteraction,
-      resolvedSessions,
-      resolvedWorkspace,
-    ]
-  );
+  const sessions = useSidebarSessionsDomain();
+  const onSessionCreateNew = sessions?.onCreateNew;
+  const onSessionLoadFromHistory = sessions?.onLoadFromHistory;
 
   const { activePanel, setActivePanel } = useToolSidebarState('studio');
   const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
@@ -176,7 +132,8 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
         return 'Studio';
     }
   }, [activePanel]);
-  const sidebarContent = (
+
+  return (
     <div className="flex h-full">
       <ToolRail
         activePanel={activePanel}
@@ -223,14 +180,4 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       )}
     </div>
   );
-
-  if (hasDomainOverrides) {
-    return (
-      <SidebarDataContextProvider value={sidebarContextValue}>
-        {sidebarContent}
-      </SidebarDataContextProvider>
-    );
-  }
-
-  return sidebarContent;
 }

@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { usePromptConfigState } from '@features/prompt-optimizer/context/hooks/usePromptConfigState';
-import { GenerationControlsStoreProvider } from '@features/prompt-optimizer/context/GenerationControlsStore';
+import { GenerationControlsStoreProvider } from '@features/generation-controls/context/GenerationControlsStore';
 import { persistGenerationParams, persistSelectedModel } from '@features/prompt-optimizer/context/promptStateStorage';
 
 const SELECTED_MODEL_KEY = 'prompt-optimizer:selectedModel';

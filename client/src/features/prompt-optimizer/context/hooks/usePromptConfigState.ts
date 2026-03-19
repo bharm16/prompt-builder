@@ -5,7 +5,7 @@ import { loadSelectedMode } from '../promptStateStorage';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../GenerationControlsStore';
+} from '@features/generation-controls/context/GenerationControlsStore';
 
 export function usePromptConfigState(): {
   selectedMode: string;

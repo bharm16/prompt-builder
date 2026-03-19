@@ -1,0 +1,328 @@
+import React, { useCallback, useMemo } from 'react';
+import { Eye, MagicWand, Images, X } from '@promptstudio/system/components/ui';
+import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
+import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, STORYBOARD_COST } from '@/components/ToolSidebar/config/modelConfig';
+import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from '@features/generation-controls/context/GenerationControlsStore';
+import { useCapabilitiesClamping } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
+import { useVideoInputCapabilities } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities';
+import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
+import { StartFramePopover } from './StartFramePopover';
+import { EndFramePopover } from './EndFramePopover';
+import { VideoReferencesPopover } from './VideoReferencesPopover';
+import { MiniDropdown } from './MiniDropdown';
+
+interface CanvasSettingsRowProps {
+  prompt: string;
+  renderModelId: string;
+  recommendedModelId?: string | undefined;
+  recommendationPromptId?: string | undefined;
+  recommendationMode?: 't2v' | 'i2v' | undefined;
+  recommendationAgeMs?: number | null | undefined;
+  onOpenMotion: () => void;
+  onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
+  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
+  onEnhance?: () => void;
+}
+
+const parseAspectRatio = (generationParams: Record<string, unknown>): string => {
+  const ratio = generationParams.aspect_ratio;
+  if (typeof ratio === 'string' && ratio.trim()) return ratio.trim();
+  return '16:9';
+};
+
+const parseDuration = (generationParams: Record<string, unknown>): number => {
+  const durationValue = generationParams.duration_s;
+  if (typeof durationValue === 'number' && Number.isFinite(durationValue)) return durationValue;
+  if (typeof durationValue === 'string') {
+    const parsed = Number.parseFloat(durationValue);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 5;
+};
+
+/* Ghost button used across the settings row — matches mockup BarBtn exactly */
+function BarBtn({
+  children,
+  active,
+  accent,
+  onClick,
+  className,
+  ...buttonProps
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  accent?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+  className?: string;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      {...buttonProps}
+      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors ${
+        accent
+          ? 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active'
+          : active
+            ? 'bg-tool-nav-hover font-semibold text-foreground'
+            : 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground'
+      } ${className ?? ''}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function CanvasSettingsRow({
+  prompt,
+  renderModelId,
+  recommendedModelId,
+  recommendationPromptId,
+  recommendationMode,
+  recommendationAgeMs,
+  onOpenMotion,
+  onStartFrameUpload,
+  onUploadSidebarImage,
+  onEnhance,
+}: CanvasSettingsRowProps): React.ReactElement {
+  const { controls } = useGenerationControlsContext();
+  const { domain } = useGenerationControlsStoreState();
+  const storeActions = useGenerationControlsStoreActions();
+
+  const aspectRatio = useMemo(
+    () => parseAspectRatio(domain.generationParams as Record<string, unknown>),
+    [domain.generationParams]
+  );
+  const duration = useMemo(
+    () => parseDuration(domain.generationParams as Record<string, unknown>),
+    [domain.generationParams]
+  );
+
+  const hasPrompt = Boolean(prompt.trim());
+  const hasStartFrame = Boolean(domain.startFrame);
+  const isGenerating = controls?.isGenerating ?? false;
+
+  const handleAspectRatioChange = useCallback(
+    (value: string) => {
+      storeActions.mergeGenerationParams({ aspect_ratio: value });
+    },
+    [storeActions]
+  );
+
+  const handleDurationChange = useCallback(
+    (value: number) => {
+      storeActions.mergeGenerationParams({ duration_s: value });
+    },
+    [storeActions]
+  );
+
+  const { aspectRatioOptions, durationOptions, schema } = useCapabilitiesClamping({
+    activeTab: 'video',
+    selectedModel: domain.selectedModel,
+    videoTier: domain.videoTier,
+    renderModelId,
+    aspectRatio,
+    duration,
+    setVideoTier: storeActions.setVideoTier,
+    onAspectRatioChange: handleAspectRatioChange,
+    onDurationChange: handleDurationChange,
+  });
+  const videoInputCapabilities = useVideoInputCapabilities(schema ?? null);
+
+  const renderModelCost =
+    VIDEO_RENDER_MODELS.find((model) => model.id === renderModelId)?.cost ??
+    VIDEO_RENDER_MODELS[0]?.cost ??
+    0;
+
+  const isWan = domain.selectedModel === VIDEO_DRAFT_MODEL.id;
+
+  const previewDisabled = !controls?.onStoryboard || isGenerating || (!hasPrompt && !hasStartFrame);
+  const generateDisabled = isWan
+    ? !controls?.onDraft || isGenerating || !hasPrompt
+    : !controls?.onRender || isGenerating || !hasPrompt;
+
+  const trackGenerationStart = useCallback(
+    (selectedModelId: string) => {
+      void trackModelRecommendationEvent({
+        event: 'generation_started',
+        ...(recommendationPromptId ? { recommendationId: recommendationPromptId, promptId: recommendationPromptId } : {}),
+        ...(recommendedModelId ? { recommendedModelId } : {}),
+        selectedModelId,
+        ...(recommendationMode ? { mode: recommendationMode } : {}),
+        durationSeconds: duration,
+        ...(typeof recommendationAgeMs === 'number'
+          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
+          : {}),
+      });
+    },
+    [duration, recommendationAgeMs, recommendationMode, recommendationPromptId, recommendedModelId]
+  );
+
+  const handleGenerate = useCallback(() => {
+    if (isWan) {
+      trackGenerationStart(VIDEO_DRAFT_MODEL.id);
+      controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+    } else {
+      trackGenerationStart(renderModelId);
+      controls?.onRender?.(renderModelId);
+    }
+  }, [controls, isWan, renderModelId, trackGenerationStart]);
+
+  const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
+
+  const creditCost = isWan ? VIDEO_DRAFT_MODEL.cost : renderModelCost;
+
+  return (
+    <div
+      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-tool-rail-border pt-2.5"
+      data-testid="canvas-settings-row"
+    >
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        {/* Start frame (with popover) */}
+        <StartFramePopover
+          startFrame={domain.startFrame}
+          cameraMotion={domain.cameraMotion}
+          onSetStartFrame={storeActions.setStartFrame}
+          onClearStartFrame={storeActions.clearStartFrame}
+          onOpenMotion={onOpenMotion}
+          onStartFrameUpload={onStartFrameUpload}
+          disabled={isGenerating}
+        />
+
+        {videoInputCapabilities.supportsEndFrame ? (
+          <EndFramePopover
+            endFrame={domain.endFrame}
+            onSetEndFrame={storeActions.setEndFrame}
+            onClearEndFrame={storeActions.clearEndFrame}
+            onUploadSidebarImage={onUploadSidebarImage}
+            disabled={isGenerating}
+          />
+        ) : null}
+
+        {videoInputCapabilities.supportsReferenceImages ? (
+          <VideoReferencesPopover
+            references={domain.videoReferenceImages}
+            maxSlots={videoInputCapabilities.maxReferenceImages}
+            onAddReference={storeActions.addVideoReference}
+            onRemoveReference={storeActions.removeVideoReference}
+            onUpdateReferenceType={storeActions.updateVideoReferenceType}
+            onUploadSidebarImage={onUploadSidebarImage}
+            disabled={isGenerating}
+          />
+        ) : null}
+
+        {domain.extendVideo ? (
+          <div className="inline-flex h-[30px] items-center gap-1 rounded-full border border-surface-2 bg-tool-nav-hover pl-2.5 pr-1 text-xs font-semibold text-foreground">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1.2" y="2.2" width="6.4" height="6" rx="1" />
+              <path d="M7.6 4.2 9.8 3v5L7.6 6.8" />
+            </svg>
+            Extending
+            <button
+              type="button"
+              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded text-tool-text-dim transition-colors hover:bg-tool-nav-active hover:text-foreground"
+              onClick={() => storeActions.clearExtendVideo()}
+              aria-label="Clear extend mode"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Assets */}
+        <BarBtn onClick={(e) => e.stopPropagation()}>
+          <span className="flex"><Images size={13} weight="fill" /></span>
+          Assets
+        </BarBtn>
+
+        {/* Aspect ratio dropdown */}
+        <MiniDropdown
+          value={aspectRatio}
+          options={aspectRatioOptions}
+          onChange={handleAspectRatioChange}
+          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>}
+        />
+
+        {/* Duration dropdown */}
+        <MiniDropdown
+          value={duration}
+          options={durationOptions}
+          onChange={handleDurationChange}
+          formatLabel={formatDurationLabel}
+          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>}
+        />
+
+        {/* AI Enhance */}
+        <BarBtn
+          accent
+          className="w-[68px] justify-center px-0"
+          aria-label="Enhance prompt"
+          title="Enhance"
+          {...(onEnhance
+            ? {
+                onClick: (event: React.MouseEvent) => {
+                  event.stopPropagation();
+                  onEnhance();
+                },
+              }
+            : {})}
+        >
+          <MagicWand size={14} />
+        </BarBtn>
+      </div>
+
+      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
+        {/* Preview button (secondary) */}
+        <button
+          type="button"
+          data-testid="canvas-preview-button"
+          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-surface-2 bg-tool-nav-hover text-foreground transition-colors hover:bg-tool-nav-active hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
+          onClick={() => controls?.onStoryboard?.()}
+          disabled={previewDisabled}
+          aria-label={`Preview storyboard ${STORYBOARD_COST} credits`}
+          title={`Preview · ${STORYBOARD_COST} cr`}
+        >
+          <Eye size={14} />
+        </button>
+
+        {/* Generate button (primary) */}
+        <button
+          type="button"
+          data-testid="canvas-generate-button"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={handleGenerate}
+          disabled={generateDisabled}
+          aria-label={`${isWan ? 'Draft' : 'Generate'} ${creditCost} credits`}
+          title={`${isWan ? 'Draft' : 'Generate'} · ${creditCost} cr`}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M8 1.25C8.35 1.25 8.66 1.48 8.76 1.82L10.04 6.02L14.2 7.28C14.55 7.39 14.78 7.7 14.78 8.05C14.78 8.4 14.55 8.71 14.2 8.82L10.04 10.08L8.76 14.28C8.66 14.62 8.35 14.85 8 14.85C7.65 14.85 7.34 14.62 7.24 14.28L5.96 10.08L1.8 8.82C1.45 8.71 1.22 8.4 1.22 8.05C1.22 7.7 1.45 7.39 1.8 7.28L5.96 6.02L7.24 1.82C7.34 1.48 7.65 1.25 8 1.25Z"
+              fill="currentColor"
+            />
+            <circle cx="12.7" cy="3.2" r="1.05" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 import { usePromptCanvasPanelProps } from '../usePromptCanvasPanelProps';
 
 const makeGeneration = (id: string): Generation => ({

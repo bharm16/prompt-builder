@@ -1,4 +1,4 @@
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation } from '@features/generations/types';
 import type { HighlightSnapshot } from '../types';
 
 export const resolveVersionTimestamp = (

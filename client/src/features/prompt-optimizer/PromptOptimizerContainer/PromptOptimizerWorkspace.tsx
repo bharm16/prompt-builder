@@ -24,7 +24,7 @@ import { usePromptState, PromptStateProvider } from '../context/PromptStateConte
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
+} from '@features/generation-controls/context/GenerationControlsStore';
 import { scrollToSpanById } from '../utils/scrollToSpanById';
 import { uploadPreviewImage, validatePreviewImageFile } from '@/features/preview/api/previewApi';
 import {

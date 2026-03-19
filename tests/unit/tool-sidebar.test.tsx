@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ToolSidebar } from '@components/ToolSidebar/ToolSidebar';
-import type { ToolSidebarProps, ToolPanelType } from '@components/ToolSidebar/types';
-import { useSidebarAssetsDomain, useSidebarSessionsDomain } from '@components/ToolSidebar/context';
+import type { ToolPanelType } from '@components/ToolSidebar/types';
+import {
+  SidebarDataContextProvider,
+  useSidebarAssetsDomain,
+  useSidebarSessionsDomain,
+} from '@components/ToolSidebar/context';
 import type { Asset, AssetType } from '@shared/types/asset';
-import { PROMPT_FOCUS_INTENT } from '@/features/prompt-optimizer/CanvasWorkspace/events';
+import { PROMPT_FOCUS_INTENT } from '@features/workspace-shell/events';
 
 const mockFeatures = vi.hoisted(() => ({
   CANVAS_FIRST_LAYOUT: true,
@@ -134,38 +138,6 @@ const createAssetsByType = (characterAssets: Asset[]): Record<AssetType, Asset[]
   object: [],
 });
 
-const createProps = (overrides: Partial<ToolSidebarProps> = {}): ToolSidebarProps => ({
-  user: null,
-  sessions: {
-    history: [],
-    filteredHistory: [],
-    isLoadingHistory: false,
-    searchQuery: '',
-    onSearchChange: vi.fn(),
-    onLoadFromHistory: vi.fn(),
-    onCreateNew: vi.fn(),
-    onDelete: vi.fn(),
-  },
-  promptInteraction: {
-    isProcessing: false,
-    onInsertTrigger: vi.fn(),
-  },
-  generation: {
-    onDraft: vi.fn(),
-    onRender: vi.fn(),
-    onImageUpload: vi.fn(),
-    onStoryboard: vi.fn(),
-  },
-  assets: {
-    assets: [],
-    assetsByType: createAssetsByType([]),
-    isLoadingAssets: false,
-    onEditAsset: vi.fn(),
-    onCreateAsset: vi.fn(),
-  },
-  ...overrides,
-});
-
 describe('ToolSidebar', () => {
   beforeEach(() => {
     sidebarState.activePanel = 'sessions';
@@ -178,7 +150,7 @@ describe('ToolSidebar', () => {
   it('renders rail-only flow without inline tool panel when canvas-first layout is enabled', () => {
     sidebarState.activePanel = 'studio';
 
-    render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar user={null} />);
 
     expect(screen.getByTestId('tool-rail')).toBeInTheDocument();
     expect(screen.queryByTestId('tool-panel')).not.toBeInTheDocument();
@@ -188,28 +160,73 @@ describe('ToolSidebar', () => {
   it('opens sessions, characters, and styles as sheet overlays in canvas-first mode', () => {
     const hero = createAsset({ id: 'asset-hero' });
     const assetsByType = createAssetsByType([hero]);
-    const props = createProps({
-      assets: {
-        assets: [hero],
-        assetsByType,
-        isLoadingAssets: false,
-        onEditAsset: vi.fn(),
-        onCreateAsset: vi.fn(),
-      },
-    });
 
     sidebarState.activePanel = 'sessions';
-    const { rerender } = render(<ToolSidebar {...props} />);
+    const { rerender } = render(
+      <SidebarDataContextProvider
+        value={{
+          sessions: null,
+          promptInteraction: null,
+          generation: null,
+          assets: {
+            assets: [hero],
+            assetsByType,
+            isLoadingAssets: false,
+            onEditAsset: vi.fn(),
+            onCreateAsset: vi.fn(),
+          },
+          workspace: null,
+        }}
+      >
+        <ToolSidebar user={null} />
+      </SidebarDataContextProvider>
+    );
     expect(screen.getByTestId('sessions-panel')).toBeInTheDocument();
 
     sidebarState.activePanel = 'characters';
-    rerender(<ToolSidebar {...props} />);
+    rerender(
+      <SidebarDataContextProvider
+        value={{
+          sessions: null,
+          promptInteraction: null,
+          generation: null,
+          assets: {
+            assets: [hero],
+            assetsByType,
+            isLoadingAssets: false,
+            onEditAsset: vi.fn(),
+            onCreateAsset: vi.fn(),
+          },
+          workspace: null,
+        }}
+      >
+        <ToolSidebar user={null} />
+      </SidebarDataContextProvider>
+    );
     expect(screen.getByTestId('characters-panel')).toBeInTheDocument();
     const charactersDomain = panelProps.characters as { assetsByType: Record<AssetType, Asset[]> } | null;
     expect(charactersDomain?.assetsByType.character).toBeTruthy();
 
     sidebarState.activePanel = 'styles';
-    rerender(<ToolSidebar {...props} />);
+    rerender(
+      <SidebarDataContextProvider
+        value={{
+          sessions: null,
+          promptInteraction: null,
+          generation: null,
+          assets: {
+            assets: [hero],
+            assetsByType,
+            isLoadingAssets: false,
+            onEditAsset: vi.fn(),
+            onCreateAsset: vi.fn(),
+          },
+          workspace: null,
+        }}
+      >
+        <ToolSidebar user={null} />
+      </SidebarDataContextProvider>
+    );
     expect(screen.getByTestId('styles-panel')).toBeInTheDocument();
   });
 
@@ -217,7 +234,7 @@ describe('ToolSidebar', () => {
     sidebarState.activePanel = 'sessions';
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
-    render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar user={null} />);
     fireEvent.click(screen.getByTestId('rail-studio'));
 
     expect(sidebarState.setActivePanel).toHaveBeenCalledWith('studio');
@@ -230,7 +247,7 @@ describe('ToolSidebar', () => {
   it('does not render sheet overlay when studio is already active', () => {
     sidebarState.activePanel = 'studio';
 
-    render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar user={null} />);
 
     expect(screen.queryByTestId('sheet-close')).not.toBeInTheDocument();
     expect(sidebarState.setActivePanel).not.toHaveBeenCalled();
@@ -240,18 +257,18 @@ describe('ToolSidebar', () => {
     mockFeatures.CANVAS_FIRST_LAYOUT = false;
     sidebarState.activePanel = 'studio';
 
-    render(<ToolSidebar {...createProps()} />);
+    render(<ToolSidebar user={null} />);
 
     expect(screen.getByTestId('tool-panel')).toBeInTheDocument();
     expect(screen.getByTestId('generation-panel')).toBeInTheDocument();
   });
 
-  it('resolves sessions domain from grouped props', () => {
+  it('resolves sessions domain from SidebarDataContext', () => {
     sidebarState.activePanel = 'sessions';
 
     render(
-      <ToolSidebar
-        {...createProps({
+      <SidebarDataContextProvider
+        value={{
           sessions: {
             history: [],
             filteredHistory: [],
@@ -262,8 +279,14 @@ describe('ToolSidebar', () => {
             onCreateNew: vi.fn(),
             onDelete: vi.fn(),
           },
-        })}
-      />
+          promptInteraction: null,
+          generation: null,
+          assets: null,
+          workspace: null,
+        }}
+      >
+        <ToolSidebar user={null} />
+      </SidebarDataContextProvider>
     );
 
     const sessionsProps = panelProps.sessions as { searchQuery: string } | null;

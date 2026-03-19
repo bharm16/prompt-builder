@@ -6,12 +6,12 @@ import type { GenerationControlsPanelProps } from '@components/ToolSidebar/compo
 import { useGenerationControlsPanel } from '../useGenerationControlsPanel';
 import {
   GenerationControlsStoreProvider,
-} from '@/features/prompt-optimizer/context/GenerationControlsStore';
+} from '@features/generation-controls/context/GenerationControlsStore';
 import { GenerationControlsProvider } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type GenerationControlsState,
-} from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
+} from '@features/generation-controls/context/generationControlsStoreTypes';
 
 let mockSchema: CapabilitiesSchema | null = null;
 

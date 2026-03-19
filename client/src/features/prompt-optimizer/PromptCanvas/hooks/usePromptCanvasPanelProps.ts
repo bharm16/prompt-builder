@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation, GenerationsPanelProps } from '@features/prompt-optimizer/GenerationsPanel/types';
+import type { Generation, GenerationsPanelProps } from '@features/generations/types';
 import type { VersionsPanelPropsBase } from '../components/PromptCanvasView.types';
 
 interface UsePromptCanvasPanelPropsArgs {

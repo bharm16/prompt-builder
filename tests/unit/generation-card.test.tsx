@@ -2,19 +2,19 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { GenerationCard } from '@features/prompt-optimizer/GenerationsPanel/components/GenerationCard';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
+import { GenerationCard } from '@features/generations/components/GenerationCard';
+import type { Generation } from '@features/generations/types';
 
 const mockUseGenerationProgress = vi.fn();
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationProgress', () => ({
+vi.mock('@features/generations/hooks/useGenerationProgress', () => ({
   useGenerationProgress: (generation: Generation) => mockUseGenerationProgress(generation),
 }));
 
 const mockKontextFrameStrip = vi.fn();
 const mockVideoThumbnail = vi.fn();
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/components/KontextFrameStrip', () => ({
+vi.mock('@features/generations/components/KontextFrameStrip', () => ({
   KontextFrameStrip: (props: { onFrameClick?: (index: number, url: string | null) => void }) => {
     mockKontextFrameStrip(props);
     return (
@@ -25,7 +25,7 @@ vi.mock('@features/prompt-optimizer/GenerationsPanel/components/KontextFrameStri
   },
 }));
 
-vi.mock('@features/prompt-optimizer/GenerationsPanel/components/VideoThumbnail', () => ({
+vi.mock('@features/generations/components/VideoThumbnail', () => ({
   VideoThumbnail: (props: { isGenerating: boolean }) => {
     mockVideoThumbnail(props);
     return <div>VideoThumbnail</div>;

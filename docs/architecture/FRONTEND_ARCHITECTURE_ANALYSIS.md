@@ -1,7 +1,21 @@
 # Frontend Architecture Analysis: Radical Improvement Opportunities
 
 **Date:** 2026-03-19
+**Status:** Fully implemented (see Implementation Log below)
 **Scope:** All `client/src/features/`, `client/src/components/`, `client/src/services/`, `client/src/hooks/`, `client/src/api/`
+
+## Implementation Log (2026-03-19)
+
+| Phase | Action | Status | Files Changed |
+|-------|--------|--------|---------------|
+| 1 | Delete dead code (VideoConceptBuilder, PromptEnhancementEditor, orphaned services) | **Done** | -65 files deleted |
+| 2 | Extract GenerationsPanel → `features/generations/` | **Done** | 44 files moved, ~36 import paths updated |
+| 3 | Extract GenerationControlsStore → `features/generation-controls/` | **Done** | 4 core files + 3 tests moved, ~24 import paths updated |
+| 4 | Remove ToolSidebar domain override pattern | **Done** | 5 legacy providers deleted, props override removed, ToolSidebar simplified |
+| 5 | Split PromptStateContext | **Skipped** — already split into 7 focused sub-contexts |
+| 6 | Extract CanvasWorkspace → `features/workspace-shell/` | **Done** | 26 files moved; accepts 4 cross-feature component imports from prompt-optimizer (GalleryPanel, GenerationPopover, PromptEditor, LockedSpanIndicator) |
+| 7 | Extract SequenceWorkspace → `features/sequence-editor/` | **Done** | 11 files moved (SequenceWorkspace + sequence components); WorkspaceSessionContext stays in prompt-optimizer as shared state |
+| 8 | Finish root services/hooks/api migration | **Partial** — moved `useCameraMotion` + `motionApi` to convergence; remaining root files are legitimate shared infrastructure |
 
 ---
 

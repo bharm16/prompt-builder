@@ -8,7 +8,7 @@ import { cn } from '@/utils/cn';
 import { FullscreenDialog } from '@/components/ui/FullscreenDialog';
 import type { CameraPath } from '@/features/convergence/types';
 import { CameraMotionPickerWithErrorBoundary } from '@/features/convergence/components/CameraMotionPicker';
-import { useCameraMotion } from '@/hooks/useCameraMotion';
+import { useCameraMotion } from '@features/convergence/hooks/useCameraMotion';
 import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';

@@ -1,4 +1,4 @@
-import type { GenerationMediaType, GenerationSettingsSnapshot } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type { GenerationMediaType, GenerationSettingsSnapshot } from '@features/generations/types';
 
 export type GalleryTier = 'preview' | 'draft' | 'final';
 export type GalleryFilter = 'all' | 'preview' | 'draft' | 'favorites';

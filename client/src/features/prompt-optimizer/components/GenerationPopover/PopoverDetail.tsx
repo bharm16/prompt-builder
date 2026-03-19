@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { formatRelativeTime } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { formatRelativeTime } from '@features/generations/config/generationConfig';
 import { PopoverThumbnailRail } from './PopoverThumbnailRail';
 import type { GalleryGeneration } from '@/features/prompt-optimizer/components/GalleryPanel';
 import type { PopoverDetailProps } from './types';

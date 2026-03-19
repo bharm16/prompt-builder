@@ -107,11 +107,6 @@ export type OptionalToolSidebarWorkspaceDomain = ToolSidebarWorkspaceDomain | nu
 
 export interface ToolSidebarProps {
   user: User | null;
-  sessions?: OptionalToolSidebarSessionsDomain;
-  promptInteraction?: OptionalToolSidebarPromptInteractionDomain;
-  generation?: OptionalToolSidebarGenerationDomain;
-  assets?: OptionalToolSidebarAssetsDomain;
-  workspace?: OptionalToolSidebarWorkspaceDomain;
 }
 
 export interface ToolRailProps {

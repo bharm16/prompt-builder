@@ -1,7 +1,7 @@
 import React, { useMemo, useState, type ReactElement } from 'react';
 import { Plus } from '@promptstudio/system/components/ui';
 import { cn } from '@/utils/cn';
-import type { VideoReferenceImage } from '@/features/prompt-optimizer/context/generationControlsStoreTypes';
+import type { VideoReferenceImage } from '@features/generation-controls/context/generationControlsStoreTypes';
 import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
 

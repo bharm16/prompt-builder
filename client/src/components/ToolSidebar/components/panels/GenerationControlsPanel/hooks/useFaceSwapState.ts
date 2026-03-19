@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Asset } from '@shared/types/asset';
 import type { VideoTier } from '@components/ToolSidebar/types';
-import { getModelConfig } from '@/features/prompt-optimizer/GenerationsPanel/config/generationConfig';
+import { getModelConfig } from '@features/generations/config/generationConfig';
 import { faceSwapPreview as requestFaceSwapPreview } from '@/features/preview/api/previewApi';
 import { logger } from '@/services/LoggingService';
 import type { FaceSwapPreviewState } from '@/features/prompt-optimizer/context/GenerationControlsContext';

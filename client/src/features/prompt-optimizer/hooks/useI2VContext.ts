@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
+} from '@features/generation-controls/context/GenerationControlsStore';
 import { observeImage } from '../api/i2vApi';
 import {
   deriveLockMap,

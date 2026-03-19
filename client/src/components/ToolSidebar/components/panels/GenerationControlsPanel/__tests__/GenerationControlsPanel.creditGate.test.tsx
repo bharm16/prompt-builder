@@ -6,7 +6,7 @@ import {
   GenerationControlsProvider,
   useGenerationControlsContext,
 } from '@/features/prompt-optimizer/context/GenerationControlsContext';
-import { GenerationControlsStoreProvider } from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import { GenerationControlsStoreProvider } from '@features/generation-controls/context/GenerationControlsStore';
 import { GenerationControlsPanel } from '../GenerationControlsPanel';
 import * as creditGateHook from '@/hooks/useCreditGate';
 

@@ -2,8 +2,8 @@ import { useCallback, useMemo, useRef, type MutableRefObject } from 'react';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
-import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
+import type { Generation } from '@features/generations/types';
+import { areGenerationsEqual } from '@features/generations/utils/generationComparison';
 import {
   extractStorageObjectPath,
   extractVideoContentAssetId,

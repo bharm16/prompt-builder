@@ -112,7 +112,7 @@ vi.mock('../../context/PromptStateContext', () => ({
   }),
 }));
 
-vi.mock('../../context/GenerationControlsStore', () => ({
+vi.mock('../@features/generation-controls/context/GenerationControlsStore', () => ({
   useGenerationControlsStoreState: () => ({
     domain: {
       keyframes: [],
