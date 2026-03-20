@@ -314,6 +314,21 @@ export function applyRateLimitingMiddleware(
     res.status(options.statusCode).send(options.message);
   };
 
+  // Asset view routes are high-volume, read-only signed-URL generators.
+  // They have a dedicated limiter below — skip them in the general limiter
+  // to avoid exhausting the global budget on idempotent URL lookups.
+  const isGeneralSkipped = (req: express.Request): boolean => {
+    const p = req.path;
+    return (
+      p === '/metrics' ||
+      p === '/api/role-classify' ||
+      p === '/api/preview/image/view' ||
+      p === '/api/preview/image/view-batch' ||
+      p === '/api/preview/video/view' ||
+      p === '/api/storage/view-url'
+    );
+  };
+
   // General limiter (all routes)
   const generalLimiter = rateLimit({
     windowMs: RATE_LIMIT_CONFIG.general.windowMs,
@@ -322,7 +337,7 @@ export function applyRateLimitingMiddleware(
     standardHeaders: true,
     legacyHeaders: false,
     handler: generalRateLimitHandler,
-    skip: (req: express.Request) => req.path === '/metrics' || req.path === '/api/role-classify',
+    skip: isGeneralSkipped,
     ...(storeFactory ? { store: storeFactory('general') } : {}),
   });
   app.use(generalLimiter);

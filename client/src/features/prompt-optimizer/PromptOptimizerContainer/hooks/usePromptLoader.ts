@@ -136,6 +136,10 @@ export function usePromptLoader({
 
   useEffect(() => {
     let cancelled = false;
+    // Track whether a fetch completed (success or handled failure) so the
+    // cleanup function can distinguish a dependency-change re-run (fetch
+    // still in-flight) from a normal unmount/re-render after completion.
+    let loadCompleted = false;
 
     const loadPromptFromSession = async (): Promise<void> => {
       const normalizedSessionId = sessionId?.trim() ?? '';
@@ -266,6 +270,7 @@ export function usePromptLoader({
         toastRef.current.error('Failed to load prompt');
         navigate('/', { replace: true });
       } finally {
+        loadCompleted = true;
         if (!cancelled) {
           setIsLoading(false);
         }
@@ -276,6 +281,12 @@ export function usePromptLoader({
 
     return () => {
       cancelled = true;
+      // If the effect is being re-run (dependency change) while a fetch was
+      // still in-flight, clear the dedup guard so the next run retries the load
+      // instead of incorrectly treating it as already completed.
+      if (!loadCompleted) {
+        lastLoadedSessionKeyRef.current = null;
+      }
     };
   }, [
     sessionId,

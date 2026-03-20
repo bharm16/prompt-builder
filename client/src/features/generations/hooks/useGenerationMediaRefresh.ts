@@ -12,6 +12,8 @@ import type { GenerationsAction } from './useGenerationsState';
 
 const log = logger.child('MediaRefresh');
 const MEDIA_REFRESH_RETRY_COOLDOWN_MS = 15_000;
+/** Minimum hidden duration (ms) before a visibility wake triggers re-resolution. */
+const VISIBILITY_WAKE_THRESHOLD_MS = 60_000;
 
 const buildSignature = (generation: Generation): string =>
   JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? '']);
@@ -136,6 +138,35 @@ export function useGenerationMediaRefresh(
     };
   }, []);
 
+  // Invalidate processed media when the page wakes after extended sleep so that
+  // expired GCS signed URLs get re-resolved instead of showing broken thumbnails.
+  const hiddenAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      // Page became visible
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (hiddenAt === null) return;
+      const hiddenDuration = Date.now() - hiddenAt;
+      if (hiddenDuration < VISIBILITY_WAKE_THRESHOLD_MS) return;
+
+      log.debug('Page woke after extended sleep, invalidating processed media', {
+        hiddenDurationMs: hiddenDuration,
+      });
+      processedRef.current.clear();
+      setRetryToken((value) => value + 1);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     let isActive = true;
 
@@ -195,12 +226,35 @@ export function useGenerationMediaRefresh(
       if (pendingGenerations.length === 0) return;
 
       // Batch pre-resolve image asset IDs (populates the cache for individual resolution)
+      let batchRateLimited = false;
       if (allImageAssetIds.length > 0) {
         try {
           await resolveImageAssetBatch([...new Set(allImageAssetIds)]);
-        } catch {
-          // Batch failed — individual resolution will handle each one
+        } catch (batchError) {
+          // If the batch itself was rate-limited, skip Phase 2 entirely to avoid
+          // hammering the server with individual requests that will also 429.
+          if (isRetryableError(batchError)) {
+            batchRateLimited = true;
+          }
+          // Other errors: individual resolution will handle each one
         }
+      }
+
+      if (batchRateLimited) {
+        log.warn('Batch pre-resolution rate-limited, deferring all pending generations');
+        for (const generation of pendingGenerations) {
+          const retryAt = Date.now() + MEDIA_REFRESH_RETRY_COOLDOWN_MS;
+          retryAfterRef.current.set(generation.id, retryAt);
+          if (!retryTimersRef.current.has(generation.id)) {
+            const timeoutId = window.setTimeout(() => {
+              retryTimersRef.current.delete(generation.id);
+              retryAfterRef.current.delete(generation.id);
+              setRetryToken((value) => value + 1);
+            }, MEDIA_REFRESH_RETRY_COOLDOWN_MS);
+            retryTimersRef.current.set(generation.id, timeoutId);
+          }
+        }
+        return;
       }
 
       // Phase 2: Process each generation individually (cache is now warm from batch)
