@@ -9,7 +9,7 @@ export const runOptimizeFlow = async ({
   log,
   optimizationCache,
   shotInterpreter,
-  strategyFactory,
+  strategy,
   compilationService,
   applyConstitutionalAI,
   logOptimizationMetrics,
@@ -21,7 +21,7 @@ export const runOptimizeFlow = async ({
 
   const {
     prompt,
-    mode: _mode,
+    mode = 'video',
     context = null,
     brainstormContext = null,
     generationParams = null,
@@ -34,7 +34,6 @@ export const runOptimizeFlow = async ({
     signal,
     targetModel,
   } = request;
-  void _mode;
 
   const originalUserPrompt =
     typeof brainstormContext?.originalUserPrompt === 'string' &&
@@ -42,11 +41,9 @@ export const runOptimizeFlow = async ({
       ? brainstormContext.originalUserPrompt.trim()
       : prompt;
 
-  const finalMode = 'video' as const;
-
   log.debug('Starting operation.', {
     operation,
-    mode: finalMode,
+    mode: mode,
     promptLength: prompt.length,
     hasContext: !!context,
     hasBrainstormContext: !!brainstormContext,
@@ -62,7 +59,7 @@ export const runOptimizeFlow = async ({
 
   const cacheKey = optimizationCache.buildCacheKey(
     prompt,
-    finalMode,
+    mode,
     context,
     brainstormContext,
     targetModel,
@@ -79,7 +76,7 @@ export const runOptimizeFlow = async ({
       }
       log.debug('Returning cached optimization result', {
         operation,
-        mode: finalMode,
+        mode: mode,
         duration: Math.round(performance.now() - startTime),
       });
       return {
@@ -97,7 +94,7 @@ export const runOptimizeFlow = async ({
   } else {
     log.debug('Skipping optimization cache', {
       operation,
-      mode: finalMode,
+      mode: mode,
     });
   }
 
@@ -139,8 +136,6 @@ export const runOptimizeFlow = async ({
       handleMetadata({ normalizedModelId: targetModel });
     }
 
-    const strategy = strategyFactory.getStrategy(finalMode);
-
     const domainContent = strategy.generateDomainContent
       ? await strategy.generateDomainContent(prompt, context || null, interpretedShotPlan)
       : null;
@@ -155,7 +150,7 @@ export const runOptimizeFlow = async ({
       ...(signal ? { signal } : {}),
     };
 
-    if (finalMode === 'video' && strategy.optimizeStructured && strategy.renderStructuredPrompt) {
+    if (mode === 'video' && strategy.optimizeStructured && strategy.renderStructuredPrompt) {
       structuredArtifact = await strategy.optimizeStructured(strategyRequest);
       artifactKey = optimizationCache.buildStructuredArtifactKeyFromInputs({
         prompt,
@@ -182,24 +177,10 @@ export const runOptimizeFlow = async ({
       }
     }
 
-    if (targetModel && finalMode === 'video' && compilationService) {
-      const compilation = await compilationService.compile({
-        operation,
-        mode: finalMode,
-        ...(targetModel !== undefined ? { targetModel } : {}),
-        source: structuredArtifact
-          ? { kind: 'artifact', artifact: structuredArtifact }
-          : { kind: 'prompt', prompt },
-        fallbackPrompt: prompt,
-        ...(artifactKey ? { artifactKey } : {}),
-      });
-
-      optimizedPrompt = compilation.prompt;
-      compilationState = compilation.compilation;
-      if (compilation.metadata) {
-        handleMetadata(compilation.metadata);
-      }
-    } else if (structuredArtifact && strategy.renderStructuredPrompt) {
+    // -----------------------------------------------------------------------
+    // Step 1: Resolve generic optimized prompt (before compilation)
+    // -----------------------------------------------------------------------
+    if (structuredArtifact && strategy.renderStructuredPrompt) {
       optimizedPrompt = strategy.renderStructuredPrompt(structuredArtifact.structuredPrompt);
     } else {
       optimizedPrompt = await strategy.optimize({
@@ -209,30 +190,81 @@ export const runOptimizeFlow = async ({
     }
 
     if (useConstitutionalAI) {
-      optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, finalMode, signal);
+      optimizedPrompt = await applyConstitutionalAI(optimizedPrompt, mode, signal);
     }
 
+    // -----------------------------------------------------------------------
+    // Step 2: Enforce intent lock on the generic prompt (full repair)
+    // This runs BEFORE compilation so the generic prompt preserves user intent,
+    // and compilation receives an intent-correct input.
+    // -----------------------------------------------------------------------
     const intentLocked = applyIntentLockPolicy({
       intentLock,
       originalPrompt: originalUserPrompt,
       optimizedPrompt,
       shotPlan: interpretedShotPlan,
-      compilation: compilationState,
     });
     optimizedPrompt = intentLocked.prompt;
-    if (compilationState) {
-      compilationState = {
-        ...compilationState,
-        ...(intentLocked.compilationIntentLock
-          ? { intentLock: intentLocked.compilationIntentLock }
-          : {}),
-      };
-    }
-    handleMetadata({
-      ...intentLocked.legacyMetadata,
-      ...(compilationState ? { compilation: compilationState } : {}),
-    });
+    handleMetadata(intentLocked.legacyMetadata);
 
+    // -----------------------------------------------------------------------
+    // Step 3: Compile for target model (if requested)
+    // Compilation receives the intent-locked generic prompt.
+    // -----------------------------------------------------------------------
+    if (targetModel && mode === 'video' && compilationService) {
+      const compilation = await compilationService.compile({
+        operation,
+        mode: mode,
+        ...(targetModel !== undefined ? { targetModel } : {}),
+        source: structuredArtifact
+          ? { kind: 'artifact', artifact: structuredArtifact }
+          : { kind: 'prompt', prompt: optimizedPrompt },
+        fallbackPrompt: optimizedPrompt,
+        ...(artifactKey ? { artifactKey } : {}),
+      });
+
+      optimizedPrompt = compilation.prompt;
+      compilationState = compilation.compilation;
+      if (compilation.metadata) {
+        handleMetadata(compilation.metadata);
+      }
+
+      // Post-compilation validate-only intent check — warn but don't mutate.
+      if (intentLock.validateIntentPreservation) {
+        const postCompileCheck = intentLock.validateIntentPreservation({
+          originalPrompt: originalUserPrompt,
+          optimizedPrompt,
+          shotPlan: interpretedShotPlan,
+        });
+        if (!postCompileCheck.passed) {
+          log.warn('Post-compilation intent validation failed (not repaired)', {
+            operation,
+            targetModel,
+            required: postCompileCheck.required,
+          });
+        }
+        compilationState = {
+          ...compilationState,
+          intentLock: {
+            passed: postCompileCheck.passed,
+            repaired: false,
+            skippedRepair: !postCompileCheck.passed,
+            required: postCompileCheck.required,
+            ...(!postCompileCheck.passed
+              ? { warning: 'Intent lock requested a repair, but repair was skipped to preserve model-specific output structure.' }
+              : {}),
+          },
+        };
+      }
+    }
+
+    if (compilationState) {
+      handleMetadata({ compilation: compilationState });
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 4: Prompt lint gate (runs last — repairs formatting issues)
+    // -----------------------------------------------------------------------
     const lintResult = promptLint.enforce({
       prompt: optimizedPrompt,
       modelId: targetModel ?? null,
@@ -248,12 +280,12 @@ export const runOptimizeFlow = async ({
     }
 
     await optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);
-    logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
+    logOptimizationMetrics(prompt, optimizedPrompt, mode);
 
     log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
-      mode: finalMode,
+      mode: mode,
       inputLength: prompt.length,
       outputLength: optimizedPrompt.length,
       useConstitutionalAI,
@@ -271,14 +303,14 @@ export const runOptimizeFlow = async ({
       log.info('Operation aborted.', {
         operation,
         duration: Math.round(performance.now() - startTime),
-        mode: finalMode,
+        mode: mode,
       });
       throw error;
     }
     log.error('Operation failed.', error as Error, {
       operation,
       duration: Math.round(performance.now() - startTime),
-      mode: finalMode,
+      mode: mode,
       promptLength: prompt.length,
     });
     throw error;

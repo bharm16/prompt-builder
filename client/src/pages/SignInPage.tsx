@@ -7,6 +7,19 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
+import {
+  AUTH_COLORS,
+  AUTH_INPUT_CLASS,
+  AUTH_INPUT_STYLE,
+  AUTH_INPUT_FOCUS_STYLE,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_SECONDARY_BTN_CLASS,
+  AUTH_SECONDARY_BTN_STYLE,
+  AUTH_LABEL_CLASS,
+  AUTH_ERROR_STYLE,
+  AUTH_DIVIDER_STYLE,
+} from './auth/auth-styles';
 
 function getSafeRedirect(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -67,6 +80,19 @@ function mapAuthError(error: unknown, flow: AuthFlow): string {
   }
 }
 
+function useFocusStyle(): {
+  style: React.CSSProperties;
+  onFocus: () => void;
+  onBlur: () => void;
+} {
+  const [focused, setFocused] = React.useState(false);
+  return {
+    style: focused ? { ...AUTH_INPUT_STYLE, ...AUTH_INPUT_FOCUS_STYLE } : AUTH_INPUT_STYLE,
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+  };
+}
+
 export function SignInPage(): React.ReactElement {
   const toast = useToast();
   const navigate = useNavigate();
@@ -80,6 +106,9 @@ export function SignInPage(): React.ReactElement {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const emailFocus = useFocusStyle();
+  const passwordFocus = useFocusStyle();
+
   React.useEffect(() => {
     if (!user) return;
     if (redirect) {
@@ -88,9 +117,6 @@ export function SignInPage(): React.ReactElement {
     }
     navigate('/', { replace: true });
   }, [navigate, redirect, user]);
-
-  const inputClassName =
-    'mt-1 w-full rounded-[12px] border border-white/10 bg-black/30 px-4 py-3 text-[14px] text-white placeholder-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition focus:border-white/20 focus:ring-4 focus:ring-white/10';
 
   const handleGoogleSignIn = async (): Promise<void> => {
     setError(null);
@@ -143,8 +169,7 @@ export function SignInPage(): React.ReactElement {
 
   return (
     <AuthShell
-      title="Sign in."
-      subtitle="Luxury SaaS energy, Raycast-calm controls, Framer-grade motion. Sync history when you’re ready."
+      title="Sign in"
       footer={
         <>
           New here?{' '}
@@ -155,20 +180,14 @@ export function SignInPage(): React.ReactElement {
         </>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">Welcome back</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-            Sign in to sync prompt history and keep your work consistent across devices.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
+          Sign in to sync prompt history and keep your work across devices.
+        </p>
 
         {error ? (
-          <div
-            role="alert"
-            className="motion-shake-x rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100"
-          >
-            {error}
+          <div role="alert" className="px-3.5 py-2.5 text-[13px]" style={AUTH_ERROR_STYLE}>
+            <span style={{ color: AUTH_COLORS.danger }}>{error}</span>
           </div>
         ) : null}
 
@@ -177,27 +196,31 @@ export function SignInPage(): React.ReactElement {
           onClick={handleGoogleSignIn}
           disabled={isBusy}
           variant="ghost"
-          className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-white text-[14px] font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:-translate-y-px hover:bg-white hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)] active:translate-y-0 active:shadow-[0_10px_30px_rgba(0,0,0,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+          className={AUTH_SECONDARY_BTN_CLASS}
+          style={AUTH_SECONDARY_BTN_STYLE}
         >
           {isBusy ? <Spinner /> : <Chrome className="h-4 w-4" aria-hidden="true" />}
           Continue with Google
         </Button>
 
         <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-[12px] font-medium text-white/40">or</span>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="flex-1" style={AUTH_DIVIDER_STYLE} />
+          <span className="text-[11px] font-medium" style={{ color: AUTH_COLORS.textLabel }}>or</span>
+          <div className="flex-1" style={AUTH_DIVIDER_STYLE} />
         </div>
 
-        <form onSubmit={handleEmailSignIn} className="flex flex-col gap-4">
+        <form onSubmit={handleEmailSignIn} className="flex flex-col gap-3.5">
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               EMAIL
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
+              <Mail className="pointer-events-none absolute left-3.5 top-[14px] h-4 w-4" style={{ color: AUTH_COLORS.textPlaceholder }} aria-hidden="true" />
               <Input
-                className={`${inputClassName} pl-11`}
+                className={`${AUTH_INPUT_CLASS} pl-10`}
+                style={emailFocus.style}
+                onFocus={emailFocus.onFocus}
+                onBlur={emailFocus.onBlur}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -209,12 +232,15 @@ export function SignInPage(): React.ReactElement {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               PASSWORD
             </label>
             <div className="relative">
               <Input
-                className={`${inputClassName} pr-11`}
+                className={`${AUTH_INPUT_CLASS} pr-10`}
+                style={passwordFocus.style}
+                onFocus={passwordFocus.onFocus}
+                onBlur={passwordFocus.onBlur}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -223,16 +249,15 @@ export function SignInPage(): React.ReactElement {
               />
               <Button
                 type="button"
-                onClick={() => setShowPassword((value) => !value)}
+                onClick={() => setShowPassword((v) => !v)}
                 variant="ghost"
                 size="icon"
-                className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md p-0 transition"
+                style={{ color: AUTH_COLORS.textPlaceholder }}
                 disabled={isBusy}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                <span key={showPassword ? 'hide' : 'show'} className="ps-animate-fade-in">
-                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                </span>
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
               </Button>
             </div>
           </div>
@@ -240,13 +265,15 @@ export function SignInPage(): React.ReactElement {
           <div className="flex items-center justify-between gap-3">
             <Link
               to={forgotPasswordLink}
-              className="text-[13px] font-medium text-white/60 transition hover:text-white"
+              className="text-[12px] font-medium transition hover:text-white"
+              style={{ color: AUTH_COLORS.textDim }}
             >
               Forgot password?
             </Link>
             <Link
               to="/privacy-policy"
-              className="text-[13px] font-medium text-white/40 transition hover:text-white/70"
+              className="text-[12px] font-medium transition hover:text-white"
+              style={{ color: AUTH_COLORS.textLabel }}
             >
               Privacy
             </Link>
@@ -256,7 +283,8 @@ export function SignInPage(): React.ReactElement {
             type="submit"
             disabled={isBusy}
             variant="ghost"
-            className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            className={AUTH_CTA_CLASS}
+            style={AUTH_CTA_STYLE}
           >
             {isBusy ? <Spinner /> : null}
             Sign in

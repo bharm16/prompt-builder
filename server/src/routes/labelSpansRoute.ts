@@ -23,7 +23,7 @@ export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCac
       return res.status(parsed.status).json({ error: parsed.error });
     }
 
-    const { payload, text } = parsed.data;
+    const { payload, text, policy, templateVersion } = parsed.data;
     const requestId = (req as Request & { id?: string }).id;
     const userId = extractUserId(req);
     const operation = 'labelSpansStream';
@@ -41,6 +41,10 @@ export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCac
       aiService,
       requestId,
       userId,
+      spanLabelingCache,
+      text,
+      policy: policy ?? null,
+      templateVersion: templateVersion ?? null,
     });
 
     return;

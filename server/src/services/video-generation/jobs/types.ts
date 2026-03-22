@@ -69,6 +69,8 @@ export interface DlqEntry {
   userId: string;
   request: VideoJobRequest;
   creditsReserved: number;
+  /** Whether credits were refunded before this entry was created. When true, reprocessing must re-reserve credits. */
+  creditsRefunded: boolean;
   provider: string;
   error: VideoJobError;
   source: string;

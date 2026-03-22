@@ -81,12 +81,17 @@ export function NavLinks({ items, variant, className }: NavLinksProps): ReactEle
           to={item.to}
           className={({ isActive }) =>
             cn(
-              'block rounded-md px-4 py-2 text-[13px] font-medium leading-4 uppercase tracking-[0.5px] text-muted transition-colors',
+              'block rounded-md px-4 py-2 text-[13px] font-medium leading-4 uppercase tracking-[0.5px] transition-colors',
               isActive
-                ? 'bg-surface-1 text-foreground'
-                : 'text-muted hover:bg-surface-1 hover:text-foreground'
+                ? 'text-white'
+                : 'hover:text-white'
             )
           }
+          style={({ isActive }) => ({
+            color: isActive ? '#FFFFFF' : '#8B92A5',
+            background: isActive ? '#22252C' : 'transparent',
+            ...(isActive ? {} : {}),
+          })}
         >
           {item.label}
         </NavLink>

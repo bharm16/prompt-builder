@@ -3,7 +3,7 @@ import { MetricsService } from '@infrastructure/MetricsService';
 import { CacheService } from '@services/cache/CacheService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { RedisClient } from '@services/cache/types';
-import { createRedisClient } from '../redis.ts';
+import { createRedisClient, getRedisStatus } from '../redis.ts';
 import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerCacheServices(container: DIContainer): void {
@@ -14,7 +14,19 @@ export function registerCacheServices(container: DIContainer): void {
     { singleton: true }
   );
 
-  container.register('redisClient', () => createRedisClient(), []);
+  container.register('redisClient', (metricsService: MetricsService) => {
+    const client = createRedisClient();
+    // Publish initial Redis status to Prometheus and keep it updated
+    metricsService.updateRedisConnectionStatus(getRedisStatus());
+    if (client) {
+      const pushStatus = (): void => metricsService.updateRedisConnectionStatus(getRedisStatus());
+      client.on('ready', pushStatus);
+      client.on('close', pushStatus);
+      client.on('reconnecting', pushStatus);
+      client.on('end', pushStatus);
+    }
+    return client;
+  }, ['metricsService']);
 
   container.register(
     'spanLabelingCacheService',

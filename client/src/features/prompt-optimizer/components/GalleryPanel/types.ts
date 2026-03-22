@@ -24,6 +24,10 @@ export interface GalleryGeneration {
   isFavorite: boolean;
   generationSettings: GenerationSettingsSnapshot | null;
   promptSpans?: GalleryPromptSpan[] | undefined;
+  /** Asset ID for the primary media (image or video) — enables asset-based URL resolution. */
+  mediaAssetId?: string | null | undefined;
+  /** Asset ID for the thumbnail image — enables asset-based URL resolution. */
+  thumbnailAssetId?: string | null | undefined;
 }
 
 export interface GalleryPanelProps {

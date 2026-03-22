@@ -22,6 +22,7 @@ type VersionGenerationSource = {
   promptSpans: GalleryPromptSpan[];
   versionTimestamp: number | null;
   versionPreviewImageUrl: string | null;
+  versionPreviewAssetId: string | null;
 };
 
 const resolveTimestamp = (generation: Generation, versionTimestamp: number | null): number =>
@@ -193,11 +194,29 @@ const formatDuration = (duration: number | null | undefined): string | undefined
     ? `${duration}s`
     : undefined;
 
+const resolveMediaAssetId = (generation: Generation): string | null => {
+  const ref = normalizeNonEmpty(generation.mediaAssetIds?.[0] ?? null);
+  return ref ?? null;
+};
+
+const resolveThumbnailAssetId = (
+  generation: Generation,
+  versionPreviewAssetId: string | null
+): string | null => {
+  // For images the thumbnail IS the primary media, so use its asset ID
+  if (generation.mediaType !== 'video') {
+    return resolveMediaAssetId(generation);
+  }
+  // For videos prefer the version preview asset ID (image asset)
+  return normalizeNonEmpty(versionPreviewAssetId) ?? null;
+};
+
 const mapGalleryGeneration = (
   generation: Generation,
   promptSpans: GalleryPromptSpan[],
   versionTimestamp: number | null,
-  versionPreviewImageUrl: string | null
+  versionPreviewImageUrl: string | null,
+  versionPreviewAssetId: string | null
 ): GalleryGeneration => ({
   id: generation.id,
   tier: mapTier(generation),
@@ -212,6 +231,8 @@ const mapGalleryGeneration = (
   isFavorite: Boolean(generation.isFavorite),
   generationSettings: generation.generationSettings ?? null,
   promptSpans,
+  mediaAssetId: resolveMediaAssetId(generation),
+  thumbnailAssetId: resolveThumbnailAssetId(generation, versionPreviewAssetId),
 });
 
 export function buildGalleryGenerationEntries({
@@ -224,6 +245,7 @@ export function buildGalleryGenerationEntries({
     const versionTimestamp = Number.isFinite(timestamp) ? timestamp : null;
     const promptSpans = parsePromptSpans(version.highlights);
     const versionPreviewImageUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
+    const versionPreviewAssetId = normalizeNonEmpty(version.preview?.assetId ?? null);
     const explicitGenerations =
       Array.isArray(version.generations) && version.generations.length > 0
         ? version.generations
@@ -238,6 +260,7 @@ export function buildGalleryGenerationEntries({
         promptSpans,
         versionTimestamp,
         versionPreviewImageUrl,
+        versionPreviewAssetId,
       });
     }
   }
@@ -255,6 +278,7 @@ export function buildGalleryGenerationEntries({
         promptSpans: [],
         versionTimestamp: null,
         versionPreviewImageUrl: null,
+        versionPreviewAssetId: null,
       });
       continue;
     }
@@ -271,7 +295,8 @@ export function buildGalleryGenerationEntries({
         source.generation,
         source.promptSpans,
         source.versionTimestamp,
-        source.versionPreviewImageUrl
+        source.versionPreviewImageUrl,
+        source.versionPreviewAssetId
       ),
       generation: source.generation,
     }))

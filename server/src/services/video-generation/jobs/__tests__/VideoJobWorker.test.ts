@@ -240,7 +240,8 @@ describe('VideoJobWorker', () => {
       expect.objectContaining({
         retryable: false,
       }),
-      'worker-terminal'
+      'worker-terminal',
+      { creditsRefunded: true }
     );
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -324,7 +325,7 @@ describe('VideoJobWorker', () => {
         expect.objectContaining({
           userId: 'user-1',
           amount: 7,
-          reason: 'video job markCompleted failed after retries',
+          reason: 'video job worker failed markCompleted failed after retries',
         })
       );
     });

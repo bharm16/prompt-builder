@@ -18,11 +18,9 @@ describe('runOptimizeFlow stream parity', () => {
     shotInterpreter: {
       interpret: vi.fn(async () => null),
     },
-    strategyFactory: {
-      getStrategy: vi.fn(() => ({
-        optimize: vi.fn(async () => 'generic optimized prompt'),
-        generateDomainContent: vi.fn(async () => null),
-      })),
+    strategy: {
+      optimize: vi.fn(async () => 'generic optimized prompt'),
+      generateDomainContent: vi.fn(async () => null),
     },
     compilationService: {
       compile: vi.fn(async () => ({

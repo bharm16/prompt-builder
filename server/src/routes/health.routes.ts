@@ -5,6 +5,7 @@ import { createRouteTimeout } from '@middleware/routeTimeout';
 import { logger } from '@infrastructure/Logger';
 import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
 import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
+import type { RedisStatus } from '@config/redis';
 
 interface WorkerStatusProvider {
   getStatus(): WorkerStatus;
@@ -37,6 +38,8 @@ interface HealthDependencies {
   workers?: Record<string, WorkerStatusProvider | null>;
   /** Optional readiness gate for video execution path health. */
   checkVideoExecutionPath?: () => Promise<VideoExecutionCheckResult>;
+  /** Optional Redis status provider for health reporting. */
+  getRedisStatus?: () => RedisStatus;
 }
 
 /**
@@ -57,6 +60,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     firestoreCircuitExecutor,
     workers,
     checkVideoExecutionPath,
+    getRedisStatus: getRedisStatusFn,
   } = dependencies;
 
   // GET /health - Basic health check
@@ -155,8 +159,17 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         }
       }
 
+      const redisStatus = getRedisStatusFn?.();
       const checks = {
         cache: { healthy: cacheHealth },
+        redis: redisStatus
+          ? {
+              healthy: redisStatus === 'connected',
+              status: redisStatus,
+              ...(redisStatus === 'disconnected' ? { message: 'Redis disconnected — using in-memory fallback' } : {}),
+              ...(redisStatus === 'reconnecting' ? { message: 'Redis reconnecting' } : {}),
+            }
+          : { healthy: true, enabled: false, message: 'Redis status not monitored' },
         firestore:
           checkFirestore || firestoreCircuitSnapshot
             ? {
@@ -291,10 +304,12 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       duration: Math.round(performance.now() - startTime),
     });
 
+    const redisStatus = getRedisStatusFn?.() ?? 'disabled';
     res.json({
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       cache: cacheStats,
+      redis: { status: redisStatus },
       apis: {
         openAI: claudeStats || { message: 'OpenAI API not configured' },
         groq: groqStats || { message: 'Groq API not configured' },

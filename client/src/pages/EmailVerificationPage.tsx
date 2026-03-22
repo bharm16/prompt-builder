@@ -6,6 +6,16 @@ import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
+import {
+  AUTH_COLORS,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_SECONDARY_BTN_CLASS,
+  AUTH_SECONDARY_BTN_STYLE,
+  AUTH_ERROR_STYLE,
+  AUTH_SUCCESS_STYLE,
+  AUTH_CARD_STYLE,
+} from './auth/auth-styles';
 
 function getSafeRedirect(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -78,7 +88,7 @@ function mapResendError(error: unknown): string {
     case 'auth/unauthorized-continue-uri':
     case 'auth/invalid-continue-uri':
     case 'auth/missing-continue-uri':
-      return 'Email verification links aren’t configured for this domain yet.';
+      return 'Email verification links aren\'t configured for this domain yet.';
     default:
       return 'Failed to resend verification email. Please try again.';
   }
@@ -187,8 +197,7 @@ export function EmailVerificationPage(): React.ReactElement {
 
   return (
     <AuthShell
-      title="Verify your email."
-      subtitle="A quick confirmation step. One link click — then you’re back to building prompts like it’s a product demo."
+      title="Verify your email"
       footer={
         <>
           Need to sign in?{' '}
@@ -199,23 +208,23 @@ export function EmailVerificationPage(): React.ReactElement {
         </>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">Account confirmation</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-            We use verification to keep accounts clean and deliver resets securely.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
+          We use verification to keep accounts secure and deliver resets reliably.
+        </p>
 
         {showVerifyInProgress ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}` }}
+              >
                 <Spinner />
               </span>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-white">Verifying…</p>
-                <p className="mt-1 text-[13px] leading-snug text-white/60">
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
                   Applying your confirmation code. This should take a moment.
                 </p>
               </div>
@@ -224,15 +233,18 @@ export function EmailVerificationPage(): React.ReactElement {
         ) : null}
 
         {showVerifiedPanel ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                <CheckCircle2 className="h-5 w-5 text-emerald-200 animate-scale-in" aria-hidden="true" />
+          <div className="px-3.5 py-2.5" style={AUTH_SUCCESS_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: `${AUTH_COLORS.success}15`, border: `1px solid ${AUTH_COLORS.success}30` }}
+              >
+                <CheckCircle2 className="h-4 w-4 animate-scale-in" style={{ color: AUTH_COLORS.success }} aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-emerald-100">Email verified</p>
-                <p className="mt-1 text-[13px] leading-snug text-emerald-100/70">
-                  You’re confirmed. Keep the momentum — jump back into the app.
+                <p className="text-[13px] font-semibold" style={{ color: AUTH_COLORS.success }}>Email verified</p>
+                <p className="mt-0.5 text-[13px] leading-snug" style={{ color: AUTH_COLORS.success, opacity: 0.7 }}>
+                  You're confirmed. Jump back into the app.
                 </p>
               </div>
             </div>
@@ -240,26 +252,29 @@ export function EmailVerificationPage(): React.ReactElement {
         ) : null}
 
         {showVerifyError ? (
-          <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 h-4 w-4 text-red-100/90" aria-hidden="true" />
+          <div role="alert" className="px-3.5 py-2.5" style={AUTH_ERROR_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" style={{ color: AUTH_COLORS.danger }} aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-red-100">Verification failed</p>
-                <p className="mt-1 text-[13px] leading-snug text-red-100/80">{error}</p>
+                <p className="text-[13px] font-semibold" style={{ color: AUTH_COLORS.danger }}>Verification failed</p>
+                <p className="mt-0.5 text-[13px] leading-snug" style={{ color: AUTH_COLORS.danger, opacity: 0.8 }}>{error}</p>
               </div>
             </div>
           </div>
         ) : null}
 
         {!showVerifiedPanel ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
-                <Mail className="h-4 w-4 text-white/80" aria-hidden="true" />
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}` }}
+              >
+                <Mail className="h-4 w-4" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
               </span>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-white">Check your inbox</p>
-                <p className="mt-1 text-[13px] leading-snug text-white/60">
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
                   {displayEmail ? (
                     <>
                       We sent a verification link to <span className="font-medium text-white">{displayEmail}</span>.
@@ -275,16 +290,18 @@ export function EmailVerificationPage(): React.ReactElement {
                     onClick={handleResend}
                     disabled={!user || isResending || resendCooldown > 0}
                     variant="ghost"
-                    className="h-11 gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={AUTH_SECONDARY_BTN_STYLE}
                   >
-                    {isResending ? <Spinner /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                    {isResending ? <Spinner /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
                     {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend email'}
                   </Button>
 
                   <Button
                     asChild
                     variant="ghost"
-                    className="h-11 rounded-[12px] border border-white/10 bg-black/30 px-4 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={{ ...AUTH_SECONDARY_BTN_STYLE, background: AUTH_COLORS.inputBg }}
                   >
                     <Link to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}>
                       Password help
@@ -293,8 +310,8 @@ export function EmailVerificationPage(): React.ReactElement {
                 </div>
 
                 {!user ? (
-                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                    Sign in first to resend a verification email. If you’re on a different device, just click the link in your inbox.
+                  <p className="mt-3 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textLabel }}>
+                    Sign in first to resend a verification email. If you're on a different device, just click the link in your inbox.
                   </p>
                 ) : null}
               </div>
@@ -306,7 +323,8 @@ export function EmailVerificationPage(): React.ReactElement {
           type="button"
           onClick={handleContinue}
           variant="ghost"
-          className="h-11 w-full rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+          className={AUTH_CTA_CLASS}
+          style={AUTH_CTA_STYLE}
         >
           Continue
         </Button>

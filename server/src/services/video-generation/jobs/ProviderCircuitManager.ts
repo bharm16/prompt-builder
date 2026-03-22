@@ -7,6 +7,8 @@ interface ProviderCircuitRecord {
   outcomes: boolean[];
   cooldownUntilMs: number;
   halfOpenProbeInFlight: boolean;
+  /** Timestamp (ms) when the half-open probe was dispatched. Used to detect stuck probes. */
+  halfOpenProbeDispatchedAtMs: number;
 }
 
 interface ProviderCircuitManagerOptions {
@@ -14,6 +16,8 @@ interface ProviderCircuitManagerOptions {
   minVolume?: number;
   cooldownMs?: number;
   maxSamples?: number;
+  /** Max time (ms) a half-open probe can be in-flight before it's considered stuck. Defaults to 5 minutes. */
+  halfOpenProbeTimeoutMs?: number;
   metrics?: {
     recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
   };
@@ -31,6 +35,7 @@ const DEFAULT_FAILURE_RATE_THRESHOLD = 0.5;
 const DEFAULT_MIN_VOLUME = 10;
 const DEFAULT_COOLDOWN_MS = 60_000;
 const DEFAULT_MAX_SAMPLES = 50;
+const DEFAULT_HALF_OPEN_PROBE_TIMEOUT_MS = 5 * 60_000;
 
 export class ProviderCircuitManager {
   private readonly log = logger.child({ service: 'ProviderCircuitManager' });
@@ -39,8 +44,14 @@ export class ProviderCircuitManager {
   private readonly minVolume: number;
   private readonly cooldownMs: number;
   private readonly maxSamples: number;
+  private readonly halfOpenProbeTimeoutMs: number;
   private readonly metrics: ProviderCircuitManagerOptions['metrics'];
   private readonly recoveryCallbacks = new Set<(provider: string) => void>();
+
+  /** Returns snapshots for all tracked providers. Useful for startup logging and diagnostics. */
+  getAllSnapshots(): ProviderCircuitSnapshot[] {
+    return Array.from(this.records.keys()).map((provider) => this.getSnapshot(provider));
+  }
 
   constructor(options: ProviderCircuitManagerOptions = {}) {
     this.failureRateThreshold =
@@ -59,6 +70,10 @@ export class ProviderCircuitManager {
       typeof options.maxSamples === 'number' && Number.isFinite(options.maxSamples)
         ? Math.max(5, Math.trunc(options.maxSamples))
         : DEFAULT_MAX_SAMPLES;
+    this.halfOpenProbeTimeoutMs =
+      typeof options.halfOpenProbeTimeoutMs === 'number' && Number.isFinite(options.halfOpenProbeTimeoutMs)
+        ? Math.max(10_000, Math.trunc(options.halfOpenProbeTimeoutMs))
+        : DEFAULT_HALF_OPEN_PROBE_TIMEOUT_MS;
     this.metrics = options.metrics;
   }
 
@@ -72,11 +87,31 @@ export class ProviderCircuitManager {
       }
       record.state = 'half-open';
       record.halfOpenProbeInFlight = false;
+      record.halfOpenProbeDispatchedAtMs = 0;
       this.log.warn('Provider circuit moved to half-open', { provider });
       this.notifyRecovery(provider);
     }
 
     if (record.state === 'half-open') {
+      if (
+        record.halfOpenProbeInFlight &&
+        record.halfOpenProbeDispatchedAtMs > 0 &&
+        now - record.halfOpenProbeDispatchedAtMs >= this.halfOpenProbeTimeoutMs
+      ) {
+        // Probe was dispatched but never completed — likely swept or orphaned.
+        // Reset the probe flag so a new probe can be dispatched.
+        record.halfOpenProbeInFlight = false;
+        record.halfOpenProbeDispatchedAtMs = 0;
+        this.log.warn('Half-open probe timed out — allowing new probe', {
+          provider,
+          probeAge: now - record.halfOpenProbeDispatchedAtMs,
+          timeoutMs: this.halfOpenProbeTimeoutMs,
+        });
+        this.metrics?.recordAlert?.('video_provider_half_open_probe_timeout', {
+          provider,
+          timeoutMs: this.halfOpenProbeTimeoutMs,
+        });
+      }
       return !record.halfOpenProbeInFlight;
     }
 
@@ -87,6 +122,7 @@ export class ProviderCircuitManager {
     const record = this.getRecord(provider);
     if (record.state === 'half-open') {
       record.halfOpenProbeInFlight = true;
+      record.halfOpenProbeDispatchedAtMs = Date.now();
     }
   }
 
@@ -98,6 +134,7 @@ export class ProviderCircuitManager {
       record.outcomes = [true];
       record.cooldownUntilMs = 0;
       record.halfOpenProbeInFlight = false;
+      record.halfOpenProbeDispatchedAtMs = 0;
       this.log.info('Provider circuit closed after successful half-open probe', { provider });
       this.metrics?.recordAlert?.('video_provider_circuit_closed', { provider });
       this.notifyRecovery(provider);
@@ -165,6 +202,7 @@ export class ProviderCircuitManager {
     record.state = 'open';
     record.cooldownUntilMs = Date.now() + this.cooldownMs;
     record.halfOpenProbeInFlight = false;
+    record.halfOpenProbeDispatchedAtMs = 0;
     this.log.warn('Provider circuit opened', {
       provider,
       reason,
@@ -189,6 +227,7 @@ export class ProviderCircuitManager {
       outcomes: [],
       cooldownUntilMs: 0,
       halfOpenProbeInFlight: false,
+      halfOpenProbeDispatchedAtMs: 0,
     };
     this.records.set(provider, created);
     return created;

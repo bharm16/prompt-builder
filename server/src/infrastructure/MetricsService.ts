@@ -38,6 +38,7 @@ export class MetricsService implements IMetricsCollector {
   private cacheMisses: promClient.Counter<string>;
   private cacheHitRate: promClient.Gauge<string>;
   private circuitBreakerState: promClient.Gauge<string>;
+  private redisConnectionStatus: promClient.Gauge<string>;
   private activeRequests: promClient.Gauge<string>;
   private requestQueueLength: promClient.Gauge;
   private requestQueueTime: promClient.Histogram;
@@ -148,6 +149,13 @@ export class MetricsService implements IMetricsCollector {
       name: 'circuit_breaker_state',
       help: 'Circuit breaker state (0=closed, 1=open, 2=half-open)',
       labelNames: ['circuit'],
+      registers: [this.register],
+    });
+
+    // Redis connection status gauge (0=connected, 1=disconnected, 2=reconnecting, 3=disabled)
+    this.redisConnectionStatus = new promClient.Gauge({
+      name: 'redis_connection_status',
+      help: 'Redis connection status (0=connected, 1=disconnected, 2=reconnecting, 3=disabled)',
       registers: [this.register],
     });
 
@@ -430,6 +438,14 @@ export class MetricsService implements IMetricsCollector {
   updateCircuitBreakerState(circuit: string, state: 'closed' | 'open' | 'half-open'): void {
     const stateMap: Record<string, number> = { closed: 0, open: 1, 'half-open': 2 };
     this.circuitBreakerState.set({ circuit }, stateMap[state] || 0);
+  }
+
+  /**
+   * Update Redis connection status
+   */
+  updateRedisConnectionStatus(status: 'connected' | 'disconnected' | 'reconnecting' | 'disabled'): void {
+    const statusMap: Record<string, number> = { connected: 0, disconnected: 1, reconnecting: 2, disabled: 3 };
+    this.redisConnectionStatus.set(statusMap[status] ?? 3);
   }
 
   /**

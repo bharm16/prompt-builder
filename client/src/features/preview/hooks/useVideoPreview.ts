@@ -6,7 +6,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { promptOptimizationApiV2 } from '@/services';
-import { generateVideoPreview, getVideoPreviewStatus } from '../api/previewApi';
+import { generateVideoPreview } from '../api/previewApi';
+import { pollJobStatus } from '../api/pollJobStatus';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 
 interface UseVideoPreviewOptions {
@@ -26,8 +27,6 @@ interface UseVideoPreviewReturn {
   regenerate: () => void;
 }
 
-const POLL_INTERVAL_MS = 2000;
-const MAX_WAIT_MS = 6 * 60 * 1000;
 const COMPILE_TIMEOUT_MS = 4000;
 
 const stripVideoPreviewPrompt = (prompt: string): string => {
@@ -169,11 +168,11 @@ export function useVideoPreview({
         }
 
         if (response.success && response.jobId) {
-          const resultUrl = await waitForVideoJob(response.jobId, abortController.signal);
-          if (!resultUrl || abortController.signal.aborted) {
+          const pollResult = await pollJobStatus(response.jobId, abortController.signal);
+          if (!pollResult || abortController.signal.aborted) {
             return;
           }
-          setVideoUrl(resultUrl);
+          setVideoUrl(pollResult.videoUrl);
           setError(null);
           return;
         }
@@ -257,59 +256,3 @@ export function useVideoPreview({
   };
 }
 
-async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<string | null> {
-  const startTime = Date.now();
-  let adaptiveTimeoutMs = MAX_WAIT_MS;
-
-  while (true) {
-    if (signal.aborted) {
-      return null;
-    }
-
-    const status = await getVideoPreviewStatus(jobId);
-
-    if (signal.aborted) {
-      return null;
-    }
-
-    if (!status.success) {
-      throw new Error(status.error || status.message || 'Failed to fetch video job status');
-    }
-
-    // Adapt timeout based on server-reported single-attempt budget
-    if (status.serverTimeoutMs) {
-      adaptiveTimeoutMs = Math.max(
-        Math.ceil(status.serverTimeoutMs * 1.2),
-        MAX_WAIT_MS
-      );
-    }
-
-    if (status.status === 'completed' && status.videoUrl) {
-      return status.videoUrl;
-    }
-
-    if (status.status === 'completed') {
-      throw new Error('Video preview completed but no URL was returned');
-    }
-
-    if (status.status === 'failed') {
-      throw new Error(status.error || 'Video generation failed');
-    }
-
-    if (Date.now() - startTime > adaptiveTimeoutMs) {
-      throw new Error('Timed out waiting for video preview');
-    }
-
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, POLL_INTERVAL_MS);
-      signal.addEventListener(
-        'abort',
-        () => {
-          clearTimeout(timer);
-          resolve();
-        },
-        { once: true }
-      );
-    });
-  }
-}

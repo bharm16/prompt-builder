@@ -47,8 +47,6 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview` |
 | **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
 
-**Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. The canonical implementations live in the domain subdirectories (`enhancement/`, `video-concept/`). Do not import from the root-level files.
-
 ## Service Architecture
 
 ### DI Registration

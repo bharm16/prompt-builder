@@ -4,6 +4,8 @@ import { extractUserId } from '@utils/requestHelpers';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PromptOptimizationServiceContract } from '../types';
 import { promptSchema } from '@config/schemas/promptSchemas';
+// Response wire format defined in shared/schemas/optimization.schemas.ts —
+// client validates against OptimizeResponseSchema at the fetch boundary.
 import { normalizeContext, normalizeLockedSpans, normalizeTargetModel } from './requestNormalization';
 
 export const createOptimizeHandler = (
@@ -162,8 +164,12 @@ export const createOptimizeHandler = (
         metadata: responseMetadata,
       };
 
+      res.setHeader('X-Response-Version', '2');
       return res.json({
         success: true,
+        // DEPRECATED: `data` envelope duplicates top-level fields.
+        // Clients should read top-level fields directly (prompt, metadata, etc.).
+        // This wrapper will be removed in a future version.
         data: responsePayload,
         ...responsePayload,
       });

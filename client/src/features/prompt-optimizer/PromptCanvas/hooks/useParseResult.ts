@@ -11,7 +11,7 @@ import { createCanonicalText } from '@utils/canonicalText';
 import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
 import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { ParseResult } from '../types';
+import type { ParseResult, ParseResultStatus } from '../types';
 
 const EMPTY_SPANS: HighlightSpan[] = [];
 
@@ -71,16 +71,29 @@ export function useParseResult({
       ? null
       : labeledMeta;
 
+  // Map upstream SpanLabelingStatus to ParseResultStatus, keeping recognized
+  // values and falling back to 'idle' for unexpected strings.
+  const VALID_STATUSES = new Set<ParseResultStatus>([
+    'idle', 'loading', 'refreshing', 'success', 'stale', 'error',
+  ]);
+  const status: ParseResultStatus = VALID_STATUSES.has(labelingStatus as ParseResultStatus)
+    ? (labelingStatus as ParseResultStatus)
+    : 'idle';
+
+  // Degraded = pipeline had an error but is serving cached/fallback data.
+  const degraded = status === 'stale' || (status === 'error' && spans.length > 0);
+
   const parseResult = useMemo<ParseResult>(
     () => ({
       canonical,
       spans,
       meta,
-      status: labelingStatus as ParseResult['status'],
+      status,
       error: labelingError,
       displayText: currentText,
+      degraded,
     }),
-    [canonical, spans, meta, labelingStatus, labelingError, currentText]
+    [canonical, spans, meta, status, labelingError, currentText, degraded]
   );
 
   useEffect(() => {

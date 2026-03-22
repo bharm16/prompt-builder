@@ -8,31 +8,19 @@ import React, {
 import { useDrawerState } from '@components/CollapsibleDrawer';
 import { useToast } from '@components/Toast';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import {
-  PERFORMANCE_CONFIG,
-  DEFAULT_LABELING_POLICY,
-  TEMPLATE_VERSIONS,
-} from '@config/performance.config';
-import { sanitizeText, useSpanLabeling } from '@/features/span-highlighting';
-import { useHighlightRendering } from '@/features/span-highlighting';
-import { useHighlightFingerprint } from '@/features/span-highlighting';
-import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
+// Performance config consumed internally by useSpanLabelingPipeline
+import { sanitizeText } from '@/features/span-highlighting';
 import { useTriggerAutocomplete } from '@features/assets/hooks/useTriggerAutocomplete';
 import { useOutlineOverlay } from './hooks/useOutlineOverlay';
 import { useEditorInput } from './hooks/useEditorInput';
 
 import type {
   PromptCanvasProps,
-  HighlightSnapshot,
 } from './types';
 
-import {
-  escapeHTMLForMLHighlighting,
-  formatTextToHTML,
-} from '../utils/textFormatting';
-import { useSpanDataConversion } from './hooks/useSpanDataConversion';
+import { useSpanLabelingPipeline } from './hooks/useSpanLabelingPipeline';
 import { useSuggestionDetection } from './hooks/useSuggestionDetection';
-import { useParseResult } from './hooks/useParseResult';
+// parseResult, highlight rendering consumed by useSpanLabelingPipeline
 import { usePromptCanvasState } from './hooks/usePromptCanvasState';
 import { usePromptStatus } from './hooks/usePromptStatus';
 import { useSpanSelectionEffects } from './hooks/useSpanSelectionEffects';
@@ -206,6 +194,7 @@ export function PromptCanvas({
     [displayedPrompt]
   );
   const normalizedInputPrompt = useMemo(() => sanitizeText(inputPrompt ?? ''), [inputPrompt]);
+
   const editorDisplayText = showResults
     ? normalizedDisplayedPrompt ?? ''
     : normalizedInputPrompt;
@@ -263,8 +252,6 @@ export function PromptCanvas({
       setShowDiff(false);
     }
   }, [hasCanvasContent, setGenerationsSheetOpen, setShowDiff]);
-
-  const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
   // Extract suggestions visibility state for contextual UI
   const isSuggestionsOpen = Boolean(
@@ -367,140 +354,33 @@ export function PromptCanvas({
     setHoveredSpanId,
   });
 
-  // Span data conversion hook
-  const { memoizedInitialHighlights } = useSpanDataConversion({
-    initialHighlights,
-    promptUuid,
-    displayedPrompt: normalizedDisplayedPrompt,
-    enableMLHighlighting,
-    initialHighlightsVersion,
-  });
-
-  const handleLabelingResult = useCallback(
-    (result: SpanLabelingResult): void => {
-      if (!enableMLHighlighting || !result) {
-        return;
-      }
-      debug.logAction('labelingComplete', {
-        spanCount: result.spans.length,
-        hasMeta: !!result.meta,
-      });
-      if (onHighlightsPersist) {
-        onHighlightsPersist(result);
-      }
-
-      if (Array.isArray(result.spans) && result.signature) {
-        const snapshot: HighlightSnapshot = {
-          spans: result.spans,
-          meta: result.meta ?? null,
-          signature: result.signature,
-          cacheId:
-            result.cacheId ??
-            (versioningPromptUuid ? String(versioningPromptUuid) : null),
-          updatedAt: new Date().toISOString(),
-        };
-        syncVersionHighlights(snapshot, normalizedDisplayedPrompt ?? '');
-      }
-    },
-    [
-      enableMLHighlighting,
-      onHighlightsPersist,
-      debug,
-      versioningPromptUuid,
-      normalizedDisplayedPrompt,
-      syncVersionHighlights,
-    ]
-  );
-
-  const previousOptimizationResultVersionRef = useRef(optimizationResultVersion);
-  const shouldLabelImmediately =
-    optimizationResultVersion > 0 &&
-    optimizationResultVersion !== previousOptimizationResultVersionRef.current;
-
-  useEffect(() => {
-    previousOptimizationResultVersionRef.current = optimizationResultVersion;
-  }, [optimizationResultVersion]);
-
+  // --- Span Labeling Pipeline ---
+  // Composes: data conversion → labeling → signature gate → parse → highlight rendering
   const {
-    spans: labeledSpans,
-    meta: labeledMeta,
-    status: labelingStatus,
-    error: labelingError,
-    signature: labelingSignature,
-  } = useSpanLabeling({
-    text: enableMLHighlighting ? (normalizedDisplayedPrompt ?? '') : '',
-    initialData: memoizedInitialHighlights,
-    initialDataVersion: initialHighlightsVersion,
-    cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
-    enabled: enableMLHighlighting && Boolean(normalizedDisplayedPrompt?.trim()),
-    immediate: shouldLabelImmediately,
-    maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
-    minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
-    policy: labelingPolicy,
-    templateVersion: i2vContext?.isI2VMode
-      ? TEMPLATE_VERSIONS.SPAN_LABELING_I2V
-      : TEMPLATE_VERSIONS.SPAN_LABELING_V1,
-    debounceMs: PERFORMANCE_CONFIG.DEBOUNCE_DELAY_MS,
-    onResult: handleLabelingResult,
+    parseResult,
+    bentoSpans,
+    highlightFingerprint,
+    formattedHTML,
+  } = useSpanLabelingPipeline({
+    displayedPrompt,
+    promptUuid,
+    selectedMode,
+    showResults,
+    initialHighlights: initialHighlights ?? null,
+    initialHighlightsVersion,
+    optimizationResultVersion,
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    showHighlights,
+    i2vContext,
+    onHighlightsPersist,
+    syncVersionHighlights,
+    versioningPromptUuid,
   });
 
   // Suggestion detection hook
   useSuggestionDetection({
     displayedPrompt: normalizedDisplayedPrompt,
     isSuggestionsOpen,
-  });
-
-  // Parse result hook
-  const parseResult = useParseResult({
-    labeledSpans,
-    labeledMeta,
-    labelingSignature,
-    labelingStatus,
-    labelingError,
-    enableMLHighlighting,
-    displayedPrompt: normalizedDisplayedPrompt,
-  });
-
-  const bentoSpans = useMemo(
-    () =>
-      parseResult.spans.map((span) => {
-        const { confidence, category, ...rest } = span;
-        return {
-          ...rest,
-          id: span.id ?? `span_${span.start}_${span.end}`,
-          quote: span.quote ?? span.text ?? '',
-          ...(typeof confidence === 'number' ? { confidence } : {}),
-          ...(category !== undefined ? { category } : {}),
-        };
-      }),
-    [parseResult.spans]
-  );
-
-  // Highlight rendering using extracted hook
-  const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, {
-    spans: parseResult.spans,
-    displayText: parseResult.displayText,
-  });
-
-  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
-  const { html: formattedHTML } = useMemo(() => {
-    if (enableMLHighlighting) {
-      return {
-        html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || ''),
-      };
-    }
-    return formatTextToHTML(normalizedDisplayedPrompt ?? '');
-  }, [normalizedDisplayedPrompt, enableMLHighlighting]);
-
-  useHighlightRendering({
-    editorRef: editorRef as React.RefObject<HTMLElement>,
-    parseResult: {
-      spans: parseResult.spans,
-      displayText: parseResult.displayText,
-    },
-    enabled: enableMLHighlighting && showHighlights,
-    fingerprint: highlightFingerprint,
-    text: normalizedDisplayedPrompt ?? '',
   });
 
   // Performance timer: Track when prompt appears on screen

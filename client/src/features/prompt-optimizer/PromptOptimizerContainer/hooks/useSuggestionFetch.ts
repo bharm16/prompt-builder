@@ -179,6 +179,9 @@ export function useSuggestionFetch({
       );
 
       const spanContext = prepareSpanContext(metadata, allLabeledSpans);
+      // Use client-computed fingerprint as a fallback. The server returns an
+      // authoritative spanFingerprint in its response which is stored in the
+      // cache; subsequent hits will use that instead.
       const spanFingerprint = buildSpanFingerprint(
         spanContext.simplifiedSpans,
         spanContext.nearbySpans
@@ -291,6 +294,22 @@ export function useSuggestionFetch({
 
         // Cache the result - Requirement 6.1
         const cachedResult = setCachedSuggestions(cacheKey, result);
+
+        // If the server returned an authoritative fingerprint, also cache under
+        // that key so future requests using the server fingerprint get a hit.
+        if (result.spanFingerprint && result.spanFingerprint !== spanFingerprint) {
+          const serverCacheKey = buildCacheKey({
+            normalizedHighlight,
+            normalizedPrompt,
+            suggestionContext,
+            category: metadata?.category ?? null,
+            spanFingerprint: result.spanFingerprint,
+            i2vKey,
+          });
+          if (serverCacheKey !== cacheKey) {
+            setCachedSuggestions(serverCacheKey, result);
+          }
+        }
 
         setSuggestionsData((prev) => {
           if (!prev) return prev;

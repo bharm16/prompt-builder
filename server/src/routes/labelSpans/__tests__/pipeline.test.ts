@@ -268,7 +268,12 @@ describe('labelSpans streaming handler', () => {
     });
 
     expect(res.status).toHaveBeenCalledWith(502);
-    expect(res.payload).toEqual({ error: 'Streaming failed' });
+    expect(res.payload).toMatchObject({
+      error: 'Streaming failed',
+      message: 'stream failed',
+      degraded: false,
+      partialCount: 0,
+    });
   });
 
   it('writes an ndjson error line when stream fails after headers were sent', async () => {
@@ -290,7 +295,12 @@ describe('labelSpans streaming handler', () => {
     });
 
     expect(res.status).not.toHaveBeenCalledWith(502);
-    expect(res.chunks.some((line) => line.includes('"error":"Streaming failed"'))).toBe(true);
+    const errorLine = res.chunks.find((line) => line.includes('"error":"Streaming failed"'));
+    expect(errorLine).toBeDefined();
+    // Verify structured error includes degraded flag and partial count
+    const errorPayload = JSON.parse(errorLine!.trim());
+    expect(errorPayload.degraded).toBe(true);
+    expect(errorPayload.partialCount).toBe(1);
     expect(res.end).toHaveBeenCalled();
   });
 });

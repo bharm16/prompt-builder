@@ -1,23 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MarketingPage } from './MarketingPage';
-import { Button } from '@promptstudio/system/components/ui/button';
+import { AUTH_COLORS } from './auth/auth-styles';
 
 export function NotFoundPage(): React.ReactElement {
   return (
-    <MarketingPage
-      eyebrow="404"
-      title="Page not found"
-      subtitle="The page you're looking for doesn't exist or has been moved."
-      actions={
-        <Button
-          asChild
-          variant="ghost"
-          className="h-10 rounded-full bg-foreground px-4 text-[13px] font-semibold text-white transition hover:-translate-y-px hover:shadow-[0_18px_40px_rgba(0,0,0,0.18)] active:translate-y-0"
+    <div className="h-full overflow-y-auto" style={{ background: AUTH_COLORS.bg }}>
+      <div className="mx-auto max-w-md px-4 sm:px-6 pt-24 pb-16 text-center">
+        <p className="text-[10px] font-semibold tracking-[0.2em]" style={{ color: AUTH_COLORS.textLabel }}>
+          404
+        </p>
+        <h1 className="mt-2 text-[15px] font-semibold text-white tracking-tight">
+          Page not found
+        </h1>
+        <p className="mt-2 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        </p>
+        <Link
+          to="/"
+          className="mt-5 inline-flex h-9 items-center rounded-lg px-4 text-[13px] font-semibold transition"
+          style={{ background: AUTH_COLORS.accent, color: AUTH_COLORS.bg }}
         >
-          <Link to="/">Back to workspace</Link>
-        </Button>
-      }
-    />
+          Back to workspace
+        </Link>
+      </div>
+    </div>
   );
 }

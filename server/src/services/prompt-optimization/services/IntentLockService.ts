@@ -577,4 +577,27 @@ export class IntentLockService {
 
     throw new Error('Intent lock failed: optimized prompt does not preserve required subject/action semantics');
   }
+
+  /**
+   * Validate-only intent check — returns pass/fail without repairing.
+   * Used after model-specific compilation where mutation would break
+   * model-specific formatting.
+   */
+  validateIntentPreservation(params: {
+    originalPrompt: string;
+    optimizedPrompt: string;
+    shotPlan: ShotPlan | null;
+  }): { passed: boolean; required: RequiredIntent } {
+    const required = this.extractRequiredIntent(params.originalPrompt, params.shotPlan);
+    const currentPrompt = params.optimizedPrompt.trim();
+
+    const subjectOk = required.subject ? hasSubject(required.subject, currentPrompt) : true;
+    const actionOk = required.action ? hasAction(required.action, currentPrompt) : true;
+    const semanticsOk = preservesActionSemantics(required.action, params.originalPrompt, currentPrompt);
+
+    return {
+      passed: subjectOk && actionOk && semanticsOk,
+      required,
+    };
+  }
 }

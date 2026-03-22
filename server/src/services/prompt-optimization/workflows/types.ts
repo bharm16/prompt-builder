@@ -58,10 +58,6 @@ export type OptimizationStrategyLike = {
   ): Promise<unknown>;
 };
 
-export type StrategyFactoryLike = {
-  getStrategy(mode: OptimizationMode): OptimizationStrategyLike;
-};
-
 export type CompilationServiceLike = {
   compile(args: {
     operation: string;
@@ -96,6 +92,14 @@ export type IntentLockLike = {
     repaired: boolean;
     required: { subject: string | null; action: string | null };
   };
+  validateIntentPreservation?(params: {
+    originalPrompt: string;
+    optimizedPrompt: string;
+    shotPlan: ShotPlan | null;
+  }): {
+    passed: boolean;
+    required: { subject: string | null; action: string | null };
+  };
 };
 
 export type PromptLintLike = {
@@ -114,7 +118,7 @@ export interface OptimizeFlowArgs {
   log: ILogger;
   optimizationCache: OptimizationCacheLike;
   shotInterpreter: ShotInterpreterLike;
-  strategyFactory: StrategyFactoryLike;
+  strategy: OptimizationStrategyLike;
   compilationService: CompilationServiceLike | null;
   applyConstitutionalAI: ConstitutionalReviewLike;
   logOptimizationMetrics: (

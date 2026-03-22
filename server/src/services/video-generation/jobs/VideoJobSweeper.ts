@@ -3,6 +3,7 @@ import type { UserCreditService } from '@services/credits/UserCreditService';
 import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
+import type { ProviderCircuitManager } from './ProviderCircuitManager';
 
 const DEFAULT_QUEUE_TIMEOUT_SECONDS = 300;
 const DEFAULT_PROCESSING_GRACE_SECONDS = 90;
@@ -16,6 +17,7 @@ interface VideoJobSweeperOptions {
   maxSweepIntervalMs?: number;
   backoffFactor?: number;
   maxJobsPerRun: number;
+  providerCircuitManager?: ProviderCircuitManager;
   metrics?: {
     recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
   };
@@ -30,6 +32,7 @@ export class VideoJobSweeper {
   private readonly maxSweepIntervalMs: number;
   private readonly backoffFactor: number;
   private readonly maxJobsPerRun: number;
+  private readonly providerCircuitManager: ProviderCircuitManager | undefined;
   private readonly metrics?: VideoJobSweeperOptions['metrics'];
   private readonly log = logger.child({ service: 'VideoJobSweeper' });
   private timer: NodeJS.Timeout | null = null;
@@ -50,6 +53,7 @@ export class VideoJobSweeper {
     this.maxSweepIntervalMs = options.maxSweepIntervalMs ?? Math.max(this.baseSweepIntervalMs * 8, 120_000);
     this.backoffFactor = options.backoffFactor ?? 2;
     this.maxJobsPerRun = options.maxJobsPerRun;
+    this.providerCircuitManager = options.providerCircuitManager;
     this.metrics = options.metrics;
     this.currentSweepIntervalMs = this.baseSweepIntervalMs;
   }
@@ -136,8 +140,13 @@ export class VideoJobSweeper {
         break;
       }
 
-      await this.jobStore.enqueueDeadLetter(job, job.error || { message: 'Queued stale timeout' }, 'sweeper-stale');
-      await this.refundJobCredits(job);
+      const refunded = await this.refundJobCredits(job);
+      await this.jobStore.enqueueDeadLetter(
+        job,
+        job.error || { message: 'Queued stale timeout' },
+        'sweeper-stale',
+        { creditsRefunded: refunded }
+      );
       processed += 1;
     }
 
@@ -155,25 +164,26 @@ export class VideoJobSweeper {
         break;
       }
 
+      const refunded = await this.refundJobCredits(job);
       await this.jobStore.enqueueDeadLetter(
         job,
         job.error || { message: 'Processing stalled timeout' },
-        'sweeper-stale'
+        'sweeper-stale',
+        { creditsRefunded: refunded }
       );
-      await this.refundJobCredits(job);
       processed += 1;
     }
 
     return processed;
   }
 
-  private async refundJobCredits(job: VideoJobRecord): Promise<void> {
+  private async refundJobCredits(job: VideoJobRecord): Promise<boolean> {
     if (job.creditsReserved <= 0) {
-      return;
+      return false;
     }
 
     const refundKey = buildRefundKey(['video-job', job.id, 'video']);
-    await refundWithGuard({
+    return await refundWithGuard({
       userCreditService: this.userCreditService,
       userId: job.userId,
       amount: job.creditsReserved,

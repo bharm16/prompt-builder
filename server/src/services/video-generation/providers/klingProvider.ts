@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import CircuitBreaker from 'opossum';
 import type { KlingAspectRatio, KlingModelId, VideoGenerationOptions } from '../types';
-import { sleep } from '../utils/sleep';
+import { sleep, pollingDelay } from '@utils/sleep';
 import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
 type LogSink = {
@@ -163,6 +163,15 @@ async function klingFetch(
   return breaker.fire(baseUrl, apiKey, path, init);
 }
 
+function parseKlingResponse<T>(schema: z.ZodType<T>, json: unknown, endpoint: string): T {
+  try {
+    return schema.parse(json);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Kling API response validation failed for ${endpoint}: ${detail}`);
+  }
+}
+
 async function createKlingTask(
   baseUrl: string,
   apiKey: string,
@@ -172,7 +181,7 @@ async function createKlingTask(
     method: 'POST',
     body: JSON.stringify(input),
   });
-  const parsed = KLING_CREATE_TASK_RESPONSE_SCHEMA.parse(json);
+  const parsed = parseKlingResponse(KLING_CREATE_TASK_RESPONSE_SCHEMA, json, 'text2video/create');
 
   if (parsed.code !== 0) {
     throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
@@ -190,7 +199,7 @@ async function createKlingImageToVideoTask(
     method: 'POST',
     body: JSON.stringify(input),
   });
-  const parsed = KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA.parse(json);
+  const parsed = parseKlingResponse(KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA, json, 'image2video/create');
 
   if (parsed.code !== 0) {
     throw new Error(`Kling i2v error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
@@ -208,7 +217,7 @@ async function getKlingTask(baseUrl: string, apiKey: string, taskIdOrExternalId:
       method: 'GET',
     }
   );
-  const parsed = KLING_TASK_RESULT_RESPONSE_SCHEMA.parse(json);
+  const parsed = parseKlingResponse(KLING_TASK_RESULT_RESPONSE_SCHEMA, json, 'text2video/status');
 
   if (parsed.code !== 0) {
     throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
@@ -240,11 +249,12 @@ async function waitForKlingVideo(
       throw new Error(`Kling task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Kling task ${taskId}`);
     }
 
-    await sleep(KLING_STATUS_POLL_INTERVAL_MS);
+    await sleep(pollingDelay(KLING_STATUS_POLL_INTERVAL_MS, elapsed));
   }
 }
 
@@ -263,7 +273,7 @@ async function waitForKlingImageToVideo(
       `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
       { method: 'GET' }
     );
-    const parsed = KLING_TASK_RESULT_RESPONSE_SCHEMA.parse(json);
+    const parsed = parseKlingResponse(KLING_TASK_RESULT_RESPONSE_SCHEMA, json, 'image2video/status');
 
     if (parsed.code !== 0) {
       throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
@@ -283,11 +293,12 @@ async function waitForKlingImageToVideo(
       throw new Error(`Kling i2v task failed: ${task.task_status_msg ?? 'no reason provided'}`);
     }
 
-    if (Date.now() - start > timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Kling i2v task ${taskId}`);
     }
 
-    await sleep(KLING_STATUS_POLL_INTERVAL_MS);
+    await sleep(pollingDelay(KLING_STATUS_POLL_INTERVAL_MS, elapsed));
   }
 }
 

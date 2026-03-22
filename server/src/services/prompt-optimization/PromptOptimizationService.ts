@@ -2,9 +2,7 @@ import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import OptimizationConfig from '@config/OptimizationConfig';
 
-import { ContextInferenceService } from './services/ContextInferenceService';
-import { ModeDetectionService } from './services/ModeDetectionService';
-import { StrategyFactory } from './services/StrategyFactory';
+import { VideoStrategy } from './strategies/VideoStrategy';
 import { ShotInterpreterService } from './services/ShotInterpreterService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
@@ -35,9 +33,7 @@ import { runConstitutionalReviewFlow } from './workflows/constitutionalReview';
  */
 export class PromptOptimizationService {
   private readonly ai: AIService;
-  private readonly contextInference: ContextInferenceService;
-  private readonly modeDetection: ModeDetectionService;
-  private readonly strategyFactory: StrategyFactory;
+  private readonly videoStrategy: VideoStrategy;
   private readonly shotInterpreter: ShotInterpreterService;
   private readonly optimizationCache: OptimizationCacheService;
   private readonly compilationService: VideoPromptCompilationService | null;
@@ -61,9 +57,7 @@ export class PromptOptimizationService {
     this.log = logger.child({ service: 'PromptOptimizationService' });
 
     const resolvedTemplateService = templateService ?? new TemplateService();
-    this.contextInference = new ContextInferenceService(aiService);
-    this.modeDetection = new ModeDetectionService(aiService);
-    this.strategyFactory = new StrategyFactory(aiService, resolvedTemplateService);
+    this.videoStrategy = new VideoStrategy(aiService, resolvedTemplateService);
     this.shotInterpreter = new ShotInterpreterService(aiService, shotPlanCacheConfig);
     this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService
@@ -86,7 +80,7 @@ export class PromptOptimizationService {
     this.log.info('PromptOptimizationService initialized with refactored architecture', {
       operation: 'constructor',
       availableClients: this.ai.getAvailableClients?.(),
-      strategies: this.strategyFactory.getSupportedModes(),
+      strategy: this.videoStrategy.name,
       pipelineV2Enabled: this.pipelineV2Enabled,
     });
   }
@@ -117,7 +111,7 @@ export class PromptOptimizationService {
       log: this.log,
       optimizationCache: this.optimizationCache,
       shotInterpreter: this.shotInterpreter,
-      strategyFactory: this.strategyFactory,
+      strategy: this.videoStrategy,
       compilationService: this.compilationService,
       applyConstitutionalAI: (nextPrompt, mode, signal) =>
         this.applyConstitutionalAI(nextPrompt, mode, signal),
@@ -252,20 +246,6 @@ export class PromptOptimizationService {
       log: this.log,
       ai: this.ai,
     });
-  }
-
-  /**
-   * Automatically detect optimal mode for a prompt
-   */
-  async detectOptimalMode(prompt: string): Promise<OptimizationMode> {
-    return this.modeDetection.detectMode(prompt);
-  }
-
-  /**
-   * Infer context from a prompt
-   */
-  async inferContextFromPrompt(prompt: string) {
-    return this.contextInference.inferContext(prompt);
   }
 
   /**

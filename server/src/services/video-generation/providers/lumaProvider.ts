@@ -1,5 +1,5 @@
 import type { LumaAI } from 'lumaai';
-import { sleep } from '../utils/sleep';
+import { sleep, pollingDelay } from '@utils/sleep';
 import type { VideoGenerationOptions } from '../types';
 import { getProviderPollTimeoutMs } from './timeoutPolicy';
 
@@ -101,10 +101,11 @@ export async function generateLumaVideo(
     if (result.state === 'failed') {
       throw new Error('Luma generation failed');
     }
-    if (Date.now() - start > timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Luma generation ${generation.id}`);
     }
-    await sleep(LUMA_STATUS_POLL_INTERVAL_MS);
+    await sleep(pollingDelay(LUMA_STATUS_POLL_INTERVAL_MS, elapsed));
     result = await luma.generations.get(generation.id);
   }
 

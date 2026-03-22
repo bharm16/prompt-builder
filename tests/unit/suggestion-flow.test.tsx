@@ -106,6 +106,7 @@ function SuggestionFlowHarness(): React.ReactElement {
       status: 'success' as const,
       error: null,
       displayText: promptText,
+      degraded: false,
     }),
     []
   );

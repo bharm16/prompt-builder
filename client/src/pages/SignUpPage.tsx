@@ -7,6 +7,19 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
+import {
+  AUTH_COLORS,
+  AUTH_INPUT_CLASS,
+  AUTH_INPUT_STYLE,
+  AUTH_INPUT_FOCUS_STYLE,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_SECONDARY_BTN_CLASS,
+  AUTH_SECONDARY_BTN_STYLE,
+  AUTH_LABEL_CLASS,
+  AUTH_ERROR_STYLE,
+  AUTH_DIVIDER_STYLE,
+} from './auth/auth-styles';
 
 function getSafeRedirect(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -77,6 +90,19 @@ function secureEquals(left: string, right: string): boolean {
   return diff === 0;
 }
 
+function useFocusStyle(): {
+  style: React.CSSProperties;
+  onFocus: () => void;
+  onBlur: () => void;
+} {
+  const [focused, setFocused] = React.useState(false);
+  return {
+    style: focused ? { ...AUTH_INPUT_STYLE, ...AUTH_INPUT_FOCUS_STYLE } : AUTH_INPUT_STYLE,
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+  };
+}
+
 export function SignUpPage(): React.ReactElement {
   const toast = useToast();
   const navigate = useNavigate();
@@ -93,6 +119,11 @@ export function SignUpPage(): React.ReactElement {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const nameFocus = useFocusStyle();
+  const emailFocus = useFocusStyle();
+  const passwordFocus = useFocusStyle();
+  const confirmFocus = useFocusStyle();
+
   React.useEffect(() => {
     if (!user) return;
     if (suppressAutoRedirect.current) return;
@@ -102,9 +133,6 @@ export function SignUpPage(): React.ReactElement {
     }
     navigate('/', { replace: true });
   }, [navigate, redirect, user]);
-
-  const inputClassName =
-    'mt-1 w-full rounded-[12px] border border-white/10 bg-black/30 px-4 py-3 text-[14px] text-white placeholder-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition focus:border-white/20 focus:ring-4 focus:ring-white/10';
 
   const handleGoogleSignUp = async (): Promise<void> => {
     suppressAutoRedirect.current = true;
@@ -134,7 +162,7 @@ export function SignUpPage(): React.ReactElement {
       const normalizedName = displayName.trim();
 
       if (!normalizedEmail || !password) {
-        setError('Enter your name (optional), email, and password.');
+        setError('Enter your email and password.');
         return;
       }
       if (!secureEquals(password, confirmPassword)) {
@@ -167,8 +195,7 @@ export function SignUpPage(): React.ReactElement {
 
   return (
     <AuthShell
-      title="Create your account."
-      subtitle="Superhuman-level focus, Arc editorial vibes, Raycast polish. Start fast — upgrade to sync whenever you want."
+      title="Create account"
       footer={
         <>
           Already have an account?{' '}
@@ -179,20 +206,14 @@ export function SignUpPage(): React.ReactElement {
         </>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">Get started</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-            Create an account to sync history, save versions, and pick up exactly where you left off.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
+          Create an account to sync history, save versions, and pick up where you left off.
+        </p>
 
         {error ? (
-          <div
-            role="alert"
-            className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100"
-          >
-            {error}
+          <div role="alert" className="px-3.5 py-2.5 text-[13px]" style={AUTH_ERROR_STYLE}>
+            <span style={{ color: AUTH_COLORS.danger }}>{error}</span>
           </div>
         ) : null}
 
@@ -201,27 +222,31 @@ export function SignUpPage(): React.ReactElement {
           onClick={handleGoogleSignUp}
           disabled={isBusy}
           variant="ghost"
-          className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-white text-[14px] font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:-translate-y-px hover:bg-white hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)] active:translate-y-0 active:shadow-[0_10px_30px_rgba(0,0,0,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+          className={AUTH_SECONDARY_BTN_CLASS}
+          style={AUTH_SECONDARY_BTN_STYLE}
         >
           {isBusy ? <Spinner /> : <Chrome className="h-4 w-4" aria-hidden="true" />}
           Continue with Google
         </Button>
 
         <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-[12px] font-medium text-white/40">or</span>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="flex-1" style={AUTH_DIVIDER_STYLE} />
+          <span className="text-[11px] font-medium" style={{ color: AUTH_COLORS.textLabel }}>or</span>
+          <div className="flex-1" style={AUTH_DIVIDER_STYLE} />
         </div>
 
-        <form onSubmit={handleEmailSignUp} className="flex flex-col gap-4">
+        <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3.5">
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
-              NAME <span className="font-medium text-white/30">(OPTIONAL)</span>
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
+              NAME <span style={{ color: AUTH_COLORS.textPlaceholder }}>(OPTIONAL)</span>
             </label>
             <div className="relative">
-              <UserIcon className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
+              <UserIcon className="pointer-events-none absolute left-3.5 top-[14px] h-4 w-4" style={{ color: AUTH_COLORS.textPlaceholder }} aria-hidden="true" />
               <Input
-                className={`${inputClassName} pl-11`}
+                className={`${AUTH_INPUT_CLASS} pl-10`}
+                style={nameFocus.style}
+                onFocus={nameFocus.onFocus}
+                onBlur={nameFocus.onBlur}
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -232,13 +257,16 @@ export function SignUpPage(): React.ReactElement {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               EMAIL
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
+              <Mail className="pointer-events-none absolute left-3.5 top-[14px] h-4 w-4" style={{ color: AUTH_COLORS.textPlaceholder }} aria-hidden="true" />
               <Input
-                className={`${inputClassName} pl-11`}
+                className={`${AUTH_INPUT_CLASS} pl-10`}
+                style={emailFocus.style}
+                onFocus={emailFocus.onFocus}
+                onBlur={emailFocus.onBlur}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -250,12 +278,15 @@ export function SignUpPage(): React.ReactElement {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               PASSWORD
             </label>
             <div className="relative">
               <Input
-                className={`${inputClassName} pr-11`}
+                className={`${AUTH_INPUT_CLASS} pr-10`}
+                style={passwordFocus.style}
+                onFocus={passwordFocus.onFocus}
+                onBlur={passwordFocus.onBlur}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -264,24 +295,28 @@ export function SignUpPage(): React.ReactElement {
               />
               <Button
                 type="button"
-                onClick={() => setShowPassword((value) => !value)}
+                onClick={() => setShowPassword((v) => !v)}
                 variant="ghost"
                 size="icon"
-                className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md p-0 transition"
+                style={{ color: AUTH_COLORS.textPlaceholder }}
                 disabled={isBusy}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
               </Button>
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               CONFIRM PASSWORD
             </label>
             <Input
-              className={inputClassName}
+              className={AUTH_INPUT_CLASS}
+              style={confirmFocus.style}
+              onFocus={confirmFocus.onFocus}
+              onBlur={confirmFocus.onBlur}
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -290,13 +325,13 @@ export function SignUpPage(): React.ReactElement {
             />
           </div>
 
-          <p className="text-[12px] leading-relaxed text-white/45">
+          <p className="text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textLabel }}>
             By creating an account, you agree to our{' '}
-            <Link to="/terms-of-service" className="text-white/70 hover:text-white hover:underline">
+            <Link to="/terms-of-service" className="hover:text-white hover:underline" style={{ color: AUTH_COLORS.textDim }}>
               terms
             </Link>{' '}
             and{' '}
-            <Link to="/privacy-policy" className="text-white/70 hover:text-white hover:underline">
+            <Link to="/privacy-policy" className="hover:text-white hover:underline" style={{ color: AUTH_COLORS.textDim }}>
               privacy policy
             </Link>
             .
@@ -306,7 +341,8 @@ export function SignUpPage(): React.ReactElement {
             type="submit"
             disabled={isBusy}
             variant="ghost"
-            className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            className={AUTH_CTA_CLASS}
+            style={AUTH_CTA_STYLE}
           >
             {isBusy ? <Spinner /> : null}
             Create account

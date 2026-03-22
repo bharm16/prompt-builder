@@ -68,7 +68,7 @@ describe('waitForVideoJob', () => {
           waitForVideoJob('job-123', abortController.signal),
           vi.advanceTimersByTimeAsync(0),
         ])
-      ).rejects.toThrow('Failed to fetch video status');
+      ).rejects.toThrow('Failed to fetch video job status');
     });
 
     it('throws when video generation failed', async () => {

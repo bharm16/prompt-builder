@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import type { ReadableStream } from 'node:stream/web';
 import type { VideoGenerationOptions, SoraModelId } from '../types';
-import { sleep } from '../utils/sleep';
+import { sleep, pollingDelay } from '@utils/sleep';
 import type { VideoAssetStore, StoredVideoAsset } from '../storage';
 import { toNodeReadableStream } from '../storage/utils';
 import { getProviderPollTimeoutMs } from './timeoutPolicy';
@@ -94,10 +94,11 @@ export async function generateSoraVideo(
   let video = job;
   const start = Date.now();
   while (video.status === 'queued' || video.status === 'in_progress') {
-    if (Date.now() - start > timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Sora video ${video.id}`);
     }
-    await sleep(SORA_STATUS_POLL_INTERVAL_MS);
+    await sleep(pollingDelay(SORA_STATUS_POLL_INTERVAL_MS, elapsed));
     video = await openai.videos.retrieve(video.id);
   }
 

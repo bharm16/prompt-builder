@@ -374,6 +374,51 @@ export class VideoJobStore {
     }
   }
 
+  /**
+   * Persist the raw provider result (video URL, assetId) to the job record immediately
+   * after generation succeeds but before storage. This enables the reconciler to retry
+   * storage from the provider URL if the worker crashes between generation and completion.
+   */
+  async setProviderResult(
+    jobId: string,
+    workerId: string,
+    providerResult: {
+      providerVideoUrl: string;
+      assetId: string;
+      contentType: string;
+      inputMode?: string;
+    }
+  ): Promise<boolean> {
+    try {
+      return await this.withTiming('setProviderResult', 'write', async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const docRef = this.collection.doc(jobId);
+          const snapshot = await transaction.get(docRef);
+          if (!snapshot.exists) {
+            return false;
+          }
+
+          const data = snapshot.data();
+          if (!data || data.status !== 'processing' || data.workerId !== workerId) {
+            return false;
+          }
+
+          const now = Date.now();
+          transaction.update(docRef, {
+            providerResult: providerResult,
+            updatedAtMs: now,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          return true;
+        })
+      );
+    } catch (error) {
+      logger.error('Failed to set provider result on video job', error as Error, { jobId, workerId });
+      return false;
+    }
+  }
+
   async markCompleted(jobId: string, result: VideoJobRecord['result']): Promise<boolean> {
     const now = Date.now();
 
@@ -451,7 +496,8 @@ export class VideoJobStore {
   async enqueueDeadLetter(
     job: VideoJobRecord,
     error: VideoJobError,
-    source: DeadLetterSource
+    source: DeadLetterSource,
+    options?: { creditsRefunded?: boolean }
   ): Promise<void> {
     const now = Date.now();
     const normalizedError = toVideoJobError(error);
@@ -469,6 +515,7 @@ export class VideoJobStore {
           maxAttempts: job.maxAttempts,
           request: job.request,
           creditsReserved: job.creditsReserved,
+          creditsRefunded: options?.creditsRefunded ?? false,
           provider: job.provider ?? 'unknown',
           error: normalizedError,
           source,
@@ -524,6 +571,7 @@ export class VideoJobStore {
             userId: data.userId as string,
             request: data.request as VideoJobRequest,
             creditsReserved: typeof data.creditsReserved === 'number' ? data.creditsReserved : 0,
+            creditsRefunded: data.creditsRefunded === true,
             provider: typeof data.provider === 'string' ? data.provider : 'unknown',
             error: data.error as VideoJobError,
             source: data.source as DeadLetterSource,
@@ -549,7 +597,7 @@ export class VideoJobStore {
     });
   }
 
-  async markDlqFailed(dlqId: string, attempt: number, maxAttempts: number, errorMessage: string): Promise<void> {
+  async markDlqFailed(dlqId: string, attempt: number, maxAttempts: number, errorMessage: string): Promise<boolean> {
     const now = Date.now();
     const escalate = attempt + 1 >= maxAttempts;
     const backoffMs = Math.min(300_000, 30_000 * Math.pow(2, attempt));
@@ -564,6 +612,17 @@ export class VideoJobStore {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
+
+    if (escalate) {
+      this.log.error('DLQ entry escalated — all retry attempts exhausted. Manual intervention required.', undefined, {
+        dlqId,
+        attempt: attempt + 1,
+        maxAttempts,
+        lastError: errorMessage,
+      });
+    }
+
+    return escalate;
   }
 
   async getDlqBacklogCount(): Promise<number> {

@@ -9,6 +9,7 @@ import type { Application } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import { getFirestore } from '@infrastructure/firebaseAdmin';
+import { getRedisStatus } from '@config/redis';
 import { createHealthRoutes } from '@routes/health.routes';
 import { createOpenApiDevRoute } from '../../openapi/devRoute.ts';
 import type { VideoWorkerHeartbeatStore } from '@services/video-generation/jobs/VideoWorkerHeartbeatStore';
@@ -96,6 +97,7 @@ export function registerHealthRoutes(
     },
     ...(checkVideoExecutionPath ? { checkVideoExecutionPath } : {}),
     workers,
+    getRedisStatus,
   });
 
   app.use('/', healthRoutes);

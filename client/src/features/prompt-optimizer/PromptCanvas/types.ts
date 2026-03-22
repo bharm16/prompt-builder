@@ -31,13 +31,28 @@ export interface HighlightSnapshot {
   [key: string]: unknown;
 }
 
+/**
+ * Pipeline health status.
+ *
+ * - `idle`       – no labeling requested yet
+ * - `loading`    – first request in-flight, no data yet
+ * - `refreshing` – re-fetching while stale data is still displayed
+ * - `success`    – fresh data, no errors
+ * - `stale`      – showing cached fallback after a network error
+ * - `error`      – labeling failed and no fallback is available
+ */
+export type ParseResultStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'stale' | 'error';
+
 export interface ParseResult {
   canonical: CanonicalText;
   spans: HighlightSpan[];
   meta: Record<string, unknown> | null;
-  status: 'idle' | 'loading' | 'success' | 'error';
+  status: ParseResultStatus;
   error: Error | null;
   displayText: string;
+  /** True when the pipeline is serving cached/fallback data after an error.
+   *  UI can use this to show a subtle indicator without blocking interaction. */
+  degraded: boolean;
 }
 
 export interface SpanClickPayload {

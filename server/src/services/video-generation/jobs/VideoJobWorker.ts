@@ -2,14 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@infrastructure/Logger';
 import type { VideoGenerationService } from '../VideoGenerationService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
-import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
 import type { StorageService } from '@services/storage/StorageService';
 import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
-import type { VideoJobError, VideoJobRecord } from './types';
+import type { VideoJobRecord } from './types';
 import { VideoJobStore } from './VideoJobStore';
 import type { ProviderCircuitManager } from './ProviderCircuitManager';
-import { classifyError, normalizeErrorMessage, withStage, type StageAwareError } from './classifyError';
-import { RetryPolicy } from '@server/utils/RetryPolicy';
+import { normalizeErrorMessage } from './classifyError';
+import { processVideoJob } from './processVideoJob';
 
 interface VideoJobWorkerOptions {
   workerId?: string;
@@ -75,6 +74,10 @@ export class VideoJobWorker {
   private readonly activeJobs = new Map<string, ActiveJobContext>();
   private lastRunAt: Date | null = null;
   private consecutiveFailures = 0;
+  /** Consecutive heartbeat failures per job — used to detect zombie lease conditions. */
+  private readonly heartbeatFailures = new Map<string, number>();
+  /** Max consecutive heartbeat failures before aborting a job to prevent zombie state. */
+  private static readonly MAX_HEARTBEAT_FAILURES = 3;
 
   constructor(
     jobStore: VideoJobStore,
@@ -102,6 +105,23 @@ export class VideoJobWorker {
     this.perProviderMaxConcurrent = options.perProviderMaxConcurrent ?? Math.max(1, Math.ceil(this.maxConcurrent / 2));
     this.workerHeartbeatStore = options.workerHeartbeatStore;
     this.metrics = options.metrics;
+
+    // Validate heartbeat interval is meaningfully shorter than the lease period.
+    // If heartbeatIntervalMs * MAX_HEARTBEAT_FAILURES >= leaseMs, the heartbeat
+    // abort mechanism cannot fire before the lease expires.
+    const heartbeatWindow = this.heartbeatIntervalMs * VideoJobWorker.MAX_HEARTBEAT_FAILURES;
+    if (heartbeatWindow >= this.leaseMs) {
+      this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
+      this.log.warn(
+        'Heartbeat interval too large relative to lease — zombie detection may be ineffective',
+        {
+          heartbeatIntervalMs: this.heartbeatIntervalMs,
+          maxHeartbeatFailures: VideoJobWorker.MAX_HEARTBEAT_FAILURES,
+          heartbeatWindowMs: heartbeatWindow,
+          leaseMs: this.leaseMs,
+        }
+      );
+    }
   }
 
   start(): void {
@@ -359,20 +379,7 @@ export class VideoJobWorker {
     });
   }
 
-  private classifyJobError(error: StageAwareError, job: VideoJobRecord) {
-    return classifyError(error, job);
-  }
-
   private async processJob(job: VideoJobRecord): Promise<void> {
-    this.log.info('Processing video job', {
-      jobId: job.id,
-      userId: job.userId,
-      status: job.status,
-      attempt: job.attempts,
-      maxAttempts: job.maxAttempts,
-    });
-
-    let heartbeatTimer: NodeJS.Timeout | null = null;
     this.activeJobs.set(job.id, {
       startedAtMs: Date.now(),
       release: async () => {
@@ -403,221 +410,93 @@ export class VideoJobWorker {
       },
     });
 
-    const startHeartbeat = () => {
-      heartbeatTimer = setInterval(() => {
-        void this.jobStore
-          .renewLease(job.id, this.workerId, this.leaseMs)
-          .then((renewed) => {
-            if (!renewed) {
-              this.log.warn('Video job lease heartbeat skipped', {
-                jobId: job.id,
-                workerId: this.workerId,
-              });
-            }
-          })
-          .catch((error) => {
-            this.log.warn('Video job heartbeat failed', {
+    /** AbortController used to cancel in-flight generation when heartbeats detect a zombie lease. */
+    const heartbeatAbort = new AbortController();
+
+    // The worker uses its own heartbeat with failure counting + abort
+    // rather than the generic one inside processVideoJob. We pass the
+    // abort signal down so the shared pipeline can detect cancellation.
+    this.heartbeatFailures.set(job.id, 0);
+    const workerHeartbeatTimer = setInterval(() => {
+      void this.jobStore
+        .renewLease(job.id, this.workerId, this.leaseMs)
+        .then((renewed) => {
+          if (renewed) {
+            this.heartbeatFailures.set(job.id, 0);
+          } else {
+            const consecutiveHbFails = (this.heartbeatFailures.get(job.id) ?? 0) + 1;
+            this.heartbeatFailures.set(job.id, consecutiveHbFails);
+            this.log.warn('Video job lease heartbeat skipped (lease may have been reclaimed)', {
               jobId: job.id,
               workerId: this.workerId,
-              error: normalizeErrorMessage(error),
+              consecutiveFailures: consecutiveHbFails,
             });
+            if (consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES) {
+              this.log.error('Aborting job due to repeated heartbeat failures — lease likely expired', undefined, {
+                jobId: job.id,
+                workerId: this.workerId,
+                consecutiveFailures: consecutiveHbFails,
+              });
+              this.metrics?.recordAlert('video_job_heartbeat_abort', {
+                jobId: job.id,
+                workerId: this.workerId,
+                consecutiveFailures: consecutiveHbFails,
+              });
+              heartbeatAbort.abort(new Error('Lease heartbeat lost — aborting to prevent zombie job'));
+            }
+          }
+        })
+        .catch((error) => {
+          const consecutiveHbFails = (this.heartbeatFailures.get(job.id) ?? 0) + 1;
+          this.heartbeatFailures.set(job.id, consecutiveHbFails);
+          this.log.warn('Video job heartbeat failed', {
+            jobId: job.id,
+            workerId: this.workerId,
+            error: normalizeErrorMessage(error),
+            consecutiveFailures: consecutiveHbFails,
           });
-      }, this.heartbeatIntervalMs);
-    };
-
-    const stopHeartbeat = () => {
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-      }
-    };
+          if (consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES) {
+            this.log.error('Aborting job due to repeated heartbeat errors — lease likely expired', undefined, {
+              jobId: job.id,
+              workerId: this.workerId,
+              consecutiveFailures: consecutiveHbFails,
+            });
+            this.metrics?.recordAlert('video_job_heartbeat_abort', {
+              jobId: job.id,
+              workerId: this.workerId,
+              consecutiveFailures: consecutiveHbFails,
+            });
+            heartbeatAbort.abort(new Error('Lease heartbeat lost — aborting to prevent zombie job'));
+          }
+        });
+    }, this.heartbeatIntervalMs);
 
     try {
-      startHeartbeat();
-
-      let result;
-      try {
-        result = await this.videoGenerationService.generateVideo(job.request.prompt, job.request.options);
-      } catch (error) {
-        throw withStage(error, 'generation');
-      }
-
-      let storageResult: {
-        storagePath: string;
-        viewUrl: string;
-        expiresAt: string;
-        sizeBytes: number;
-      };
-      try {
-        storageResult = await this.storageService.saveFromUrl(job.userId, result.videoUrl, 'generation', {
-          model: job.request.options?.model,
-          creditsUsed: job.creditsReserved,
-        });
-      } catch (error) {
-        throw withStage(error, 'persistence');
-      }
-
-      this.log.info('Required storage copy completed', {
-        persistence_type: 'durable-storage',
-        required: true,
-        outcome: 'success',
-        job_id: job.id,
-        user_id: job.userId,
-        storage_path: storageResult.storagePath,
+      await processVideoJob(job, {
+        jobStore: this.jobStore,
+        videoGenerationService: this.videoGenerationService as never,
+        storageService: this.storageService,
+        userCreditService: this.userCreditService,
+        workerId: this.workerId,
+        leaseMs: this.leaseMs,
+        // Use a very large heartbeat interval since we manage our own heartbeat above.
+        // The shared pipeline's generic heartbeat is disabled by setting interval > lease.
+        heartbeatIntervalMs: this.leaseMs * 10,
+        signal: heartbeatAbort.signal,
+        onProviderSuccess: this.providerCircuitManager
+          ? (provider) => this.providerCircuitManager!.recordSuccess(provider)
+          : undefined,
+        onProviderFailure: this.providerCircuitManager
+          ? (provider) => this.providerCircuitManager!.recordFailure(provider)
+          : undefined,
+        metrics: this.metrics,
+        dlqSource: 'worker-terminal',
+        refundReason: 'video job worker failed',
+        logPrefix: 'Video job',
       });
-
-      const resultWithStorage = {
-        ...result,
-        storagePath: storageResult.storagePath,
-        viewUrl: storageResult.viewUrl,
-        viewUrlExpiresAt: storageResult.expiresAt,
-        sizeBytes: storageResult.sizeBytes,
-      };
-
-      let marked = false;
-      try {
-        marked = await RetryPolicy.execute(
-          () => this.jobStore.markCompleted(job.id, resultWithStorage),
-          {
-            maxRetries: 2,
-            getDelayMs: (attempt) => 100 * 2 ** (attempt - 1),
-            logRetries: true,
-          }
-        );
-      } catch (retryError) {
-        this.log.error('markCompleted failed after retries — video stored but job record not updated', retryError instanceof Error ? retryError : undefined, {
-          jobId: job.id,
-          userId: job.userId,
-          storagePath: storageResult.storagePath,
-          assetId: result.assetId,
-        });
-      }
-
-      if (!marked) {
-        // Video is in GCS but the job record was not updated — refund credits and alert ops
-        this.log.error('Video job completion failed — refunding credits', undefined, {
-          jobId: job.id,
-          userId: job.userId,
-          storagePath: storageResult.storagePath,
-          assetId: result.assetId,
-          recovery: 'manual — asset exists at storagePath',
-        });
-        const refundKey = buildRefundKey(['video-job', job.id, 'video']);
-        await refundWithGuard({
-          userCreditService: this.userCreditService,
-          userId: job.userId,
-          amount: job.creditsReserved,
-          refundKey,
-          reason: 'video job markCompleted failed after retries',
-          metadata: {
-            jobId: job.id,
-            workerId: this.workerId,
-            storagePath: storageResult.storagePath,
-          },
-        });
-        return;
-      }
-
-      this.log.info('Video job completed', {
-        jobId: job.id,
-        userId: job.userId,
-        assetId: result.assetId,
-      });
-
-      if (this.providerCircuitManager && job.provider && job.provider !== 'unknown') {
-        this.providerCircuitManager.recordSuccess(job.provider);
-      }
-    } catch (error) {
-      const stageAware = withStage(error, (error as StageAwareError)?.stage || 'unknown');
-      const jobError = this.classifyJobError(stageAware, job);
-      const hasAttemptsRemaining = job.attempts < job.maxAttempts;
-
-      this.log.error('Video job attempt failed', stageAware, {
-        jobId: job.id,
-        userId: job.userId,
-        attempt: job.attempts,
-        maxAttempts: job.maxAttempts,
-        retryable: jobError.retryable,
-        category: jobError.category,
-        stage: jobError.stage,
-      });
-
-      if (
-        this.providerCircuitManager &&
-        job.provider &&
-        job.provider !== 'unknown' &&
-        (jobError.stage === 'generation' || jobError.category === 'provider' || jobError.category === 'timeout')
-      ) {
-        this.providerCircuitManager.recordFailure(job.provider);
-      }
-      if (jobError.stage === 'persistence') {
-        this.metrics?.recordAlert('video_job_persistence_failure', {
-          jobId: job.id,
-          attempt: job.attempts,
-          code: jobError.code,
-        });
-      }
-
-      if (jobError.retryable && hasAttemptsRemaining) {
-        const requeued = await this.jobStore.requeueForRetry(job.id, this.workerId, jobError);
-        if (requeued) {
-          this.log.warn('Video job requeued for retry', {
-            jobId: job.id,
-            userId: job.userId,
-            attempt: job.attempts,
-            maxAttempts: job.maxAttempts,
-            code: jobError.code,
-          });
-          this.metrics?.recordAlert('video_job_requeued', {
-            jobId: job.id,
-            attempt: job.attempts,
-            maxAttempts: job.maxAttempts,
-            code: jobError.code,
-            category: jobError.category,
-          });
-          return;
-        }
-      }
-
-      const terminalError: VideoJobError = {
-        ...jobError,
-        retryable: false,
-      };
-
-      const marked = await this.jobStore.markFailed(job.id, terminalError);
-      if (marked) {
-        await this.jobStore.enqueueDeadLetter(job, terminalError, 'worker-terminal');
-        this.metrics?.recordAlert('video_job_terminal_failure', {
-          jobId: job.id,
-          attempt: job.attempts,
-          maxAttempts: job.maxAttempts,
-          code: terminalError.code,
-          category: terminalError.category,
-          stage: terminalError.stage,
-        });
-        const refundKey = buildRefundKey(['video-job', job.id, 'video']);
-        await refundWithGuard({
-          userCreditService: this.userCreditService,
-          userId: job.userId,
-          amount: job.creditsReserved,
-          refundKey,
-          reason: 'video job worker failed',
-          metadata: {
-            jobId: job.id,
-            workerId: this.workerId,
-            category: terminalError.category,
-            code: terminalError.code,
-            attempt: job.attempts,
-          },
-        });
-      } else {
-        this.log.warn('Video job failure skipped (status changed)', {
-          jobId: job.id,
-          userId: job.userId,
-        });
-      }
     } finally {
-      stopHeartbeat();
+      clearInterval(workerHeartbeatTimer);
+      this.heartbeatFailures.delete(job.id);
       this.activeJobs.delete(job.id);
     }
   }

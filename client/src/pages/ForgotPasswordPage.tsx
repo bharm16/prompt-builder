@@ -6,6 +6,17 @@ import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { AuthShell } from './auth/AuthShell';
+import {
+  AUTH_COLORS,
+  AUTH_INPUT_CLASS,
+  AUTH_INPUT_STYLE,
+  AUTH_INPUT_FOCUS_STYLE,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_LABEL_CLASS,
+  AUTH_ERROR_STYLE,
+  AUTH_CARD_STYLE,
+} from './auth/auth-styles';
 
 function getSafeRedirect(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -50,10 +61,23 @@ function mapAuthError(error: unknown): string {
     case 'auth/unauthorized-continue-uri':
     case 'auth/invalid-continue-uri':
     case 'auth/missing-continue-uri':
-      return 'Password reset links aren’t configured for this domain yet.';
+      return 'Password reset links aren\'t configured for this domain yet.';
     default:
       return 'Failed to send reset email. Please try again.';
   }
+}
+
+function useFocusStyle(): {
+  style: React.CSSProperties;
+  onFocus: () => void;
+  onBlur: () => void;
+} {
+  const [focused, setFocused] = React.useState(false);
+  return {
+    style: focused ? { ...AUTH_INPUT_STYLE, ...AUTH_INPUT_FOCUS_STYLE } : AUTH_INPUT_STYLE,
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+  };
 }
 
 export function ForgotPasswordPage(): React.ReactElement {
@@ -66,14 +90,13 @@ export function ForgotPasswordPage(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const [sentTo, setSentTo] = React.useState<string | null>(null);
 
+  const emailFocus = useFocusStyle();
+
   React.useEffect(() => {
     setEmail(getInitialEmail(location.search));
     setSentTo(null);
     setError(null);
   }, [location.search]);
-
-  const inputClassName =
-    'mt-1 w-full rounded-[12px] border border-white/10 bg-black/30 px-4 py-3 text-[14px] text-white placeholder-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition focus:border-white/20 focus:ring-4 focus:ring-white/10';
 
   const handleSend = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -104,8 +127,7 @@ export function ForgotPasswordPage(): React.ReactElement {
 
   return (
     <AuthShell
-      title="Reset your password."
-      subtitle="Fast recovery. No drama. We’ll email a reset link — you’ll be back in flow in under a minute."
+      title="Reset your password"
       footer={
         <>
           Remembered it?{' '}
@@ -116,41 +138,38 @@ export function ForgotPasswordPage(): React.ReactElement {
         </>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">Password recovery</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-            Enter the email for your account. If it exists, we’ll send a reset link.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
+          Enter the email for your account. If it exists, we'll send a reset link.
+        </p>
 
         {error ? (
-          <div
-            role="alert"
-            className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100"
-          >
-            {error}
+          <div role="alert" className="px-3.5 py-2.5 text-[13px]" style={AUTH_ERROR_STYLE}>
+            <span style={{ color: AUTH_COLORS.danger }}>{error}</span>
           </div>
         ) : null}
 
         {sentTo ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
             <p className="text-[13px] font-semibold text-white">Check your inbox</p>
-            <p className="mt-1 text-[13px] leading-snug text-white/60">
-              We sent a reset link to <span className="font-medium text-white">{sentTo}</span>. If you don’t see it, check spam.
+            <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+              We sent a reset link to <span className="font-medium text-white">{sentTo}</span>. If you don't see it, check spam.
             </p>
           </div>
         ) : null}
 
-        <form onSubmit={handleSend} className="flex flex-col gap-4">
+        <form onSubmit={handleSend} className="flex flex-col gap-3.5">
           <div>
-            <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+            <label className={AUTH_LABEL_CLASS} style={{ color: AUTH_COLORS.textLabel }}>
               EMAIL
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
+              <Mail className="pointer-events-none absolute left-3.5 top-[14px] h-4 w-4" style={{ color: AUTH_COLORS.textPlaceholder }} aria-hidden="true" />
               <Input
-                className={`${inputClassName} pl-11`}
+                className={`${AUTH_INPUT_CLASS} pl-10`}
+                style={emailFocus.style}
+                onFocus={emailFocus.onFocus}
+                onBlur={emailFocus.onBlur}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -166,7 +185,8 @@ export function ForgotPasswordPage(): React.ReactElement {
             type="submit"
             disabled={isBusy}
             variant="ghost"
-            className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            className={AUTH_CTA_CLASS}
+            style={AUTH_CTA_STYLE}
           >
             {isBusy ? <Spinner /> : null}
             Send reset email
@@ -175,13 +195,15 @@ export function ForgotPasswordPage(): React.ReactElement {
           <div className="flex items-center justify-between gap-3">
             <Link
               to={signInLink}
-              className="text-[13px] font-medium text-white/60 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="text-[12px] font-medium transition hover:text-white"
+              style={{ color: AUTH_COLORS.textDim }}
             >
               Back to sign in
             </Link>
             <Link
               to="/privacy-policy"
-              className="text-[13px] font-medium text-white/40 transition hover:text-white/70"
+              className="text-[12px] font-medium transition hover:text-white"
+              style={{ color: AUTH_COLORS.textLabel }}
             >
               Privacy
             </Link>

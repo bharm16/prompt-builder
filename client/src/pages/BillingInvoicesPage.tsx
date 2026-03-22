@@ -13,6 +13,13 @@ import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { useAuthUser } from '@hooks/useAuthUser';
 import { AuthShell } from './auth/AuthShell';
+import {
+  AUTH_COLORS,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_CARD_STYLE,
+  AUTH_ERROR_STYLE,
+} from './auth/auth-styles';
 
 function formatStripeAmount(amountMinor: number | null, currency: string | null): string {
   if (!currency || typeof currency !== 'string') return '—';
@@ -51,6 +58,19 @@ function resolveInvoiceLabel(status: string | null): { label: string; tone: 'goo
       return { label: status ? status : 'Unknown', tone: 'neutral' };
   }
 }
+
+/** Inline style for secondary action buttons */
+const BTN_SECONDARY: React.CSSProperties = {
+  background: AUTH_COLORS.card,
+  border: `1px solid ${AUTH_COLORS.cardBorder}`,
+};
+
+/** Inline style for muted buttons */
+const BTN_MUTED: React.CSSProperties = {
+  background: AUTH_COLORS.inputBg,
+  border: `1px solid ${AUTH_COLORS.inputBorder}`,
+  color: AUTH_COLORS.textSecondary,
+};
 
 export function BillingInvoicesPage(): React.ReactElement {
   const toast = useToast();
@@ -114,8 +134,8 @@ export function BillingInvoicesPage(): React.ReactElement {
 
   return (
     <AuthShell
-      title="Invoices."
-      subtitle="Receipts, payment status, and a one-click escape hatch to Stripe for edge cases."
+      variant="page"
+      title="Invoices"
       footer={
         <>
           Need help?{' '}
@@ -126,30 +146,26 @@ export function BillingInvoicesPage(): React.ReactElement {
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         {!user ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="p-4" style={AUTH_CARD_STYLE}>
             <p className="text-[13px] font-semibold text-white">Sign in to view receipts</p>
-            <p className="mt-1 text-[13px] leading-snug text-white/60">
+            <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
               Invoices are tied to your account so you can grab receipts anytime.
             </p>
-            <Button
-              asChild
-              variant="ghost"
-              className="mt-4 h-10 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
-            >
+            <Button asChild variant="ghost" className={`mt-4 ${AUTH_CTA_CLASS}`} style={AUTH_CTA_STYLE}>
               <Link to={signInLink}>Sign in</Link>
             </Button>
           </div>
         ) : null}
 
         {user && hasPaymentIssue ? (
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-100/90" aria-hidden="true" />
+          <div className="px-3.5 py-2.5" style={{ background: '#f5c05c15', border: '1px solid #f5c05c30', borderRadius: '8px' }}>
+            <div className="flex items-start gap-2.5">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" style={{ color: '#f5c05c' }} aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-amber-100">Payment issue detected</p>
-                <p className="mt-1 text-[13px] leading-snug text-amber-100/70">
+                <p className="text-[13px] font-semibold" style={{ color: '#f5c05c' }}>Payment issue detected</p>
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: '#f5c05c', opacity: 0.7 }}>
                   One of your invoices needs attention. Open the billing portal to update your payment method or retry.
                 </p>
               </div>
@@ -158,26 +174,22 @@ export function BillingInvoicesPage(): React.ReactElement {
         ) : null}
 
         {user && error ? (
-          <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-100">
-            {error}
+          <div role="alert" className="px-3.5 py-2.5 text-[13px]" style={AUTH_ERROR_STYLE}>
+            <span style={{ color: AUTH_COLORS.danger }}>{error}</span>
           </div>
         ) : null}
 
         {user ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <Button
               type="button"
               onClick={handleOpenPortal}
               disabled={isBusy}
               variant="ghost"
-              className={cn(
-                'h-11 gap-2 rounded-[12px]',
-                'border border-white/10 bg-white/[0.04]',
-                'text-[14px] font-semibold text-white transition hover:bg-white/[0.06]',
-                'disabled:cursor-not-allowed disabled:opacity-60'
-              )}
+              className="h-9 gap-2 rounded-lg text-[13px] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+              style={BTN_SECONDARY}
             >
-              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
               Manage billing
             </Button>
 
@@ -186,39 +198,35 @@ export function BillingInvoicesPage(): React.ReactElement {
               onClick={() => void loadInvoices()}
               disabled={isLoading || isBusy}
               variant="ghost"
-              className={cn(
-                'h-11 gap-2 rounded-[12px]',
-                'border border-white/10 bg-black/30',
-                'text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white',
-                'disabled:cursor-not-allowed disabled:opacity-60'
-              )}
+              className="h-9 gap-2 rounded-lg text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+              style={BTN_MUTED}
             >
-              <RefreshCw className={cn('h-4 w-4', isLoading ? 'animate-spin' : null)} aria-hidden="true" />
+              <RefreshCw className={cn('h-3.5 w-3.5', isLoading ? 'animate-spin' : null)} aria-hidden="true" />
               Refresh
             </Button>
           </div>
         ) : null}
 
         {user ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="p-4" style={AUTH_CARD_STYLE}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[13px] font-semibold text-white">Payment history</p>
-                <p className="mt-1 text-[13px] leading-snug text-white/60">
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
                   Download PDFs or open hosted invoices for receipts.
                 </p>
               </div>
-              <p className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
+              <p className="text-[11px] font-semibold tracking-[0.22em]" style={{ color: AUTH_COLORS.textLabel }}>
                 {isLoading ? 'LOADING' : `${invoices.length} INVOICES`}
               </p>
             </div>
 
             {isLoading ? (
-              <p className="mt-4 text-[13px] text-white/60">Loading…</p>
+              <p className="mt-4 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>Loading…</p>
             ) : invoices.length === 0 ? (
-              <p className="mt-4 text-[13px] text-white/60">No invoices yet.</p>
+              <p className="mt-4 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>No invoices yet.</p>
             ) : (
-              <div className="mt-4 grid gap-3">
+              <div className="mt-4 grid gap-2.5">
                 {invoices.map((invoice) => {
                   const status = resolveInvoiceLabel(invoice.status);
                   const pdfUrl = invoice.invoicePdf;
@@ -226,13 +234,17 @@ export function BillingInvoicesPage(): React.ReactElement {
                   const primaryLink = pdfUrl || hostedUrl;
                   const primaryLabel = pdfUrl ? 'Download PDF' : 'Open invoice';
                   return (
-                    <div key={invoice.id} className="rounded-2xl border border-border bg-surface-1/50 p-4">
+                    <div
+                      key={invoice.id}
+                      className="rounded-[10px] p-3.5"
+                      style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}` }}
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[13px] font-semibold text-white">
                             {invoice.number ? `Invoice ${invoice.number}` : 'Invoice'}
                           </p>
-                          <p className="mt-1 text-[13px] text-white/60">
+                          <p className="mt-1 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>
                             {formatInvoiceDate(invoice.created)} •{' '}
                             <span className="font-medium text-white">
                               {formatStripeAmount(invoice.amountPaid ?? invoice.amountDue, invoice.currency)}
@@ -241,31 +253,31 @@ export function BillingInvoicesPage(): React.ReactElement {
                         </div>
 
                         <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide',
-                            status.tone === 'good'
-                              ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100'
-                              : status.tone === 'warn'
-                                ? 'border-amber-400/20 bg-amber-400/10 text-amber-100'
-                                : 'border-white/10 bg-white/[0.06] text-white/70'
-                          )}
+                          className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide"
+                          style={status.tone === 'good'
+                            ? { borderColor: `${AUTH_COLORS.success}30`, background: `${AUTH_COLORS.success}15`, color: AUTH_COLORS.success }
+                            : status.tone === 'warn'
+                              ? { borderColor: '#f5c05c30', background: '#f5c05c15', color: '#f5c05c' }
+                              : { borderColor: AUTH_COLORS.cardBorder, background: AUTH_COLORS.card, color: AUTH_COLORS.textDim }
+                          }
                         >
                           {status.label}
                         </span>
                       </div>
 
                       {primaryLink ? (
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <Button
                             asChild
                             variant="ghost"
-                            className="h-9 gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 text-[13px] font-semibold text-white transition hover:bg-white/[0.06]"
+                            className="h-8 gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-white transition"
+                            style={BTN_SECONDARY}
                           >
                             <a href={primaryLink} target="_blank" rel="noreferrer">
                               {pdfUrl ? (
-                                <FileText className="h-4 w-4" aria-hidden="true" />
+                                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                               ) : (
-                                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                               )}
                               {primaryLabel}
                             </a>
@@ -275,17 +287,18 @@ export function BillingInvoicesPage(): React.ReactElement {
                             <Button
                               asChild
                               variant="ghost"
-                              className="h-9 gap-2 rounded-[12px] border border-white/10 bg-black/30 px-3 text-[13px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+                              className="h-8 gap-1.5 rounded-lg px-3 text-[12px] font-semibold transition"
+                              style={BTN_MUTED}
                             >
                               <a href={hostedUrl} target="_blank" rel="noreferrer">
-                                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                                 Open hosted invoice
                               </a>
                             </Button>
                           ) : null}
                         </div>
                       ) : (
-                        <p className="mt-4 text-[13px] text-white/60">Receipt links aren’t available for this invoice.</p>
+                        <p className="mt-3 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>Receipt links aren't available for this invoice.</p>
                       )}
                     </div>
                   );

@@ -35,12 +35,14 @@ function PopoverRailThumbnail({
     () => (imageCandidateUrl ? extractStorageObjectPath(imageCandidateUrl) : null),
     [imageCandidateUrl]
   );
+  const imageAssetId = generation.thumbnailAssetId ?? null;
   const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
     kind: 'image',
     url: imageCandidateUrl,
     storagePath: imageStoragePath,
+    assetId: imageAssetId,
     deferUntilResolved: true,
-    enabled: Boolean(imageCandidateUrl),
+    enabled: Boolean(imageCandidateUrl || imageAssetId),
   });
 
   const videoStoragePath = useMemo(
@@ -48,8 +50,8 @@ function PopoverRailThumbnail({
     [rawMediaUrl]
   );
   const videoAssetId = useMemo(
-    () => (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
-    [rawMediaUrl, videoStoragePath]
+    () => generation.mediaAssetId ?? (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
+    [generation.mediaAssetId, rawMediaUrl, videoStoragePath]
   );
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
     kind: 'video',

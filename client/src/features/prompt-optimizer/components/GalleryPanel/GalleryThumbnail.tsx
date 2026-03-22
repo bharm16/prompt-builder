@@ -42,12 +42,14 @@ export function GalleryThumbnail({
     () => (rawThumbnailUrl ? extractStorageObjectPath(rawThumbnailUrl) : null),
     [rawThumbnailUrl]
   );
+  const thumbnailAssetId = generation.thumbnailAssetId ?? null;
   const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
     kind: 'image',
     url: rawThumbnailUrl,
     storagePath: thumbnailStoragePath,
+    assetId: thumbnailAssetId,
     deferUntilResolved: true,
-    enabled: Boolean(rawThumbnailUrl),
+    enabled: Boolean(rawThumbnailUrl || thumbnailAssetId),
   });
 
   const videoStoragePath = useMemo(
@@ -55,8 +57,8 @@ export function GalleryThumbnail({
     [rawMediaUrl]
   );
   const videoAssetId = useMemo(
-    () => (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
-    [rawMediaUrl, videoStoragePath]
+    () => generation.mediaAssetId ?? (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
+    [generation.mediaAssetId, rawMediaUrl, videoStoragePath]
   );
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
     kind: 'video',

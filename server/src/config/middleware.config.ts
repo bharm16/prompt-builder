@@ -100,9 +100,14 @@ const RATE_LIMIT_CONFIG: RateLimitConfig = {
  * CORS configuration
  * Manages allowed origins based on environment
  */
+const DEFAULT_DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
+
 const CORS_CONFIG = {
-  development: ['http://localhost:5173', 'http://localhost:5174'],
-  // Production origins come from environment variables
+  // Development origins fall back to DEFAULT_DEV_ORIGINS when ALLOWED_ORIGINS is unset
+  development: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : DEFAULT_DEV_ORIGINS,
+  // Production origins come from environment variables (required by env.ts Zod schema)
 } as const;
 
 /**

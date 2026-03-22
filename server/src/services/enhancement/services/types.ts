@@ -368,6 +368,9 @@ export interface EnhancementResult {
   fallbackApplied: boolean;
   appliedVideoConstraints?: VideoConstraints;
   noSuggestionsReason?: string;
+  /** Server-computed span fingerprint — authoritative cache invalidation key.
+   *  Clients should prefer this over locally-computed fingerprints. */
+  spanFingerprint?: string | null;
   metadata?: Record<string, unknown>;
   _debug?: EnhancementDebugContext;
 }

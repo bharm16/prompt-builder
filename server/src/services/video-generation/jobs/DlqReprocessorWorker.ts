@@ -186,11 +186,25 @@ export class DlqReprocessorWorker {
 
   private async reprocessEntry(entry: DlqEntry): Promise<void> {
     try {
+      // DLQ reprocessing always uses zero credits. The original job already
+      // refunded credits on failure (or carried zero from a prior reprocess).
+      // Eating the retry cost is the correct behaviour when the system failed the user.
+      const creditsForReprocessedJob = 0;
+
+      if (entry.creditsReserved > 0) {
+        this.log.info('DLQ reprocessing: reprocessed job carries zero credits', {
+          dlqId: entry.id,
+          jobId: entry.jobId,
+          originalCredits: entry.creditsReserved,
+          creditsRefunded: entry.creditsRefunded,
+        });
+      }
+
       // Re-enqueue the job into the main queue for the worker to pick up
       await this.jobStore.createJob({
         userId: entry.userId,
         request: entry.request,
-        creditsReserved: 0, // Credits were already reserved/refunded — reprocessed jobs don't reserve again
+        creditsReserved: creditsForReprocessedJob,
         maxAttempts: 1, // Single attempt — if it fails again, the worker will DLQ it again
       });
 

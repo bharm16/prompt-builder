@@ -79,14 +79,11 @@ describe('regression: targeted optimize reuses structured artifacts', () => {
       shotInterpreter: {
         interpret: vi.fn(async () => null),
       },
-      strategyFactory: {
-        getStrategy: vi.fn(() => ({
-          optimize,
-          optimizeStructured,
-          renderStructuredPrompt,
-          generateDomainContent: vi.fn(async () => null),
-          name: 'video',
-        })),
+      strategy: {
+        optimize,
+        optimizeStructured,
+        renderStructuredPrompt,
+        generateDomainContent: vi.fn(async () => null),
       },
       compilationService: {
         compile,
@@ -112,7 +109,9 @@ describe('regression: targeted optimize reuses structured artifacts', () => {
 
     expect(optimizeStructured).toHaveBeenCalledTimes(1);
     expect(optimize).not.toHaveBeenCalled();
-    expect(renderStructuredPrompt).not.toHaveBeenCalled();
+    // renderStructuredPrompt IS called to produce the generic prompt before
+    // intent lock enforcement, which runs prior to model-specific compilation.
+    expect(renderStructuredPrompt).toHaveBeenCalledTimes(1);
     expect(cacheStructuredArtifact).toHaveBeenCalledWith('structured-cache-key', structuredArtifact);
     expect(compile).toHaveBeenCalledWith(
       expect.objectContaining({

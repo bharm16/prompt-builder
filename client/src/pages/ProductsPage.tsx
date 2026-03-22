@@ -1,28 +1,33 @@
 import React from 'react';
 import { MarketingPage } from './MarketingPage';
-import { Card } from '@promptstudio/system/components/ui/card';
+import { AUTH_COLORS } from './auth/auth-styles';
+
+const CARD: React.CSSProperties = {
+  background: AUTH_COLORS.card,
+  border: `1px solid ${AUTH_COLORS.cardBorder}`,
+  borderRadius: '10px',
+};
 
 export function ProductsPage(): React.ReactElement {
   return (
     <MarketingPage
       title="Products"
-      subtitle="Company-level navigation belongs here. Keep app navigation in the sidebar."
+      eyebrow="PRODUCTS"
     >
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground">Prompt Builder</h3>
-          <p className="mt-2 text-muted">
+      <div className="flex flex-col gap-2.5">
+        <div className="p-4" style={CARD}>
+          <h3 className="text-[13px] font-semibold text-white">Prompt Builder</h3>
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
             Optimize prompts with structured improvements and history.
           </p>
-        </Card>
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground">Docs / API</h3>
-          <p className="mt-2 text-muted">
+        </div>
+        <div className="p-4" style={CARD}>
+          <h3 className="text-[13px] font-semibold text-white">Docs / API</h3>
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
             Integrate prompt optimization into your own tools.
           </p>
-        </Card>
+        </div>
       </div>
     </MarketingPage>
   );
 }
-

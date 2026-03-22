@@ -335,7 +335,9 @@ export async function generateReplicateVideo(
     if (output.startsWith('http')) {
       return { url: output };
     }
-    log.warn('Output is a string but not http', { output });
+    throw new Error(
+      `Replicate returned a string output that is not an HTTP URL: "${output.slice(0, 200)}"`
+    );
   }
 
   if (output && typeof output === 'object') {
@@ -350,20 +352,39 @@ export async function generateReplicateVideo(
 
     if ('url' in outputRecord && typeof outputRecord.url === 'function') {
       const url = (outputRecord.url as () => unknown)();
-      log.info('Extracted URL from FileOutput', { url: String(url) });
-      return { url: String(url), ...(seed !== undefined ? { seed } : {}) };
+      const urlStr = String(url);
+      if (!urlStr.startsWith('http')) {
+        throw new Error(
+          `Replicate FileOutput.url() returned non-HTTP value: "${urlStr.slice(0, 200)}"`
+        );
+      }
+      log.info('Extracted URL from FileOutput', { url: urlStr });
+      return { url: urlStr, ...(seed !== undefined ? { seed } : {}) };
     }
 
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
       const firstUrl = output[0];
+      if (!firstUrl.startsWith('http')) {
+        throw new Error(
+          `Replicate array output[0] is not an HTTP URL: "${firstUrl.slice(0, 200)}"`
+        );
+      }
       return { url: firstUrl, ...(seed !== undefined ? { seed } : {}) };
     }
 
     if (typeof outputRecord.url === 'string') {
+      if (!outputRecord.url.startsWith('http')) {
+        throw new Error(
+          `Replicate output.url is not an HTTP URL: "${outputRecord.url.slice(0, 200)}"`
+        );
+      }
       return { url: outputRecord.url, ...(seed !== undefined ? { seed } : {}) };
     }
   }
 
-  log.error('Could not extract video URL from output', undefined, { output });
+  log.error('Could not extract video URL from output', undefined, {
+    outputType: typeof output,
+    outputPreview: JSON.stringify(output)?.slice(0, 500),
+  });
   throw new Error('Invalid output format from Replicate: Could not extract video URL');
 }

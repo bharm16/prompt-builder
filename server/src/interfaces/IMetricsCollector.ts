@@ -56,4 +56,9 @@ export interface IMetricsCollector {
    * Record a JSON repair event (optional)
    */
   recordLLMRepair?(operation: string, repairType: string): void;
+
+  /**
+   * Update Redis connection status (optional)
+   */
+  updateRedisConnectionStatus?(status: 'connected' | 'disconnected' | 'reconnecting' | 'disabled'): void;
 }

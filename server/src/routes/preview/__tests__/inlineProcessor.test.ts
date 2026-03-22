@@ -10,14 +10,24 @@ const mocks = vi.hoisted(() => ({
   refundWithGuard: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
-  logger: {
+vi.mock('@infrastructure/Logger', () => {
+  const childLogger = {
     debug: mocks.loggerDebug,
     info: mocks.loggerInfo,
     warn: mocks.loggerWarn,
     error: mocks.loggerError,
-  },
-}));
+    child: () => childLogger,
+  };
+  return {
+    logger: {
+      debug: mocks.loggerDebug,
+      info: mocks.loggerInfo,
+      warn: mocks.loggerWarn,
+      error: mocks.loggerError,
+      child: () => childLogger,
+    },
+  };
+});
 
 vi.mock('@services/credits/refundGuard', () => ({
   buildRefundKey: mocks.buildRefundKey,
@@ -27,6 +37,9 @@ vi.mock('@services/credits/refundGuard', () => ({
 // Passthrough mocks: resolve aliased paths so Vitest can load the real modules
 vi.mock('@services/video-generation/jobs/classifyError', async () => {
   return await import('../../../services/video-generation/jobs/classifyError');
+});
+vi.mock('@services/video-generation/jobs/processVideoJob', async () => {
+  return await import('../../../services/video-generation/jobs/processVideoJob');
 });
 vi.mock('@server/utils/RetryPolicy', async () => {
   return await import('../../../utils/RetryPolicy');
@@ -42,6 +55,7 @@ interface MockJobStore {
   requeueForRetry: ReturnType<typeof vi.fn>;
   enqueueDeadLetter: ReturnType<typeof vi.fn>;
   renewLease: ReturnType<typeof vi.fn>;
+  setProviderResult: ReturnType<typeof vi.fn>;
 }
 
 const createMockJobStore = (): MockJobStore => ({
@@ -51,6 +65,7 @@ const createMockJobStore = (): MockJobStore => ({
   requeueForRetry: vi.fn().mockResolvedValue(true),
   enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
   renewLease: vi.fn().mockResolvedValue(true),
+  setProviderResult: vi.fn().mockResolvedValue(true),
 });
 
 const createClaimedJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord => ({
@@ -150,7 +165,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     await invokeProcessor();
 
     expect(jobStore.claimJob).toHaveBeenCalledWith('job-1', 'inline-preview-req-1', 60000);
-    expect(generateVideo).toHaveBeenCalledWith('a cinematic sunset', { model: 'sora-2' });
+    expect(generateVideo).toHaveBeenCalledWith('a cinematic sunset', { model: 'sora-2' }, undefined);
     expect(storageService.saveFromUrl).toHaveBeenCalled();
     expect(jobStore.markCompleted).toHaveBeenCalledWith('job-1', expect.objectContaining({
       storagePath: FAKE_STORAGE_RESULT.storagePath,
@@ -253,7 +268,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     await flushMicrotasks();
 
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'Inline preview heartbeat skipped (lease lost)',
+      'Inline preview job heartbeat skipped (lease lost)',
       expect.objectContaining({ jobId: 'job-1' })
     );
 
@@ -296,7 +311,8 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     expect(jobStore.enqueueDeadLetter).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'job-1' }),
       expect.objectContaining({ category: 'validation' }),
-      'inline-terminal'
+      'inline-terminal',
+      expect.objectContaining({ creditsRefunded: true })
     );
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -385,7 +401,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
       expect.objectContaining({
         userId: 'user-1',
         amount: 5,
-        reason: 'inline markCompleted failed after retries',
+        reason: 'inline video preview failed markCompleted failed after retries',
       })
     );
   });
@@ -403,7 +419,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
       })
     );
     expect(mocks.loggerError).toHaveBeenCalledWith(
-      'Inline preview completion failed — refunding credits',
+      'Inline preview job completion failed — refunding credits',
       undefined,
       expect.objectContaining({
         storagePath: FAKE_STORAGE_RESULT.storagePath,

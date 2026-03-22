@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 export interface EnhancementSuggestionsRequest {
@@ -20,12 +22,21 @@ export interface EnhancementSuggestionsRequest {
   } | null;
 }
 
-export interface EnhancementSuggestionsResponse<TSuggestion = string> {
+const EnhancementSuggestionsResponseSchema = z.object({
+  suggestions: z.array(z.unknown()).default([]),
+  isPlaceholder: z.boolean().default(false),
+  spanFingerprint: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  _debug: z.record(z.string(), z.unknown()).nullish(),
+}).passthrough();
+
+export type EnhancementSuggestionsResponse<TSuggestion = string> = {
   suggestions: TSuggestion[];
   isPlaceholder: boolean;
+  spanFingerprint?: string | null;
   metadata?: Record<string, unknown> | null;
   _debug?: Record<string, unknown> | null;
-}
+};
 
 export interface EnhancementSuggestionsFetchOptions {
   signal?: AbortSignal;
@@ -60,18 +71,15 @@ export async function requestEnhancementSuggestions(
 export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
   response: Response
 ): Promise<EnhancementSuggestionsResponse<TSuggestion>> {
-  const data = (await response.json()) as {
-    suggestions?: TSuggestion[];
-    isPlaceholder?: boolean;
-    metadata?: Record<string, unknown> | null;
-    _debug?: Record<string, unknown> | null;
-  };
+  const data = await response.json();
+  const parsed = EnhancementSuggestionsResponseSchema.parse(data);
 
   return {
-    suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
-    isPlaceholder: data?.isPlaceholder ?? false,
-    ...(data?.metadata ? { metadata: data.metadata } : {}),
-    ...(data?._debug ? { _debug: data._debug } : {}),
+    suggestions: parsed.suggestions as TSuggestion[],
+    isPlaceholder: parsed.isPlaceholder,
+    ...(typeof parsed.spanFingerprint === 'string' ? { spanFingerprint: parsed.spanFingerprint } : {}),
+    ...(parsed.metadata ? { metadata: parsed.metadata } : {}),
+    ...(parsed._debug ? { _debug: parsed._debug } : {}),
   };
 }
 

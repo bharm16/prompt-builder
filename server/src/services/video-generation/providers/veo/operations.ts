@@ -1,4 +1,4 @@
-import { sleep } from '@services/video-generation/utils/sleep';
+import { sleep, pollingDelay } from '@utils/sleep';
 import { veoFetch } from './httpClient';
 import { VEO_OPERATION_SCHEMA, VEO_START_RESPONSE_SCHEMA, type VeoOperation } from './schemas';
 import type { VeoInlineData } from './imageUtils';
@@ -92,17 +92,19 @@ export async function waitForVeoOperation(
     const parsed = VEO_OPERATION_SCHEMA.parse(json);
 
     if (parsed.done) {
-      if (parsed.error?.message) {
-        throw new Error(`Veo generation failed: ${parsed.error.message}`);
+      if (parsed.error) {
+        const errorDetail = parsed.error.message || JSON.stringify(parsed.error);
+        throw new Error(`Veo generation failed: ${errorDetail}`);
       }
       return parsed;
     }
 
-    if (Date.now() - start > options.timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > options.timeoutMs) {
       throw new Error(`Timed out waiting for Veo operation ${operationName}`);
     }
 
-    await sleep(options.pollIntervalMs);
+    await sleep(pollingDelay(options.pollIntervalMs, elapsed));
   }
 }
 
