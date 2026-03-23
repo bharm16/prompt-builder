@@ -84,7 +84,7 @@ const inferCameraMotionCategory = (id: string): CameraMotionCategory => {
 
 interface HydratedPromptHistoryInput {
   id?: string;
-  uuid: string;
+  uuid?: string;
   title?: string | null;
   input?: string;
   output?: string;
@@ -204,6 +204,7 @@ function PromptOptimizerContent({
     clearEndFrame,
     clearVideoReferences,
     clearExtendVideo,
+    clearKeyframes: clearGenerationKeyframes,
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsStoreActions();
@@ -232,6 +233,33 @@ function PromptOptimizerContent({
     isLoadingHistory: promptHistory.isLoadingHistory,
     promptHistory,
   });
+
+  // Reset generation controls when a new draft is created via + New.
+  // The event is dispatched synchronously from handleCreateNew before navigate,
+  // so these state updates are batched with the prompt state resets.
+  useEffect(() => {
+    const handleWorkspaceReset = (): void => {
+      clearStartFrame();
+      clearEndFrame();
+      clearGenerationKeyframes();
+      clearVideoReferences();
+      clearExtendVideo();
+      setCameraMotion(null);
+      setSubjectMotion('');
+      setShowResults(false);
+    };
+    window.addEventListener('po:workspace-reset', handleWorkspaceReset);
+    return () => window.removeEventListener('po:workspace-reset', handleWorkspaceReset);
+  }, [
+    clearStartFrame,
+    clearEndFrame,
+    clearGenerationKeyframes,
+    clearVideoReferences,
+    clearExtendVideo,
+    setCameraMotion,
+    setSubjectMotion,
+    setShowResults,
+  ]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -392,7 +420,11 @@ function PromptOptimizerContent({
   const { isLoading } = usePromptLoader({
     sessionId,
     isAuthResolved,
-    currentPromptUuid,
+    historyEntries: promptHistoryEntries,
+    createDraftEntry: createPromptHistoryDraft,
+    selectedMode,
+    selectedModelValue: selectedModel,
+    generationParamsValue: generationParams,
     navigate,
     toast,
     user,
@@ -408,6 +440,8 @@ function PromptOptimizerContent({
     setSelectedModel,
     setGenerationParams,
     upsertHistoryEntry: upsertHistoryEntryFromSessionLoad,
+    setSuggestionsData,
+    setConceptElements,
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,
@@ -439,22 +473,6 @@ function PromptOptimizerContent({
     setCanUndo,
     setCanRedo,
   });
-  const handleCreateNewWithKeyframes = useCallback((): void => {
-    setKeyframes([]);
-    clearStartFrame();
-    clearEndFrame();
-    clearVideoReferences();
-    clearExtendVideo();
-    handleCreateNew();
-  }, [
-    clearEndFrame,
-    clearExtendVideo,
-    clearStartFrame,
-    clearVideoReferences,
-    handleCreateNew,
-    setKeyframes,
-  ]);
-
   const uploadSidebarImage = useCallback(
     async (file: File): Promise<{
       url: string;
@@ -667,7 +685,7 @@ function PromptOptimizerContent({
   useKeyboardShortcuts({
     openShortcuts: () => setShowShortcuts(true),
     openSettings: () => setShowSettings(true),
-    createNew: handleCreateNewWithKeyframes,
+    createNew: handleCreateNew,
     optimize: () => !promptOptimizer.isProcessing && showResults === false && handleOptimize(),
     improveFirst: handleImproveFirst,
     canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),

@@ -9,7 +9,9 @@ import { GenerationControlsStoreProvider } from '@features/generation-controls/c
 import { apiClient } from './services/ApiClient';
 import { trackPageView } from './services/analytics';
 
-const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+// HomePage is eagerly imported — it's tiny (~40 LOC, no heavy deps) and is the
+// marketing landing page, so lazy-loading it just adds a visible blank-shell delay.
+import { HomePage } from './pages/HomePage';
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
 const PricingPage = lazy(() => import('./pages/PricingPage').then((module) => ({ default: module.PricingPage })));
 const DocsPage = lazy(() => import('./pages/DocsPage').then((module) => ({ default: module.DocsPage })));
@@ -38,6 +40,14 @@ function RouteFallback(): React.ReactElement {
   );
 }
 
+function MarketingFallback(): React.ReactElement {
+  return (
+    <div className="flex min-h-[200px] items-center justify-center" style={{ background: '#131416' }}>
+      <LoadingDots />
+    </div>
+  );
+}
+
 function MarketingShell(): React.ReactElement {
   const location = useLocation();
 
@@ -48,7 +58,9 @@ function MarketingShell(): React.ReactElement {
         className="motion-presence-panel ps-animate-fade-in"
         data-motion-state="entered"
       >
-        <Outlet />
+        <Suspense fallback={<MarketingFallback />}>
+          <Outlet />
+        </Suspense>
       </div>
     </AppShell>
   );

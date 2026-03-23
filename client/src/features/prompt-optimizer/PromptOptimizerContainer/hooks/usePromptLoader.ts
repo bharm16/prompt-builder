@@ -4,7 +4,11 @@ import { getPromptRepositoryForUser } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type {
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptVersionEntry,
+} from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import { logger } from '@/services/LoggingService';
@@ -18,7 +22,7 @@ const isRemoteSessionId = (value: string): boolean => {
 
 interface PromptData {
   id?: string;
-  uuid: string;
+  uuid?: string;
   title?: string | null;
   input?: string;
   output?: string;
@@ -49,7 +53,19 @@ interface PromptOptimizer {
 interface UsePromptLoaderParams {
   sessionId: string | null | undefined;
   isAuthResolved?: boolean;
-  currentPromptUuid: string | null | undefined;
+  historyEntries?: PromptHistoryEntry[];
+  createDraftEntry?: (params: {
+    id?: string | null;
+    mode: string;
+    targetModel: string | null;
+    generationParams: Record<string, unknown> | null;
+    keyframes?: PromptKeyframe[] | null;
+    uuid?: string;
+    persist?: boolean;
+  }) => { uuid: string; id: string };
+  selectedMode?: string;
+  selectedModelValue?: string;
+  generationParamsValue?: CapabilityValues;
   navigate: ReturnType<typeof useNavigate>;
   toast: Toast;
   user: { uid: string } | null;
@@ -62,12 +78,14 @@ interface UsePromptLoaderParams {
   resetEditStacks: () => void;
   resetVersionEdits: () => void;
   setCurrentPromptDocId: (id: string | null) => void;
-  setCurrentPromptUuid: (uuid: string) => void;
+  setCurrentPromptUuid: (uuid: string | null) => void;
   setShowResults: (show: boolean) => void;
   setSelectedMode?: (mode: string) => void;
   setSelectedModel: (model: string) => void;
   setGenerationParams?: (params: CapabilityValues) => void;
   upsertHistoryEntry?: (entry: PromptData, sessionId: string) => void;
+  setSuggestionsData?: (value: null) => void;
+  setConceptElements?: (value: null) => void;
   setPromptContext: (context: PromptContext | null) => void;
   onLoadKeyframes?: (keyframes: PromptKeyframe[] | null | undefined) => void;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
@@ -101,6 +119,11 @@ export function usePromptLoader({
   navigate,
   toast,
   user,
+  historyEntries = [],
+  createDraftEntry,
+  selectedMode,
+  selectedModelValue,
+  generationParamsValue,
   promptOptimizer,
   setDisplayedPromptSilently,
   applyInitialHighlightSnapshot,
@@ -113,6 +136,8 @@ export function usePromptLoader({
   setSelectedModel,
   setGenerationParams,
   upsertHistoryEntry,
+  setSuggestionsData,
+  setConceptElements,
   setPromptContext,
   onLoadKeyframes,
   skipLoadFromUrlRef,
@@ -164,11 +189,6 @@ export function usePromptLoader({
       }
 
       const sessionKey = `${normalizedSessionId}::${user?.uid ?? 'anonymous'}`;
-      if (!isRemoteSessionId(normalizedSessionId)) {
-        lastLoadedSessionKeyRef.current = sessionKey;
-        setIsLoading(false);
-        return;
-      }
 
       if (lastLoadedSessionKeyRef.current === sessionKey) {
         setIsLoading(false);
@@ -179,7 +199,148 @@ export function usePromptLoader({
       lastLoadedSessionKeyRef.current = sessionKey;
       setIsLoading(true);
 
+      const applyHydratedPrompt = (
+        promptData: PromptData,
+        resolvedSessionId: string,
+        options?: { markPersisted?: boolean }
+      ): void => {
+        const parsedGenerationParams = parseCapabilityValues(promptData.generationParams);
+        setSuggestionsData?.(null);
+        setConceptElements?.(null);
+        setInputPrompt(promptData.input || '');
+        setOptimizedPrompt(promptData.output || '');
+        setDisplayedPromptSilently(promptData.output || '');
+        setGenericOptimizedPrompt?.(null);
+        setPreviewPrompt?.(null);
+        setPreviewAspectRatio?.(null);
+        setCurrentPromptUuid(promptData.uuid ?? null);
+        setCurrentPromptDocId(promptData.id || resolvedSessionId);
+        setShowResults(Boolean(promptData.output && promptData.output.trim()));
+        if (typeof promptData.mode === 'string' && promptData.mode.trim()) {
+          setSelectedMode?.(promptData.mode.trim());
+        }
+        setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
+        setGenerationParams?.(parsedGenerationParams);
+        upsertHistoryEntry?.(
+          {
+            ...promptData,
+            generationParams:
+              Object.keys(parsedGenerationParams).length > 0
+                ? (parsedGenerationParams as Record<string, unknown>)
+                : null,
+          },
+          resolvedSessionId
+        );
+        onLoadKeyframes?.(promptData.keyframes);
+
+        const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
+          ? ({
+              ...promptData.highlightCache,
+              signature:
+                promptData.highlightCache.signature ??
+                createHighlightSignature(promptData.output ?? ''),
+            } as HighlightSnapshot)
+          : null;
+        applyInitialHighlightSnapshot(preloadHighlight, {
+          bumpVersion: true,
+          markPersisted: options?.markPersisted !== false,
+        });
+        resetVersionEdits();
+        resetEditStacks();
+
+        if (promptData.brainstormContext) {
+          try {
+            const contextData =
+              typeof promptData.brainstormContext === 'string'
+                ? (JSON.parse(promptData.brainstormContext) as Record<string, unknown>)
+                : promptData.brainstormContext;
+            const restoredContext = PromptContext.fromJSON(contextData);
+            setPromptContext(restoredContext);
+          } catch (contextError) {
+            const info = sanitizeError(contextError);
+            log.warn('Failed to restore prompt context from session', {
+              operation: 'restorePromptContext',
+              sessionId: normalizedSessionId,
+              error: info.message,
+              errorName: info.name,
+            });
+            toastRef.current.warning(
+              'Could not restore video context. The prompt will still load.'
+            );
+            setPromptContext(null);
+          }
+        } else {
+          setPromptContext(null);
+        }
+      };
+
+      const bootstrapBlankDraft = (): void => {
+        setSuggestionsData?.(null);
+        setConceptElements?.(null);
+        setInputPrompt('');
+        setOptimizedPrompt('');
+        setDisplayedPromptSilently('');
+        setGenericOptimizedPrompt?.(null);
+        setPreviewPrompt?.(null);
+        setPreviewAspectRatio?.(null);
+        setShowResults(false);
+        applyInitialHighlightSnapshot(null, {
+          bumpVersion: true,
+          markPersisted: false,
+        });
+        resetVersionEdits();
+        resetEditStacks();
+        setPromptContext(null);
+        onLoadKeyframes?.(null);
+        setSelectedMode?.(selectedMode ?? 'video');
+        setSelectedModel(selectedModelValue ?? '');
+        setGenerationParams?.(generationParamsValue ?? {});
+
+        if (createDraftEntry) {
+          const draft = createDraftEntry({
+            id: normalizedSessionId,
+            mode: selectedMode ?? 'video',
+            targetModel:
+              typeof selectedModelValue === 'string' && selectedModelValue.trim()
+                ? selectedModelValue.trim()
+                : null,
+            generationParams:
+              (generationParamsValue as Record<string, unknown> | null | undefined) ?? null,
+            persist: false,
+          });
+          setCurrentPromptUuid(draft.uuid);
+          setCurrentPromptDocId(draft.id);
+          return;
+        }
+
+        setCurrentPromptUuid(null);
+        setCurrentPromptDocId(normalizedSessionId);
+      };
+
       try {
+        if (!isRemoteSessionId(normalizedSessionId)) {
+          const inMemoryDraft =
+            historyEntries.find((entry) => entry.id === normalizedSessionId) ?? null;
+          if (inMemoryDraft) {
+            applyHydratedPrompt(inMemoryDraft, normalizedSessionId);
+            return;
+          }
+
+          const localPromptRepository = getPromptRepositoryForUser(false);
+          const localDraft = (await localPromptRepository.getById(normalizedSessionId)) as
+            | PromptData
+            | null;
+
+          if (cancelled) return;
+
+          if (localDraft) {
+            applyHydratedPrompt(localDraft, normalizedSessionId);
+          } else {
+            bootstrapBlankDraft();
+          }
+          return;
+        }
+
         const promptRepository = getPromptRepositoryForUser(isAuthenticated);
         const promptData = (await promptRepository.getById(normalizedSessionId)) as
           | PromptData
@@ -188,77 +349,7 @@ export function usePromptLoader({
         if (cancelled) return;
 
         if (promptData) {
-          const parsedGenerationParams = parseCapabilityValues(promptData.generationParams);
-          setInputPrompt(promptData.input || '');
-          setOptimizedPrompt(promptData.output || '');
-          setDisplayedPromptSilently(promptData.output || '');
-          setGenericOptimizedPrompt?.(null);
-          setPreviewPrompt?.(null);
-          setPreviewAspectRatio?.(null);
-          setCurrentPromptUuid(promptData.uuid);
-          setCurrentPromptDocId(promptData.id || null);
-          setShowResults(true);
-          if (typeof promptData.mode === 'string' && promptData.mode.trim()) {
-            setSelectedMode?.(promptData.mode.trim());
-          }
-          setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
-          setGenerationParams?.(parsedGenerationParams);
-          upsertHistoryEntry?.(
-            {
-              ...promptData,
-              generationParams:
-                Object.keys(parsedGenerationParams).length > 0
-                  ? (parsedGenerationParams as Record<string, unknown>)
-                  : null,
-            },
-            normalizedSessionId
-          );
-          onLoadKeyframes?.(promptData.keyframes);
-
-          const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
-            ? ({
-                ...promptData.highlightCache,
-                signature:
-                  promptData.highlightCache.signature ??
-                  createHighlightSignature(promptData.output ?? ''),
-              } as HighlightSnapshot)
-            : null;
-          applyInitialHighlightSnapshot(preloadHighlight, {
-            bumpVersion: true,
-            markPersisted: true,
-          });
-          resetVersionEdits();
-          resetEditStacks();
-
-          if (cancelled) return;
-
-          if (promptData.brainstormContext) {
-            try {
-              const contextData =
-                typeof promptData.brainstormContext === 'string'
-                  ? (JSON.parse(promptData.brainstormContext) as Record<
-                      string,
-                      unknown
-                    >)
-                  : promptData.brainstormContext;
-              const restoredContext = PromptContext.fromJSON(contextData);
-              setPromptContext(restoredContext);
-            } catch (contextError) {
-              const info = sanitizeError(contextError);
-              log.warn('Failed to restore prompt context from session', {
-                operation: 'restorePromptContext',
-                sessionId: normalizedSessionId,
-                error: info.message,
-                errorName: info.name,
-              });
-              toastRef.current.warning(
-                'Could not restore video context. The prompt will still load.'
-              );
-              setPromptContext(null);
-            }
-          } else {
-            setPromptContext(null);
-          }
+          applyHydratedPrompt(promptData, normalizedSessionId);
         } else {
           log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
           navigate('/', { replace: true });
@@ -301,10 +392,17 @@ export function usePromptLoader({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    historyEntries,
+    createDraftEntry,
+    selectedMode,
+    selectedModelValue,
+    generationParamsValue,
     setSelectedMode,
     setSelectedModel,
     setGenerationParams,
     upsertHistoryEntry,
+    setSuggestionsData,
+    setConceptElements,
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,

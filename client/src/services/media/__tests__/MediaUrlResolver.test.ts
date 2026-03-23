@@ -63,7 +63,7 @@ describe('MediaUrlResolver', () => {
     expect(result.source).toBe('preview');
   });
 
-  it('returns raw URL when not expired and preferFresh is false', async () => {
+  it('returns proxied URL when not expired and preferFresh is false', async () => {
     const freshUrl =
       'https://storage.googleapis.com/vidra-media-prod/image-previews/asset-999?GoogleAccessId=test&Expires=4102444800&Signature=deadbeef';
 
@@ -74,7 +74,9 @@ describe('MediaUrlResolver', () => {
     });
 
     expect(getImageAssetViewUrl).not.toHaveBeenCalled();
-    expect(result.url).toBe(freshUrl);
+    // GCS signed URLs are rewritten through the media proxy to avoid ORB
+    expect(result.url).toContain('/api/storage/proxy?url=');
+    expect(result.url).toContain(encodeURIComponent('storage.googleapis.com'));
     expect(result.source).toBe('raw');
   });
 

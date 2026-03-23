@@ -180,6 +180,10 @@ export function useGenerationsState({
     [state.generations]
   );
 
+  const clearGenerations = useCallback(() => {
+    dispatch({ type: 'SET_GENERATIONS', payload: [] });
+  }, []);
+
   return {
     generations: state.generations,
     activeGenerationId: state.activeGenerationId,
@@ -189,6 +193,7 @@ export function useGenerationsState({
     updateGeneration,
     removeGeneration,
     setActiveGeneration,
+    clearGenerations,
     getDraftGenerations,
     getRenderGenerations,
     getActiveGeneration,

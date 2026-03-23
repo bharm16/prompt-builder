@@ -11,6 +11,7 @@ import { VideoCamera } from '@promptstudio/system/components/ui';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
+import { useGenerationControlsStoreState } from '@features/generation-controls/context/GenerationControlsStore';
 import type {
   PromptActionsState,
   PromptConfigState,
@@ -205,6 +206,17 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode, selectedModel);
   const promptHistory = usePromptHistory(user);
+  const { domain } = useGenerationControlsStoreState();
+  const currentHistoryEntry = useMemo(
+    () =>
+      promptHistory.history.find((entry) => {
+        if (currentPromptUuid && entry.uuid === currentPromptUuid) {
+          return true;
+        }
+        return Boolean(currentPromptDocId && entry.id === currentPromptDocId);
+      }) ?? null,
+    [currentPromptDocId, currentPromptUuid, promptHistory.history]
+  );
 
   const currentMode: Mode = useMemo(
     () => modes.find((m) => m.id === selectedMode) || modes[0]!,
@@ -219,21 +231,15 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     selectedMode,
     selectedModel,
     generationParams,
-    applyInitialHighlightSnapshot,
-    resetEditStacks,
-    resetVersionEdits,
-    setSuggestionsData,
-    setConceptElements,
-    setPromptContext,
-    setGenerationParams,
-    setSelectedMode,
-    setSelectedModel,
-    setShowResults,
-    setCurrentPromptUuid,
-    setCurrentPromptDocId,
-    persistedSignatureRef,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptContext,
+    currentKeyframes: domain.keyframes,
+    currentHighlightSnapshot: latestHighlightRef.current ?? initialHighlights,
+    currentVersions: Array.isArray(currentHistoryEntry?.versions)
+      ? currentHistoryEntry.versions
+      : [],
     isApplyingHistoryRef,
-    skipLoadFromUrlRef,
   });
 
   const configValue = useMemo<PromptConfigState>(() => ({

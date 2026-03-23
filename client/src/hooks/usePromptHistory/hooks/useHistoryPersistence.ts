@@ -53,11 +53,19 @@ interface UseHistoryPersistenceReturn {
     title?: string | null
   ) => Promise<SaveResult | null>;
   createDraft: (params: {
+    id?: string | null;
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
     keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
+    input?: string;
+    output?: string;
+    title?: string | null;
+    brainstormContext?: Record<string, unknown> | null;
+    highlightCache?: Record<string, unknown> | null;
+    versions?: PromptVersionEntry[];
+    persist?: boolean;
   }) => SaveResult;
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
@@ -69,6 +77,102 @@ interface UseHistoryPersistenceReturn {
 }
 
 const log = logger.child('useHistoryPersistence');
+const MAX_HISTORY_ENTRIES = 100;
+
+const normalizeIdentifier = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const isDraftEntryId = (value: unknown): boolean => {
+  const normalized = normalizeIdentifier(value);
+  return normalized !== null && normalized.startsWith('draft-');
+};
+
+const hasNonEmptyText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const sortByTimestampDesc = (entries: PromptHistoryEntry[]): PromptHistoryEntry[] =>
+  [...entries].sort((left, right) => {
+    const leftTimestamp = Date.parse(left.timestamp ?? '');
+    const rightTimestamp = Date.parse(right.timestamp ?? '');
+    const safeLeft = Number.isFinite(leftTimestamp) ? leftTimestamp : 0;
+    const safeRight = Number.isFinite(rightTimestamp) ? rightTimestamp : 0;
+    return safeRight - safeLeft;
+  });
+
+const mergeRemoteWithLocalDraft = (
+  remote: PromptHistoryEntry,
+  local: PromptHistoryEntry
+): PromptHistoryEntry => ({
+  ...remote,
+  ...(hasNonEmptyText(remote.input) ? {} : { input: local.input }),
+  ...(remote.generationParams ?? null ? {} : { generationParams: local.generationParams ?? null }),
+  ...(remote.keyframes ?? null ? {} : { keyframes: local.keyframes ?? null }),
+  ...(remote.highlightCache ?? null ? {} : { highlightCache: local.highlightCache ?? null }),
+  ...(remote.brainstormContext ?? null
+    ? {}
+    : { brainstormContext: local.brainstormContext ?? null }),
+  ...(Array.isArray(remote.versions) && remote.versions.length > 0
+    ? {}
+    : { versions: Array.isArray(local.versions) ? local.versions : [] }),
+});
+
+const upsertEntry = (
+  entries: PromptHistoryEntry[],
+  nextEntry: PromptHistoryEntry
+): PromptHistoryEntry[] => {
+  const nextUuid = normalizeIdentifier(nextEntry.uuid);
+  const nextId = normalizeIdentifier(nextEntry.id);
+
+  const filtered = entries.filter((entry) => {
+    const entryUuid = normalizeIdentifier(entry.uuid);
+    const entryId = normalizeIdentifier(entry.id);
+    const sameUuid = nextUuid !== null && entryUuid !== null && nextUuid === entryUuid;
+    const sameId = nextId !== null && entryId !== null && nextId === entryId;
+    return !sameUuid && !sameId;
+  });
+
+  return sortByTimestampDesc([nextEntry, ...filtered]).slice(0, MAX_HISTORY_ENTRIES);
+};
+
+const mergeRemoteHistoryWithLocalDrafts = (
+  remoteEntries: PromptHistoryEntry[],
+  localEntries: PromptHistoryEntry[]
+): PromptHistoryEntry[] => {
+  const merged = [...remoteEntries];
+
+  for (const localEntry of localEntries) {
+    const localUuid = normalizeIdentifier(localEntry.uuid);
+    const localId = normalizeIdentifier(localEntry.id);
+    const uuidMatchIndex =
+      localUuid === null
+        ? -1
+        : merged.findIndex((entry) => normalizeIdentifier(entry.uuid) === localUuid);
+
+    if (uuidMatchIndex >= 0) {
+      merged[uuidMatchIndex] = mergeRemoteWithLocalDraft(merged[uuidMatchIndex]!, localEntry);
+      continue;
+    }
+
+    const idMatchIndex =
+      localId === null
+        ? -1
+        : merged.findIndex((entry) => normalizeIdentifier(entry.id) === localId);
+
+    if (idMatchIndex >= 0) {
+      merged[idMatchIndex] = mergeRemoteWithLocalDraft(merged[idMatchIndex]!, localEntry);
+      continue;
+    }
+
+    if (isDraftEntryId(localEntry.id)) {
+      merged.push(localEntry);
+    }
+  }
+
+  return sortByTimestampDesc(merged).slice(0, MAX_HISTORY_ENTRIES);
+};
 
 export function useHistoryPersistence({
   user,
@@ -82,10 +186,6 @@ export function useHistoryPersistence({
   setIsLoadingHistory,
   toast,
 }: UseHistoryPersistenceOptions): UseHistoryPersistenceReturn {
-  // Track UUIDs currently being promoted from draft to Firestore to prevent duplicates
-  const promotingDraftsRef = useRef<Set<string>>(new Set());
-  // Queue of latest versions received during an in-flight promotion (flushed after save)
-  const pendingVersionsRef = useRef<Map<string, PromptVersionEntry[]>>(new Map());
   // Bug 1/2 fix: ref for fresh history in async callbacks
   const historyRef = useRef(history);
   useEffect(() => {
@@ -116,6 +216,30 @@ export function useHistoryPersistence({
   } | null>(null);
   const userRef = useRef(user);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  const syncHistoryToLocalStorage = useCallback((entries: PromptHistoryEntry[]): void => {
+    const syncResult = syncToLocalStorage(entries);
+    if (syncResult.trimmed) {
+      log.warn('Storage limit reached while persisting local history snapshot');
+    } else if (!syncResult.success) {
+      log.warn('Failed to persist local history snapshot');
+    }
+  }, []);
+
+  const persistLocalDraftEntry = useCallback(
+    (entry: PromptHistoryEntry): void => {
+      const existedBefore = historyRef.current.some((item) => item.uuid === entry.uuid);
+      const nextHistory = upsertEntry(historyRef.current, entry);
+      historyRef.current = nextHistory;
+      if (existedBefore && typeof entry.uuid === 'string') {
+        updateEntry(entry.uuid, entry);
+      } else {
+        addEntry(entry);
+      }
+      syncHistoryToLocalStorage(nextHistory);
+    },
+    [addEntry, syncHistoryToLocalStorage, updateEntry]
+  );
 
   // Flush any pending debounced version write on unmount
   useEffect(() => {
@@ -151,12 +275,17 @@ export function useHistoryPersistence({
       setIsLoadingHistory(true);
 
       try {
-        const entries = await loadFromFirestore(userId);
-        setHistory(entries);
+        const [entries, localEntries] = await Promise.all([
+          loadFromFirestore(userId),
+          loadFromLocalStorage().catch(() => [] as PromptHistoryEntry[]),
+        ]);
+        const mergedEntries = mergeRemoteHistoryWithLocalDrafts(entries, localEntries);
+        historyRef.current = mergedEntries;
+        setHistory(mergedEntries);
         // Bug 18 safeguard: mark initial load as complete so writes are allowed
         initialLoadCompleteRef.current = true;
 
-        const syncResult = syncToLocalStorage(entries);
+        const syncResult = syncToLocalStorage(mergedEntries);
         if (syncResult.trimmed) {
           toast.warning('Storage limit reached. Keeping only recent 50 items.');
         } else if (!syncResult.success) {
@@ -270,36 +399,51 @@ export function useHistoryPersistence({
 
   const createDraft = useCallback(
     (params: {
+      id?: string | null;
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
       keyframes?: PromptHistoryEntry['keyframes'];
       uuid?: string;
+      input?: string;
+      output?: string;
+      title?: string | null;
+      brainstormContext?: Record<string, unknown> | null;
+      highlightCache?: Record<string, unknown> | null;
+      versions?: PromptVersionEntry[];
+      persist?: boolean;
     }): SaveResult => {
       const uuid = typeof params.uuid === 'string' && params.uuid.trim() ? params.uuid.trim() : uuidv4();
-      const id = `draft-${Date.now()}`;
+      const id =
+        typeof params.id === 'string' && params.id.trim()
+          ? params.id.trim()
+          : `draft-${Date.now()}`;
 
       const entry: PromptHistoryEntry = {
         id,
         uuid,
         timestamp: new Date().toISOString(),
-        title: null,
-        input: '',
-        output: '',
+        title: params.title ?? null,
+        input: params.input ?? '',
+        output: params.output ?? '',
         score: null,
         mode: params.mode,
         targetModel: params.targetModel ?? null,
         generationParams: params.generationParams ?? null,
         keyframes: params.keyframes ?? null,
-        brainstormContext: null,
-        highlightCache: null,
-        versions: [],
+        brainstormContext: params.brainstormContext ?? null,
+        highlightCache: params.highlightCache ?? null,
+        versions: Array.isArray(params.versions) ? params.versions : [],
       };
 
+      historyRef.current = upsertEntry(historyRef.current, entry);
       addEntry(entry);
+      if (params.persist) {
+        syncHistoryToLocalStorage(historyRef.current);
+      }
       return { uuid, id };
     },
-    [addEntry]
+    [addEntry, syncHistoryToLocalStorage]
   );
 
   const updateEntryLocal = useCallback(
@@ -329,14 +473,6 @@ export function useHistoryPersistence({
         };
       }
 
-      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist prompt update', {
-          error: error instanceof Error ? error.message : String(error),
-          uuid,
-          docId,
-        });
-      });
-
       const localUpdates: Partial<PromptHistoryEntry> = {};
       if (effectiveUpdates.input !== undefined) localUpdates.input = effectiveUpdates.input;
       if (effectiveUpdates.title !== undefined) localUpdates.title = effectiveUpdates.title;
@@ -345,15 +481,72 @@ export function useHistoryPersistence({
       if (effectiveUpdates.generationParams !== undefined) localUpdates.generationParams = effectiveUpdates.generationParams;
       if (effectiveUpdates.keyframes !== undefined) localUpdates.keyframes = effectiveUpdates.keyframes;
 
+      const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
+      if (isDraftId) {
+        const nextEntry: PromptHistoryEntry = {
+          ...(entry ?? {
+            id: docId,
+            uuid,
+            timestamp: new Date().toISOString(),
+            title: null,
+            input: '',
+            output: '',
+            score: null,
+            mode: 'video',
+            targetModel: null,
+            generationParams: null,
+            keyframes: null,
+            brainstormContext: null,
+            highlightCache: null,
+            versions: [],
+          }),
+          id: docId,
+          ...localUpdates,
+        };
+        persistLocalDraftEntry(nextEntry);
+        return;
+      }
+
+      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
+        log.warn('Failed to persist prompt update', {
+          error: error instanceof Error ? error.message : String(error),
+          uuid,
+          docId,
+        });
+      });
+
       updateEntry(uuid, localUpdates);
     },
-    [user, updateEntry]
+    [persistLocalDraftEntry, updateEntry, user?.uid]
   );
 
   const updateEntryHighlight = useCallback(
     (uuid: string, highlightCache: Record<string, unknown> | null) => {
       const entry = historyRef.current.find((item) => item.uuid === uuid);
       const docId = entry?.id ?? null;
+      if (isDraftEntryId(docId)) {
+        persistLocalDraftEntry({
+          ...(entry ?? {
+            id: docId ?? `draft-${Date.now()}`,
+            uuid,
+            timestamp: new Date().toISOString(),
+            title: null,
+            input: '',
+            output: '',
+            score: null,
+            mode: 'video',
+            targetModel: null,
+            generationParams: null,
+            keyframes: null,
+            brainstormContext: null,
+            highlightCache: null,
+            versions: [],
+          }),
+          id: docId ?? `draft-${Date.now()}`,
+          highlightCache: highlightCache ?? null,
+        });
+        return;
+      }
       updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.((error: unknown) => {
         log.warn('Failed to persist highlight update', {
           error: error instanceof Error ? error.message : String(error),
@@ -363,15 +556,40 @@ export function useHistoryPersistence({
       });
       updateEntry(uuid, { highlightCache: highlightCache ?? null });
     },
-    [user, updateEntry]
+    [persistLocalDraftEntry, updateEntry, user?.uid]
   );
 
   const updateEntryOutput = useCallback(
     async (uuid: string, docId: string | null, output: string): Promise<void> => {
+      if (isDraftEntryId(docId)) {
+        const entry = historyRef.current.find((item) => item.uuid === uuid);
+        persistLocalDraftEntry({
+          ...(entry ?? {
+            id: docId ?? `draft-${Date.now()}`,
+            uuid,
+            timestamp: new Date().toISOString(),
+            title: null,
+            input: '',
+            output: '',
+            score: null,
+            mode: 'video',
+            targetModel: null,
+            generationParams: null,
+            keyframes: null,
+            brainstormContext: null,
+            highlightCache: null,
+            versions: [],
+          }),
+          id: docId ?? `draft-${Date.now()}`,
+          output,
+        });
+        return;
+      }
+
       updateEntry(uuid, { output });
       await updateOutput(user?.uid, uuid, docId, output);
     },
-    [user, updateEntry]
+    [persistLocalDraftEntry, updateEntry, user?.uid]
   );
 
   const updateEntryVersions = useCallback(
@@ -397,66 +615,31 @@ export function useHistoryPersistence({
         generationCount,
       });
 
-      updateEntry(uuid, { versions: nextVersions });
-
-      const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
-      if (isDraftId && user?.uid) {
-        if (promotingDraftsRef.current.has(uuid)) {
-          pendingVersionsRef.current.set(uuid, nextVersions);
-          log.debug('Draft promotion in progress, queuing version update', { uuid });
-          return;
-        }
-
-        // Bug 2 fix: read latest history from ref to avoid stale snapshot during async promotion
-        const entry = historyRef.current.find((item) => item.uuid === uuid);
-        if (!entry) {
-          log.warn('Draft entry not found in local state for promotion', { uuid, docId });
-          return;
-        }
-
-        promotingDraftsRef.current.add(uuid);
-        log.info('Promoting draft entry to Firestore for version persistence', {
-          uuid,
-          draftId: docId,
-          versionCount: versions.length,
-        });
-
-        saveEntry(user.uid, {
-          uuid,
-          input: entry.input || '',
-          output: entry.output || '',
-          score: entry.score ?? null,
-          mode: entry.mode || 'video',
-          ...(entry.title !== undefined && entry.title !== null ? { title: entry.title } : {}),
-          ...(entry.targetModel ? { targetModel: entry.targetModel } : {}),
-          ...(entry.generationParams ? { generationParams: entry.generationParams } : {}),
-          brainstormContext: entry.brainstormContext ?? null,
-          highlightCache: entry.highlightCache ?? null,
+      if (isDraftEntryId(docId)) {
+        persistLocalDraftEntry({
+          ...(entry ?? {
+            id: docId ?? `draft-${Date.now()}`,
+            uuid,
+            timestamp: new Date().toISOString(),
+            title: null,
+            input: '',
+            output: '',
+            score: null,
+            mode: 'video',
+            targetModel: null,
+            generationParams: null,
+            keyframes: null,
+            brainstormContext: null,
+            highlightCache: null,
+            versions: [],
+          }),
+          id: docId ?? `draft-${Date.now()}`,
           versions: nextVersions,
-        })
-          .then((result) => {
-            promotingDraftsRef.current.delete(uuid);
-            log.info('Draft promoted to Firestore', { uuid, realDocId: result.id });
-            updateEntry(uuid, { id: result.id });
-
-            const pendingVersions = pendingVersionsRef.current.get(uuid);
-            if (pendingVersions) {
-              pendingVersionsRef.current.delete(uuid);
-              log.debug('Flushing queued versions after promotion', {
-                uuid,
-                realDocId: result.id,
-                versionCount: pendingVersions.length,
-              });
-              updateVersions(user?.uid, uuid, result.id, pendingVersions);
-            }
-          })
-          .catch((error) => {
-            promotingDraftsRef.current.delete(uuid);
-            pendingVersionsRef.current.delete(uuid);
-            log.error('Failed to promote draft to Firestore', error as Error, { uuid, docId });
-          });
+        });
         return;
       }
+
+      updateEntry(uuid, { versions: nextVersions });
 
       // Bug 17 fix: debounce the Firestore write. Rapid successive calls
       // (e.g., ADD_GENERATION → UPDATE_GENERATION → media refresh) each trigger
@@ -503,7 +686,7 @@ export function useHistoryPersistence({
         }
       }, 500);
     },
-    [user, updateEntry]
+    [persistLocalDraftEntry, updateEntry]
   );
 
   // Bug 5 fix: removed history.length from deps (only used for debug log)

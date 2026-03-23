@@ -95,6 +95,7 @@ interface CanvasWorkspaceProps {
   onReuseGeneration: (generation: Generation) => void;
   onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
   onEnhance?: () => void;
+  isEnhancing?: boolean;
 }
 
 const parseDurationSeconds = (generationParams: Record<string, unknown>): number => {
@@ -167,6 +168,7 @@ export function CanvasWorkspace({
   onReuseGeneration,
   onToggleGenerationFavorite,
   onEnhance,
+  isEnhancing = false,
 }: CanvasWorkspaceProps): React.ReactElement {
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
@@ -280,6 +282,12 @@ export function CanvasWorkspace({
     }
     return lookup;
   }, [galleryEntries]);
+
+  useEffect(() => {
+    if (!viewingId) return;
+    if (generationLookup.has(viewingId)) return;
+    setViewingId(null);
+  }, [generationLookup, viewingId]);
 
   const isEmptySession = useMemo(() => {
     const hasGenerations = galleryEntries.length > 0 || heroGeneration !== null;
@@ -402,6 +410,7 @@ export function CanvasWorkspace({
       ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
       : {}),
     ...(onEnhance ? { onEnhance } : {}),
+    isEnhancing,
   };
 
   return (

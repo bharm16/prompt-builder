@@ -22,7 +22,6 @@ const buildParams = (overrides: Partial<LoaderParams> = {}): LoaderParams => {
 
   return {
     sessionId: 'session_abc123',
-    currentPromptUuid: null,
     navigate: vi.fn(),
     toast: baseToast,
     user: { uid: 'user-1' },

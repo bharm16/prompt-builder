@@ -6,6 +6,7 @@ import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type {
   PromptHistoryEntry,
+  PromptKeyframe,
   PromptVersionEdit,
   PromptVersionEntry,
 } from '@features/prompt-optimizer/types/domain/prompt-session';
@@ -17,7 +18,7 @@ import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData } fr
 import type { LockedSpan, OptimizationOptions } from '../types';
 import type { VideoTier } from '@components/ToolSidebar/types';
 
-export type { PromptHistoryEntry, User };
+export type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
 export type { Mode };
 
@@ -81,11 +82,19 @@ export interface PromptHistory {
     title?: string | null
   ) => Promise<{ uuid: string; id: string } | null>;
   createDraft: (params: {
+    id?: string | null;
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
     keyframes?: PromptHistoryEntry['keyframes'];
     uuid?: string;
+    input?: string;
+    output?: string;
+    title?: string | null;
+    brainstormContext?: Record<string, unknown> | null;
+    highlightCache?: Record<string, unknown> | null;
+    versions?: PromptVersionEntry[];
+    persist?: boolean;
   }) => { uuid: string; id: string };
   updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   clearHistory: () => Promise<void>;

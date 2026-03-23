@@ -1,472 +1,124 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type MockedFunction } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-
-import { usePromptHistoryActions } from '@features/prompt-optimizer/context/usePromptHistoryActions';
-import { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CapabilityValues } from '@shared/capabilities';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
-import { createHighlightSignature } from '@features/span-highlighting';
+import { usePromptHistoryActions } from '@features/prompt-optimizer/context/usePromptHistoryActions';
 
-vi.mock('@features/span-highlighting', () => ({
-  createHighlightSignature: vi.fn(),
-}));
+const buildOptions = (
+  overrides: Partial<Parameters<typeof usePromptHistoryActions>[0]> = {}
+) => {
+  const navigate = vi.fn();
+  const createDraft = vi.fn(() => ({ uuid: 'uuid-draft', id: 'draft-123' }));
 
-const mockCreateHighlightSignature = vi.mocked(createHighlightSignature);
-
-type UsePromptHistoryActionsOptions = Parameters<typeof usePromptHistoryActions>[0];
-type PromptOptimizer = UsePromptHistoryActionsOptions['promptOptimizer'];
-
-const createTrackedSetter = <T,>(initial: T) => {
-  let value = initial;
-  const setter = vi.fn((next: T) => {
-    value = next;
-  });
-  return { get: () => value, setter };
-};
-
-const createPromptOptimizer = () => {
-  const state = {
-    inputPrompt: '',
-    optimizedPrompt: '',
-    displayedPrompt: '',
-    previewPrompt: null as string | null,
-    previewAspectRatio: null as string | null,
+  return {
+    options: {
+      debug: {
+        logAction: vi.fn(),
+        logError: vi.fn(),
+        startTimer: vi.fn(),
+        endTimer: vi.fn(),
+      } as any,
+      navigate,
+      promptOptimizer: {
+        setDisplayedPrompt: vi.fn(),
+        inputPrompt: '',
+        optimizedPrompt: '',
+        displayedPrompt: '',
+      } as any,
+      promptHistory: {
+        createDraft,
+      },
+      selectedMode: 'video',
+      selectedModel: 'model-a',
+      generationParams: {},
+      currentPromptUuid: null,
+      currentPromptDocId: null,
+      promptContext: null,
+      currentKeyframes: [],
+      currentHighlightSnapshot: null,
+      currentVersions: [],
+      isApplyingHistoryRef: { current: false },
+      ...overrides,
+    },
+    mocks: {
+      navigate,
+      createDraft,
+    },
   };
-
-  const optimizer: PromptOptimizer = {
-    inputPrompt: state.inputPrompt,
-    setInputPrompt: vi.fn((prompt: string) => {
-      state.inputPrompt = prompt;
-      optimizer.inputPrompt = prompt;
-    }),
-    isProcessing: false,
-    optimizedPrompt: state.optimizedPrompt,
-    setOptimizedPrompt: vi.fn((prompt: string) => {
-      state.optimizedPrompt = prompt;
-      optimizer.optimizedPrompt = prompt;
-    }),
-    displayedPrompt: state.displayedPrompt,
-    setDisplayedPrompt: vi.fn((prompt: string) => {
-      state.displayedPrompt = prompt;
-      optimizer.displayedPrompt = prompt;
-    }),
-    genericOptimizedPrompt: null,
-    setGenericOptimizedPrompt: vi.fn(),
-    previewPrompt: state.previewPrompt,
-    setPreviewPrompt: vi.fn((prompt: string | null) => {
-      state.previewPrompt = prompt;
-      optimizer.previewPrompt = prompt;
-    }),
-    previewAspectRatio: state.previewAspectRatio,
-    setPreviewAspectRatio: vi.fn((ratio: string | null) => {
-      state.previewAspectRatio = ratio;
-      optimizer.previewAspectRatio = ratio;
-    }),
-    qualityScore: null,
-    skipAnimation: false,
-    setSkipAnimation: vi.fn(),
-    improvementContext: null,
-    setImprovementContext: vi.fn(),
-    optimizationResultVersion: 0,
-    lockedSpans: [],
-    optimize: vi.fn(async () => null),
-    compile: vi.fn(async () => null),
-    resetPrompt: vi.fn(() => {
-      state.inputPrompt = '';
-      state.optimizedPrompt = '';
-      state.displayedPrompt = '';
-      optimizer.inputPrompt = '';
-      optimizer.optimizedPrompt = '';
-      optimizer.displayedPrompt = '';
-    }),
-    setLockedSpans: vi.fn(),
-    addLockedSpan: vi.fn(),
-    removeLockedSpan: vi.fn(),
-    clearLockedSpans: vi.fn(),
-  };
-
-  return { optimizer, state };
-};
-
-const createDebugLogger = (): UsePromptHistoryActionsOptions['debug'] => ({
-  logState: vi.fn(),
-  logEffect: vi.fn(),
-  logAction: vi.fn(),
-  startTimer: vi.fn(),
-  endTimer: vi.fn(),
-  logError: vi.fn(),
-});
-
-const setupRafQueue = () => {
-  const callbacks: FrameRequestCallback[] = [];
-  const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-    callbacks.push(callback);
-    return callbacks.length;
-  });
-
-  const flush = () => {
-    const pending = callbacks.splice(0);
-    pending.forEach((callback) => callback(0));
-  };
-
-  return { rafSpy, flush };
 };
 
 describe('usePromptHistoryActions', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    mockCreateHighlightSignature.mockReturnValue('sig-default');
-  });
-
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('logs and clears context when brainstorm JSON is invalid', () => {
-      const { optimizer } = createPromptOptimizer();
-      const debug = createDebugLogger();
-      const { flush, rafSpy } = setupRafQueue();
-      const promptContextTracker = createTrackedSetter<PromptContext | null>(new PromptContext());
+  it('sets displayed prompt silently while toggling the applying-history flag', () => {
+    vi.useFakeTimers();
+    const { options } = buildOptions();
+    const { result } = renderHook(() => usePromptHistoryActions(options));
 
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft: vi.fn() },
-          selectedMode: 'video',
-          selectedModel: 'model-a',
-          generationParams: { steps: 3 },
-          applyInitialHighlightSnapshot: vi.fn(),
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: vi.fn(),
-          setConceptElements: vi.fn(),
-          setPromptContext: promptContextTracker.setter,
-          setGenerationParams: vi.fn(),
-          setSelectedMode: vi.fn(),
-          setSelectedModel: vi.fn(),
-          setShowResults: vi.fn(),
-          setCurrentPromptUuid: vi.fn(),
-          setCurrentPromptDocId: vi.fn(),
-          persistedSignatureRef: { current: 'sig-old' },
-          isApplyingHistoryRef: { current: false },
-          skipLoadFromUrlRef: { current: false },
-        })
-      );
-
-      const entry = {
-        uuid: 'uuid-1',
-        id: 'doc-1',
-        input: 'Input',
-        output: 'Output',
-        brainstormContext: '{not-json',
-      } as unknown as PromptHistoryEntry;
-
-      act(() => {
-        result.current.loadFromHistory(entry);
-      });
-
-      flush();
-      flush();
-      rafSpy.mockRestore();
-
-      expect(debug.logError).toHaveBeenCalled();
-      expect(promptContextTracker.get()).toBeNull();
+    act(() => {
+      result.current.setDisplayedPromptSilently('Hidden prompt');
     });
 
-    it('falls back to defaults for invalid model and params', () => {
-      const { optimizer } = createPromptOptimizer();
-      const debug = createDebugLogger();
-      const { flush, rafSpy } = setupRafQueue();
-      const selectedModelTracker = createTrackedSetter('initial');
-      const paramsTracker = createTrackedSetter<CapabilityValues>({ steps: 1 });
+    expect(options.isApplyingHistoryRef.current).toBe(true);
+    expect(options.promptOptimizer.setDisplayedPrompt).toHaveBeenCalledWith('Hidden prompt');
 
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft: vi.fn() },
-          selectedMode: 'video',
-          selectedModel: 'model-a',
-          generationParams: { steps: 3 },
-          applyInitialHighlightSnapshot: vi.fn(),
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: vi.fn(),
-          setConceptElements: vi.fn(),
-          setPromptContext: vi.fn(),
-          setGenerationParams: paramsTracker.setter,
-          setSelectedMode: vi.fn(),
-          setSelectedModel: selectedModelTracker.setter,
-          setShowResults: vi.fn(),
-          setCurrentPromptUuid: vi.fn(),
-          setCurrentPromptDocId: vi.fn(),
-          persistedSignatureRef: { current: 'sig-old' },
-          isApplyingHistoryRef: { current: false },
-          skipLoadFromUrlRef: { current: false },
-        })
-      );
-
-      const entry = {
-        uuid: 'uuid-2',
-        id: 'doc-2',
-        input: 'Input',
-        output: 'Output',
-        targetModel: 123,
-        generationParams: 'bad',
-      } as unknown as PromptHistoryEntry;
-
-      act(() => {
-        result.current.loadFromHistory(entry);
-      });
-
-      flush();
-      flush();
-      rafSpy.mockRestore();
-
-      expect(selectedModelTracker.get()).toBe('');
-      expect(paramsTracker.get()).toEqual({});
+    act(() => {
+      vi.runAllTimers();
     });
 
-    it('passes a null target model when the selection is whitespace', () => {
-      const { optimizer } = createPromptOptimizer();
-      const debug = createDebugLogger();
-      const { flush, rafSpy } = setupRafQueue();
-      const draftResult = { uuid: 'uuid-3', id: 'doc-3' };
-      const createDraft: MockedFunction<UsePromptHistoryActionsOptions['promptHistory']['createDraft']> =
-        vi.fn((_params) => draftResult);
-      const promptUuidTracker = createTrackedSetter<string | null>(null);
-      const skipLoadFromUrlRef = { current: false };
-
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft },
-          selectedMode: 'video',
-          selectedModel: '   ',
-          generationParams: { steps: 3 },
-          applyInitialHighlightSnapshot: vi.fn(),
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: vi.fn(),
-          setConceptElements: vi.fn(),
-          setPromptContext: vi.fn(),
-          setGenerationParams: vi.fn(),
-          setSelectedMode: vi.fn(),
-          setSelectedModel: vi.fn(),
-          setShowResults: vi.fn(),
-          setCurrentPromptUuid: promptUuidTracker.setter,
-          setCurrentPromptDocId: vi.fn(),
-          persistedSignatureRef: { current: 'sig-old' },
-          isApplyingHistoryRef: { current: false },
-          skipLoadFromUrlRef,
-        })
-      );
-
-      act(() => {
-        result.current.handleCreateNew();
-      });
-
-      expect(skipLoadFromUrlRef.current).toBe(true);
-      expect(createDraft).toHaveBeenCalledWith(
-        expect.objectContaining({ targetModel: null })
-      );
-      expect(promptUuidTracker.get()).toBe('uuid-3');
-
-      flush();
-      flush();
-      rafSpy.mockRestore();
-    });
+    expect(options.isApplyingHistoryRef.current).toBe(false);
   });
 
-  describe('edge cases', () => {
-    it('derives a highlight signature when the cache is missing one', () => {
-      const { optimizer } = createPromptOptimizer();
-      const debug = createDebugLogger();
-      const { flush, rafSpy } = setupRafQueue();
-      let appliedSnapshot: HighlightSnapshot | null = null;
+  it('persists meaningful local state before creating a new draft route', () => {
+    vi.useFakeTimers();
+    const { options, mocks } = buildOptions({
+      promptOptimizer: {
+        setDisplayedPrompt: vi.fn(),
+        inputPrompt: 'A cinematic alley at dawn',
+        optimizedPrompt: '',
+        displayedPrompt: '',
+      } as any,
+    });
+    const { result } = renderHook(() => usePromptHistoryActions(options));
 
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft: vi.fn() },
-          selectedMode: 'video',
-          selectedModel: 'model-a',
-          generationParams: { steps: 3 },
-          applyInitialHighlightSnapshot: (snapshot) => {
-            appliedSnapshot = snapshot;
-          },
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: vi.fn(),
-          setConceptElements: vi.fn(),
-          setPromptContext: vi.fn(),
-          setGenerationParams: vi.fn(),
-          setSelectedMode: vi.fn(),
-          setSelectedModel: vi.fn(),
-          setShowResults: vi.fn(),
-          setCurrentPromptUuid: vi.fn(),
-          setCurrentPromptDocId: vi.fn(),
-          persistedSignatureRef: { current: 'sig-old' },
-          isApplyingHistoryRef: { current: false },
-          skipLoadFromUrlRef: { current: false },
-        })
-      );
-
-      const entry: PromptHistoryEntry = {
-        uuid: 'uuid-4',
-        id: 'doc-4',
-        input: 'Input',
-        output: 'Output text',
-        highlightCache: { spans: [] },
-      };
-
-      act(() => {
-        result.current.loadFromHistory(entry);
-      });
-
-      flush();
-      flush();
-      rafSpy.mockRestore();
-
-      expect(mockCreateHighlightSignature).toHaveBeenCalledWith('Output text');
-      expect(appliedSnapshot).not.toBeNull();
-      const finalSnapshot = appliedSnapshot as unknown as HighlightSnapshot;
-      expect(finalSnapshot.signature).toBe('sig-default');
+    act(() => {
+      result.current.handleCreateNew();
     });
 
-    it('toggles the applying-history flag when setting prompts silently', () => {
-      const { optimizer } = createPromptOptimizer();
-      const debug = createDebugLogger();
-
-      const isApplyingHistoryRef = { current: false };
-
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft: vi.fn() },
-          selectedMode: 'video',
-          selectedModel: 'model-a',
-          generationParams: { steps: 3 },
-          applyInitialHighlightSnapshot: vi.fn(),
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: vi.fn(),
-          setConceptElements: vi.fn(),
-          setPromptContext: vi.fn(),
-          setGenerationParams: vi.fn(),
-          setSelectedMode: vi.fn(),
-          setSelectedModel: vi.fn(),
-          setShowResults: vi.fn(),
-          setCurrentPromptUuid: vi.fn(),
-          setCurrentPromptDocId: vi.fn(),
-          persistedSignatureRef: { current: 'sig-old' },
-          isApplyingHistoryRef,
-          skipLoadFromUrlRef: { current: false },
-        })
-      );
-
-      act(() => {
-        result.current.setDisplayedPromptSilently('Hidden prompt');
-      });
-
-      expect(isApplyingHistoryRef.current).toBe(true);
-      expect(optimizer.displayedPrompt).toBe('Hidden prompt');
-
-      act(() => {
-        vi.runAllTimers();
-      });
-
-      expect(isApplyingHistoryRef.current).toBe(false);
-    });
+    expect(mocks.createDraft).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: 'A cinematic alley at dawn',
+        output: '',
+        persist: true,
+      })
+    );
+    expect(mocks.createDraft).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        mode: 'video',
+        targetModel: 'model-a',
+      })
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith('/session/draft-123', { replace: true });
   });
 
-  describe('core behavior', () => {
-    it('creates a draft, resets state, and navigates on new prompts', () => {
-      const { optimizer, state } = createPromptOptimizer();
-      const debug = createDebugLogger();
-      const { flush, rafSpy } = setupRafQueue();
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+  it('routes history loads through /session/:sessionId', () => {
+    const { options, mocks } = buildOptions();
+    const { result } = renderHook(() => usePromptHistoryActions(options));
 
-      const createDraft: MockedFunction<UsePromptHistoryActionsOptions['promptHistory']['createDraft']> =
-        vi.fn((_params) => ({ uuid: 'uuid-new', id: 'doc-new' }));
-      const suggestionsTracker = createTrackedSetter<SuggestionsData | null>(null);
-      const conceptTracker = createTrackedSetter<unknown | null>(null);
-      const contextTracker = createTrackedSetter<PromptContext | null>(null);
-      const showResultsTracker = createTrackedSetter(true);
-      const promptUuidTracker = createTrackedSetter<string | null>(null);
-      const promptDocIdTracker = createTrackedSetter<string | null>(null);
-      const persistedSignatureRef = { current: 'sig-old' };
-      const skipLoadFromUrlRef = { current: false };
-
-      state.inputPrompt = 'Keep?';
-      optimizer.inputPrompt = 'Keep?';
-
-      const { result } = renderHook(() =>
-        usePromptHistoryActions({
-          debug,
-          navigate: vi.fn(),
-          promptOptimizer: optimizer,
-          promptHistory: { createDraft },
-          selectedMode: 'video',
-          selectedModel: 'model-a',
-          generationParams: { steps: 4 },
-          applyInitialHighlightSnapshot: vi.fn(),
-          resetEditStacks: vi.fn(),
-          resetVersionEdits: vi.fn(),
-          setSuggestionsData: suggestionsTracker.setter,
-          setConceptElements: conceptTracker.setter,
-          setPromptContext: contextTracker.setter,
-          setGenerationParams: vi.fn(),
-          setSelectedMode: vi.fn(),
-          setSelectedModel: vi.fn(),
-          setShowResults: showResultsTracker.setter,
-          setCurrentPromptUuid: promptUuidTracker.setter,
-          setCurrentPromptDocId: promptDocIdTracker.setter,
-          persistedSignatureRef,
-          isApplyingHistoryRef: { current: false },
-          skipLoadFromUrlRef,
-        })
-      );
-
-      act(() => {
-        result.current.handleCreateNew();
-      });
-
-      expect(skipLoadFromUrlRef.current).toBe(true);
-      expect(promptUuidTracker.get()).toBe('uuid-new');
-      expect(promptDocIdTracker.get()).toBe('doc-new');
-      expect(showResultsTracker.get()).toBe(false);
-      expect(suggestionsTracker.get()).toBeNull();
-      expect(conceptTracker.get()).toBeNull();
-      expect(contextTracker.get()).toBeNull();
-      expect(persistedSignatureRef.current).toBeNull();
-      expect(optimizer.inputPrompt).toBe('');
-
-      act(() => {
-        vi.runAllTimers();
-      });
-
-      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'po:focus-editor' }));
-
-      flush();
-      flush();
-      rafSpy.mockRestore();
-      dispatchSpy.mockRestore();
-
-      expect(skipLoadFromUrlRef.current).toBe(false);
+    act(() => {
+      result.current.loadFromHistory({
+        id: 'session-123',
+        uuid: 'uuid-target',
+        input: 'remote input',
+        output: 'remote output',
+        mode: 'video',
+      } as PromptHistoryEntry);
     });
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/session/session-123', { replace: true });
   });
 });

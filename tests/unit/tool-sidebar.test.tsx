@@ -24,34 +24,6 @@ vi.mock('@utils/cn', () => ({
     classes.filter(Boolean).join(' '),
 }));
 
-vi.mock('@promptstudio/system/components/ui/sheet', () => ({
-  Sheet: ({
-    open,
-    onOpenChange,
-    children,
-  }: {
-    open: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children: ReactNode;
-  }) => (
-    <div data-testid="sheet" data-open={open ? 'true' : 'false'}>
-      <button type="button" data-testid="sheet-close" onClick={() => onOpenChange?.(false)}>
-        close
-      </button>
-      {open ? children : null}
-    </div>
-  ),
-  SheetContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="sheet-content">{children}</div>
-  ),
-  SheetTitle: ({ children }: { children: ReactNode }) => (
-    <div data-testid="sheet-title">{children}</div>
-  ),
-  SheetDescription: ({ children }: { children: ReactNode }) => (
-    <div data-testid="sheet-description">{children}</div>
-  ),
-}));
-
 const sidebarState = vi.hoisted(() => ({
   activePanel: 'sessions' as ToolPanelType,
   setActivePanel: vi.fn(),
@@ -80,9 +52,6 @@ vi.mock('@components/ToolSidebar/components/ToolRail', () => ({
       </button>
       <button type="button" data-testid="rail-styles" onClick={() => onPanelChange('styles')}>
         styles
-      </button>
-      <button type="button" data-testid="rail-apps" onClick={() => onPanelChange('apps')}>
-        apps
       </button>
     </div>
   ),
@@ -157,7 +126,7 @@ describe('ToolSidebar', () => {
     expect(screen.queryByTestId('generation-panel')).not.toBeInTheDocument();
   });
 
-  it('opens sessions, characters, and styles as sheet overlays in canvas-first mode', () => {
+  it('opens sessions, characters, and styles as inline overlay panels in canvas-first mode', () => {
     const hero = createAsset({ id: 'asset-hero' });
     const assetsByType = createAssetsByType([hero]);
 
@@ -249,7 +218,7 @@ describe('ToolSidebar', () => {
 
     render(<ToolSidebar user={null} />);
 
-    expect(screen.queryByTestId('sheet-close')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tool-sidebar-overlay-panel')).not.toBeInTheDocument();
     expect(sidebarState.setActivePanel).not.toHaveBeenCalled();
   });
 

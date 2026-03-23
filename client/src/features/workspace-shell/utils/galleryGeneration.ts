@@ -135,6 +135,22 @@ const resolveThumbnailUrl = (
   return null;
 };
 
+const hasBrowsableMedia = (
+  generation: Generation,
+  versionPreviewImageUrl: string | null
+): boolean => {
+  if (generation.status !== 'completed') {
+    return false;
+  }
+
+  const thumbnailUrl = resolveThumbnailUrl(generation, versionPreviewImageUrl);
+  if (thumbnailUrl) {
+    return true;
+  }
+
+  return generation.mediaUrls.some((url) => normalizeNonEmpty(url) !== null);
+};
+
 const parsePromptSpans = (highlights: PromptVersionEntry['highlights']): GalleryPromptSpan[] => {
   if (!highlights || typeof highlights !== 'object') return [];
   if (!Array.isArray((highlights as { spans?: unknown }).spans)) return [];
@@ -168,7 +184,6 @@ const parsePromptSpans = (highlights: PromptVersionEntry['highlights']): Gallery
 const generationCompleteness = (generation: Generation): number => {
   let score = 0;
   if (generation.status === 'completed') score += 10;
-  if (generation.status === 'failed') score += 5;
   if (generation.mediaUrls.length > 0) score += 3;
   if (generation.thumbnailUrl) score += 1;
   if (generation.completedAt) score += 1;
@@ -290,6 +305,12 @@ export function buildGalleryGenerationEntries({
   }
 
   return Array.from(mergedById.values())
+    .filter((source) =>
+      hasBrowsableMedia(
+        source.generation,
+        source.versionPreviewImageUrl
+      )
+    )
     .map((source) => ({
       gallery: mapGalleryGeneration(
         source.generation,

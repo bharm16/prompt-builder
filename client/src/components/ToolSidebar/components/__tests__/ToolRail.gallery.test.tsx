@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ToolRail } from '../ToolRail';
 
@@ -34,4 +34,31 @@ describe('ToolRail gallery button', () => {
     expect(galleryButton).toBeTruthy();
     expect(galleryButton.className).not.toContain('bg-tool-nav-active');
   }, 30000);
+
+  it('clicking Gallery calls onGalleryToggle', () => {
+    const onGalleryToggle = vi.fn();
+    render(
+      <MemoryRouter>
+        <ToolRail
+          activePanel="studio"
+          onPanelChange={vi.fn()}
+          onGalleryToggle={onGalleryToggle}
+          user={null}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+    expect(onGalleryToggle).toHaveBeenCalledOnce();
+  });
+
+  it('does not render the removed Apps rail entry', () => {
+    render(
+      <MemoryRouter>
+        <ToolRail activePanel="studio" onPanelChange={vi.fn()} user={null} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('button', { name: 'Apps' })).not.toBeInTheDocument();
+  });
 });

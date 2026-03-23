@@ -90,11 +90,22 @@ export function useGenerationsRuntime({
     getLatestByTier,
     removeGeneration,
     setActiveGeneration,
+    clearGenerations,
   } = useGenerationsState({
     initialGenerations,
     onGenerationsChange,
     promptVersionId,
   });
+
+  // Clear generation jobs/media when a new draft is created via + New.
+  // Mirrors the pattern in PromptOptimizerWorkspace that clears generation controls.
+  useEffect(() => {
+    const handleWorkspaceReset = (): void => {
+      clearGenerations();
+    };
+    window.addEventListener('po:workspace-reset', handleWorkspaceReset);
+    return () => window.removeEventListener('po:workspace-reset', handleWorkspaceReset);
+  }, [clearGenerations]);
 
   useGenerationMediaRefresh(generations, dispatch);
 

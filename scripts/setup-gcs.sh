@@ -17,12 +17,12 @@ gcloud storage buckets create "gs://${BUCKET_NAME}" \
 gcloud storage buckets update "gs://${BUCKET_NAME}" \
   --enable-autoclass
 
-# 3. Set CORS
+# 3. Set CORS — allows browser to load signed GCS URLs directly without ORB blocking
 cat > cors.json << EOF_CORS
 [
   {
-    "origin": ["http://localhost:5173", "https://promptcanvas.com"],
-    "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "origin": ["http://localhost:5173", "https://vidra.app"],
+    "method": ["GET", "HEAD"],
     "responseHeader": ["Content-Type", "Content-Length", "Content-Range"],
     "maxAgeSeconds": 3600
   }

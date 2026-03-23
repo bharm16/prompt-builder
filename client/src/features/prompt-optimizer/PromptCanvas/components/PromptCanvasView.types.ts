@@ -137,4 +137,5 @@ export interface PromptCanvasViewProps {
   onExport: (format: ExportFormat) => void;
   onShare: () => void;
   onEnhance?: (() => void) | undefined;
+  isEnhancing?: boolean | undefined;
 }

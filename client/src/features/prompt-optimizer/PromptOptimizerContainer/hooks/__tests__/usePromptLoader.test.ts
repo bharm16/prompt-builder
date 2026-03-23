@@ -3,11 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePromptLoader } from '../usePromptLoader';
 
 const mockGetById = vi.hoisted(() => vi.fn());
+const mockGetPromptRepositoryForUser = vi.hoisted(() =>
+  vi.fn(() => ({
+    getById: mockGetById,
+  }))
+);
 
 vi.mock('@repositories/index', () => ({
-  getPromptRepositoryForUser: vi.fn(() => ({
-    getById: mockGetById,
-  })),
+  getPromptRepositoryForUser: mockGetPromptRepositoryForUser,
 }));
 
 type LoaderOverrides = Partial<Parameters<typeof usePromptLoader>[0]>;
@@ -22,10 +25,14 @@ const buildParams = (overrides: LoaderOverrides = {}) => {
 
   return {
     sessionId: null,
-    currentPromptUuid: null,
     navigate: vi.fn(),
     toast: baseToast,
     user: { uid: 'user-1' },
+    historyEntries: [],
+    createDraftEntry: vi.fn(() => ({ uuid: 'draft-uuid', id: 'draft-123' })),
+    selectedMode: 'video',
+    selectedModelValue: 'model-a',
+    generationParamsValue: {},
     promptOptimizer: {
       displayedPrompt: '',
       setInputPrompt: vi.fn(),
@@ -42,7 +49,12 @@ const buildParams = (overrides: LoaderOverrides = {}) => {
     setCurrentPromptDocId: vi.fn(),
     setCurrentPromptUuid: vi.fn(),
     setShowResults: vi.fn(),
+    setSelectedMode: vi.fn(),
     setSelectedModel: vi.fn(),
+    setGenerationParams: vi.fn(),
+    upsertHistoryEntry: vi.fn(),
+    setSuggestionsData: vi.fn(),
+    setConceptElements: vi.fn(),
     setPromptContext: vi.fn(),
     onLoadKeyframes: vi.fn(),
     skipLoadFromUrlRef: { current: false },
@@ -55,7 +67,41 @@ describe('usePromptLoader', () => {
     vi.clearAllMocks();
   });
 
-  it('does not fetch remote prompt data for local draft session ids', async () => {
+  it('hydrates draft routes from in-memory history without remote fetches', async () => {
+    const params = buildParams({
+      sessionId: 'draft-123',
+      historyEntries: [
+        {
+          id: 'draft-123',
+          uuid: 'draft-uuid',
+          input: 'local input',
+          output: 'local output',
+          mode: 'video',
+          targetModel: 'model-a',
+          generationParams: { duration: 8 },
+          keyframes: [],
+          brainstormContext: null,
+          highlightCache: null,
+          versions: [],
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => usePromptLoader(params));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(mockGetPromptRepositoryForUser).not.toHaveBeenCalled();
+    expect(params.setCurrentPromptUuid).toHaveBeenCalledWith('draft-uuid');
+    expect(params.setCurrentPromptDocId).toHaveBeenCalledWith('draft-123');
+    expect(params.setShowResults).toHaveBeenCalledWith(true);
+    expect(params.navigate).not.toHaveBeenCalled();
+    expect(params.toast.error).not.toHaveBeenCalled();
+  });
+
+  it('bootstraps a missing draft route locally without redirecting or toasting', async () => {
     mockGetById.mockResolvedValue(null);
     const params = buildParams({ sessionId: 'draft-123' });
 
@@ -65,7 +111,20 @@ describe('usePromptLoader', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(mockGetById).not.toHaveBeenCalled();
+    expect(mockGetPromptRepositoryForUser).toHaveBeenCalledWith(false);
+    expect(mockGetById).toHaveBeenCalledWith('draft-123');
+    expect(params.createDraftEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'draft-123',
+        mode: 'video',
+        targetModel: 'model-a',
+        generationParams: {},
+        persist: false,
+      })
+    );
+    expect(params.setCurrentPromptUuid).toHaveBeenCalledWith('draft-uuid');
+    expect(params.setCurrentPromptDocId).toHaveBeenCalledWith('draft-123');
+    expect(params.setShowResults).toHaveBeenCalledWith(false);
     expect(params.navigate).not.toHaveBeenCalled();
     expect(params.toast.error).not.toHaveBeenCalled();
   });

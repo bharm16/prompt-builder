@@ -219,7 +219,7 @@ export const usePromptOptimizer = (
         if (isRateLimitError(error)) {
           toast.warning('Prompt optimization is temporarily rate limited. Wait a moment and try again.');
         } else {
-          toast.error('Failed to optimize. Make sure the server is running.');
+          toast.error("Couldn't optimize the prompt. Please try again.");
         }
         rollback();
         return null;

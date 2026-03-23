@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@promptstudio/system/components/ui/sheet';
 import { FEATURES } from '@/config/features.config';
 import { dispatchPromptFocusIntent } from '@features/workspace-shell/events';
 import type { PromptHistoryEntry } from '@/features/prompt-optimizer/types/domain/prompt-session';
@@ -11,7 +10,7 @@ import { CharactersPanel } from './components/panels/CharactersPanel';
 import { StylesPanel } from './components/panels/StylesPanel';
 import { useToolSidebarState } from './hooks/useToolSidebarState';
 import type { ToolPanelType, ToolSidebarProps } from './types';
-import { useSidebarSessionsDomain } from './context';
+import { useSidebarSessionsDomain, useSidebarWorkspaceDomain } from './context';
 
 /**
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
@@ -24,12 +23,14 @@ import { useSidebarSessionsDomain } from './context';
  * Requirement 16.1-16.4: Tool panel integration with Create and Studio tools
  */
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
-  const { user } = props;
+  const { user, forceDefaultPanel } = props;
   const sessions = useSidebarSessionsDomain();
+  const workspace = useSidebarWorkspaceDomain();
   const onSessionCreateNew = sessions?.onCreateNew;
   const onSessionLoadFromHistory = sessions?.onLoadFromHistory;
 
-  const { activePanel, setActivePanel } = useToolSidebarState('studio');
+  const stateOptions = useMemo(() => ({ forceDefault: forceDefaultPanel }), [forceDefaultPanel]);
+  const { activePanel, setActivePanel } = useToolSidebarState('studio', stateOptions);
   const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
   const activePanelRef = useRef(activePanel);
   useEffect(() => {
@@ -46,14 +47,6 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       }
     },
     [isCanvasFirstLayout, setActivePanel]
-  );
-  const handleSheetOpenChange = useCallback(
-    (open: boolean): void => {
-      if (!open) {
-        setActivePanel('studio');
-      }
-    },
-    [setActivePanel]
   );
   const handleSessionsBack = useCallback((): void => {
     setActivePanel('studio');
@@ -102,70 +95,36 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       return <StylesPanel />;
     }
 
-    if (panel === 'apps') {
-      return (
-        <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-          <div className="text-sm font-semibold text-tool-text-dim">Apps</div>
-          <div className="mt-2 text-xs text-tool-text-subdued">
-            Third-party integrations coming soon.
-          </div>
-        </div>
-      );
-    }
-
     return null;
   };
 
-  const isSheetPanelActive = activePanel !== 'studio';
-  const sheetTitle = useMemo((): string => {
-    switch (activePanel) {
-      case 'sessions':
-        return 'Sessions';
-      case 'characters':
-        return 'Characters';
-      case 'styles':
-        return 'Styles';
-      case 'apps':
-        return 'Apps';
-      case 'studio':
-      default:
-        return 'Studio';
-    }
-  }, [activePanel]);
+  const isOverlayPanelActive = isCanvasFirstLayout && activePanel !== 'studio';
+  const overlayPanelContent = isOverlayPanelActive ? renderPanelContent(activePanel) : null;
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full overflow-visible">
       <ToolRail
         activePanel={activePanel}
         onPanelChange={handlePanelChange}
+        onGalleryToggle={workspace?.toggleGallery}
         user={user}
       />
       {isCanvasFirstLayout ? (
-        isSheetPanelActive ? (
-          <Sheet
-            modal={false}
-            open={true}
-            onOpenChange={handleSheetOpenChange}
+        overlayPanelContent ? (
+          <div
+            className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] text-white shadow-[24px_0_80px_rgba(0,0,0,0.45)]"
+            data-testid="tool-sidebar-overlay-panel"
           >
-            <SheetContent
-              side="left"
-              className="w-[400px] border-l border-r border-tool-rail-border bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] p-0 text-white sm:max-w-none"
-            >
-              <SheetTitle className="sr-only">{sheetTitle} panel</SheetTitle>
-              <SheetDescription className="sr-only">
-                Tool sidebar panel content.
-              </SheetDescription>
-              <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
-                <div
-                  key={activePanel}
-                  className="motion-presence-panel h-full ps-animate-fade-in"
-                  data-motion-state="entered"
-                >
-                  {renderPanelContent(activePanel)}
-                </div>
+            <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
+              <div
+                key={activePanel}
+                className="motion-presence-panel h-full ps-animate-fade-in"
+                data-motion-state="entered"
+              >
+                {overlayPanelContent}
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          </div>
         ) : null
       ) : (
         <ToolPanel activePanel={activePanel}>

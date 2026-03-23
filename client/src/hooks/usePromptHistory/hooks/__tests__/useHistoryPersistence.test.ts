@@ -162,6 +162,94 @@ describe('useHistoryPersistence', () => {
     expect(setIsLoadingHistory).toHaveBeenLastCalledWith(false);
   });
 
+  it('merges remote history with local draft-only entries and collapses promoted duplicates by uuid', async () => {
+    const setHistory = vi.fn();
+    const remoteEntry: PromptHistoryEntry = {
+      ...baseEntry,
+      id: 'session-remote',
+      uuid: 'uuid-shared',
+      timestamp: '2025-01-02T00:00:00.000Z',
+      input: '',
+      generationParams: null,
+      keyframes: null,
+      brainstormContext: null,
+      highlightCache: null,
+      versions: [],
+    };
+    const localPromotedDraft: PromptHistoryEntry = {
+      ...baseEntry,
+      id: 'draft-1',
+      uuid: 'uuid-shared',
+      timestamp: '2025-01-03T00:00:00.000Z',
+      input: 'local draft input',
+      generationParams: { duration: 8 },
+      keyframes: [{ id: 'kf-1', url: 'https://example.com/frame.png' }],
+      brainstormContext: { topic: 'city' },
+      highlightCache: { signature: 'sig-local' },
+      versions: [
+        {
+          versionId: 'v1',
+          signature: 'sig-v1',
+          prompt: 'prompt',
+          timestamp: '2025-01-03T00:00:00.000Z',
+        },
+      ],
+    };
+    const localOnlyDraft: PromptHistoryEntry = {
+      ...baseEntry,
+      id: 'draft-2',
+      uuid: 'uuid-local-only',
+      timestamp: '2025-01-04T00:00:00.000Z',
+      input: 'keep me local',
+      output: '',
+    };
+
+    mockLoadFromFirestore.mockResolvedValue([remoteEntry]);
+    mockLoadFromLocalStorage.mockResolvedValue([localPromotedDraft, localOnlyDraft]);
+
+    const { result } = renderHook(() =>
+      useHistoryPersistence(
+        createHookOptions({
+          user: { uid: 'user-1' },
+          setHistory,
+        })
+      )
+    );
+
+    await act(async () => {
+      await result.current.loadHistoryFromFirestore('user-1');
+    });
+
+    const mergedEntries = setHistory.mock.calls.at(-1)?.[0] as PromptHistoryEntry[];
+    expect(mergedEntries).toHaveLength(2);
+    expect(mergedEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'session-remote',
+          uuid: 'uuid-shared',
+          input: 'local draft input',
+          generationParams: { duration: 8 },
+          keyframes: [{ id: 'kf-1', url: 'https://example.com/frame.png' }],
+          brainstormContext: { topic: 'city' },
+          highlightCache: { signature: 'sig-local' },
+          versions: [
+            expect.objectContaining({
+              versionId: 'v1',
+              signature: 'sig-v1',
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          id: 'draft-2',
+          uuid: 'uuid-local-only',
+          input: 'keep me local',
+        }),
+      ])
+    );
+    expect(mergedEntries.find((entry) => entry.id === 'draft-1')).toBeUndefined();
+    expect(mockSyncToLocalStorage).toHaveBeenCalledWith(mergedEntries);
+  });
+
   it('falls back to localStorage when firestore load fails', async () => {
     const setHistory = vi.fn();
     const setIsLoadingHistory = vi.fn();
@@ -221,6 +309,37 @@ describe('useHistoryPersistence', () => {
         versions: [],
       })
     );
+  });
+
+  it('persists draft entries to local storage when requested', () => {
+    const addEntry = vi.fn();
+
+    const { result } = renderHook(() =>
+      useHistoryPersistence(
+        createHookOptions({
+          addEntry,
+        })
+      )
+    );
+
+    act(() => {
+      result.current.createDraft({
+        id: 'draft-persisted',
+        mode: 'video',
+        targetModel: 'kling',
+        generationParams: { duration: 8 },
+        input: 'persist me',
+        persist: true,
+      });
+    });
+
+    expect(mockSyncToLocalStorage).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'draft-persisted',
+        uuid: 'generated-uuid-1',
+        input: 'persist me',
+      }),
+    ]);
   });
 
   it('saveToHistory updates existing entry by uuid and reports failures via toast', async () => {
@@ -330,6 +449,40 @@ describe('useHistoryPersistence', () => {
     });
   });
 
+  it('persists draft prompt updates locally without calling the remote repository', () => {
+    const updateEntry = vi.fn();
+
+    const { result } = renderHook(() =>
+      useHistoryPersistence(
+        createHookOptions({
+          user: { uid: 'user-1' },
+          history: [{ ...baseEntry, id: 'draft-1' }],
+          updateEntry,
+        })
+      )
+    );
+
+    act(() => {
+      result.current.updateEntryPersisted('uuid-1', 'draft-1', {
+        input: 'changed input',
+        title: 'Changed title',
+        targetModel: 'model-z',
+      });
+    });
+
+    expect(mockUpdatePrompt).not.toHaveBeenCalled();
+    expect(updateEntry).toHaveBeenCalledWith(
+      'uuid-1',
+      expect.objectContaining({
+        id: 'draft-1',
+        input: 'changed input',
+        title: 'Changed title',
+        targetModel: 'model-z',
+      })
+    );
+    expect(mockSyncToLocalStorage).toHaveBeenCalled();
+  });
+
   it('debounces version writes and persists only latest payload after initial load', async () => {
     vi.useFakeTimers();
     const updateEntry = vi.fn();
@@ -380,6 +533,42 @@ describe('useHistoryPersistence', () => {
 
     expect(mockUpdateVersions).toHaveBeenCalledTimes(1);
     expect(mockUpdateVersions).toHaveBeenCalledWith('user-2', 'uuid-1', 'doc-1', versionsB);
+  });
+
+  it('persists draft version updates locally without remote promotion', async () => {
+    const updateEntry = vi.fn();
+    const versions: PromptVersionEntry[] = [
+      {
+        versionId: 'v1',
+        signature: 'sig-1',
+        prompt: 'prompt-1',
+        timestamp: '2025-01-01T00:00:00.000Z',
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useHistoryPersistence(
+        createHookOptions({
+          user: { uid: 'user-1' },
+          history: [{ ...baseEntry, id: 'draft-1' }],
+          updateEntry,
+        })
+      )
+    );
+
+    act(() => {
+      result.current.updateEntryVersions('uuid-1', 'draft-1', versions);
+    });
+
+    expect(mockUpdateVersions).not.toHaveBeenCalled();
+    expect(updateEntry).toHaveBeenCalledWith(
+      'uuid-1',
+      expect.objectContaining({
+        id: 'draft-1',
+        versions,
+      })
+    );
+    expect(mockSyncToLocalStorage).toHaveBeenCalled();
   });
 
   it('deleteFromHistory reloads and shows error toast when delete fails', async () => {

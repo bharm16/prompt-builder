@@ -123,6 +123,7 @@ export function PromptCanvasView({
   onExport,
   onShare,
   onEnhance,
+  isEnhancing = false,
 }: PromptCanvasViewProps): React.ReactElement {
   if (FEATURES.CANVAS_FIRST_LAYOUT) {
     return (
@@ -186,6 +187,7 @@ export function PromptCanvasView({
         i2vMotionAlternatives={i2vMotionAlternatives}
         onLockedAlternativeClick={onLockedAlternativeClick}
         {...(onEnhance ? { onEnhance } : {})}
+        isEnhancing={isEnhancing}
       />
     );
   }

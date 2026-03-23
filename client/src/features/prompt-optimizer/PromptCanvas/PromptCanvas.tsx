@@ -1000,6 +1000,7 @@ export function PromptCanvas({
       onExport={handleExport}
       onShare={handleShare}
       onEnhance={handleEnhance}
+      isEnhancing={isOptimizing}
     />
   );
 }

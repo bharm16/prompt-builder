@@ -11,6 +11,7 @@ import type { LockedSpan } from '@/features/prompt-optimizer/types';
 const log = logger.child('usePromptOptimizerState');
 
 interface RollbackSnapshot {
+  inputPrompt: string;
   optimizedPrompt: string;
   displayedPrompt: string;
   genericOptimizedPrompt: string | null;
@@ -18,6 +19,8 @@ interface RollbackSnapshot {
   previewPrompt: string | null;
   previewAspectRatio: string | null;
   qualityScore: number | null;
+  lockedSpans: LockedSpan[];
+  improvementContext: unknown | null;
 }
 
 export interface PromptOptimizerState {
@@ -137,6 +140,7 @@ function reducer(
       return {
         ...state,
         rollbackSnapshot: {
+          inputPrompt: state.inputPrompt,
           optimizedPrompt: state.optimizedPrompt,
           displayedPrompt: state.displayedPrompt,
           genericOptimizedPrompt: state.genericOptimizedPrompt,
@@ -144,6 +148,8 @@ function reducer(
           previewPrompt: state.previewPrompt,
           previewAspectRatio: state.previewAspectRatio,
           qualityScore: state.qualityScore,
+          lockedSpans: state.lockedSpans,
+          improvementContext: state.improvementContext,
         },
       };
     case 'ROLLBACK':
@@ -161,21 +167,13 @@ function reducer(
         isProcessing: false,
       };
     case 'START_OPTIMIZATION':
-      log.debug('Starting optimization - resetting state', {
+      log.debug('Starting optimization', {
         action: 'START_OPTIMIZATION',
       });
       return {
         ...state,
         isProcessing: true,
-        optimizedPrompt: '',
-        displayedPrompt: '',
-        genericOptimizedPrompt: null,
-        artifactKey: null,
-        previewPrompt: null,
-        previewAspectRatio: null,
-        qualityScore: null,
         skipAnimation: false,
-        lockedSpans: state.lockedSpans,
       };
     case 'RESET':
       log.debug('Resetting state to initial', {

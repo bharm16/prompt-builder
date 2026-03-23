@@ -3,7 +3,7 @@ import type { User, PromptHistoryEntry } from '@features/prompt-optimizer/types/
 import type { Asset, AssetType } from '@shared/types/asset';
 import type { AppIcon } from '@/types';
 
-export type ToolPanelType = 'sessions' | 'studio' | 'apps' | 'characters' | 'styles';
+export type ToolPanelType = 'sessions' | 'studio' | 'characters' | 'styles';
 
 export type DraftModel = 'flux-kontext' | 'wan-2.2' | 'wan-2.5';
 
@@ -107,11 +107,13 @@ export type OptionalToolSidebarWorkspaceDomain = ToolSidebarWorkspaceDomain | nu
 
 export interface ToolSidebarProps {
   user: User | null;
+  forceDefaultPanel?: boolean | undefined;
 }
 
 export interface ToolRailProps {
   activePanel: ToolPanelType;
   onPanelChange: (panel: ToolPanelType) => void;
+  onGalleryToggle?: (() => void) | undefined;
   user: User | null;
 }
 

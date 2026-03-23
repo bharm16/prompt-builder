@@ -10,7 +10,7 @@ const loadActivePanel = (fallback: ToolPanelType): ToolPanelType => {
   if (typeof window === 'undefined') return fallback;
   try {
     const value = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    if (value === 'create' || value === 'continuity') return 'studio';
+    if (value === 'create' || value === 'continuity' || value === 'apps') return 'studio';
     if (value && VALID_PANELS.has(value)) return value as ToolPanelType;
     return fallback;
   } catch {
@@ -35,9 +35,12 @@ interface UseToolSidebarStateReturn {
 }
 
 export function useToolSidebarState(
-  defaultPanel: ToolPanelType = 'studio'
+  defaultPanel: ToolPanelType = 'studio',
+  { forceDefault = false }: { forceDefault?: boolean | undefined } = {}
 ): UseToolSidebarStateReturn {
-  const [activePanel, setActivePanelState] = useState<ToolPanelType>(() => loadActivePanel(defaultPanel));
+  const [activePanel, setActivePanelState] = useState<ToolPanelType>(() =>
+    forceDefault ? defaultPanel : loadActivePanel(defaultPanel)
+  );
   const [isPanelCollapsed, setIsPanelCollapsedState] = useState(() => loadIsPanelCollapsed());
 
   const setActivePanel = useCallback((panel: ToolPanelType) => {

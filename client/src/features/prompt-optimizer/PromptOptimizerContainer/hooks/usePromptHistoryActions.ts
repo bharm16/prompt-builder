@@ -1,16 +1,9 @@
 import { useCallback } from 'react';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
 import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
 import type { PromptHistory } from '../../context/types';
-import { hydrateKeyframes } from '../../utils/keyframeTransforms';
 
 type UsePromptHistoryActionsParams = {
   promptHistory: Pick<PromptHistory, 'saveToHistory' | 'updateEntryPersisted'>;
-  setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
-  setStartFrame: (tile: KeyframeTile | null) => void;
-  clearEndFrame: () => void;
-  clearVideoReferences: () => void;
-  clearExtendVideo: () => void;
   loadFromHistory: (entry: PromptHistoryEntry) => void;
   handleCreateNew: () => void;
 };
@@ -24,50 +17,20 @@ export type UsePromptHistoryActionsResult = {
 
 export function usePromptHistoryActions({
   promptHistory,
-  setKeyframes,
-  setStartFrame,
-  clearEndFrame,
-  clearVideoReferences,
-  clearExtendVideo,
   loadFromHistory,
   handleCreateNew,
 }: UsePromptHistoryActionsParams): UsePromptHistoryActionsResult {
   const { saveToHistory, updateEntryPersisted } = promptHistory;
   const handleLoadFromHistory = useCallback(
     (entry: PromptHistoryEntry): void => {
-      const hydrated = hydrateKeyframes(entry.keyframes ?? []);
-      setKeyframes(hydrated);
-      setStartFrame(hydrated[0] ?? null);
-      clearEndFrame();
-      clearVideoReferences();
-      clearExtendVideo();
       loadFromHistory(entry);
     },
-    [
-      clearEndFrame,
-      clearExtendVideo,
-      clearVideoReferences,
-      loadFromHistory,
-      setKeyframes,
-      setStartFrame,
-    ]
+    [loadFromHistory]
   );
 
   const handleCreateNewWithKeyframes = useCallback((): void => {
-    setKeyframes([]);
-    setStartFrame(null);
-    clearEndFrame();
-    clearVideoReferences();
-    clearExtendVideo();
     handleCreateNew();
-  }, [
-    clearEndFrame,
-    clearExtendVideo,
-    clearVideoReferences,
-    handleCreateNew,
-    setKeyframes,
-    setStartFrame,
-  ]);
+  }, [handleCreateNew]);
 
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {

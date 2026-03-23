@@ -17,7 +17,7 @@ interface AssetTypeSelectorProps {
 
 export function AssetTypeSelector({ value, onChange }: AssetTypeSelectorProps): React.ReactElement {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Asset type">
       {ASSET_TYPE_LIST.map((typeConfig) => {
         const Icon = TYPE_ICONS[typeConfig.id] || Box;
         const isActive = value === typeConfig.id;
@@ -25,6 +25,7 @@ export function AssetTypeSelector({ value, onChange }: AssetTypeSelectorProps): 
           <button
             key={typeConfig.id}
             type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(typeConfig.id as AssetType)}
             className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors ${
               isActive

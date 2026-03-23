@@ -254,17 +254,6 @@ export function usePromptOptimization({
       const resolvedCompilePrompt =
         (compilePrompt || prompt).trim();
 
-      const optimizationInput = isCompileOnly ? compilePrompt || prompt : prompt;
-      const shouldClearBeforeOptimization =
-        typeof optimizationInput === 'string' &&
-        optimizationInput.trim() &&
-        !(isCompileOnly && !effectiveTargetModel);
-
-      if (shouldClearBeforeOptimization) {
-        setShowResults(true);
-        setDisplayedPromptSilently('');
-      }
-
       const resolvedStartImageUrl = normalizedOptions?.startImage
         ? normalizedOptions.startImage
         : await resolveOptimizationStartImageUrl(

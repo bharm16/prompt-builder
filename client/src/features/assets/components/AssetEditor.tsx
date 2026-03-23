@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@promptstudio/system/components/ui/dialog';
@@ -117,6 +118,11 @@ export function AssetEditor({
           <DialogTitle className="text-lg font-semibold text-foreground">
             {mode === 'create' ? 'Create asset' : 'Edit asset'}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {mode === 'create'
+              ? 'Configure your asset type, name, and description.'
+              : 'Update your asset name and description.'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">

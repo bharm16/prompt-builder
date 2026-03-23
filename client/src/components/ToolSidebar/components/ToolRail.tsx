@@ -9,6 +9,7 @@ import type { ToolRailProps } from '../types';
 export function ToolRail({
   activePanel,
   onPanelChange,
+  onGalleryToggle,
   user,
 }: ToolRailProps): ReactElement {
   const location = useLocation();
@@ -66,7 +67,7 @@ export function ToolRail({
           icon={GridFour}
           label="Gallery"
           isActive={false}
-          onClick={() => {}}
+          onClick={() => onGalleryToggle?.()}
         />
         <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
         {sessionsItem ? (

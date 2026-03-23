@@ -19,7 +19,7 @@ import { TopNavbar } from './variants/TopNavbar';
 
 export const AppShell = memo(function AppShell(props: AppShellProps): ReactElement {
   const { children } = props;
-  const { variant, navItems } = useNavigationConfig();
+  const { variant, navItems, currentPath } = useNavigationConfig();
   const user = useAuthUser();
 
   if (variant === 'none') {
@@ -35,10 +35,13 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
     );
   }
 
+  // Non-session sidebar routes (e.g. /assets) should not restore persisted panel state
+  const isNonSessionRoute = currentPath === '/assets';
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
       <CreditBalanceProvider userId={user?.uid ?? null}>
-        <ToolSidebar user={user} />
+        <ToolSidebar user={user} forceDefaultPanel={isNonSessionRoute} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
           {children}
         </div>

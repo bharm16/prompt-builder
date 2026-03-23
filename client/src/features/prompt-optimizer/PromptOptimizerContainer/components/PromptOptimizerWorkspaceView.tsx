@@ -99,6 +99,7 @@ export function PromptOptimizerWorkspaceView({
         />
         {assetEditorState && (
           <AssetEditor
+            key={`${assetEditorState.mode}-${assetEditorState.preselectedType ?? 'none'}-${assetEditorState.asset?.id ?? 'new'}`}
             mode={assetEditorState.mode}
             asset={assetEditorState.asset || undefined}
             preselectedType={assetEditorState.preselectedType || undefined}

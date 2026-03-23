@@ -1,4 +1,4 @@
-import { List, SlidersHorizontal, LayoutGrid, Users, Palette } from '@promptstudio/system/components/ui';
+import { List, SlidersHorizontal, Users, Palette } from '@promptstudio/system/components/ui';
 import type { ToolNavItem } from '../types';
 
 export const toolNavItems: ToolNavItem[] = [
@@ -12,12 +12,6 @@ export const toolNavItems: ToolNavItem[] = [
     id: 'studio',
     icon: SlidersHorizontal,
     label: 'Tool',
-    variant: 'default',
-  },
-  {
-    id: 'apps',
-    icon: LayoutGrid,
-    label: 'Apps',
     variant: 'default',
   },
   {

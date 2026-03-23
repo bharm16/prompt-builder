@@ -50,6 +50,7 @@ describe('ToolSidebar context fallback', () => {
     render(<ToolSidebar user={null} />);
 
     expect(screen.getByTestId('tool-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('tool-sidebar-overlay-panel')).toBeInTheDocument();
     expect(screen.getByTestId('sessions-query')).toHaveTextContent('none');
   });
 });

@@ -26,6 +26,7 @@ interface CanvasSettingsRowProps {
   onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
   onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
   onEnhance?: () => void;
+  isEnhancing?: boolean;
 }
 
 const parseAspectRatio = (generationParams: Record<string, unknown>): string => {
@@ -64,7 +65,7 @@ function BarBtn({
       type="button"
       onClick={onClick}
       {...buttonProps}
-      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors ${
+      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         accent
           ? 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active'
           : active
@@ -88,6 +89,7 @@ export function CanvasSettingsRow({
   onStartFrameUpload,
   onUploadSidebarImage,
   onEnhance,
+  isEnhancing = false,
 }: CanvasSettingsRowProps): React.ReactElement {
   const { controls } = useGenerationControlsContext();
   const { domain } = useGenerationControlsStoreState();
@@ -269,9 +271,10 @@ export function CanvasSettingsRow({
         <BarBtn
           accent
           className="w-[68px] justify-center px-0"
-          aria-label="Enhance prompt"
-          title="Enhance"
-          {...(onEnhance
+          aria-label={isEnhancing ? 'Enhancing prompt…' : 'Enhance prompt'}
+          title={isEnhancing ? 'Enhancing…' : 'Enhance'}
+          disabled={isEnhancing || !onEnhance}
+          {...(onEnhance && !isEnhancing
             ? {
                 onClick: (event: React.MouseEvent) => {
                   event.stopPropagation();
@@ -280,7 +283,13 @@ export function CanvasSettingsRow({
               }
             : {})}
         >
-          <MagicWand size={14} />
+          {isEnhancing ? (
+            <svg className="animate-spin" width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="24 10" />
+            </svg>
+          ) : (
+            <MagicWand size={14} />
+          )}
         </BarBtn>
       </div>
 

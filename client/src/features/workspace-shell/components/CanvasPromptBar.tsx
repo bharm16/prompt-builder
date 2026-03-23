@@ -76,6 +76,7 @@ interface CanvasPromptBarProps {
   onStartFrameUpload?: (file: File) => void | Promise<void>;
   onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
   onEnhance?: () => void;
+  isEnhancing?: boolean;
 }
 
 export function CanvasPromptBar({
@@ -137,6 +138,7 @@ export function CanvasPromptBar({
   onStartFrameUpload,
   onUploadSidebarImage,
   onEnhance,
+  isEnhancing = false,
 }: CanvasPromptBarProps): React.ReactElement {
   const isEmptyLayout = layoutMode === 'empty';
   const [isFocused, setIsFocused] = useState(false);
@@ -475,6 +477,7 @@ export function CanvasPromptBar({
           {...(onStartFrameUpload ? { onStartFrameUpload } : {})}
           {...(onUploadSidebarImage ? { onUploadSidebarImage } : {})}
           {...(onEnhance ? { onEnhance } : {})}
+          isEnhancing={isEnhancing}
         />
       </div>
     </div>

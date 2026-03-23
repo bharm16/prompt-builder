@@ -100,15 +100,34 @@ const RATE_LIMIT_CONFIG: RateLimitConfig = {
  * CORS configuration
  * Manages allowed origins based on environment
  */
-const DEFAULT_DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
+const DEFAULT_DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'] as const;
 
-const CORS_CONFIG = {
-  // Development origins fall back to DEFAULT_DEV_ORIGINS when ALLOWED_ORIGINS is unset
-  development: process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-    : DEFAULT_DEV_ORIGINS,
-  // Production origins come from environment variables (required by env.ts Zod schema)
-} as const;
+const parseConfiguredOrigins = (...values: Array<string | undefined>): string[] => {
+  const deduped = new Set<string>();
+
+  for (const value of values) {
+    if (!value) continue;
+    for (const origin of value.split(',')) {
+      const normalized = origin.trim();
+      if (!normalized) continue;
+      deduped.add(normalized);
+    }
+  }
+
+  return Array.from(deduped);
+};
+
+const resolveAllowedOrigins = (): string[] => {
+  if (process.env.NODE_ENV === 'production') {
+    return parseConfiguredOrigins(process.env.ALLOWED_ORIGINS, process.env.FRONTEND_URL);
+  }
+
+  return parseConfiguredOrigins(
+    ...DEFAULT_DEV_ORIGINS,
+    process.env.FRONTEND_URL,
+    process.env.ALLOWED_ORIGINS
+  );
+};
 
 /**
  * Security headers configuration
@@ -151,7 +170,11 @@ const SECURITY_CONFIG = {
     'Cross-Origin-Resource-Policy': 'cross-origin',
   },
   productionHeaders: {
-    'Cross-Origin-Embedder-Policy': 'require-corp',
+    // `credentialless` allows cross-origin resources (like signed GCS URLs for
+    // preview media) that don't carry credentials to load without requiring
+    // Cross-Origin-Resource-Policy headers. The stricter `require-corp` was
+    // blocking preview images because GCS doesn't set CORP headers on signed URLs.
+    'Cross-Origin-Embedder-Policy': 'credentialless',
     'Cross-Origin-Opener-Policy': 'same-origin',
   },
 } as const;
@@ -319,18 +342,18 @@ export function applyRateLimitingMiddleware(
     res.status(options.statusCode).send(options.message);
   };
 
-  // Asset view routes are high-volume, read-only signed-URL generators.
-  // They have a dedicated limiter below — skip them in the general limiter
-  // to avoid exhausting the global budget on idempotent URL lookups.
+  // Routes with dedicated limiters (/api/, /llm/, /health) are skipped from
+  // the general limiter to prevent double-counting. Previously only asset-view
+  // routes were skipped, causing the 15-minute general budget (100 req in prod,
+  // 25 without Redis) to be exhausted by normal API traffic, which then blocked
+  // all routes including static assets and unrelated pages.
   const isGeneralSkipped = (req: express.Request): boolean => {
     const p = req.path;
     return (
       p === '/metrics' ||
-      p === '/api/role-classify' ||
-      p === '/api/preview/image/view' ||
-      p === '/api/preview/image/view-batch' ||
-      p === '/api/preview/video/view' ||
-      p === '/api/storage/view-url'
+      p.startsWith('/api/') ||
+      p.startsWith('/llm/') ||
+      p.startsWith('/health')
     );
   };
 
@@ -491,13 +514,7 @@ export function applyCorsMiddleware(app: Application): void {
         }
 
         // Get allowed origins based on environment
-        const allowedOrigins =
-          process.env.NODE_ENV === 'production'
-            ? (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
-                .split(',')
-                .map((o) => o.trim())
-                .filter(Boolean)
-            : CORS_CONFIG.development;
+        const allowedOrigins = resolveAllowedOrigins();
 
         // Validate CORS configuration in production
         if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {

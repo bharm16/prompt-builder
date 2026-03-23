@@ -39,6 +39,20 @@ const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
 const EXPIRY_SAFETY_WINDOW_MS = 2 * 60 * 1000;
 const PREVIEW_ROUTE_PREFIX = '/api/preview/';
 const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
+const MEDIA_PROXY_PATH = '/api/storage/proxy';
+
+/**
+ * Rewrite a raw GCS signed URL to go through the app-origin media proxy.
+ * This avoids ORB (Opaque Response Blocking) failures when COEP is set to
+ * 'credentialless' and the GCS bucket lacks CORS headers.
+ */
+const rewriteGcsUrlToProxy = (url: string | null): string | null => {
+  if (!url) return null;
+  if (!hasGcsSignedUrlParams(url)) return url;
+  // Already proxied
+  if (url.includes(MEDIA_PROXY_PATH)) return url;
+  return `${MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+};
 
 const getErrorStatus = (error: unknown): number | null => {
   if (!error || typeof error !== 'object') return null;
@@ -277,8 +291,13 @@ export async function resolveMediaUrl(req: MediaUrlRequest): Promise<MediaUrlRes
 
   inflight.set(cacheKey, task);
   try {
-    const result = await task;
-    const expiresAtMs = toExpiresAtMs(result.expiresAt) ?? (result.url ? parseGcsSignedUrlExpiryMs(result.url) : null);
+    const rawResult = await task;
+    // Rewrite GCS signed URLs through the media proxy to avoid ORB failures
+    const result: MediaUrlResult = {
+      ...rawResult,
+      url: rewriteGcsUrlToProxy(rawResult.url),
+    };
+    const expiresAtMs = toExpiresAtMs(result.expiresAt) ?? (rawResult.url ? parseGcsSignedUrlExpiryMs(rawResult.url) : null);
     cache.set(cacheKey, { result, expiresAtMs, cachedAt: Date.now() });
     return result;
   } finally {

@@ -14,6 +14,7 @@ import { createAPIRoutes } from '@routes/api.routes';
 import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import { createSuggestionsRoute } from '@routes/suggestions';
+import { createMediaProxyRoutes } from '@routes/storage/mediaProxy.routes';
 import type { StorageRoutesService } from '@routes/storage.routes';
 import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
 import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
@@ -21,6 +22,7 @@ import type { ModelIntelligenceService } from '@services/model-intelligence/Mode
 import type { VideoConceptServiceContract } from '@routes/video/types';
 import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
+import { STORAGE_CONFIG } from '@services/storage/config/storageConfig';
 import { resolveOptionalService } from './resolve-utils.ts';
 import type { RuntimeFlags } from '../runtime-flags';
 
@@ -61,6 +63,11 @@ export function registerApiRoutes(
         'videoConceptService',
         'video-concept'
       );
+
+  // Media proxy — no auth required (signed URL is the authorization).
+  // Must be registered before the auth middleware on /api.
+  const mediaProxyRoutes = createMediaProxyRoutes(STORAGE_CONFIG.bucketName);
+  app.use('/api/storage', mediaProxyRoutes);
 
   // Main API routes
   const apiRoutes = createAPIRoutes({

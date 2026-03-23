@@ -1,12 +1,15 @@
 import { useCallback } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import { createHighlightSignature } from '@/features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { useDebugLogger } from '@hooks/useDebugLogger';
 import type { usePromptOptimizer } from '@hooks/usePromptOptimizer';
-import type { HighlightSnapshot, PromptHistoryEntry } from './types';
-import type { SuggestionsData } from '../PromptCanvas/types';
+import type {
+  HighlightSnapshot,
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptVersionEntry,
+} from './types';
 
 type DebugLogger = ReturnType<typeof useDebugLogger>;
 type PromptOptimizer = ReturnType<typeof usePromptOptimizer>;
@@ -17,34 +20,31 @@ interface PromptHistoryActionsOptions {
   promptOptimizer: PromptOptimizer;
   promptHistory: {
     createDraft: (params: {
+      id?: string | null;
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
       keyframes?: PromptHistoryEntry['keyframes'];
       uuid?: string;
+      input?: string;
+      output?: string;
+      title?: string | null;
+      brainstormContext?: Record<string, unknown> | null;
+      highlightCache?: Record<string, unknown> | null;
+      versions?: PromptVersionEntry[];
+      persist?: boolean;
     }) => { uuid: string; id: string };
   };
   selectedMode: string;
   selectedModel: string;
   generationParams: CapabilityValues;
-  applyInitialHighlightSnapshot: (
-    snapshot: HighlightSnapshot | null,
-    options?: { bumpVersion?: boolean; markPersisted?: boolean }
-  ) => void;
-  resetEditStacks: () => void;
-  resetVersionEdits: () => void;
-  setSuggestionsData: (data: SuggestionsData | null) => void;
-  setConceptElements: (data: unknown | null) => void;
-  setPromptContext: (context: PromptContext | null) => void;
-  setGenerationParams: (params: CapabilityValues) => void;
-  setSelectedMode: (mode: string) => void;
-  setSelectedModel: (model: string) => void;
-  setShowResults: (show: boolean) => void;
-  setCurrentPromptUuid: (value: string | null) => void;
-  setCurrentPromptDocId: (value: string | null) => void;
-  persistedSignatureRef: React.MutableRefObject<string | null>;
+  currentPromptUuid: string | null;
+  currentPromptDocId: string | null;
+  promptContext: PromptContext | null;
+  currentKeyframes: PromptKeyframe[] | null;
+  currentHighlightSnapshot: HighlightSnapshot | null;
+  currentVersions: PromptVersionEntry[];
   isApplyingHistoryRef: React.MutableRefObject<boolean>;
-  skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
 
 interface PromptHistoryActionsResult {
@@ -59,6 +59,35 @@ const isRemoteSessionId = (value: string | null | undefined): value is string =>
   return normalized.length > 0 && !normalized.startsWith('draft-');
 };
 
+const hasMeaningfulDraftState = (
+  inputPrompt: string,
+  displayedPrompt: string,
+  optimizedPrompt: string,
+  generationParams: CapabilityValues,
+  keyframes: PromptKeyframe[] | null,
+  versions: PromptVersionEntry[]
+): boolean => {
+  if (inputPrompt.trim().length > 0) return true;
+  if (displayedPrompt.trim().length > 0) return true;
+  if (optimizedPrompt.trim().length > 0) return true;
+  if (Array.isArray(keyframes) && keyframes.length > 0) return true;
+  if (Array.isArray(versions) && versions.length > 0) return true;
+  return Object.keys(generationParams ?? {}).length > 0;
+};
+
+const serializePromptContext = (
+  promptContext: PromptContext | null
+): Record<string, unknown> | null => {
+  if (!promptContext) return null;
+  if (typeof promptContext.toJSON === 'function') {
+    return promptContext.toJSON() as unknown as Record<string, unknown>;
+  }
+  return {
+    elements: promptContext.elements,
+    metadata: promptContext.metadata,
+  };
+};
+
 export const usePromptHistoryActions = ({
   debug,
   navigate,
@@ -67,29 +96,21 @@ export const usePromptHistoryActions = ({
   selectedMode,
   selectedModel,
   generationParams,
-  applyInitialHighlightSnapshot,
-  resetEditStacks,
-  resetVersionEdits,
-  setSuggestionsData,
-  setConceptElements,
-  setPromptContext,
-  setGenerationParams,
-  setSelectedMode,
-  setSelectedModel,
-  setShowResults,
-  setCurrentPromptUuid,
-  setCurrentPromptDocId,
-  persistedSignatureRef,
+  currentPromptUuid,
+  currentPromptDocId,
+  promptContext,
+  currentKeyframes,
+  currentHighlightSnapshot,
+  currentVersions,
   isApplyingHistoryRef,
-  skipLoadFromUrlRef,
 }: PromptHistoryActionsOptions): PromptHistoryActionsResult => {
   const {
     setDisplayedPrompt,
-    resetPrompt,
     setInputPrompt,
     setOptimizedPrompt,
-    setPreviewPrompt,
-    setPreviewAspectRatio,
+    inputPrompt,
+    optimizedPrompt,
+    displayedPrompt,
   } = promptOptimizer;
   const { createDraft } = promptHistory;
 
@@ -104,60 +125,100 @@ export const usePromptHistoryActions = ({
     [setDisplayedPrompt, isApplyingHistoryRef]
   );
 
+  const persistCurrentWorkspaceLocallyIfNeeded = useCallback((): void => {
+    const hasRemoteSession = isRemoteSessionId(currentPromptDocId);
+    if (hasRemoteSession) {
+      return;
+    }
+
+    if (
+      !hasMeaningfulDraftState(
+        inputPrompt,
+        displayedPrompt,
+        optimizedPrompt,
+        generationParams,
+        currentKeyframes,
+        currentVersions
+      )
+    ) {
+      return;
+    }
+
+    createDraft({
+      ...(currentPromptUuid ? { uuid: currentPromptUuid } : {}),
+      ...(currentPromptDocId ? { id: currentPromptDocId } : {}),
+      mode: selectedMode,
+      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
+      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+      keyframes: Array.isArray(currentKeyframes) && currentKeyframes.length > 0 ? currentKeyframes : null,
+      input: inputPrompt,
+      output: displayedPrompt || optimizedPrompt,
+      brainstormContext: serializePromptContext(promptContext),
+      highlightCache:
+        currentHighlightSnapshot && typeof currentHighlightSnapshot === 'object'
+          ? (currentHighlightSnapshot as Record<string, unknown>)
+          : null,
+      versions: Array.isArray(currentVersions) ? currentVersions : [],
+      persist: true,
+    });
+  }, [
+    currentHighlightSnapshot,
+    currentKeyframes,
+    createDraft,
+    currentPromptDocId,
+    currentPromptUuid,
+    currentVersions,
+    displayedPrompt,
+    generationParams,
+    inputPrompt,
+    optimizedPrompt,
+    promptContext,
+    selectedMode,
+    selectedModel,
+  ]);
+
   const handleCreateNew = useCallback((): void => {
     debug.logAction('createNew');
-    skipLoadFromUrlRef.current = true;
-    resetPrompt();
-    setShowResults(false);
-    setSuggestionsData(null);
-    setConceptElements(null);
-    setPromptContext(null);
-    resetVersionEdits();
+    persistCurrentWorkspaceLocallyIfNeeded();
     const draft = createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
       generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
     });
-    setCurrentPromptUuid(draft.uuid);
-    setCurrentPromptDocId(draft.id);
-    applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-    persistedSignatureRef.current = null;
-    resetEditStacks();
-    if (isRemoteSessionId(draft.id)) {
-      navigate(`/session/${draft.id}`, { replace: true });
-    } else {
-      navigate('/', { replace: true });
-    }
-    // Allow future URL-based loads after the draft navigation settles.
-    // Mirror the `loadFromHistory` behavior to avoid leaving this ref stuck `true`.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        skipLoadFromUrlRef.current = false;
-      });
-    });
+
+    // Eagerly reset prompt state before navigation to prevent stale UI flash.
+    // usePromptLoader will re-apply blank state from the draft entry, but by
+    // then the old content would have been visible for one frame.
+    isApplyingHistoryRef.current = true;
+    setInputPrompt('');
+    setOptimizedPrompt('');
+    setDisplayedPrompt('');
+    setTimeout(() => {
+      isApplyingHistoryRef.current = false;
+    }, 0);
+
+    // Notify workspace to reset generation controls (start frame, keyframes,
+    // camera motion, etc.) which live outside the prompt state context.
+    // dispatchEvent is synchronous — listeners fire before navigate() below.
+    window.dispatchEvent(new Event('po:workspace-reset'));
+
+    navigate(`/session/${draft.id}`, { replace: true });
     window.setTimeout(() => {
       window.dispatchEvent(new Event('po:focus-editor'));
     }, 0);
     debug.logAction('createNewComplete');
   }, [
-    debug,
-    skipLoadFromUrlRef,
-    resetPrompt,
     createDraft,
+    debug,
+    generationParams,
+    isApplyingHistoryRef,
+    navigate,
+    persistCurrentWorkspaceLocallyIfNeeded,
     selectedMode,
     selectedModel,
-    generationParams,
-    setShowResults,
-    setSuggestionsData,
-    setConceptElements,
-    setPromptContext,
-    setCurrentPromptUuid,
-    setCurrentPromptDocId,
-    applyInitialHighlightSnapshot,
-    persistedSignatureRef,
-    resetEditStacks,
-    resetVersionEdits,
-    navigate,
+    setDisplayedPrompt,
+    setInputPrompt,
+    setOptimizedPrompt,
   ]);
 
   const loadFromHistory = useCallback(
@@ -170,95 +231,20 @@ export const usePromptHistoryActions = ({
       });
       debug.startTimer('loadFromHistory');
 
-      skipLoadFromUrlRef.current = true;
-      setCurrentPromptUuid(entry.uuid || null);
-      setCurrentPromptDocId(entry.id || null);
+      persistCurrentWorkspaceLocallyIfNeeded();
 
-      setInputPrompt(entry.input);
-      setOptimizedPrompt(entry.output);
-      setDisplayedPromptSilently(entry.output);
-      if (setPreviewPrompt) {
-        setPreviewPrompt(null);
-      }
-      if (setPreviewAspectRatio) {
-        setPreviewAspectRatio(null);
-      }
-      setSelectedMode('video');
-      setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
-      setGenerationParams(
-        entry.generationParams && typeof entry.generationParams === 'object'
-          ? (entry.generationParams as CapabilityValues)
-          : {}
-      );
-      setShowResults(Boolean(entry.output && entry.output.trim()));
-
-      const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
-        ? ({
-            ...(entry.highlightCache as Record<string, unknown>),
-            signature:
-              (entry.highlightCache as { signature?: string })?.signature ??
-              createHighlightSignature(entry.output ?? ''),
-          } as HighlightSnapshot)
-        : null;
-
-      applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
-      resetVersionEdits();
-      resetEditStacks();
-
-      if (entry.brainstormContext) {
-        try {
-          const contextData =
-            typeof entry.brainstormContext === 'string'
-              ? JSON.parse(entry.brainstormContext)
-              : entry.brainstormContext;
-          const restoredContext = PromptContext.fromJSON(contextData);
-          setPromptContext(restoredContext);
-          debug.logAction('contextRestored');
-        } catch (contextError) {
-          debug.logError(
-            'Failed to restore prompt context from history entry',
-            contextError as Error
-          );
-          setPromptContext(null);
-        }
-      } else {
-        setPromptContext(null);
-      }
-
-      if (isRemoteSessionId(entry.id)) {
+      if (typeof entry.id === 'string' && entry.id.trim()) {
         navigate(`/session/${entry.id}`, { replace: true });
-      } else if (entry.uuid) {
-        navigate('/', { replace: true });
       } else {
         navigate('/', { replace: true });
       }
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          skipLoadFromUrlRef.current = false;
-          debug.endTimer('loadFromHistory', 'History entry loaded');
-        });
-      });
+      debug.endTimer('loadFromHistory', 'Session navigation triggered');
     },
     [
       debug,
-      skipLoadFromUrlRef,
-      setCurrentPromptUuid,
-      setCurrentPromptDocId,
-      setInputPrompt,
-      setOptimizedPrompt,
-      setPreviewPrompt,
-      setPreviewAspectRatio,
-      setDisplayedPromptSilently,
-      setSelectedMode,
-      setSelectedModel,
-      setGenerationParams,
-      setShowResults,
-      applyInitialHighlightSnapshot,
-      resetEditStacks,
-      resetVersionEdits,
-      setPromptContext,
       navigate,
+      persistCurrentWorkspaceLocallyIfNeeded,
     ]
   );
 

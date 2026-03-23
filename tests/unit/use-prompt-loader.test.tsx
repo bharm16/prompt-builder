@@ -134,7 +134,6 @@ const createDefaults = (overrides: Partial<UsePromptLoaderParams> = {}): UseProm
 
   return {
     sessionId: 'session-1',
-    currentPromptUuid: null,
     navigate: vi.fn() as NavigateFunction,
     toast: createToast(),
     user: { uid: 'user-1' },
