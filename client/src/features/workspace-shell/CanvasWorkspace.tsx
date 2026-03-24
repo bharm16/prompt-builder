@@ -3,6 +3,7 @@ import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
 import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
 import type { AssetSuggestion } from '@/features/assets/hooks/useTriggerAutocomplete';
 import type { CameraPath } from '@/features/convergence/types';
+import { sanitizeText } from '@/features/span-highlighting';
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
@@ -107,6 +108,9 @@ const parseDurationSeconds = (generationParams: Record<string, unknown>): number
   }
   return 5;
 };
+
+const normalizePromptForComparison = (value: string | null | undefined): string =>
+  sanitizeText(typeof value === 'string' ? value : '').trim();
 
 export function CanvasWorkspace({
   generationsPanelProps,
@@ -260,6 +264,15 @@ export function CanvasWorkspace({
   }, [generationsPanelProps.promptVersionId]);
 
   const heroGeneration = generationsRuntime.heroGeneration;
+  const displayHeroGeneration = useMemo(() => {
+    if (heroGeneration?.status !== 'failed') {
+      return heroGeneration;
+    }
+
+    const currentPrompt = normalizePromptForComparison(generationsPanelProps.prompt);
+    const failedPrompt = normalizePromptForComparison(heroGeneration.prompt);
+    return currentPrompt === failedPrompt ? heroGeneration : null;
+  }, [generationsPanelProps.prompt, heroGeneration]);
 
   const galleryEntries = useMemo(
     () => {
@@ -296,7 +309,7 @@ export function CanvasWorkspace({
   }, [generationLookup, viewingId]);
 
   const isEmptySession = useMemo(() => {
-    const hasGenerations = galleryEntries.length > 0 || heroGeneration !== null;
+    const hasGenerations = galleryEntries.length > 0 || displayHeroGeneration !== null;
     const hasStartFrame = Boolean(domain.startFrame);
     const hasHydratedSessionPrompt =
       enableMLHighlighting &&
@@ -305,7 +318,7 @@ export function CanvasWorkspace({
   }, [
     enableMLHighlighting,
     galleryEntries.length,
-    heroGeneration,
+    displayHeroGeneration,
     domain.startFrame,
     prompt,
   ]);
@@ -322,7 +335,7 @@ export function CanvasWorkspace({
   const {
     shouldRender: shouldRenderHero,
     phase: heroPhase,
-  } = useAnimatedPresence(!isEmptySession && Boolean(heroGeneration), { exitMs: 240 });
+  } = useAnimatedPresence(!isEmptySession && Boolean(displayHeroGeneration), { exitMs: 240 });
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
@@ -451,12 +464,12 @@ export function CanvasWorkspace({
             className={cn(
               'relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]',
               isEmptySession ? 'justify-center' : 'pt-8',
-              !isEmptySession && !heroGeneration ? 'justify-center' : ''
+              !isEmptySession && !displayHeroGeneration ? 'justify-center' : ''
             )}
           >
             {shouldRenderHero ? (
               <div className="motion-presence-panel mb-5" data-motion-state={heroPhase}>
-                <CanvasHeroViewer generation={heroGeneration} />
+                <CanvasHeroViewer generation={displayHeroGeneration} />
               </div>
             ) : null}
 

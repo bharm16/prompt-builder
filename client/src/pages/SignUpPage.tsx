@@ -108,6 +108,7 @@ export function SignUpPage(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
   const redirect = getSafeRedirect(location.search);
+  const signInLink = redirect ? `/signin?redirect=${encodeURIComponent(redirect)}` : '/signin';
   const suppressAutoRedirect = React.useRef(false);
 
   const user = useAuthUser();
@@ -173,19 +174,22 @@ export function SignUpPage(): React.ReactElement {
       const newUser = await getAuthRepository().signUpWithEmail(normalizedEmail, password, normalizedName);
       const name = typeof newUser.displayName === 'string' ? newUser.displayName : 'there';
       toast.success(`Account created. Welcome, ${name}!`);
+      let delivery: 'sent' | 'failed' = 'sent';
 
       try {
         await getAuthRepository().sendVerificationEmail(redirect ?? undefined);
-        toast.success('Verification email sent.');
       } catch {
-        toast.error('Failed to send verification email.');
+        delivery = 'failed';
       }
 
       const params = new URLSearchParams();
       if (redirect) params.set('redirect', redirect);
       if (normalizedEmail) params.set('email', normalizedEmail);
       const query = params.toString();
-      navigate(query ? `/email-verification?${query}` : '/email-verification', { replace: true });
+      navigate(query ? `/email-verification?${query}` : '/email-verification', {
+        replace: true,
+        state: { delivery },
+      });
     } catch (err) {
       setError(mapAuthError(err, 'email'));
     } finally {
@@ -199,7 +203,7 @@ export function SignUpPage(): React.ReactElement {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/signin" className="text-white hover:underline">
+          <Link to={signInLink} className="text-white hover:underline">
             Sign in
           </Link>
           .

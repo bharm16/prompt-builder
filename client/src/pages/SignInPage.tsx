@@ -56,6 +56,7 @@ function mapAuthError(error: unknown, flow: AuthFlow): string {
       return 'This account is disabled.';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
+    case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
       return 'Incorrect email or password.';
     case 'auth/too-many-requests':
@@ -98,6 +99,7 @@ export function SignInPage(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
   const redirect = getSafeRedirect(location.search);
+  const signUpLink = redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup';
 
   const user = useAuthUser();
   const [email, setEmail] = React.useState('');
@@ -173,7 +175,7 @@ export function SignInPage(): React.ReactElement {
       footer={
         <>
           New here?{' '}
-          <Link to="/signup" className="text-white hover:underline">
+          <Link to={signUpLink} className="text-white hover:underline">
             Create an account
           </Link>
           .

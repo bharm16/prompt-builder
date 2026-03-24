@@ -95,6 +95,16 @@ function mapResendError(error: unknown): string {
 }
 
 type VerifyState = 'idle' | 'verifying' | 'verified' | 'error';
+type DeliveryState = 'sent' | 'failed';
+type EmailVerificationNavState = {
+  delivery?: DeliveryState;
+};
+
+function getDeliveryState(state: unknown): DeliveryState | undefined {
+  if (!state || typeof state !== 'object' || !('delivery' in state)) return undefined;
+  const delivery = state.delivery;
+  return delivery === 'sent' || delivery === 'failed' ? delivery : undefined;
+}
 
 export function EmailVerificationPage(): React.ReactElement {
   const toast = useToast();
@@ -111,6 +121,9 @@ export function EmailVerificationPage(): React.ReactElement {
   const [isResending, setIsResending] = React.useState(false);
   const [resendCooldown, setResendCooldown] = React.useState(0);
   const [emailHint, setEmailHint] = React.useState(() => getInitialEmail(location.search));
+  const [deliveryState, setDeliveryState] = React.useState<DeliveryState | undefined>(() =>
+    getDeliveryState(location.state as EmailVerificationNavState | undefined)
+  );
 
   React.useEffect(() => {
     const initial = getInitialEmail(location.search);
@@ -173,11 +186,10 @@ export function EmailVerificationPage(): React.ReactElement {
     setIsResending(true);
     try {
       await getAuthRepository().sendVerificationEmail(redirect ?? undefined);
-      toast.success('Verification email sent.');
+      setDeliveryState('sent');
       setResendCooldown(30);
     } catch (err) {
       setError(mapResendError(err));
-      toast.error('Failed to send verification email.');
     } finally {
       setIsResending(false);
     }
@@ -193,7 +205,10 @@ export function EmailVerificationPage(): React.ReactElement {
 
   const showVerifiedPanel = verifyState === 'verified' || isEmailVerified;
   const showVerifyInProgress = verifyState === 'verifying';
-  const showVerifyError = verifyState === 'error' && error;
+  const showInlineError = Boolean(error) && !showVerifiedPanel && !showVerifyInProgress;
+  const showDeliveryFailurePanel = deliveryState === 'failed' && !showVerifiedPanel;
+  const showInboxPanel = !showVerifiedPanel && !showDeliveryFailurePanel;
+  const inlineErrorTitle = verifyState === 'error' ? 'Verification failed' : 'Could not send verification email';
 
   return (
     <AuthShell
@@ -251,19 +266,75 @@ export function EmailVerificationPage(): React.ReactElement {
           </div>
         ) : null}
 
-        {showVerifyError ? (
+        {showInlineError ? (
           <div role="alert" className="px-3.5 py-2.5" style={AUTH_ERROR_STYLE}>
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" style={{ color: AUTH_COLORS.danger }} aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold" style={{ color: AUTH_COLORS.danger }}>Verification failed</p>
+                <p className="text-[13px] font-semibold" style={{ color: AUTH_COLORS.danger }}>{inlineErrorTitle}</p>
                 <p className="mt-0.5 text-[13px] leading-snug" style={{ color: AUTH_COLORS.danger, opacity: 0.8 }}>{error}</p>
               </div>
             </div>
           </div>
         ) : null}
 
-        {!showVerifiedPanel ? (
+        {showDeliveryFailurePanel ? (
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}` }}
+              >
+                <ShieldAlert className="h-4 w-4" style={{ color: AUTH_COLORS.danger }} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-white">Verification email not sent</p>
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+                  {displayEmail ? (
+                    <>
+                      Your account was created for <span className="font-medium text-white">{displayEmail}</span>, but we
+                      couldn&apos;t send the verification email yet. Try resending it from this page.
+                    </>
+                  ) : (
+                    <>Your account was created, but we couldn&apos;t send the verification email yet. Try resending it from this page.</>
+                  )}
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={!user || isResending || resendCooldown > 0}
+                    variant="ghost"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={AUTH_SECONDARY_BTN_STYLE}
+                  >
+                    {isResending ? <Spinner /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend email'}
+                  </Button>
+
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={{ ...AUTH_SECONDARY_BTN_STYLE, background: AUTH_COLORS.inputBg }}
+                  >
+                    <Link to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}>
+                      Password help
+                    </Link>
+                  </Button>
+                </div>
+
+                {!user ? (
+                  <p className="mt-3 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textLabel }}>
+                    Sign in first to resend a verification email. If you&apos;re on a different device, just click the link in your inbox.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showInboxPanel ? (
           <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
             <div className="flex items-start gap-2.5">
               <span
