@@ -33,8 +33,17 @@ export function hasVideoArtifact(entry: PromptHistoryEntry): boolean {
 
 export function isRecentEntry(entry: PromptHistoryEntry, days: number = 7): boolean {
   if (!entry.timestamp) return false;
-  const ms = Date.parse(entry.timestamp);
-  if (Number.isNaN(ms)) return false;
+
+  // Handle both ISO-8601 strings and numeric-string timestamps (legacy data).
+  let ms = Date.parse(entry.timestamp);
+  if (Number.isNaN(ms)) {
+    // Fallback: try parsing as a numeric string (milliseconds since epoch).
+    const numeric = Number(entry.timestamp);
+    if (!Number.isFinite(numeric) || numeric <= 0) return false;
+    // Disambiguate seconds vs milliseconds — timestamps below 1e12 are seconds.
+    ms = numeric < 1e12 ? numeric * 1000 : numeric;
+  }
+
   const diffMs = Date.now() - ms;
   return diffMs >= 0 && diffMs <= days * 24 * 60 * 60 * 1000;
 }

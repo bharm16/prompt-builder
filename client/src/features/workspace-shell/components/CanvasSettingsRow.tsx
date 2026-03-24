@@ -1,7 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import { Eye, MagicWand, Images, X } from '@promptstudio/system/components/ui';
 import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, STORYBOARD_COST } from '@/components/ToolSidebar/config/modelConfig';
+import {
+  VIDEO_DRAFT_MODELS,
+  VIDEO_RENDER_MODELS,
+  STORYBOARD_COST,
+} from '@/components/ToolSidebar/config/modelConfig';
 import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
 import {
   useGenerationControlsStoreActions,
@@ -140,10 +144,14 @@ export function CanvasSettingsRow({
     VIDEO_RENDER_MODELS[0]?.cost ??
     0;
 
-  const isWan = domain.selectedModel === VIDEO_DRAFT_MODEL.id;
+  const selectedDraftModel = useMemo(
+    () => VIDEO_DRAFT_MODELS.find((model) => model.id === domain.selectedModel) ?? null,
+    [domain.selectedModel]
+  );
+  const isDraftModelSelected = selectedDraftModel !== null;
 
   const previewDisabled = !controls?.onStoryboard || isGenerating || (!hasPrompt && !hasStartFrame);
-  const generateDisabled = isWan
+  const generateDisabled = isDraftModelSelected
     ? !controls?.onDraft || isGenerating || !hasPrompt
     : !controls?.onRender || isGenerating || !hasPrompt;
 
@@ -165,18 +173,18 @@ export function CanvasSettingsRow({
   );
 
   const handleGenerate = useCallback(() => {
-    if (isWan) {
-      trackGenerationStart(VIDEO_DRAFT_MODEL.id);
-      controls?.onDraft?.(VIDEO_DRAFT_MODEL.id);
+    if (selectedDraftModel) {
+      trackGenerationStart(selectedDraftModel.id);
+      controls?.onDraft?.(selectedDraftModel.id);
     } else {
       trackGenerationStart(renderModelId);
       controls?.onRender?.(renderModelId);
     }
-  }, [controls, isWan, renderModelId, trackGenerationStart]);
+  }, [controls, renderModelId, selectedDraftModel, trackGenerationStart]);
 
   const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
 
-  const creditCost = isWan ? VIDEO_DRAFT_MODEL.cost : renderModelCost;
+  const creditCost = selectedDraftModel?.cost ?? renderModelCost;
 
   return (
     <div
@@ -314,8 +322,8 @@ export function CanvasSettingsRow({
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
-          aria-label={`${isWan ? 'Draft' : 'Generate'} ${creditCost} credits`}
-          title={`${isWan ? 'Draft' : 'Generate'} · ${creditCost} cr`}
+          aria-label={`${isDraftModelSelected ? 'Draft' : 'Generate'} ${creditCost} credits`}
+          title={`${isDraftModelSelected ? 'Draft' : 'Generate'} · ${creditCost} cr`}
         >
           <svg
             width="16"

@@ -19,6 +19,14 @@ import {
 import { getModelConfig } from '../config/generationConfig';
 import { getVideoInputSupport } from '../utils/videoInputSupport';
 
+/** Extract the asset ID (last path segment) from a storage path or return the value as-is. */
+const extractAssetId = (pathOrId: string): string => {
+  const segments = pathOrId.split('/').filter(Boolean);
+  return segments.length > 0 ? segments[segments.length - 1]! : pathOrId;
+};
+
+const toAssetIds = (paths: string[]): string[] => paths.map(extractAssetId);
+
 interface UseGenerationActionsOptions {
   aspectRatio?: string | undefined;
   duration?: number | undefined;
@@ -346,7 +354,7 @@ export function useGenerationActions(
             status: 'completed',
             completedAt: Date.now(),
             mediaUrls: urls,
-            ...(storagePaths?.length ? { mediaAssetIds: storagePaths } : {}),
+            ...(storagePaths?.length ? { mediaAssetIds: toAssetIds(storagePaths) } : {}),
             thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
           });
           return;
@@ -544,9 +552,9 @@ export function useGenerationActions(
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
           ...(videoAssetId
-            ? { mediaAssetIds: [videoAssetId] }
+            ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
             : videoStoragePath
-              ? { mediaAssetIds: [videoStoragePath] }
+              ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
               : {}),
         });
       } catch (error) {
@@ -634,7 +642,7 @@ export function useGenerationActions(
           status: 'completed' as const,
           completedAt: Date.now(),
           mediaUrls: urls,
-          ...(storagePaths?.length ? { mediaAssetIds: storagePaths } : {}),
+          ...(storagePaths?.length ? { mediaAssetIds: toAssetIds(storagePaths) } : {}),
           thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
         };
         finalizeGeneration(generation.id, finalizationPayload);
@@ -868,9 +876,9 @@ export function useGenerationActions(
           completedAt: Date.now(),
           mediaUrls: [videoUrl],
           ...(videoAssetId
-            ? { mediaAssetIds: [videoAssetId] }
+            ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
             : videoStoragePath
-              ? { mediaAssetIds: [videoStoragePath] }
+              ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
               : {}),
         });
       } catch (error) {

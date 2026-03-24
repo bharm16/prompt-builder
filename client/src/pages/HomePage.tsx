@@ -1,8 +1,11 @@
 import { type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthUser } from '@hooks/useAuthUser';
 import { AUTH_COLORS } from './auth/auth-styles';
 
 export function HomePage(): ReactElement {
+  const user = useAuthUser();
+
   return (
     <div className="h-full overflow-y-auto" style={{ background: AUTH_COLORS.bg }}>
       <div className="mx-auto max-w-md px-4 sm:px-6 pt-24 pb-16 text-center">
@@ -23,13 +26,15 @@ export function HomePage(): ReactElement {
           >
             Open workspace
           </Link>
-          <Link
-            to="/signup"
-            className="inline-flex h-9 items-center rounded-lg px-4 text-[13px] font-semibold text-white transition"
-            style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
-          >
-            Create account
-          </Link>
+          {!user && (
+            <Link
+              to="/signup"
+              className="inline-flex h-9 items-center rounded-lg px-4 text-[13px] font-semibold text-white transition"
+              style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+            >
+              Create account
+            </Link>
+          )}
         </div>
         <div className="mt-8 flex items-center justify-center gap-x-4 text-[12px]" style={{ color: AUTH_COLORS.textDim }}>
           <Link to="/docs" className="hover:text-white transition-colors">Docs</Link>

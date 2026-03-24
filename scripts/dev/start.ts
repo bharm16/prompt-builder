@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const HEALTH_URL = process.env.DEV_SERVER_HEALTH_URL || 'http://localhost:3001/health';
 const HEALTH_TIMEOUT_MS = Number(process.env.DEV_SERVER_HEALTH_TIMEOUT_MS || 60000);
@@ -8,10 +10,28 @@ const HEALTH_POLL_INTERVAL_MS = Number(process.env.DEV_SERVER_HEALTH_POLL_INTERV
 const isWindows = process.platform === 'win32';
 const npmCmd = isWindows ? 'npm.cmd' : 'npm';
 
-function spawnNpm(args, name) {
+type HealthCheckOptions = {
+  url: string;
+  timeoutMs: number;
+  pollIntervalMs: number;
+  isServerAlive: () => boolean;
+};
+
+export function getServerEnv(baseEnv: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return {
+    ...baseEnv,
+    VIDEO_JOB_INLINE_ENABLED: baseEnv.VIDEO_JOB_INLINE_ENABLED ?? 'true',
+  };
+}
+
+function spawnNpm(
+  args: string[],
+  name: string,
+  env: NodeJS.ProcessEnv = process.env
+): ChildProcess {
   const child = spawn(npmCmd, args, {
     stdio: 'inherit',
-    env: process.env,
+    env,
   });
 
   child.on('exit', (code, signal) => {
@@ -26,7 +46,7 @@ function spawnNpm(args, name) {
   return child;
 }
 
-async function sleep(ms) {
+async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -35,9 +55,9 @@ async function waitForHealth({
   timeoutMs,
   pollIntervalMs,
   isServerAlive,
-}) {
+}: HealthCheckOptions): Promise<void> {
   const start = Date.now();
-  let lastError = null;
+  let lastError: unknown = null;
 
   while (Date.now() - start < timeoutMs) {
     if (!isServerAlive()) {
@@ -61,7 +81,7 @@ async function waitForHealth({
   );
 }
 
-function killProcess(child) {
+function killProcess(child: ChildProcess | null | undefined): void {
   if (!child || child.killed) return;
 
   try {
@@ -73,7 +93,7 @@ function killProcess(child) {
 
 async function main() {
   console.log('[dev:start] Starting backend (watch mode)…');
-  const server = spawnNpm(['run', 'server:dev'], 'server');
+  const server = spawnNpm(['run', 'server:dev'], 'server', getServerEnv(process.env));
 
   let serverExited = false;
   server.on('exit', () => {
@@ -91,7 +111,7 @@ async function main() {
   console.log('[dev:start] Backend healthy. Starting Vite…');
   const vite = spawnNpm(['run', 'dev'], 'vite');
 
-  const shutdown = (reason) => {
+  const shutdown = (reason: string): void => {
     console.log('[dev:start] Shutting down…', { reason });
     killProcess(vite);
     killProcess(server);
@@ -111,8 +131,14 @@ async function main() {
   });
 }
 
-main().catch((err) => {
-  console.error('[dev:start] Fatal error', err);
-  process.exit(1);
-});
+const entryArg = process.argv[1];
+const isEntrypoint =
+  typeof entryArg === 'string' &&
+  import.meta.url === pathToFileURL(entryArg).href;
 
+if (isEntrypoint) {
+  main().catch((err) => {
+    console.error('[dev:start] Fatal error', err);
+    process.exit(1);
+  });
+}

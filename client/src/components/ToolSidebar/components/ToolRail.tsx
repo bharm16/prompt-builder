@@ -59,7 +59,7 @@ export function ToolRail({
             key={item.id}
             icon={item.icon}
             label={item.label}
-            isActive={false}
+            isActive={activePanel === item.id}
             onClick={() => handlePanelChange(item.id)}
           />
         ))}
@@ -67,14 +67,17 @@ export function ToolRail({
           icon={GridFour}
           label="Gallery"
           isActive={false}
-          onClick={() => onGalleryToggle?.()}
+          onClick={() => {
+            onPanelChange('studio');
+            onGalleryToggle?.();
+          }}
         />
         <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
         {sessionsItem ? (
           <ToolNavButton
             icon={sessionsItem.icon}
             label={sessionsItem.label}
-            isActive={false}
+            isActive={activePanel === 'sessions'}
             onClick={() => handlePanelChange('sessions')}
             variant="header"
           />

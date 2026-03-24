@@ -148,7 +148,7 @@ describe('useHistoryState', () => {
       expect(result.current.filteredHistory[0]?.input).toContain('cowboy');
     });
 
-    it('filters entries by output text (case-insensitive)', () => {
+    it('does not match output-only text to prevent false positives', () => {
       const { result } = renderHook(() => useHistoryState());
 
       act(() => {
@@ -157,7 +157,8 @@ describe('useHistoryState', () => {
       });
       act(() => { result.current.setSearchQuery('dramatic'); });
 
-      expect(result.current.filteredHistory).toHaveLength(1);
+      // "dramatic" only appears in output, not input or title — should not match
+      expect(result.current.filteredHistory).toHaveLength(0);
     });
 
     it('returns empty array when no entries match query', () => {

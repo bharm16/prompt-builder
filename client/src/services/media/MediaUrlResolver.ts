@@ -41,17 +41,27 @@ const PREVIEW_ROUTE_PREFIX = '/api/preview/';
 const VIDEO_CONTENT_ROUTE_PREFIX = '/api/preview/video/content/';
 const MEDIA_PROXY_PATH = '/api/storage/proxy';
 
+const isFirebaseStorageUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url, 'https://placeholder.invalid');
+    return parsed.hostname === 'firebasestorage.googleapis.com';
+  } catch {
+    return false;
+  }
+};
+
 /**
- * Rewrite a raw GCS signed URL to go through the app-origin media proxy.
+ * Rewrite GCS/Firebase Storage URLs to go through the app-origin media proxy.
  * This avoids ORB (Opaque Response Blocking) failures when COEP is set to
- * 'credentialless' and the GCS bucket lacks CORS headers.
+ * 'credentialless' and the remote storage lacks CORS headers.
  */
-const rewriteGcsUrlToProxy = (url: string | null): string | null => {
+export const rewriteGcsUrlToProxy = (url: string | null): string | null => {
   if (!url) return null;
-  if (!hasGcsSignedUrlParams(url)) return url;
-  // Already proxied
   if (url.includes(MEDIA_PROXY_PATH)) return url;
-  return `${MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+  if (hasGcsSignedUrlParams(url) || isFirebaseStorageUrl(url)) {
+    return `${MEDIA_PROXY_PATH}?url=${encodeURIComponent(url)}`;
+  }
+  return url;
 };
 
 const getErrorStatus = (error: unknown): number | null => {

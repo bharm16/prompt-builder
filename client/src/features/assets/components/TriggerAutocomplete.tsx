@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { User, Palette, MapPin, Box, Loader2 } from '@promptstudio/system/components/ui';
+import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
 import { getAssetTypeConfig } from '../config/assetConfig';
 import type { AssetSuggestion } from '../hooks/useTriggerAutocomplete';
 import type { AnimatedPresencePhase } from '@/hooks/useAnimatedPresence';
@@ -108,7 +109,7 @@ export function TriggerAutocomplete({
               >
                 {asset.thumbnailUrl ? (
                   <img
-                    src={asset.thumbnailUrl}
+                    src={rewriteGcsUrlToProxy(asset.thumbnailUrl ?? null) ?? undefined}
                     alt=""
                     className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
                   />

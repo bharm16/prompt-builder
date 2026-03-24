@@ -159,6 +159,71 @@ export function usePromptLoader({
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
+  // Stabilize values that should be read-on-demand inside the effect without
+  // triggering re-runs.  Only sessionId / auth changes should re-trigger the
+  // loader — setter callbacks, history entries, and generation config are read
+  // via stable refs to prevent the effect from re-running when parent re-renders
+  // recreate callback identities (which would wipe the prompt mid-editing).
+  const historyEntriesRef = useRef(historyEntries);
+  historyEntriesRef.current = historyEntries;
+  const createDraftEntryRef = useRef(createDraftEntry);
+  createDraftEntryRef.current = createDraftEntry;
+  const selectedModeRef = useRef(selectedMode);
+  selectedModeRef.current = selectedMode;
+  const selectedModelValueRef = useRef(selectedModelValue);
+  selectedModelValueRef.current = selectedModelValue;
+  const generationParamsValueRef = useRef(generationParamsValue);
+  generationParamsValueRef.current = generationParamsValue;
+
+  // Stabilize ALL setter/callback dependencies via refs.  These functions are
+  // often useCallback wrappers whose identity changes when their own deps
+  // change.  Including them directly in the effect dep array caused the effect
+  // to re-run, hit the "no sessionId → clear everything" branch, and wipe the
+  // user's prompt — producing both the "Maximum update depth exceeded" error
+  // and the prompt-disappears-on-Preview bug.
+  const setDisplayedPromptSilentlyRef = useRef(setDisplayedPromptSilently);
+  setDisplayedPromptSilentlyRef.current = setDisplayedPromptSilently;
+  const applyInitialHighlightSnapshotRef = useRef(applyInitialHighlightSnapshot);
+  applyInitialHighlightSnapshotRef.current = applyInitialHighlightSnapshot;
+  const resetEditStacksRef = useRef(resetEditStacks);
+  resetEditStacksRef.current = resetEditStacks;
+  const resetVersionEditsRef = useRef(resetVersionEdits);
+  resetVersionEditsRef.current = resetVersionEdits;
+  const setCurrentPromptDocIdRef = useRef(setCurrentPromptDocId);
+  setCurrentPromptDocIdRef.current = setCurrentPromptDocId;
+  const setCurrentPromptUuidRef = useRef(setCurrentPromptUuid);
+  setCurrentPromptUuidRef.current = setCurrentPromptUuid;
+  const setShowResultsRef = useRef(setShowResults);
+  setShowResultsRef.current = setShowResults;
+  const setSelectedModeRef = useRef(setSelectedMode);
+  setSelectedModeRef.current = setSelectedMode;
+  const setSelectedModelRef = useRef(setSelectedModel);
+  setSelectedModelRef.current = setSelectedModel;
+  const setGenerationParamsRef = useRef(setGenerationParams);
+  setGenerationParamsRef.current = setGenerationParams;
+  const upsertHistoryEntryRef = useRef(upsertHistoryEntry);
+  upsertHistoryEntryRef.current = upsertHistoryEntry;
+  const setSuggestionsDataRef = useRef(setSuggestionsData);
+  setSuggestionsDataRef.current = setSuggestionsData;
+  const setConceptElementsRef = useRef(setConceptElements);
+  setConceptElementsRef.current = setConceptElements;
+  const setPromptContextRef = useRef(setPromptContext);
+  setPromptContextRef.current = setPromptContext;
+  const onLoadKeyframesRef = useRef(onLoadKeyframes);
+  onLoadKeyframesRef.current = onLoadKeyframes;
+  const setInputPromptRef = useRef(setInputPrompt);
+  setInputPromptRef.current = setInputPrompt;
+  const setOptimizedPromptRef = useRef(setOptimizedPrompt);
+  setOptimizedPromptRef.current = setOptimizedPrompt;
+  const setGenericOptimizedPromptRef = useRef(setGenericOptimizedPrompt);
+  setGenericOptimizedPromptRef.current = setGenericOptimizedPrompt;
+  const setPreviewPromptRef = useRef(setPreviewPrompt);
+  setPreviewPromptRef.current = setPreviewPrompt;
+  const setPreviewAspectRatioRef = useRef(setPreviewAspectRatio);
+  setPreviewAspectRatioRef.current = setPreviewAspectRatio;
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+
   useEffect(() => {
     let cancelled = false;
     // Track whether a fetch completed (success or handled failure) so the
@@ -167,13 +232,28 @@ export function usePromptLoader({
     let loadCompleted = false;
 
     const loadPromptFromSession = async (): Promise<void> => {
-      const normalizedSessionId = sessionId?.trim() ?? '';
-      if (!normalizedSessionId) {
+      // Skip ALL loading/clearing when an optimization result or brainstorm
+      // just navigated to a new session — the state was already set.
+      if (skipLoadFromUrlRef.current) {
+        skipLoadFromUrlRef.current = false;
         setIsLoading(false);
         return;
       }
 
-      if (skipLoadFromUrlRef.current) {
+      const normalizedSessionId = sessionId?.trim() ?? '';
+      if (!normalizedSessionId) {
+        // Clear stale state when entering `/` without a session ID.
+        // Without this, the workspace preserves the last-loaded session's
+        // prompt, suggestions, and generation state from in-memory history.
+        setSuggestionsDataRef.current?.(null);
+        setConceptElementsRef.current?.(null);
+        setInputPromptRef.current('');
+        setOptimizedPromptRef.current('');
+        setDisplayedPromptSilentlyRef.current('');
+        setGenericOptimizedPromptRef.current?.(null);
+        setPreviewPromptRef.current?.(null);
+        setShowResultsRef.current(false);
+        window.dispatchEvent(new Event('po:workspace-reset'));
         setIsLoading(false);
         return;
       }
@@ -205,23 +285,23 @@ export function usePromptLoader({
         options?: { markPersisted?: boolean }
       ): void => {
         const parsedGenerationParams = parseCapabilityValues(promptData.generationParams);
-        setSuggestionsData?.(null);
-        setConceptElements?.(null);
-        setInputPrompt(promptData.input || '');
-        setOptimizedPrompt(promptData.output || '');
-        setDisplayedPromptSilently(promptData.output || '');
-        setGenericOptimizedPrompt?.(null);
-        setPreviewPrompt?.(null);
-        setPreviewAspectRatio?.(null);
-        setCurrentPromptUuid(promptData.uuid ?? null);
-        setCurrentPromptDocId(promptData.id || resolvedSessionId);
-        setShowResults(Boolean(promptData.output && promptData.output.trim()));
+        setSuggestionsDataRef.current?.(null);
+        setConceptElementsRef.current?.(null);
+        setInputPromptRef.current(promptData.input || '');
+        setOptimizedPromptRef.current(promptData.output || '');
+        setDisplayedPromptSilentlyRef.current(promptData.output || '');
+        setGenericOptimizedPromptRef.current?.(null);
+        setPreviewPromptRef.current?.(null);
+        setPreviewAspectRatioRef.current?.(null);
+        setCurrentPromptUuidRef.current(promptData.uuid ?? null);
+        setCurrentPromptDocIdRef.current(promptData.id || resolvedSessionId);
+        setShowResultsRef.current(Boolean(promptData.output && promptData.output.trim()));
         if (typeof promptData.mode === 'string' && promptData.mode.trim()) {
-          setSelectedMode?.(promptData.mode.trim());
+          setSelectedModeRef.current?.(promptData.mode.trim());
         }
-        setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
-        setGenerationParams?.(parsedGenerationParams);
-        upsertHistoryEntry?.(
+        setSelectedModelRef.current(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
+        setGenerationParamsRef.current?.(parsedGenerationParams);
+        upsertHistoryEntryRef.current?.(
           {
             ...promptData,
             generationParams:
@@ -231,7 +311,7 @@ export function usePromptLoader({
           },
           resolvedSessionId
         );
-        onLoadKeyframes?.(promptData.keyframes);
+        onLoadKeyframesRef.current?.(promptData.keyframes);
 
         const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
           ? ({
@@ -241,12 +321,12 @@ export function usePromptLoader({
                 createHighlightSignature(promptData.output ?? ''),
             } as HighlightSnapshot)
           : null;
-        applyInitialHighlightSnapshot(preloadHighlight, {
+        applyInitialHighlightSnapshotRef.current(preloadHighlight, {
           bumpVersion: true,
           markPersisted: options?.markPersisted !== false,
         });
-        resetVersionEdits();
-        resetEditStacks();
+        resetVersionEditsRef.current();
+        resetEditStacksRef.current();
 
         if (promptData.brainstormContext) {
           try {
@@ -255,7 +335,7 @@ export function usePromptLoader({
                 ? (JSON.parse(promptData.brainstormContext) as Record<string, unknown>)
                 : promptData.brainstormContext;
             const restoredContext = PromptContext.fromJSON(contextData);
-            setPromptContext(restoredContext);
+            setPromptContextRef.current(restoredContext);
           } catch (contextError) {
             const info = sanitizeError(contextError);
             log.warn('Failed to restore prompt context from session', {
@@ -267,60 +347,60 @@ export function usePromptLoader({
             toastRef.current.warning(
               'Could not restore video context. The prompt will still load.'
             );
-            setPromptContext(null);
+            setPromptContextRef.current(null);
           }
         } else {
-          setPromptContext(null);
+          setPromptContextRef.current(null);
         }
       };
 
       const bootstrapBlankDraft = (): void => {
-        setSuggestionsData?.(null);
-        setConceptElements?.(null);
-        setInputPrompt('');
-        setOptimizedPrompt('');
-        setDisplayedPromptSilently('');
-        setGenericOptimizedPrompt?.(null);
-        setPreviewPrompt?.(null);
-        setPreviewAspectRatio?.(null);
-        setShowResults(false);
-        applyInitialHighlightSnapshot(null, {
+        setSuggestionsDataRef.current?.(null);
+        setConceptElementsRef.current?.(null);
+        setInputPromptRef.current('');
+        setOptimizedPromptRef.current('');
+        setDisplayedPromptSilentlyRef.current('');
+        setGenericOptimizedPromptRef.current?.(null);
+        setPreviewPromptRef.current?.(null);
+        setPreviewAspectRatioRef.current?.(null);
+        setShowResultsRef.current(false);
+        applyInitialHighlightSnapshotRef.current(null, {
           bumpVersion: true,
           markPersisted: false,
         });
-        resetVersionEdits();
-        resetEditStacks();
-        setPromptContext(null);
-        onLoadKeyframes?.(null);
-        setSelectedMode?.(selectedMode ?? 'video');
-        setSelectedModel(selectedModelValue ?? '');
-        setGenerationParams?.(generationParamsValue ?? {});
+        resetVersionEditsRef.current();
+        resetEditStacksRef.current();
+        setPromptContextRef.current(null);
+        onLoadKeyframesRef.current?.(null);
+        setSelectedModeRef.current?.(selectedModeRef.current ?? 'video');
+        setSelectedModelRef.current(selectedModelValueRef.current ?? '');
+        setGenerationParamsRef.current?.(generationParamsValueRef.current ?? {});
 
-        if (createDraftEntry) {
-          const draft = createDraftEntry({
+        if (createDraftEntryRef.current) {
+          const draft = createDraftEntryRef.current({
             id: normalizedSessionId,
-            mode: selectedMode ?? 'video',
+            mode: selectedModeRef.current ?? 'video',
             targetModel:
-              typeof selectedModelValue === 'string' && selectedModelValue.trim()
-                ? selectedModelValue.trim()
+              typeof selectedModelValueRef.current === 'string' && selectedModelValueRef.current.trim()
+                ? selectedModelValueRef.current.trim()
                 : null,
             generationParams:
-              (generationParamsValue as Record<string, unknown> | null | undefined) ?? null,
+              (generationParamsValueRef.current as Record<string, unknown> | null | undefined) ?? null,
             persist: false,
           });
-          setCurrentPromptUuid(draft.uuid);
-          setCurrentPromptDocId(draft.id);
+          setCurrentPromptUuidRef.current(draft.uuid);
+          setCurrentPromptDocIdRef.current(draft.id);
           return;
         }
 
-        setCurrentPromptUuid(null);
-        setCurrentPromptDocId(normalizedSessionId);
+        setCurrentPromptUuidRef.current(null);
+        setCurrentPromptDocIdRef.current(normalizedSessionId);
       };
 
       try {
         if (!isRemoteSessionId(normalizedSessionId)) {
           const inMemoryDraft =
-            historyEntries.find((entry) => entry.id === normalizedSessionId) ?? null;
+            historyEntriesRef.current.find((entry) => entry.id === normalizedSessionId) ?? null;
           if (inMemoryDraft) {
             applyHydratedPrompt(inMemoryDraft, normalizedSessionId);
             return;
@@ -352,14 +432,14 @@ export function usePromptLoader({
           applyHydratedPrompt(promptData, normalizedSessionId);
         } else {
           log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
-          navigate('/', { replace: true });
+          navigateRef.current('/', { replace: true });
         }
       } catch (error) {
         if (cancelled) return;
         const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
         log.error('Error loading prompt from session', err, { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
         toastRef.current.error('Failed to load prompt');
-        navigate('/', { replace: true });
+        navigateRef.current('/', { replace: true });
       } finally {
         loadCompleted = true;
         if (!cancelled) {
@@ -382,35 +462,9 @@ export function usePromptLoader({
   }, [
     sessionId,
     isAuthResolved,
-    navigate,
     user?.uid,
     isAuthenticated,
-    setDisplayedPromptSilently,
-    applyInitialHighlightSnapshot,
-    resetEditStacks,
-    resetVersionEdits,
-    setCurrentPromptDocId,
-    setCurrentPromptUuid,
-    setShowResults,
-    historyEntries,
-    createDraftEntry,
-    selectedMode,
-    selectedModelValue,
-    generationParamsValue,
-    setSelectedMode,
-    setSelectedModel,
-    setGenerationParams,
-    upsertHistoryEntry,
-    setSuggestionsData,
-    setConceptElements,
-    setPromptContext,
-    onLoadKeyframes,
     skipLoadFromUrlRef,
-    setInputPrompt,
-    setOptimizedPrompt,
-    setGenericOptimizedPrompt,
-    setPreviewPrompt,
-    setPreviewAspectRatio,
   ]);
 
   return { isLoading };

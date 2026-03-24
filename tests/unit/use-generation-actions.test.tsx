@@ -302,7 +302,7 @@ describe('useGenerationActions', () => {
               status: 'completed',
               mediaUrls: ['https://cdn/frame1.png', 'https://cdn/frame2.png'],
               thumbnailUrl: 'https://cdn/base.png',
-              mediaAssetIds: ['users/path1', 'users/path2'],
+              mediaAssetIds: ['path1', 'path2'],
             }),
           }),
         })

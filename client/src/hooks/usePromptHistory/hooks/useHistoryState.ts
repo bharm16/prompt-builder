@@ -112,7 +112,7 @@ export function useHistoryState(): UseHistoryStateReturn {
     return history.filter(
       (entry) =>
         entry.input.toLowerCase().includes(query) ||
-        entry.output.toLowerCase().includes(query)
+        (entry.title && entry.title.toLowerCase().includes(query))
     );
   }, [history, searchQuery]);
 

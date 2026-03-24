@@ -4,6 +4,7 @@ import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
 import { extractStorageObjectPath } from '@/utils/storageUrl';
 import { formatRelativeTime, getModelConfig } from '@features/generations/config/generationConfig';
 import type { Generation } from '@features/generations/types';
+import { getGenerationProgressPercent } from '@features/generations/utils/generationProgress';
 import { resolvePrimaryVideoSource } from '@features/generations/utils/videoSource';
 
 interface CanvasHeroViewerProps {
@@ -132,7 +133,8 @@ export function CanvasHeroViewer({
   if (!generation) return null;
 
   if (isGenerating) {
-    const progress = generation.serverProgress ?? (generation.status === 'pending' ? 5 : 10);
+    const progress = getGenerationProgressPercent(generation, Date.now())
+      ?? (generation.status === 'pending' ? 5 : 10);
     const clampedProgress = Math.max(0, Math.min(100, progress));
     const modelConfig = getModelConfig(generation.model);
     const modelLabel = modelConfig?.label ?? generation.model;

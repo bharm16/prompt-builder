@@ -101,7 +101,7 @@ describe('useHistoryState', () => {
     expect(result.current.state.history).toEqual([]);
   });
 
-  it('filters history by search query across input and output', () => {
+  it('filters history by search query across input (not output)', () => {
     const { result } = renderHook(() => useHistoryState());
 
     act(() => {
@@ -111,13 +111,14 @@ describe('useHistoryState', () => {
       ]);
     });
 
+    // "golden" only appears in output — should NOT match
     act(() => {
       result.current.setSearchQuery('golden');
     });
 
-    expect(result.current.filteredHistory).toHaveLength(1);
-    expect(result.current.filteredHistory[0]?.id).toBe('id-2');
+    expect(result.current.filteredHistory).toHaveLength(0);
 
+    // "MOUNTAINS" appears in input — should match
     act(() => {
       result.current.setSearchQuery('MOUNTAINS');
     });

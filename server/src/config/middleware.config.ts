@@ -371,8 +371,8 @@ export function applyRateLimitingMiddleware(
   app.use(generalLimiter);
 
   // API-specific limiter
-  // Asset view endpoints are read-only signed-URL generators that get hammered
-  // on pages with many generations. They have their own dedicated limiter below.
+  // Asset view endpoints and session hydration endpoints are read-only and get
+  // hammered during page loads. They have their own dedicated limiter below.
   const isAssetViewRoute = (req: express.Request): boolean => {
     const p = req.path;
     return (
@@ -380,6 +380,20 @@ export function applyRateLimitingMiddleware(
       p === '/preview/image/view-batch' ||
       p === '/preview/video/view' ||
       p === '/storage/view-url'
+    );
+  };
+
+  // Session hydration fires multiple parallel reads (session, versions, payment
+  // status) during page load and enhance flows. These read-only, idempotent
+  // endpoints are exempt from the main API limiter to prevent 429s during
+  // normal workspace transitions.
+  const isSessionHydrationRoute = (req: express.Request): boolean => {
+    if (req.method !== 'GET') return false;
+    const p = req.path;
+    return (
+      p === '/payment/status' ||
+      /^\/v2\/sessions\/[^/]+$/.test(p) ||
+      /^\/v2\/sessions\/[^/]+\/versions$/.test(p)
     );
   };
 
@@ -392,7 +406,7 @@ export function applyRateLimitingMiddleware(
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
-      skip: isAssetViewRoute,
+      skip: (req: express.Request) => isAssetViewRoute(req) || isSessionHydrationRoute(req),
       ...(storeFactory ? { store: storeFactory('api') } : {}),
     })
   );

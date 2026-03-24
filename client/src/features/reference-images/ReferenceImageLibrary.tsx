@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
+import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
 import { useReferenceImages } from './hooks/useReferenceImages';
 import type { ReferenceImage } from './api/referenceImageApi';
 
@@ -58,7 +59,7 @@ export function ReferenceImageLibrary({
                 onClick={() => onSelect?.(image)}
               >
                 <img
-                  src={image.thumbnailUrl || image.imageUrl}
+                  src={rewriteGcsUrlToProxy(image.thumbnailUrl || image.imageUrl) ?? undefined}
                   alt={image.label || 'Reference image'}
                   className="h-16 w-full object-cover"
                 />

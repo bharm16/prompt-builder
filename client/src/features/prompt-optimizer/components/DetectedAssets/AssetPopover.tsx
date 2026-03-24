@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Check } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
+import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
 import { cn } from '@/utils/cn';
 
 interface AssetPopoverProps {
@@ -13,8 +14,8 @@ export function AssetPopover({ asset, onEdit }: AssetPopoverProps): React.ReactE
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
-  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const thumbnailUrl = rewriteGcsUrlToProxy(primaryImage?.thumbnailUrl?.trim?.() ?? '') ?? '';
+  const fullUrl = rewriteGcsUrlToProxy(primaryImage?.url?.trim?.() ?? '') ?? '';
   const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
   const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);

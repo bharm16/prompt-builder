@@ -22,36 +22,55 @@ vi.mock('../../context', () => ({
   useSidebarWorkspaceDomain: () => null,
 }));
 
-describe('regression: nav rail buttons never show active/selected state', () => {
-  it('no nav button shows active styling regardless of activePanel value', () => {
+describe('regression: nav rail buttons reflect activePanel', () => {
+  it('marks nav button matching activePanel as active', () => {
+    render(
+      <MemoryRouter>
+        <ToolRail activePanel="characters" onPanelChange={vi.fn()} user={null} />
+      </MemoryRouter>
+    );
+
+    const charsButton = screen.getByRole('button', { name: 'Chars' });
+    expect(charsButton).toHaveAttribute('aria-pressed', 'true');
+    expect(charsButton.className).toContain('bg-tool-nav-active');
+  });
+
+  it('does not mark non-matching nav buttons as active', () => {
+    render(
+      <MemoryRouter>
+        <ToolRail activePanel="characters" onPanelChange={vi.fn()} user={null} />
+      </MemoryRouter>
+    );
+
+    const stylesButton = screen.getByRole('button', { name: 'Styles' });
+    expect(stylesButton).toHaveAttribute('aria-pressed', 'false');
+    expect(stylesButton.className).not.toContain('bg-tool-nav-active');
+  });
+
+  it('Gallery button never shows active state (toggle, not a panel)', () => {
     render(
       <MemoryRouter>
         <ToolRail activePanel="studio" onPanelChange={vi.fn()} user={null} />
       </MemoryRouter>
     );
 
-    const toolButton = screen.getByRole('button', { name: 'Tool' });
     const galleryButton = screen.getByRole('button', { name: 'Gallery' });
-    const sessionsButton = screen.getByRole('button', { name: 'Sessions' });
-
-    expect(toolButton.className).not.toContain('bg-tool-nav-active');
     expect(galleryButton.className).not.toContain('bg-tool-nav-active');
-    expect(sessionsButton.className).not.toContain('bg-tool-nav-active');
   });
 
-  it('Gallery button is inert — no-op on click', () => {
+  it('Gallery button switches panel to studio to close any open drawer', () => {
     const onPanelChange = vi.fn();
 
     render(
       <MemoryRouter>
-        <ToolRail activePanel="studio" onPanelChange={onPanelChange} user={null} />
+        <ToolRail activePanel="styles" onPanelChange={onPanelChange} user={null} />
       </MemoryRouter>
     );
 
     const galleryButton = screen.getByRole('button', { name: 'Gallery' });
     galleryButton.click();
 
-    // Gallery click should not trigger panel change
-    expect(onPanelChange).not.toHaveBeenCalled();
+    // Gallery click switches to studio to close the active drawer
+    expect(onPanelChange).toHaveBeenCalledWith('studio');
   });
 });

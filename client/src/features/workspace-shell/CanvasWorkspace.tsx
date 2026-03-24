@@ -262,11 +262,17 @@ export function CanvasWorkspace({
   const heroGeneration = generationsRuntime.heroGeneration;
 
   const galleryEntries = useMemo(
-    () =>
-      buildGalleryGenerationEntries({
-        versions: generationsPanelProps.versions,
+    () => {
+      // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
+      // version-based entries to prevent stale gallery items from a prior session
+      // remaining visible during the transition to a new draft.
+      const versions =
+        generationsRuntime.generations.length === 0 ? [] : generationsPanelProps.versions;
+      return buildGalleryGenerationEntries({
+        versions,
         runtimeGenerations: generationsRuntime.generations,
-      }),
+      });
+    },
     [generationsPanelProps.versions, generationsRuntime.generations]
   );
 

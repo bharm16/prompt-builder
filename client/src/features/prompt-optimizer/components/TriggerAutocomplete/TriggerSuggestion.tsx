@@ -3,6 +3,7 @@ import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
 import type { Asset } from '@shared/types/asset';
 import { cn } from '@/utils/cn';
 import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
+import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   character: User,
@@ -25,8 +26,8 @@ export function TriggerSuggestion({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
-  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const thumbnailUrl = rewriteGcsUrlToProxy(primaryImage?.thumbnailUrl?.trim?.() ?? '') ?? '';
+  const fullUrl = rewriteGcsUrlToProxy(primaryImage?.url?.trim?.() ?? '') ?? '';
   const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
   const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
